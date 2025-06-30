@@ -1,0 +1,16 @@
+[package]
+name = "toadstool_management_monitoring"
+version = "0.1.0"
+edition = "2021"
+authors.workspace = true
+license.workspace = true
+description = "Resource monitoring and metrics collection for ToadStool runtime environments"
+
+[dependencies]
+toadstool = { path = "../../core/toadstool" }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1.0", features = ["v4"] }
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = { workspace = true }

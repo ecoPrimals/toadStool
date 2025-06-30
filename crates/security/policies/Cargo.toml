@@ -1,0 +1,64 @@
+[package]
+name = "toadstool-security-policies"
+version = "0.1.0"
+edition = "2021"
+description = "Advanced security policy management for ToadStool"
+authors = ["ToadStool Project"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/toadstool-project/toadstool"
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+
+# Serialization and configuration
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.8"
+
+# Security and cryptography
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Collections and utilities
+indexmap = "2.0"
+regex = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["process", "signal", "user"] }
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+caps = "0.5"
+procfs = "0.16"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus"
+] }
+
+[dev-dependencies]
+tempfile = "3.0"
+test-log = "0.2"
+env_logger = "0.10"

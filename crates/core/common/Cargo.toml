@@ -1,0 +1,29 @@
+[package]
+name = "toadstool-common"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Common utilities and types for ToadStool"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+num_cpus = "1.16"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+
+[features]
+default = [] 

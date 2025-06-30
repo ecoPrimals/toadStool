@@ -1,0 +1,7 @@
+[package]
+name = "toadstool-server"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool server component"
+
+[dependencies]

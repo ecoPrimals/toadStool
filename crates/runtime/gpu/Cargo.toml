@@ -1,0 +1,45 @@
+[package]
+name = "toadstool-runtime-gpu"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool GPU compute runtime foundation with CUDA and OpenCL detection"
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+futures = { workspace = true }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = { workspace = true }
+
+# Utilities
+uuid = { version = "1.8", features = ["v4", "serde"] }
+tracing = "0.1"
+log = "0.4"
+anyhow = "1.0"
+thiserror = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+
+# System integration
+sysinfo = { workspace = true }
+
+# GPU compute frameworks (optional)
+ocl = { version = "0.19", optional = true }
+cuda-driver-sys = { version = "0.3", optional = true }
+opencl-sys = { version = "0.2", optional = true }
+
+[features]
+default = ["opencl-detection"]
+opencl-detection = ["ocl", "opencl-sys"]
+cuda-detection = ["cuda-driver-sys"]
+full-gpu-support = ["opencl-detection", "cuda-detection"]
+
+[dev-dependencies]
+tokio-test = { workspace = true }

@@ -1,0 +1,70 @@
+[package]
+name = "toadstool-testing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true  
+homepage.workspace = true
+documentation.workspace = true
+description = "Testing utilities, mocks, and infrastructure for ToadStool"
+keywords = ["testing", "mocks", "utilities", "toadstool"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../core/toadstool" }
+toadstool-common = { path = "../core/common" }
+
+# Testing framework
+tokio = { version = "1.0", features = ["full"] }
+tokio-test = "0.4"
+
+# Mocking and testing utilities
+mockall = "0.12"
+proptest = "1.0"
+wiremock = { version = "0.6", optional = true }
+
+# Async testing
+futures = "0.3"
+futures-util = "0.3"
+
+# Serialization for test data
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Time and UUID for test data
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Temporary directories and files for testing
+tempfile = "3.0"
+tempdir = "0.3"
+
+# HTTP client for integration tests
+reqwest = { version = "0.11", features = ["json"], optional = true }
+
+# Logging for tests
+tracing = "0.1"
+tracing-test = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Random data generation
+rand = "0.8"
+fake = { version = "2.0", features = ["derive", "chrono", "uuid"] }
+
+# Async trait support
+async-trait = "0.1"
+
+# Resource monitoring mocks
+sysinfo = "0.30"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[features]
+default = []
+integration-tests = ["wiremock", "reqwest"]
+benchmarks = [] 

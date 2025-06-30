@@ -1,0 +1,48 @@
+[package]
+name = "toadstool-runtime-wasm"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool WebAssembly runtime engine with Wasmtime and WASI support"
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+futures = { workspace = true }
+
+# WebAssembly runtime
+wasmtime = "20.0.0"
+wasmtime-wasi = "20.0.0"
+wasi-common = "20.0.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = { workspace = true }
+
+# Utilities
+uuid = { version = "1.8", features = ["v4", "serde"] }
+tracing = "0.1"
+log = "0.4"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+
+# System integration
+reqwest = { version = "0.12.0", features = ["stream"], optional = true }
+tempfile = { workspace = true }
+md5 = "0.7"
+sha2 = "0.10"
+hex = "0.4"
+
+[features]
+default = ["url-module-loading"]
+url-module-loading = ["dep:reqwest"]
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }

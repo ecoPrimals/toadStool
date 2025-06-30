@@ -1,0 +1,7 @@
+[package]
+name = "toadstool-integration-nestgate"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool nestgate component"
+
+[dependencies]

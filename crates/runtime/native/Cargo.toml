@@ -1,0 +1,16 @@
+[package]
+name = "toadstool_runtime_native"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Native executable runtime engine for ToadStool with security and monitoring"
+
+[dependencies]
+toadstool = { path = "../../core/toadstool" }
+tokio = { workspace = true, features = ["full", "process"] }
+tracing = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+async-trait = { workspace = true }

@@ -1,0 +1,86 @@
+[package]
+name = "toadstool-cli"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool CLI - Universal Compute Command Center for Sovereign Science"
+
+[[bin]]
+name = "toadstool"
+path = "src/main.rs"
+
+[dependencies]
+# Core ToadStool crates
+toadstool = { path = "../core/toadstool" }
+toadstool-common = { path = "../core/common" }
+toadstool-config = { path = "../core/config" }
+toadstool-distributed = { path = "../distributed" }
+
+# CLI framework
+clap = { version = "4.4", features = ["derive", "color", "suggestions"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Time and date handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# File system operations
+dirs = "5.0"
+
+# Networking
+reqwest = { version = "0.11", features = ["json"] }
+
+# System information
+num_cpus = "1.0"
+sysinfo = "0.29"
+
+# Terminal UI and formatting
+console = "0.15"
+indicatif = "0.17"
+colored = "2.0"
+term_size = "0.3"
+
+# Process management
+which = "4.4"
+
+# Cryptography (for BearDog integration)
+ring = "0.17"
+rustls = { version = "0.21", default-features = false, features = ["logging", "tls12"] }
+
+# Template engine
+handlebars = "4.5"
+
+# Configuration management
+figment = { version = "0.10", features = ["toml", "yaml", "env"] }
+
+# Metrics and monitoring
+prometheus = { version = "0.13", default-features = false }
+
+[dev-dependencies]
+tempfile = "3.8"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[features]
+default = ["full"]
+full = ["ecosystem", "universal", "monitoring", "templates"]
+ecosystem = []
+universal = []
+monitoring = []
+templates = []

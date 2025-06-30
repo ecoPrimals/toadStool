@@ -1,0 +1,57 @@
+[package]
+name = "toadstool-management-performance"
+version = "0.1.0"
+edition = "2021"
+description = "Performance management and optimization for ToadStool"
+authors = ["ToadStool Project"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/toadstool-project/toadstool"
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+
+# Serialization and configuration
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Performance monitoring and profiling
+sysinfo = "0.30"
+psutil = "3.2"
+
+# Statistics and machine learning
+statrs = "0.16"
+linfa = { version = "0.7", features = ["serde"] }
+ndarray = { version = "0.15", features = ["serde"] }
+
+# Collections and utilities
+indexmap = "2.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["process"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+procfs = "0.16"
+
+[dev-dependencies]
+tempfile = "3.0"
+test-log = "0.2"
+env_logger = "0.10"

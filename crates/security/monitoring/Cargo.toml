@@ -1,0 +1,7 @@
+[package]
+name = "toadstool-security-monitoring"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool monitoring component"
+
+[dependencies]

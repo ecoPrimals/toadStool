@@ -1,0 +1,129 @@
+[workspace]
+resolver = "2"
+members = [
+    # Core crates
+    "crates/core/common",
+    "crates/core/config", 
+    "crates/core/toadstool",
+    "crates/auto_config",
+    
+    # API and interfaces
+    "crates/cli",
+    "crates/client",
+    "crates/server",
+    "crates/integration/nestgate",
+    "crates/integration/protocols", 
+    "crates/integration/songbird",
+    "crates/management/monitoring",
+    "crates/management/performance",
+    "crates/management/resources",
+    "crates/management/analytics",    # Sprint 5
+    "crates/runtime/container",
+    "crates/runtime/gpu",
+    "crates/runtime/native",
+    "crates/runtime/wasm",
+    "crates/security/monitoring",
+    "crates/security/policies",
+    "crates/security/sandbox",
+    "crates/distributed",             # Sprint 5
+    "crates/testing",
+    "examples",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75.0"
+authors = ["ToadStool Development Team"]
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/your-org/toadstool"
+homepage = "https://github.com/your-org/toadstool"
+documentation = "https://docs.rs/toadstool"
+description = "Universal compute platform for execution environments, security sandboxing, and resource management"
+keywords = ["compute", "sandbox", "runtime", "security", "execution"]
+categories = ["development-tools", "web-programming", "api-bindings"]
+
+[workspace.dependencies]
+# Core dependencies
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+anyhow = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+
+# Configuration
+config = "0.14"
+toml = "0.8"
+
+# HTTP and networking
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+hyper = { version = "0.14", features = ["full"] }
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
+
+# Container runtimes
+bollard = "0.15" # Docker API
+containerd-client = "0.4" # Containerd
+
+# WebAssembly
+wasmtime = { version = "18.0", features = ["component-model", "async"] }
+wasmtime-wasi = "18.0"
+wasmer = "4.2"
+wasi-common = "18.0"
+
+# Security and sandboxing
+seccomp = "0.4"
+caps = "0.5"
+nix = "0.28"
+
+# System monitoring
+sysinfo = "0.30"
+psutil = "3.2"
+
+# Async utilities
+futures = "0.3"
+futures-util = "0.3"
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+console = "0.15"
+indicatif = "0.17"
+
+# Development dependencies
+tokio-test = "0.4"
+tempfile = "3.8"
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.4"
+
+[profile.dev]
+# Optimize dependencies but not local code for faster builds
+opt-level = 0
+debug = true
+overflow-checks = true
+
+[profile.release]
+# Maximum optimization for production builds
+opt-level = 3
+debug = false
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.bench]
+# Optimized for benchmarking
+opt-level = 3
+debug = false
+lto = true
+
+
+
+
+ 

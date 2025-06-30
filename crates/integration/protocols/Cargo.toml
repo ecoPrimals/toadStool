@@ -1,0 +1,7 @@
+[package]
+name = "toadstool-integration-protocols"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool protocols component"
+
+[dependencies]

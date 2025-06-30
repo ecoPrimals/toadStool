@@ -1,0 +1,36 @@
+[package]
+name = "toadstool-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Configuration management for ToadStool - Zero hardcoding hierarchical configuration system"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+toml = { workspace = true }
+config = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# File system and path handling
+directories = "5.0"
+
+# Internal dependencies
+toadstool-common = { path = "../common" }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+default = [] 
