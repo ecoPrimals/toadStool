@@ -3,15 +3,14 @@
 //! The gateway to SOVEREIGN SCIENCE and universal compute capabilities.
 //! Commands for managing biome.yaml manifests and orchestrating distributed workloads.
 
+use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
-use anyhow::{Result, Context};
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use std::collections::HashMap;
-
 
 /// ToadStool - Universal Compute Platform for Sovereign Science
 #[derive(Parser)]
@@ -31,15 +30,15 @@ manifest files (biome.yaml).
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-    
+
     /// Enable verbose logging
     #[arg(short, long, global = true)]
     pub verbose: bool,
-    
+
     /// Configuration file path
     #[arg(short, long, global = true)]
     pub config: Option<PathBuf>,
-    
+
     /// Working directory
     #[arg(short = 'C', long, global = true)]
     pub directory: Option<PathBuf>,
@@ -51,173 +50,173 @@ pub enum Commands {
     Run {
         /// Path to biome.yaml manifest file
         manifest: PathBuf,
-        
+
         /// Override biome name
         #[arg(short, long)]
         name: Option<String>,
-        
+
         /// Environment variables to set
         #[arg(short, long)]
         env: Vec<String>,
-        
+
         /// Enable debug mode
         #[arg(long)]
         debug: bool,
-        
+
         /// Resource limits override
         #[arg(long)]
         cpu_limit: Option<f64>,
         #[arg(long)]
         memory_limit: Option<String>,
-        
+
         /// Security level (low, medium, high, maximum)
         #[arg(long, default_value = "high")]
         security: String,
     },
-    
+
     /// Start a biome in the background (detached mode)
     Up {
         /// Path to biome.yaml manifest file
         manifest: PathBuf,
-        
+
         /// Run in detached mode (background)
         #[arg(short, long)]
         detach: bool,
-        
+
         /// Override biome name
         #[arg(short, long)]
         name: Option<String>,
-        
+
         /// Environment variables to set
         #[arg(short, long)]
         env: Vec<String>,
-        
+
         /// Auto-restart on failure
         #[arg(long)]
         restart: bool,
-        
+
         /// Health check interval in seconds
         #[arg(long, default_value = "30")]
         health_interval: u64,
     },
-    
+
     /// Stop a running biome
     Down {
         /// Biome name or ID to stop
         biome: String,
-        
+
         /// Force stop (SIGKILL)
         #[arg(short, long)]
         force: bool,
-        
+
         /// Timeout for graceful shutdown
         #[arg(short, long, default_value = "30")]
         timeout: u64,
-        
+
         /// Remove all associated data
         #[arg(long)]
         purge: bool,
     },
-    
+
     /// List all running biomes on the host
     Ps {
         /// Show all biomes (including stopped)
         #[arg(short, long)]
         all: bool,
-        
+
         /// Output format (table, json, yaml)
         #[arg(short, long, default_value = "table")]
         format: String,
-        
+
         /// Show resource usage
         #[arg(short, long)]
         resources: bool,
-        
+
         /// Filter by status
         #[arg(long)]
         status: Option<String>,
     },
-    
+
     /// View logs for a specific biome or service
     Logs {
         /// Biome name or service name (biome.service)
         target: String,
-        
+
         /// Follow log output
         #[arg(short, long)]
         follow: bool,
-        
+
         /// Number of lines to show
         #[arg(short, long, default_value = "100")]
         lines: usize,
-        
+
         /// Show timestamps
         #[arg(short, long)]
         timestamps: bool,
-        
+
         /// Filter by log level
         #[arg(long)]
         level: Option<String>,
-        
+
         /// Search pattern
         #[arg(long)]
         grep: Option<String>,
     },
-    
+
     /// Validate a biome.yaml manifest
     Validate {
         /// Path to biome.yaml manifest file
         manifest: PathBuf,
-        
+
         /// Check resource availability
         #[arg(long)]
         check_resources: bool,
-        
+
         /// Validate security policies
         #[arg(long)]
         check_security: bool,
-        
+
         /// Output format (text, json)
         #[arg(short, long, default_value = "text")]
         format: String,
     },
-    
+
     /// Initialize a new biome.yaml template
     Init {
         /// Directory to create biome.yaml in
         #[arg(default_value = ".")]
         path: PathBuf,
-        
+
         /// Biome template type
         #[arg(short, long, default_value = "basic")]
         template: String,
-        
+
         /// Force overwrite existing files
         #[arg(short, long)]
         force: bool,
     },
-    
+
     /// Show system capabilities and detected platforms
     Capabilities {
         /// Output format (table, json, yaml)
         #[arg(short, long, default_value = "table")]
         format: String,
-        
+
         /// Show detailed platform information
         #[arg(short, long)]
         detailed: bool,
-        
+
         /// Test specific platform
         #[arg(long)]
         test_platform: Option<String>,
     },
-    
+
     /// Ecosystem integration commands
     Ecosystem {
         #[command(subcommand)]
         action: EcosystemCommands,
     },
-    
+
     /// Advanced universal compute operations
     Universal {
         #[command(subcommand)]
@@ -232,41 +231,41 @@ pub enum EcosystemCommands {
         /// Service types to discover
         #[arg(short, long)]
         services: Vec<String>,
-        
+
         /// Network scan timeout
         #[arg(long, default_value = "10")]
         timeout: u64,
     },
-    
+
     /// Register with Songbird discovery service
     Register {
         /// Songbird endpoint
         endpoint: String,
-        
+
         /// Authentication token
         #[arg(short, long)]
         token: Option<String>,
     },
-    
+
     /// Install BearDog crypto permissions
     Auth {
         /// Permission file path
         permission_file: PathBuf,
-        
+
         /// Validate only (don't install)
         #[arg(long)]
         validate_only: bool,
     },
-    
+
     /// Connect to NestGate storage
     Storage {
         /// NestGate endpoint
         endpoint: String,
-        
+
         /// Mount point
         #[arg(short, long, default_value = "/data")]
         mount: PathBuf,
-        
+
         /// ZFS dataset name
         #[arg(long)]
         dataset: Option<String>,
@@ -280,57 +279,57 @@ pub enum UniversalCommands {
         /// Platform categories to detect
         #[arg(short, long)]
         categories: Vec<String>,
-        
+
         /// Run detection tests
         #[arg(long)]
         test: bool,
-        
+
         /// Save results to file
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
-    
+
     /// Benchmark compute capabilities
     Benchmark {
         /// Benchmark suite to run
         #[arg(short, long, default_value = "standard")]
         suite: String,
-        
+
         /// Target platforms
         #[arg(short, long)]
         platforms: Vec<String>,
-        
+
         /// Output format
         #[arg(short, long, default_value = "json")]
         format: String,
     },
-    
+
     /// Migrate workloads between substrates
     Migrate {
         /// Source biome
         source: String,
-        
+
         /// Target platform
         target: String,
-        
+
         /// Pause source during migration
         #[arg(long)]
         pause: bool,
-        
+
         /// Verify after migration
         #[arg(long)]
         verify: bool,
     },
-    
+
     /// Federate with other ToadStool instances
     Federate {
         /// Remote ToadStool endpoint
         endpoint: String,
-        
+
         /// Federation mode (peer, leader, follower)
         #[arg(short, long, default_value = "peer")]
         mode: String,
-        
+
         /// Shared resources
         #[arg(short, long)]
         resources: Vec<String>,
@@ -342,22 +341,22 @@ pub enum UniversalCommands {
 pub struct BiomeManifest {
     /// Biome metadata
     pub metadata: BiomeMetadata,
-    
+
     /// Primal configurations
     pub primals: HashMap<String, PrimalConfig>,
-    
+
     /// Service definitions
     pub services: HashMap<String, ServiceConfig>,
-    
+
     /// Resource requirements
     pub resources: BiomeResources,
-    
+
     /// Security policies
     pub security: BiomeSecurity,
-    
+
     /// Network configuration
     pub networking: BiomeNetworking,
-    
+
     /// Storage configuration
     pub storage: BiomeStorage,
 }
@@ -425,9 +424,7 @@ pub enum WorkloadSource {
         gateway: Option<String>,
     },
     /// Local file path
-    Local {
-        path: PathBuf,
-    },
+    Local { path: PathBuf },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -572,7 +569,7 @@ impl CliContext {
         } else {
             std::env::current_dir()?
         };
-        
+
         Ok(Self {
             config_path: cli.config.clone(),
             working_dir,
@@ -583,43 +580,47 @@ impl CliContext {
 
 /// Load biome manifest from file
 pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
-    let content = fs::read_to_string(path).await
+    let content = fs::read_to_string(path)
+        .await
         .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
-    
+
     let manifest: BiomeManifest = serde_yaml::from_str(&content)
         .with_context(|| format!("Failed to parse manifest file: {}", path.display()))?;
-    
+
     Ok(manifest)
 }
 
 /// Validate biome manifest
 pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     let mut warnings = Vec::new();
-    
+
     // Check for required primals
     if !manifest.primals.contains_key("beardog") && manifest.security.beardog_required {
         warnings.push("BearDog is required but not configured".to_string());
     }
-    
+
     // Validate service dependencies
     for (service_name, service) in &manifest.services {
         for dep in &service.dependencies {
             if !manifest.services.contains_key(dep) && !manifest.primals.contains_key(dep) {
-                warnings.push(format!("Service '{}' depends on undefined service '{}'", service_name, dep));
+                warnings.push(format!(
+                    "Service '{}' depends on undefined service '{}'",
+                    service_name, dep
+                ));
             }
         }
     }
-    
+
     // Check resource limits
     if manifest.resources.cpu_limit.is_none() {
         warnings.push("No CPU limit specified - consider setting resource limits".to_string());
     }
-    
+
     Ok(warnings)
 }
 
-pub mod templates;
+pub mod ecosystem;
 pub mod executor;
 pub mod monitoring;
-pub mod ecosystem;
+pub mod templates;
 pub mod universal;

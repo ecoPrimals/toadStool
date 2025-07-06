@@ -1,14 +1,11 @@
 //! Test module for ToadStool distributed computing integration
 
+use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
-use chrono::Utc;
 use uuid::Uuid;
 
-use toadstool::{
-    ExecutionRequest, ExecutionInput, SecurityContext, 
-    WorkloadSpec, RuntimeType,
-};
+use toadstool::{ExecutionInput, ExecutionRequest, RuntimeType, SecurityContext, WorkloadSpec};
 
 use crate::*;
 
@@ -38,7 +35,7 @@ mod tests {
     fn create_test_universal_job() -> UniversalJob {
         UniversalJob {
             job_id: Uuid::new_v4(),
-            job_type: UniversalJobType::Local,
+            job_type: Some(UniversalJobType::Local),
             execution_request: ExecutionRequest {
                 execution_id: Uuid::new_v4(),
                 workload: WorkloadSpec::Native {
@@ -96,7 +93,7 @@ mod tests {
     async fn test_universal_job_queue_add_job() {
         let mut queue = UniversalJobQueue::new();
         let job = create_test_universal_job();
-        
+
         let result = queue.add_job(job).await;
         assert!(result.is_ok());
         assert_eq!(queue.total_jobs(), 1);
@@ -115,20 +112,23 @@ mod tests {
     fn test_retry_config_default() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
-        assert!(matches!(config.backoff_strategy, BackoffStrategy::ExponentialJittered { .. }));
+        assert!(matches!(
+            config.backoff_strategy,
+            BackoffStrategy::ExponentialJittered { .. }
+        ));
         assert!(!config.retry_conditions.is_empty());
     }
 
     #[tokio::test]
     async fn test_universal_runtime_adapter_creation() {
         // Note: We test the individual detection methods instead of the full constructor
-        // because the constructor attempts to detect biological platforms which contains unimplemented TODOs
+        // because the constructor includes biological platform detection which is still in development
         let traditional_result = UniversalRuntimeAdapter::detect_traditional_platforms().await;
         assert!(traditional_result.is_ok());
-        
+
         let container_result = UniversalRuntimeAdapter::detect_container_platforms().await;
         assert!(container_result.is_ok());
-        
+
         let language_result = UniversalRuntimeAdapter::detect_language_runtimes().await;
         assert!(language_result.is_ok());
     }
@@ -161,7 +161,7 @@ mod tests {
     async fn test_toadstool_capabilities_detect_current() {
         let result = ToadStoolCapabilities::detect_current().await;
         assert!(result.is_ok());
-        
+
         let capabilities = result.unwrap();
         assert!(!capabilities.execution_environments.is_empty());
         assert!(!capabilities.supported_runtimes.is_empty());
@@ -180,13 +180,19 @@ mod tests {
     #[test]
     fn test_compatibility_mode_string_conversion() {
         assert_eq!(CompatibilityMode::LinuxCompat.to_string(), "linux_compat");
-        assert_eq!(CompatibilityMode::WindowsCompat.to_string(), "windows_compat");
+        assert_eq!(
+            CompatibilityMode::WindowsCompat.to_string(),
+            "windows_compat"
+        );
         assert_eq!(CompatibilityMode::MacOSCompat.to_string(), "macos_compat");
-        assert_eq!(CompatibilityMode::ContainerCompat.to_string(), "container_compat");
-        
-        let legacy = CompatibilityMode::LegacyCompat { 
-            system_type: "dos".to_string() 
+        assert_eq!(
+            CompatibilityMode::ContainerCompat.to_string(),
+            "container_compat"
+        );
+
+        let legacy = CompatibilityMode::LegacyCompat {
+            system_type: "dos".to_string(),
         };
         assert_eq!(legacy.to_string(), "legacy_dos_compat");
     }
-} 
+}

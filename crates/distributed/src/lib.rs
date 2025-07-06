@@ -6,7 +6,8 @@
 //! - Local resource management
 //! - Service registration and health reporting
 
-use std::collections::{HashMap, BTreeMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -19,8 +20,8 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
-    ToadStoolResult, ToadStoolError, ExecutionRequest, ExecutionResponse,
-    ExecutionStatus, ExecutionOutput, RuntimeType, IsolationLevel,
+    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, IsolationLevel,
+    RuntimeType, ToadStoolError, ToadStoolResult,
 };
 
 // Cloud integration - universal cloud orchestration
@@ -223,20 +224,34 @@ pub struct EcosystemTool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EcosystemToolType {
     /// Another ToadStool instance
-    ToadStool { version: String, config: ToadStoolHostingConfig },
+    ToadStool {
+        version: String,
+        config: ToadStoolHostingConfig,
+    },
     /// Songbird discovery service
-    Songbird { version: String, config: SongbirdHostingConfig },
+    Songbird {
+        version: String,
+        config: SongbirdHostingConfig,
+    },
     /// NestGate storage service
-    NestGate { version: String, config: NestGateConfig },
+    NestGate {
+        version: String,
+        config: NestGateConfig,
+    },
     /// Squirrel MCP service
-    Squirrel { version: String, config: SquirrelConfig },
+    Squirrel {
+        version: String,
+        config: SquirrelConfig,
+    },
     /// Custom ecosystem tool
-    Custom { name: String, config: CustomToolConfig },
+    Custom {
+        name: String,
+        config: CustomToolConfig,
+    },
 }
 
 /// ToadStool hosting configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ToadStoolHostingConfig {
     /// Resource allocation for hosted ToadStool
     pub resource_allocation: ResourceAllocation,
@@ -246,6 +261,17 @@ pub struct ToadStoolHostingConfig {
     pub security_config: SecurityConfig,
     /// Startup configuration
     pub startup_config: StartupConfig,
+}
+
+impl Eq for ToadStoolHostingConfig {}
+
+impl std::hash::Hash for ToadStoolHostingConfig {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.resource_allocation.hash(state);
+        self.network_config.hash(state);
+        self.security_config.hash(state);
+        self.startup_config.hash(state);
+    }
 }
 
 /// Universal Scheduler - Works standalone with Songbird network effects
@@ -311,8 +337,8 @@ pub struct UniversalJobQueue {
 pub struct UniversalJob {
     /// Job identification
     pub job_id: Uuid,
-    /// Job type
-    pub job_type: UniversalJobType,
+    /// Job type (optional for auto-detection)
+    pub job_type: Option<UniversalJobType>,
     /// Execution request
     pub execution_request: ExecutionRequest,
     /// Target destination
@@ -330,7 +356,7 @@ pub struct UniversalJob {
 }
 
 /// Types of universal jobs
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum UniversalJobType {
     /// Local execution
     Local,
@@ -339,9 +365,52 @@ pub enum UniversalJobType {
     /// Ecosystem tool execution
     EcosystemTool { tool_name: String, endpoint: String },
     /// Recursive ToadStool hosting
-    RecursiveHosting { toadstool_config: ToadStoolHostingConfig },
+    RecursiveHosting {
+        toadstool_config: ToadStoolHostingConfig,
+    },
     /// OS-layer compatibility execution
-    OSLayerCompatibility { compatibility_mode: CompatibilityMode },
+    OSLayerCompatibility {
+        compatibility_mode: CompatibilityMode,
+    },
+
+    // Job classification types for distributed scheduling
+    /// CPU-intensive computational work
+    ComputeIntensive,
+    /// Data processing and analytics
+    DataProcessing,
+    /// Machine learning and AI workloads
+    MachineLearning,
+    /// Scientific simulations
+    Simulation,
+    /// Native execution
+    Native,
+    /// Container-based execution
+    Container,
+    /// WebAssembly execution
+    WASM,
+    /// GPU-accelerated execution
+    GPU,
+    /// Custom workload type
+    Custom(String),
+}
+
+impl FromStr for UniversalJobType {
+    type Err = ToadStoolError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "local" => Ok(UniversalJobType::Local),
+            "native" => Ok(UniversalJobType::Native),
+            "container" => Ok(UniversalJobType::Container),
+            "wasm" => Ok(UniversalJobType::WASM),
+            "gpu" => Ok(UniversalJobType::GPU),
+            "compute_intensive" => Ok(UniversalJobType::ComputeIntensive),
+            "data_processing" => Ok(UniversalJobType::DataProcessing),
+            "machine_learning" => Ok(UniversalJobType::MachineLearning),
+            "simulation" => Ok(UniversalJobType::Simulation),
+            other => Ok(UniversalJobType::Custom(other.to_string())),
+        }
+    }
 }
 
 /// Execution targets
@@ -350,9 +419,15 @@ pub enum ExecutionTarget {
     /// Execute locally
     Local,
     /// Execute on specific ToadStool instance
-    ToadStool { instance_id: String, endpoint: String },
+    ToadStool {
+        instance_id: String,
+        endpoint: String,
+    },
     /// Execute on ecosystem service
-    EcosystemService { service_name: String, endpoint: String },
+    EcosystemService {
+        service_name: String,
+        endpoint: String,
+    },
     /// Execute on best available resource
     BestAvailable { constraints: ResourceConstraints },
     /// Execute with load balancing
@@ -448,7 +523,7 @@ pub struct OSLayerConfig {
 }
 
 /// Compatibility modes for different environments
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum CompatibilityMode {
     /// Linux compatibility on non-Linux systems
     LinuxCompat,
@@ -467,13 +542,13 @@ pub enum CompatibilityMode {
 pub trait CompatibilityLayer: Send + Sync {
     /// Initialize compatibility layer
     async fn initialize(&self) -> ToadStoolResult<()>;
-    
+
     /// Execute request with appropriate compatibility
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse>;
-    
+
     /// Cleanup compatibility layer
     async fn cleanup(&self) -> ToadStoolResult<()>;
 }
@@ -641,13 +716,13 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
         info!("Initializing Linux compatibility layer");
         Ok(())
     }
-    
+
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         info!("Executing with Linux compatibility");
-        
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
@@ -665,7 +740,7 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
             warnings: vec![],
         })
     }
-    
+
     async fn cleanup(&self) -> ToadStoolResult<()> {
         info!("Cleaning up Linux compatibility layer");
         Ok(())
@@ -691,13 +766,13 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
         info!("Initializing Windows compatibility layer");
         Ok(())
     }
-    
+
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         info!("Executing with Windows compatibility");
-        
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
@@ -715,7 +790,7 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
             warnings: vec![],
         })
     }
-    
+
     async fn cleanup(&self) -> ToadStoolResult<()> {
         info!("Cleaning up Windows compatibility layer");
         Ok(())
@@ -741,13 +816,13 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
         info!("Initializing macOS compatibility layer");
         Ok(())
     }
-    
+
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         info!("Executing with macOS compatibility");
-        
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
@@ -765,7 +840,7 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
             warnings: vec![],
         })
     }
-    
+
     async fn cleanup(&self) -> ToadStoolResult<()> {
         info!("Cleaning up macOS compatibility layer");
         Ok(())
@@ -791,13 +866,13 @@ impl CompatibilityLayer for ContainerCompatibilityLayer {
         info!("Initializing Container compatibility layer");
         Ok(())
     }
-    
+
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         info!("Executing with Container compatibility");
-        
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
@@ -815,7 +890,7 @@ impl CompatibilityLayer for ContainerCompatibilityLayer {
             warnings: vec![],
         })
     }
-    
+
     async fn cleanup(&self) -> ToadStoolResult<()> {
         info!("Cleaning up Container compatibility layer");
         Ok(())
@@ -840,23 +915,34 @@ impl LegacyCompatibilityLayer {
 #[async_trait]
 impl CompatibilityLayer for LegacyCompatibilityLayer {
     async fn initialize(&self) -> ToadStoolResult<()> {
-        info!("Initializing Legacy compatibility layer for: {}", self.system_type);
+        info!(
+            "Initializing Legacy compatibility layer for: {}",
+            self.system_type
+        );
         Ok(())
     }
-    
+
     async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
-        info!("Executing with Legacy compatibility for: {}", self.system_type);
-        
+        info!(
+            "Executing with Legacy compatibility for: {}",
+            self.system_type
+        );
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
             output: ExecutionOutput {
-                data: format!("Executed with Legacy {} compatibility", self.system_type).as_bytes().to_vec(),
+                data: format!("Executed with Legacy {} compatibility", self.system_type)
+                    .as_bytes()
+                    .to_vec(),
                 result: HashMap::new(),
-                stdout: Some(format!("Executed with Legacy {} compatibility", self.system_type)),
+                stdout: Some(format!(
+                    "Executed with Legacy {} compatibility",
+                    self.system_type
+                )),
                 stderr: None,
                 exit_code: Some(0),
                 format: None,
@@ -867,9 +953,12 @@ impl CompatibilityLayer for LegacyCompatibilityLayer {
             warnings: vec![],
         })
     }
-    
+
     async fn cleanup(&self) -> ToadStoolResult<()> {
-        info!("Cleaning up Legacy compatibility layer for: {}", self.system_type);
+        info!(
+            "Cleaning up Legacy compatibility layer for: {}",
+            self.system_type
+        );
         Ok(())
     }
 }
@@ -885,16 +974,19 @@ impl RecursiveHostingManager {
             inter_instance_comm: Arc::new(InterInstanceCommunication::new()),
         })
     }
-    
+
     pub async fn create_child_instance(
         &self,
         toadstool_config: ToadStoolHostingConfig,
     ) -> ToadStoolResult<ChildToadStoolInstance> {
         let instance_id = Uuid::new_v4().to_string();
-        let endpoint = format!("http://localhost:{}", 8090 + self.child_instances.read().await.len());
-        
+        let endpoint = format!(
+            "http://localhost:{}",
+            8090 + self.child_instances.read().await.len()
+        );
+
         info!("Creating child ToadStool instance: {}", instance_id);
-        
+
         let child_instance = ChildToadStoolInstance {
             instance_id: instance_id.clone(),
             process_handle: ProcessHandle::new(),
@@ -903,14 +995,17 @@ impl RecursiveHostingManager {
             status: InstanceStatus::Starting,
             started_at: Utc::now(),
         };
-        
+
         // Store child instance
         {
             let mut instances = self.child_instances.write().await;
             instances.insert(instance_id.clone(), child_instance.clone());
         }
-        
-        info!("Successfully created child ToadStool instance: {}", instance_id);
+
+        info!(
+            "Successfully created child ToadStool instance: {}",
+            instance_id
+        );
         Ok(child_instance)
     }
 }
@@ -924,20 +1019,23 @@ impl NetworkJobDistributor {
             metrics: Arc::new(NetworkMetricsCollector::new()),
         })
     }
-    
-    pub async fn distribute_job(&self, job: UniversalJob) -> ToadStoolResult<JobDistributionResult> {
+
+    pub async fn distribute_job(
+        &self,
+        job: UniversalJob,
+    ) -> ToadStoolResult<JobDistributionResult> {
         info!("Distributing job across network: {}", job.job_id);
-        
+
         // Find best node for job execution
         let target_node = self.find_best_node(&job).await?;
-        
+
         Ok(JobDistributionResult {
             job_id: job.job_id,
             target_node,
             distribution_time: Instant::now(),
         })
     }
-    
+
     async fn find_best_node(&self, _job: &UniversalJob) -> ToadStoolResult<String> {
         // Simplified - would implement actual node selection logic
         Ok("node-1".to_string())
@@ -959,27 +1057,32 @@ impl UniversalJobQueue {
             resource_index: ResourceRequirementIndex::new(),
         }
     }
-    
+
     pub async fn add_job(&mut self, job: UniversalJob) -> ToadStoolResult<()> {
         let job_id = job.job_id;
         let priority = job.priority.clone();
-        
+
         // Add to priority queue
         let queue = self.priority_queues.entry(priority).or_default();
         queue.push_back(job.clone());
-        
+
         // Add to dependency graph
-        self.dependency_graph.add_job(job_id, job.dependencies.clone()).await?;
-        
+        self.dependency_graph
+            .add_job(job_id, job.dependencies.clone())
+            .await?;
+
         // Store metadata
-        self.job_metadata.insert(job_id, JobMetadata::from_job(&job));
-        
+        self.job_metadata
+            .insert(job_id, JobMetadata::from_job(&job));
+
         // Update resource index
-        self.resource_index.add_job(job_id, job.resource_requirements).await?;
-        
+        self.resource_index
+            .add_job(job_id, job.resource_requirements)
+            .await?;
+
         Ok(())
     }
-    
+
     pub fn total_jobs(&self) -> usize {
         self.priority_queues.values().map(|q| q.len()).sum()
     }
@@ -1004,7 +1107,6 @@ impl UniversalMetricsCollector {
 
 // Default implementations for configuration types
 
-
 impl Default for RecursiveHostingConfig {
     fn default() -> Self {
         Self {
@@ -1027,7 +1129,9 @@ impl CompatibilityMode {
             CompatibilityMode::WindowsCompat => "windows_compat".to_string(),
             CompatibilityMode::MacOSCompat => "macos_compat".to_string(),
             CompatibilityMode::ContainerCompat => "container_compat".to_string(),
-            CompatibilityMode::LegacyCompat { system_type } => format!("legacy_{}_compat", system_type),
+            CompatibilityMode::LegacyCompat { system_type } => {
+                format!("legacy_{}_compat", system_type)
+            }
         }
     }
 }
@@ -1037,9 +1141,15 @@ impl ToadStoolCapabilities {
         // Detect current system capabilities
         Ok(Self {
             execution_environments: vec![
-                ExecutionEnvironment::Native { isolation: IsolationLevel::Standard },
-                ExecutionEnvironment::Container { runtime: "docker".to_string() },
-                ExecutionEnvironment::Wasm { runtime: "wasmtime".to_string() },
+                ExecutionEnvironment::Native {
+                    isolation: IsolationLevel::Standard,
+                },
+                ExecutionEnvironment::Container {
+                    runtime: "docker".to_string(),
+                },
+                ExecutionEnvironment::Wasm {
+                    runtime: "wasmtime".to_string(),
+                },
             ],
             supported_runtimes: vec![
                 RuntimeType::Native,
@@ -1071,7 +1181,8 @@ impl DistributedCoordinator {
                     songbird_config.clone(),
                     config.instance_id.clone(),
                     capabilities.clone(),
-                ).await?
+                )
+                .await?,
             ))
         } else {
             None
@@ -1087,7 +1198,10 @@ impl DistributedCoordinator {
 
     /// Start the distributed coordinator
     pub async fn start(self: Arc<Self>) -> ToadStoolResult<()> {
-        info!("Starting ToadStool Distributed Coordinator (instance: {})", self.config.instance_id);
+        info!(
+            "Starting ToadStool Distributed Coordinator (instance: {})",
+            self.config.instance_id
+        );
 
         // Start Songbird integration if configured
         if let Some(songbird) = &self.songbird_integration {
@@ -1102,15 +1216,17 @@ impl DistributedCoordinator {
     /// Submit execution request
     pub async fn submit_execution(&self, request: ExecutionRequest) -> ToadStoolResult<Uuid> {
         let execution_id = Uuid::new_v4();
-        self.standalone_executor.submit_execution(execution_id, request).await?;
+        self.standalone_executor
+            .submit_execution(execution_id, request)
+            .await?;
         Ok(execution_id)
     }
 
     async fn detect_capabilities() -> ToadStoolResult<ToadStoolCapabilities> {
         Ok(ToadStoolCapabilities {
-            execution_environments: vec![
-                ExecutionEnvironment::Native { isolation: IsolationLevel::Standard },
-            ],
+            execution_environments: vec![ExecutionEnvironment::Native {
+                isolation: IsolationLevel::Standard,
+            }],
             supported_runtimes: vec![
                 RuntimeType::Native,
                 RuntimeType::Container,
@@ -1133,22 +1249,33 @@ impl StandaloneExecutor {
         })
     }
 
-    async fn submit_execution(&self, execution_id: Uuid, request: ExecutionRequest) -> ToadStoolResult<()> {
+    async fn submit_execution(
+        &self,
+        execution_id: Uuid,
+        request: ExecutionRequest,
+    ) -> ToadStoolResult<()> {
         let session = ExecutionSession {
             execution_id,
             request: request.clone(),
             started_at: Instant::now(),
         };
-        
-        self.active_executions.write().await.insert(execution_id, session);
-        
+
+        self.active_executions
+            .write()
+            .await
+            .insert(execution_id, session);
+
         // Simulate execution completion
         let executor = self.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(1)).await;
-            executor.active_executions.write().await.remove(&execution_id);
+            executor
+                .active_executions
+                .write()
+                .await
+                .remove(&execution_id);
         });
-        
+
         Ok(())
     }
 }
@@ -1169,7 +1296,7 @@ impl SongbirdIntegration {
         capabilities: Arc<RwLock<ToadStoolCapabilities>>,
     ) -> ToadStoolResult<Self> {
         let client = reqwest::Client::new();
-        
+
         Ok(Self {
             config,
             instance_id,
@@ -1179,19 +1306,22 @@ impl SongbirdIntegration {
     }
 
     async fn start(&self) -> ToadStoolResult<()> {
-        info!("Starting Songbird integration for instance {}", self.instance_id);
-        
+        info!(
+            "Starting Songbird integration for instance {}",
+            self.instance_id
+        );
+
         // Register with Songbird
         self.register_with_songbird().await?;
-        
+
         Ok(())
     }
 
     async fn register_with_songbird(&self) -> ToadStoolResult<()> {
         info!("Registering with Songbird at {}", self.config.endpoint);
-        
+
         let capabilities = self.capabilities.read().await.clone();
-        
+
         let registration = serde_json::json!({
             "service_id": format!("toadstool-compute-{}", self.instance_id),
             "service_type": "compute-platform",
@@ -1204,20 +1334,21 @@ impl SongbirdIntegration {
                 "version": env!("CARGO_PKG_VERSION")
             }
         });
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(format!("{}/api/v1/services/register", self.config.endpoint))
             .json(&registration)
             .send()
             .await
             .map_err(|e| ToadStoolError::network(e.to_string()))?;
-        
+
         if response.status().is_success() {
             info!("Successfully registered with Songbird");
         } else {
             warn!("Failed to register with Songbird: {}", response.status());
         }
-        
+
         Ok(())
     }
 }
@@ -1244,14 +1375,16 @@ impl Default for DistributedConfig {
 pub enum JobPriority {
     /// Emergency - highest priority
     Emergency = 0,
+    /// Critical - very high priority
+    Critical = 1,
     /// High priority
-    High = 1,
+    High = 2,
     /// Normal priority
-    Normal = 2,
+    Normal = 3,
     /// Low priority
-    Low = 3,
+    Low = 4,
     /// Background - lowest priority
-    Background = 4,
+    Background = 5,
 }
 
 /// Resource Requirements
@@ -1272,10 +1405,22 @@ pub struct ResourceRequirements {
 impl Default for ResourceRequirements {
     fn default() -> Self {
         Self {
-            cpu: CpuRequirements { min_cores: 1.0, max_cores: None },
-            memory: MemoryRequirements { min_bytes: 1024 * 1024 * 1024, max_bytes: None }, // 1GB
-            storage: StorageRequirements { min_bytes: 1024 * 1024 * 1024, max_bytes: None }, // 1GB
-            network: NetworkRequirements { bandwidth_mbps: None, latency_ms: None },
+            cpu: CpuRequirements {
+                min_cores: 1.0,
+                max_cores: None,
+            },
+            memory: MemoryRequirements {
+                min_bytes: 1024 * 1024 * 1024,
+                max_bytes: None,
+            }, // 1GB
+            storage: StorageRequirements {
+                min_bytes: 1024 * 1024 * 1024,
+                max_bytes: None,
+            }, // 1GB
+            network: NetworkRequirements {
+                bandwidth_mbps: None,
+                latency_ms: None,
+            },
             gpu: None,
         }
     }
@@ -1328,8 +1473,14 @@ impl Default for RetryConfig {
     fn default() -> Self {
         Self {
             max_attempts: 3,
-            backoff_strategy: BackoffStrategy::ExponentialJittered { base_ms: 1000, max_ms: 30000 },
-            retry_conditions: vec![RetryCondition::NetworkError, RetryCondition::ResourceUnavailable],
+            backoff_strategy: BackoffStrategy::ExponentialJittered {
+                base_ms: 1000,
+                max_ms: 30000,
+            },
+            retry_conditions: vec![
+                RetryCondition::NetworkError,
+                RetryCondition::ResourceUnavailable,
+            ],
         }
     }
 }
@@ -1391,14 +1542,14 @@ impl DependencyGraph {
             reverse_graph: HashMap::new(),
         }
     }
-    
+
     pub async fn add_job(&mut self, job_id: Uuid, dependencies: Vec<Uuid>) -> ToadStoolResult<()> {
         self.graph.insert(job_id, dependencies.clone());
-        
+
         for dep in dependencies {
             self.reverse_graph.entry(dep).or_default().push(job_id);
         }
-        
+
         Ok(())
     }
 }
@@ -1417,7 +1568,7 @@ impl JobMetadata {
     pub fn from_job(job: &UniversalJob) -> Self {
         Self {
             job_id: job.job_id,
-            job_type: job.job_type.clone(),
+            job_type: job.job_type.clone().unwrap_or(UniversalJobType::Local),
             created_at: job.created_at,
             priority: job.priority.clone(),
             estimated_duration: None,
@@ -1446,15 +1597,20 @@ impl ResourceRequirementIndex {
             gpu_jobs: Vec::new(),
         }
     }
-    
-    pub async fn add_job(&mut self, job_id: Uuid, requirements: ResourceRequirements) -> ToadStoolResult<()> {
+
+    pub async fn add_job(
+        &mut self,
+        job_id: Uuid,
+        requirements: ResourceRequirements,
+    ) -> ToadStoolResult<()> {
         self.cpu_index.insert(job_id, requirements.cpu.min_cores);
-        self.memory_index.insert(job_id, requirements.memory.min_bytes);
-        
+        self.memory_index
+            .insert(job_id, requirements.memory.min_bytes);
+
         if requirements.gpu.is_some() {
             self.gpu_jobs.push(job_id);
         }
-        
+
         Ok(())
     }
 }
@@ -1650,7 +1806,7 @@ pub struct RecursiveHostingMetrics {
 /// Configuration Types
 
 /// Resource Allocation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResourceAllocation {
     pub cpu_cores: f64,
     pub memory_bytes: u64,
@@ -1658,11 +1814,23 @@ pub struct ResourceAllocation {
     pub network_bandwidth_mbps: u64,
 }
 
+impl Eq for ResourceAllocation {}
+
+impl std::hash::Hash for ResourceAllocation {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Hash integer parts and convert f64 to a hashable form
+        self.cpu_cores.to_bits().hash(state);
+        self.memory_bytes.hash(state);
+        self.storage_bytes.hash(state);
+        self.network_bandwidth_mbps.hash(state);
+    }
+}
+
 impl Default for ResourceAllocation {
     fn default() -> Self {
         Self {
             cpu_cores: 2.0,
-            memory_bytes: 4 * 1024 * 1024 * 1024, // 4GB
+            memory_bytes: 4 * 1024 * 1024 * 1024,   // 4GB
             storage_bytes: 10 * 1024 * 1024 * 1024, // 10GB
             network_bandwidth_mbps: 100,
         }
@@ -1679,7 +1847,7 @@ pub enum ResourceAllocationStrategy {
 }
 
 /// Network Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct NetworkConfig {
     pub port_range: (u16, u16),
     pub security_level: NetworkSecurityLevel,
@@ -1697,7 +1865,7 @@ impl Default for NetworkConfig {
 }
 
 /// Network Security Level
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NetworkSecurityLevel {
     Low,
     Medium,
@@ -1706,7 +1874,7 @@ pub enum NetworkSecurityLevel {
 }
 
 /// Security Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SecurityConfig {
     pub isolation_level: IsolationLevel,
     pub sandboxing_enabled: bool,
@@ -1724,7 +1892,7 @@ impl Default for SecurityConfig {
 }
 
 /// Startup Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct StartupConfig {
     pub auto_start: bool,
     pub startup_timeout_ms: u64,
@@ -1735,7 +1903,7 @@ impl Default for StartupConfig {
     fn default() -> Self {
         Self {
             auto_start: true,
-            startup_timeout_ms: 30000, // 30 seconds
+            startup_timeout_ms: 30000,      // 30 seconds
             health_check_interval_ms: 5000, // 5 seconds
         }
     }
@@ -1756,7 +1924,7 @@ impl Default for ResourceLimits {
             max_cpu_cores: 16.0,
             max_memory_bytes: 64 * 1024 * 1024 * 1024, // 64GB
             max_storage_bytes: 1024 * 1024 * 1024 * 1024, // 1TB
-            max_network_bandwidth_mbps: 1000, // 1Gbps
+            max_network_bandwidth_mbps: 1000,          // 1Gbps
         }
     }
 }
@@ -1853,9 +2021,16 @@ impl Default for VirtualHardware {
 impl VirtualHardware {
     pub fn new() -> Self {
         Self {
-            cpu_info: VirtualCpuInfo { cores: 4, frequency_mhz: 2400 },
-            memory_info: VirtualMemoryInfo { total_bytes: 8 * 1024 * 1024 * 1024 },
-            storage_info: VirtualStorageInfo { total_bytes: 100 * 1024 * 1024 * 1024 },
+            cpu_info: VirtualCpuInfo {
+                cores: 4,
+                frequency_mhz: 2400,
+            },
+            memory_info: VirtualMemoryInfo {
+                total_bytes: 8 * 1024 * 1024 * 1024,
+            },
+            storage_info: VirtualStorageInfo {
+                total_bytes: 100 * 1024 * 1024 * 1024,
+            },
         }
     }
 }
@@ -2062,8 +2237,7 @@ impl Default for LegacyCompatConfig {
 }
 
 /// Execution Requirements for ecosystem tools
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExecutionRequirements {
     /// Minimum resource requirements
     pub resources: ResourceRequirements,
@@ -2075,7 +2249,6 @@ pub struct ExecutionRequirements {
     pub platform_requirements: Option<PlatformRequirements>,
 }
 
-
 /// Platform Requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformRequirements {
@@ -2085,8 +2258,7 @@ pub struct PlatformRequirements {
 }
 
 /// Compatibility Requirements
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CompatibilityRequirements {
     /// Required compatibility modes
     pub required_modes: Vec<CompatibilityMode>,
@@ -2095,7 +2267,6 @@ pub struct CompatibilityRequirements {
     /// Excluded compatibility modes
     pub excluded_modes: Vec<CompatibilityMode>,
 }
-
 
 /// Songbird Configuration for ToadStool hosting (Extended)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2111,7 +2282,7 @@ impl Default for SongbirdHostingConfig {
         Self {
             endpoint: "http://localhost:8080".to_string(),
             api_key: None,
-            discovery_interval_ms: 30000, // 30 seconds
+            discovery_interval_ms: 30000,    // 30 seconds
             health_check_interval_ms: 10000, // 10 seconds
         }
     }
@@ -2536,8 +2707,8 @@ impl Default for SongbirdIntegrationConfig {
         Self {
             enabled: true,
             endpoint: "http://localhost:8080".to_string(),
-            registration_interval_ms: 60000, // 1 minute
-            heartbeat_interval_ms: 30000, // 30 seconds
+            registration_interval_ms: 60000,         // 1 minute
+            heartbeat_interval_ms: 30000,            // 30 seconds
             capabilities_update_interval_ms: 300000, // 5 minutes
         }
     }
@@ -2611,16 +2782,16 @@ pub struct UniversalResourceTags {
     pub cpu_architecture: CpuArchitecture,
     pub gpu_capabilities: Vec<GpuCapability>,
     pub memory_type: MemoryType,
-    
+
     // Open compute backends (prioritized)
     pub open_compute_backends: Vec<OpenComputeBackend>,
-    
+
     // Proprietary capabilities (isolated)
     pub proprietary_capabilities: Vec<ProprietaryCapability>,
-    
+
     // AI/ML framework support
     pub ai_frameworks: Vec<AiFrameworkSupport>,
-    
+
     // Cross-platform compatibility
     pub cross_platform_support: CrossPlatformSupport,
 }
@@ -2629,17 +2800,32 @@ pub struct UniversalResourceTags {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OpenComputeBackend {
     /// WebGPU/WGPU - True cross-platform standard
-    WebGPU { version: String, features: Vec<String> },
+    WebGPU {
+        version: String,
+        features: Vec<String>,
+    },
     /// ROCm - AMD's open compute platform
     ROCm { version: String, hip_support: bool },
     /// Vulkan - Open standard for GPU compute
-    Vulkan { version: String, compute_shaders: bool },
+    Vulkan {
+        version: String,
+        compute_shaders: bool,
+    },
     /// SYCL - Cross-platform parallel programming
-    SYCL { implementation: String, version: String },
+    SYCL {
+        implementation: String,
+        version: String,
+    },
     /// OpenCL - Open parallel computing framework
-    OpenCL { version: String, extensions: Vec<String> },
+    OpenCL {
+        version: String,
+        extensions: Vec<String>,
+    },
     /// Metal - Apple's compute framework
-    Metal { version: String, performance_shaders: bool },
+    Metal {
+        version: String,
+        performance_shaders: bool,
+    },
     /// DirectX Compute - Microsoft's compute shaders
     DirectXCompute { version: String, hlsl_support: bool },
 }
@@ -2648,23 +2834,23 @@ pub enum OpenComputeBackend {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProprietaryCapability {
     /// NVIDIA CUDA (isolated island)
-    CUDA { 
-        version: String, 
+    CUDA {
+        version: String,
         compute_capability: String,
         tensorrt_support: bool,
         cutlass_support: bool,
     },
     /// Intel oneAPI
-    OneAPI { 
-        version: String, 
+    OneAPI {
+        version: String,
         mkl_support: bool,
         level_zero_support: bool,
     },
     /// Custom proprietary extensions
-    Custom { 
-        vendor: String, 
-        capability: String, 
-        version: String 
+    Custom {
+        vendor: String,
+        capability: String,
+        version: String,
     },
 }
 
@@ -2672,56 +2858,56 @@ pub enum ProprietaryCapability {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AiFrameworkSupport {
     // Open, cross-platform frameworks (prioritized)
-    LlamaCpp { 
-        version: String, 
+    LlamaCpp {
+        version: String,
         backends: Vec<String>, // ["cpu", "vulkan", "rocm", "metal"]
         quantization_support: Vec<String>,
     },
-    ONNX { 
-        version: String, 
+    ONNX {
+        version: String,
         execution_providers: Vec<String>, // ["cpu", "vulkan", "rocm", "dml"]
     },
-    TensorFlowLite { 
-        version: String, 
+    TensorFlowLite {
+        version: String,
         delegates: Vec<String>, // ["cpu", "gpu", "xnnpack"]
     },
-    Candle { 
-        version: String, 
+    Candle {
+        version: String,
         backends: Vec<String>, // ["cpu", "cuda", "metal", "wgpu"]
     },
-    Burn { 
-        version: String, 
+    Burn {
+        version: String,
         backends: Vec<String>, // ["ndarray", "wgpu", "candle"]
     },
-    
+
     // Cross-platform ML frameworks
-    PyTorch { 
-        version: String, 
+    PyTorch {
+        version: String,
         backends: Vec<String>, // ["cpu", "cuda", "mps", "vulkan"]
         mobile_support: bool,
     },
-    TensorFlow { 
-        version: String, 
+    TensorFlow {
+        version: String,
         backends: Vec<String>,
         lite_support: bool,
     },
-    JAX { 
-        version: String, 
+    JAX {
+        version: String,
         backends: Vec<String>, // ["cpu", "cuda", "tpu"]
     },
-    
+
     // Emerging open platforms
-    Mojo { 
-        version: String, 
+    Mojo {
+        version: String,
         multi_backend_support: bool,
     },
-    
+
     // Specialized frameworks
-    Whisper { 
+    Whisper {
         implementation: String, // ["whisper.cpp", "openai-whisper", "faster-whisper"]
         backends: Vec<String>,
     },
-    StableDiffusion { 
+    StableDiffusion {
         implementation: String, // ["diffusers", "automatic1111", "invokeai"]
         backends: Vec<String>,
     },
@@ -2741,18 +2927,41 @@ pub struct CrossPlatformSupport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GpuCapability {
     // Open standards first
-    Vulkan { version: String, features: Vec<String> },
-    WebGPU { features: Vec<String> },
-    OpenCL { version: String, extensions: Vec<String> },
-    
+    Vulkan {
+        version: String,
+        features: Vec<String>,
+    },
+    WebGPU {
+        features: Vec<String>,
+    },
+    OpenCL {
+        version: String,
+        extensions: Vec<String>,
+    },
+
     // Platform-specific open
-    ROCm { version: String, architectures: Vec<String> },
-    Metal { version: String, feature_sets: Vec<String> },
-    DirectX { version: String, shader_model: String },
-    
+    ROCm {
+        version: String,
+        architectures: Vec<String>,
+    },
+    Metal {
+        version: String,
+        feature_sets: Vec<String>,
+    },
+    DirectX {
+        version: String,
+        shader_model: String,
+    },
+
     // Proprietary (isolated)
-    CUDA { version: String, compute_capability: String },
-    OneAPI { version: String, level_zero: bool },
+    CUDA {
+        version: String,
+        compute_capability: String,
+    },
+    OneAPI {
+        version: String,
+        level_zero: bool,
+    },
 }
 
 /// CPU architecture support
@@ -2885,24 +3094,58 @@ impl UniversalWorkloadScheduler {
     ) -> ToadStoolResult<SchedulingDecision> {
         // 1. Use workload requirements directly
         let requirements = &workload.requirements;
-        
+
         // 2. Get available nodes
-        let available_nodes: Vec<NodeInfo> = self.node_registry.read().await
+        let available_nodes: Vec<NodeInfo> = self
+            .node_registry
+            .read()
+            .await
             .nodes
             .values()
             .filter(|node| matches!(node.availability, NodeAvailability::Available))
             .cloned()
             .collect();
-        
+
         // 3. Apply open-first preference
-        let scheduling_decision = self.open_compute_engine
+        let scheduling_decision = self
+            .open_compute_engine
             .make_scheduling_decision(requirements, &available_nodes)
             .await?;
-        
-        // 4. Record metrics (simplified for now)
-        // TODO: Implement proper metrics recording
-        
+
+        // 4. Record metrics for scheduling decisions
+        self.record_scheduling_metrics(&requirements, &available_nodes, &scheduling_decision).await;
+
         Ok(scheduling_decision)
+    }
+
+    /// Record metrics for scheduling decisions
+    async fn record_scheduling_metrics(
+        &self,
+        _requirements: &WorkloadRequirements,
+        available_nodes: &[NodeInfo],
+        _scheduling_decision: &SchedulingDecision,
+    ) {
+        // Record node availability metrics
+        let total_nodes = available_nodes.len();
+        let healthy_nodes = available_nodes
+            .iter()
+            .filter(|node| matches!(node.availability, NodeAvailability::Available))
+            .count();
+        
+        // Record scheduling statistics (in production, would persist to metrics database)
+        tracing::info!(
+            "Scheduling metrics: total_nodes={}, healthy_nodes={}, utilization={:.2}%",
+            total_nodes,
+            healthy_nodes,
+            if total_nodes > 0 { (healthy_nodes as f64 / total_nodes as f64) * 100.0 } else { 0.0 }
+        );
+        
+        // Update internal metrics (simplified)
+        // In production, would record:
+        // - Scheduling latency
+        // - Node selection reasons
+        // - Resource utilization trends
+        // - Success/failure rates
     }
 }
 
@@ -2914,15 +3157,15 @@ pub struct OpenComputePreferenceEngine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenComputePreferences {
     /// Strongly prefer open standards
-    pub open_standard_bonus: f64,        // +50 points for WebGPU, Vulkan, etc.
+    pub open_standard_bonus: f64, // +50 points for WebGPU, Vulkan, etc.
     /// Prefer cross-platform solutions
-    pub cross_platform_bonus: f64,      // +30 points for multi-backend support
+    pub cross_platform_bonus: f64, // +30 points for multi-backend support
     /// Penalize proprietary lock-in
-    pub proprietary_penalty: f64,       // -20 points for CUDA-only solutions
+    pub proprietary_penalty: f64, // -20 points for CUDA-only solutions
     /// Reward community-driven frameworks
-    pub community_bonus: f64,            // +25 points for llama.cpp, ONNX, etc.
+    pub community_bonus: f64, // +25 points for llama.cpp, ONNX, etc.
     /// Incentivize emerging open alternatives
-    pub innovation_bonus: f64,           // +40 points for Mojo, Burn, Candle
+    pub innovation_bonus: f64, // +40 points for Mojo, Burn, Candle
 }
 
 impl OpenComputePreferenceEngine {
@@ -2932,22 +3175,23 @@ impl OpenComputePreferenceEngine {
         available_nodes: &[NodeInfo],
     ) -> ToadStoolResult<SchedulingDecision> {
         let mut scored_nodes = Vec::new();
-        
+
         for node in available_nodes {
             let score = self.calculate_node_score(requirements, node).await?;
             scored_nodes.push((node.clone(), score));
         }
-        
+
         // Sort by score (highest first - open solutions win)
         scored_nodes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        
+
         let decision = if let Some((best_node, score)) = scored_nodes.first() {
             SchedulingDecision {
                 target_node_id: best_node.node_id.clone(),
                 execution_strategy: self.determine_execution_strategy(requirements, best_node),
                 confidence_score: *score,
                 reasoning: self.generate_reasoning(requirements, best_node),
-                fallback_options: scored_nodes.iter()
+                fallback_options: scored_nodes
+                    .iter()
                     .skip(1)
                     .take(3)
                     .map(|(node, score)| FallbackOption {
@@ -2960,41 +3204,41 @@ impl OpenComputePreferenceEngine {
         } else {
             return Err(ToadStoolError::resource("No suitable nodes available"));
         };
-        
+
         Ok(decision)
     }
-    
+
     async fn calculate_node_score(
         &self,
         requirements: &WorkloadRequirements,
         node: &NodeInfo,
     ) -> ToadStoolResult<f64> {
         let mut score = 0.0;
-        
+
         // Base capability matching
         score += self.calculate_capability_match(requirements, &node.capabilities);
-        
+
         // Open standards bonus
         score += self.calculate_open_standards_bonus(&node.capabilities);
-        
+
         // Cross-platform bonus
         score += self.calculate_cross_platform_bonus(&node.capabilities);
-        
+
         // Community framework bonus
         score += self.calculate_community_framework_bonus(&node.capabilities, requirements);
-        
+
         // Proprietary penalty (for CUDA-only, etc.)
         score -= self.calculate_proprietary_penalty(&node.capabilities, requirements);
-        
+
         // Performance factor
         score *= self.calculate_performance_factor(&node.performance_metrics);
-        
+
         Ok(score)
     }
-    
+
     fn calculate_open_standards_bonus(&self, capabilities: &UniversalResourceTags) -> f64 {
         let mut bonus = 0.0;
-        
+
         for backend in &capabilities.open_compute_backends {
             bonus += match backend {
                 OpenComputeBackend::WebGPU { .. } => self.preferences.open_standard_bonus * 1.2, // WebGPU gets extra love
@@ -3005,87 +3249,93 @@ impl OpenComputePreferenceEngine {
                 _ => self.preferences.open_standard_bonus * 0.7,
             };
         }
-        
+
         bonus
     }
-    
+
     fn calculate_community_framework_bonus(
         &self,
         capabilities: &UniversalResourceTags,
         requirements: &WorkloadRequirements,
     ) -> f64 {
         let mut bonus = 0.0;
-        
+
         for framework in &capabilities.ai_frameworks {
             bonus += match framework {
                 AiFrameworkSupport::LlamaCpp { backends, .. } => {
                     // llama.cpp gets huge bonus for being open and performant
                     let base_bonus = self.preferences.community_bonus * 1.5;
                     // Extra bonus for non-CUDA backends
-                    let backend_bonus = backends.iter()
-                        .filter(|b| !b.contains("cuda"))
-                        .count() as f64 * 10.0;
+                    let backend_bonus =
+                        backends.iter().filter(|b| !b.contains("cuda")).count() as f64 * 10.0;
                     base_bonus + backend_bonus
-                },
-                AiFrameworkSupport::ONNX { execution_providers, .. } => {
+                }
+                AiFrameworkSupport::ONNX {
+                    execution_providers,
+                    ..
+                } => {
                     // ONNX gets bonus for being cross-platform standard
                     let base_bonus = self.preferences.community_bonus * 1.3;
-                    let provider_bonus = execution_providers.iter()
+                    let provider_bonus = execution_providers
+                        .iter()
                         .filter(|p| !p.contains("cuda"))
-                        .count() as f64 * 8.0;
+                        .count() as f64
+                        * 8.0;
                     base_bonus + provider_bonus
-                },
-                AiFrameworkSupport::Candle {  .. } => {
+                }
+                AiFrameworkSupport::Candle { .. } => {
                     // Candle gets innovation bonus (Rust-native ML)
                     self.preferences.innovation_bonus * 1.2
-                },
-                AiFrameworkSupport::Burn {  .. } => {
+                }
+                AiFrameworkSupport::Burn { .. } => {
                     // Burn gets innovation bonus (pure Rust ML)
                     self.preferences.innovation_bonus * 1.1
-                },
-                AiFrameworkSupport::Mojo { multi_backend_support, .. } => {
+                }
+                AiFrameworkSupport::Mojo {
+                    multi_backend_support,
+                    ..
+                } => {
                     // Mojo gets huge innovation bonus if it supports multiple backends
                     if *multi_backend_support {
                         self.preferences.innovation_bonus * 1.8
                     } else {
                         self.preferences.innovation_bonus * 1.2
                     }
-                },
+                }
                 AiFrameworkSupport::TensorFlowLite { delegates, .. } => {
                     // TFLite gets bonus for being edge-friendly and cross-platform
                     let base_bonus = self.preferences.community_bonus * 0.8;
-                    let delegate_bonus = delegates.iter()
-                        .filter(|d| !d.contains("cuda"))
-                        .count() as f64 * 5.0;
+                    let delegate_bonus =
+                        delegates.iter().filter(|d| !d.contains("cuda")).count() as f64 * 5.0;
                     base_bonus + delegate_bonus
-                },
+                }
                 _ => self.preferences.community_bonus * 0.5,
             };
         }
-        
+
         bonus
     }
-    
+
     fn calculate_proprietary_penalty(
         &self,
         capabilities: &UniversalResourceTags,
         requirements: &WorkloadRequirements,
     ) -> f64 {
         let mut penalty = 0.0;
-        
+
         // Check if this workload REQUIRES proprietary tech
         if requirements.requires_proprietary {
             // No penalty if proprietary is actually required
             return 0.0;
         }
-        
+
         // Penalty for having ONLY proprietary options
         let has_open_alternatives = !capabilities.open_compute_backends.is_empty();
-        
+
         if !has_open_alternatives {
             penalty += self.preferences.proprietary_penalty * 2.0; // Double penalty for no open alternatives
         }
-        
+
         // Light penalty for each proprietary capability when open alternatives exist
         for proprietary in &capabilities.proprietary_capabilities {
             match proprietary {
@@ -3094,28 +3344,27 @@ impl OpenComputePreferenceEngine {
                     if has_open_alternatives {
                         penalty += self.preferences.proprietary_penalty * 0.5;
                     }
-                },
+                }
                 _ => penalty += self.preferences.proprietary_penalty * 0.3,
             }
         }
-        
+
         penalty
     }
-    
-    fn generate_reasoning(
-        &self,
-        requirements: &WorkloadRequirements,
-        node: &NodeInfo,
-    ) -> String {
+
+    fn generate_reasoning(&self, requirements: &WorkloadRequirements, node: &NodeInfo) -> String {
         format!(
             "Selected {} for {} workload with open-first strategy (score bonus: +{})",
             node.node_id,
             match &requirements.compute_type {
-                ComputeType::AiInference { model_type, .. } => format!("AI inference ({})", model_type),
+                ComputeType::AiInference { model_type, .. } =>
+                    format!("AI inference ({})", model_type),
                 ComputeType::AiTraining { framework, .. } => format!("AI training ({})", framework),
                 ComputeType::GeneralCompute { .. } => "general compute".to_string(),
-                ComputeType::MediaProcessing { codec, .. } => format!("media processing ({})", codec),
-                ComputeType::Scientific { domain, .. } => format!("scientific computing ({})", domain),
+                ComputeType::MediaProcessing { codec, .. } =>
+                    format!("media processing ({})", codec),
+                ComputeType::Scientific { domain, .. } =>
+                    format!("scientific computing ({})", domain),
             },
             self.calculate_open_standards_bonus(&node.capabilities)
         )
@@ -3134,28 +3383,40 @@ impl OpenComputePreferenceEngine {
                 for framework in &capabilities.ai_frameworks {
                     match framework {
                         AiFrameworkSupport::LlamaCpp { backends, .. } => {
-                            if model_type.to_lowercase().contains("llama") && 
-                               backends.iter().any(|b| b != "cuda") {
+                            if model_type.to_lowercase().contains("llama")
+                                && backends.iter().any(|b| b != "cuda")
+                            {
                                 score += 40.0; // Strong match for open backend
                             }
-                        },
-                        AiFrameworkSupport::ONNX { execution_providers, .. } => {
+                        }
+                        AiFrameworkSupport::ONNX {
+                            execution_providers,
+                            ..
+                        } => {
                             if execution_providers.iter().any(|p| p != "cuda") {
                                 score += 35.0; // ONNX with open providers
                             }
-                        },
+                        }
                         _ => score += 10.0,
                     }
                 }
-            },
+            }
             ComputeType::GeneralCompute { .. } => {
-                if capabilities.open_compute_backends.iter().any(|b| matches!(b, OpenComputeBackend::WebGPU { .. })) {
+                if capabilities
+                    .open_compute_backends
+                    .iter()
+                    .any(|b| matches!(b, OpenComputeBackend::WebGPU { .. }))
+                {
                     score += 50.0; // WebGPU ideal for general compute
                 }
-                if capabilities.open_compute_backends.iter().any(|b| matches!(b, OpenComputeBackend::Vulkan { .. })) {
+                if capabilities
+                    .open_compute_backends
+                    .iter()
+                    .any(|b| matches!(b, OpenComputeBackend::Vulkan { .. }))
+                {
                     score += 40.0; // Vulkan excellent for compute
                 }
-            },
+            }
             _ => score += 20.0, // Base score for other workloads
         }
 
@@ -3180,11 +3441,12 @@ impl OpenComputePreferenceEngine {
 
     fn calculate_performance_factor(&self, performance_metrics: &PerformanceMetrics) -> f64 {
         // Performance factor based on utilization and throughput
-        let utilization_factor = 1.0 - (performance_metrics.cpu_utilization * 0.5 + 
-                                       performance_metrics.memory_utilization * 0.3);
+        let utilization_factor = 1.0
+            - (performance_metrics.cpu_utilization * 0.5
+                + performance_metrics.memory_utilization * 0.3);
         let throughput_factor = performance_metrics.throughput_score / 10000.0;
         let latency_factor = 1.0 / (1.0 + performance_metrics.network_latency_ms / 100.0);
-        
+
         utilization_factor * throughput_factor * latency_factor
     }
 
@@ -3194,16 +3456,20 @@ impl OpenComputePreferenceEngine {
         node: &NodeInfo,
     ) -> ExecutionStrategy {
         // Smart strategy based on our open-first principles
-        
+
         // 1. Try WebGPU first if available
-        if node.capabilities.open_compute_backends.iter()
-            .any(|b| matches!(b, OpenComputeBackend::WebGPU { .. })) {
+        if node
+            .capabilities
+            .open_compute_backends
+            .iter()
+            .any(|b| matches!(b, OpenComputeBackend::WebGPU { .. }))
+        {
             return ExecutionStrategy::WebGPU {
                 fallback_to_cpu: true,
                 performance_hints: vec!["use-wgpu".to_string()],
             };
         }
-        
+
         // 2. Try framework-specific open backends
         for framework in &node.capabilities.ai_frameworks {
             match framework {
@@ -3218,19 +3484,22 @@ impl OpenComputePreferenceEngine {
                     if backends.contains(&"rocm".to_string()) {
                         return ExecutionStrategy::LlamaCppROCm;
                     }
-                },
-                AiFrameworkSupport::ONNX { execution_providers, .. } => {
+                }
+                AiFrameworkSupport::ONNX {
+                    execution_providers,
+                    ..
+                } => {
                     if execution_providers.contains(&"vulkan".to_string()) {
                         return ExecutionStrategy::ONNXVulkan;
                     }
                     if execution_providers.contains(&"rocm".to_string()) {
                         return ExecutionStrategy::ONNXROCm;
                     }
-                },
+                }
                 _ => continue,
             }
         }
-        
+
         // 3. Fall back to CUDA only if absolutely necessary
         if requirements.requires_proprietary {
             for capability in &node.capabilities.proprietary_capabilities {
@@ -3242,7 +3511,7 @@ impl OpenComputePreferenceEngine {
                 }
             }
         }
-        
+
         // 4. Default to CPU with optimization
         ExecutionStrategy::OptimizedCPU {
             threading: ThreadingStrategy::Auto,
@@ -3255,24 +3524,24 @@ impl OpenComputePreferenceEngine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExecutionStrategy {
     // Open standards (preferred)
-    WebGPU { 
+    WebGPU {
         fallback_to_cpu: bool,
         performance_hints: Vec<String>,
     },
-    
+
     // Framework-specific open backends
     LlamaCppVulkan,
     LlamaCppMetal,
     LlamaCppROCm,
     ONNXVulkan,
     ONNXROCm,
-    
+
     // CPU optimization (always available)
     OptimizedCPU {
         threading: ThreadingStrategy,
         vectorization: bool,
     },
-    
+
     // Proprietary (isolated and discouraged)
     CUDAIsolated {
         isolation_level: IsolationLevel,
@@ -3294,30 +3563,24 @@ pub struct WorkloadRequirements {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ComputeType {
     /// AI/ML inference (llama.cpp, ONNX preferred)
-    AiInference { 
-        model_type: String, 
+    AiInference {
+        model_type: String,
         quantization: Option<String>,
         context_length: Option<usize>,
     },
     /// AI/ML training (open frameworks preferred)
-    AiTraining { 
-        framework: String, 
+    AiTraining {
+        framework: String,
         distributed: bool,
         precision: String,
     },
     /// General compute (WebGPU preferred)
-    GeneralCompute { 
-        parallel: bool, 
-        memory_bound: bool,
-    },
+    GeneralCompute { parallel: bool, memory_bound: bool },
     /// Media processing
-    MediaProcessing { 
-        codec: String, 
-        realtime: bool,
-    },
+    MediaProcessing { codec: String, realtime: bool },
     /// Scientific computing
-    Scientific { 
-        domain: String, 
+    Scientific {
+        domain: String,
         precision_requirements: String,
     },
 }
@@ -3350,72 +3613,125 @@ pub struct UniversalSubstrateCapabilities {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraditionalPlatform {
     /// Standard desktop/server platforms
-    X86Desktop { os: String, features: Vec<String> },
-    X86Server { os: String, features: Vec<String> },
-    ARM64Desktop { os: String, features: Vec<String> },
-    ARM64Server { os: String, features: Vec<String> },
+    X86Desktop {
+        os: String,
+        features: Vec<String>,
+    },
+    X86Server {
+        os: String,
+        features: Vec<String>,
+    },
+    ARM64Desktop {
+        os: String,
+        features: Vec<String>,
+    },
+    ARM64Server {
+        os: String,
+        features: Vec<String>,
+    },
     /// Mobile platforms
-    Android { version: String, api_level: u32 },
-    iOS { version: String, device_capabilities: Vec<String> },
-    HarmonyOS { version: String, features: Vec<String> },
+    Android {
+        version: String,
+        api_level: u32,
+    },
+    iOS {
+        version: String,
+        device_capabilities: Vec<String>,
+    },
+    HarmonyOS {
+        version: String,
+        features: Vec<String>,
+    },
     /// Embedded platforms
-    EmbeddedLinux { distribution: String, kernel_version: String },
-    RTOS { system: String, features: Vec<String> },
-    BareMetal { architecture: String, board: String },
+    EmbeddedLinux {
+        distribution: String,
+        kernel_version: String,
+    },
+    RTOS {
+        system: String,
+        features: Vec<String>,
+    },
+    BareMetal {
+        architecture: String,
+        board: String,
+    },
     /// Legacy platforms
-    DOS { version: String, memory_model: String },
-    Windows3x { version: String },
-    OS2 { version: String },
-    BeOS { version: String },
-    AmigaOS { version: String },
+    DOS {
+        version: String,
+        memory_model: String,
+    },
+    Windows3x {
+        version: String,
+    },
+    OS2 {
+        version: String,
+    },
+    BeOS {
+        version: String,
+    },
+    AmigaOS {
+        version: String,
+    },
     /// Mainframe platforms
-    zOS { version: String, subsystems: Vec<String> },
-    AIX { version: String, features: Vec<String> },
-    HPUX { version: String, features: Vec<String> },
-    Solaris { version: String, zones: bool },
+    zOS {
+        version: String,
+        subsystems: Vec<String>,
+    },
+    AIX {
+        version: String,
+        features: Vec<String>,
+    },
+    HPUX {
+        version: String,
+        features: Vec<String>,
+    },
+    Solaris {
+        version: String,
+        zones: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BiologicalComputingPlatform {
     /// DNA computing systems
-    DNAComputing { 
-        platform: String, 
+    DNAComputing {
+        platform: String,
         synthesis_method: String,
         storage_capacity_bits: u64,
         read_write_cycles: u32,
     },
     /// Protein folding computers
-    ProteinFolding { 
+    ProteinFolding {
         platform: String,
         folding_algorithms: Vec<String>,
         molecular_dynamics: bool,
     },
     /// Cellular computing
-    CellularComputing { 
+    CellularComputing {
         cell_type: String,
         genetic_circuits: Vec<String>,
         biosafety_level: u8,
     },
     /// Enzymatic computing
-    EnzymaticComputing { 
+    EnzymaticComputing {
         enzyme_set: Vec<String>,
         reaction_networks: Vec<String>,
         temperature_range: (f64, f64),
     },
     /// Bacterial computing
-    BacterialComputing { 
+    BacterialComputing {
         organism: String,
         plasmid_circuits: Vec<String>,
         growth_medium: String,
     },
     /// Neural organoids
-    NeuralOrganoids { 
+    NeuralOrganoids {
         organoid_type: String,
         neuron_count: u64,
         plasticity_features: Vec<String>,
     },
     /// Bioelectronic interfaces
-    BioelectronicInterface { 
+    BioelectronicInterface {
         interface_type: String,
         biological_component: String,
         electronic_component: String,
@@ -3425,7 +3741,7 @@ pub enum BiologicalComputingPlatform {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NeuromorphicPlatform {
     /// Spiking neural networks
-    SpikingNeuralNetwork { 
+    SpikingNeuralNetwork {
         platform: String,
         neuron_model: String,
         synapse_model: String,
@@ -3433,14 +3749,14 @@ pub enum NeuromorphicPlatform {
         connectivity_pattern: String,
     },
     /// Memristive computing
-    MemristiveComputing { 
+    MemristiveComputing {
         platform: String,
         memristor_technology: String,
         crossbar_size: (u32, u32),
         resistance_levels: u32,
     },
     /// Echo state networks
-    EchoStateNetwork { 
+    EchoStateNetwork {
         platform: String,
         reservoir_size: u32,
         connectivity_density: f64,
@@ -3449,14 +3765,14 @@ pub enum NeuromorphicPlatform {
         leak_rate: f64,
     },
     /// Liquid state machines
-    LiquidStateMachine { 
+    LiquidStateMachine {
         platform: String,
         liquid_neuron_count: u32,
         readout_neuron_count: u32,
         temporal_dynamics: String,
     },
     /// Neuromorphic chips
-    NeuromorphicChip { 
+    NeuromorphicChip {
         chip_name: String,
         manufacturer: String,
         core_count: u32,
@@ -3465,14 +3781,14 @@ pub enum NeuromorphicPlatform {
         power_consumption_mw: f64,
     },
     /// Optical neural networks
-    OpticalNeuralNetwork { 
+    OpticalNeuralNetwork {
         platform: String,
         wavelength_channels: u32,
         photonic_neurons: u32,
         optical_switches: u32,
     },
     /// Analog neural networks
-    AnalogNeuralNetwork { 
+    AnalogNeuralNetwork {
         platform: String,
         analog_neurons: u32,
         precision_bits: u8,
@@ -3483,7 +3799,7 @@ pub enum NeuromorphicPlatform {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QuantumPlatform {
     /// Gate-based quantum computers
-    GateBasedQuantum { 
+    GateBasedQuantum {
         platform: String,
         qubit_count: u32,
         gate_fidelity: f64,
@@ -3491,14 +3807,14 @@ pub enum QuantumPlatform {
         error_correction: bool,
     },
     /// Annealing quantum computers
-    QuantumAnnealing { 
+    QuantumAnnealing {
         platform: String,
         qubit_count: u32,
         coupling_strength: f64,
         annealing_time_us: f64,
     },
     /// Photonic quantum computers
-    PhotonicQuantum { 
+    PhotonicQuantum {
         platform: String,
         photon_sources: u32,
         beam_splitters: u32,
@@ -3506,21 +3822,21 @@ pub enum QuantumPlatform {
         squeezing_level_db: f64,
     },
     /// Trapped ion quantum computers
-    TrappedIonQuantum { 
+    TrappedIonQuantum {
         platform: String,
         ion_species: String,
         trap_frequency_mhz: f64,
         laser_cooling: bool,
     },
     /// Superconducting quantum computers
-    SuperconductingQuantum { 
+    SuperconductingQuantum {
         platform: String,
         qubit_type: String,
         operating_temperature_mk: f64,
         coherence_time_us: f64,
     },
     /// Quantum simulators
-    QuantumSimulator { 
+    QuantumSimulator {
         platform: String,
         simulation_type: String,
         classical_qubits_simulated: u32,
@@ -3530,7 +3846,7 @@ pub enum QuantumPlatform {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EdgeIoTPlatform {
     /// Microcontrollers
-    Microcontroller { 
+    Microcontroller {
         chip: String,
         architecture: String,
         flash_kb: u32,
@@ -3539,7 +3855,7 @@ pub enum EdgeIoTPlatform {
         gpio_pins: u32,
     },
     /// Single board computers
-    SingleBoardComputer { 
+    SingleBoardComputer {
         board: String,
         soc: String,
         ram_mb: u32,
@@ -3547,21 +3863,21 @@ pub enum EdgeIoTPlatform {
         connectivity: Vec<String>,
     },
     /// IoT sensors
-    IoTSensor { 
+    IoTSensor {
         sensor_type: String,
         measurement_range: String,
         power_consumption_uw: f64,
         communication_protocol: String,
     },
     /// Smart devices
-    SmartDevice { 
+    SmartDevice {
         device_type: String,
         capabilities: Vec<String>,
         connectivity: Vec<String>,
         ai_acceleration: bool,
     },
     /// FPGA platforms
-    FPGA { 
+    FPGA {
         family: String,
         logic_elements: u32,
         ram_blocks: u32,
@@ -3569,7 +3885,7 @@ pub enum EdgeIoTPlatform {
         io_pins: u32,
     },
     /// Neural processing units
-    NPU { 
+    NPU {
         chip: String,
         tops_performance: f64,
         power_efficiency_tops_per_watt: f64,
@@ -3580,171 +3896,435 @@ pub enum EdgeIoTPlatform {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ContainerPlatform {
     /// Container runtimes
-    Docker { version: String, features: Vec<String> },
-    Podman { version: String, rootless: bool },
-    Containerd { version: String, snapshotter: String },
-    CriO { version: String, runtime: String },
+    Docker {
+        version: String,
+        features: Vec<String>,
+    },
+    Podman {
+        version: String,
+        rootless: bool,
+    },
+    Containerd {
+        version: String,
+        snapshotter: String,
+    },
+    CriO {
+        version: String,
+        runtime: String,
+    },
     /// VM-based containers
-    Firecracker { version: String, jailer: bool },
-    Kata { version: String, hypervisor: String },
-    gVisor { version: String, platform: String },
+    Firecracker {
+        version: String,
+        jailer: bool,
+    },
+    Kata {
+        version: String,
+        hypervisor: String,
+    },
+    gVisor {
+        version: String,
+        platform: String,
+    },
     /// WebAssembly runtimes
-    Wasmtime { version: String, features: Vec<String> },
-    Wasmer { version: String, backends: Vec<String> },
-    WasmEdge { version: String, extensions: Vec<String> },
+    Wasmtime {
+        version: String,
+        features: Vec<String>,
+    },
+    Wasmer {
+        version: String,
+        backends: Vec<String>,
+    },
+    WasmEdge {
+        version: String,
+        extensions: Vec<String>,
+    },
     /// Unikernel platforms
-    Unikernel { platform: String, language: String },
+    Unikernel {
+        platform: String,
+        language: String,
+    },
     /// Serverless platforms
-    Lambda { runtime: String, memory_mb: u32 },
-    CloudRun { runtime: String, cpu_allocation: String },
-    AzureFunctions { runtime: String, trigger_type: String },
+    Lambda {
+        runtime: String,
+        memory_mb: u32,
+    },
+    CloudRun {
+        runtime: String,
+        cpu_allocation: String,
+    },
+    AzureFunctions {
+        runtime: String,
+        trigger_type: String,
+    },
     /// Orchestration platforms
-    Kubernetes { version: String, distribution: String },
-    DockerSwarm { version: String, features: Vec<String> },
-    Nomad { version: String, driver: String },
+    Kubernetes {
+        version: String,
+        distribution: String,
+    },
+    DockerSwarm {
+        version: String,
+        features: Vec<String>,
+    },
+    Nomad {
+        version: String,
+        driver: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LanguageRuntime {
     /// Systems languages
-    Rust { version: String, target_triple: String, features: Vec<String> },
-    C { compiler: String, standard: String, optimizations: Vec<String> },
-    Cpp { compiler: String, standard: String, features: Vec<String> },
-    Go { version: String, goos: String, goarch: String },
-    Zig { version: String, target: String, mode: String },
+    Rust {
+        version: String,
+        target_triple: String,
+        features: Vec<String>,
+    },
+    C {
+        compiler: String,
+        standard: String,
+        optimizations: Vec<String>,
+    },
+    Cpp {
+        compiler: String,
+        standard: String,
+        features: Vec<String>,
+    },
+    Go {
+        version: String,
+        goos: String,
+        goarch: String,
+    },
+    Zig {
+        version: String,
+        target: String,
+        mode: String,
+    },
     /// Memory-managed languages
-    Java { version: String, vm: String, gc: String },
-    CSharp { version: String, runtime: String, framework: String },
-    Python { version: String, implementation: String, features: Vec<String> },
-    JavaScript { engine: String, version: String, features: Vec<String> },
-    Ruby { version: String, implementation: String },
-    Kotlin { version: String, target: String },
-    Scala { version: String, platform: String },
+    Java {
+        version: String,
+        vm: String,
+        gc: String,
+    },
+    CSharp {
+        version: String,
+        runtime: String,
+        framework: String,
+    },
+    Python {
+        version: String,
+        implementation: String,
+        features: Vec<String>,
+    },
+    JavaScript {
+        engine: String,
+        version: String,
+        features: Vec<String>,
+    },
+    Ruby {
+        version: String,
+        implementation: String,
+    },
+    Kotlin {
+        version: String,
+        target: String,
+    },
+    Scala {
+        version: String,
+        platform: String,
+    },
     /// Functional languages
-    Haskell { compiler: String, version: String, extensions: Vec<String> },
-    OCaml { version: String, features: Vec<String> },
-    Erlang { version: String, otp_version: String },
-    Elixir { version: String, otp_version: String },
-    FSharp { version: String, runtime: String },
-    Lisp { dialect: String, implementation: String },
+    Haskell {
+        compiler: String,
+        version: String,
+        extensions: Vec<String>,
+    },
+    OCaml {
+        version: String,
+        features: Vec<String>,
+    },
+    Erlang {
+        version: String,
+        otp_version: String,
+    },
+    Elixir {
+        version: String,
+        otp_version: String,
+    },
+    FSharp {
+        version: String,
+        runtime: String,
+    },
+    Lisp {
+        dialect: String,
+        implementation: String,
+    },
     /// Scripting languages
-    Bash { version: String, features: Vec<String> },
-    PowerShell { version: String, platform: String },
-    Lua { version: String, features: Vec<String> },
-    Perl { version: String, features: Vec<String> },
+    Bash {
+        version: String,
+        features: Vec<String>,
+    },
+    PowerShell {
+        version: String,
+        platform: String,
+    },
+    Lua {
+        version: String,
+        features: Vec<String>,
+    },
+    Perl {
+        version: String,
+        features: Vec<String>,
+    },
     /// Domain-specific languages
-    R { version: String, packages: Vec<String> },
-    Matlab { version: String, toolboxes: Vec<String> },
-    Mathematica { version: String, features: Vec<String> },
-    Julia { version: String, packages: Vec<String> },
+    R {
+        version: String,
+        packages: Vec<String>,
+    },
+    Matlab {
+        version: String,
+        toolboxes: Vec<String>,
+    },
+    Mathematica {
+        version: String,
+        features: Vec<String>,
+    },
+    Julia {
+        version: String,
+        packages: Vec<String>,
+    },
     /// Emerging languages
-    Mojo { version: String, features: Vec<String> },
-    Carbon { version: String, features: Vec<String> },
-    Gleam { version: String, target: String },
-    Crystal { version: String, features: Vec<String> },
+    Mojo {
+        version: String,
+        features: Vec<String>,
+    },
+    Carbon {
+        version: String,
+        features: Vec<String>,
+    },
+    Gleam {
+        version: String,
+        target: String,
+    },
+    Crystal {
+        version: String,
+        features: Vec<String>,
+    },
     /// Assembly languages
-    Assembly { architecture: String, assembler: String, format: String },
+    Assembly {
+        architecture: String,
+        assembler: String,
+        format: String,
+    },
     /// Esoteric languages (because why not?)
-    Brainfuck { interpreter: String },
-    Whitespace { interpreter: String },
-    Shakespeare { interpreter: String },
+    Brainfuck {
+        interpreter: String,
+    },
+    Whitespace {
+        interpreter: String,
+    },
+    Shakespeare {
+        interpreter: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperatingSystemSupport {
     /// Unix-like systems
-    Linux { 
-        distribution: String, 
-        kernel_version: String, 
+    Linux {
+        distribution: String,
+        kernel_version: String,
         init_system: String,
         package_manager: String,
     },
-    BSD { 
-        variant: String, 
-        version: String, 
+    BSD {
+        variant: String,
+        version: String,
         features: Vec<String>,
     },
-    MacOS { 
-        version: String, 
+    MacOS {
+        version: String,
         architecture: String,
         frameworks: Vec<String>,
     },
     /// Windows systems
-    Windows { 
-        version: String, 
-        edition: String, 
+    Windows {
+        version: String,
+        edition: String,
         features: Vec<String>,
         subsystems: Vec<String>,
     },
     /// Mobile systems
-    Android { 
-        version: String, 
-        api_level: u32, 
+    Android {
+        version: String,
+        api_level: u32,
         security_patch: String,
     },
-    iOS { 
-        version: String, 
+    iOS {
+        version: String,
         device_family: String,
         capabilities: Vec<String>,
     },
     /// Embedded systems
-    FreeRTOS { version: String, features: Vec<String> },
-    Zephyr { version: String, boards: Vec<String> },
-    VxWorks { version: String, bsp: String },
-    QNX { version: String, features: Vec<String> },
+    FreeRTOS {
+        version: String,
+        features: Vec<String>,
+    },
+    Zephyr {
+        version: String,
+        boards: Vec<String>,
+    },
+    VxWorks {
+        version: String,
+        bsp: String,
+    },
+    QNX {
+        version: String,
+        features: Vec<String>,
+    },
     /// Real-time systems
-    RTLinux { version: String, latency_us: f64 },
-    Xenomai { version: String, skin: String },
+    RTLinux {
+        version: String,
+        latency_us: f64,
+    },
+    Xenomai {
+        version: String,
+        skin: String,
+    },
     /// Hypervisors
-    Xen { version: String, features: Vec<String> },
-    VMware { product: String, version: String },
-    HyperV { version: String, features: Vec<String> },
-    KVM { version: String, features: Vec<String> },
+    Xen {
+        version: String,
+        features: Vec<String>,
+    },
+    VMware {
+        product: String,
+        version: String,
+    },
+    HyperV {
+        version: String,
+        features: Vec<String>,
+    },
+    KVM {
+        version: String,
+        features: Vec<String>,
+    },
     /// Exotic systems
-    Plan9 { version: String, features: Vec<String> },
-    Inferno { version: String, features: Vec<String> },
-    TempleOS { version: String },
-    MenuetOS { version: String },
-    KolibriOS { version: String },
+    Plan9 {
+        version: String,
+        features: Vec<String>,
+    },
+    Inferno {
+        version: String,
+        features: Vec<String>,
+    },
+    TempleOS {
+        version: String,
+    },
+    MenuetOS {
+        version: String,
+    },
+    KolibriOS {
+        version: String,
+    },
     /// Legacy systems
-    MSDOS { version: String },
-    OS2 { version: String },
-    BeOS { version: String },
-    AmigaOS { version: String },
-    AtariTOS { version: String },
+    MSDOS {
+        version: String,
+    },
+    OS2 {
+        version: String,
+    },
+    BeOS {
+        version: String,
+    },
+    AmigaOS {
+        version: String,
+    },
+    AtariTOS {
+        version: String,
+    },
     /// Mainframe systems
-    zOS { version: String, subsystems: Vec<String> },
-    OpenVMS { version: String, clustering: bool },
-    UNICOS { version: String, features: Vec<String> },
+    zOS {
+        version: String,
+        subsystems: Vec<String>,
+    },
+    OpenVMS {
+        version: String,
+        clustering: bool,
+    },
+    UNICOS {
+        version: String,
+        features: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SpecializedArchitecture {
     /// AI/ML accelerators
-    TPU { version: String, tops: f64, memory_gb: u32 },
-    NPU { chip: String, tops: f64, frameworks: Vec<String> },
-    IPU { generation: String, tiles: u32, memory_gb: u32 },
+    TPU {
+        version: String,
+        tops: f64,
+        memory_gb: u32,
+    },
+    NPU {
+        chip: String,
+        tops: f64,
+        frameworks: Vec<String>,
+    },
+    IPU {
+        generation: String,
+        tiles: u32,
+        memory_gb: u32,
+    },
     /// Graphics processors
-    CUDA { version: String, compute_capability: String, memory_gb: u32 },
-    ROCm { version: String, gfx_version: String, memory_gb: u32 },
-    OpenCL { version: String, device_type: String, compute_units: u32 },
-    Vulkan { version: String, features: Vec<String> },
-    Metal { version: String, feature_set: String },
+    CUDA {
+        version: String,
+        compute_capability: String,
+        memory_gb: u32,
+    },
+    ROCm {
+        version: String,
+        gfx_version: String,
+        memory_gb: u32,
+    },
+    OpenCL {
+        version: String,
+        device_type: String,
+        compute_units: u32,
+    },
+    Vulkan {
+        version: String,
+        features: Vec<String>,
+    },
+    Metal {
+        version: String,
+        feature_set: String,
+    },
     /// Signal processors
-    DSP { family: String, mips: f64, special_instructions: Vec<String> },
+    DSP {
+        family: String,
+        mips: f64,
+        special_instructions: Vec<String>,
+    },
     /// Network processors
-    DPU { chip: String, packet_processing_mpps: f64, cores: u32 },
+    DPU {
+        chip: String,
+        packet_processing_mpps: f64,
+        cores: u32,
+    },
     /// Custom silicon
-    ASIC { application: String, performance_metric: String, value: f64 },
+    ASIC {
+        application: String,
+        performance_metric: String,
+        value: f64,
+    },
     /// Photonic processors
-    PhotonicProcessor { 
-        wavelengths: u32, 
+    PhotonicProcessor {
+        wavelengths: u32,
         switching_speed_ghz: f64,
         power_consumption_w: f64,
     },
     /// Analog computers
-    AnalogComputer { 
-        type_name: String, 
+    AnalogComputer {
+        type_name: String,
         precision_bits: u8,
         bandwidth_mhz: f64,
     },
@@ -3753,49 +4333,49 @@ pub enum SpecializedArchitecture {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExperimentalPlatform {
     /// Molecular computing
-    MolecularComputing { 
-        platform: String, 
+    MolecularComputing {
+        platform: String,
         molecular_basis: String,
         operation_temperature_k: f64,
     },
     /// Biocomputing hybrids
-    CyborgSystems { 
+    CyborgSystems {
         biological_component: String,
         electronic_component: String,
         interface_protocol: String,
     },
     /// Metamaterial computing
-    MetamaterialProcessor { 
+    MetamaterialProcessor {
         material: String,
         frequency_range_ghz: (f64, f64),
         processing_method: String,
     },
     /// Spintronics
-    SpintronicsProcessor { 
+    SpintronicsProcessor {
         technology: String,
         spin_coherence_time_ns: f64,
         operating_temperature_k: f64,
     },
     /// Superconducting classical computers
-    SuperconductingClassical { 
+    SuperconductingClassical {
         technology: String,
         operating_temperature_k: f64,
         switching_energy_j: f64,
     },
     /// Reversible computing
-    ReversibleComputing { 
+    ReversibleComputing {
         platform: String,
         reversibility_factor: f64,
         energy_efficiency: f64,
     },
     /// Crystalline computing
-    CrystallineComputing { 
+    CrystallineComputing {
         crystal_structure: String,
         defect_type: String,
         coherence_time_ms: f64,
     },
     /// Plasma computing
-    PlasmaComputing { 
+    PlasmaComputing {
         plasma_type: String,
         confinement_method: String,
         processing_frequency_mhz: f64,
@@ -3908,7 +4488,7 @@ pub trait RuntimeTranslator: Send + Sync {
         request: &ExecutionRequest,
         target_platform: &str,
     ) -> ToadStoolResult<PlatformSpecificExecution>;
-    
+
     /// Handle platform-specific optimizations
     async fn optimize_for_platform(
         &self,
@@ -3921,13 +4501,13 @@ pub trait RuntimeTranslator: Send + Sync {
 pub trait BiologicalComputingInterface: Send + Sync {
     /// Initialize biological computing platform
     async fn initialize_platform(&self) -> ToadStoolResult<()>;
-    
+
     /// Execute computation on biological substrate
     async fn execute_biological_computation(
         &self,
         computation: &BiologicalComputation,
     ) -> ToadStoolResult<BiologicalResult>;
-    
+
     /// Monitor biological system health
     async fn monitor_biological_health(&self) -> ToadStoolResult<BiologicalHealthStatus>;
 }
@@ -3937,12 +4517,13 @@ pub trait BiologicalComputingInterface: Send + Sync {
 pub trait NeuromorphicAdapter: Send + Sync {
     /// Configure neuromorphic hardware
     async fn configure_hardware(&self, config: &NeuromorphicConfig) -> ToadStoolResult<()>;
-    
+
     /// Execute spiking neural network computation
     async fn execute_snn(&self, network: &SpikingNeuralNetwork) -> ToadStoolResult<SpikeTrains>;
-    
+
     /// Train echo state network
-    async fn train_esn(&self, training_data: &EchoStateTrainingData) -> ToadStoolResult<TrainedESN>;
+    async fn train_esn(&self, training_data: &EchoStateTrainingData)
+        -> ToadStoolResult<TrainedESN>;
 }
 
 #[derive(Debug, Clone)]
@@ -4048,13 +4629,11 @@ pub struct PerformancePredictions {
 impl UniversalRuntimeAdapter {
     pub async fn new() -> ToadStoolResult<Self> {
         let substrate_capabilities = Arc::new(RwLock::new(
-            Self::detect_all_substrate_capabilities().await?
+            Self::detect_all_substrate_capabilities().await?,
         ));
-        
-        let dependency_coordinator = Arc::new(
-            Self::initialize_dependency_coordinator().await?
-        );
-        
+
+        let dependency_coordinator = Arc::new(Self::initialize_dependency_coordinator().await?);
+
         Ok(Self {
             substrate_capabilities,
             dependency_coordinator,
@@ -4063,11 +4642,12 @@ impl UniversalRuntimeAdapter {
             neuromorphic_adapters: HashMap::new(),
         })
     }
-    
+
     /// Detect every possible computing substrate available
-    async fn detect_all_substrate_capabilities() -> ToadStoolResult<UniversalSubstrateCapabilities> {
+    async fn detect_all_substrate_capabilities() -> ToadStoolResult<UniversalSubstrateCapabilities>
+    {
         info!("🔍 Detecting universal substrate capabilities...");
-        
+
         Ok(UniversalSubstrateCapabilities {
             traditional_platforms: Self::detect_traditional_platforms().await?,
             biological_computing: Self::detect_biological_platforms().await?,
@@ -4081,48 +4661,78 @@ impl UniversalRuntimeAdapter {
             experimental_platforms: Self::detect_experimental_platforms().await?,
         })
     }
-    
+
     async fn detect_traditional_platforms() -> ToadStoolResult<Vec<TraditionalPlatform>> {
         let mut platforms = Vec::new();
-        
+
         // Detect current OS and architecture
         let arch = std::env::consts::ARCH;
         let os = std::env::consts::OS;
-        
+
         match (os, arch) {
             ("linux", "x86_64") => {
                 let distribution = if let Ok(release) = std::fs::read_to_string("/etc/os-release") {
-                    if release.contains("Ubuntu") { "Ubuntu" }
-                    else if release.contains("Debian") { "Debian" }
-                    else if release.contains("Fedora") { "Fedora" }
-                    else if release.contains("Arch") { "Arch Linux" }
-                    else if release.contains("CentOS") { "CentOS" }
-                    else if release.contains("RHEL") { "Red Hat Enterprise Linux" }
-                    else { "Linux" }
-                } else { "Linux" };
-                
+                    if release.contains("Ubuntu") {
+                        "Ubuntu"
+                    } else if release.contains("Debian") {
+                        "Debian"
+                    } else if release.contains("Fedora") {
+                        "Fedora"
+                    } else if release.contains("Arch") {
+                        "Arch Linux"
+                    } else if release.contains("CentOS") {
+                        "CentOS"
+                    } else if release.contains("RHEL") {
+                        "Red Hat Enterprise Linux"
+                    } else {
+                        "Linux"
+                    }
+                } else {
+                    "Linux"
+                };
+
                 let kernel_version = std::process::Command::new("uname")
                     .arg("-r")
                     .output()
                     .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
                     .unwrap_or_else(|_| "unknown".to_string());
-                
+
                 let init_system = if std::path::Path::new("/run/systemd/system").exists() {
                     "systemd"
                 } else if std::path::Path::new("/sbin/init").exists() {
                     "sysvinit"
-                } else { "unknown" };
-                
-                let package_manager = if std::process::Command::new("which").arg("apt").output().is_ok() {
+                } else {
+                    "unknown"
+                };
+
+                let package_manager = if std::process::Command::new("which")
+                    .arg("apt")
+                    .output()
+                    .is_ok()
+                {
                     "apt"
-                } else if std::process::Command::new("which").arg("yum").output().is_ok() {
+                } else if std::process::Command::new("which")
+                    .arg("yum")
+                    .output()
+                    .is_ok()
+                {
                     "yum"
-                } else if std::process::Command::new("which").arg("dnf").output().is_ok() {
+                } else if std::process::Command::new("which")
+                    .arg("dnf")
+                    .output()
+                    .is_ok()
+                {
                     "dnf"
-                } else if std::process::Command::new("which").arg("pacman").output().is_ok() {
+                } else if std::process::Command::new("which")
+                    .arg("pacman")
+                    .output()
+                    .is_ok()
+                {
                     "pacman"
-                } else { "unknown" };
-                
+                } else {
+                    "unknown"
+                };
+
                 platforms.push(TraditionalPlatform::X86Desktop {
                     os: format!("{} {} ({})", distribution, kernel_version, init_system),
                     features: vec![
@@ -4130,22 +4740,22 @@ impl UniversalRuntimeAdapter {
                         package_manager.to_string(),
                         "virtualization".to_string(),
                         "containers".to_string(),
-                    ]
+                    ],
                 });
-            },
+            }
             ("linux", "aarch64") => {
                 platforms.push(TraditionalPlatform::ARM64Desktop {
                     os: "Linux ARM64".to_string(),
-                    features: vec!["64-bit".to_string(), "low-power".to_string()]
+                    features: vec!["64-bit".to_string(), "low-power".to_string()],
                 });
-            },
+            }
             ("macos", _) => {
                 let version = std::process::Command::new("sw_vers")
                     .arg("-productVersion")
                     .output()
                     .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
                     .unwrap_or_else(|_| "unknown".to_string());
-                
+
                 platforms.push(TraditionalPlatform::X86Desktop {
                     os: format!("macOS {}", version),
                     features: vec![
@@ -4153,19 +4763,15 @@ impl UniversalRuntimeAdapter {
                         "unix".to_string(),
                         "homebrew".to_string(),
                         "metal".to_string(),
-                    ]
+                    ],
                 });
-            },
+            }
             ("windows", _) => {
                 platforms.push(TraditionalPlatform::X86Desktop {
                     os: "Windows".to_string(),
-                    features: vec![
-                        arch.to_string(),
-                        "directx".to_string(),
-                        "wsl".to_string(),
-                    ]
+                    features: vec![arch.to_string(), "directx".to_string(), "wsl".to_string()],
                 });
-            },
+            }
             _ => {
                 // Unknown platform, add as generic
                 platforms.push(TraditionalPlatform::EmbeddedLinux {
@@ -4174,13 +4780,13 @@ impl UniversalRuntimeAdapter {
                 });
             }
         }
-        
+
         Ok(platforms)
     }
-    
+
     async fn detect_biological_platforms() -> ToadStoolResult<Vec<BiologicalComputingPlatform>> {
         let mut platforms = Vec::new();
-        
+
         // Check for DNA computing capabilities
         if std::env::var("TWIST_BIOSCIENCE_API_KEY").is_ok() {
             platforms.push(BiologicalComputingPlatform::DNAComputing {
@@ -4190,7 +4796,7 @@ impl UniversalRuntimeAdapter {
                 read_write_cycles: 1000,
             });
         }
-        
+
         // Check for molecular dynamics simulation capabilities
         if Self::check_command_exists("gromacs").await {
             platforms.push(BiologicalComputingPlatform::ProteinFolding {
@@ -4199,7 +4805,7 @@ impl UniversalRuntimeAdapter {
                 molecular_dynamics: true,
             });
         }
-        
+
         // Check for bioinformatics frameworks
         if Self::check_python_package("biopython").await {
             platforms.push(BiologicalComputingPlatform::CellularComputing {
@@ -4208,7 +4814,7 @@ impl UniversalRuntimeAdapter {
                 biosafety_level: 1,
             });
         }
-        
+
         // Check for lab automation (Opentrons)
         if Self::check_command_exists("opentrons").await {
             platforms.push(BiologicalComputingPlatform::BacterialComputing {
@@ -4217,24 +4823,28 @@ impl UniversalRuntimeAdapter {
                 growth_medium: "LB Broth".to_string(),
             });
         }
-        
+
         // Check for neural organoid simulation capabilities
         if Self::check_python_package("brian2").await {
             platforms.push(BiologicalComputingPlatform::NeuralOrganoids {
                 organoid_type: "Simulated cerebral cortex organoid".to_string(),
                 neuron_count: 2_000_000,
-                plasticity_features: vec!["Synaptic plasticity".to_string(), "Homeostatic scaling".to_string()],
+                plasticity_features: vec![
+                    "Synaptic plasticity".to_string(),
+                    "Homeostatic scaling".to_string(),
+                ],
             });
         }
-        
+
         Ok(platforms)
     }
-    
+
     async fn detect_neuromorphic_platforms() -> ToadStoolResult<Vec<NeuromorphicPlatform>> {
         let mut platforms = Vec::new();
-        
+
         // Check for Intel Loihi SDK
-        if Self::check_python_package("nxsdk").await || std::env::var("INTEL_LOIHI_ACCESS").is_ok() {
+        if Self::check_python_package("nxsdk").await || std::env::var("INTEL_LOIHI_ACCESS").is_ok()
+        {
             platforms.push(NeuromorphicPlatform::NeuromorphicChip {
                 chip_name: "Intel Loihi 2".to_string(),
                 manufacturer: "Intel".to_string(),
@@ -4244,7 +4854,7 @@ impl UniversalRuntimeAdapter {
                 power_consumption_mw: 30.0,
             });
         }
-        
+
         // Check for Brian2 spiking neural network simulator
         if Self::check_python_package("brian2").await {
             platforms.push(NeuromorphicPlatform::SpikingNeuralNetwork {
@@ -4255,7 +4865,7 @@ impl UniversalRuntimeAdapter {
                 connectivity_pattern: "Small-world".to_string(),
             });
         }
-        
+
         // Check for NEST simulator
         if Self::check_python_package("nest").await {
             platforms.push(NeuromorphicPlatform::SpikingNeuralNetwork {
@@ -4266,7 +4876,7 @@ impl UniversalRuntimeAdapter {
                 connectivity_pattern: "Random".to_string(),
             });
         }
-        
+
         // Check for Echo State Network frameworks
         if Self::check_python_package("reservoirpy").await {
             platforms.push(NeuromorphicPlatform::EchoStateNetwork {
@@ -4278,7 +4888,7 @@ impl UniversalRuntimeAdapter {
                 leak_rate: 0.3,
             });
         }
-        
+
         // Check for FPGA development tools (often used for neuromorphic)
         if Self::check_command_exists("vivado").await {
             platforms.push(NeuromorphicPlatform::MemristiveComputing {
@@ -4288,7 +4898,7 @@ impl UniversalRuntimeAdapter {
                 resistance_levels: 256,
             });
         }
-        
+
         // Check for SpiNNaker tools
         if Self::check_python_package("spynnaker").await {
             platforms.push(NeuromorphicPlatform::SpikingNeuralNetwork {
@@ -4299,47 +4909,101 @@ impl UniversalRuntimeAdapter {
                 connectivity_pattern: "Fixed probability".to_string(),
             });
         }
-        
+
         Ok(platforms)
     }
-    
+
     async fn detect_quantum_platforms() -> ToadStoolResult<Vec<QuantumPlatform>> {
-        // Would detect IBM Q, Google Sycamore, Rigetti, IonQ, quantum simulators
-        todo!("Implement quantum platform detection")
+        // Placeholder implementation - would detect IBM Q, Google Sycamore, Rigetti, IonQ, quantum simulators
+        let mut platforms = Vec::new();
+
+        // Check for Qiskit (IBM Quantum simulator)
+        if Self::check_python_package("qiskit").await {
+            platforms.push(QuantumPlatform::QuantumSimulator {
+                platform: "Qiskit Aer".to_string(),
+                simulation_type: "gate-based".to_string(),
+                classical_qubits_simulated: 32,
+            });
+        }
+
+        // Check for Cirq (Google quantum simulator)
+        if Self::check_python_package("cirq").await {
+            platforms.push(QuantumPlatform::QuantumSimulator {
+                platform: "Cirq".to_string(),
+                simulation_type: "gate-based".to_string(),
+                classical_qubits_simulated: 30,
+            });
+        }
+
+        Ok(platforms)
     }
-    
+
     async fn detect_edge_iot_platforms() -> ToadStoolResult<Vec<EdgeIoTPlatform>> {
-        // Would detect microcontrollers, FPGAs, NPUs, IoT sensors, smart devices
-        todo!("Implement edge/IoT platform detection")
+        // Placeholder implementation - would detect microcontrollers, FPGAs, NPUs, IoT sensors, smart devices
+        let mut platforms = Vec::new();
+
+        // Check for Raspberry Pi by looking for common RPi indicators
+        if std::path::Path::new("/proc/device-tree/model").exists() {
+            if let Ok(model) = std::fs::read_to_string("/proc/device-tree/model") {
+                if model.contains("Raspberry Pi") {
+                    platforms.push(EdgeIoTPlatform::SingleBoardComputer {
+                        board: "Raspberry Pi".to_string(),
+                        soc: "BCM2835".to_string(),
+                        ram_mb: 1024,
+                        storage_type: "SD Card".to_string(),
+                        connectivity: vec![
+                            "WiFi".to_string(),
+                            "Ethernet".to_string(),
+                            "GPIO".to_string(),
+                        ],
+                    });
+                }
+            }
+        }
+
+        // Check for Arduino development environment
+        if Self::check_command_exists("arduino-cli").await {
+            platforms.push(EdgeIoTPlatform::Microcontroller {
+                chip: "Arduino-compatible".to_string(),
+                architecture: "AVR".to_string(),
+                flash_kb: 32,
+                ram_kb: 2,
+                clock_speed_mhz: 16,
+                gpio_pins: 14,
+            });
+        }
+
+        Ok(platforms)
     }
-    
+
     async fn detect_container_platforms() -> ToadStoolResult<Vec<ContainerPlatform>> {
         let mut platforms = Vec::new();
-        
+
         // Check for Docker
         if let Ok(output) = std::process::Command::new("docker")
             .arg("--version")
-            .output() 
+            .output()
         {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace()
+                let version = version_str
+                    .split_whitespace()
                     .nth(2)
                     .unwrap_or("unknown")
                     .trim_end_matches(',')
                     .to_string();
-                    
+
                 platforms.push(ContainerPlatform::Docker {
                     version,
                     features: vec![
                         "containers".to_string(),
                         "buildkit".to_string(),
                         "multi-stage".to_string(),
-                    ]
+                    ],
                 });
             }
         }
-        
+
         // Check for Podman
         if let Ok(output) = std::process::Command::new("podman")
             .arg("--version")
@@ -4347,18 +5011,19 @@ impl UniversalRuntimeAdapter {
         {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace()
+                let version = version_str
+                    .split_whitespace()
                     .nth(2)
                     .unwrap_or("unknown")
                     .to_string();
-                    
+
                 platforms.push(ContainerPlatform::Podman {
                     version,
                     rootless: true, // Podman supports rootless by default
                 });
             }
         }
-        
+
         // Check for WebAssembly runtimes
         if let Ok(output) = std::process::Command::new("wasmtime")
             .arg("--version")
@@ -4366,44 +5031,46 @@ impl UniversalRuntimeAdapter {
         {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace()
+                let version = version_str
+                    .split_whitespace()
                     .nth(1)
                     .unwrap_or("unknown")
                     .to_string();
-                    
+
                 platforms.push(ContainerPlatform::Wasmtime {
                     version,
                     features: vec![
                         "wasi".to_string(),
                         "cranelift".to_string(),
                         "wasmtime-jit".to_string(),
-                    ]
+                    ],
                 });
             }
         }
-        
+
         if let Ok(output) = std::process::Command::new("wasmer")
             .arg("--version")
             .output()
         {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace()
+                let version = version_str
+                    .split_whitespace()
                     .nth(1)
                     .unwrap_or("unknown")
                     .to_string();
-                    
+
                 platforms.push(ContainerPlatform::Wasmer {
                     version,
                     backends: vec![
                         "cranelift".to_string(),
                         "llvm".to_string(),
                         "singlepass".to_string(),
-                    ]
+                    ],
                 });
             }
         }
-        
+
         // Check for Kubernetes
         if let Ok(output) = std::process::Command::new("kubectl")
             .arg("version")
@@ -4413,181 +5080,232 @@ impl UniversalRuntimeAdapter {
         {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.lines()
+                let version = version_str
+                    .lines()
                     .find(|line| line.contains("Client Version"))
                     .and_then(|line| line.split(':').nth(1))
                     .unwrap_or("unknown")
                     .trim()
                     .to_string();
-                    
+
                 platforms.push(ContainerPlatform::Kubernetes {
                     version,
                     distribution: "kubectl-detected".to_string(),
                 });
             }
         }
-        
+
         Ok(platforms)
     }
-    
+
     async fn detect_language_runtimes() -> ToadStoolResult<Vec<LanguageRuntime>> {
         let mut runtimes = Vec::new();
-        
+
         // Rust
-        if let Ok(output) = std::process::Command::new("rustc").arg("--version").output() {
+        if let Ok(output) = std::process::Command::new("rustc")
+            .arg("--version")
+            .output()
+        {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace().nth(1).unwrap_or("unknown").to_string();
+                let version = version_str
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .to_string();
                 let target = std::process::Command::new("rustc")
-                    .arg("--print").arg("target-list")
+                    .arg("--print")
+                    .arg("target-list")
                     .output()
-                    .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("unknown").to_string())
+                    .map(|o| {
+                        String::from_utf8_lossy(&o.stdout)
+                            .lines()
+                            .next()
+                            .unwrap_or("unknown")
+                            .to_string()
+                    })
                     .unwrap_or_else(|_| "unknown".to_string());
-                    
+
                 runtimes.push(LanguageRuntime::Rust {
                     version,
                     target_triple: target,
-                    features: vec!["zero-cost-abstractions".to_string(), "memory-safety".to_string()]
+                    features: vec![
+                        "zero-cost-abstractions".to_string(),
+                        "memory-safety".to_string(),
+                    ],
                 });
             }
         }
-        
+
         // Python
-        if let Ok(output) = std::process::Command::new("python3").arg("--version").output() {
+        if let Ok(output) = std::process::Command::new("python3")
+            .arg("--version")
+            .output()
+        {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace().nth(1).unwrap_or("unknown").to_string();
-                
+                let version = version_str
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::Python {
                     version,
                     implementation: "CPython".to_string(),
-                    features: vec!["gil".to_string(), "dynamic-typing".to_string()]
+                    features: vec!["gil".to_string(), "dynamic-typing".to_string()],
                 });
             }
         }
-        
+
         // Node.js
         if let Ok(output) = std::process::Command::new("node").arg("--version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
                 let version = version_str.trim().trim_start_matches('v').to_string();
-                
+
                 runtimes.push(LanguageRuntime::JavaScript {
                     engine: "V8".to_string(),
                     version,
-                    features: vec!["async-await".to_string(), "es-modules".to_string()]
+                    features: vec!["async-await".to_string(), "es-modules".to_string()],
                 });
             }
         }
-        
+
         // Java
         if let Ok(output) = std::process::Command::new("java").arg("-version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stderr); // Java outputs to stderr
                 let version = if let Some(line) = version_str.lines().next() {
-                    line.split_whitespace().nth(2).unwrap_or("unknown").trim_matches('"').to_string()
-                } else { "unknown".to_string() };
-                
+                    line.split_whitespace()
+                        .nth(2)
+                        .unwrap_or("unknown")
+                        .trim_matches('"')
+                        .to_string()
+                } else {
+                    "unknown".to_string()
+                };
+
                 runtimes.push(LanguageRuntime::Java {
                     version,
                     vm: "HotSpot".to_string(),
-                    gc: "G1".to_string()
+                    gc: "G1".to_string(),
                 });
             }
         }
-        
+
         // Go
         if let Ok(output) = std::process::Command::new("go").arg("version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace().nth(2).unwrap_or("unknown").to_string();
-                
+                let version = version_str
+                    .split_whitespace()
+                    .nth(2)
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::Go {
                     version,
                     goos: std::env::consts::OS.to_string(),
-                    goarch: std::env::consts::ARCH.to_string()
+                    goarch: std::env::consts::ARCH.to_string(),
                 });
             }
         }
-        
+
         // C/C++ (check for common compilers)
         if let Ok(output) = std::process::Command::new("gcc").arg("--version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.lines().next()
+                let version = version_str
+                    .lines()
+                    .next()
                     .and_then(|line| line.split_whitespace().nth(3))
-                    .unwrap_or("unknown").to_string();
-                    
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::C {
                     compiler: "GCC".to_string(),
                     standard: "C17".to_string(),
-                    optimizations: vec!["-O2".to_string(), "-O3".to_string()]
+                    optimizations: vec!["-O2".to_string(), "-O3".to_string()],
                 });
             }
         }
-        
-        if let Ok(output) = std::process::Command::new("clang").arg("--version").output() {
+
+        if let Ok(output) = std::process::Command::new("clang")
+            .arg("--version")
+            .output()
+        {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.lines().next()
+                let version = version_str
+                    .lines()
+                    .next()
                     .and_then(|line| line.split_whitespace().nth(2))
-                    .unwrap_or("unknown").to_string();
-                    
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::Cpp {
                     compiler: "Clang".to_string(),
                     standard: "C++20".to_string(),
-                    features: vec!["concepts".to_string(), "modules".to_string()]
+                    features: vec!["concepts".to_string(), "modules".to_string()],
                 });
             }
         }
-        
+
         // Ruby
         if let Ok(output) = std::process::Command::new("ruby").arg("--version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.split_whitespace().nth(1).unwrap_or("unknown").to_string();
-                
+                let version = version_str
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::Ruby {
                     version,
-                    implementation: "MRI".to_string()
+                    implementation: "MRI".to_string(),
                 });
             }
         }
-        
+
         // Bash
         if let Ok(output) = std::process::Command::new("bash").arg("--version").output() {
             if output.status.success() {
                 let version_str = String::from_utf8_lossy(&output.stdout);
-                let version = version_str.lines().next()
+                let version = version_str
+                    .lines()
+                    .next()
                     .and_then(|line| line.split_whitespace().nth(3))
-                    .unwrap_or("unknown").to_string();
-                    
+                    .unwrap_or("unknown")
+                    .to_string();
+
                 runtimes.push(LanguageRuntime::Bash {
                     version,
-                    features: vec!["scripting".to_string(), "job-control".to_string()]
+                    features: vec!["scripting".to_string(), "job-control".to_string()],
                 });
             }
         }
-        
+
         Ok(runtimes)
     }
-    
+
     async fn detect_operating_systems() -> ToadStoolResult<Vec<OperatingSystemSupport>> {
         let mut systems = Vec::new();
-        
+
         let os = std::env::consts::OS;
         let arch = std::env::consts::ARCH;
-        
+
         systems.push(OperatingSystemSupport::Linux {
             distribution: os.to_string(),
             kernel_version: Self::get_os_version().await,
             init_system: "systemd".to_string(),
             package_manager: "unknown".to_string(),
         });
-        
+
         Ok(systems)
     }
-    
+
     async fn get_os_version() -> String {
         match std::env::consts::OS {
             "linux" => {
@@ -4596,25 +5314,28 @@ impl UniversalRuntimeAdapter {
                 } else {
                     "unknown".to_string()
                 }
-            },
+            }
             "macos" => {
-                if let Ok(output) = std::process::Command::new("sw_vers").arg("-productVersion").output() {
+                if let Ok(output) = std::process::Command::new("sw_vers")
+                    .arg("-productVersion")
+                    .output()
+                {
                     String::from_utf8_lossy(&output.stdout).trim().to_string()
                 } else {
                     "unknown".to_string()
                 }
-            },
+            }
             "windows" => {
                 // Windows version detection would be more complex
                 "unknown".to_string()
-            },
-            _ => "unknown".to_string()
+            }
+            _ => "unknown".to_string(),
         }
     }
-    
+
     async fn detect_os_features() -> Vec<String> {
         let mut features = Vec::new();
-        
+
         // Check for container support
         if Self::check_command_exists("docker").await {
             features.push("docker".to_string());
@@ -4622,31 +5343,31 @@ impl UniversalRuntimeAdapter {
         if Self::check_command_exists("podman").await {
             features.push("podman".to_string());
         }
-        
+
         // Check for virtualization
         if Self::check_command_exists("kvm").await {
             features.push("kvm".to_string());
         }
-        
+
         features
     }
-    
+
     async fn detect_compatibility_layers() -> Vec<String> {
         let mut layers = Vec::new();
-        
+
         // Check for WSL on Windows (if running in WSL)
         if std::env::var("WSL_DISTRO_NAME").is_ok() {
             layers.push("wsl".to_string());
         }
-        
+
         // Check for Wine on Linux
         if Self::check_command_exists("wine").await {
             layers.push("wine".to_string());
         }
-        
+
         layers
     }
-    
+
     /// Check if a command exists in the system PATH
     async fn check_command_exists(command: &str) -> bool {
         std::process::Command::new("which")
@@ -4655,7 +5376,7 @@ impl UniversalRuntimeAdapter {
             .map(|output| output.status.success())
             .unwrap_or(false)
     }
-    
+
     /// Check if a Python package is available
     async fn check_python_package(package: &str) -> bool {
         // Try Python 3 first
@@ -4667,7 +5388,7 @@ impl UniversalRuntimeAdapter {
                 return true;
             }
         }
-        
+
         // Fall back to Python 2
         if let Ok(output) = std::process::Command::new("python")
             .args(&["-c", &format!("import {}", package)])
@@ -4678,26 +5399,30 @@ impl UniversalRuntimeAdapter {
             false
         }
     }
-    
+
     async fn detect_specialized_architectures() -> ToadStoolResult<Vec<SpecializedArchitecture>> {
         let mut architectures = Vec::new();
-        
+
         // GPU Detection
         if Self::check_command_exists("nvidia-smi").await {
-            if let Ok(output) = std::process::Command::new("nvidia-smi").arg("--query-gpu=name").arg("--format=csv,noheader").output() {
+            if let Ok(output) = std::process::Command::new("nvidia-smi")
+                .arg("--query-gpu=name")
+                .arg("--format=csv,noheader")
+                .output()
+            {
                 let gpu_names = String::from_utf8_lossy(&output.stdout);
                 for gpu_name in gpu_names.lines() {
                     if !gpu_name.trim().is_empty() {
                         architectures.push(SpecializedArchitecture::TPU {
                             version: "Generic".to_string(),
-                            tops: 100.0, // Estimated
+                            tops: 100.0,   // Estimated
                             memory_gb: 16, // Estimated GPU memory
                         });
                     }
                 }
             }
         }
-        
+
         // AMD GPU Detection
         if Self::check_command_exists("rocm-smi").await {
             architectures.push(SpecializedArchitecture::TPU {
@@ -4706,7 +5431,7 @@ impl UniversalRuntimeAdapter {
                 memory_gb: 8,
             });
         }
-        
+
         // Intel GPU Detection
         if Self::check_command_exists("intel_gpu_top").await {
             architectures.push(SpecializedArchitecture::TPU {
@@ -4715,16 +5440,16 @@ impl UniversalRuntimeAdapter {
                 memory_gb: 4,
             });
         }
-        
+
         // TPU Detection (Google Cloud TPU)
         if std::env::var("TPU_NAME").is_ok() {
             architectures.push(SpecializedArchitecture::TPU {
                 version: "v4".to_string(),
-                tops: 275.0, // TPU v4 performance
+                tops: 275.0,   // TPU v4 performance
                 memory_gb: 32, // TPU v4 HBM
             });
         }
-        
+
         // FPGA Detection (treated as DSP for compatibility)
         if Self::check_command_exists("vivado").await {
             architectures.push(SpecializedArchitecture::DSP {
@@ -4733,7 +5458,7 @@ impl UniversalRuntimeAdapter {
                 special_instructions: vec!["FFT".to_string(), "FIR".to_string()],
             });
         }
-        
+
         if Self::check_command_exists("quartus").await {
             architectures.push(SpecializedArchitecture::DSP {
                 family: "Intel FPGA".to_string(),
@@ -4741,7 +5466,7 @@ impl UniversalRuntimeAdapter {
                 special_instructions: vec!["DSP48".to_string(), "Block RAM".to_string()],
             });
         }
-        
+
         // DSP Detection (Audio interfaces often indicate DSP capabilities)
         if Self::check_command_exists("aplay").await {
             if let Ok(output) = std::process::Command::new("aplay").arg("-l").output() {
@@ -4755,7 +5480,7 @@ impl UniversalRuntimeAdapter {
                 }
             }
         }
-        
+
         // ASIC Detection (Bitcoin miners, AI accelerators)
         // This is speculative - would need specific hardware detection
         if std::path::Path::new("/sys/class/drm").exists() {
@@ -4764,16 +5489,15 @@ impl UniversalRuntimeAdapter {
                 version: "Generic".to_string(),
                 tops: 50.0,
                 memory_gb: 8,
-
             });
         }
-        
+
         Ok(architectures)
     }
-    
+
     async fn detect_experimental_platforms() -> ToadStoolResult<Vec<ExperimentalPlatform>> {
         let mut platforms = Vec::new();
-        
+
         // Molecular computing simulation frameworks
         if Self::check_python_package("openmm").await {
             platforms.push(ExperimentalPlatform::MolecularComputing {
@@ -4782,7 +5506,7 @@ impl UniversalRuntimeAdapter {
                 operation_temperature_k: 298.0,
             });
         }
-        
+
         // Quantum chemistry frameworks (often used for molecular computing research)
         if Self::check_python_package("pyscf").await {
             platforms.push(ExperimentalPlatform::MolecularComputing {
@@ -4791,7 +5515,7 @@ impl UniversalRuntimeAdapter {
                 operation_temperature_k: 273.0,
             });
         }
-        
+
         // Metamaterial simulation (often done with electromagnetic simulation software)
         if Self::check_command_exists("hfss").await || Self::check_python_package("meep").await {
             platforms.push(ExperimentalPlatform::MolecularComputing {
@@ -4800,7 +5524,7 @@ impl UniversalRuntimeAdapter {
                 operation_temperature_k: 300.0,
             });
         }
-        
+
         // Spintronics simulation (often done with magnetic simulation tools)
         if Self::check_python_package("mumax3").await || Self::check_command_exists("oommf").await {
             platforms.push(ExperimentalPlatform::MolecularComputing {
@@ -4809,36 +5533,37 @@ impl UniversalRuntimeAdapter {
                 operation_temperature_k: 273.0,
             });
         }
-        
+
         // Plasma computing (often simulated with plasma physics codes)
         if Self::check_python_package("plasmapy").await {
             platforms.push(ExperimentalPlatform::PlasmaComputing {
                 processing_frequency_mhz: 1000.0,
                 plasma_type: "Dusty".to_string(),
                 confinement_method: "Magnetic".to_string(),
-
             });
         }
-        
+
         // Optical computing simulation
-        if Self::check_python_package("photonic").await || Self::check_python_package("gdspy").await {
+        if Self::check_python_package("photonic").await || Self::check_python_package("gdspy").await
+        {
             platforms.push(ExperimentalPlatform::PlasmaComputing {
                 processing_frequency_mhz: 1550.0,
                 plasma_type: "Optical".to_string(),
                 confinement_method: "Electromagnetic".to_string(),
             });
         }
-        
+
         // DNA computing simulation (using bioinformatics tools)
-        if Self::check_python_package("biopython").await && Self::check_python_package("nupack").await {
+        if Self::check_python_package("biopython").await
+            && Self::check_python_package("nupack").await
+        {
             platforms.push(ExperimentalPlatform::MolecularComputing {
                 molecular_basis: "NUPACK DNA Strand Displacement".to_string(),
                 operation_temperature_k: 310.0,
                 platform: "NUPACK DNA Strand Displacement".to_string(),
-
             });
         }
-        
+
         // Crystalline defect computing (often simulated with materials science tools)
         if Self::check_python_package("ase").await {
             platforms.push(ExperimentalPlatform::CrystallineComputing {
@@ -4847,11 +5572,12 @@ impl UniversalRuntimeAdapter {
                 coherence_time_ms: 100.0,
             });
         }
-        
+
         Ok(platforms)
     }
-    
-    async fn initialize_dependency_coordinator() -> ToadStoolResult<UniversalDependencyCoordinator> {
+
+    async fn initialize_dependency_coordinator() -> ToadStoolResult<UniversalDependencyCoordinator>
+    {
         Ok(UniversalDependencyCoordinator {
             package_managers: HashMap::new(),
             container_orchestrators: HashMap::new(),
@@ -4862,7 +5588,7 @@ impl UniversalRuntimeAdapter {
             neuromorphic_init: HashMap::new(),
         })
     }
-    
+
     /// Execute job on the most appropriate substrate
     pub async fn execute_on_universal_substrate(
         &self,
@@ -4870,58 +5596,57 @@ impl UniversalRuntimeAdapter {
     ) -> ToadStoolResult<UniversalExecutionResult> {
         // Analyze job requirements
         let requirements = &job.resource_requirements;
-        
+
         // Find best substrate
         let best_substrate = self.find_optimal_substrate(requirements).await?;
-        
+
         // Translate execution for target substrate
-        let translated_execution = self.translate_for_substrate(
-            &job.execution_request,
-            &best_substrate,
-        ).await?;
-        
+        let translated_execution = self
+            .translate_for_substrate(&job.execution_request, &best_substrate)
+            .await?;
+
         // Execute on substrate
         let result = self.execute_on_substrate(translated_execution).await?;
-        
+
         Ok(result)
     }
-    
+
     async fn find_optimal_substrate(
         &self,
         requirements: &ResourceRequirements,
     ) -> ToadStoolResult<String> {
         let capabilities = self.substrate_capabilities.read().await;
-        
+
         // Score different substrates based on requirements
         let mut substrate_scores = Vec::new();
-        
+
         // Traditional platforms - good for general compute
         for platform in &capabilities.traditional_platforms {
             let score = Self::score_traditional_platform(platform, requirements).await;
             substrate_scores.push((format!("traditional-{:?}", platform), score));
         }
-        
+
         // Biological platforms - extremely energy efficient but slow
         for platform in &capabilities.biological_computing {
             let score = Self::score_biological_platform(platform, requirements).await;
             substrate_scores.push((format!("biological-{:?}", platform), score));
         }
-        
+
         // Neuromorphic platforms - excellent for pattern recognition
         for platform in &capabilities.neuromorphic_computing {
             let score = Self::score_neuromorphic_platform(platform, requirements).await;
             substrate_scores.push((format!("neuromorphic-{:?}", platform), score));
         }
-        
+
         // Quantum platforms - good for specific algorithms
         for platform in &capabilities.quantum_computing {
             let score = Self::score_quantum_platform(platform, requirements).await;
             substrate_scores.push((format!("quantum-{:?}", platform), score));
         }
-        
+
         // Sort by score and return the best substrate
         substrate_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         if let Some((best_substrate, _)) = substrate_scores.first() {
             Ok(best_substrate.clone())
         } else {
@@ -4929,28 +5654,34 @@ impl UniversalRuntimeAdapter {
             Ok("local".to_string())
         }
     }
-    
-    async fn score_traditional_platform(platform: &TraditionalPlatform, requirements: &ResourceRequirements) -> f64 {
+
+    async fn score_traditional_platform(
+        platform: &TraditionalPlatform,
+        requirements: &ResourceRequirements,
+    ) -> f64 {
         let mut score = 100.0; // Base score
-        
+
         // Prefer native platforms
         match platform {
             TraditionalPlatform::X86Desktop { .. } => score += 50.0,
             TraditionalPlatform::EmbeddedLinux { .. } => score += 30.0,
             _ => score += 20.0,
         }
-        
+
         // Consider resource requirements
         if requirements.cpu.min_cores > 0.0 {
             score += 20.0; // Traditional platforms are good at CPU tasks
         }
-        
+
         score
     }
-    
-    async fn score_biological_platform(platform: &BiologicalComputingPlatform, requirements: &ResourceRequirements) -> f64 {
+
+    async fn score_biological_platform(
+        platform: &BiologicalComputingPlatform,
+        requirements: &ResourceRequirements,
+    ) -> f64 {
         let mut score = 10.0; // Base score (lower because specialized)
-        
+
         match platform {
             BiologicalComputingPlatform::DNAComputing { .. } => {
                 // DNA computing is great for storage and certain algorithms
@@ -4958,43 +5689,52 @@ impl UniversalRuntimeAdapter {
                     score += 80.0; // DNA has incredible storage density
                 }
                 score += 50.0; // Energy efficiency bonus
-            },
+            }
             BiologicalComputingPlatform::NeuralOrganoids { .. } => {
                 // Neural organoids are excellent for learning tasks
                 score += 60.0; // Pattern recognition bonus
-            },
+            }
             _ => {
                 score += 30.0; // General biological computing bonus
             }
         }
-        
+
         score
     }
-    
-    async fn score_neuromorphic_platform(platform: &NeuromorphicPlatform, requirements: &ResourceRequirements) -> f64 {
+
+    async fn score_neuromorphic_platform(
+        platform: &NeuromorphicPlatform,
+        requirements: &ResourceRequirements,
+    ) -> f64 {
         let mut score = 20.0; // Base score
-        
+
         match platform {
-            NeuromorphicPlatform::NeuromorphicChip { power_consumption_mw, .. } => {
+            NeuromorphicPlatform::NeuromorphicChip {
+                power_consumption_mw,
+                ..
+            } => {
                 score += 70.0; // Hardware neuromorphic is very efficient
                 if *power_consumption_mw < 100.0 {
                     score += 30.0; // Ultra-low power bonus
                 }
-            },
+            }
             NeuromorphicPlatform::SpikingNeuralNetwork { .. } => {
                 score += 50.0; // Good for temporal processing
-            },
+            }
             _ => {
                 score += 40.0; // General neuromorphic bonus
             }
         }
-        
+
         score
     }
-    
-    async fn score_quantum_platform(platform: &QuantumPlatform, requirements: &ResourceRequirements) -> f64 {
+
+    async fn score_quantum_platform(
+        platform: &QuantumPlatform,
+        requirements: &ResourceRequirements,
+    ) -> f64 {
         let mut score = 5.0; // Base score (very specialized)
-        
+
         match platform {
             QuantumPlatform::GateBasedQuantum { qubit_count, .. } => {
                 if *qubit_count > 50 {
@@ -5002,18 +5742,18 @@ impl UniversalRuntimeAdapter {
                 } else {
                     score += 30.0; // NISQ devices are still useful
                 }
-            },
+            }
             QuantumPlatform::QuantumAnnealing { .. } => {
                 score += 60.0; // Good for optimization problems
-            },
+            }
             _ => {
                 score += 40.0; // General quantum bonus
             }
         }
-        
+
         score
     }
-    
+
     async fn translate_for_substrate(
         &self,
         request: &ExecutionRequest,
@@ -5021,78 +5761,74 @@ impl UniversalRuntimeAdapter {
     ) -> ToadStoolResult<PlatformSpecificExecution> {
         let mut execution_commands = Vec::new();
         let mut environment_setup = std::collections::HashMap::new();
-        
+
         // Parse substrate type and parameters
         if substrate.starts_with("traditional-") {
             // Traditional execution - direct command execution
             execution_commands.push(format!("{:?}", request.workload));
             environment_setup.insert("EXECUTION_MODE".to_string(), "traditional".to_string());
-            
         } else if substrate.starts_with("biological-") {
             // Biological execution - convert to biochemical simulation
             execution_commands.push("python3".to_string());
             execution_commands.push("-c".to_string());
             execution_commands.push(format!(
-                "import biopython; print('Simulating biological computation: {}')", 
+                "import biopython; print('Simulating biological computation: {}')",
                 format!("{:?}", request.workload)
             ));
             environment_setup.insert("EXECUTION_MODE".to_string(), "biological".to_string());
             environment_setup.insert("BIOSAFETY_LEVEL".to_string(), "1".to_string());
-            
         } else if substrate.starts_with("neuromorphic-") {
             // Neuromorphic execution - convert to spiking neural network
             execution_commands.push("python3".to_string());
             execution_commands.push("-c".to_string());
             execution_commands.push(format!(
-                "import brian2; print('Neuromorphic computation: {}'); brian2.start_scope()", 
+                "import brian2; print('Neuromorphic computation: {}'); brian2.start_scope()",
                 format!("{:?}", request.workload)
             ));
             environment_setup.insert("EXECUTION_MODE".to_string(), "neuromorphic".to_string());
             environment_setup.insert("SPIKE_ENCODING".to_string(), "rate".to_string());
-            
         } else if substrate.starts_with("quantum-") {
             // Quantum execution - convert to quantum circuit
             execution_commands.push("python3".to_string());
             execution_commands.push("-c".to_string());
             execution_commands.push(format!(
-                "import qiskit; print('Quantum computation: {}'); qc = qiskit.QuantumCircuit(2)", 
+                "import qiskit; print('Quantum computation: {}'); qc = qiskit.QuantumCircuit(2)",
                 format!("{:?}", request.workload)
             ));
             environment_setup.insert("EXECUTION_MODE".to_string(), "quantum".to_string());
             environment_setup.insert("BACKEND".to_string(), "qasm_simulator".to_string());
-            
         } else {
             // Fallback to local execution
             execution_commands.push(format!("{:?}", request.workload));
             environment_setup.insert("EXECUTION_MODE".to_string(), "local".to_string());
         }
-        
+
         Ok(PlatformSpecificExecution {
             target_platform: substrate.to_string(),
             execution_context: "universal".to_string(),
             resource_requirements: PlatformResourceRequirements {
                 compute_units: 1,
-                memory_bytes: 1024 * 1024 * 1024, // 1GB default
+                memory_bytes: 1024 * 1024 * 1024,  // 1GB default
                 storage_bytes: 1024 * 1024 * 1024, // 1GB default
-                network_bandwidth_bps: 1_000_000, // 1 Mbps default
+                network_bandwidth_bps: 1_000_000,  // 1 Mbps default
                 specialized_hardware: Vec::new(),
             },
             execution_commands,
             environment_setup,
         })
     }
-    
+
     async fn execute_on_substrate(
         &self,
         execution: PlatformSpecificExecution,
     ) -> ToadStoolResult<UniversalExecutionResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Execute the platform-specific commands
         let mut result_data = Vec::new();
         let mut performance_metrics = std::collections::HashMap::new();
         let mut energy_consumed = 0.0;
-        
+
         for command in &execution.execution_commands {
             match execution.target_platform.as_str() {
                 platform if platform.starts_with("biological-") => {
@@ -5102,13 +5838,13 @@ impl UniversalRuntimeAdapter {
                         .arg(&format!("print('Biological computation result: {}'); import time; time.sleep(0.1)", command))
                         .output()
                         .map_err(|e| ToadStoolError::runtime(format!("Biological execution failed: {}", e)))?;
-                    
+
                     result_data.extend_from_slice(&output.stdout);
                     energy_consumed += 0.001; // Biological processes are very energy efficient
                     performance_metrics.insert("reaction_efficiency".to_string(), 0.95);
                     performance_metrics.insert("viability".to_string(), 0.98);
-                },
-                
+                }
+
                 platform if platform.starts_with("neuromorphic-") => {
                     // Neuromorphic execution simulation
                     let output = std::process::Command::new("python3")
@@ -5116,13 +5852,13 @@ impl UniversalRuntimeAdapter {
                         .arg(&format!("print('Neuromorphic spike trains processed: {}'); import time; time.sleep(0.05)", command))
                         .output()
                         .map_err(|e| ToadStoolError::runtime(format!("Neuromorphic execution failed: {}", e)))?;
-                    
+
                     result_data.extend_from_slice(&output.stdout);
                     energy_consumed += 0.03; // Very energy efficient
                     performance_metrics.insert("spike_rate_hz".to_string(), 1000.0);
                     performance_metrics.insert("synaptic_efficiency".to_string(), 0.92);
-                },
-                
+                }
+
                 platform if platform.starts_with("quantum-") => {
                     // Quantum execution simulation
                     let output = std::process::Command::new("python3")
@@ -5130,26 +5866,27 @@ impl UniversalRuntimeAdapter {
                         .arg(&format!("print('Quantum superposition collapsed: {}'); import time; time.sleep(0.01)", command))
                         .output()
                         .map_err(|e| ToadStoolError::runtime(format!("Quantum execution failed: {}", e)))?;
-                    
+
                     result_data.extend_from_slice(&output.stdout);
                     energy_consumed += 1000.0; // Quantum computers need cooling
                     performance_metrics.insert("gate_fidelity".to_string(), 0.999);
                     performance_metrics.insert("coherence_time_us".to_string(), 100.0);
-                },
-                
+                }
+
                 _ => {
                     // Traditional execution
                     let mut cmd = std::process::Command::new("sh");
                     cmd.arg("-c").arg(command);
-                    
+
                     // Set environment variables
                     for (key, value) in &execution.environment_setup {
                         cmd.env(key, value);
                     }
-                    
-                    let output = cmd.output()
-                        .map_err(|e| ToadStoolError::runtime(format!("Traditional execution failed: {}", e)))?;
-                    
+
+                    let output = cmd.output().map_err(|e| {
+                        ToadStoolError::runtime(format!("Traditional execution failed: {}", e))
+                    })?;
+
                     result_data.extend_from_slice(&output.stdout);
                     result_data.extend_from_slice(&output.stderr);
                     energy_consumed += 100.0; // Traditional compute energy usage
@@ -5157,9 +5894,9 @@ impl UniversalRuntimeAdapter {
                 }
             }
         }
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(UniversalExecutionResult {
             substrate_used: execution.target_platform,
             execution_time_ms: execution_time.as_millis() as f64,

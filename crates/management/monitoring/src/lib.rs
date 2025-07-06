@@ -3,18 +3,18 @@
 //! Cross-platform resource monitoring with configurable granularity.
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::path::Path;
 
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio::time;
-use tracing::{error, info, debug, warn};
-use serde::{Serialize, Deserialize};
-use chrono::Utc;
+use tracing::{debug, error, info, warn};
 
-use toadstool::resources::{ResourceMonitor, RuntimeMetrics, ResourceRequirements};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool::resources::{ResourceMonitor, ResourceRequirements, RuntimeMetrics};
 
 /// Monitoring granularity levels
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -95,16 +95,19 @@ pub struct SystemResourceMonitor {
     is_monitoring: Arc<RwLock<bool>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct ProcessInfo {
-    process_handle: u32,
-    executable_path: std::path::PathBuf,
-    start_time: Instant,
+    pid: u32,
+    name: String,
+    cpu_usage: f64,
     last_cpu_time: u64,
-    last_network_stats: NetworkStats,
+    memory_usage: u64,
+    start_time: u64,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Default, Clone, Debug)]
+#[allow(dead_code)]
 struct NetworkStats {
     bytes_received: u64,
     bytes_transmitted: u64,
@@ -154,16 +157,32 @@ impl std::fmt::Display for ResourceMonitorError {
             ResourceMonitorError::PlatformNotSupported(platform) => {
                 write!(f, "Platform not supported: {}", platform)
             }
-            ResourceMonitorError::ResourceLimitExceeded { process_id, resource_type, current_value, limit } => {
-                write!(f, "Resource limit exceeded for {}: {} current={}, limit={}", 
-                       process_id, resource_type, current_value, limit)
+            ResourceMonitorError::ResourceLimitExceeded {
+                process_id,
+                resource_type,
+                current_value,
+                limit,
+            } => {
+                write!(
+                    f,
+                    "Resource limit exceeded for {}: {} current={}, limit={}",
+                    process_id, resource_type, current_value, limit
+                )
             }
             ResourceMonitorError::NetworkMonitoringNotAvailable => {
                 write!(f, "Network monitoring is not available on this platform")
             }
-            ResourceMonitorError::ThresholdViolation { workload_id, resource_type, current_value, threshold } => {
-                write!(f, "Threshold violation for {}: {} current={}, threshold={}", 
-                       workload_id, resource_type, current_value, threshold)
+            ResourceMonitorError::ThresholdViolation {
+                workload_id,
+                resource_type,
+                current_value,
+                threshold,
+            } => {
+                write!(
+                    f,
+                    "Threshold violation for {}: {} current={}, threshold={}",
+                    workload_id, resource_type, current_value, threshold
+                )
             }
             ResourceMonitorError::Other(msg) => write!(f, "Other error: {}", msg),
         }
@@ -198,14 +217,14 @@ impl SystemResourceMonitor {
     /// Updates the monitoring configuration
     pub async fn update_config(&mut self, config: MonitoringConfig) -> ToadStoolResult<()> {
         self.config = config;
-        
+
         // Restart monitoring with new configuration if currently monitoring
         let is_monitoring = *self.is_monitoring.read().await;
         if is_monitoring {
             self.stop_monitoring_loop().await?;
             self.start_monitoring_loop().await?;
         }
-        
+
         Ok(())
     }
 
@@ -218,15 +237,19 @@ impl SystemResourceMonitor {
     ) -> Result<(), ToadStoolError> {
         let mut process_map = self.process_map.write().await;
         let process_info = ProcessInfo {
-            process_handle,
-            executable_path: executable_path.to_path_buf(),
-            start_time: Instant::now(),
+            pid: process_handle,
+            name: executable_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+            cpu_usage: 0.0,
             last_cpu_time: 0,
-            last_network_stats: NetworkStats::default(),
+            memory_usage: 0,
+            start_time: Instant::now().elapsed().as_secs(),
         };
-        
+
         process_map.insert(workload_id.to_string(), process_info);
-        info!("Registered process {} with PID {} for monitoring", workload_id, process_handle);
+        info!(
+            "Registered process {} with PID {} for monitoring",
+            workload_id, process_handle
+        );
         Ok(())
     }
 
@@ -235,7 +258,7 @@ impl SystemResourceMonitor {
         let mut process_map = self.process_map.write().await;
         let mut usage_data = self.usage_data.write().await;
         let mut threshold_data = self.threshold_data.write().await;
-        
+
         if process_map.remove(workload_id).is_some() {
             usage_data.remove(workload_id);
             threshold_data.remove(workload_id);
@@ -247,7 +270,11 @@ impl SystemResourceMonitor {
     }
 
     /// Sets resource thresholds for a workload
-    pub async fn set_thresholds(&self, workload_id: &str, requirements: ResourceRequirements) -> ToadStoolResult<()> {
+    pub async fn set_thresholds(
+        &self,
+        workload_id: &str,
+        requirements: ResourceRequirements,
+    ) -> ToadStoolResult<()> {
         let mut threshold_data = self.threshold_data.write().await;
         threshold_data.insert(workload_id.to_string(), requirements);
         debug!("Set thresholds for workload: {}", workload_id);
@@ -273,41 +300,52 @@ impl SystemResourceMonitor {
 
         tokio::spawn(async move {
             let mut interval_timer = time::interval(interval);
-            
+
             while *is_monitoring_flag.read().await {
                 interval_timer.tick().await;
-                
+
                 let processes = process_map.read().await;
                 let mut updated_metrics = HashMap::new();
-                
+
                 for (workload_id, process_info) in processes.iter() {
                     match Self::measure_process_resources(
-                        process_info.process_handle,
-                        &process_info.executable_path,
+                        process_info.pid,
+                        &process_info.name,
                         process_info.start_time,
-                        &process_info.last_network_stats,
+                        &process_info.last_cpu_time,
+                        &process_info.memory_usage,
                         &config,
-                    ).await {
+                    )
+                    .await
+                    {
                         Ok(metrics) => {
                             updated_metrics.insert(workload_id.clone(), metrics);
                         }
                         Err(err) => {
-                            warn!("Failed to measure resources for process {}: {}", workload_id, err);
+                            warn!(
+                                "Failed to measure resources for process {}: {}",
+                                workload_id, err
+                            );
                         }
                     }
                 }
-                
+
                 // Update usage data and check thresholds
                 let mut usage_data_guard = usage_data.write().await;
                 let thresholds = threshold_data.read().await;
-                
+
                 for (workload_id, metrics) in updated_metrics {
                     usage_data_guard.insert(workload_id.clone(), metrics.clone());
-                    
+
                     // Check thresholds if enabled
                     if config.enable_threshold_monitoring {
                         if let Some(requirements) = thresholds.get(&workload_id) {
-                            if let Err(err) = Self::check_thresholds(&workload_id, &metrics, requirements, &config.threshold_action) {
+                            if let Err(err) = Self::check_thresholds(
+                                &workload_id,
+                                &metrics,
+                                requirements,
+                                &config.threshold_action,
+                            ) {
                                 error!("Threshold violation: {}", err);
                             }
                         }
@@ -330,34 +368,69 @@ impl SystemResourceMonitor {
     /// Gets current metrics for a workload (async version)
     pub async fn get_metrics_async(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
         let usage_data = self.usage_data.read().await;
-        usage_data.get(workload_id)
-            .cloned()
-            .ok_or_else(|| ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into())
+        usage_data.get(workload_id).cloned().ok_or_else(|| {
+            ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into()
+        })
     }
 
     /// Measures resources for a specific process
     async fn measure_process_resources(
         pid: u32,
-        _executable_path: &Path,
-        start_time: Instant,
-        _last_network_stats: &NetworkStats,
+        name: &str,
+        start_time: u64,
+        last_cpu_time: &u64,
+        memory_usage: &u64,
         config: &MonitoringConfig,
     ) -> Result<RuntimeMetrics, ResourceMonitorError> {
-        let elapsed = start_time.elapsed();
-        
+        let elapsed_secs = start_time.saturating_sub(*last_cpu_time);
+
         // Get platform-specific metrics
         let mut platform_metrics = Self::get_platform_metrics(pid, config).await?;
-        
+
         // Update timing information
-        platform_metrics.timing.start_time = Utc::now() - chrono::Duration::from_std(elapsed).unwrap_or_default();
+        platform_metrics.timing.start_time =
+            Utc::now() - chrono::Duration::seconds(elapsed_secs as i64);
         platform_metrics.timing.end_time = None;
-        platform_metrics.timing.duration = elapsed;
-        
+        platform_metrics.timing.duration = std::time::Duration::from_secs(elapsed_secs);
+
+        // Update CPU usage
+        platform_metrics.cpu.usage_percent = *last_cpu_time as f64 / 100.0;
+        platform_metrics.cpu.peak_usage_percent = *last_cpu_time as f64 / 100.0;
+        platform_metrics.cpu.average_usage_percent = *last_cpu_time as f64 / 100.0;
+        platform_metrics.cpu.cpu_time_ms = *last_cpu_time * 10;
+
+        // Update memory usage
+        platform_metrics.memory.usage_bytes = *memory_usage;
+        platform_metrics.memory.peak_usage_bytes = *memory_usage;
+        platform_metrics.memory.average_usage_bytes = *memory_usage;
+
+        // Update storage usage
+        platform_metrics.storage.bytes_read = 0;
+        platform_metrics.storage.bytes_written = 0;
+        platform_metrics.storage.read_iops = 0.0;
+        platform_metrics.storage.write_iops = 0.0;
+        platform_metrics.storage.avg_read_latency_us = 0.0;
+        platform_metrics.storage.avg_write_latency_us = 0.0;
+
+        // Network monitoring if enabled
+        let network_metrics = if config.enable_network_monitoring {
+            Self::measure_linux_network_stats(pid)
+                .await
+                .unwrap_or_default()
+        } else {
+            toadstool::resources::NetworkMetrics::default()
+        };
+
+        platform_metrics.network = network_metrics;
+
         Ok(platform_metrics)
     }
 
     /// Gets platform-specific metrics
-    async fn get_platform_metrics(pid: u32, config: &MonitoringConfig) -> Result<RuntimeMetrics, ResourceMonitorError> {
+    async fn get_platform_metrics(
+        pid: u32,
+        config: &MonitoringConfig,
+    ) -> Result<RuntimeMetrics, ResourceMonitorError> {
         #[cfg(target_os = "linux")]
         {
             Self::measure_linux_resources(pid, config).await
@@ -379,47 +452,60 @@ impl SystemResourceMonitor {
     }
 
     #[cfg(target_os = "linux")]
-    async fn measure_linux_resources(pid: u32, config: &MonitoringConfig) -> Result<RuntimeMetrics, ResourceMonitorError> {
+    async fn measure_linux_resources(
+        pid: u32,
+        config: &MonitoringConfig,
+    ) -> Result<RuntimeMetrics, ResourceMonitorError> {
         use std::fs;
-        
+
         // Read from /proc/[pid]/stat for CPU info
         let stat_path = format!("/proc/{}/stat", pid);
         let stat_content = fs::read_to_string(&stat_path)
             .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
-        
+
         let stat_fields: Vec<&str> = stat_content.split_whitespace().collect();
         if stat_fields.len() < 24 {
-            return Err(ResourceMonitorError::ParseError("Invalid stat format".to_string()));
+            return Err(ResourceMonitorError::ParseError(
+                "Invalid stat format".to_string(),
+            ));
         }
-        
+
         // Parse CPU times (user time + system time)
-        let utime: u64 = stat_fields[13].parse()
-            .map_err(|e: std::num::ParseIntError| ResourceMonitorError::ParseError(e.to_string()))?;
-        let stime: u64 = stat_fields[14].parse()
-            .map_err(|e: std::num::ParseIntError| ResourceMonitorError::ParseError(e.to_string()))?;
-        
+        let utime: u64 = stat_fields[13]
+            .parse()
+            .map_err(|e: std::num::ParseIntError| {
+                ResourceMonitorError::ParseError(e.to_string())
+            })?;
+        let stime: u64 = stat_fields[14]
+            .parse()
+            .map_err(|e: std::num::ParseIntError| {
+                ResourceMonitorError::ParseError(e.to_string())
+            })?;
+
         // Read memory info from /proc/[pid]/status
         let status_path = format!("/proc/{}/status", pid);
         let status_content = fs::read_to_string(&status_path)
             .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
-        
+
         let vm_rss = Self::parse_proc_status_value(&status_content, "VmRSS")?;
         let _vm_size = Self::parse_proc_status_value(&status_content, "VmSize")?;
-        
+
         // Read IO stats from /proc/[pid]/io
         let io_path = format!("/proc/{}/io", pid);
         let io_content = fs::read_to_string(&io_path).unwrap_or_default();
-        
+
         let read_bytes = Self::parse_proc_io_value(&io_content, "read_bytes").unwrap_or(0);
         let write_bytes = Self::parse_proc_io_value(&io_content, "write_bytes").unwrap_or(0);
-        
+
         // Network monitoring if enabled
         let network_metrics = if config.enable_network_monitoring {
-            Self::measure_linux_network_stats(pid).await.unwrap_or_default()
+            Self::measure_linux_network_stats(pid)
+                .await
+                .unwrap_or_default()
         } else {
             toadstool::resources::NetworkMetrics::default()
         };
-        
+
         Ok(RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: (utime + stime) as f64 / 100.0, // Simplified CPU calculation
@@ -456,22 +542,25 @@ impl SystemResourceMonitor {
     }
 
     #[cfg(target_os = "linux")]
-    async fn measure_linux_network_stats(pid: u32) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
+    async fn measure_linux_network_stats(
+        pid: u32,
+    ) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
         use std::fs;
-        
+
         // Read network stats from /proc/[pid]/net/dev
         let net_dev_path = format!("/proc/{}/net/dev", pid);
         let net_content = fs::read_to_string(&net_dev_path)
             .or_else(|_| fs::read_to_string("/proc/net/dev")) // Fallback to system-wide stats
             .map_err(|_e| ResourceMonitorError::NetworkMonitoringNotAvailable)?;
-        
+
         let mut total_rx_bytes = 0u64;
         let mut total_tx_bytes = 0u64;
         let mut total_rx_packets = 0u64;
         let mut total_tx_packets = 0u64;
-        
+
         // Parse network interface statistics
-        for line in net_content.lines().skip(2) { // Skip header lines
+        for line in net_content.lines().skip(2) {
+            // Skip header lines
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 17 {
                 // RX bytes, packets, TX bytes, packets
@@ -488,14 +577,14 @@ impl SystemResourceMonitor {
                 }
             }
         }
-        
+
         Ok(toadstool::resources::NetworkMetrics {
             bytes_received: total_rx_bytes,
             bytes_transmitted: total_tx_bytes,
             packets_received: total_rx_packets,
             packets_transmitted: total_tx_packets,
-            errors: 0, // Would need additional parsing
-            drops: 0,  // Would need additional parsing
+            errors: 0,           // Would need additional parsing
+            drops: 0,            // Would need additional parsing
             avg_latency_us: 0.0, // Would need active measurement
         })
     }
@@ -506,12 +595,16 @@ impl SystemResourceMonitor {
             if line.starts_with(field) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    return parts[1].parse::<f64>()
+                    return parts[1]
+                        .parse::<f64>()
                         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()));
                 }
             }
         }
-        Err(ResourceMonitorError::ParseError(format!("Field {} not found", field)))
+        Err(ResourceMonitorError::ParseError(format!(
+            "Field {} not found",
+            field
+        )))
     }
 
     #[cfg(target_os = "linux")]
@@ -520,16 +613,23 @@ impl SystemResourceMonitor {
             if line.starts_with(field) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    return parts[1].parse::<u64>()
+                    return parts[1]
+                        .parse::<u64>()
                         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()));
                 }
             }
         }
-        Err(ResourceMonitorError::ParseError(format!("Field {} not found", field)))
+        Err(ResourceMonitorError::ParseError(format!(
+            "Field {} not found",
+            field
+        )))
     }
 
     #[cfg(target_os = "macos")]
-    async fn measure_macos_resources(pid: u32, config: &MonitoringConfig) -> Result<RuntimeMetrics, ResourceMonitorError> {
+    async fn measure_macos_resources(
+        pid: u32,
+        config: &MonitoringConfig,
+    ) -> Result<RuntimeMetrics, ResourceMonitorError> {
         // Use ps command for macOS
         let output = Command::new("ps")
             .args(&["-p", &pid.to_string(), "-o", "pid,pcpu,rss,vsz"])
@@ -542,22 +642,30 @@ impl SystemResourceMonitor {
         // Parse ps output
         let lines: Vec<&str> = output_str.lines().collect();
         if lines.len() < 2 {
-            return Err(ResourceMonitorError::ParseError("Invalid ps output".to_string()));
+            return Err(ResourceMonitorError::ParseError(
+                "Invalid ps output".to_string(),
+            ));
         }
 
         let fields: Vec<&str> = lines[1].split_whitespace().collect();
         if fields.len() < 4 {
-            return Err(ResourceMonitorError::ParseError("Invalid ps fields".to_string()));
+            return Err(ResourceMonitorError::ParseError(
+                "Invalid ps fields".to_string(),
+            ));
         }
 
-        let cpu_percent: f64 = fields[1].parse()
+        let cpu_percent: f64 = fields[1]
+            .parse()
             .map_err(|e| ResourceMonitorError::ParseError(e.to_string()))?;
-        let rss_kb: u64 = fields[2].parse()
+        let rss_kb: u64 = fields[2]
+            .parse()
             .map_err(|e| ResourceMonitorError::ParseError(e.to_string()))?;
 
         // Network monitoring for macOS (simplified)
         let network_metrics = if config.enable_network_monitoring {
-            Self::measure_macos_network_stats(pid).await.unwrap_or_default()
+            Self::measure_macos_network_stats(pid)
+                .await
+                .unwrap_or_default()
         } else {
             toadstool::resources::NetworkMetrics::default()
         };
@@ -589,7 +697,9 @@ impl SystemResourceMonitor {
     }
 
     #[cfg(target_os = "macos")]
-    async fn measure_macos_network_stats(_pid: u32) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
+    async fn measure_macos_network_stats(
+        _pid: u32,
+    ) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
         // Use netstat for macOS network statistics
         let output = Command::new("netstat")
             .args(&["-ib"])
@@ -601,15 +711,14 @@ impl SystemResourceMonitor {
 
         let mut total_rx_bytes = 0u64;
         let mut total_tx_bytes = 0u64;
-        
+
         // Parse netstat output (simplified)
         for line in output_str.lines().skip(1) {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 8 {
-                if let (Ok(rx_bytes), Ok(tx_bytes)) = (
-                    parts[6].parse::<u64>(),
-                    parts[9].parse::<u64>(),
-                ) {
+                if let (Ok(rx_bytes), Ok(tx_bytes)) =
+                    (parts[6].parse::<u64>(), parts[9].parse::<u64>())
+                {
                     total_rx_bytes += rx_bytes;
                     total_tx_bytes += tx_bytes;
                 }
@@ -628,13 +737,16 @@ impl SystemResourceMonitor {
     }
 
     #[cfg(target_os = "windows")]
-    async fn measure_windows_resources(pid: u32, config: &MonitoringConfig) -> Result<RuntimeMetrics, ResourceMonitorError> {
+    async fn measure_windows_resources(
+        pid: u32,
+        config: &MonitoringConfig,
+    ) -> Result<RuntimeMetrics, ResourceMonitorError> {
         // Use PowerShell for Windows
         let ps_command = format!(
             "Get-Process -Id {} | Select-Object CPU,WorkingSet,VirtualMemorySize",
             pid
         );
-        
+
         let output = Command::new("powershell")
             .args(&["-Command", &ps_command])
             .output()
@@ -645,11 +757,14 @@ impl SystemResourceMonitor {
 
         // Parse PowerShell output (simplified)
         let cpu_percent = Self::parse_powershell_value(&output_str, "CPU").unwrap_or(0.0);
-        let working_set = Self::parse_powershell_value(&output_str, "WorkingSet").unwrap_or(0.0) as u64;
+        let working_set =
+            Self::parse_powershell_value(&output_str, "WorkingSet").unwrap_or(0.0) as u64;
 
         // Network monitoring for Windows
         let network_metrics = if config.enable_network_monitoring {
-            Self::measure_windows_network_stats(pid).await.unwrap_or_default()
+            Self::measure_windows_network_stats(pid)
+                .await
+                .unwrap_or_default()
         } else {
             toadstool::resources::NetworkMetrics::default()
         };
@@ -681,10 +796,12 @@ impl SystemResourceMonitor {
     }
 
     #[cfg(target_os = "windows")]
-    async fn measure_windows_network_stats(_pid: u32) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
+    async fn measure_windows_network_stats(
+        _pid: u32,
+    ) -> Result<toadstool::resources::NetworkMetrics, ResourceMonitorError> {
         // Use PowerShell to get network statistics
         let ps_command = "Get-Counter '\\Network Interface(*)\\Bytes Received/sec', '\\Network Interface(*)\\Bytes Sent/sec' | ForEach-Object {$_.CounterSamples}";
-        
+
         let output = Command::new("powershell")
             .args(&["-Command", ps_command])
             .output()
@@ -696,10 +813,10 @@ impl SystemResourceMonitor {
         // Simplified parsing - would need more robust implementation
         let mut total_rx_bytes = 0u64;
         let mut total_tx_bytes = 0u64;
-        
+
         // This is a simplified implementation
         // In practice, you'd need more sophisticated PowerShell parsing
-        
+
         Ok(toadstool::resources::NetworkMetrics {
             bytes_received: total_rx_bytes,
             bytes_transmitted: total_tx_bytes,
@@ -717,12 +834,16 @@ impl SystemResourceMonitor {
             if line.contains(field) {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if let Some(value_str) = parts.last() {
-                    return value_str.parse::<f64>()
+                    return value_str
+                        .parse::<f64>()
                         .map_err(|e| ResourceMonitorError::ParseError(e.to_string()));
                 }
             }
         }
-        Err(ResourceMonitorError::ParseError(format!("Field {} not found", field)))
+        Err(ResourceMonitorError::ParseError(format!(
+            "Field {} not found",
+            field
+        )))
     }
 
     /// Check thresholds and take action if exceeded
@@ -811,7 +932,7 @@ impl ResourceMonitor for SystemResourceMonitor {
         let usage_data = Arc::clone(&self.usage_data);
         let threshold_data = Arc::clone(&self.threshold_data);
         let workload_id = workload_id.to_string();
-        
+
         tokio::spawn(async move {
             let mut process_map = process_map.write().await;
             let mut usage_data = usage_data.write().await;
@@ -826,20 +947,29 @@ impl ResourceMonitor for SystemResourceMonitor {
     fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
         // For the synchronous trait method, we return the last cached metrics
         // This is a limitation of the current trait design - ideally this should be async
-        let usage_data = self.usage_data.try_read()
+        let usage_data = self
+            .usage_data
+            .try_read()
             .map_err(|_| ToadStoolError::resource("Failed to read usage data"))?;
-        
-        usage_data.get(workload_id)
-            .cloned()
-            .ok_or_else(|| ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into())
+
+        usage_data.get(workload_id).cloned().ok_or_else(|| {
+            ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into()
+        })
     }
 
-    fn check_limits(&self, workload_id: &str, requirements: &ResourceRequirements) -> ToadStoolResult<bool> {
-        debug!("Checking limits for workload: {} against requirements", workload_id);
-        
+    fn check_limits(
+        &self,
+        workload_id: &str,
+        requirements: &ResourceRequirements,
+    ) -> ToadStoolResult<bool> {
+        debug!(
+            "Checking limits for workload: {} against requirements",
+            workload_id
+        );
+
         // Get current metrics
         let metrics = self.get_metrics(workload_id)?;
-        
+
         // Check each resource type
         let mut within_limits = true;
 
@@ -855,7 +985,10 @@ impl ResourceMonitor for SystemResourceMonitor {
         // Check memory limits
         if let Some(max_memory) = requirements.memory.max_bytes {
             if metrics.memory.usage_bytes > max_memory {
-                debug!("Memory limit exceeded: {} > {}", metrics.memory.usage_bytes, max_memory);
+                debug!(
+                    "Memory limit exceeded: {} > {}",
+                    metrics.memory.usage_bytes, max_memory
+                );
                 within_limits = false;
             }
         }
@@ -871,9 +1004,14 @@ impl ResourceMonitor for SystemResourceMonitor {
 
         // Check network limits
         if let Some(max_bandwidth) = requirements.network.max_bandwidth_mbps {
-            let network_usage_mbps = (metrics.network.bytes_received + metrics.network.bytes_transmitted) as f64 / (1024.0 * 1024.0);
+            let network_usage_mbps = (metrics.network.bytes_received
+                + metrics.network.bytes_transmitted) as f64
+                / (1024.0 * 1024.0);
             if network_usage_mbps > max_bandwidth as f64 {
-                debug!("Network limit exceeded: {} > {}", network_usage_mbps, max_bandwidth);
+                debug!(
+                    "Network limit exceeded: {} > {}",
+                    network_usage_mbps, max_bandwidth
+                );
                 within_limits = false;
             }
         }

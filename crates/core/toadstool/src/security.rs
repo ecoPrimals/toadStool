@@ -42,7 +42,7 @@ impl Default for SecurityContext {
 }
 
 /// Security isolation levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IsolationLevel {
     /// No isolation - full system access (dangerous)
     None,
@@ -66,13 +66,9 @@ impl IsolationLevel {
             }
             Self::Basic => {
                 // Basic execution capabilities
-                vec![
-                    Capability::Execute,
-                    Capability::Read,
-                    Capability::WriteTemp,
-                ]
-                .into_iter()
-                .collect()
+                vec![Capability::Execute, Capability::Read, Capability::WriteTemp]
+                    .into_iter()
+                    .collect()
             }
             Self::Standard => {
                 // Standard container-like capabilities
@@ -88,13 +84,9 @@ impl IsolationLevel {
             }
             Self::Enhanced => {
                 // Limited capabilities with strict enforcement
-                vec![
-                    Capability::Execute,
-                    Capability::Read,
-                    Capability::WriteTemp,
-                ]
-                .into_iter()
-                .collect()
+                vec![Capability::Execute, Capability::Read, Capability::WriteTemp]
+                    .into_iter()
+                    .collect()
             }
             Self::Maximum => {
                 // Minimal capabilities - execute only
@@ -216,11 +208,20 @@ pub enum SecurityPolicy {
     /// Restrict file access to specific paths
     RestrictFilesystem { allowed_paths: Vec<PathBuf> },
     /// Limit network access to specific hosts/ports
-    RestrictNetwork { allowed_hosts: Vec<String>, allowed_ports: Vec<u16> },
+    RestrictNetwork {
+        allowed_hosts: Vec<String>,
+        allowed_ports: Vec<u16>,
+    },
     /// Set resource limits
-    ResourceLimits { cpu_percent: Option<u8>, memory_mb: Option<u64> },
+    ResourceLimits {
+        cpu_percent: Option<u8>,
+        memory_mb: Option<u64>,
+    },
     /// Custom security policy
-    Custom { name: String, config: HashMap<String, serde_json::Value> },
+    Custom {
+        name: String,
+        config: HashMap<String, serde_json::Value>,
+    },
 }
 
 /// User context for execution
@@ -355,7 +356,7 @@ impl SecurityContext {
                 .iter()
                 .filter(|cap| cap.is_dangerous())
                 .collect();
-            
+
             if !dangerous_caps.is_empty() {
                 return Err(crate::error::ToadStoolError::security(format!(
                     "Maximum isolation level cannot have dangerous capabilities: {:?}",
@@ -365,19 +366,23 @@ impl SecurityContext {
         }
 
         // Validate network security
-        if !self.network_security.internet_access && !self.network_security.internal_access && (self.has_capability(&Capability::NetworkClient) || self.has_capability(&Capability::NetworkServer)) {
+        if !self.network_security.internet_access
+            && !self.network_security.internal_access
+            && (self.has_capability(&Capability::NetworkClient)
+                || self.has_capability(&Capability::NetworkServer))
+        {
             return Err(crate::error::ToadStoolError::security(
-                "Network capabilities granted but no network access allowed"
+                "Network capabilities granted but no network access allowed",
             ));
         }
 
         // Validate filesystem security
         if self.filesystem_security.read_only && !self.filesystem_security.write_paths.is_empty() {
             return Err(crate::error::ToadStoolError::security(
-                "Filesystem is read-only but write paths specified"
+                "Filesystem is read-only but write paths specified",
             ));
         }
 
         Ok(())
     }
-} 
+}

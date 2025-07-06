@@ -24,19 +24,19 @@ use crate::workload::WorkloadSpec;
 pub trait RuntimeEngine: Send + Sync + Debug {
     /// Initialize the runtime with configuration
     async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()>;
-    
+
     /// Execute a workload with specified context
     async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
-    
+
     /// Get runtime capabilities and metadata
     fn get_capabilities(&self) -> RuntimeCapabilities;
-    
+
     /// Check if runtime supports the given workload type
     fn supports_workload(&self, workload_type: &WorkloadType) -> bool;
-    
+
     /// Get runtime health and performance metrics
     async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics>;
-    
+
     /// Shutdown runtime gracefully
     async fn shutdown(&mut self) -> ToadStoolResult<()>;
 }
@@ -95,7 +95,11 @@ pub enum ExecutionStatus {
     /// Execution was cancelled
     Cancelled,
     /// Resource limits exceeded
-    ResourceLimitExceeded { resource: String, limit: String, actual: String },
+    ResourceLimitExceeded {
+        resource: String,
+        limit: String,
+        actual: String,
+    },
     /// Security violation occurred
     SecurityViolation { violation: String },
 }
@@ -172,8 +176,7 @@ pub struct RuntimeCapabilities {
 }
 
 /// Execution input data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExecutionInput {
     /// Binary data payload
     pub data: Vec<u8>,
@@ -183,10 +186,8 @@ pub struct ExecutionInput {
     pub format: Option<String>,
 }
 
-
 /// Execution output data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExecutionOutput {
     /// Binary data result
     pub data: Vec<u8>,
@@ -201,7 +202,6 @@ pub struct ExecutionOutput {
     /// Output format
     pub format: Option<String>,
 }
-
 
 /// Callback configuration for async execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,4 +225,4 @@ impl Default for CallbackConfig {
             headers: HashMap::new(),
         }
     }
-} 
+}

@@ -58,6 +58,12 @@ fake = { version = "2.0", features = ["derive", "chrono", "uuid"] }
 # Async trait support
 async-trait = "0.1"
 
+# Error handling
+anyhow = "1.0"
+
+# System interfaces
+libc = { version = "0.2", optional = true }
+
 # Resource monitoring mocks
 sysinfo = "0.30"
 
@@ -66,5 +72,5 @@ criterion = "0.5"
 
 [features]
 default = []
-integration-tests = ["wiremock", "reqwest"]
+integration-tests = ["wiremock", "reqwest", "libc"]
 benchmarks = [] 

@@ -21,20 +21,20 @@
 //! ToadStool provides a unified interface for running any workload, in any language, on any platform
 //! with consistent security, monitoring, and resource management.
 
+pub mod error;
 pub mod execution;
+pub mod resources;
 pub mod runtime;
 pub mod security;
-pub mod resources;
 pub mod workload;
-pub mod error;
 
 // Re-export core types
+pub use error::*;
 pub use execution::*;
+pub use resources::*;
 pub use runtime::*;
 pub use security::*;
-pub use resources::*;
 pub use workload::*;
-pub use error::*;
 
 // Re-export common utilities
 pub use toadstool_common::*;
@@ -49,7 +49,7 @@ pub fn init() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init()
         .map_err(|e| anyhow::anyhow!("Failed to initialize tracing: {}", e))?;
-    
+
     tracing::info!("ToadStool v{} initialized", VERSION);
     Ok(())
-} 
+}

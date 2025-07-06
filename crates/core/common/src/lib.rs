@@ -3,8 +3,8 @@
 //! This crate provides shared types, utilities, and constants used across
 //! all ToadStool components.
 
-
 use serde::{Deserialize, Serialize};
+use sysinfo::System;
 use uuid::Uuid;
 
 /// Generate a new unique identifier
@@ -30,12 +30,15 @@ pub struct PlatformInfo {
 impl PlatformInfo {
     /// Get current platform information
     pub fn current() -> Self {
+        let mut system = System::new();
+        system.refresh_memory();
+        
         Self {
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
             cpu_cores: num_cpus::get(),
-            total_memory: 0, // TODO: Implement with sysinfo
-            available_memory: 0, // TODO: Implement with sysinfo
+            total_memory: system.total_memory(),
+            available_memory: system.available_memory(),
         }
     }
 }
@@ -64,7 +67,7 @@ pub fn format_bytes(bytes: u64) -> String {
 /// Format duration as human readable string
 pub fn format_duration(duration: std::time::Duration) -> String {
     let total_seconds = duration.as_secs();
-    
+
     if total_seconds < 60 {
         format!("{}s", total_seconds)
     } else if total_seconds < 3600 {
@@ -82,7 +85,7 @@ pub fn format_duration(duration: std::time::Duration) -> String {
 /// Validation trait for types that can be validated
 pub trait Validate {
     type Error;
-    
+
     /// Validate the object
     fn validate(&self) -> Result<(), Self::Error>;
 }
@@ -91,7 +94,7 @@ pub trait Validate {
 pub trait StringExt {
     /// Check if string is empty or contains only whitespace
     fn is_blank(&self) -> bool;
-    
+
     /// Truncate string to maximum length
     fn truncate_to(&self, max_len: usize) -> String;
 }
@@ -100,7 +103,7 @@ impl StringExt for str {
     fn is_blank(&self) -> bool {
         self.trim().is_empty()
     }
-    
+
     fn truncate_to(&self, max_len: usize) -> String {
         if self.len() <= max_len {
             self.to_string()
@@ -114,7 +117,7 @@ impl StringExt for String {
     fn is_blank(&self) -> bool {
         self.as_str().is_blank()
     }
-    
+
     fn truncate_to(&self, max_len: usize) -> String {
         self.as_str().truncate_to(max_len)
     }
@@ -137,7 +140,10 @@ mod tests {
     fn test_format_duration() {
         assert_eq!(format_duration(std::time::Duration::from_secs(30)), "30s");
         assert_eq!(format_duration(std::time::Duration::from_secs(90)), "1m30s");
-        assert_eq!(format_duration(std::time::Duration::from_secs(3661)), "1h1m1s");
+        assert_eq!(
+            format_duration(std::time::Duration::from_secs(3661)),
+            "1h1m1s"
+        );
     }
 
     #[test]
@@ -145,7 +151,7 @@ mod tests {
         assert!("".is_blank());
         assert!("   ".is_blank());
         assert!(!"hello".is_blank());
-        
+
         assert_eq!("hello".truncate_to(10), "hello");
         assert_eq!("hello world".truncate_to(8), "hello...");
     }
@@ -156,4 +162,4 @@ mod tests {
         let id2 = generate_id();
         assert_ne!(id1, id2);
     }
-} 
+}

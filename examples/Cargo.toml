@@ -8,15 +8,27 @@ anyhow = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 env_logger = "0.10"
 tracing = "0.1"
+tracing-subscriber = "0.3"
 num_cpus = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
 
 # Core ToadStool dependencies only
 toadstool = { path = "../crates/core/toadstool" }
+toadstool-distributed = { path = "../crates/distributed" }
 
 # Working examples only - technical debt elimination showcase
 [[bin]]
 name = "complete_system_integration_demo"
 path = "complete_system_integration_demo.rs"
+
+# Universal compute bridge showcase
+[[bin]]
+name = "exotic_platforms_showcase"
+path = "exotic_platforms_showcase.rs"
+
+[[bin]]
+name = "biomeos_substrate_demo"
+path = "biomeos_substrate_demo.rs"
 
 # All other examples temporarily disabled to prevent test failures
 # These examples have API mismatches or missing dependencies that need

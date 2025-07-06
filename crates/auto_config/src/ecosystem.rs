@@ -1,15 +1,17 @@
 //! Ecosystem service discovery for auto-configuration
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 use toadstool::error::ToadStoolResult;
 
 /// Ecosystem service discovery
 pub struct EcosystemDiscoverer {
+    #[allow(dead_code)]
     discovered_services: HashMap<String, ServiceInfo>,
+    #[allow(dead_code)]
     connection_health: HashMap<String, HealthStatus>,
 }
 
@@ -27,20 +29,23 @@ impl EcosystemDiscoverer {
             connection_health: HashMap::new(),
         }
     }
-    
+
     /// Automatically discover all ecosystem services
     pub async fn discover_services(&mut self) -> ToadStoolResult<EcosystemMap> {
         info!("🌐 Discovering ecosystem services...");
-        
+
         let mut ecosystem = EcosystemMap::new();
-        
+
         // 1. Try to discover Songbird (service discovery hub)
         if let Ok(songbird) = self.discover_songbird().await {
             info!("🎼 Found Songbird service discovery hub");
             ecosystem.add_service("songbird".to_string(), songbird);
-            
+
             // 2. Use Songbird to discover other services
-            if let Ok(services) = self.discover_via_songbird(&ecosystem.discovered_services["songbird"]).await {
+            if let Ok(services) = self
+                .discover_via_songbird(&ecosystem.discovered_services["songbird"])
+                .await
+            {
                 for (name, service) in services {
                     ecosystem.add_service(name, service);
                 }
@@ -50,29 +55,31 @@ impl EcosystemDiscoverer {
             // 3. Fallback to direct discovery
             ecosystem.extend(self.discover_direct().await?);
         }
-        
+
         // 4. Test connections and optimize
         ecosystem.test_all_connections().await?;
-        
-        info!("✅ Ecosystem discovery complete: found {} services", 
-              ecosystem.discovered_services.len());
-        
+
+        info!(
+            "✅ Ecosystem discovery complete: found {} services",
+            ecosystem.discovered_services.len()
+        );
+
         Ok(ecosystem)
     }
-    
+
     /// Discover Songbird service discovery hub
     async fn discover_songbird(&self) -> ToadStoolResult<ServiceInfo> {
         info!("🎼 Looking for Songbird service discovery...");
-        
+
         // Try common Songbird locations
         let common_endpoints = vec![
             "http://localhost:8080",
-            "http://songbird:8080", 
+            "http://songbird:8080",
             "http://songbird.local:8080",
             "http://127.0.0.1:8080",
             "http://0.0.0.0:8080",
         ];
-        
+
         for endpoint in common_endpoints {
             debug!("Trying Songbird endpoint: {}", endpoint);
             if let Ok(service) = self.test_songbird_endpoint(endpoint).await {
@@ -80,7 +87,7 @@ impl EcosystemDiscoverer {
                 return Ok(service);
             }
         }
-        
+
         // Try environment variables
         if let Ok(endpoint) = std::env::var("SONGBIRD_ENDPOINT") {
             if let Ok(service) = self.test_songbird_endpoint(&endpoint).await {
@@ -88,17 +95,21 @@ impl EcosystemDiscoverer {
                 return Ok(service);
             }
         }
-        
-        Err(toadstool::error::ToadStoolError::not_found("Songbird service not found"))
+
+        Err(toadstool::error::ToadStoolError::not_found(
+            "Songbird service not found",
+        ))
     }
-    
+
     /// Test a specific Songbird endpoint
     async fn test_songbird_endpoint(&self, endpoint: &str) -> ToadStoolResult<ServiceInfo> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e)))?;
-        
+            .map_err(|e| {
+                toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e))
+            })?;
+
         // Try to get service info from Songbird
         let url = format!("{}/api/v1/info", endpoint);
         match client.get(&url).send().await {
@@ -114,7 +125,7 @@ impl EcosystemDiscoverer {
                         last_seen: chrono::Utc::now(),
                     });
                 }
-            },
+            }
             _ => {
                 // Try a simple health check
                 let health_url = format!("{}/health", endpoint);
@@ -133,19 +144,26 @@ impl EcosystemDiscoverer {
                 }
             }
         }
-        
-        Err(toadstool::error::ToadStoolError::not_found("Songbird not accessible"))
+
+        Err(toadstool::error::ToadStoolError::not_found(
+            "Songbird not accessible",
+        ))
     }
-    
+
     /// Discover services via Songbird
-    async fn discover_via_songbird(&self, songbird: &ServiceInfo) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+    async fn discover_via_songbird(
+        &self,
+        songbird: &ServiceInfo,
+    ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         info!("🔍 Discovering services via Songbird...");
-        
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
-            .map_err(|e| toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e)))?;
-        
+            .map_err(|e| {
+                toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e))
+            })?;
+
         let url = format!("{}/api/v1/services", songbird.endpoint);
         match client.get(&url).send().await {
             Ok(response) if response.status().is_success() => {
@@ -166,58 +184,62 @@ impl EcosystemDiscoverer {
                     info!("🌐 Discovered {} services via Songbird", discovered.len());
                     return Ok(discovered);
                 }
-            },
+            }
             Ok(response) => {
                 warn!("Songbird services endpoint returned: {}", response.status());
-            },
+            }
             Err(e) => {
                 warn!("Failed to query Songbird services: {}", e);
             }
         }
-        
+
         Ok(HashMap::new())
     }
-    
+
     /// Direct service discovery (without Songbird)
     async fn discover_direct(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         info!("🔍 Attempting direct service discovery...");
-        
+
         let mut services = HashMap::new();
-        
+
         // Try to discover NestGate (storage service)
         if let Ok(nestgate) = self.discover_nestgate().await {
             services.insert("nestgate".to_string(), nestgate);
         }
-        
+
         info!("📡 Direct discovery found {} services", services.len());
         Ok(services)
     }
-    
+
     /// Discover NestGate storage service
     async fn discover_nestgate(&self) -> ToadStoolResult<ServiceInfo> {
         let common_endpoints = vec![
-            "http://localhost:9000",  // MinIO default
+            "http://localhost:9000", // MinIO default
             "http://nestgate:9000",
             "http://nestgate.local:9000",
         ];
-        
+
         for endpoint in common_endpoints {
             if let Ok(service) = self.test_nestgate_endpoint(endpoint).await {
                 info!("🏠 Found NestGate at: {}", endpoint);
                 return Ok(service);
             }
         }
-        
-        Err(toadstool::error::ToadStoolError::not_found("NestGate service not found"))
+
+        Err(toadstool::error::ToadStoolError::not_found(
+            "NestGate service not found",
+        ))
     }
-    
+
     /// Test a specific NestGate endpoint
     async fn test_nestgate_endpoint(&self, endpoint: &str) -> ToadStoolResult<ServiceInfo> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e)))?;
-        
+            .map_err(|e| {
+                toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e))
+            })?;
+
         // Try MinIO health check
         let url = format!("{}/minio/health/live", endpoint);
         match client.get(&url).send().await {
@@ -231,11 +253,13 @@ impl EcosystemDiscoverer {
                     health_status: HealthStatus::Healthy,
                     last_seen: chrono::Utc::now(),
                 });
-            },
+            }
             _ => {}
         }
-        
-        Err(toadstool::error::ToadStoolError::not_found("NestGate not accessible"))
+
+        Err(toadstool::error::ToadStoolError::not_found(
+            "NestGate not accessible",
+        ))
     }
 }
 
@@ -257,26 +281,26 @@ impl EcosystemMap {
             discovered_services: HashMap::new(),
         }
     }
-    
+
     pub fn add_service(&mut self, name: String, service: ServiceInfo) {
         self.discovered_services.insert(name, service);
     }
-    
+
     pub fn extend(&mut self, services: HashMap<String, ServiceInfo>) {
         self.discovered_services.extend(services);
     }
-    
+
     pub fn get_service(&self, name: &str) -> Option<&ServiceInfo> {
         self.discovered_services.get(name)
     }
-    
+
     /// Test all service connections and update health status
     pub async fn test_all_connections(&mut self) -> ToadStoolResult<()> {
         info!("🔍 Testing connections to all discovered services...");
-        
+
         // Collect service names to avoid borrow checker issues
         let service_names: Vec<String> = self.discovered_services.keys().cloned().collect();
-        
+
         for name in service_names {
             if let Some(service) = self.discovered_services.get(&name).cloned() {
                 match self.test_service_connection(&service).await {
@@ -285,7 +309,7 @@ impl EcosystemMap {
                             service_mut.health_status = health;
                             debug!("Service {} is {:?}", name, health);
                         }
-                    },
+                    }
                     Err(e) => {
                         if let Some(service_mut) = self.discovered_services.get_mut(&name) {
                             service_mut.health_status = HealthStatus::Unhealthy;
@@ -295,21 +319,26 @@ impl EcosystemMap {
                 }
             }
         }
-        
+
         info!("✅ Service health checks complete");
         Ok(())
     }
-    
+
     /// Test connection to a specific service
-    async fn test_service_connection(&self, service: &ServiceInfo) -> ToadStoolResult<HealthStatus> {
+    async fn test_service_connection(
+        &self,
+        service: &ServiceInfo,
+    ) -> ToadStoolResult<HealthStatus> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e)))?;
-        
+            .map_err(|e| {
+                toadstool::error::ToadStoolError::network(format!("HTTP client error: {}", e))
+            })?;
+
         // Try common health check endpoints
         let health_endpoints = vec!["/health", "/api/health", "/status", "/ping"];
-        
+
         for path in health_endpoints {
             let url = format!("{}{}", service.endpoint, path);
             if let Ok(response) = client.get(&url).send().await {
@@ -318,7 +347,7 @@ impl EcosystemMap {
                 }
             }
         }
-        
+
         Ok(HealthStatus::Unhealthy)
     }
 }
@@ -411,20 +440,29 @@ struct SongbirdServiceInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_ecosystem_discovery() {
-        let mut discoverer = EcosystemDiscoverer::new();
-        let ecosystem = discoverer.discover_services().await.unwrap();
+        let mut ecosystem = EcosystemDiscoverer::new();
         
-        // Should not fail even if no services are found
-        assert!(ecosystem.discovered_services.len() >= 0);
+        // Services discovery
+        let _services = ecosystem.discover_services().await.unwrap();
+        // Test passes if no panics occur
     }
-    
+
     #[test]
     fn test_service_type_from_string() {
-        assert!(matches!(ServiceType::from_string("storage"), ServiceType::Storage));
-        assert!(matches!(ServiceType::from_string("compute"), ServiceType::Compute));
-        assert!(matches!(ServiceType::from_string("unknown"), ServiceType::Unknown));
+        assert!(matches!(
+            ServiceType::from_string("storage"),
+            ServiceType::Storage
+        ));
+        assert!(matches!(
+            ServiceType::from_string("compute"),
+            ServiceType::Compute
+        ));
+        assert!(matches!(
+            ServiceType::from_string("unknown"),
+            ServiceType::Unknown
+        ));
     }
-} 
+}

@@ -3,9 +3,9 @@
 //! This module provides comprehensive detection capabilities for various compute substrates
 //! including traditional platforms, container runtimes, language environments, and more.
 
-use std::process::Command;
-use std::fs;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::process::Command;
 use tracing::info;
 
 use toadstool::ToadStoolResult;
@@ -27,13 +27,13 @@ impl SubstrateDetector {
     /// Detect all available substrates on the current system
     pub async fn detect_all(&self) -> ToadStoolResult<SubstrateCapabilities> {
         info!("Starting comprehensive substrate detection");
-        
+
         let traditional = self.detect_traditional_platforms().await?;
         let containers = self.detect_container_platforms().await?;
         let languages = self.detect_language_runtimes().await?;
         let gpu = self.detect_gpu_platforms().await?;
         let specialized = self.detect_specialized_platforms().await?;
-        
+
         // NEW: Actually call the exotic platform detection methods
         let biological = self.detect_biological_platforms().await?;
         let neuromorphic = self.detect_neuromorphic_platforms().await?;
@@ -43,13 +43,18 @@ impl SubstrateDetector {
 
         // Combine specialized and exotic platforms
         let mut all_specialized = specialized;
-        all_specialized.extend(biological.into_iter().map(|p| match p { 
-            PlatformType::BiologicalComputing { platform, simulation } => 
-                PlatformType::BiologicalComputing { platform, simulation },
-            _ => PlatformType::BiologicalComputing { 
+        all_specialized.extend(biological.into_iter().map(|p| match p {
+            PlatformType::BiologicalComputing {
+                platform,
+                simulation,
+            } => PlatformType::BiologicalComputing {
+                platform,
+                simulation,
+            },
+            _ => PlatformType::BiologicalComputing {
                 platform: "Unknown".to_string(),
-                simulation: true
-            }
+                simulation: true,
+            },
         }));
         all_specialized.extend(neuromorphic.into_iter().map(|p| p));
         all_specialized.extend(quantum.into_iter().map(|p| p));
@@ -71,30 +76,30 @@ impl SubstrateDetector {
         // Detect operating system
         let os = std::env::consts::OS;
         let arch = std::env::consts::ARCH;
-        
+
         match os {
             "linux" => {
                 if let Ok(distro) = self.detect_linux_distribution().await {
-                    platforms.push(PlatformType::Linux { 
+                    platforms.push(PlatformType::Linux {
                         distribution: distro,
                         architecture: arch.to_string(),
                     });
                 }
             }
             "windows" => {
-                platforms.push(PlatformType::Windows { 
+                platforms.push(PlatformType::Windows {
                     version: "Unknown".to_string(),
                     architecture: arch.to_string(),
                 });
             }
             "macos" => {
-                platforms.push(PlatformType::MacOS { 
+                platforms.push(PlatformType::MacOS {
                     version: "Unknown".to_string(),
                     architecture: arch.to_string(),
                 });
             }
             _ => {
-                platforms.push(PlatformType::Other { 
+                platforms.push(PlatformType::Other {
                     os: os.to_string(),
                     architecture: arch.to_string(),
                 });
@@ -154,7 +159,7 @@ impl SubstrateDetector {
 
         for (command, name) in &runtimes {
             if self.command_exists(command).await {
-                platforms.push(PlatformType::Language { 
+                platforms.push(PlatformType::Language {
                     name: name.to_string(),
                     command: command.to_string(),
                 });
@@ -169,7 +174,7 @@ impl SubstrateDetector {
 
         // Check for NVIDIA GPU support
         if self.command_exists("nvidia-smi").await {
-            platforms.push(PlatformType::GPU { 
+            platforms.push(PlatformType::GPU {
                 vendor: "NVIDIA".to_string(),
                 framework: "CUDA".to_string(),
             });
@@ -177,7 +182,7 @@ impl SubstrateDetector {
 
         // Check for AMD GPU support
         if self.command_exists("rocm-smi").await {
-            platforms.push(PlatformType::GPU { 
+            platforms.push(PlatformType::GPU {
                 vendor: "AMD".to_string(),
                 framework: "ROCm".to_string(),
             });
@@ -198,7 +203,7 @@ impl SubstrateDetector {
 
         for (command, name) in &wasm_runtimes {
             if self.command_exists(command).await {
-                platforms.push(PlatformType::WebAssembly { 
+                platforms.push(PlatformType::WebAssembly {
                     runtime: name.to_string(),
                 });
             }
@@ -215,7 +220,7 @@ impl SubstrateDetector {
     /// Detect quantum computing platforms
     pub async fn detect_quantum_platforms(&self) -> ToadStoolResult<Vec<PlatformType>> {
         let mut platforms = Vec::new();
-        
+
         // Check for quantum computing frameworks and simulators
         let quantum_frameworks = [
             ("qiskit", "IBM Qiskit"),
@@ -224,16 +229,16 @@ impl SubstrateDetector {
             ("braket", "Amazon Braket"),
             ("pennylane", "PennyLane"),
         ];
-        
+
         for (command, name) in &quantum_frameworks {
             if self.command_exists(command).await || self.python_package_exists(command).await {
-                platforms.push(PlatformType::Quantum { 
+                platforms.push(PlatformType::Quantum {
                     framework: name.to_string(),
                     simulator: true,
                 });
             }
         }
-        
+
         // Check for actual quantum hardware access
         if std::env::var("IBM_QUANTUM_TOKEN").is_ok() {
             platforms.push(PlatformType::Quantum {
@@ -241,21 +246,21 @@ impl SubstrateDetector {
                 simulator: false,
             });
         }
-        
+
         if std::env::var("RIGETTI_QCS_TOKEN").is_ok() {
             platforms.push(PlatformType::Quantum {
                 framework: "Rigetti QCS".to_string(),
                 simulator: false,
             });
         }
-        
+
         Ok(platforms)
     }
 
     /// Detect edge computing platforms
     pub async fn detect_edge_platforms(&self) -> ToadStoolResult<Vec<PlatformType>> {
         let mut platforms = Vec::new();
-        
+
         // Check for common edge/IoT indicators
         if let Ok(model) = fs::read_to_string("/proc/device-tree/model") {
             if model.contains("Raspberry Pi") {
@@ -270,7 +275,7 @@ impl SubstrateDetector {
                 });
             }
         }
-        
+
         // Check for microcontroller development tools
         let mcu_tools = [
             ("arduino-cli", "Arduino"),
@@ -278,7 +283,7 @@ impl SubstrateDetector {
             ("esptool", "ESP32/ESP8266"),
             ("openocd", "ARM Development"),
         ];
-        
+
         for (tool, platform) in &mcu_tools {
             if self.command_exists(tool).await {
                 platforms.push(PlatformType::MCUDevelopment {
@@ -287,14 +292,14 @@ impl SubstrateDetector {
                 });
             }
         }
-        
+
         Ok(platforms)
     }
 
     /// Detect biological computing platforms
     pub async fn detect_biological_platforms(&self) -> ToadStoolResult<Vec<PlatformType>> {
         let mut platforms = Vec::new();
-        
+
         // Check for bioinformatics tools (indicates potential biological computing capability)
         let bio_tools = [
             ("blast", "BLAST Sequence Analysis"),
@@ -304,7 +309,7 @@ impl SubstrateDetector {
             ("gromacs", "GROMACS Molecular Simulation"),
             ("amber", "AMBER MD Suite"),
         ];
-        
+
         for (tool, description) in &bio_tools {
             if self.command_exists(tool).await || self.python_package_exists(tool).await {
                 platforms.push(PlatformType::BiologicalComputing {
@@ -313,7 +318,7 @@ impl SubstrateDetector {
                 });
             }
         }
-        
+
         // Check for lab automation/control software
         if self.command_exists("opentrons").await {
             platforms.push(PlatformType::BiologicalComputing {
@@ -321,7 +326,7 @@ impl SubstrateDetector {
                 simulation: false,
             });
         }
-        
+
         // Check for DNA synthesis environment variables or config files
         if std::env::var("TWIST_BIOSCIENCE_API_KEY").is_ok() {
             platforms.push(PlatformType::BiologicalComputing {
@@ -329,14 +334,14 @@ impl SubstrateDetector {
                 simulation: false,
             });
         }
-        
+
         Ok(platforms)
     }
 
     /// Detect neuromorphic computing platforms
     pub async fn detect_neuromorphic_platforms(&self) -> ToadStoolResult<Vec<PlatformType>> {
         let mut platforms = Vec::new();
-        
+
         // Check for neuromorphic simulation frameworks
         let neuro_frameworks = [
             ("brian2", "Brian2 Spiking Network Simulator"),
@@ -346,7 +351,7 @@ impl SubstrateDetector {
             ("spynnaker", "SpiNNaker Toolkit"),
             ("loihi", "Intel Loihi SDK"),
         ];
-        
+
         for (framework, description) in &neuro_frameworks {
             if self.python_package_exists(framework).await {
                 platforms.push(PlatformType::NeuromorphicComputing {
@@ -355,7 +360,7 @@ impl SubstrateDetector {
                 });
             }
         }
-        
+
         // Check for actual neuromorphic hardware
         if let Ok(devices) = fs::read_dir("/dev") {
             let mut devices = devices;
@@ -370,14 +375,14 @@ impl SubstrateDetector {
                 }
             }
         }
-        
+
         // Check for FPGA tools (often used for neuromorphic implementations)
         let fpga_tools = [
             ("vivado", "Xilinx Vivado"),
             ("quartus", "Intel Quartus Prime"),
             ("diamond", "Lattice Diamond"),
         ];
-        
+
         for (tool, description) in &fpga_tools {
             if self.command_exists(tool).await {
                 platforms.push(PlatformType::NeuromorphicComputing {
@@ -386,7 +391,7 @@ impl SubstrateDetector {
                 });
             }
         }
-        
+
         Ok(platforms)
     }
 
@@ -419,33 +424,33 @@ impl SubstrateDetector {
 /// Platform type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PlatformType {
-    Linux { 
+    Linux {
         distribution: String,
         architecture: String,
     },
-    Windows { 
+    Windows {
         version: String,
         architecture: String,
     },
-    MacOS { 
+    MacOS {
         version: String,
         architecture: String,
     },
     Docker,
     Podman,
     Containerd,
-    Language { 
+    Language {
         name: String,
         command: String,
     },
-    GPU { 
+    GPU {
         vendor: String,
         framework: String,
     },
-    WebAssembly { 
+    WebAssembly {
         runtime: String,
     },
-    Other { 
+    Other {
         os: String,
         architecture: String,
     },
@@ -484,12 +489,12 @@ pub struct SubstrateCapabilities {
 
 impl SubstrateCapabilities {
     pub fn total_platforms(&self) -> usize {
-        self.traditional_platforms.len() +
-        self.container_platforms.len() +
-        self.language_runtimes.len() +
-        self.gpu_platforms.len() +
-        self.specialized_platforms.len() +
-        self.experimental_platforms.len()
+        self.traditional_platforms.len()
+            + self.container_platforms.len()
+            + self.language_runtimes.len()
+            + self.gpu_platforms.len()
+            + self.specialized_platforms.len()
+            + self.experimental_platforms.len()
     }
 
     pub fn has_containers(&self) -> bool {
@@ -501,6 +506,8 @@ impl SubstrateCapabilities {
     }
 
     pub fn has_wasm(&self) -> bool {
-        self.specialized_platforms.iter().any(|p| matches!(p, PlatformType::WebAssembly { .. }))
+        self.specialized_platforms
+            .iter()
+            .any(|p| matches!(p, PlatformType::WebAssembly { .. }))
     }
-} 
+}

@@ -19,7 +19,6 @@
 //! This module provides domain-specific assertion helpers that make
 //! test failures more informative and tests more readable.
 
-
 use toadstool::{
     execution::{ExecutionResponse, ExecutionStatus},
     resources::RuntimeMetrics,
@@ -32,11 +31,11 @@ pub fn assert_execution_success(response: &ExecutionResponse) {
         "Expected successful execution, got: {:?}",
         response.status
     );
-    
+
     // Check that we have some output (even if empty)
     assert!(
-        response.output.data.len() >= 0, // Always true, but documents expectation
-        "Expected output data to be present"
+        response.output.data.len() < usize::MAX,
+        "Execution output data size should be reasonable"
     );
 }
 
@@ -47,7 +46,7 @@ pub fn assert_execution_failure(response: &ExecutionResponse) {
         "Expected failed execution, got: {:?}",
         response.status
     );
-    
+
     // Extract error message from status
     if let ExecutionStatus::Failed { error } = &response.status {
         assert!(!error.is_empty(), "Expected non-empty error message");
@@ -75,7 +74,10 @@ pub fn assert_execution_cancelled(response: &ExecutionResponse) {
 /// Assert that an execution response indicates resource limit exceeded
 pub fn assert_execution_resource_limit_exceeded(response: &ExecutionResponse) {
     assert!(
-        matches!(response.status, ExecutionStatus::ResourceLimitExceeded { .. }),
+        matches!(
+            response.status,
+            ExecutionStatus::ResourceLimitExceeded { .. }
+        ),
         "Expected resource limit exceeded, got: {:?}",
         response.status
     );
@@ -93,7 +95,11 @@ pub fn assert_execution_security_violation(response: &ExecutionResponse) {
 /// Assert that execution output contains expected data
 pub fn assert_output_contains(response: &ExecutionResponse, expected: &[u8]) {
     assert!(
-        response.output.data.windows(expected.len()).any(|window| window == expected),
+        response
+            .output
+            .data
+            .windows(expected.len())
+            .any(|window| window == expected),
         "Expected output to contain {:?}, got: {:?}",
         expected,
         response.output.data
@@ -156,32 +162,70 @@ pub fn assert_duration_within(response: &ExecutionResponse, min_ms: u64, max_ms:
     assert!(
         duration_ms >= min_ms && duration_ms <= max_ms,
         "Expected duration between {}ms and {}ms, got {}ms",
-        min_ms, max_ms, duration_ms
+        min_ms,
+        max_ms,
+        duration_ms
     );
 }
 
 /// Assert that runtime metrics are present and reasonable
 pub fn assert_metrics_present(response: &ExecutionResponse) {
     let metrics = &response.metrics;
-    
+
     // CPU metrics should be reasonable
     assert!(
         metrics.cpu.usage_percent >= 0.0 && metrics.cpu.usage_percent <= 100.0,
         "CPU usage should be between 0-100%, got {}%",
         metrics.cpu.usage_percent
     );
-    
+
     // Memory metrics should be positive
     assert!(
         metrics.memory.usage_bytes > 0,
         "Memory usage should be positive, got {} bytes",
         metrics.memory.usage_bytes
     );
-    
+
     // Timing should be consistent
     assert!(
         metrics.timing.duration <= response.duration,
         "Timing duration should not exceed response duration"
+    );
+
+    // Network metrics validation - basic sanity checks only
+    assert!(
+        metrics.network.bytes_received <= u64::MAX,
+        "Network bytes received should not overflow"
+    );
+    assert!(
+        metrics.network.bytes_transmitted <= u64::MAX,
+        "Network bytes transmitted should not overflow"
+    );
+    assert!(
+        metrics.network.packets_received <= u64::MAX,
+        "Network packets received should not overflow"
+    );
+    assert!(
+        metrics.network.packets_transmitted <= u64::MAX,
+        "Network packets transmitted should not overflow"
+    );
+
+    // Storage metrics validation - basic sanity checks only
+    assert!(
+        metrics.storage.bytes_read <= u64::MAX,
+        "Storage bytes read should not overflow"
+    );
+    assert!(
+        metrics.storage.bytes_written <= u64::MAX,
+        "Storage bytes written should not overflow"
+    );
+    assert!(
+        metrics.storage.read_ops <= u64::MAX,
+        "Storage read operations should not overflow"
+    );
+    assert!(
+        metrics.storage.write_ops <= u64::MAX,
+        "Storage write operations should not overflow"
     );
 }
 
@@ -217,12 +261,12 @@ pub fn assert_cpu_metrics_reasonable(metrics: &RuntimeMetrics) {
         "CPU usage should be 0-100%, got {}%",
         metrics.cpu.usage_percent
     );
-    
+
     assert!(
         metrics.cpu.peak_usage_percent >= metrics.cpu.usage_percent,
         "Peak CPU usage should be >= current usage"
     );
-    
+
     assert!(
         metrics.cpu.cpu_time_ms > 0,
         "CPU time should be positive, got {}ms",
@@ -237,12 +281,12 @@ pub fn assert_memory_metrics_reasonable(metrics: &RuntimeMetrics) {
         "Memory usage should be positive, got {} bytes",
         metrics.memory.usage_bytes
     );
-    
+
     assert!(
         metrics.memory.peak_usage_bytes >= metrics.memory.usage_bytes,
         "Peak memory usage should be >= current usage"
     );
-    
+
     assert!(
         metrics.memory.allocation_count >= metrics.memory.deallocation_count,
         "Allocations should be >= deallocations during execution"
@@ -255,17 +299,17 @@ pub fn assert_network_metrics_reasonable(metrics: &RuntimeMetrics) {
         metrics.network.bytes_received >= 0,
         "Bytes received should be non-negative"
     );
-    
+
     assert!(
         metrics.network.bytes_transmitted >= 0,
         "Bytes transmitted should be non-negative"
     );
-    
+
     assert!(
         metrics.network.packets_received >= 0,
         "Packets received should be non-negative"
     );
-    
+
     assert!(
         metrics.network.packets_transmitted >= 0,
         "Packets transmitted should be non-negative"
@@ -278,17 +322,17 @@ pub fn assert_storage_metrics_reasonable(metrics: &RuntimeMetrics) {
         metrics.storage.bytes_read >= 0,
         "Bytes read should be non-negative"
     );
-    
+
     assert!(
         metrics.storage.bytes_written >= 0,
         "Bytes written should be non-negative"
     );
-    
+
     assert!(
         metrics.storage.read_ops >= 0,
         "Read operations should be non-negative"
     );
-    
+
     assert!(
         metrics.storage.write_ops >= 0,
         "Write operations should be non-negative"
@@ -300,84 +344,75 @@ mod tests {
     use super::*;
     use crate::builders::ExecutionResponseBuilder;
     use crate::fixtures::create_test_runtime_metrics;
-    use uuid::Uuid;
     use std::time::Duration;
-    
+    use uuid::Uuid;
+
     #[test]
     fn test_assert_execution_success() {
-        let response = ExecutionResponseBuilder::new()
-            .success()
-            .build();
-        
+        let response = ExecutionResponseBuilder::new().success().build();
+
         assert_execution_success(&response);
     }
-    
+
     #[test]
     fn test_assert_execution_failure() {
-        let response = ExecutionResponseBuilder::new()
-            .failed("Test error")
-            .build();
-        
+        let response = ExecutionResponseBuilder::new().failed("Test error").build();
+
         assert_execution_failure(&response);
     }
-    
+
     #[test]
     fn test_assert_execution_timeout() {
-        let response = ExecutionResponseBuilder::new()
-            .timed_out()
-            .build();
-        
+        let response = ExecutionResponseBuilder::new().timed_out().build();
+
         assert_execution_timeout(&response);
     }
-    
+
     #[test]
     fn test_assert_duration_within() {
         let response = ExecutionResponseBuilder::new()
             .duration(Duration::from_millis(500))
             .build();
-        
+
         assert_duration_within(&response, 400, 600);
     }
-    
+
     #[test]
     fn test_assert_metrics_present() {
         let response = ExecutionResponseBuilder::new()
             .metrics(create_test_runtime_metrics())
             .build();
-        
+
         assert_metrics_present(&response);
     }
-    
+
     #[test]
     fn test_assert_execution_id_matches() {
         let id = Uuid::new_v4();
-        let response = ExecutionResponseBuilder::new()
-            .execution_id(id)
-            .build();
-        
+        let response = ExecutionResponseBuilder::new().execution_id(id).build();
+
         assert_execution_id_matches(&response, &id);
     }
-    
+
     #[test]
     fn test_assert_warnings() {
         let response_with_warnings = ExecutionResponseBuilder::new()
             .warning("Test warning")
             .build();
-        
-        let response_without_warnings = ExecutionResponseBuilder::new()
-            .build();
-        
+
+        let response_without_warnings = ExecutionResponseBuilder::new().build();
+
         assert_has_warnings(&response_with_warnings);
         assert_no_warnings(&response_without_warnings);
     }
-    
+
     #[test]
     fn test_metric_assertions() {
         let metrics = create_test_runtime_metrics();
-        
+
         assert_cpu_metrics_reasonable(&metrics);
         assert_memory_metrics_reasonable(&metrics);
         assert_network_metrics_reasonable(&metrics);
         assert_storage_metrics_reasonable(&metrics);
     }
-} 
+}

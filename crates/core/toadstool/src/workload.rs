@@ -117,7 +117,11 @@ impl WorkloadSpec {
             Self::Gpu { kernel_source, .. } => {
                 kernel_source.validate()?;
             }
-            Self::Script { source, interpreter, .. } => {
+            Self::Script {
+                source,
+                interpreter,
+                ..
+            } => {
                 if interpreter.is_empty() {
                     return Err(crate::error::ToadStoolError::validation(
                         "Script interpreter cannot be empty",
@@ -186,7 +190,7 @@ pub enum WasmModuleSource {
     /// Module from raw bytes
     Bytes { data: Vec<u8> },
     /// Module from registry
-    Registry { 
+    Registry {
         registry: String,
         name: String,
         version: String,
@@ -399,4 +403,4 @@ impl ScriptSource {
         }
         Ok(())
     }
-} 
+}

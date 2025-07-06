@@ -27,7 +27,7 @@ thiserror = "1.0"
 
 # Logging and tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "chrono"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -55,13 +55,17 @@ console = "0.15"
 indicatif = "0.17"
 colored = "2.0"
 term_size = "0.3"
+atty = "0.2"
 
 # Process management
 which = "4.4"
 
 # Cryptography (for BearDog integration)
 ring = "0.17"
+base64 = "0.21"
 rustls = { version = "0.21", default-features = false, features = ["logging", "tls12"] }
+sha2 = "0.10"
+hex = "0.4"
 
 # Template engine
 handlebars = "4.5"
@@ -71,6 +75,9 @@ figment = { version = "0.10", features = ["toml", "yaml", "env"] }
 
 # Metrics and monitoring
 prometheus = { version = "0.13", default-features = false }
+
+# HTTP client
+url = "2.5"
 
 [dev-dependencies]
 tempfile = "3.8"

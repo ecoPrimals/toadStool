@@ -24,12 +24,11 @@ pub use resource_monitors::MockResourceMonitor;
 
 // Simple stubs for other mocks that we'll implement properly later
 pub mod stubs {
-    
-    
+
     /// Simple stub for testing configuration functionality
     #[derive(Debug, Clone)]
     pub struct MockConfigLoader;
-    
+
     impl Default for MockConfigLoader {
         fn default() -> Self {
             Self::new()
@@ -41,11 +40,11 @@ pub mod stubs {
             Self
         }
     }
-    
+
     /// Simple stub for testing security contexts
     #[derive(Debug, Clone)]
     pub struct MockSecurityContext;
-    
+
     impl Default for MockSecurityContext {
         fn default() -> Self {
             Self::new()
@@ -57,11 +56,11 @@ pub mod stubs {
             Self
         }
     }
-    
+
     /// Simple stub for testing workload specifications
     #[derive(Debug, Clone)]
     pub struct MockWorkloadSpec;
-    
+
     impl Default for MockWorkloadSpec {
         fn default() -> Self {
             Self::new()
@@ -73,4 +72,4 @@ pub mod stubs {
             Self
         }
     }
-} 
+}

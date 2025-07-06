@@ -10,10 +10,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info};
 
 use crate::error::{ToadStoolError, ToadStoolResult};
-use crate::execution::{
-    ExecutionRequest, ExecutionResponse,
-    RuntimeEngine, RuntimeType,
-};
+use crate::execution::{ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType};
 use crate::resources::ResourceMonitor;
 
 /// Runtime orchestrator that manages multiple runtime engines
@@ -23,7 +20,8 @@ pub struct RuntimeOrchestrator {
     engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
     /// Runtime selection strategy
     selection_strategy: RuntimeSelectionStrategy,
-    /// Resource monitor
+    /// Resource monitor (used for capacity checking)
+    #[allow(dead_code)]
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
 }
 
@@ -44,7 +42,7 @@ impl RuntimeOrchestrator {
         engine: Box<dyn RuntimeEngine>,
     ) -> ToadStoolResult<()> {
         info!("Registering runtime engine: {:?}", runtime_type);
-        
+
         let mut engines = self.engines.write().await;
         engines.insert(runtime_type, engine);
         info!("Successfully registered runtime engine");
@@ -103,7 +101,9 @@ impl RuntimeOrchestrator {
         }
 
         // Use selection strategy to choose runtime
-        self.selection_strategy.select_runtime(request, &self.engines).await
+        self.selection_strategy
+            .select_runtime(request, &self.engines)
+            .await
     }
 }
 
@@ -126,13 +126,13 @@ impl RuntimeSelectionStrategy {
             Self::FirstAvailable => {
                 let engines = engines.read().await;
                 let workload_type = request.workload.workload_type();
-                
+
                 for (runtime_type, engine) in engines.iter() {
                     if engine.supports_workload(&workload_type) {
                         return Ok(runtime_type.clone());
                     }
                 }
-                
+
                 Err(ToadStoolError::not_found(format!(
                     "No runtime available for workload type: {:?}",
                     workload_type
@@ -141,7 +141,7 @@ impl RuntimeSelectionStrategy {
             Self::PreferenceList(preferences) => {
                 let engines = engines.read().await;
                 let workload_type = request.workload.workload_type();
-                
+
                 for preferred in preferences {
                     if let Some(engine) = engines.get(preferred) {
                         if engine.supports_workload(&workload_type) {
@@ -149,14 +149,14 @@ impl RuntimeSelectionStrategy {
                         }
                     }
                 }
-                
+
                 // Fallback to any available runtime
                 for (runtime_type, engine) in engines.iter() {
                     if engine.supports_workload(&workload_type) {
                         return Ok(runtime_type.clone());
                     }
                 }
-                
+
                 Err(ToadStoolError::not_found(format!(
                     "No runtime available for workload type: {:?}",
                     workload_type
@@ -164,4 +164,4 @@ impl RuntimeSelectionStrategy {
             }
         }
     }
-} 
+}

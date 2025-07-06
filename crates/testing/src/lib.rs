@@ -25,27 +25,27 @@
 //! - Performance testing helpers
 //! - Property-based testing support
 
-pub mod mocks;
-pub mod fixtures;
-pub mod builders;
 pub mod assertions;
+pub mod builders;
+pub mod fixtures;
 pub mod integration;
+pub mod mocks;
 pub mod performance;
 pub mod properties;
 
 // Re-export commonly used testing utilities
-pub use mocks::*;
-pub use fixtures::*;
-pub use builders::*;
 pub use assertions::*;
+pub use builders::*;
+pub use fixtures::*;
+pub use mocks::*;
 
 // Re-export external testing dependencies for convenience
-pub use tokio_test;
-pub use proptest;
 pub use fake;
-pub use tempfile;
+pub use proptest;
 pub use serde_json;
 pub use serde_yaml;
+pub use tempfile;
+pub use tokio_test;
 
 /// Common test result type
 pub type TestResult<T = ()> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -53,27 +53,25 @@ pub type TestResult<T = ()> = Result<T, Box<dyn std::error::Error + Send + Sync>
 /// Test configuration constants
 pub mod constants {
     use std::time::Duration;
-    
+
     /// Default timeout for async tests
     pub const DEFAULT_TEST_TIMEOUT: Duration = Duration::from_secs(30);
-    
+
     /// Short timeout for unit tests
     pub const UNIT_TEST_TIMEOUT: Duration = Duration::from_secs(5);
-    
+
     /// Long timeout for integration tests
     pub const INTEGRATION_TEST_TIMEOUT: Duration = Duration::from_secs(120);
-    
+
     /// Default test data size
     pub const DEFAULT_TEST_DATA_SIZE: usize = 1024;
-    
+
     /// Maximum test iterations for property tests
     pub const MAX_PROPERTY_TEST_CASES: u32 = 1000;
 }
 
 /// Initialize test environment with proper logging and tracing
 pub fn init_test_env() {
-    
-    
     // Initialize tracing for tests if not already done
     let _ = tracing_subscriber::fmt()
         .with_test_writer()
@@ -108,4 +106,4 @@ macro_rules! property_test {
             proptest!($strategy, $test);
         }
     };
-} 
+}

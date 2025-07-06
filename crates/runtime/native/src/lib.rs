@@ -12,17 +12,18 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use toadstool::{
-    execution::{
-        ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities, RuntimeConfig,
-        RuntimeEngine, RuntimeType, WorkloadType, ExecutionOutput,
-    },
     error::{ToadStoolError, ToadStoolResult},
+    execution::{
+        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
+        RuntimeConfig, RuntimeEngine, RuntimeType, WorkloadType,
+    },
     resources::{ResourceMonitor, RuntimeMetrics},
     security::{IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
 };
 
 #[cfg(unix)]
+#[allow(unused_imports)]
 use std::os::unix::process::CommandExt;
 
 /// Native runtime engine for executing native processes
@@ -35,6 +36,7 @@ pub struct NativeRuntimeEngine {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct ProcessHandle {
     child: Option<Child>,
     start_time: Instant,
@@ -89,8 +91,9 @@ impl NativeRuntimeEngine {
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
-                    let metadata = std::fs::metadata(path)
-                        .map_err(|e| ToadStoolError::io(format!("Failed to read metadata: {}", e)))?;
+                    let metadata = std::fs::metadata(path).map_err(|e| {
+                        ToadStoolError::io(format!("Failed to read metadata: {}", e))
+                    })?;
                     let permissions = metadata.permissions();
                     if permissions.mode() & 0o111 == 0 {
                         return Err(ToadStoolError::permission_denied(format!(
@@ -102,12 +105,12 @@ impl NativeRuntimeEngine {
 
                 Ok(path.clone())
             }
-            ExecutableSource::Url { url: _ } => {
-                Err(ToadStoolError::not_supported("URL-based executables not yet supported"))
-            }
-            ExecutableSource::Bytes { data: _ } => {
-                Err(ToadStoolError::not_supported("Byte-based executables not yet supported"))
-            }
+            ExecutableSource::Url { url: _ } => Err(ToadStoolError::not_supported(
+                "URL-based executables not yet supported",
+            )),
+            ExecutableSource::Bytes { data: _ } => Err(ToadStoolError::not_supported(
+                "Byte-based executables not yet supported",
+            )),
         }
     }
 
@@ -124,7 +127,7 @@ impl NativeRuntimeEngine {
             IsolationLevel::Basic => {
                 debug!("Applying basic isolation");
                 command.current_dir("/tmp");
-                
+
                 #[cfg(unix)]
                 {
                     command.process_group(0);
@@ -133,7 +136,7 @@ impl NativeRuntimeEngine {
             IsolationLevel::Standard => {
                 debug!("Applying standard isolation");
                 command.current_dir("/tmp");
-                
+
                 #[cfg(unix)]
                 {
                     command.process_group(0);
@@ -148,12 +151,12 @@ impl NativeRuntimeEngine {
             IsolationLevel::Enhanced => {
                 debug!("Applying enhanced isolation");
                 command.current_dir("/tmp");
-                
+
                 #[cfg(unix)]
                 {
                     command.process_group(0);
                 }
-                
+
                 #[cfg(target_os = "linux")]
                 {
                     info!("Enhanced isolation on Linux - implementing namespace isolation");
@@ -161,17 +164,17 @@ impl NativeRuntimeEngine {
             }
             IsolationLevel::Maximum => {
                 debug!("Applying maximum isolation");
-                
+
                 #[cfg(unix)]
                 {
                     command.process_group(0);
                 }
-                
+
                 #[cfg(target_os = "linux")]
                 {
                     info!("Maximum isolation - would use container-like isolation");
                 }
-                
+
                 #[cfg(not(target_os = "linux"))]
                 {
                     warn!("Maximum isolation not fully supported on this platform");
@@ -368,19 +371,19 @@ impl RuntimeEngine for NativeRuntimeEngine {
         // Validate that we can execute native processes
         let test_command = if cfg!(windows) { "cmd" } else { "echo" };
 
-        let test_result = std::process::Command::new(test_command).arg("test").output();
+        let test_result = std::process::Command::new(test_command)
+            .arg("test")
+            .output();
 
         match test_result {
             Ok(_) => {
                 info!("Native runtime engine initialized successfully");
                 Ok(())
             }
-            Err(e) => {
-                Err(ToadStoolError::runtime(format!(
-                    "Failed to initialize native runtime: {}",
-                    e
-                )))
-            }
+            Err(e) => Err(ToadStoolError::runtime(format!(
+                "Failed to initialize native runtime: {}",
+                e
+            ))),
         }
     }
 
@@ -448,7 +451,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down Native Runtime Engine");
-
+        
         // Kill all active processes
         let mut processes = self.active_processes.write().await;
         for (execution_id, mut process_handle) in processes.drain() {
@@ -458,7 +461,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 }
             }
         }
-
+        
         info!("Native runtime engine shut down successfully");
         Ok(())
     }
@@ -476,16 +479,13 @@ mod tests {
     use toadstool::{
         execution::{ExecutionInput, RuntimeType},
         resources::ResourceRequirements,
-        security::{Capability, SecurityContext, IsolationLevel},
+        security::{Capability, IsolationLevel, SecurityContext},
         workload::WorkloadSpec,
     };
 
     async fn create_test_engine() -> NativeRuntimeEngine {
         let mut engine = NativeRuntimeEngine::new();
-        engine
-            .initialize(RuntimeConfig::default())
-            .await
-            .unwrap();
+        engine.initialize(RuntimeConfig::default()).await.unwrap();
         engine
     }
 
@@ -574,4 +574,4 @@ mod tests {
 
         assert!(result.is_err());
     }
-} 
+}

@@ -12,14 +12,16 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{RwLock, Mutex};
-use tracing::{debug, info, warn, error, instrument};
+use tokio::sync::{Mutex, RwLock};
+use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::execution::{RuntimeType, ExecutionRequest, ExecutionResponse, ExecutionStatus, ExecutionOutput};
-use toadstool::security::SecurityContext;
+use toadstool::execution::{
+    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeType,
+};
 use toadstool::resources::RuntimeMetrics;
+use toadstool::security::SecurityContext;
 
 /// Songbird integration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,9 +241,18 @@ pub struct ToadStoolHealthStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HealthStatus {
     Healthy,
-    Degraded { reason: String, severity: u8 },
-    Unhealthy { reason: String, estimated_recovery: Option<Duration> },
-    Maintenance { message: String, duration: Option<Duration> },
+    Degraded {
+        reason: String,
+        severity: u8,
+    },
+    Unhealthy {
+        reason: String,
+        estimated_recovery: Option<Duration>,
+    },
+    Maintenance {
+        message: String,
+        duration: Option<Duration>,
+    },
 }
 
 /// Resource utilization metrics
@@ -437,7 +448,10 @@ impl SongbirdIntegration {
             metadata: {
                 let mut metadata = HashMap::new();
                 metadata.insert("platform".to_string(), std::env::consts::OS.to_string());
-                metadata.insert("architecture".to_string(), std::env::consts::ARCH.to_string());
+                metadata.insert(
+                    "architecture".to_string(),
+                    std::env::consts::ARCH.to_string(),
+                );
                 metadata.insert("startup_time".to_string(), Utc::now().to_rfc3339());
                 metadata
             },
@@ -449,19 +463,20 @@ impl SongbirdIntegration {
             ],
         };
 
-        let response = self.make_request(
-            &self.config.registration_endpoint,
-            &registration,
-            "POST",
-        ).await?;
+        let response = self
+            .make_request(&self.config.registration_endpoint, &registration, "POST")
+            .await?;
 
         if response.status().is_success() {
-            let registration_response: HashMap<String, serde_json::Value> = 
-                response.json().await.map_err(|e| {
-                    ToadStoolError::integration(format!("Failed to parse registration response: {}", e))
-                })?;
+            let registration_response: HashMap<String, serde_json::Value> = response
+                .json()
+                .await
+                .map_err(|e| {
+                ToadStoolError::integration(format!("Failed to parse registration response: {}", e))
+            })?;
 
-            let token = registration_response.get("token")
+            let token = registration_response
+                .get("token")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| ToadStoolError::integration("Missing registration token"))?;
 
@@ -480,18 +495,23 @@ impl SongbirdIntegration {
 
     /// Update service capabilities
     #[instrument(skip(self))]
-    pub async fn update_capabilities(&self, capabilities: ToadStoolCapabilities) -> ToadStoolResult<()> {
+    pub async fn update_capabilities(
+        &self,
+        capabilities: ToadStoolCapabilities,
+    ) -> ToadStoolResult<()> {
         info!("Updating service capabilities");
-        
+
         *self.capabilities.write().await = capabilities.clone();
 
         if let Some(token) = &*self.registration_token.lock().await {
-            let response = self.make_authenticated_request(
-                &format!("{}/capabilities", self.config.registration_endpoint),
-                &capabilities,
-                "PUT",
-                token,
-            ).await?;
+            let response = self
+                .make_authenticated_request(
+                    &format!("{}/capabilities", self.config.registration_endpoint),
+                    &capabilities,
+                    "PUT",
+                    token,
+                )
+                .await?;
 
             if response.status().is_success() {
                 info!("Successfully updated capabilities");
@@ -514,12 +534,14 @@ impl SongbirdIntegration {
         *self.health_status.write().await = health_status.clone();
 
         if let Some(token) = &*self.registration_token.lock().await {
-            let response = self.make_authenticated_request(
-                &self.config.health_endpoint,
-                &health_status,
-                "POST",
-                token,
-            ).await?;
+            let response = self
+                .make_authenticated_request(
+                    &self.config.health_endpoint,
+                    &health_status,
+                    "POST",
+                    token,
+                )
+                .await?;
 
             if response.status().is_success() {
                 *self.last_communication.lock().await = Instant::now();
@@ -537,15 +559,23 @@ impl SongbirdIntegration {
 
     /// Handle incoming request from Songbird
     #[instrument(skip(self, request))]
-    pub async fn handle_request(&self, request: SongbirdRequest) -> ToadStoolResult<SongbirdResponse> {
-        info!("Handling Songbird request: {} ({})", request.request_id, request.request_type);
+    pub async fn handle_request(
+        &self,
+        request: SongbirdRequest,
+    ) -> ToadStoolResult<SongbirdResponse> {
+        info!(
+            "Handling Songbird request: {} ({})",
+            request.request_id, request.request_type
+        );
 
         let response_payload = match request.request_type {
             RequestType::Execute => {
                 // Convert Songbird request to ToadStool execution request
                 let execution_request: ExecutionRequest = serde_json::from_value(request.payload)
-                    .map_err(|e| ToadStoolError::integration(format!("Invalid execution request: {}", e)))?;
-                
+                    .map_err(|e| {
+                    ToadStoolError::integration(format!("Invalid execution request: {}", e))
+                })?;
+
                 // Execute the request (this would integrate with the actual execution engine)
                 let result = self.execute_request(execution_request).await?;
                 serde_json::to_value(result).unwrap()
@@ -584,14 +614,19 @@ impl SongbirdIntegration {
         // Capability reporting task
         let capability_integration = self.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(
-                Duration::from_secs(capability_integration.config.capability_reporting_interval_secs)
-            );
+            let mut interval = tokio::time::interval(Duration::from_secs(
+                capability_integration
+                    .config
+                    .capability_reporting_interval_secs,
+            ));
 
             loop {
                 interval.tick().await;
                 let capabilities = capability_integration.collect_current_capabilities().await;
-                if let Err(e) = capability_integration.update_capabilities(capabilities).await {
+                if let Err(e) = capability_integration
+                    .update_capabilities(capabilities)
+                    .await
+                {
                     warn!("Failed to update capabilities: {}", e);
                 }
             }
@@ -600,9 +635,9 @@ impl SongbirdIntegration {
         // Health reporting task
         let health_integration = self.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(
-                Duration::from_secs(health_integration.config.health_reporting_interval_secs)
-            );
+            let mut interval = tokio::time::interval(Duration::from_secs(
+                health_integration.config.health_reporting_interval_secs,
+            ));
 
             loop {
                 interval.tick().await;
@@ -616,13 +651,13 @@ impl SongbirdIntegration {
         // Registration maintenance task
         let registration_integration = self.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(
-                Duration::from_secs(registration_integration.config.registration_interval_secs)
-            );
+            let mut interval = tokio::time::interval(Duration::from_secs(
+                registration_integration.config.registration_interval_secs,
+            ));
 
             loop {
                 interval.tick().await;
-                
+
                 // Check if registration needs renewal
                 let last_comm = *registration_integration.last_communication.lock().await;
                 if last_comm.elapsed() > Duration::from_secs(120) {
@@ -643,12 +678,14 @@ impl SongbirdIntegration {
         info!("Deregistering from Songbird");
 
         if let Some(token) = &*self.registration_token.lock().await {
-            let response = self.make_authenticated_request(
-                &format!("{}/deregister", self.config.registration_endpoint),
-                &serde_json::json!({}),
-                "DELETE",
-                token,
-            ).await?;
+            let response = self
+                .make_authenticated_request(
+                    &format!("{}/deregister", self.config.registration_endpoint),
+                    &serde_json::json!({}),
+                    "DELETE",
+                    token,
+                )
+                .await?;
 
             if response.status().is_success() {
                 *self.registration_token.lock().await = None;
@@ -685,9 +722,10 @@ impl SongbirdIntegration {
             request = request.bearer_auth(auth_token);
         }
 
-        request.send().await.map_err(|e| {
-            ToadStoolError::integration(format!("HTTP request failed: {}", e))
-        })
+        request
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::integration(format!("HTTP request failed: {}", e)))
     }
 
     async fn make_authenticated_request<T: Serialize>(
@@ -712,7 +750,10 @@ impl SongbirdIntegration {
             .map_err(|e| ToadStoolError::integration(format!("HTTP request failed: {}", e)))
     }
 
-    async fn execute_request(&self, _request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
+    async fn execute_request(
+        &self,
+        _request: ExecutionRequest,
+    ) -> ToadStoolResult<ExecutionResponse> {
         // This would integrate with the actual ToadStool execution engine
         // For now, return a mock response
         Ok(ExecutionResponse {
@@ -748,9 +789,15 @@ impl SongbirdIntegration {
     fn default_capabilities() -> ToadStoolCapabilities {
         ToadStoolCapabilities {
             execution_environments: vec![
-                ExecutionEnvironment::Native { isolation: "sandbox".to_string() },
-                ExecutionEnvironment::Container { runtime: "docker".to_string() },
-                ExecutionEnvironment::Wasm { runtime: "wasmtime".to_string() },
+                ExecutionEnvironment::Native {
+                    isolation: "sandbox".to_string(),
+                },
+                ExecutionEnvironment::Container {
+                    runtime: "docker".to_string(),
+                },
+                ExecutionEnvironment::Wasm {
+                    runtime: "wasmtime".to_string(),
+                },
             ],
             resource_capacity: ResourceCapacity {
                 cpu_cores: 8,
@@ -824,7 +871,8 @@ impl SongbirdIntegration {
 #[async_trait]
 pub trait SongbirdIntegrationTrait: Send + Sync {
     async fn register_service(&self) -> ToadStoolResult<String>;
-    async fn update_capabilities(&self, capabilities: ToadStoolCapabilities) -> ToadStoolResult<()>;
+    async fn update_capabilities(&self, capabilities: ToadStoolCapabilities)
+        -> ToadStoolResult<()>;
     async fn report_health(&self, health_status: ToadStoolHealthStatus) -> ToadStoolResult<()>;
     async fn handle_request(&self, request: SongbirdRequest) -> ToadStoolResult<SongbirdResponse>;
     async fn deregister(&self) -> ToadStoolResult<()>;
@@ -836,7 +884,10 @@ impl SongbirdIntegrationTrait for SongbirdIntegration {
         self.register_service().await
     }
 
-    async fn update_capabilities(&self, capabilities: ToadStoolCapabilities) -> ToadStoolResult<()> {
+    async fn update_capabilities(
+        &self,
+        capabilities: ToadStoolCapabilities,
+    ) -> ToadStoolResult<()> {
         self.update_capabilities(capabilities).await
     }
 
@@ -861,7 +912,7 @@ mod tests {
     async fn test_songbird_integration_creation() {
         let config = SongbirdConfig::default();
         let integration = SongbirdIntegration::new(config);
-        
+
         // Verify integration was created successfully
         assert!(integration.registration.read().await.is_none());
         assert!(integration.registration_token.lock().await.is_none());
@@ -870,7 +921,7 @@ mod tests {
     #[tokio::test]
     async fn test_default_capabilities() {
         let capabilities = SongbirdIntegration::default_capabilities();
-        
+
         assert!(!capabilities.execution_environments.is_empty());
         assert!(!capabilities.supported_runtimes.is_empty());
         assert!(!capabilities.security_features.is_empty());
@@ -880,7 +931,7 @@ mod tests {
     #[tokio::test]
     async fn test_default_health_status() {
         let health = SongbirdIntegration::default_health_status();
-        
+
         assert!(matches!(health.status, HealthStatus::Healthy));
         assert!(health.resource_utilization.cpu_percent > 0.0);
         assert!(health.performance.success_rate > 0.0);

@@ -3,7 +3,6 @@
 //! This module defines all error types that can occur during ToadStool operations,
 //! providing structured error handling across all components.
 
-
 use thiserror::Error;
 
 /// Result type alias for ToadStool operations
@@ -237,4 +236,4 @@ impl From<anyhow::Error> for ToadStoolError {
     fn from(err: anyhow::Error) -> Self {
         Self::internal(err.to_string())
     }
-} 
+}

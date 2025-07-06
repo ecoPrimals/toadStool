@@ -28,14 +28,14 @@ use fake::{Fake, Faker};
 use uuid::Uuid;
 
 use toadstool::{
-    execution::{ExecutionRequest, ExecutionInput, RuntimeConfig, ExecutionOutput},
+    execution::{ExecutionInput, ExecutionOutput, ExecutionRequest, RuntimeConfig},
     resources::{
-        ResourceRequirements, CpuRequirements, MemoryRequirements, 
-        StorageRequirements, NetworkRequirements, RuntimeMetrics,
-        CpuMetrics, MemoryMetrics, StorageMetrics, NetworkMetrics, TimingMetrics
+        CpuMetrics, CpuRequirements, MemoryMetrics, MemoryRequirements, NetworkMetrics,
+        NetworkRequirements, ResourceRequirements, RuntimeMetrics, StorageMetrics,
+        StorageRequirements, TimingMetrics,
     },
-    security::{SecurityContext, IsolationLevel, Capability, NetworkSecurity, FilesystemSecurity},
-    workload::{WorkloadSpec, WasmModuleSource, ExecutableSource},
+    security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext},
+    workload::{ExecutableSource, WasmModuleSource, WorkloadSpec},
 };
 
 /// Test configuration constants
@@ -44,25 +44,25 @@ pub struct TestConstants;
 impl TestConstants {
     /// Default test memory limit in bytes (1GB)
     pub const DEFAULT_MEMORY_LIMIT: u64 = 1024 * 1024 * 1024;
-    
+
     /// Default test CPU cores
     pub const DEFAULT_CPU_CORES: f64 = 2.0;
-    
+
     /// Default test timeout in seconds
     pub const DEFAULT_TIMEOUT_SECS: u64 = 30;
-    
+
     /// Default test storage limit in bytes (10GB)
     pub const DEFAULT_STORAGE_LIMIT: u64 = 10 * 1024 * 1024 * 1024;
-    
+
     /// Default test network bandwidth in Mbps
     pub const DEFAULT_NETWORK_BANDWIDTH: u32 = 100;
-    
+
     /// Test container image
     pub const TEST_CONTAINER_IMAGE: &'static str = "alpine:latest";
-    
+
     /// Test executable path
     pub const TEST_EXECUTABLE_PATH: &'static str = "/bin/echo";
-    
+
     /// Test working directory
     pub const TEST_WORKING_DIR: &'static str = "/tmp";
 }
@@ -85,8 +85,8 @@ pub fn create_test_execution_request() -> ExecutionRequest {
 /// Create a test native workload
 pub fn create_test_native_workload() -> WorkloadSpec {
     WorkloadSpec::Native {
-        executable: ExecutableSource::File { 
-            path: PathBuf::from(TestConstants::TEST_EXECUTABLE_PATH) 
+        executable: ExecutableSource::File {
+            path: PathBuf::from(TestConstants::TEST_EXECUTABLE_PATH),
         },
         args: Some(vec!["Hello, ToadStool!".to_string()]),
         working_dir: Some(PathBuf::from(TestConstants::TEST_WORKING_DIR)),
@@ -98,8 +98,8 @@ pub fn create_test_native_workload() -> WorkloadSpec {
 /// Create a test WASM workload
 pub fn create_test_wasm_workload() -> WorkloadSpec {
     WorkloadSpec::Wasm {
-        module_source: WasmModuleSource::Bytes { 
-            data: create_minimal_wasm_module() 
+        module_source: WasmModuleSource::Bytes {
+            data: create_minimal_wasm_module(),
         },
         wasi_config: None,
         host_functions: vec![],
@@ -177,7 +177,9 @@ pub fn create_test_security_context() -> SecurityContext {
             Capability::Read,
             Capability::WriteTemp,
             Capability::NetworkClient,
-        ].into_iter().collect(),
+        ]
+        .into_iter()
+        .collect(),
         policies: vec![],
         user_context: None,
         network_security: NetworkSecurity {
@@ -215,7 +217,10 @@ pub fn create_test_execution_input() -> ExecutionInput {
         data: b"test input data".to_vec(),
         parameters: {
             let mut params = HashMap::new();
-            params.insert("test_param".to_string(), serde_json::Value::String("test_value".to_string()));
+            params.insert(
+                "test_param".to_string(),
+                serde_json::Value::String("test_value".to_string()),
+            );
             params
         },
         format: Some("text/plain".to_string()),
@@ -228,7 +233,10 @@ pub fn create_test_execution_output() -> ExecutionOutput {
         data: b"test output data".to_vec(),
         result: {
             let mut result = HashMap::new();
-            result.insert("status".to_string(), serde_json::Value::String("success".to_string()));
+            result.insert(
+                "status".to_string(),
+                serde_json::Value::String("success".to_string()),
+            );
             result
         },
         stdout: Some("Test execution successful".to_string()),
@@ -243,7 +251,10 @@ pub fn create_test_runtime_config() -> RuntimeConfig {
     RuntimeConfig {
         runtime_config: {
             let mut config = HashMap::new();
-            config.insert("timeout".to_string(), serde_json::Value::Number(serde_json::Number::from(30)));
+            config.insert(
+                "timeout".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(30)),
+            );
             config.insert("debug".to_string(), serde_json::Value::Bool(true));
             config
         },
@@ -308,7 +319,7 @@ pub fn create_test_runtime_metrics() -> RuntimeMetrics {
 /// Generate random test data using the Faker library
 pub mod random {
     use super::*;
-    
+
     /// Generate a random execution request
     pub fn execution_request() -> ExecutionRequest {
         ExecutionRequest {
@@ -321,20 +332,18 @@ pub mod random {
             runtime_hint: None,
             resources: random_resource_requirements(),
             security_context: create_test_security_context(),
-            timeout: Some(Duration::from_secs(
-                (10..300).fake::<u64>()
-            )),
+            timeout: Some(Duration::from_secs((10..300).fake::<u64>())),
             environment: random_environment(),
             input_data: random_execution_input(),
             callback_config: None,
         }
     }
-    
+
     /// Generate random native workload
     pub fn random_native_workload() -> WorkloadSpec {
         WorkloadSpec::Native {
-            executable: ExecutableSource::File { 
-                path: PathBuf::from(format!("/bin/{}", Faker.fake::<String>()))
+            executable: ExecutableSource::File {
+                path: PathBuf::from(format!("/bin/{}", Faker.fake::<String>())),
             },
             args: Some(vec![Faker.fake::<String>(), Faker.fake::<String>()]),
             working_dir: Some(PathBuf::from(format!("/tmp/{}", Faker.fake::<String>()))),
@@ -342,19 +351,19 @@ pub mod random {
             user: None,
         }
     }
-    
+
     /// Generate random WASM workload
     pub fn random_wasm_workload() -> WorkloadSpec {
         WorkloadSpec::Wasm {
-            module_source: WasmModuleSource::Bytes { 
-                data: Faker.fake::<Vec<u8>>()
+            module_source: WasmModuleSource::Bytes {
+                data: Faker.fake::<Vec<u8>>(),
             },
             wasi_config: None,
             host_functions: vec![],
             memory_limit: Some((1024 * 1024 * 1024).fake::<u64>()),
         }
     }
-    
+
     /// Generate random container workload
     pub fn random_container_workload() -> WorkloadSpec {
         WorkloadSpec::Container {
@@ -368,7 +377,7 @@ pub mod random {
             registry_auth: None,
         }
     }
-    
+
     /// Generate random resource requirements
     pub fn random_resource_requirements() -> ResourceRequirements {
         ResourceRequirements {
@@ -403,7 +412,7 @@ pub mod random {
             custom: HashMap::new(),
         }
     }
-    
+
     /// Generate random environment variables
     pub fn random_environment() -> HashMap<String, String> {
         let mut env = HashMap::new();
@@ -412,7 +421,7 @@ pub mod random {
         }
         env
     }
-    
+
     /// Generate random execution input
     pub fn random_execution_input() -> ExecutionInput {
         ExecutionInput {
@@ -421,8 +430,8 @@ pub mod random {
                 let mut params = HashMap::new();
                 for _ in 0..3 {
                     params.insert(
-                        Faker.fake::<String>(), 
-                        serde_json::Value::String(Faker.fake::<String>())
+                        Faker.fake::<String>(),
+                        serde_json::Value::String(Faker.fake::<String>()),
                     );
                 }
                 params
@@ -435,15 +444,18 @@ pub mod random {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_create_test_execution_request() {
         let request = create_test_execution_request();
         assert!(!request.execution_id.is_nil());
         assert!(request.timeout.is_some());
-        assert_eq!(request.timeout.unwrap().as_secs(), TestConstants::DEFAULT_TIMEOUT_SECS);
+        assert_eq!(
+            request.timeout.unwrap().as_secs(),
+            TestConstants::DEFAULT_TIMEOUT_SECS
+        );
     }
-    
+
     #[test]
     fn test_create_minimal_wasm_module() {
         let module = create_minimal_wasm_module();
@@ -451,15 +463,18 @@ mod tests {
         // Check WASM magic number
         assert_eq!(&module[0..4], &[0x00, 0x61, 0x73, 0x6d]);
     }
-    
+
     #[test]
     fn test_create_test_resource_requirements() {
         let requirements = create_test_resource_requirements();
         assert_eq!(requirements.cpu.min_cores, TestConstants::DEFAULT_CPU_CORES);
-        assert_eq!(requirements.memory.min_bytes, TestConstants::DEFAULT_MEMORY_LIMIT / 2);
+        assert_eq!(
+            requirements.memory.min_bytes,
+            TestConstants::DEFAULT_MEMORY_LIMIT / 2
+        );
         assert!(requirements.network.internet_access);
     }
-    
+
     #[test]
     fn test_create_test_security_context() {
         let context = create_test_security_context();
@@ -468,13 +483,13 @@ mod tests {
         assert!(context.network_security.internet_access);
         assert!(context.filesystem_security.temp_access);
     }
-    
+
     #[test]
     fn test_random_generation() {
         let request1 = random::execution_request();
         let request2 = random::execution_request();
-        
+
         // Should generate different requests
         assert_ne!(request1.execution_id, request2.execution_id);
     }
-} 
+}

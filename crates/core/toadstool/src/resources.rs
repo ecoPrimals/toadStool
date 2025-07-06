@@ -10,8 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Resource requirements and limits for workload execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceRequirements {
     /// CPU requirements
     pub cpu: CpuRequirements,
@@ -26,7 +25,6 @@ pub struct ResourceRequirements {
     /// Custom resource requirements
     pub custom: HashMap<String, serde_json::Value>,
 }
-
 
 /// CPU resource requirements
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +69,7 @@ pub struct MemoryRequirements {
 impl Default for MemoryRequirements {
     fn default() -> Self {
         Self {
-            min_bytes: 64 * 1024 * 1024, // 64 MB
+            min_bytes: 64 * 1024 * 1024,         // 64 MB
             max_bytes: Some(1024 * 1024 * 1024), // 1 GB
             memory_type: None,
             allow_swap: false,
@@ -110,7 +108,7 @@ pub struct StorageRequirements {
 impl Default for StorageRequirements {
     fn default() -> Self {
         Self {
-            min_bytes: 100 * 1024 * 1024, // 100 MB
+            min_bytes: 100 * 1024 * 1024,             // 100 MB
             max_bytes: Some(10 * 1024 * 1024 * 1024), // 10 GB
             storage_type: None,
             min_iops: None,
@@ -192,8 +190,7 @@ pub enum GpuVendor {
 }
 
 /// Runtime metrics and performance data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RuntimeMetrics {
     /// CPU usage metrics
     pub cpu: CpuMetrics,
@@ -210,7 +207,6 @@ pub struct RuntimeMetrics {
     /// Custom metrics
     pub custom: HashMap<String, serde_json::Value>,
 }
-
 
 /// CPU usage metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -243,8 +239,7 @@ impl Default for CpuMetrics {
 }
 
 /// Memory usage metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryMetrics {
     /// Current memory usage in bytes
     pub usage_bytes: u64,
@@ -261,7 +256,6 @@ pub struct MemoryMetrics {
     /// Swap usage in bytes
     pub swap_usage_bytes: u64,
 }
-
 
 /// Storage usage metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -400,13 +394,17 @@ impl Default for TimingMetrics {
 pub trait ResourceMonitor: Send + Sync + std::fmt::Debug {
     /// Start monitoring a workload
     fn start_monitoring(&self, workload_id: &str) -> crate::error::ToadStoolResult<()>;
-    
+
     /// Stop monitoring a workload
     fn stop_monitoring(&self, workload_id: &str) -> crate::error::ToadStoolResult<()>;
-    
+
     /// Get current metrics for a workload
     fn get_metrics(&self, workload_id: &str) -> crate::error::ToadStoolResult<RuntimeMetrics>;
-    
+
     /// Check if resource limits are exceeded
-    fn check_limits(&self, workload_id: &str, requirements: &ResourceRequirements) -> crate::error::ToadStoolResult<bool>;
-} 
+    fn check_limits(
+        &self,
+        workload_id: &str,
+        requirements: &ResourceRequirements,
+    ) -> crate::error::ToadStoolResult<bool>;
+}

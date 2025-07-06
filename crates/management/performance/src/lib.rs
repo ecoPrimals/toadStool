@@ -222,19 +222,22 @@ pub trait PerformanceOptimizer: Send + Sync {
         request: &ExecutionRequest,
         available_runtimes: &[RuntimeType],
     ) -> ToadStoolResult<RuntimeType>;
-    
+
     /// Record execution performance metrics
     async fn record_metrics(&self, metrics: PerformanceMetrics) -> ToadStoolResult<()>;
-    
+
     /// Get runtime performance statistics
     async fn get_runtime_stats(&self, runtime_type: RuntimeType) -> ToadStoolResult<RuntimeStats>;
-    
+
     /// Predict resource requirements for workload
-    async fn predict_resources(&self, workload: &WorkloadSpec) -> ToadStoolResult<ResourcePrediction>;
-    
+    async fn predict_resources(
+        &self,
+        workload: &WorkloadSpec,
+    ) -> ToadStoolResult<ResourcePrediction>;
+
     /// Generate optimization recommendations
     async fn get_recommendations(&self) -> ToadStoolResult<Vec<OptimizationRecommendation>>;
-    
+
     /// Update performance model with new data
     async fn update_model(&self) -> ToadStoolResult<()>;
 }
@@ -244,6 +247,10 @@ pub struct IntelligentPerformanceOptimizer {
     config: PerformanceConfig,
     metrics_history: Arc<RwLock<VecDeque<PerformanceMetrics>>>,
     runtime_stats: Arc<RwLock<HashMap<RuntimeType, RuntimeStats>>>,
+    runtime_metrics: Arc<RwLock<HashMap<RuntimeType, PerformanceMetrics>>>,
+    baseline_measurements: Arc<RwLock<HashMap<String, BaselineMetrics>>>,
+    runtime_selector: Arc<RwLock<RuntimeSelector>>,
+    #[allow(dead_code)]
     prediction_models: Arc<RwLock<HashMap<String, PredictionModel>>>,
     selection_strategy: RuntimeSelectionStrategy,
 }
@@ -252,16 +259,19 @@ impl IntelligentPerformanceOptimizer {
     /// Create new intelligent performance optimizer
     pub fn new(config: PerformanceConfig, strategy: RuntimeSelectionStrategy) -> Self {
         info!("Creating intelligent performance optimizer");
-        
+
         Self {
             config,
             metrics_history: Arc::new(RwLock::new(VecDeque::new())),
             runtime_stats: Arc::new(RwLock::new(HashMap::new())),
+            runtime_metrics: Arc::new(RwLock::new(HashMap::new())),
+            baseline_measurements: Arc::new(RwLock::new(HashMap::new())),
+            runtime_selector: Arc::new(RwLock::new(RuntimeSelector::default())),
             prediction_models: Arc::new(RwLock::new(HashMap::new())),
             selection_strategy: strategy,
         }
     }
-    
+
     /// Calculate performance score based on metrics and duration
     fn calculate_performance_score(&self, metrics: &RuntimeMetrics, duration: Duration) -> f64 {
         let execution_score = if duration.as_secs() > 0 {
@@ -269,14 +279,14 @@ impl IntelligentPerformanceOptimizer {
         } else {
             100.0
         };
-        
+
         let memory_usage_mb = metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0;
         let memory_score = 100.0 - (memory_usage_mb / 1024.0 * 100.0).min(100.0);
         let cpu_score = 100.0 - metrics.cpu.usage_percent.min(100.0);
-        
+
         (execution_score * 0.4 + memory_score * 0.3 + cpu_score * 0.3).min(100.0)
     }
-    
+
     /// Calculate resource efficiency score
     fn calculate_efficiency_score(&self, metrics: &RuntimeMetrics, duration: Duration) -> f64 {
         let memory_usage_mb = metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0;
@@ -285,27 +295,28 @@ impl IntelligentPerformanceOptimizer {
         } else {
             100.0
         };
-        
+
         let cpu_efficiency = if metrics.cpu.usage_percent > 0.0 {
             100.0 / metrics.cpu.usage_percent.max(1.0)
         } else {
             100.0
         };
-        
+
         let time_efficiency = if duration.as_secs() > 0 {
             100.0 / duration.as_secs_f64().max(1.0)
         } else {
             100.0
         };
-        
+
         (memory_efficiency * 0.4 + cpu_efficiency * 0.3 + time_efficiency * 0.3).min(100.0)
     }
-    
+
     /// Cleanup old metrics based on retention policy
     async fn cleanup_old_metrics(&self) {
         let retention_duration = Duration::from_secs(self.config.history_retention_hours * 3600);
-        let cutoff_time = Utc::now() - chrono::Duration::from_std(retention_duration).unwrap_or_default();
-        
+        let cutoff_time =
+            Utc::now() - chrono::Duration::from_std(retention_duration).unwrap_or_default();
+
         let mut history = self.metrics_history.write().await;
         while let Some(front) = history.front() {
             if front.start_time < cutoff_time {
@@ -315,46 +326,57 @@ impl IntelligentPerformanceOptimizer {
             }
         }
     }
-    
+
     /// Update runtime statistics
     async fn update_runtime_stats(&self, metrics: &PerformanceMetrics) {
         let mut stats = self.runtime_stats.write().await;
-        
-        let runtime_stats = stats.entry(metrics.runtime_type.clone()).or_insert_with(|| RuntimeStats {
-            runtime_type: metrics.runtime_type.clone(),
-            total_executions: 0,
-            successful_executions: 0,
-            avg_execution_time: Duration::ZERO,
-            p95_execution_time: Duration::ZERO,
-            avg_memory_usage: 0.0,
-            avg_cpu_usage: 0.0,
-            success_rate: 0.0,
-            efficiency_score: 0.0,
-            current_load: 0.0,
-        });
-        
+
+        let runtime_stats = stats
+            .entry(metrics.runtime_type.clone())
+            .or_insert_with(|| RuntimeStats {
+                runtime_type: metrics.runtime_type.clone(),
+                total_executions: 0,
+                successful_executions: 0,
+                avg_execution_time: Duration::ZERO,
+                p95_execution_time: Duration::ZERO,
+                avg_memory_usage: 0.0,
+                avg_cpu_usage: 0.0,
+                success_rate: 0.0,
+                efficiency_score: 0.0,
+                current_load: 0.0,
+            });
+
         runtime_stats.total_executions += 1;
         if metrics.success {
             runtime_stats.successful_executions += 1;
         }
-        
+
         if let Some(duration) = metrics.execution_duration {
             runtime_stats.avg_execution_time = Duration::from_secs_f64(
-                (runtime_stats.avg_execution_time.as_secs_f64() * (runtime_stats.total_executions - 1) as f64 
-                + duration.as_secs_f64()) / runtime_stats.total_executions as f64
+                (runtime_stats.avg_execution_time.as_secs_f64()
+                    * (runtime_stats.total_executions - 1) as f64
+                    + duration.as_secs_f64())
+                    / runtime_stats.total_executions as f64,
             );
         }
-        
-        runtime_stats.avg_memory_usage = (runtime_stats.avg_memory_usage * (runtime_stats.total_executions - 1) as f64 
-            + metrics.resource_metrics.memory.usage_bytes as f64) / runtime_stats.total_executions as f64;
-        
-        runtime_stats.avg_cpu_usage = (runtime_stats.avg_cpu_usage * (runtime_stats.total_executions - 1) as f64 
-            + metrics.resource_metrics.cpu.usage_percent) / runtime_stats.total_executions as f64;
-        
-        runtime_stats.success_rate = (runtime_stats.successful_executions as f64 / runtime_stats.total_executions as f64) * 100.0;
-        runtime_stats.efficiency_score = self.calculate_efficiency_score(&metrics.resource_metrics, Duration::ZERO);
+
+        runtime_stats.avg_memory_usage = (runtime_stats.avg_memory_usage
+            * (runtime_stats.total_executions - 1) as f64
+            + metrics.resource_metrics.memory.usage_bytes as f64)
+            / runtime_stats.total_executions as f64;
+
+        runtime_stats.avg_cpu_usage = (runtime_stats.avg_cpu_usage
+            * (runtime_stats.total_executions - 1) as f64
+            + metrics.resource_metrics.cpu.usage_percent)
+            / runtime_stats.total_executions as f64;
+
+        runtime_stats.success_rate = (runtime_stats.successful_executions as f64
+            / runtime_stats.total_executions as f64)
+            * 100.0;
+        runtime_stats.efficiency_score =
+            self.calculate_efficiency_score(&metrics.resource_metrics, Duration::ZERO);
     }
-    
+
     /// Select runtime based on strategy
     async fn select_runtime_by_strategy(
         &self,
@@ -364,13 +386,14 @@ impl IntelligentPerformanceOptimizer {
         if available_runtimes.is_empty() {
             return Err(ToadStoolError::runtime("No available runtimes".to_string()));
         }
-        
+
         match &self.selection_strategy {
             RuntimeSelectionStrategy::FastestExecution => {
                 self.select_fastest_runtime(available_runtimes).await
             }
             RuntimeSelectionStrategy::LowestResourceUsage => {
-                self.select_lowest_resource_runtime(available_runtimes).await
+                self.select_lowest_resource_runtime(available_runtimes)
+                    .await
             }
             RuntimeSelectionStrategy::BestEfficiency => {
                 self.select_most_efficient_runtime(available_runtimes).await
@@ -379,40 +402,50 @@ impl IntelligentPerformanceOptimizer {
                 self.select_load_balanced_runtime(available_runtimes).await
             }
             RuntimeSelectionStrategy::WorkloadOptimized => {
-                self.select_workload_optimized_runtime(request, available_runtimes).await
+                self.select_workload_optimized_runtime(request, available_runtimes)
+                    .await
             }
             RuntimeSelectionStrategy::Custom { weights } => {
-                self.select_custom_weighted_runtime(available_runtimes, weights).await
+                self.select_custom_weighted_runtime(available_runtimes, weights)
+                    .await
             }
         }
     }
-    
+
     /// Select fastest runtime based on historical performance
-    async fn select_fastest_runtime(&self, available_runtimes: &[RuntimeType]) -> ToadStoolResult<RuntimeType> {
+    async fn select_fastest_runtime(
+        &self,
+        available_runtimes: &[RuntimeType],
+    ) -> ToadStoolResult<RuntimeType> {
         let stats = self.runtime_stats.read().await;
-        
+
         let mut best_runtime = available_runtimes[0].clone();
         let mut best_time = Duration::from_secs(u64::MAX);
-        
+
         for runtime in available_runtimes {
             if let Some(runtime_stats) = stats.get(runtime) {
-                if runtime_stats.avg_execution_time < best_time && runtime_stats.total_executions > 0 {
+                if runtime_stats.avg_execution_time < best_time
+                    && runtime_stats.total_executions > 0
+                {
                     best_time = runtime_stats.avg_execution_time;
                     best_runtime = runtime.clone();
                 }
             }
         }
-        
+
         Ok(best_runtime)
     }
-    
+
     /// Select runtime with lowest resource usage
-    async fn select_lowest_resource_runtime(&self, available_runtimes: &[RuntimeType]) -> ToadStoolResult<RuntimeType> {
+    async fn select_lowest_resource_runtime(
+        &self,
+        available_runtimes: &[RuntimeType],
+    ) -> ToadStoolResult<RuntimeType> {
         let stats = self.runtime_stats.read().await;
-        
+
         let mut best_runtime = available_runtimes[0].clone();
         let mut lowest_usage = f64::MAX;
-        
+
         for runtime in available_runtimes {
             if let Some(runtime_stats) = stats.get(runtime) {
                 let combined_usage = runtime_stats.avg_memory_usage + runtime_stats.avg_cpu_usage;
@@ -422,36 +455,44 @@ impl IntelligentPerformanceOptimizer {
                 }
             }
         }
-        
+
         Ok(best_runtime)
     }
-    
+
     /// Select most efficient runtime
-    async fn select_most_efficient_runtime(&self, available_runtimes: &[RuntimeType]) -> ToadStoolResult<RuntimeType> {
+    async fn select_most_efficient_runtime(
+        &self,
+        available_runtimes: &[RuntimeType],
+    ) -> ToadStoolResult<RuntimeType> {
         let stats = self.runtime_stats.read().await;
-        
+
         let mut best_runtime = available_runtimes[0].clone();
         let mut best_efficiency = 0.0;
-        
+
         for runtime in available_runtimes {
             if let Some(runtime_stats) = stats.get(runtime) {
-                if runtime_stats.efficiency_score > best_efficiency && runtime_stats.total_executions > 0 {
+                if runtime_stats.efficiency_score > best_efficiency
+                    && runtime_stats.total_executions > 0
+                {
                     best_efficiency = runtime_stats.efficiency_score;
                     best_runtime = runtime.clone();
                 }
             }
         }
-        
+
         Ok(best_runtime)
     }
-    
+
     /// Select runtime for load balancing
-    async fn select_load_balanced_runtime(&self, available_runtimes: &[RuntimeType]) -> ToadStoolResult<RuntimeType> {
+    async fn select_load_balanced_runtime(
+        &self,
+        available_runtimes: &[RuntimeType],
+    ) -> ToadStoolResult<RuntimeType> {
         let stats = self.runtime_stats.read().await;
-        
+
         let mut best_runtime = available_runtimes[0].clone();
         let mut lowest_load = f64::MAX;
-        
+
         for runtime in available_runtimes {
             if let Some(runtime_stats) = stats.get(runtime) {
                 if runtime_stats.current_load < lowest_load {
@@ -463,10 +504,10 @@ impl IntelligentPerformanceOptimizer {
                 return Ok(runtime.clone());
             }
         }
-        
+
         Ok(best_runtime)
     }
-    
+
     /// Select runtime optimized for specific workload
     async fn select_workload_optimized_runtime(
         &self,
@@ -517,7 +558,7 @@ impl IntelligentPerformanceOptimizer {
             }
         }
     }
-    
+
     /// Select runtime using custom weights
     async fn select_custom_weighted_runtime(
         &self,
@@ -525,35 +566,37 @@ impl IntelligentPerformanceOptimizer {
         weights: &SelectionWeights,
     ) -> ToadStoolResult<RuntimeType> {
         let stats = self.runtime_stats.read().await;
-        
+
         let mut best_runtime = available_runtimes[0].clone();
         let mut best_score = f64::MIN;
-        
+
         for runtime in available_runtimes {
             if let Some(runtime_stats) = stats.get(runtime) {
                 if runtime_stats.total_executions == 0 {
                     continue;
                 }
-                
-                let execution_score = 100.0 - (runtime_stats.avg_execution_time.as_secs_f64() / 300.0 * 100.0).min(100.0);
-                let memory_score = 100.0 - (runtime_stats.avg_memory_usage / 1024.0 * 100.0).min(100.0);
+
+                let execution_score = 100.0
+                    - (runtime_stats.avg_execution_time.as_secs_f64() / 300.0 * 100.0).min(100.0);
+                let memory_score =
+                    100.0 - (runtime_stats.avg_memory_usage / 1024.0 * 100.0).min(100.0);
                 let cpu_score = 100.0 - runtime_stats.avg_cpu_usage.min(100.0);
                 let availability_score = 100.0 - runtime_stats.current_load;
                 let success_score = runtime_stats.success_rate;
-                
+
                 let weighted_score = execution_score * weights.execution_time
                     + memory_score * weights.memory_usage
                     + cpu_score * weights.cpu_usage
                     + availability_score * weights.resource_availability
                     + success_score * weights.historical_success_rate;
-                
+
                 if weighted_score > best_score {
                     best_score = weighted_score;
                     best_runtime = runtime.clone();
                 }
             }
         }
-        
+
         Ok(best_runtime)
     }
 }
@@ -566,55 +609,66 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         available_runtimes: &[RuntimeType],
     ) -> ToadStoolResult<RuntimeType> {
         debug!("Selecting optimal runtime for execution request");
-        
+
         if !self.config.enable_runtime_selection {
             return Ok(available_runtimes[0].clone());
         }
-        
-        self.select_runtime_by_strategy(request, available_runtimes).await
+
+        self.select_runtime_by_strategy(request, available_runtimes)
+            .await
     }
-    
+
     async fn record_metrics(&self, mut metrics: PerformanceMetrics) -> ToadStoolResult<()> {
-        debug!("Recording performance metrics for execution: {}", metrics.execution_id);
-        
+        debug!(
+            "Recording performance metrics for execution: {}",
+            metrics.execution_id
+        );
+
         // Calculate scores
         if let Some(duration) = metrics.execution_duration {
-            metrics.performance_score = self.calculate_performance_score(&metrics.resource_metrics, duration);
-            metrics.efficiency_score = self.calculate_efficiency_score(&metrics.resource_metrics, duration);
+            metrics.performance_score =
+                self.calculate_performance_score(&metrics.resource_metrics, duration);
+            metrics.efficiency_score =
+                self.calculate_efficiency_score(&metrics.resource_metrics, duration);
         }
-        
+
         // Update runtime statistics
         self.update_runtime_stats(&metrics).await;
-        
+
         // Store metrics
         {
             let mut history = self.metrics_history.write().await;
             history.push_back(metrics);
         }
-        
+
         // Cleanup old metrics
         self.cleanup_old_metrics().await;
-        
+
         Ok(())
     }
-    
+
     async fn get_runtime_stats(&self, runtime_type: RuntimeType) -> ToadStoolResult<RuntimeStats> {
         let stats = self.runtime_stats.read().await;
-        stats.get(&runtime_type)
-            .cloned()
-            .ok_or_else(|| ToadStoolError::runtime(format!(
+        stats.get(&runtime_type).cloned().ok_or_else(|| {
+            ToadStoolError::runtime(format!(
                 "No statistics available for runtime: {:?}",
                 runtime_type
-            )))
+            ))
+        })
     }
-    
-    async fn predict_resources(&self, workload: &WorkloadSpec) -> ToadStoolResult<ResourcePrediction> {
+
+    async fn predict_resources(
+        &self,
+        workload: &WorkloadSpec,
+    ) -> ToadStoolResult<ResourcePrediction> {
         debug!("Predicting resource requirements for workload");
-        
+
         if !self.config.enable_prediction {
-            return Err(ToadStoolError::runtime("Resource prediction is disabled".to_string()));
+            return Err(ToadStoolError::runtime(
+                "Resource prediction is disabled".to_string(),
+            ));
         }
-        
+
         let workload_type = match workload {
             WorkloadSpec::Native { .. } => "native",
             WorkloadSpec::Wasm { .. } => "wasm",
@@ -622,14 +676,16 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
             WorkloadSpec::Gpu { .. } => "gpu",
             WorkloadSpec::Script { .. } => "script",
         };
-        
+
         // Get historical data for similar workloads
         let history = self.metrics_history.read().await;
         let similar_executions: Vec<_> = history
             .iter()
-            .filter(|m| m.workload_type == workload_type && m.success && m.execution_duration.is_some())
+            .filter(|m| {
+                m.workload_type == workload_type && m.success && m.execution_duration.is_some()
+            })
             .collect();
-        
+
         if similar_executions.len() < self.config.min_prediction_samples {
             return Err(ToadStoolError::runtime(format!(
                 "Insufficient historical data for prediction (need {}, have {})",
@@ -637,56 +693,58 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 similar_executions.len()
             )));
         }
-        
+
         // Calculate predictions based on historical averages
         let execution_times: Vec<f64> = similar_executions
             .iter()
             .map(|m| m.execution_duration.unwrap().as_secs_f64())
             .collect();
-        
+
         let memory_usages: Vec<f64> = similar_executions
             .iter()
             .map(|m| m.resource_metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0)
             .collect();
-        
+
         let cpu_usages: Vec<f64> = similar_executions
             .iter()
             .map(|m| m.resource_metrics.cpu.usage_percent)
             .collect();
-        
+
         let predicted_execution_time = Duration::from_secs_f64(execution_times.clone().mean());
         let predicted_memory = memory_usages.clone().mean();
         let predicted_cpu = cpu_usages.clone().mean();
-        
+
         // Calculate confidence based on data consistency
         let time_std = execution_times.clone().std_dev();
         let memory_std = memory_usages.clone().std_dev();
         let cpu_std = cpu_usages.clone().std_dev();
-        
-        let confidence = (100.0 - (time_std / execution_times.mean() * 100.0).min(100.0)
-            + 100.0 - (memory_std / memory_usages.mean() * 100.0).min(100.0)
-            + 100.0 - (cpu_std / cpu_usages.mean() * 100.0).min(100.0)) / 3.0;
-        
+
+        let confidence = (100.0 - (time_std / execution_times.mean() * 100.0).min(100.0) + 100.0
+            - (memory_std / memory_usages.mean() * 100.0).min(100.0)
+            + 100.0
+            - (cpu_std / cpu_usages.mean() * 100.0).min(100.0))
+            / 3.0;
+
         Ok(ResourcePrediction {
             timestamp: Utc::now(),
             execution_time: predicted_execution_time,
             memory_mb: predicted_memory,
             cpu_percent: predicted_cpu,
-            confidence: confidence.max(0.0).min(100.0),
+            confidence: confidence.clamp(0.0, 100.0),
             model_type: "historical_average".to_string(),
         })
     }
-    
+
     async fn get_recommendations(&self) -> ToadStoolResult<Vec<OptimizationRecommendation>> {
         debug!("Generating optimization recommendations");
-        
+
         if !self.config.enable_recommendations {
             return Ok(Vec::new());
         }
-        
+
         let mut recommendations = Vec::new();
         let stats = self.runtime_stats.read().await;
-        
+
         // Analyze runtime performance and generate recommendations
         for (runtime_type, runtime_stats) in stats.iter() {
             // Check for performance issues
@@ -708,7 +766,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                     },
                 });
             }
-            
+
             // Check for resource inefficiency
             if runtime_stats.efficiency_score < 50.0 && runtime_stats.total_executions > 5 {
                 recommendations.push(OptimizationRecommendation {
@@ -724,7 +782,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                     priority: RecommendationPriority::Medium,
                 });
             }
-            
+
             // Check for high load
             if runtime_stats.current_load > 90.0 {
                 recommendations.push(OptimizationRecommendation {
@@ -741,31 +799,36 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 });
             }
         }
-        
+
         // Sort recommendations by priority and expected improvement
-        recommendations.sort_by(|a, b| {
-            match (&a.priority, &b.priority) {
-                (RecommendationPriority::Critical, RecommendationPriority::Critical) => 
-                    b.expected_improvement.partial_cmp(&a.expected_improvement).unwrap_or(std::cmp::Ordering::Equal),
-                (RecommendationPriority::Critical, _) => std::cmp::Ordering::Less,
-                (_, RecommendationPriority::Critical) => std::cmp::Ordering::Greater,
-                (RecommendationPriority::High, RecommendationPriority::High) => 
-                    b.expected_improvement.partial_cmp(&a.expected_improvement).unwrap_or(std::cmp::Ordering::Equal),
-                (RecommendationPriority::High, _) => std::cmp::Ordering::Less,
-                (_, RecommendationPriority::High) => std::cmp::Ordering::Greater,
-                _ => b.expected_improvement.partial_cmp(&a.expected_improvement).unwrap_or(std::cmp::Ordering::Equal),
-            }
+        recommendations.sort_by(|a, b| match (&a.priority, &b.priority) {
+            (RecommendationPriority::Critical, RecommendationPriority::Critical) => b
+                .expected_improvement
+                .partial_cmp(&a.expected_improvement)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            (RecommendationPriority::Critical, _) => std::cmp::Ordering::Less,
+            (_, RecommendationPriority::Critical) => std::cmp::Ordering::Greater,
+            (RecommendationPriority::High, RecommendationPriority::High) => b
+                .expected_improvement
+                .partial_cmp(&a.expected_improvement)
+                .unwrap_or(std::cmp::Ordering::Equal),
+            (RecommendationPriority::High, _) => std::cmp::Ordering::Less,
+            (_, RecommendationPriority::High) => std::cmp::Ordering::Greater,
+            _ => b
+                .expected_improvement
+                .partial_cmp(&a.expected_improvement)
+                .unwrap_or(std::cmp::Ordering::Equal),
         });
-        
+
         Ok(recommendations)
     }
-    
+
     async fn update_model(&self) -> ToadStoolResult<()> {
         debug!("Updating performance prediction models");
-        
+
         // This is a placeholder for more sophisticated model updates
         // In a real implementation, this would retrain ML models with new data
-        
+
         info!("Performance models updated successfully");
         Ok(())
     }
@@ -773,6 +836,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
 
 /// Simple prediction model structure
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct PredictionModel {
     model_type: String,
     last_updated: DateTime<Utc>,
@@ -780,19 +844,36 @@ struct PredictionModel {
     parameters: HashMap<String, f64>,
 }
 
+#[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
+struct BaselineMetrics {
+    cpu_baseline: f64,
+    memory_baseline: f64,
+    duration_baseline: f64,
+    last_updated: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Default)]
+#[allow(dead_code)]
+struct RuntimeSelector {
+    preferred_runtime: Option<RuntimeType>,
+    fallback_strategy: String,
+    selection_criteria: HashMap<String, f64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool::workload::ExecutableSource;
     use std::path::PathBuf;
-    
+    use toadstool::workload::ExecutableSource;
+
     fn create_test_config() -> PerformanceConfig {
         PerformanceConfig {
             min_prediction_samples: 3,
             ..Default::default()
         }
     }
-    
+
     fn create_test_metrics() -> PerformanceMetrics {
         PerformanceMetrics {
             execution_id: "test-001".to_string(),
@@ -803,8 +884,8 @@ mod tests {
             execution_duration: Some(Duration::from_secs(1)),
             resource_metrics: RuntimeMetrics {
                 memory: toadstool::resources::MemoryMetrics {
-                    usage_bytes: 100 * 1024 * 1024, // 100 MB
-                    peak_usage_bytes: 120 * 1024 * 1024, // 120 MB
+                    usage_bytes: 100 * 1024 * 1024,         // 100 MB
+                    peak_usage_bytes: 120 * 1024 * 1024,    // 120 MB
                     average_usage_bytes: 110 * 1024 * 1024, // 110 MB
                     allocation_count: 10,
                     deallocation_count: 5,
@@ -831,33 +912,33 @@ mod tests {
             efficiency_score: 75.0,
         }
     }
-    
+
     #[tokio::test]
     async fn test_performance_optimizer_creation() {
         let config = create_test_config();
         let strategy = RuntimeSelectionStrategy::FastestExecution;
-        
+
         let optimizer = IntelligentPerformanceOptimizer::new(config, strategy);
         assert_eq!(optimizer.config.min_prediction_samples, 3);
     }
-    
+
     #[tokio::test]
     async fn test_metrics_recording() {
         let config = create_test_config();
         let strategy = RuntimeSelectionStrategy::FastestExecution;
         let optimizer = IntelligentPerformanceOptimizer::new(config, strategy);
-        
+
         let metrics = create_test_metrics();
         let result = optimizer.record_metrics(metrics).await;
         assert!(result.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_runtime_selection() {
         let config = create_test_config();
         let strategy = RuntimeSelectionStrategy::FastestExecution;
         let optimizer = IntelligentPerformanceOptimizer::new(config, strategy);
-        
+
         let request = ExecutionRequest {
             execution_id: Uuid::new_v4(),
             workload: WorkloadSpec::Native {
@@ -877,9 +958,11 @@ mod tests {
             input_data: toadstool::execution::ExecutionInput::default(),
             callback_config: None,
         };
-        
+
         let available_runtimes = vec![RuntimeType::Native, RuntimeType::Wasm];
-        let result = optimizer.select_runtime(&request, &available_runtimes).await;
+        let result = optimizer
+            .select_runtime(&request, &available_runtimes)
+            .await;
         assert!(result.is_ok());
     }
 }
