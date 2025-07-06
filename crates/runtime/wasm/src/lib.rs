@@ -556,9 +556,21 @@ impl WasmRuntimeEngine {
         let mut peak_usage_bytes = 0u64;
 
         // Query memory exports from the instance
-        let exports: Vec<_> = instance.exports(&mut *store).collect();
-        for export in exports {
-            if let Some(memory) = export.into_memory() {
+        // First collect export names to avoid borrowing conflicts
+        let memory_export_names: Vec<String> = instance.exports(&mut *store)
+            .filter_map(|export| {
+                let name = export.name().to_string();
+                if export.into_memory().is_some() {
+                    Some(name)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        // Now get memory sizes using the names
+        for name in memory_export_names {
+            if let Some(memory) = instance.get_memory(&mut *store, &name) {
                 let memory_size = memory.data_size(&*store);
                 usage_bytes = usage_bytes.max(memory_size as u64);
                 peak_usage_bytes = peak_usage_bytes.max(memory_size as u64);
