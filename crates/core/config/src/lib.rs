@@ -103,27 +103,40 @@ pub struct ToadStoolConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeConfig {
     /// Default runtime selection strategy
+    #[serde(default = "RuntimeConfig::default_strategy")]
     pub default_strategy: String,
     /// Runtime preferences
+    #[serde(default)]
     pub preferences: Vec<String>,
     /// Runtime-specific configurations
+    #[serde(default)]
     pub engines: HashMap<String, serde_json::Value>,
     /// Execution timeouts
+    #[serde(default)]
     pub timeouts: TimeoutConfig,
 }
 
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
-            default_strategy: "first_available".to_string(),
+            default_strategy: std::env::var("TOADSTOOL_DEFAULT_STRATEGY")
+                .unwrap_or_else(|_| "first_available".to_string()),
             preferences: vec![
                 "wasm".to_string(),
                 "container".to_string(),
                 "native".to_string(),
+                "gpu".to_string(),
             ],
             engines: HashMap::new(),
             timeouts: TimeoutConfig::default(),
         }
+    }
+}
+
+impl RuntimeConfig {
+    // Default functions for serde deserialization (clean defaults)
+    fn default_strategy() -> String {
+        "first_available".to_string()
     }
 }
 
@@ -152,20 +165,31 @@ impl Default for TimeoutConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
     /// Default isolation level
+    #[serde(default = "SecurityConfig::default_isolation")]
     pub default_isolation: String,
     /// Sandbox configuration
+    #[serde(default)]
     pub sandbox: SandboxConfig,
     /// Policy enforcement settings
+    #[serde(default)]
     pub policies: PolicySettings,
 }
 
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
-            default_isolation: "standard".to_string(),
+            default_isolation: std::env::var("TOADSTOOL_DEFAULT_ISOLATION")
+                .unwrap_or_else(|_| "standard".to_string()),
             sandbox: SandboxConfig::default(),
             policies: PolicySettings::default(),
         }
+    }
+}
+
+impl SecurityConfig {
+    // Default functions for serde deserialization (clean defaults)
+    fn default_isolation() -> String {
+        "standard".to_string()
     }
 }
 
@@ -216,6 +240,7 @@ impl Default for PolicySettings {
 
 /// Resource management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ResourceConfig {
     /// Default resource limits
     pub default_limits: DefaultLimits,
@@ -261,6 +286,7 @@ impl Default for DefaultLimits {
 
 /// Monitoring configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MonitoringConfig {
     /// Enable monitoring
     pub enabled: bool,
@@ -363,17 +389,28 @@ pub struct PlatformConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
     /// Default bind address
+    #[serde(default = "NetworkConfig::default_bind_address")]
     pub bind_address: String,
     /// Default discovery timeout
+    #[serde(default = "NetworkConfig::default_timeout_seconds")]
     pub timeout_seconds: u64,
     /// Enable TLS
+    #[serde(default = "NetworkConfig::default_enable_tls")]
     pub enable_tls: bool,
     /// Maximum concurrent connections
+    #[serde(default = "NetworkConfig::default_max_connections")]
     pub max_connections: usize,
 }
 
 impl Default for NetworkConfig {
     fn default() -> Self {
+        Self::from_env()
+    }
+}
+
+impl NetworkConfig {
+    /// Create config with environment variable defaults
+    pub fn from_env() -> Self {
         Self {
             bind_address: std::env::var("TOADSTOOL_BIND_ADDRESS")
                 .unwrap_or_else(|_| "0.0.0.0:8080".to_string()),
@@ -390,10 +427,38 @@ impl Default for NetworkConfig {
                 .unwrap_or(1000),
         }
     }
+    
+    /// Create config with clean defaults (no environment variables)
+    pub fn clean_default() -> Self {
+        Self {
+            bind_address: "0.0.0.0:8080".to_string(),
+            timeout_seconds: 30,
+            enable_tls: false,
+            max_connections: 1000,
+        }
+    }
+    
+    // Default functions for serde deserialization (clean defaults)
+    fn default_bind_address() -> String {
+        "0.0.0.0:8080".to_string()
+    }
+    
+    fn default_timeout_seconds() -> u64 {
+        30
+    }
+    
+    fn default_enable_tls() -> bool {
+        false
+    }
+    
+    fn default_max_connections() -> usize {
+        1000
+    }
 }
 
 /// Ecosystem configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct EcosystemConfig {
     /// Auto discovery
     pub auto_discovery: bool,
@@ -454,7 +519,10 @@ impl ConfigBuilder {
                 .add_source(self.config.clone())
                 .add_source(file)
                 .build() {
-                Ok(config) => self.config = config,
+                Ok(config) => {
+                    debug!("Successfully loaded config from {}", path.display());
+                    self.config = config;
+                },
                 Err(e) => {
                     warn!("Failed to load configuration file {}: {}", path.display(), e);
                     // Continue with existing config
@@ -539,18 +607,42 @@ impl ConfigBuilder {
         let config_clone = self.config.clone();
 
         // Try to deserialize into our serializable structure first
-        let serializable_config: SerializableConfig = config_clone.try_deserialize()
-            .unwrap_or_else(|_| {
-                warn!("Failed to deserialize full configuration, using defaults");
-                SerializableConfig {
+        let serializable_config: SerializableConfig = config_clone.clone().try_deserialize()
+            .unwrap_or_else(|e| {
+                warn!("Failed to deserialize full configuration: {}, trying individual sections", e);
+                
+                // Build config from individual sections, preserving loaded values
+                let mut base_config = SerializableConfig {
                     runtime: RuntimeConfig::default(),
-                    security: SecurityConfig::default(),
+                    security: SecurityConfig::default(), 
                     resources: ResourceConfig::default(),
                     custom: HashMap::new(),
                     network: NetworkConfig::default(),
                     ecosystem: EcosystemConfig::default(),
                     monitoring: MonitoringConfig::default(),
+                };
+                
+                // Try to get individual sections and merge them
+                if let Ok(runtime) = config_clone.get::<RuntimeConfig>("runtime") {
+                    base_config.runtime = runtime;
                 }
+                if let Ok(security) = config_clone.get::<SecurityConfig>("security") {
+                    base_config.security = security;
+                }
+                if let Ok(network) = config_clone.get::<NetworkConfig>("network") {
+                    base_config.network = network;
+                }
+                if let Ok(ecosystem) = config_clone.get::<EcosystemConfig>("ecosystem") {
+                    base_config.ecosystem = ecosystem;
+                }
+                if let Ok(monitoring) = config_clone.get::<MonitoringConfig>("monitoring") {
+                    base_config.monitoring = monitoring;
+                }
+                if let Ok(resources) = config_clone.get::<ResourceConfig>("resources") {
+                    base_config.resources = resources;
+                }
+                
+                base_config
             });
 
         // Convert to main config structure
@@ -1100,7 +1192,7 @@ mod tests {
         assert_eq!(config.runtime.default_strategy, "first_available");
         assert_eq!(config.security.default_isolation, "standard");
         assert!(config.resources.monitoring.enabled);
-        assert_eq!(config.network.bind_address, "0.0.0.0");
+        assert_eq!(config.network.bind_address, "0.0.0.0:8080");
         assert_eq!(config.ecosystem.trust_level, TrustLevel::Medium);
     }
 
