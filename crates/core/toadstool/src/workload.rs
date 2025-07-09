@@ -59,6 +59,20 @@ pub enum WorkloadSpec {
         user: Option<String>,
     },
 
+    /// Python workload (scripts, modules, embedded code)
+    Python {
+        /// Python source code
+        code: String,
+        /// Entry point function (optional)
+        entry_point: Option<String>,
+        /// Global variables to set (optional)
+        globals: Option<HashMap<String, String>>,
+        /// Required Python packages
+        requirements: Vec<String>,
+        /// Virtual environment path (optional)
+        virtual_env: Option<PathBuf>,
+    },
+
     /// GPU compute workload
     Gpu {
         /// Compute kernel source
@@ -91,6 +105,7 @@ impl WorkloadSpec {
             Self::Container { .. } => WorkloadType::Container,
             Self::Wasm { .. } => WorkloadType::Wasm,
             Self::Native { .. } => WorkloadType::Native,
+            Self::Python { .. } => WorkloadType::Python,
             Self::Gpu { .. } => WorkloadType::Gpu,
             Self::Script { interpreter, .. } => WorkloadType::Script {
                 interpreter: interpreter.clone(),
@@ -113,6 +128,13 @@ impl WorkloadSpec {
             }
             Self::Native { executable, .. } => {
                 executable.validate()?;
+            }
+            Self::Python { code, .. } => {
+                if code.is_empty() {
+                    return Err(crate::error::ToadStoolError::validation(
+                        "Python code cannot be empty",
+                    ));
+                }
             }
             Self::Gpu { kernel_source, .. } => {
                 kernel_source.validate()?;

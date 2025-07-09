@@ -113,6 +113,8 @@ pub enum RuntimeType {
     Wasm,
     /// Native process runtime
     Native,
+    /// Python runtime (PyO3, subprocess)
+    Python,
     /// GPU compute runtime
     Gpu,
     /// Custom runtime extension
@@ -128,6 +130,8 @@ pub enum WorkloadType {
     Wasm,
     /// Native executable
     Native,
+    /// Python script or module
+    Python,
     /// GPU compute kernel
     Gpu,
     /// Script or interpreted code

@@ -27,6 +27,7 @@ pub mod resources;
 pub mod runtime;
 pub mod security;
 pub mod workload;
+pub mod byob;
 
 // Re-export core types
 pub use error::*;
@@ -35,6 +36,7 @@ pub use resources::*;
 pub use runtime::*;
 pub use security::*;
 pub use workload::*;
+// pub use byob::*; // Commented out to avoid conflicts
 
 // Re-export common utilities
 pub use toadstool_common::*;

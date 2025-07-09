@@ -48,6 +48,13 @@ flate2 = "1.0"
 # Process management
 nix = { version = "0.29.0", features = ["process", "signal"] }
 
+# New dependencies
+axum = "0.7"
+clap = { version = "4.0", features = ["derive"] }
+tracing-subscriber = "0.3"
+toml = "0.8"
+toadstool-api = { path = "../../api" }
+
 [features]
 default = ["docker"]
 docker = ["bollard"]
@@ -57,3 +64,7 @@ registry-auth = ["reqwest"]
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+
+[[bin]]
+name = "toadstool-byob-server"
+path = "src/bin/toadstool-byob-server.rs"

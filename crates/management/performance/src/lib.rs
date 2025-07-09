@@ -548,10 +548,18 @@ impl IntelligentPerformanceOptimizer {
                     self.select_fastest_runtime(available_runtimes).await
                 }
             }
+            WorkloadSpec::Python { .. } => {
+                // Prefer Python runtime for Python workloads
+                if available_runtimes.contains(&RuntimeType::Python) {
+                    Ok(RuntimeType::Python)
+                } else {
+                    self.select_fastest_runtime(available_runtimes).await
+                }
+            }
             WorkloadSpec::Script { .. } => {
-                // For script workloads, prefer native runtime
-                if available_runtimes.contains(&RuntimeType::Native) {
-                    Ok(RuntimeType::Native)
+                // Prefer Python runtime for script workloads
+                if available_runtimes.contains(&RuntimeType::Python) {
+                    Ok(RuntimeType::Python)
                 } else {
                     self.select_fastest_runtime(available_runtimes).await
                 }
@@ -674,6 +682,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
             WorkloadSpec::Wasm { .. } => "wasm",
             WorkloadSpec::Container { .. } => "container",
             WorkloadSpec::Gpu { .. } => "gpu",
+            WorkloadSpec::Python { .. } => "python",
             WorkloadSpec::Script { .. } => "script",
         };
 

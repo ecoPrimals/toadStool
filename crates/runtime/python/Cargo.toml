@@ -1,0 +1,54 @@
+[package]
+name = "toadstool-runtime-python"
+version.workspace = true
+edition.workspace = true
+description = "Python runtime engine for ToadStool - preparing for Squirrel MCP integration"
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "toadstool_runtime_python"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Core ToadStool dependencies
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+
+# Workspace dependencies
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+futures = { workspace = true }
+
+# Python integration
+pyo3 = { workspace = true }
+pyo3-asyncio = { workspace = true, features = ["tokio-runtime"] }
+
+# Process management
+nix = { workspace = true }
+sysinfo = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+default = ["python-subprocess"]
+python-subprocess = []
+python-embedded = []
+ai-ml-support = []
+squirrel-preparation = []
+
+[build-dependencies]
+pyo3-build-config = "0.20" 

@@ -885,6 +885,7 @@ impl ConditionEvaluator {
                     WorkloadSpec::Wasm { .. } => "wasm",
                     WorkloadSpec::Container { .. } => "container",
                     WorkloadSpec::Gpu { .. } => "gpu",
+                    WorkloadSpec::Python { .. } => "python",
                     WorkloadSpec::Script { .. } => "script",
                 };
                 Ok(workload_types.contains(&workload_type.to_string()))

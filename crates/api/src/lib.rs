@@ -37,6 +37,9 @@ use toadstool_management_monitoring::SystemResourceMonitor;
 use toadstool_management_analytics::AnalyticsEngine;
 use toadstool_distributed::DistributedCoordinator;
 
+pub mod byob;
+pub use byob::*;
+
 /// API server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiConfig {
@@ -306,8 +309,8 @@ impl AdvancedApiServer {
             app = app.layer(CorsLayer::permissive());
         }
         
-        // Add state
-        app = app.with_state(self.state.clone());
+        // Add state and convert to Router<()>
+        let app = app.with_state(self.state.clone());
         
         // Start server
         let addr: SocketAddr = self.config.bind_address.parse()
@@ -319,8 +322,7 @@ impl AdvancedApiServer {
         info!("API server listening on {}", addr);
         info!("Dashboard: http://{}/dashboard", addr);
         
-        // Serve the application with the suggested service conversion
-        let app = app.into_service();
+        // Serve the application
         axum::serve(listener, app)
             .await
             .map_err(|e| ToadStoolError::network(format!("Server error: {}", e)))?;

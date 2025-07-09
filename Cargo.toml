@@ -21,6 +21,7 @@ members = [
     "crates/runtime/container",
     "crates/runtime/gpu",
     "crates/runtime/native",
+    "crates/runtime/python",
     "crates/runtime/wasm",
     "crates/security/monitoring",
     "crates/security/policies",
@@ -78,6 +79,10 @@ wasmtime = { version = "18.0", features = ["component-model", "async"] }
 wasmtime-wasi = "18.0"
 wasmer = "4.2"
 wasi-common = "18.0"
+
+# Python integration (preparing for Squirrel MCP integration)
+pyo3 = { version = "0.20", features = ["auto-initialize", "extension-module"] }
+pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
 
 # Security and sandboxing
 seccomp = "0.4"
