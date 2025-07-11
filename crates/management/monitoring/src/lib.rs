@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::pin::Pin;
+use std::future::Future;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -14,7 +16,7 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::resources::{ResourceMonitor, ResourceRequirements, RuntimeMetrics};
+use toadstool::resources::{ResourceMonitor, ResourceRequirements, RuntimeMetrics, SystemResources};
 
 /// Monitoring granularity levels
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -391,26 +393,23 @@ impl SystemResourceMonitor {
         platform_metrics.timing.start_time =
             Utc::now() - chrono::Duration::seconds(elapsed_secs as i64);
         platform_metrics.timing.end_time = None;
-        platform_metrics.timing.duration = std::time::Duration::from_secs(elapsed_secs);
+        platform_metrics.timing.duration = chrono::Duration::from_std(std::time::Duration::from_secs(elapsed_secs)).unwrap_or_default();
 
         // Update CPU usage
         platform_metrics.cpu.usage_percent = *last_cpu_time as f64 / 100.0;
-        platform_metrics.cpu.peak_usage_percent = *last_cpu_time as f64 / 100.0;
-        platform_metrics.cpu.average_usage_percent = *last_cpu_time as f64 / 100.0;
-        platform_metrics.cpu.cpu_time_ms = *last_cpu_time * 10;
+        platform_metrics.cpu.cores_used = 1.0;
+        platform_metrics.cpu.cpu_time_seconds = *last_cpu_time as f64 / 1000.0;
 
         // Update memory usage
-        platform_metrics.memory.usage_bytes = *memory_usage;
-        platform_metrics.memory.peak_usage_bytes = *memory_usage;
-        platform_metrics.memory.average_usage_bytes = *memory_usage;
+        platform_metrics.memory.used_bytes = *memory_usage;
+        platform_metrics.memory.peak_bytes = *memory_usage;
+        platform_metrics.memory.usage_percent = (*memory_usage as f64 / 1024.0 / 1024.0) * 100.0;
 
         // Update storage usage
+        platform_metrics.storage.usage_percent = 0.0;
+        platform_metrics.storage.used_bytes = 0;
         platform_metrics.storage.bytes_read = 0;
         platform_metrics.storage.bytes_written = 0;
-        platform_metrics.storage.read_iops = 0.0;
-        platform_metrics.storage.write_iops = 0.0;
-        platform_metrics.storage.avg_read_latency_us = 0.0;
-        platform_metrics.storage.avg_write_latency_us = 0.0;
 
         // Network monitoring if enabled
         let network_metrics = if config.enable_network_monitoring {
@@ -509,35 +508,23 @@ impl SystemResourceMonitor {
         Ok(RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: (utime + stime) as f64 / 100.0, // Simplified CPU calculation
-                peak_usage_percent: (utime + stime) as f64 / 100.0,
-                average_usage_percent: (utime + stime) as f64 / 100.0,
-                cpu_time_ms: (utime + stime) * 10, // Convert from ticks
-                cpu_cycles: None,
-                throttle_events: 0,
+                cores_used: 1.0,
+                cpu_time_seconds: (utime + stime) as f64 / 100.0,
             },
             memory: toadstool::resources::MemoryMetrics {
-                usage_bytes: (vm_rss * 1024.0) as u64, // VmRSS is in KB
-                peak_usage_bytes: (vm_rss * 1024.0) as u64,
-                average_usage_bytes: (vm_rss * 1024.0) as u64,
-                allocation_count: 0,
-                deallocation_count: 0,
-                page_faults: 0,
-                swap_usage_bytes: 0,
+                used_bytes: (vm_rss * 1024.0) as u64, // VmRSS is in KB
+                peak_bytes: (vm_rss * 1024.0) as u64,
+                usage_percent: (vm_rss * 1024.0 * 100.0) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
             },
             storage: toadstool::resources::StorageMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0,
                 bytes_read: read_bytes,
                 bytes_written: write_bytes,
-                read_ops: 0,
-                write_ops: 0,
-                read_iops: 0.0,
-                write_iops: 0.0,
-                avg_read_latency_us: 0.0,
-                avg_write_latency_us: 0.0,
             },
             network: network_metrics,
             gpu: None,
             timing: toadstool::resources::TimingMetrics::default(),
-            custom: HashMap::new(),
         })
     }
 
@@ -580,12 +567,9 @@ impl SystemResourceMonitor {
 
         Ok(toadstool::resources::NetworkMetrics {
             bytes_received: total_rx_bytes,
-            bytes_transmitted: total_tx_bytes,
+            bytes_sent: total_tx_bytes,
             packets_received: total_rx_packets,
-            packets_transmitted: total_tx_packets,
-            errors: 0,           // Would need additional parsing
-            drops: 0,            // Would need additional parsing
-            avg_latency_us: 0.0, // Would need active measurement
+            packets_sent: total_tx_packets,
         })
     }
 
@@ -673,26 +657,18 @@ impl SystemResourceMonitor {
         Ok(RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: cpu_percent,
-                peak_usage_percent: cpu_percent,
-                average_usage_percent: cpu_percent,
-                cpu_time_ms: 0,
-                cpu_cycles: None,
-                throttle_events: 0,
+                cores_used: 1.0,
+                cpu_time_seconds: 0.0,
             },
             memory: toadstool::resources::MemoryMetrics {
-                usage_bytes: rss_kb * 1024,
-                peak_usage_bytes: rss_kb * 1024,
-                average_usage_bytes: rss_kb * 1024,
-                allocation_count: 0,
-                deallocation_count: 0,
-                page_faults: 0,
-                swap_usage_bytes: 0,
+                used_bytes: rss_kb * 1024,
+                peak_bytes: rss_kb * 1024,
+                usage_percent: (rss_kb * 1024 * 100) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
             },
             storage: toadstool::resources::StorageMetrics::default(),
             network: network_metrics,
             gpu: None,
             timing: toadstool::resources::TimingMetrics::default(),
-            custom: HashMap::new(),
         })
     }
 
@@ -727,12 +703,9 @@ impl SystemResourceMonitor {
 
         Ok(toadstool::resources::NetworkMetrics {
             bytes_received: total_rx_bytes,
-            bytes_transmitted: total_tx_bytes,
+            bytes_sent: total_tx_bytes,
             packets_received: 0, // Would need additional parsing
-            packets_transmitted: 0,
-            errors: 0,
-            drops: 0,
-            avg_latency_us: 0.0,
+            packets_sent: 0,
         })
     }
 
@@ -772,26 +745,18 @@ impl SystemResourceMonitor {
         Ok(RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: cpu_percent,
-                peak_usage_percent: cpu_percent,
-                average_usage_percent: cpu_percent,
-                cpu_time_ms: 0,
-                cpu_cycles: None,
-                throttle_events: 0,
+                cores_used: 1.0,
+                cpu_time_seconds: 0.0,
             },
             memory: toadstool::resources::MemoryMetrics {
-                usage_bytes: working_set,
-                peak_usage_bytes: working_set,
-                average_usage_bytes: working_set,
-                allocation_count: 0,
-                deallocation_count: 0,
-                page_faults: 0,
-                swap_usage_bytes: 0,
+                used_bytes: working_set,
+                peak_bytes: working_set,
+                usage_percent: (working_set * 100) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
             },
             storage: toadstool::resources::StorageMetrics::default(),
             network: network_metrics,
             gpu: None,
             timing: toadstool::resources::TimingMetrics::default(),
-            custom: HashMap::new(),
         })
     }
 
@@ -819,12 +784,9 @@ impl SystemResourceMonitor {
 
         Ok(toadstool::resources::NetworkMetrics {
             bytes_received: total_rx_bytes,
-            bytes_transmitted: total_tx_bytes,
+            bytes_sent: total_tx_bytes,
             packets_received: 0,
-            packets_transmitted: 0,
-            errors: 0,
-            drops: 0,
-            avg_latency_us: 0.0,
+            packets_sent: 0,
         })
     }
 
@@ -870,11 +832,11 @@ impl SystemResourceMonitor {
 
         // Check memory threshold
         if let Some(max_memory) = requirements.memory.max_bytes {
-            if metrics.memory.usage_bytes > max_memory {
+            if metrics.memory.used_bytes > max_memory {
                 violations.push(ResourceMonitorError::ThresholdViolation {
                     workload_id: workload_id.to_string(),
                     resource_type: "Memory".to_string(),
-                    current_value: metrics.memory.usage_bytes as f64,
+                    current_value: metrics.memory.used_bytes as f64,
                     threshold: max_memory as f64,
                 });
             }
@@ -957,66 +919,71 @@ impl ResourceMonitor for SystemResourceMonitor {
         })
     }
 
-    fn check_limits(
-        &self,
-        workload_id: &str,
-        requirements: &ResourceRequirements,
-    ) -> ToadStoolResult<bool> {
-        debug!(
-            "Checking limits for workload: {} against requirements",
-            workload_id
-        );
-
-        // Get current metrics
-        let metrics = self.get_metrics(workload_id)?;
-
-        // Check each resource type
-        let mut within_limits = true;
-
-        // Check CPU limits
-        if let Some(max_cores) = requirements.cpu.max_cores {
-            let cpu_cores_used = metrics.cpu.usage_percent / 100.0;
-            if cpu_cores_used > max_cores {
-                debug!("CPU limit exceeded: {} > {}", cpu_cores_used, max_cores);
-                within_limits = false;
+    fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
+        Box::pin(async move {
+            // Get system-wide resource information
+            let mut available_cpu_cores = 1.0;
+            let mut available_memory_bytes = 1024 * 1024 * 1024; // 1GB default
+            let available_storage_bytes = 10 * 1024 * 1024 * 1024; // 10GB default
+            
+            #[cfg(target_os = "linux")]
+            {
+                // Get CPU info from /proc/cpuinfo
+                if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+                    available_cpu_cores = cpuinfo.lines()
+                        .filter(|line| line.starts_with("processor"))
+                        .count() as f64;
+                }
+                
+                // Get memory info from /proc/meminfo
+                if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+                    for line in meminfo.lines() {
+                        if line.starts_with("MemTotal:") {
+                            if let Some(value) = line.split_whitespace().nth(1) {
+                                if let Ok(mem_kb) = value.parse::<u64>() {
+                                    available_memory_bytes = mem_kb * 1024;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
             }
-        }
-
-        // Check memory limits
-        if let Some(max_memory) = requirements.memory.max_bytes {
-            if metrics.memory.usage_bytes > max_memory {
-                debug!(
-                    "Memory limit exceeded: {} > {}",
-                    metrics.memory.usage_bytes, max_memory
-                );
-                within_limits = false;
+            
+            #[cfg(target_os = "macos")]
+            {
+                // Use sysctl for macOS
+                if let Ok(output) = std::process::Command::new("sysctl")
+                    .args(&["-n", "hw.ncpu"])
+                    .output()
+                {
+                    if let Ok(cpu_str) = String::from_utf8(output.stdout) {
+                        if let Ok(cpu_count) = cpu_str.trim().parse::<f64>() {
+                            available_cpu_cores = cpu_count;
+                        }
+                    }
+                }
+                
+                if let Ok(output) = std::process::Command::new("sysctl")
+                    .args(&["-n", "hw.memsize"])
+                    .output()
+                {
+                    if let Ok(mem_str) = String::from_utf8(output.stdout) {
+                        if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
+                            available_memory_bytes = mem_bytes;
+                        }
+                    }
+                }
             }
-        }
-
-        // Check storage limits
-        if let Some(max_storage) = requirements.storage.max_bytes {
-            let storage_used = metrics.storage.bytes_read + metrics.storage.bytes_written;
-            if storage_used > max_storage {
-                debug!("Storage limit exceeded: {} > {}", storage_used, max_storage);
-                within_limits = false;
-            }
-        }
-
-        // Check network limits
-        if let Some(max_bandwidth) = requirements.network.max_bandwidth_mbps {
-            let network_usage_mbps = (metrics.network.bytes_received
-                + metrics.network.bytes_transmitted) as f64
-                / (1024.0 * 1024.0);
-            if network_usage_mbps > max_bandwidth as f64 {
-                debug!(
-                    "Network limit exceeded: {} > {}",
-                    network_usage_mbps, max_bandwidth
-                );
-                within_limits = false;
-            }
-        }
-
-        Ok(within_limits)
+            
+            Ok(SystemResources {
+                available_cpu_cores,
+                available_memory_bytes,
+                available_storage_bytes,
+                available_network_bandwidth: None,
+                available_gpu_units: 0,
+            })
+        })
     }
 }
 

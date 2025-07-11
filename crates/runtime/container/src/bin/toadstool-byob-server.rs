@@ -9,6 +9,7 @@ use std::sync::Arc;
 use axum::{
     routing::get,
     Router,
+    serve,
 };
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,8 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use toadstool::{
-    ByobExecutorConfig, RuntimeEngine, ToadStoolError, ToadStoolResult,
-    create_byob_executor,
+    RuntimeEngine, ToadStoolError, ToadStoolResult,
+    byob::{ByobExecutorConfig, create_byob_executor},
 };
 use toadstool_api::ByobApi;
 use toadstool_runtime_container::ContainerRuntimeEngine;
@@ -101,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start server
     let listener = TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    serve(listener, app.into_make_service()).await?;
 
     Ok(())
 }

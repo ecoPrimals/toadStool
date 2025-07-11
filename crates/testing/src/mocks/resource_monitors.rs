@@ -17,10 +17,12 @@
 //! Mock resource monitors for testing
 
 use mockall::mock;
+use std::pin::Pin;
+use std::future::Future;
 
 use toadstool::{
     error::ToadStoolResult,
-    resources::{ResourceMonitor, ResourceRequirements, RuntimeMetrics},
+    resources::{ResourceMonitor, RuntimeMetrics, SystemResources},
 };
 
 use crate::fixtures::create_test_runtime_metrics;
@@ -37,7 +39,7 @@ mock! {
         fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
         fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
         fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics>;
-        fn check_limits(&self, workload_id: &str, requirements: &ResourceRequirements) -> ToadStoolResult<bool>;
+        fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send>>;
     }
 }
 
@@ -59,8 +61,18 @@ impl MockResourceMonitor {
         mock.expect_get_metrics()
             .returning(|_workload_id| Ok(create_test_runtime_metrics()));
 
-        mock.expect_check_limits()
-            .returning(|_workload_id, _requirements| Ok(true));
+        mock.expect_get_system_resources()
+            .returning(|| {
+                Box::pin(async move {
+                    Ok(SystemResources {
+                        available_cpu_cores: 8.0,
+                        available_memory_bytes: 16 * 1024 * 1024 * 1024, // 16GB
+                        available_storage_bytes: 1024 * 1024 * 1024 * 1024, // 1TB
+                        available_network_bandwidth: Some(1000000000), // 1Gbps
+                        available_gpu_units: 1,
+                    })
+                })
+            });
 
         mock
     }
@@ -81,16 +93,21 @@ impl MockResourceMonitor {
         mock.expect_get_metrics().returning(|_workload_id| {
             let mut metrics = create_test_runtime_metrics();
             metrics.cpu.usage_percent = 95.0; // High CPU usage
-            metrics.memory.usage_bytes = 1024 * 1024 * 1024 * 7; // 7GB memory usage
+            metrics.memory.used_bytes = 1024 * 1024 * 1024 * 7; // 7GB memory usage
             Ok(metrics)
         });
 
-        mock.expect_check_limits()
-            .returning(|_workload_id, requirements| {
-                // Simulate limit check failure for high resource requests
-                let cpu_ok = requirements.cpu.min_cores < 1.0;
-                let memory_ok = requirements.memory.min_bytes < 1024 * 1024 * 1024; // 1GB
-                Ok(cpu_ok && memory_ok)
+        mock.expect_get_system_resources()
+            .returning(|| {
+                Box::pin(async move {
+                    Ok(SystemResources {
+                        available_cpu_cores: 2.0, // Limited resources
+                        available_memory_bytes: 4 * 1024 * 1024 * 1024, // 4GB
+                        available_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
+                        available_network_bandwidth: Some(100000000), // 100Mbps
+                        available_gpu_units: 0,
+                    })
+                })
             });
 
         mock
@@ -121,11 +138,13 @@ impl MockResourceMonitor {
             ))
         });
 
-        mock.expect_check_limits()
-            .returning(|_workload_id, _requirements| {
-                Err(toadstool::error::ToadStoolError::resource(
-                    "Failed to check limits",
-                ))
+        mock.expect_get_system_resources()
+            .returning(|| {
+                Box::pin(async move {
+                    Err(toadstool::error::ToadStoolError::resource(
+                        "Failed to get system resources",
+                    ))
+                })
             });
 
         mock
@@ -149,11 +168,9 @@ mod tests {
         let metrics = monitor.get_metrics("test-workload").unwrap();
         assert!(metrics.cpu.usage_percent >= 0.0);
 
-        // Test limit checking
-        let requirements = create_test_resource_requirements();
-        assert!(monitor
-            .check_limits("test-workload", &requirements)
-            .unwrap());
+        // Test system resources
+        let system_resources = tokio_test::block_on(monitor.get_system_resources()).unwrap();
+        assert!(system_resources.available_cpu_cores > 0.0);
     }
 
     #[test]
@@ -165,15 +182,10 @@ mod tests {
         let metrics = monitor.get_metrics("test-workload").unwrap();
         assert!(metrics.cpu.usage_percent > 90.0); // High CPU usage
 
-        // Test that large requests are rejected
-        let mut large_requirements = create_test_resource_requirements();
-        large_requirements.cpu.min_cores = 8.0;
-        large_requirements.memory.min_bytes = 1024 * 1024 * 1024 * 16; // 16GB
-
-        let result = monitor
-            .check_limits("test-workload", &large_requirements)
-            .unwrap();
-        assert!(!result); // Should be rejected
+        // Test that limited resources are reported
+        let system_resources = tokio_test::block_on(monitor.get_system_resources()).unwrap();
+        assert!(system_resources.available_cpu_cores < 4.0); // Limited resources
+        assert!(system_resources.available_memory_bytes < 8 * 1024 * 1024 * 1024); // Less than 8GB
 
         assert!(monitor.stop_monitoring("test-workload").is_ok());
     }
@@ -191,10 +203,7 @@ mod tests {
         // Should fail to stop monitoring
         assert!(monitor.stop_monitoring("test-workload").is_err());
 
-        // Should fail to check limits
-        let requirements = create_test_resource_requirements();
-        assert!(monitor
-            .check_limits("test-workload", &requirements)
-            .is_err());
+        // Should fail to get system resources
+        assert!(tokio_test::block_on(monitor.get_system_resources()).is_err());
     }
 }

@@ -1,55 +1,20 @@
-//! Workload specification and configuration
-//!
-//! This module defines how workloads are specified, configured, and prepared for execution
-//! across different runtime types.
+//! Workload types and specifications
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::execution::WorkloadType;
+use crate::{ToadStoolError, ToadStoolResult};
 
-/// Universal workload specification
+/// Workload specification containing all information needed to execute a workload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadSpec {
-    /// Container-based workload
-    Container {
-        /// Container image reference
-        image: String,
-        /// Command to execute
-        command: Option<Vec<String>>,
-        /// Command arguments
-        args: Option<Vec<String>>,
-        /// Working directory
-        working_dir: Option<String>,
-        /// User to run as
-        user: Option<String>,
-        /// Volume mounts
-        volumes: Vec<VolumeMount>,
-        /// Port mappings
-        ports: Vec<PortMapping>,
-        /// Registry authentication
-        registry_auth: Option<RegistryAuth>,
-    },
-
-    /// WebAssembly workload
-    Wasm {
-        /// WASM module source
-        module_source: WasmModuleSource,
-        /// WASI configuration
-        wasi_config: Option<WasiConfig>,
-        /// Host function imports
-        host_functions: Vec<String>,
-        /// Memory limits
-        memory_limit: Option<u64>,
-    },
-
-    /// Native executable workload
+    /// Native executable
     Native {
-        /// Executable path or source
+        /// Executable source
         executable: ExecutableSource,
-        /// Command arguments
+        /// Command line arguments
         args: Option<Vec<String>>,
         /// Working directory
         working_dir: Option<PathBuf>,
@@ -58,371 +23,338 @@ pub enum WorkloadSpec {
         /// User to run as
         user: Option<String>,
     },
-
-    /// Python workload (scripts, modules, embedded code)
+    /// WebAssembly module
+    Wasm {
+        /// WASM module source
+        module: WasmModuleSource,
+        /// Arguments to pass to the module
+        args: Option<Vec<String>>,
+        /// WASI configuration
+        wasi_config: Option<WasiConfig>,
+        /// Environment variables
+        env_vars: HashMap<String, String>,
+    },
+    /// Container workload
+    Container {
+        /// Container image
+        image: String,
+        /// Command to run
+        command: Option<Vec<String>>,
+        /// Arguments
+        args: Option<Vec<String>>,
+        /// Environment variables
+        env_vars: HashMap<String, String>,
+        /// Working directory
+        working_dir: Option<String>,
+        /// Volume mounts
+        volumes: Vec<VolumeMount>,
+        /// Port mappings
+        ports: Vec<PortMapping>,
+        /// Registry authentication
+        registry_auth: Option<RegistryAuth>,
+    },
+    /// GPU workload
+    Gpu {
+        /// GPU program source
+        program: GpuProgramSource,
+        /// Kernel function name
+        kernel_name: String,
+        /// Work group size
+        work_group_size: Option<(u32, u32, u32)>,
+        /// Global work size
+        global_work_size: (u32, u32, u32),
+        /// Program arguments
+        args: Vec<GpuArgument>,
+    },
+    /// Python workload
     Python {
         /// Python source code
-        code: String,
-        /// Entry point function (optional)
-        entry_point: Option<String>,
-        /// Global variables to set (optional)
-        globals: Option<HashMap<String, String>>,
-        /// Required Python packages
+        source: PythonSource,
+        /// Python version requirement
+        python_version: Option<String>,
+        /// Required packages
         requirements: Vec<String>,
-        /// Virtual environment path (optional)
-        virtual_env: Option<PathBuf>,
+        /// Environment variables
+        env_vars: HashMap<String, String>,
     },
+}
 
-    /// GPU compute workload
-    Gpu {
-        /// Compute kernel source
-        kernel_source: GpuKernelSource,
-        /// Kernel language/framework
-        framework: GpuFramework,
-        /// Device requirements
-        device_requirements: GpuDeviceRequirements,
-        /// Compute parameters
-        compute_params: HashMap<String, serde_json::Value>,
-    },
-
-    /// Script workload (interpreted)
-    Script {
-        /// Script source code
-        source: ScriptSource,
-        /// Interpreter to use
-        interpreter: String,
-        /// Script arguments
-        args: Option<Vec<String>>,
-        /// Required packages/dependencies
-        dependencies: Vec<String>,
-    },
+impl Default for WorkloadSpec {
+    fn default() -> Self {
+        Self::Native {
+            executable: ExecutableSource::File {
+                path: PathBuf::from("echo"),
+            },
+            args: Some(vec!["Hello, World!".to_string()]),
+            working_dir: None,
+            env_vars: HashMap::new(),
+            user: None,
+        }
+    }
 }
 
 impl WorkloadSpec {
     /// Get the workload type
     pub fn workload_type(&self) -> WorkloadType {
         match self {
-            Self::Container { .. } => WorkloadType::Container,
-            Self::Wasm { .. } => WorkloadType::Wasm,
-            Self::Native { .. } => WorkloadType::Native,
-            Self::Python { .. } => WorkloadType::Python,
-            Self::Gpu { .. } => WorkloadType::Gpu,
-            Self::Script { interpreter, .. } => WorkloadType::Script {
-                interpreter: interpreter.clone(),
-            },
+            WorkloadSpec::Native { .. } => WorkloadType::Native,
+            WorkloadSpec::Wasm { .. } => WorkloadType::Wasm,
+            WorkloadSpec::Container { .. } => WorkloadType::Container,
+            WorkloadSpec::Gpu { .. } => WorkloadType::Gpu,
+            WorkloadSpec::Python { .. } => WorkloadType::Python,
         }
     }
-
+    
     /// Validate the workload specification
-    pub fn validate(&self) -> crate::error::ToadStoolResult<()> {
+    pub fn validate(&self) -> ToadStoolResult<()> {
         match self {
-            Self::Container { image, .. } => {
+            WorkloadSpec::Native { executable, .. } => {
+                self.validate_executable(executable)?;
+            }
+            WorkloadSpec::Wasm { module, .. } => {
+                self.validate_wasm_module(module)?;
+            }
+            WorkloadSpec::Container { image, .. } => {
                 if image.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Container image cannot be empty",
-                    ));
+                    return Err(ToadStoolError::validation("Container image cannot be empty"));
                 }
             }
-            Self::Wasm { module_source, .. } => {
-                module_source.validate()?;
+            WorkloadSpec::Gpu { program, .. } => {
+                self.validate_gpu_program(program)?;
             }
-            Self::Native { executable, .. } => {
-                executable.validate()?;
+            WorkloadSpec::Python { source, .. } => {
+                self.validate_python_source(source)?;
             }
-            Self::Python { code, .. } => {
+        }
+        Ok(())
+    }
+    
+    /// Validate executable source
+    fn validate_executable(&self, executable: &ExecutableSource) -> ToadStoolResult<()> {
+        match executable {
+            ExecutableSource::File { path } => {
+                if !path.exists() {
+                    return Err(ToadStoolError::validation(format!("Executable file not found: {}", path.display())));
+                }
+            }
+            ExecutableSource::Url { url } => {
+                if url.is_empty() {
+                    return Err(ToadStoolError::validation("Executable URL cannot be empty"));
+                }
+            }
+            ExecutableSource::Bytes { data } => {
+                if data.is_empty() {
+                    return Err(ToadStoolError::validation("Executable data cannot be empty"));
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    /// Validate WASM module source
+    fn validate_wasm_module(&self, module: &WasmModuleSource) -> ToadStoolResult<()> {
+        match module {
+            WasmModuleSource::File { path } => {
+                if !path.exists() {
+                    return Err(ToadStoolError::validation(format!("WASM module file not found: {}", path.display())));
+                }
+            }
+            WasmModuleSource::Bytes { data } => {
+                if data.is_empty() {
+                    return Err(ToadStoolError::validation("WASM module data cannot be empty"));
+                }
+            }
+            WasmModuleSource::Url { url } => {
+                if url.is_empty() {
+                    return Err(ToadStoolError::validation("WASM module URL cannot be empty"));
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    /// Validate GPU program source
+    fn validate_gpu_program(&self, program: &GpuProgramSource) -> ToadStoolResult<()> {
+        match program {
+            GpuProgramSource::OpenCL { source } => {
+                if source.is_empty() {
+                    return Err(ToadStoolError::validation("OpenCL source cannot be empty"));
+                }
+            }
+            GpuProgramSource::Cuda { source } => {
+                if source.is_empty() {
+                    return Err(ToadStoolError::validation("CUDA source cannot be empty"));
+                }
+            }
+            GpuProgramSource::Vulkan { spirv } => {
+                if spirv.is_empty() {
+                    return Err(ToadStoolError::validation("Vulkan SPIR-V cannot be empty"));
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    /// Validate Python source
+    fn validate_python_source(&self, source: &PythonSource) -> ToadStoolResult<()> {
+        match source {
+            PythonSource::Code { code } => {
                 if code.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Python code cannot be empty",
-                    ));
+                    return Err(ToadStoolError::validation("Python code cannot be empty"));
                 }
             }
-            Self::Gpu { kernel_source, .. } => {
-                kernel_source.validate()?;
-            }
-            Self::Script {
-                source,
-                interpreter,
-                ..
-            } => {
-                if interpreter.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Script interpreter cannot be empty",
-                    ));
+            PythonSource::File { path } => {
+                if !path.exists() {
+                    return Err(ToadStoolError::validation(format!("Python file not found: {}", path.display())));
                 }
-                source.validate()?;
+            }
+            PythonSource::Module { name } => {
+                if name.is_empty() {
+                    return Err(ToadStoolError::validation("Python module name cannot be empty"));
+                }
             }
         }
         Ok(())
     }
 }
 
+/// Types of workloads
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum WorkloadType {
+    /// Native executable
+    Native,
+    /// WebAssembly module
+    Wasm,
+    /// Container
+    Container,
+    /// GPU program
+    Gpu,
+    /// Python script
+    Python,
+}
+
+/// Source of an executable
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExecutableSource {
+    /// File on disk
+    File { path: PathBuf },
+    /// URL to download from
+    Url { url: String },
+    /// Raw bytes
+    Bytes { data: Vec<u8> },
+}
+
+/// Source of a WASM module
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WasmModuleSource {
+    /// File on disk
+    File { path: PathBuf },
+    /// Raw bytes
+    Bytes { data: Vec<u8> },
+    /// URL to download from
+    Url { url: String },
+}
+
+/// WASI configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WasiConfig {
+    /// Inherit environment variables
+    pub inherit_env: bool,
+    /// Inherit standard I/O
+    pub inherit_stdio: bool,
+    /// Allowed directories
+    pub allowed_dirs: Vec<PathBuf>,
+    /// Pre-opened directories
+    pub preopened_dirs: Vec<PathBuf>,
+    /// Arguments to pass to the module
+    pub args: Vec<String>,
+}
+
 /// Volume mount specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolumeMount {
-    /// Host path or volume name
-    pub source: String,
-    /// Container path
-    pub target: String,
-    /// Mount type (bind, volume, tmpfs)
+    /// Source path (host)
+    pub source: PathBuf,
+    /// Target path (container)
+    pub target: PathBuf,
+    /// Mount type
     pub mount_type: VolumeMountType,
     /// Read-only flag
     pub read_only: bool,
 }
 
-/// Volume mount types
+/// Types of volume mounts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VolumeMountType {
-    /// Bind mount from host
+    /// Bind mount
     Bind,
-    /// Named volume
+    /// Volume mount
     Volume,
-    /// Temporary filesystem
+    /// Tmpfs mount
     Tmpfs,
 }
 
 /// Port mapping specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortMapping {
-    /// Host port
-    pub host_port: u16,
     /// Container port
     pub container_port: u16,
-    /// Protocol (TCP/UDP)
-    pub protocol: String,
+    /// Host port
+    pub host_port: u16,
+    /// Protocol
+    pub protocol: PortProtocol,
+}
+
+/// Network protocols
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PortProtocol {
+    /// TCP
+    Tcp,
+    /// UDP
+    Udp,
 }
 
 /// Registry authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistryAuth {
-    /// Registry server
-    pub server: String,
     /// Username
     pub username: String,
-    /// Password or token
+    /// Password
     pub password: String,
+    /// Server URL
+    pub server_url: String,
 }
 
-/// WASM module source specification
+/// Source of a GPU program
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum WasmModuleSource {
-    /// Module from file path
+pub enum GpuProgramSource {
+    /// OpenCL source code
+    OpenCL { source: String },
+    /// CUDA source code
+    Cuda { source: String },
+    /// Vulkan SPIR-V bytecode
+    Vulkan { spirv: Vec<u8> },
+}
+
+/// GPU program argument
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum GpuArgument {
+    /// Buffer argument
+    Buffer { data: Vec<u8> },
+    /// Scalar argument
+    Scalar { value: f64 },
+    /// Integer argument
+    Integer { value: i64 },
+}
+
+/// Source of Python code
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PythonSource {
+    /// Inline Python code
+    Code { code: String },
+    /// Python file
     File { path: PathBuf },
-    /// Module from URL
-    Url { url: String },
-    /// Module from raw bytes
-    Bytes { data: Vec<u8> },
-    /// Module from registry
-    Registry {
-        registry: String,
-        name: String,
-        version: String,
-    },
+    /// Python module name
+    Module { name: String },
 }
 
-impl WasmModuleSource {
-    fn validate(&self) -> crate::error::ToadStoolResult<()> {
-        match self {
-            Self::File { path } => {
-                if path.as_os_str().is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "WASM module file path cannot be empty",
-                    ));
-                }
-            }
-            Self::Url { url } => {
-                if url.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "WASM module URL cannot be empty",
-                    ));
-                }
-            }
-            Self::Bytes { data } => {
-                if data.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "WASM module bytes cannot be empty",
-                    ));
-                }
-            }
-            Self::Registry { name, .. } => {
-                if name.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "WASM module name cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// WASI configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WasiConfig {
-    /// Environment variables
-    pub env_vars: HashMap<String, String>,
-    /// Command line arguments
-    pub args: Vec<String>,
-    /// Stdin content
-    pub stdin: Option<Vec<u8>>,
-    /// Directory mappings
-    pub dir_mappings: Vec<DirMapping>,
-}
-
-/// Directory mapping for WASI
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DirMapping {
-    /// Guest path
-    pub guest_path: String,
-    /// Host path
-    pub host_path: PathBuf,
-    /// Read-only flag
-    pub read_only: bool,
-}
-
-/// Executable source specification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ExecutableSource {
-    /// Executable from file path
-    File { path: PathBuf },
-    /// Executable from URL
-    Url { url: String },
-    /// Executable from raw bytes
-    Bytes { data: Vec<u8> },
-}
-
-impl ExecutableSource {
-    fn validate(&self) -> crate::error::ToadStoolResult<()> {
-        match self {
-            Self::File { path } => {
-                if path.as_os_str().is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Executable file path cannot be empty",
-                    ));
-                }
-            }
-            Self::Url { url } => {
-                if url.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Executable URL cannot be empty",
-                    ));
-                }
-            }
-            Self::Bytes { data } => {
-                if data.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Executable bytes cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// GPU kernel source specification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum GpuKernelSource {
-    /// Kernel from file
-    File { path: PathBuf },
-    /// Kernel from source code
-    Source { code: String },
-    /// Precompiled kernel
-    Binary { data: Vec<u8> },
-}
-
-impl GpuKernelSource {
-    fn validate(&self) -> crate::error::ToadStoolResult<()> {
-        match self {
-            Self::File { path } => {
-                if path.as_os_str().is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "GPU kernel file path cannot be empty",
-                    ));
-                }
-            }
-            Self::Source { code } => {
-                if code.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "GPU kernel source code cannot be empty",
-                    ));
-                }
-            }
-            Self::Binary { data } => {
-                if data.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "GPU kernel binary cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// GPU computing frameworks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum GpuFramework {
-    /// CUDA framework
-    Cuda,
-    /// OpenCL framework
-    OpenCl,
-    /// Vulkan compute
-    Vulkan,
-    /// ROCm/HIP
-    Rocm,
-    /// Custom framework
-    Custom(String),
-}
-
-/// GPU device requirements
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GpuDeviceRequirements {
-    /// Minimum compute capability
-    pub min_compute_capability: Option<String>,
-    /// Minimum memory in MB
-    pub min_memory_mb: Option<u64>,
-    /// Required device count
-    pub device_count: Option<u32>,
-    /// Specific device IDs to use
-    pub device_ids: Option<Vec<u32>>,
-}
-
-/// Script source specification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ScriptSource {
-    /// Script from file
-    File { path: PathBuf },
-    /// Script from inline source
-    Inline { code: String },
-    /// Script from URL
-    Url { url: String },
-}
-
-impl ScriptSource {
-    fn validate(&self) -> crate::error::ToadStoolResult<()> {
-        match self {
-            Self::File { path } => {
-                if path.as_os_str().is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Script file path cannot be empty",
-                    ));
-                }
-            }
-            Self::Inline { code } => {
-                if code.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Script source code cannot be empty",
-                    ));
-                }
-            }
-            Self::Url { url } => {
-                if url.is_empty() {
-                    return Err(crate::error::ToadStoolError::validation(
-                        "Script URL cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-}

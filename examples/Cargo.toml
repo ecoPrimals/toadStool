@@ -1,48 +1,167 @@
 [package]
 name = "toadstool-examples"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Examples for ToadStool Universal Compute Platform"
 
-[dependencies]
-anyhow = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-env_logger = "0.10"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-num_cpus = "1.0"
-uuid = { version = "1.0", features = ["v4"] }
-
-# Core ToadStool dependencies only
-toadstool = { path = "../crates/core/toadstool" }
-toadstool-distributed = { path = "../crates/distributed" }
-
-# Working examples only - technical debt elimination showcase
 [[bin]]
-name = "complete_system_integration_demo"
-path = "complete_system_integration_demo.rs"
+name = "basic_usage"
+path = "basic_usage.rs"
 
-# Universal compute bridge showcase
 [[bin]]
-name = "exotic_platforms_showcase"
-path = "exotic_platforms_showcase.rs"
+name = "basic_working_demo"
+path = "basic_working_demo.rs"
 
 [[bin]]
 name = "biomeos_substrate_demo"
 path = "biomeos_substrate_demo.rs"
 
-# All other examples temporarily disabled to prevent test failures
-# These examples have API mismatches or missing dependencies that need
-# to be resolved when the full API implementation is complete
+[[bin]]
+name = "complete_system_integration_demo"
+path = "complete_system_integration_demo.rs"
 
-# Disabled examples (can be re-enabled when dependencies are resolved):
-# - basic_usage.rs (missing toadstool_config dependency)  
-# - basic_working_demo.rs (missing runtime dependencies)
-# - crypto_lock_demo.rs (missing distributed crypto types)
-# - sprint3_runtime_test.rs (missing runtime engine dependencies)
-# - universal_compute_demo.rs (works but has warnings)
-# - sprint4_*.rs examples (missing distributed dependencies)
-# - sprint5_*.rs examples (missing monitoring dependencies)
-# - ecosystem_*.rs examples (missing distributed dependencies)
-# - native_execution_demo.rs (API structure mismatch)
-# - simplified_distributed_demo.rs (missing dependencies)
-# - universal_compute_platform_demo.rs (API structure mismatch) 
+[[bin]]
+name = "cooperative_network_demo"
+path = "cooperative_network_demo.rs"
+
+[[bin]]
+name = "crypto_lock_demo"
+path = "crypto_lock_demo.rs"
+
+[[bin]]
+name = "ecosystem_massive_job_demo"
+path = "ecosystem_massive_job_demo.rs"
+
+[[bin]]
+name = "enhanced_universal_substrate_demo"
+path = "enhanced_universal_substrate_demo.rs"
+
+[[bin]]
+name = "exotic_platforms_showcase"
+path = "exotic_platforms_showcase.rs"
+
+[[bin]]
+name = "final_universal_substrate_summary"
+path = "final_universal_substrate_summary.rs"
+
+[[bin]]
+name = "native_execution_demo"
+path = "native_execution_demo.rs"
+
+[[bin]]
+name = "runtime_engines_demo"
+path = "runtime_engines_demo.rs"
+
+[[bin]]
+name = "simplified_distributed_demo"
+path = "simplified_distributed_demo.rs"
+
+[[bin]]
+name = "sprint3_runtime_test"
+path = "sprint3_runtime_test.rs"
+
+[[bin]]
+name = "sprint4_distributed_orchestration_demo"
+path = "sprint4_distributed_orchestration_demo.rs"
+
+[[bin]]
+name = "sprint4_security_performance_demo"
+path = "sprint4_security_performance_demo.rs"
+
+[[bin]]
+name = "sprint5_monitoring_distributed_demo"
+path = "sprint5_monitoring_distributed_demo.rs"
+
+[[bin]]
+name = "sprint5_zero_touch_demo"
+path = "sprint5_zero_touch_demo.rs"
+
+[[bin]]
+name = "standalone_universal_compute"
+path = "standalone_universal_compute.rs"
+
+[[bin]]
+name = "universal_compute_bridge_demo"
+path = "universal_compute_bridge_demo.rs"
+
+[[bin]]
+name = "universal_compute_demo"
+path = "universal_compute_demo.rs"
+
+[[bin]]
+name = "universal_compute_platform_demo"
+path = "universal_compute_platform_demo.rs"
+
+[[bin]]
+name = "universal_substrate_demo"
+path = "universal_substrate_demo.rs"
+
+[[bin]]
+name = "universal_substrate_demonstration"
+path = "universal_substrate_demonstration.rs"
+
+[[bin]]
+name = "universal_compute_ecosystem_demo"
+path = "universal_compute_ecosystem_demo.rs"
+
+[[bin]]
+name = "simple_demo"
+path = "simple_demo.rs"
+
+[dependencies]
+# Core ToadStool
+toadstool = { path = "../crates/core/toadstool" }
+toadstool-common = { path = "../crates/core/common" }
+toadstool-config = { path = "../crates/core/config" }
+
+# Pure Ecosystem Runtime Engines (no external dependencies)
+toadstool-runtime-native = { path = "../crates/runtime/native" }
+toadstool-runtime-wasm = { path = "../crates/runtime/wasm" }
+# toadstool-runtime-gpu = { path = "../crates/runtime/gpu" } # Temporarily disabled due to architectural issues
+# Note: Container runtime excluded for pure ecosystem
+
+# Ecosystem Integration
+toadstool-distributed = { path = "../crates/distributed" }
+toadstool-testing = { path = "../crates/testing" }
+
+# Management and Monitoring
+toadstool-management-monitoring = { path = "../crates/management/monitoring" }
+toadstool-management-resources = { path = "../crates/management/resources" }
+toadstool-management-performance = { path = "../crates/management/performance" }
+
+# Security (pure ecosystem)
+toadstool-security-policies = { path = "../crates/security/policies" }
+toadstool-security-sandbox = { path = "../crates/security/sandbox" }
+
+# Standard dependencies
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+# System monitoring
+sysinfo = { workspace = true }
+
+# Async utilities
+futures = { workspace = true }
+
+# CLI and UI
+clap = { workspace = true, features = ["derive"] }
+colored = "2.0"
+
+# Networking (for ecosystem integration)
+reqwest = { workspace = true, features = ["json"] }
+tokio-tungstenite = "0.20"
+tonic = { version = "0.10", optional = true }
+
+[features]
+default = ["pure-ecosystem"]
+pure-ecosystem = []
+grpc = ["tonic"]
+full-ecosystem = ["grpc"] 

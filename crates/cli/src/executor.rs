@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use toadstool::RuntimeSelectionStrategy;
 use toadstool::{
-    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeOrchestrator, RuntimeType,
+    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType,
     SecurityContext, WorkloadSpec,
 };
 use toadstool_config::ToadStoolConfig;
@@ -32,8 +32,6 @@ use crate::{
 
 /// Biome execution engine
 pub struct BiomeExecutor {
-    /// ToadStool runtime orchestrator
-    runtime: Arc<RuntimeOrchestrator>,
     /// Distributed coordinator for ecosystem integration
     distributed: Arc<DistributedCoordinator>,
     /// Running biomes registry
@@ -75,9 +73,6 @@ impl BiomeExecutor {
         // Load configuration
         let config = ToadStoolConfig::default();
 
-        // Initialize runtime orchestrator
-        let runtime = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
-
         // Initialize distributed coordinator
         let distributed_config = DistributedConfig::default();
         let distributed = Arc::new(
@@ -87,7 +82,6 @@ impl BiomeExecutor {
         );
 
         Ok(Self {
-            runtime: Arc::new(runtime),
             distributed,
             biomes: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             config,
@@ -519,8 +513,8 @@ impl BiomeExecutor {
             callback_config: None,
         };
 
-        // Submit to runtime
-        let _result = self.runtime.execute(request).await?;
+        // Submit to distributed coordinator
+        let _execution_id = self.distributed.submit_execution(request).await?;
 
         Ok(BiomeProcess {
             name: name.to_string(),
@@ -559,8 +553,8 @@ impl BiomeExecutor {
             callback_config: None,
         };
 
-        // Submit to runtime
-        let _result = self.runtime.execute(request).await?;
+        // Submit to distributed coordinator
+        let _execution_id = self.distributed.submit_execution(request).await?;
 
         Ok(BiomeProcess {
             name: name.to_string(),
@@ -583,7 +577,7 @@ impl BiomeExecutor {
                 command: None,
                 args: None,
                 working_dir: None,
-                user: None,
+                env_vars: HashMap::new(),
                 volumes: Vec::new(),
                 ports: Vec::new(),
                 registry_auth: None,
@@ -596,12 +590,12 @@ impl BiomeExecutor {
                 // Load WASM module from source with verification
                 let module_data = self.load_wasm_with_verification(source, &Some(checksum.clone())).await?;
                 Ok(WorkloadSpec::Wasm {
-                    module_source: toadstool::workload::WasmModuleSource::Bytes {
+                    module: toadstool::workload::WasmModuleSource::Bytes {
                         data: module_data,
                     },
+                    args: None,
                     wasi_config: None, // WASI config conversion not implemented
-                    host_functions: Vec::new(),
-                    memory_limit: None,
+                    env_vars: HashMap::new(),
                 })
             }
             WorkloadSource::Local { path } => Ok(WorkloadSpec::Native {

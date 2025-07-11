@@ -2,7 +2,7 @@
 name = "toadstool-runtime-gpu"
 version.workspace = true
 edition.workspace = true
-description = "ToadStool GPU compute runtime foundation with CUDA and OpenCL detection"
+description = "ToadStool Universal GPU Compute Runtime - If it has parallel compute units, we can harness it"
 
 [dependencies]
 # Core ToadStool dependencies
@@ -27,20 +27,47 @@ anyhow = "1.0"
 thiserror = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 
-# System integration
+# System integration and monitoring
 sysinfo = { workspace = true }
 num_cpus = "1.0"
 
-# GPU compute frameworks (optional)
+# Universal GPU compute frameworks (all optional for universal support)
+# WebGPU support (universal, future-ready)
+wgpu = { version = "0.19", optional = true }
+
+# Vulkan compute support (universal)
+vulkano = { version = "0.34", optional = true }
+ash = { version = "0.37", optional = true }
+
+# OpenCL support (universal) - using working version
 ocl = { version = "0.19", optional = true }
-cuda-driver-sys = { version = "0.3", optional = true }
-opencl-sys = { version = "0.2", optional = true }
+
+# Universal intermediate representations
+spirv = { version = "0.3", optional = true }
+
+# JIT compilation and optimization (using compatible versions)
+cranelift-jit = { version = "0.100", optional = true }
+wasmtime = { version = "18", optional = true }
 
 [features]
-default = ["opencl-detection"]
-opencl-detection = ["ocl", "opencl-sys"]
-cuda-detection = ["cuda-driver-sys"]
-full-gpu-support = ["opencl-detection", "cuda-detection"]
+default = ["universal-basic", "webgpu", "opencl", "vulkan"]
+universal-basic = []
+universal-detection = []
+universal-optimized = []
+webgpu = ["wgpu"]
+opencl = ["ocl"]
+vulkan = ["vulkano", "ash"]
+# Add missing features to fix cfg warnings
+cuda = []
+metal = []
+rocm = []
+directcompute = []
+spirv = ["dep:spirv"]
+spirv-support = ["spirv"]
+jit = ["cranelift-jit", "wasmtime"]
+testing = []
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+proptest = "1.0"
+criterion = "0.5"

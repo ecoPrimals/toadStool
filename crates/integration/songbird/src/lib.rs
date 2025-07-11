@@ -756,16 +756,24 @@ impl SongbirdIntegration {
     ) -> ToadStoolResult<ExecutionResponse> {
         // This would integrate with the actual ToadStool execution engine
         // For now, return a mock response
+        let response_data = serde_json::json!({
+            "message": "Mock execution completed",
+            "data": serde_json::json!({})
+        });
+        let response_bytes = serde_json::to_vec(&response_data)
+            .map_err(|e| ToadStoolError::parsing(e.to_string()))?;
+        
         Ok(ExecutionResponse {
             execution_id: Uuid::new_v4(),
             status: ExecutionStatus::Success,
             output: ExecutionOutput {
-                data: Vec::new(),
-                result: HashMap::new(),
-                stdout: Some("Mock execution completed".to_string()),
-                stderr: None,
+                data: response_bytes,
+                stdout: Some(String::new()),
+                stderr: Some(String::new()),
                 exit_code: Some(0),
-                format: None,
+                format: Some("application/json".to_string()),
+                result: std::collections::HashMap::new(),
+                metadata: std::collections::HashMap::new(),
             },
             metrics: RuntimeMetrics::default(),
             duration: Duration::from_secs(1),

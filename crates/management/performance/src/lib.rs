@@ -280,7 +280,7 @@ impl IntelligentPerformanceOptimizer {
             100.0
         };
 
-        let memory_usage_mb = metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0;
+        let memory_usage_mb = metrics.memory.used_bytes as f64 / 1024.0 / 1024.0;
         let memory_score = 100.0 - (memory_usage_mb / 1024.0 * 100.0).min(100.0);
         let cpu_score = 100.0 - metrics.cpu.usage_percent.min(100.0);
 
@@ -289,7 +289,7 @@ impl IntelligentPerformanceOptimizer {
 
     /// Calculate resource efficiency score
     fn calculate_efficiency_score(&self, metrics: &RuntimeMetrics, duration: Duration) -> f64 {
-        let memory_usage_mb = metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0;
+        let memory_usage_mb = metrics.memory.used_bytes as f64 / 1024.0 / 1024.0;
         let memory_efficiency = if memory_usage_mb > 0.0 {
             100.0 / (memory_usage_mb / 1024.0).max(1.0)
         } else {
@@ -362,7 +362,7 @@ impl IntelligentPerformanceOptimizer {
 
         runtime_stats.avg_memory_usage = (runtime_stats.avg_memory_usage
             * (runtime_stats.total_executions - 1) as f64
-            + metrics.resource_metrics.memory.usage_bytes as f64)
+            + metrics.resource_metrics.memory.used_bytes as f64)
             / runtime_stats.total_executions as f64;
 
         runtime_stats.avg_cpu_usage = (runtime_stats.avg_cpu_usage
@@ -556,14 +556,6 @@ impl IntelligentPerformanceOptimizer {
                     self.select_fastest_runtime(available_runtimes).await
                 }
             }
-            WorkloadSpec::Script { .. } => {
-                // Prefer Python runtime for script workloads
-                if available_runtimes.contains(&RuntimeType::Python) {
-                    Ok(RuntimeType::Python)
-                } else {
-                    self.select_fastest_runtime(available_runtimes).await
-                }
-            }
         }
     }
 
@@ -683,7 +675,6 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
             WorkloadSpec::Container { .. } => "container",
             WorkloadSpec::Gpu { .. } => "gpu",
             WorkloadSpec::Python { .. } => "python",
-            WorkloadSpec::Script { .. } => "script",
         };
 
         // Get historical data for similar workloads
@@ -711,7 +702,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
 
         let memory_usages: Vec<f64> = similar_executions
             .iter()
-            .map(|m| m.resource_metrics.memory.usage_bytes as f64 / 1024.0 / 1024.0)
+            .map(|m| m.resource_metrics.memory.used_bytes as f64 / 1024.0 / 1024.0)
             .collect();
 
         let cpu_usages: Vec<f64> = similar_executions

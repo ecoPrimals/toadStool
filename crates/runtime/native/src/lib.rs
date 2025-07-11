@@ -15,11 +15,12 @@ use toadstool::{
     error::{ToadStoolError, ToadStoolResult},
     execution::{
         ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
-        RuntimeConfig, RuntimeEngine, RuntimeType, WorkloadType,
+        RuntimeConfig, RuntimeEngine, RuntimeType,
     },
     resources::{ResourceMonitor, RuntimeMetrics},
     security::{IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
+    WorkloadType,
 };
 
 #[cfg(unix)]
@@ -27,12 +28,22 @@ use toadstool::{
 use std::os::unix::process::CommandExt;
 
 /// Native runtime engine for executing native processes
-#[derive(Debug)]
 pub struct NativeRuntimeEngine {
     config: RuntimeConfig,
     active_processes: Arc<RwLock<HashMap<Uuid, ProcessHandle>>>,
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
     capabilities: RuntimeCapabilities,
+}
+
+impl std::fmt::Debug for NativeRuntimeEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeRuntimeEngine")
+            .field("config", &self.config)
+            .field("active_processes", &self.active_processes)
+            .field("resource_monitor", &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"))
+            .field("capabilities", &self.capabilities)
+            .finish()
+    }
 }
 
 #[derive(Debug)]

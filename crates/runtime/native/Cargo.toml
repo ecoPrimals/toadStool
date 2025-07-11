@@ -1,5 +1,5 @@
 [package]
-name = "toadstool_runtime_native"
+name = "toadstool-runtime-native"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -405,7 +405,7 @@ impl IntelligentAnalyticsEngine {
         while let Some(data_point) = buffer.pop_front() {
             // Store in database
             let tags_json = serde_json::to_string(&data_point.tags)
-                .map_err(|e| ToadStoolError::serialization(e.to_string()))?;
+                .map_err(|e| ToadStoolError::validation(e.to_string()))?;
 
             sqlx::query(r#"
                 INSERT INTO analytics_data (id, timestamp, metric_name, value, runtime_type, execution_id, tags)
@@ -878,9 +878,8 @@ impl IntelligentAnalyticsEngine {
             .map_err(|e| ToadStoolError::network(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(ToadStoolError::external_service(
-                "webhook",
-                format!("HTTP {}", response.status()),
+            return Err(ToadStoolError::network(
+                format!("Webhook error: HTTP {}", response.status()),
             ));
         }
 

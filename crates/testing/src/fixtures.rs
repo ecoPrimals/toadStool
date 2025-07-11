@@ -34,7 +34,7 @@ use toadstool::{
         NetworkRequirements, ResourceRequirements, RuntimeMetrics, StorageMetrics,
         StorageRequirements, TimingMetrics,
     },
-    security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext},
+    security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext, UserContext},
     workload::{ExecutableSource, WasmModuleSource, WorkloadSpec},
 };
 
@@ -98,23 +98,23 @@ pub fn create_test_native_workload() -> WorkloadSpec {
 /// Create a test WASM workload
 pub fn create_test_wasm_workload() -> WorkloadSpec {
     WorkloadSpec::Wasm {
-        module_source: WasmModuleSource::Bytes {
-            data: create_minimal_wasm_module(),
+        module: WasmModuleSource::Bytes {
+            data: b"test wasm module".to_vec(),
         },
+        args: Some(vec!["--version".to_string()]),
         wasi_config: None,
-        host_functions: vec![],
-        memory_limit: Some(TestConstants::DEFAULT_MEMORY_LIMIT),
+        env_vars: HashMap::new(),
     }
 }
 
 /// Create a test container workload
 pub fn create_test_container_workload() -> WorkloadSpec {
     WorkloadSpec::Container {
-        image: TestConstants::TEST_CONTAINER_IMAGE.to_string(),
+        image: "alpine:latest".to_string(),
         command: Some(vec!["echo".to_string()]),
-        args: Some(vec!["Hello from container!".to_string()]),
-        working_dir: Some(TestConstants::TEST_WORKING_DIR.to_string()),
-        user: None,
+        args: Some(vec!["Hello, Container!".to_string()]),
+        env_vars: HashMap::new(),
+        working_dir: None,
         volumes: vec![],
         ports: vec![],
         registry_auth: None,
@@ -137,34 +137,25 @@ pub fn create_minimal_wasm_module() -> Vec<u8> {
 pub fn create_test_resource_requirements() -> ResourceRequirements {
     ResourceRequirements {
         cpu: CpuRequirements {
-            min_cores: TestConstants::DEFAULT_CPU_CORES,
-            max_cores: Some(TestConstants::DEFAULT_CPU_CORES * 2.0),
+            min_cores: 1.0,
+            max_cores: Some(2.0),
             architecture: Some("x86_64".to_string()),
-            min_frequency_mhz: Some(2000),
-            required_features: vec!["sse4".to_string(), "avx".to_string()],
         },
         memory: MemoryRequirements {
-            min_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 2,
-            max_bytes: Some(TestConstants::DEFAULT_MEMORY_LIMIT),
-            memory_type: None,
-            allow_swap: false,
+            min_bytes: TestConstants::DEFAULT_MEMORY_LIMIT,
+            max_bytes: Some(TestConstants::DEFAULT_MEMORY_LIMIT * 2),
         },
         storage: StorageRequirements {
-            min_bytes: TestConstants::DEFAULT_STORAGE_LIMIT / 10,
-            max_bytes: Some(TestConstants::DEFAULT_STORAGE_LIMIT),
-            storage_type: None,
-            min_iops: Some(1000),
-            min_bandwidth_mbps: Some(100),
+            min_bytes: TestConstants::DEFAULT_STORAGE_LIMIT,
+            max_bytes: Some(TestConstants::DEFAULT_STORAGE_LIMIT * 2),
+            storage_type: Some("ssd".to_string()),
         },
         network: NetworkRequirements {
-            min_bandwidth_mbps: Some(TestConstants::DEFAULT_NETWORK_BANDWIDTH),
-            max_bandwidth_mbps: Some(TestConstants::DEFAULT_NETWORK_BANDWIDTH * 2),
+            min_bandwidth: Some(1000),
+            max_bandwidth: Some(10000),
             max_latency_ms: Some(100),
-            internet_access: true,
-            internal_access: true,
         },
         gpu: None,
-        custom: HashMap::new(),
     }
 }
 
@@ -172,33 +163,27 @@ pub fn create_test_resource_requirements() -> ResourceRequirements {
 pub fn create_test_security_context() -> SecurityContext {
     SecurityContext {
         isolation_level: IsolationLevel::Standard,
-        capabilities: vec![
-            Capability::Execute,
-            Capability::Read,
-            Capability::WriteTemp,
-            Capability::NetworkClient,
-        ]
-        .into_iter()
-        .collect(),
-        policies: vec![],
-        user_context: None,
+        capabilities: vec![Capability::Execute, Capability::Read],
+        user_context: Some(UserContext {
+            username: Some("test_user".to_string()),
+            uid: Some(1000),
+            gid: Some(1000),
+            groups: vec![],
+        }),
         network_security: NetworkSecurity {
-            internet_access: true,
-            internal_access: true,
-            allowed_hosts: vec![],
+            allow_outbound: true,
+            allow_inbound: true,
+            allowed_domains: vec![],
+            blocked_domains: vec![],
             allowed_ports: vec![],
-            denied_hosts: vec![],
-            dns_servers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
+            blocked_ports: vec![],
         },
         filesystem_security: FilesystemSecurity {
             read_only: false,
-            read_paths: vec![PathBuf::from("/usr"), PathBuf::from("/bin")],
-            write_paths: vec![PathBuf::from("/tmp")],
-            temp_access: true,
-            hidden_paths: vec![],
-            max_file_size: Some(100 * 1024 * 1024), // 100MB
+            allowed_read_paths: vec!["/usr".to_string(), "/bin".to_string()],
+            allowed_write_paths: vec!["/tmp".to_string()],
+            blocked_paths: vec![],
         },
-        custom_security: HashMap::new(),
     }
 }
 
@@ -215,15 +200,12 @@ pub fn create_test_environment() -> HashMap<String, String> {
 pub fn create_test_execution_input() -> ExecutionInput {
     ExecutionInput {
         data: b"test input data".to_vec(),
-        parameters: {
-            let mut params = HashMap::new();
-            params.insert(
-                "test_param".to_string(),
-                serde_json::Value::String("test_value".to_string()),
-            );
-            params
-        },
         format: Some("text/plain".to_string()),
+        metadata: {
+            let mut map = HashMap::new();
+            map.insert("test_key".to_string(), "test_value".to_string());
+            map
+        },
     }
 }
 
@@ -235,7 +217,7 @@ pub fn create_test_execution_output() -> ExecutionOutput {
             let mut result = HashMap::new();
             result.insert(
                 "status".to_string(),
-                serde_json::Value::String("success".to_string()),
+                "success".to_string(),
             );
             result
         },
@@ -243,24 +225,24 @@ pub fn create_test_execution_output() -> ExecutionOutput {
         stderr: None,
         exit_code: Some(0),
         format: Some("text/plain".to_string()),
+        metadata: HashMap::new(),
     }
 }
 
 /// Create test runtime configuration
 pub fn create_test_runtime_config() -> RuntimeConfig {
     RuntimeConfig {
-        runtime_config: {
+        settings: {
             let mut config = HashMap::new();
             config.insert(
                 "timeout".to_string(),
-                serde_json::Value::Number(serde_json::Number::from(30)),
+                serde_json::Value::String("30".to_string()),
             );
-            config.insert("debug".to_string(), serde_json::Value::Bool(true));
             config
         },
-        platform_optimizations: true,
-        debug_mode: true,
-        telemetry_enabled: true,
+        resource_limits: None,
+        security_settings: None,
+        logging: None,
     }
 }
 
@@ -268,51 +250,33 @@ pub fn create_test_runtime_config() -> RuntimeConfig {
 pub fn create_test_runtime_metrics() -> RuntimeMetrics {
     RuntimeMetrics {
         cpu: CpuMetrics {
-            usage_percent: 25.5,
-            peak_usage_percent: 45.2,
-            average_usage_percent: 30.1,
-            cpu_time_ms: 1500,
-            cpu_cycles: Some(1000000),
-            throttle_events: 0,
+            usage_percent: 25.0,
+            cores_used: 0.5,
+            cpu_time_seconds: 1.0,
         },
         memory: MemoryMetrics {
-            usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 4,
-            peak_usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 2,
-            average_usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 3,
-            allocation_count: 150,
-            deallocation_count: 120,
-            page_faults: 5,
-            swap_usage_bytes: 0,
+            usage_percent: 75.0,
+            used_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 4,
+            peak_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 2,
         },
         storage: StorageMetrics {
-            bytes_read: 1024 * 1024,
-            bytes_written: 512 * 1024,
-            read_ops: 100,
-            write_ops: 50,
-            read_iops: 1000.0,
-            write_iops: 500.0,
-            avg_read_latency_us: 100.5,
-            avg_write_latency_us: 200.3,
+            usage_percent: 25.0,
+            used_bytes: TestConstants::DEFAULT_STORAGE_LIMIT / 8,
+            bytes_read: 1024,
+            bytes_written: 512,
         },
         network: NetworkMetrics {
-            bytes_received: 2048,
-            bytes_transmitted: 1024,
-            packets_received: 20,
-            packets_transmitted: 15,
-            errors: 0,
-            drops: 0,
-            avg_latency_us: 50.2,
+            bytes_sent: 512,
+            bytes_received: 1024,
+            packets_sent: 4,
+            packets_received: 8,
         },
         gpu: None,
         timing: TimingMetrics {
-            start_time: Utc::now(),
-            end_time: Some(Utc::now()),
-            duration: Duration::from_secs(5),
-            init_duration: Duration::from_millis(100),
-            cleanup_duration: Duration::from_millis(50),
-            queue_wait_duration: Duration::from_millis(10),
+            start_time: chrono::Utc::now(),
+            end_time: Some(chrono::Utc::now()),
+            duration: chrono::Duration::seconds(5),
         },
-        custom: HashMap::new(),
     }
 }
 
@@ -355,23 +319,23 @@ pub mod random {
     /// Generate random WASM workload
     pub fn random_wasm_workload() -> WorkloadSpec {
         WorkloadSpec::Wasm {
-            module_source: WasmModuleSource::Bytes {
+            module: WasmModuleSource::Bytes {
                 data: Faker.fake::<Vec<u8>>(),
             },
+            args: Some(vec![Faker.fake::<String>()]),
             wasi_config: None,
-            host_functions: vec![],
-            memory_limit: Some((1024 * 1024 * 1024).fake::<u64>()),
+            env_vars: HashMap::new(),
         }
     }
 
     /// Generate random container workload
     pub fn random_container_workload() -> WorkloadSpec {
         WorkloadSpec::Container {
-            image: format!("{}:{}", Faker.fake::<String>(), Faker.fake::<String>()),
+            image: Faker.fake::<String>(),
             command: Some(vec![Faker.fake::<String>()]),
             args: Some(vec![Faker.fake::<String>()]),
-            working_dir: Some(format!("/app/{}", Faker.fake::<String>())),
-            user: None,
+            env_vars: HashMap::new(),
+            working_dir: Some(Faker.fake::<String>()),
             volumes: vec![],
             ports: vec![],
             registry_auth: None,
@@ -382,34 +346,25 @@ pub mod random {
     pub fn random_resource_requirements() -> ResourceRequirements {
         ResourceRequirements {
             cpu: CpuRequirements {
-                min_cores: (0.5..16.0).fake::<f64>(),
-                max_cores: Some((1.0..32.0).fake::<f64>()),
-                architecture: Some("x86_64".to_string()),
-                min_frequency_mhz: Some((1000..4000).fake::<u32>()),
-                required_features: vec![Faker.fake::<String>()],
+                min_cores: (0.5..8.0).fake::<f64>(),
+                max_cores: Some((0.5..8.0).fake::<f64>()),
+                architecture: Some(Faker.fake::<String>()),
             },
             memory: MemoryRequirements {
-                min_bytes: (1024 * 1024).fake::<u64>(),
-                max_bytes: Some((1024 * 1024 * 1024).fake::<u64>()),
-                memory_type: None,
-                allow_swap: rand::random::<bool>(),
+                min_bytes: (1024 * 1024 * 512..1024 * 1024 * 1024 * 8).fake::<u64>(),
+                max_bytes: Some((1024 * 1024 * 1024 * 8..1024 * 1024 * 1024 * 16).fake::<u64>()),
             },
             storage: StorageRequirements {
-                min_bytes: (1024 * 1024).fake::<u64>(),
-                max_bytes: Some((1024 * 1024 * 1024).fake::<u64>()),
-                storage_type: None,
-                min_iops: Some((100..10000).fake::<u32>()),
-                min_bandwidth_mbps: Some((10..1000).fake::<u32>()),
+                min_bytes: (1024 * 1024 * 1024..1024 * 1024 * 1024 * 100).fake::<u64>(),
+                max_bytes: Some((1024 * 1024 * 1024 * 100..1024 * 1024 * 1024 * 1000).fake::<u64>()),
+                storage_type: Some(Faker.fake::<String>()),
             },
             network: NetworkRequirements {
-                min_bandwidth_mbps: Some((1..1000).fake::<u32>()),
-                max_bandwidth_mbps: Some((100..10000).fake::<u32>()),
-                max_latency_ms: Some((1..1000).fake::<u32>()),
-                internet_access: rand::random::<bool>(),
-                internal_access: rand::random::<bool>(),
+                min_bandwidth: Some((1..1000).fake::<u64>()),
+                max_bandwidth: Some((100..10000).fake::<u64>()),
+                max_latency_ms: Some((1..1000).fake::<u64>()),
             },
             gpu: None,
-            custom: HashMap::new(),
         }
     }
 
@@ -426,17 +381,17 @@ pub mod random {
     pub fn random_execution_input() -> ExecutionInput {
         ExecutionInput {
             data: Faker.fake::<Vec<u8>>(),
-            parameters: {
+            format: Some("application/octet-stream".to_string()),
+            metadata: {
                 let mut params = HashMap::new();
                 for _ in 0..3 {
                     params.insert(
                         Faker.fake::<String>(),
-                        serde_json::Value::String(Faker.fake::<String>()),
+                        Faker.fake::<String>(),
                     );
                 }
                 params
             },
-            format: Some("application/octet-stream".to_string()),
         }
     }
 }
@@ -467,10 +422,10 @@ mod tests {
     #[test]
     fn test_create_test_resource_requirements() {
         let requirements = create_test_resource_requirements();
-        assert_eq!(requirements.cpu.min_cores, TestConstants::DEFAULT_CPU_CORES);
+        assert_eq!(requirements.cpu.min_cores, 1.0);
         assert_eq!(
             requirements.memory.min_bytes,
-            TestConstants::DEFAULT_MEMORY_LIMIT / 2
+            TestConstants::DEFAULT_MEMORY_LIMIT
         );
         assert!(requirements.network.internet_access);
     }

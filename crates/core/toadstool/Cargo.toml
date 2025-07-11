@@ -8,36 +8,53 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
-description = "Core ToadStool library - Universal compute platform for execution environments"
+description = "ToadStool Universal Compute Platform - Core library for universal execution"
 keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
 # Core dependencies
-tokio = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-serde_yaml = { workspace = true }
-uuid = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-async-trait = { workspace = true }
-chrono = { workspace = true }
-futures = { workspace = true }
-
-# Internal dependencies
 toadstool-common = { path = "../common" }
 toadstool-config = { path = "../config" }
+
+# Async runtime
+tokio = { workspace = true, features = ["full"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+# Unique identifiers
+uuid = { workspace = true, features = ["v4"] }
+
+# Time handling
+chrono = { workspace = true, features = ["serde"] }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# System monitoring
+sysinfo = { workspace = true }
+
+# Networking for ecosystem integration (optional)
+reqwest = { workspace = true, features = ["json", "rustls-tls"], optional = true }
+tokio-tungstenite = { version = "0.20", optional = true }
+tonic = { version = "0.10", optional = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 
 [features]
-default = []
-container = []
-wasm = []
-native = []
-gpu = [] 
+default = ["pure-ecosystem"]
+pure-ecosystem = []
+networking = ["reqwest", "tokio-tungstenite"]
+grpc = ["tonic", "networking"]
+full-ecosystem = ["grpc"] 

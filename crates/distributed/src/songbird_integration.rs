@@ -327,7 +327,7 @@ impl ToadStoolSongbirdIntegration {
         let job_request = SongbirdJobRequest {
             job_id: job.job_id,
             job_payload: serde_json::to_vec(&job.execution_request)
-                .map_err(|e| ToadStoolError::serialization(e.to_string()))?,
+                .map_err(|e| ToadStoolError::validation(e.to_string()))?,
             target_nodes: vec![], // Will be determined by Songbird
             resource_requirements: job.resource_requirements.clone(),
             priority: job.priority.clone() as u8,

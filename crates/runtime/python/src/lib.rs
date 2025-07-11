@@ -21,7 +21,8 @@ use toadstool::{
     ExecutionInput, ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus,
     IsolationLevel, ResourceMonitor, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
     RuntimeMetrics, RuntimeType, SecurityContext, ToadStoolError, ToadStoolResult, WorkloadSpec,
-    WorkloadType, CpuMetrics, MemoryMetrics, StorageMetrics, NetworkMetrics, TimingMetrics,
+    WorkloadType,
+    resources::{CpuMetrics, MemoryMetrics, StorageMetrics, NetworkMetrics, TimingMetrics},
 };
 
 /// Python runtime configuration
@@ -52,13 +53,24 @@ impl Default for PythonRuntimeConfig {
 }
 
 /// Python runtime engine (subprocess only)
-#[derive(Debug)]
 pub struct PythonRuntimeEngine {
     config: PythonRuntimeConfig,
     runtime_config: RuntimeConfig,
     active_executions: Arc<RwLock<HashMap<Uuid, Instant>>>,
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
     capabilities: RuntimeCapabilities,
+}
+
+impl std::fmt::Debug for PythonRuntimeEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PythonRuntimeEngine")
+            .field("config", &self.config)
+            .field("runtime_config", &self.runtime_config)
+            .field("active_executions", &self.active_executions)
+            .field("resource_monitor", &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"))
+            .field("capabilities", &self.capabilities)
+            .finish()
+    }
 }
 
 impl PythonRuntimeEngine {
@@ -152,11 +164,6 @@ impl RuntimeEngine for PythonRuntimeEngine {
             network: NetworkMetrics::default(),
             gpu: None,
             timing: TimingMetrics::default(),
-            custom: {
-                let mut custom = HashMap::new();
-                custom.insert("active_executions".to_string(), serde_json::Value::Number(active_count.into()));
-                custom
-            },
         })
     }
 

@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
-toadstool_management_monitoring = { path = "../management/monitoring" }
+toadstool-management-monitoring = { path = "../management/monitoring" }
 toadstool-management-analytics = { path = "../management/analytics" }
 toadstool-distributed = { path = "../distributed" }
 

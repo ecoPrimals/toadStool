@@ -1,28 +1,22 @@
-//! Runtime orchestration and management
-//!
-//! This module provides the main ToadStool runtime orchestrator that manages
-//! different runtime engines and provides a unified interface for workload execution.
+//! Runtime engine orchestration for ToadStool
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::{debug, info, error};
 
-use crate::error::{ToadStoolError, ToadStoolResult};
-use crate::execution::{ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType};
-use crate::resources::ResourceMonitor;
+use crate::{
+    ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,
+    ToadStoolError, ToadStoolResult,
+};
 
 /// Runtime orchestrator that manages multiple runtime engines
-#[derive(Debug)]
 pub struct RuntimeOrchestrator {
     /// Registered runtime engines
     engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
     /// Runtime selection strategy
     selection_strategy: RuntimeSelectionStrategy,
-    /// Resource monitor (used for capacity checking)
-    #[allow(dead_code)]
-    resource_monitor: Option<Arc<dyn ResourceMonitor>>,
 }
 
 impl RuntimeOrchestrator {
@@ -31,7 +25,6 @@ impl RuntimeOrchestrator {
         Self {
             engines: Arc::new(RwLock::new(HashMap::new())),
             selection_strategy,
-            resource_monitor: None,
         }
     }
 

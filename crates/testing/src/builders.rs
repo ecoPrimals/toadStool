@@ -92,8 +92,8 @@ impl ExecutionRequestBuilder {
             image: image.to_string(),
             command,
             args: None,
+            env_vars: HashMap::new(),
             working_dir: Some(TestConstants::TEST_WORKING_DIR.to_string()),
-            user: None,
             volumes: vec![],
             ports: vec![],
             registry_auth: None,
@@ -104,10 +104,10 @@ impl ExecutionRequestBuilder {
     /// Set WASM workload
     pub fn wasm_workload(mut self, module_data: Vec<u8>) -> Self {
         self.workload = Some(WorkloadSpec::Wasm {
-            module_source: WasmModuleSource::Bytes { data: module_data },
+            module: WasmModuleSource::Bytes { data: module_data },
+            args: None,
             wasi_config: None,
-            host_functions: vec![],
-            memory_limit: Some(TestConstants::DEFAULT_MEMORY_LIMIT),
+            env_vars: HashMap::new(),
         });
         self
     }
@@ -236,20 +236,18 @@ impl ExecutionResponseBuilder {
         self
     }
 
-    /// Set status to resource limit exceeded
+    /// Set status to resource limit exceeded (using failed status)
     pub fn resource_limit_exceeded(mut self, resource: &str, limit: &str, actual: &str) -> Self {
-        self.status = Some(ExecutionStatus::ResourceLimitExceeded {
-            resource: resource.to_string(),
-            limit: limit.to_string(),
-            actual: actual.to_string(),
+        self.status = Some(ExecutionStatus::Failed {
+            error: format!("Resource limit exceeded: {} (limit: {}, actual: {})", resource, limit, actual),
         });
         self
     }
 
-    /// Set status to security violation
+    /// Set status to security violation (using failed status)
     pub fn security_violation(mut self, violation: &str) -> Self {
-        self.status = Some(ExecutionStatus::SecurityViolation {
-            violation: violation.to_string(),
+        self.status = Some(ExecutionStatus::Failed {
+            error: format!("Security violation: {}", violation),
         });
         self
     }
@@ -309,69 +307,56 @@ impl ExecutionResponseBuilder {
 }
 
 /// Builder for SecurityContext
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SecurityContextBuilder {
-    isolation_level: Option<IsolationLevel>,
-    capabilities: HashSet<Capability>,
-    policies: Vec<toadstool::security::SecurityPolicy>,
-    user_context: Option<toadstool::security::UserContext>,
-    network_security: Option<NetworkSecurity>,
-    filesystem_security: Option<FilesystemSecurity>,
-    custom_security: HashMap<String, serde_json::Value>,
+    isolation_level: IsolationLevel,
+    capabilities: Vec<Capability>,
+    policies: Vec<String>,
+    custom_security: HashMap<String, String>,
 }
 
 impl SecurityContextBuilder {
-    /// Create a new builder
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            isolation_level: IsolationLevel::Standard,
+            capabilities: vec![Capability::Execute],
+            policies: vec![],
+            custom_security: HashMap::new(),
+        }
     }
 
-    /// Set isolation level
-    pub fn isolation_level(mut self, level: IsolationLevel) -> Self {
-        self.isolation_level = Some(level);
+    pub fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
+        self.isolation_level = level;
         self
     }
 
-    /// Add capability
-    pub fn capability(mut self, capability: Capability) -> Self {
-        self.capabilities.insert(capability);
-        self
-    }
-
-    /// Add multiple capabilities
-    pub fn capabilities(mut self, capabilities: impl IntoIterator<Item = Capability>) -> Self {
+    pub fn with_capabilities(mut self, capabilities: Vec<Capability>) -> Self {
         self.capabilities.extend(capabilities);
         self
     }
 
-    /// Set network security
-    pub fn network_security(mut self, network: NetworkSecurity) -> Self {
-        self.network_security = Some(network);
+    pub fn with_policy(mut self, policy: String) -> Self {
+        self.policies.push(policy);
         self
     }
 
-    /// Set filesystem security
-    pub fn filesystem_security(mut self, filesystem: FilesystemSecurity) -> Self {
-        self.filesystem_security = Some(filesystem);
+    pub fn with_resource_limit_exceeded(self, _message: String) -> Self {
+        // Note: SecurityContext doesn't have status, this is for builder compatibility
         self
     }
 
-    /// Build the SecurityContext
+    pub fn with_security_violation(mut self, _message: String) -> Self {
+        // Note: SecurityContext doesn't have status, this is for builder compatibility  
+        self
+    }
+
     pub fn build(self) -> SecurityContext {
-        let isolation_level = self.isolation_level.unwrap_or(IsolationLevel::Standard);
-
         SecurityContext {
-            isolation_level,
-            capabilities: if self.capabilities.is_empty() {
-                isolation_level.default_capabilities()
-            } else {
-                self.capabilities
-            },
-            policies: self.policies,
-            user_context: self.user_context,
-            network_security: self.network_security.unwrap_or_default(),
-            filesystem_security: self.filesystem_security.unwrap_or_default(),
-            custom_security: self.custom_security,
+            isolation_level: self.isolation_level,
+            capabilities: self.capabilities,
+            user_context: None,
+            network_security: NetworkSecurity::default(),
+            filesystem_security: FilesystemSecurity::default(),
         }
     }
 }
@@ -433,51 +418,33 @@ impl RuntimeMetricsBuilder {
     pub fn build(self) -> RuntimeMetrics {
         RuntimeMetrics {
             cpu: self.cpu.unwrap_or(CpuMetrics {
-                usage_percent: 25.0,
-                peak_usage_percent: 50.0,
-                average_usage_percent: 30.0,
-                cpu_time_ms: 1000,
-                cpu_cycles: Some(500000),
-                throttle_events: 0,
+                usage_percent: 30.0,
+                cores_used: 1.5,
+                cpu_time_seconds: 2.0,
             }),
             memory: self.memory.unwrap_or(MemoryMetrics {
-                usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 4,
-                peak_usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 2,
-                average_usage_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 3,
-                allocation_count: 100,
-                deallocation_count: 80,
-                page_faults: 5,
-                swap_usage_bytes: 0,
+                usage_percent: 60.0,
+                used_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 4,
+                peak_bytes: TestConstants::DEFAULT_MEMORY_LIMIT / 2,
             }),
             storage: self.storage.unwrap_or(StorageMetrics {
+                usage_percent: 30.0,
+                used_bytes: TestConstants::DEFAULT_STORAGE_LIMIT / 10,
                 bytes_read: 1024 * 1024,
                 bytes_written: 512 * 1024,
-                read_ops: 50,
-                write_ops: 25,
-                read_iops: 500.0,
-                write_iops: 250.0,
-                avg_read_latency_us: 100.0,
-                avg_write_latency_us: 200.0,
             }),
             network: self.network.unwrap_or(NetworkMetrics {
+                bytes_sent: 1024,
                 bytes_received: 2048,
-                bytes_transmitted: 1024,
-                packets_received: 10,
-                packets_transmitted: 8,
-                errors: 0,
-                drops: 0,
-                avg_latency_us: 50.0,
+                packets_sent: 8,
+                packets_received: 16,
             }),
             gpu: None,
-            timing: self.timing.unwrap_or_else(|| TimingMetrics {
-                start_time: Utc::now(),
-                end_time: Some(Utc::now()),
-                duration: Duration::from_secs(5),
-                init_duration: Duration::from_millis(100),
-                cleanup_duration: Duration::from_millis(50),
-                queue_wait_duration: Duration::from_millis(10),
+            timing: self.timing.unwrap_or(TimingMetrics {
+                start_time: chrono::Utc::now(),
+                end_time: Some(chrono::Utc::now()),
+                duration: chrono::Duration::seconds(5),
             }),
-            custom: self.custom,
         }
     }
 }

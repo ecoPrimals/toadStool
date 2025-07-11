@@ -54,6 +54,7 @@ clap = { version = "4.0", features = ["derive"] }
 tracing-subscriber = "0.3"
 toml = "0.8"
 toadstool-api = { path = "../../api" }
+tower = "0.4"
 
 [features]
 default = ["docker"]

@@ -330,7 +330,6 @@ struct ContainerHandle {
 }
 
 /// Container runtime engine implementation
-#[derive(Debug)]
 pub struct ContainerRuntimeEngine {
     config: ContainerRuntimeConfig,
     #[cfg(feature = "docker")]
@@ -340,6 +339,18 @@ pub struct ContainerRuntimeEngine {
     active_containers: Arc<RwLock<HashMap<Uuid, ContainerHandle>>>,
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
     capabilities: RuntimeCapabilities,
+}
+
+impl std::fmt::Debug for ContainerRuntimeEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContainerRuntimeEngine")
+            .field("config", &self.config)
+            .field("docker", &"<Docker>")
+            .field("active_containers", &"<HashMap<Uuid, ContainerHandle>>")
+            .field("resource_monitor", &"<Option<ResourceMonitor>>")
+            .field("capabilities", &self.capabilities)
+            .finish()
+    }
 }
 
 impl ContainerRuntimeEngine {
@@ -445,7 +456,7 @@ impl ContainerRuntimeEngine {
                     username: Some(auth.username.clone()),
                     password: Some(auth.password.clone()),
                     email: None,
-                    serveraddress: Some(auth.server.clone()),
+                    serveraddress: Some(auth.server_url.clone()),
                     auth: None,
                     identitytoken: None,
                     registrytoken: None,
@@ -531,6 +542,7 @@ impl ContainerRuntimeEngine {
                     stderr: None,
                     exit_code: Some(0),
                     format: Some("text/plain".to_string()),
+                    metadata: HashMap::new(),
                 },
                 metrics: RuntimeMetrics::default(),
                 duration: Duration::from_millis(100),
@@ -628,7 +640,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             command,
             args,
             working_dir,
-            user,
+            env_vars,
             volumes,
             ports,
             registry_auth,
@@ -678,51 +690,34 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         // Basic CPU and memory estimates (in production, would query container stats)
         let cpu_metrics = CpuMetrics {
             usage_percent: 0.0, // Would aggregate from container stats
-            peak_usage_percent: 0.0,
-            average_usage_percent: 0.0,
-            cpu_time_ms: 0,
-            cpu_cycles: None,
-            throttle_events: 0,
+            cores_used: 0.0,
+            cpu_time_seconds: 0.0,
         };
         
         let memory_metrics = MemoryMetrics {
-            usage_bytes: 0, // Would sum from container memory usage
-            peak_usage_bytes: 0,
-            average_usage_bytes: 0,
-            allocation_count: 0,
-            deallocation_count: 0,
-            page_faults: 0,
-            swap_usage_bytes: 0,
+            usage_percent: 0.0,
+            used_bytes: 0, // Would sum from container memory usage
+            peak_bytes: 0,
         };
         
         let network_metrics = NetworkMetrics {
-            bytes_received: 0, // Would aggregate from container network stats
-            bytes_transmitted: 0,
+            bytes_sent: 0, // Would aggregate from container network stats
+            bytes_received: 0,
+            packets_sent: 0,
             packets_received: 0,
-            packets_transmitted: 0,
-            avg_latency_us: 0.0,
-            drops: 0,
-            errors: 0,
         };
         
         let storage_metrics = StorageMetrics {
-            bytes_read: 0, // Would aggregate from container I/O stats
+            usage_percent: 0.0,
+            used_bytes: 0, // Would aggregate from container I/O stats
+            bytes_read: 0,
             bytes_written: 0,
-            read_ops: 0,
-            write_ops: 0,
-            avg_read_latency_us: 0.0,
-            avg_write_latency_us: 0.0,
-            read_iops: 0.0,
-            write_iops: 0.0,
         };
         
         let timing_metrics = TimingMetrics {
             start_time: chrono::DateTime::from(start_time),
             end_time: Some(chrono::Utc::now()),
-            duration: start_time.elapsed().unwrap_or_default(),
-            init_duration: std::time::Duration::from_millis(100), // Estimated
-            cleanup_duration: std::time::Duration::ZERO,
-            queue_wait_duration: std::time::Duration::ZERO,
+            duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default()).unwrap_or_default(),
         };
 
         Ok(RuntimeMetrics {
@@ -732,7 +727,6 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             network: network_metrics,
             gpu: None, // Containers typically don't expose GPU metrics directly
             timing: timing_metrics,
-            custom: custom_metrics,
         })
     }
 

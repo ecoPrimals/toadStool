@@ -1,232 +1,235 @@
-//! Core execution interfaces and traits
-//!
-//! This module defines the universal execution interface that abstracts runtime complexity
-//! while providing consistent security, monitoring, and resource management.
+//! Execution types and runtime engine interface
 
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::error::ToadStoolResult;
-use crate::resources::{ResourceRequirements, RuntimeMetrics};
-use crate::security::SecurityContext;
-use crate::workload::WorkloadSpec;
+use crate::ToadStoolResult;
 
-/// Universal runtime engine interface
-///
-/// All runtime implementations (Container, WASM, Native, GPU) must implement this trait
-/// to provide a consistent execution interface across different runtime types.
-#[async_trait]
-pub trait RuntimeEngine: Send + Sync + Debug {
-    /// Initialize the runtime with configuration
-    async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()>;
-
-    /// Execute a workload with specified context
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
-
-    /// Get runtime capabilities and metadata
-    fn get_capabilities(&self) -> RuntimeCapabilities;
-
-    /// Check if runtime supports the given workload type
-    fn supports_workload(&self, workload_type: &WorkloadType) -> bool;
-
-    /// Get runtime health and performance metrics
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics>;
-
-    /// Shutdown runtime gracefully
-    async fn shutdown(&mut self) -> ToadStoolResult<()>;
-}
-
-/// Universal execution request structure
+/// Execution request containing all information needed to run a workload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionRequest {
-    /// Unique execution identifier
+    /// Unique identifier for this execution
     pub execution_id: Uuid,
-    /// Workload specification
-    pub workload: WorkloadSpec,
-    /// Runtime preferences (auto-selected if None)
+    /// The workload to execute
+    pub workload: crate::WorkloadSpec,
+    /// Preferred runtime (hint for scheduling)
     pub runtime_hint: Option<RuntimeType>,
-    /// Resource requirements and limits
-    pub resources: ResourceRequirements,
-    /// Security and isolation context
-    pub security_context: SecurityContext,
-    /// Execution timeout
+    /// Resource requirements
+    pub resources: crate::resources::ResourceRequirements,
+    /// Security context
+    pub security_context: crate::SecurityContext,
+    /// Maximum execution time
     pub timeout: Option<Duration>,
-    /// Environment variables (runtime-agnostic)
+    /// Environment variables
     pub environment: HashMap<String, String>,
-    /// Input data and parameters
+    /// Input data for the workload
     pub input_data: ExecutionInput,
-    /// Callback configuration for async results
+    /// Callback configuration
     pub callback_config: Option<CallbackConfig>,
 }
 
-/// Universal execution response structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionResponse {
-    /// Execution identifier (matches request)
-    pub execution_id: Uuid,
-    /// Execution result status
-    pub status: ExecutionStatus,
-    /// Output data from execution
-    pub output: ExecutionOutput,
-    /// Runtime metrics and performance data
-    pub metrics: RuntimeMetrics,
-    /// Execution duration
-    pub duration: Duration,
-    /// Runtime that executed the workload
-    pub runtime_used: RuntimeType,
-    /// Any warnings or non-fatal issues
-    pub warnings: Vec<String>,
-}
-
-/// Execution status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ExecutionStatus {
-    /// Execution completed successfully
-    Success,
-    /// Execution failed with error
-    Failed { error: String },
-    /// Execution timed out
-    TimedOut,
-    /// Execution was cancelled
-    Cancelled,
-    /// Resource limits exceeded
-    ResourceLimitExceeded {
-        resource: String,
-        limit: String,
-        actual: String,
-    },
-    /// Security violation occurred
-    SecurityViolation { violation: String },
-}
-
-/// Runtime type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum RuntimeType {
-    /// Container runtime (Docker, Containerd, Podman)
-    Container,
-    /// WebAssembly runtime (Wasmtime, Wasmer)
-    Wasm,
-    /// Native process runtime
-    Native,
-    /// Python runtime (PyO3, subprocess)
-    Python,
-    /// GPU compute runtime
-    Gpu,
-    /// Custom runtime extension
-    Custom(String),
-}
-
-/// Workload type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum WorkloadType {
-    /// Container image workload
-    Container,
-    /// WebAssembly module
-    Wasm,
-    /// Native executable
-    Native,
-    /// Python script or module
-    Python,
-    /// GPU compute kernel
-    Gpu,
-    /// Script or interpreted code
-    Script { interpreter: String },
-    /// Custom workload type
-    Custom(String),
-}
-
-/// Runtime configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RuntimeConfig {
-    /// Runtime-specific configuration
-    pub runtime_config: HashMap<String, serde_json::Value>,
-    /// Platform-specific optimizations
-    pub platform_optimizations: bool,
-    /// Debug mode flag
-    pub debug_mode: bool,
-    /// Telemetry collection settings
-    pub telemetry_enabled: bool,
-}
-
-impl Default for RuntimeConfig {
+impl Default for ExecutionRequest {
     fn default() -> Self {
         Self {
-            runtime_config: HashMap::new(),
-            platform_optimizations: true,
-            debug_mode: false,
-            telemetry_enabled: true,
+            execution_id: Uuid::new_v4(),
+            workload: crate::WorkloadSpec::default(),
+            runtime_hint: None,
+            resources: crate::resources::ResourceRequirements::default(),
+            security_context: crate::SecurityContext::default(),
+            timeout: Some(Duration::from_secs(300)),
+            environment: HashMap::new(),
+            input_data: ExecutionInput::default(),
+            callback_config: None,
         }
     }
 }
 
-/// Runtime capabilities descriptor
+/// Response from an execution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionResponse {
+    /// Execution identifier
+    pub execution_id: Uuid,
+    /// Execution status
+    pub status: ExecutionStatus,
+    /// Output from the execution
+    pub output: ExecutionOutput,
+    /// Runtime metrics
+    pub metrics: crate::RuntimeMetrics,
+    /// Total execution duration
+    pub duration: Duration,
+    /// Runtime that was used
+    pub runtime_used: RuntimeType,
+    /// Warnings generated during execution
+    pub warnings: Vec<String>,
+}
+
+impl Default for ExecutionResponse {
+    fn default() -> Self {
+        Self {
+            execution_id: Uuid::new_v4(),
+            status: ExecutionStatus::Success,
+            output: ExecutionOutput::default(),
+            metrics: crate::RuntimeMetrics::default(),
+            duration: Duration::from_secs(0),
+            runtime_used: RuntimeType::Native,
+            warnings: Vec::new(),
+        }
+    }
+}
+
+/// Execution status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ExecutionStatus {
+    /// Execution completed successfully
+    Success,
+    /// Execution failed
+    Failed { error: String },
+    /// Execution was cancelled
+    Cancelled,
+    /// Execution timed out
+    TimedOut,
+    /// Execution is still running
+    Running,
+    /// Execution is pending
+    Pending,
+}
+
+/// Input data for execution
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutionInput {
+    /// Binary data
+    pub data: Vec<u8>,
+    /// Input format
+    pub format: Option<String>,
+    /// Metadata
+    pub metadata: HashMap<String, String>,
+}
+
+/// Output from execution
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutionOutput {
+    /// Binary output data
+    pub data: Vec<u8>,
+    /// Standard output (text)
+    pub stdout: Option<String>,
+    /// Standard error (text)
+    pub stderr: Option<String>,
+    /// Exit code
+    pub exit_code: Option<i32>,
+    /// Output format
+    pub format: Option<String>,
+    /// Result metadata
+    pub result: HashMap<String, String>,
+    /// Additional metadata
+    pub metadata: HashMap<String, String>,
+}
+
+/// Callback configuration for execution events
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallbackConfig {
+    /// Callback URL
+    pub url: String,
+    /// Authentication token
+    pub auth_token: Option<String>,
+    /// Events to callback on
+    pub events: Vec<CallbackEvent>,
+}
+
+/// Events that can trigger callbacks
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CallbackEvent {
+    /// Execution started
+    Started,
+    /// Execution completed
+    Completed,
+    /// Execution failed
+    Failed,
+    /// Progress update
+    Progress,
+}
+
+/// Types of runtime engines
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum RuntimeType {
+    /// Native process execution
+    Native,
+    /// WebAssembly execution
+    Wasm,
+    /// Container execution
+    Container,
+    /// GPU acceleration
+    Gpu,
+    /// Python runtime
+    Python,
+    /// Custom runtime
+    Custom(String),
+}
+
+/// Runtime engine capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeCapabilities {
     /// Supported workload types
-    pub supported_workloads: Vec<WorkloadType>,
+    pub supported_workloads: Vec<crate::WorkloadType>,
     /// Maximum concurrent executions
     pub max_concurrent_executions: Option<u32>,
     /// Supported architectures
     pub supported_architectures: Vec<String>,
     /// Platform-specific features
     pub platform_features: HashMap<String, bool>,
-    /// Version information
+    /// Runtime version
     pub version: String,
 }
 
-/// Execution input data
+/// Runtime configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ExecutionInput {
-    /// Binary data payload
-    pub data: Vec<u8>,
-    /// Structured parameters
-    pub parameters: HashMap<String, serde_json::Value>,
-    /// Input format hint
-    pub format: Option<String>,
+pub struct RuntimeConfig {
+    /// Runtime-specific settings
+    pub settings: HashMap<String, serde_json::Value>,
+    /// Resource limits
+    pub resource_limits: Option<crate::resources::ResourceLimits>,
+    /// Security settings
+    pub security_settings: Option<crate::SecuritySettings>,
+    /// Logging configuration
+    pub logging: Option<LoggingConfig>,
 }
 
-/// Execution output data
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ExecutionOutput {
-    /// Binary data result
-    pub data: Vec<u8>,
-    /// Structured result data
-    pub result: HashMap<String, serde_json::Value>,
-    /// Standard output (if applicable)
-    pub stdout: Option<String>,
-    /// Standard error (if applicable)
-    pub stderr: Option<String>,
-    /// Exit code (if applicable)
-    pub exit_code: Option<i32>,
-    /// Output format
-    pub format: Option<String>,
-}
-
-/// Callback configuration for async execution
+/// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CallbackConfig {
-    /// Callback URL for completion notification
-    pub callback_url: String,
-    /// Authentication token for callback
-    pub auth_token: Option<String>,
-    /// Callback method (POST, PUT, etc.)
-    pub method: String,
-    /// Additional headers
-    pub headers: HashMap<String, String>,
+pub struct LoggingConfig {
+    /// Log level
+    pub level: String,
+    /// Log format
+    pub format: String,
+    /// Log destination
+    pub destination: String,
 }
 
-impl Default for CallbackConfig {
-    fn default() -> Self {
-        Self {
-            callback_url: String::new(),
-            auth_token: None,
-            method: "POST".to_string(),
-            headers: HashMap::new(),
-        }
-    }
+/// Runtime engine trait
+#[async_trait]
+pub trait RuntimeEngine: Send + Sync {
+    /// Initialize the runtime engine
+    async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()>;
+    
+    /// Execute a workload
+    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
+    
+    /// Get runtime capabilities
+    fn get_capabilities(&self) -> RuntimeCapabilities;
+    
+    /// Check if runtime supports a workload type
+    fn supports_workload(&self, workload_type: &crate::WorkloadType) -> bool;
+    
+    /// Get runtime metrics
+    async fn get_metrics(&self) -> ToadStoolResult<crate::RuntimeMetrics>;
+    
+    /// Shutdown the runtime engine
+    async fn shutdown(&mut self) -> ToadStoolResult<()>;
 }
+
+// RuntimeOrchestrator is now defined in runtime.rs module
+// Re-export it here for backward compatibility
+pub use crate::runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
