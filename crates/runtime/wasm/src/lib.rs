@@ -1,4 +1,4 @@
-  // ToadStool - Universal Compute Platform
+// ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,30 +19,24 @@
 //! High-performance WebAssembly runtime engine with Wasmtime integration,
 //! WASI support, module caching, and comprehensive security isolation.
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-
-use async_trait::async_trait;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tokio::time::timeout;
-use tracing::{debug, info, warn, error};
-use uuid::Uuid;
-use futures::TryFutureExt;
-
-use wasi_common::sync::{add_to_linker, WasiCtxBuilder};
+use tracing::info;
+use wasi_common::sync::add_to_linker;
+use wasi_common::sync::WasiCtxBuilder;
 use wasi_common::WasiCtx;
-use wasmtime::{Config, Engine, Instance, Linker, Module, OptLevel, Store, Strategy, WasmBacktraceDetails};
+use wasmtime::*;
 
 use toadstool::{
     error::{ToadStoolError, ToadStoolResult},
     execution::{
-        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
-        RuntimeConfig, RuntimeEngine, RuntimeType,
+        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus,
+        RuntimeEngine,
     },
-    resources::RuntimeMetrics,
     security::SecurityContext,
-    WorkloadType,
 };
 
 /// Helper function to convert wasmtime errors to ToadStoolError
@@ -102,7 +96,7 @@ impl Default for WasmRuntimeConfig {
 #[allow(dead_code)]
 struct CachedModule {
     compiled_module: Vec<u8>,
-    last_used: SystemTime,
+    last_used: Instant,
     access_count: u64,
     size_bytes: usize,
 }
@@ -111,9 +105,9 @@ struct CachedModule {
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 struct ExecutionHandle {
-    id: Uuid,
+    id: uuid::Uuid,
     module_key: String,
-    start_time: SystemTime,
+    start_time: Instant,
     security_context: SecurityContext,
 }
 
@@ -131,7 +125,7 @@ pub struct WasmRuntimeEngine {
     /// Module cache (thread-safe)
     module_cache: Arc<RwLock<HashMap<String, CachedModule>>>,
     /// Active executions metadata (thread-safe)
-    active_executions: Arc<RwLock<HashMap<Uuid, ExecutionHandle>>>,
+    active_executions: Arc<RwLock<HashMap<uuid::Uuid, ExecutionHandle>>>,
 }
 
 impl std::fmt::Debug for WasmRuntimeEngine {
@@ -173,7 +167,7 @@ impl WasmRuntimeEngine {
         }
 
         let engine = Engine::new(&wasmtime_config).map_err(|e| {
-            ToadStoolError::configuration(format!("Failed to create Wasmtime engine: {}", e))
+            ToadStoolError::configuration(format!("Failed to create Wasmtime engine: {e}"))
         })?;
 
         Ok(Self {
@@ -186,10 +180,10 @@ impl WasmRuntimeEngine {
 
     /// Generate cache key for a module
     fn generate_cache_key(&self, module_source: &toadstool::workload::WasmModuleSource) -> String {
-        use sha2::{Sha256, Digest};
-        
+        use sha2::{Digest, Sha256};
+
         let mut hasher = Sha256::new();
-        
+
         // Include source content in hash
         match module_source {
             toadstool::workload::WasmModuleSource::Bytes { data, .. } => {
@@ -200,8 +194,10 @@ impl WasmRuntimeEngine {
                 // Include file modification time if available
                 if let Ok(metadata) = std::fs::metadata(path) {
                     if let Ok(modified) = metadata.modified() {
-                        if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
-                            hasher.update(&duration.as_secs().to_le_bytes());
+                        if let Ok(duration) =
+                            modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
+                        {
+                            hasher.update(duration.as_secs().to_le_bytes());
                         }
                     }
                 }
@@ -209,19 +205,18 @@ impl WasmRuntimeEngine {
             toadstool::workload::WasmModuleSource::Url { url, .. } => {
                 hasher.update(url.as_bytes());
             }
-
         }
-        
+
         // Include compilation configuration in hash
-        hasher.update(&self.config.max_memory_mb.to_le_bytes());
-        hasher.update(&self.config.max_pages.to_le_bytes());
-        hasher.update(&[self.config.security_level.clone() as u8]);
-        
+        hasher.update(self.config.max_memory_mb.to_le_bytes());
+        hasher.update(self.config.max_pages.to_le_bytes());
+        hasher.update([self.config.security_level.clone() as u8]);
+
         // Include fuel limit if enabled
         if let Some(fuel_limit) = self.config.fuel_limit {
-            hasher.update(&fuel_limit.to_le_bytes());
+            hasher.update(fuel_limit.to_le_bytes());
         }
-        
+
         let hash = hasher.finalize();
         format!("wasm_{}", hex::encode(&hash[..16])) // Use first 16 bytes for shorter key
     }
@@ -238,14 +233,13 @@ impl WasmRuntimeEngine {
             let cache = self.module_cache.read().await;
             if let Some(cached) = cache.get(&cache_key) {
                 // Check if cache entry is still valid
-                let age = SystemTime::now()
-                    .duration_since(cached.last_used)
-                    .unwrap_or(Duration::from_secs(0));
+                let age = Instant::now()
+                    .saturating_duration_since(cached.last_used);
 
-                if age.as_secs() < (self.config.cache_ttl_hours * 3600) {
-                    debug!("Using cached WASM module: {}", cache_key);
-                    return Ok(Module::from_binary(&self.engine, &cached.compiled_module)
-                        .map_err(wasmtime_to_toadstool_error)?);
+                if age < Duration::from_secs(300) {
+                    // Use cached module if less than 5 minutes old
+                    return Module::from_binary(&self.engine, &cached.compiled_module)
+                        .map_err(wasmtime_to_toadstool_error);
                 }
             }
         }
@@ -260,7 +254,7 @@ impl WasmRuntimeEngine {
                 cache_key,
                 CachedModule {
                     compiled_module: module.serialize().map_err(wasmtime_to_toadstool_error)?,
-                    last_used: SystemTime::now(),
+                    last_used: Instant::now(),
                     access_count: 1,
                     size_bytes: 0, // Placeholder - wasmtime doesn't expose this easily
                 },
@@ -293,16 +287,12 @@ impl WasmRuntimeEngine {
                     #[cfg(feature = "url-module-loading")]
                     {
                         let response = reqwest::get(url).await.map_err(|e| {
-                            ToadStoolError::network(format!(
-                                "Failed to fetch WASM from {}: {}",
-                                url, e
-                            ))
+                            ToadStoolError::network(format!("Failed to fetch WASM from {url}: {e}"))
                         })?;
 
                         let bytes = response.bytes().await.map_err(|e| {
                             ToadStoolError::network(format!(
-                                "Failed to read WASM response from {}: {}",
-                                url, e
+                                "Failed to read WASM response from {url}: {e}"
                             ))
                         })?;
 
@@ -318,13 +308,17 @@ impl WasmRuntimeEngine {
                 toadstool::workload::WasmModuleSource::Bytes { data } => {
                     self.load_module_from_bytes(data).await
                 }
-
             }
         };
 
-        timeout(timeout_duration, load_future)
+        tokio::time::timeout(timeout_duration, load_future)
             .await
-            .map_err(|_| ToadStoolError::timeout(format!("Module load timeout: {}ms", self.config.module_load_timeout_ms)))?
+            .map_err(|_| {
+                ToadStoolError::timeout(format!(
+                    "Module load timeout: {}ms",
+                    self.config.module_load_timeout_ms
+                ))
+            })?
     }
 
     /// Load module from bytes
@@ -339,7 +333,7 @@ impl WasmRuntimeEngine {
         }
 
         Module::from_binary(&self.engine, bytes)
-            .map_err(|e| ToadStoolError::validation(format!("Invalid WASM module: {}", e)))
+            .map_err(|e| ToadStoolError::validation(format!("Invalid WASM module: {e}")))
     }
 
     /// Create WASI context based on security level
@@ -372,18 +366,19 @@ impl WasmRuntimeEngine {
         module: Module,
     ) -> ToadStoolResult<ExecutionResponse> {
         let execution_id = request.execution_id;
-        let start_time = SystemTime::now();
+        let start_time = Instant::now();
 
         // Create WASI context with basic configuration
-        let wasi_ctx = WasiCtxBuilder::new()
-            .build();
+        let wasi_ctx = WasiCtxBuilder::new().build();
 
         // Use the existing engine and create store with WASI context
         let mut store = Store::new(&self.engine, wasi_ctx);
 
         // Set fuel limit if configured
         if let Some(fuel_limit) = self.config.fuel_limit {
-            store.set_fuel(fuel_limit).map_err(wasmtime_to_toadstool_error)?;
+            store
+                .set_fuel(fuel_limit)
+                .map_err(wasmtime_to_toadstool_error)?;
         }
 
         // Create linker for WASI
@@ -391,14 +386,17 @@ impl WasmRuntimeEngine {
         add_to_linker(&mut linker, |s| s).map_err(wasmtime_to_toadstool_error)?;
 
         // Instantiate module with WASI
-        let instance = linker.instantiate(&mut store, &module).map_err(wasmtime_to_toadstool_error)?;
+        let instance = linker
+            .instantiate(&mut store, &module)
+            .map_err(wasmtime_to_toadstool_error)?;
 
         // Generate proper cache key for execution tracking
-        let cache_key = if let toadstool::workload::WorkloadSpec::Wasm { module, .. } = &request.workload {
-            self.generate_cache_key(module)
-        } else {
-            format!("runtime_{}", execution_id)
-        };
+        let cache_key =
+            if let toadstool::workload::WorkloadSpec::Wasm { module, .. } = &request.workload {
+                self.generate_cache_key(module)
+            } else {
+                format!("runtime_{execution_id}")
+            };
 
         // Track execution
         {
@@ -427,12 +425,12 @@ impl WasmRuntimeEngine {
                 main_func
                     .call_async(&mut store, ())
                     .await
-                    .map_err(|e| ToadStoolError::runtime(format!("WASM execution failed: {}", e)))
+                    .map_err(|e| ToadStoolError::runtime(format!("WASM execution failed: {e}")))
             } else if let Ok(main_func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
                 main_func
                     .call_async(&mut store, ())
                     .await
-                    .map_err(|e| ToadStoolError::runtime(format!("WASM execution failed: {}", e)))
+                    .map_err(|e| ToadStoolError::runtime(format!("WASM execution failed: {e}")))
             } else {
                 Err(ToadStoolError::runtime(
                     "No main function found in WASM module".to_string(),
@@ -440,7 +438,7 @@ impl WasmRuntimeEngine {
             }
         })
         .await
-        .map_err(|_| ToadStoolError::timeout(format!("Execution timeout: {}ms", timeout_ms)))?;
+        .map_err(|_| ToadStoolError::timeout(format!("Execution timeout: {timeout_ms}ms")))?;
 
         // Clean up execution tracking
         {
@@ -448,9 +446,7 @@ impl WasmRuntimeEngine {
             executions.remove(&execution_id);
         }
 
-        let duration = SystemTime::now()
-            .duration_since(start_time)
-            .unwrap_or_default();
+        let duration = Instant::now().saturating_duration_since(start_time);
 
         // Handle execution result
         let (status, _exit_code) = match execution_result {
@@ -468,16 +464,17 @@ impl WasmRuntimeEngine {
         let memory_metrics = self.extract_memory_metrics(&mut store, &instance).await;
 
         // Create runtime metrics
-        let metrics = RuntimeMetrics {
+        let metrics = toadstool::resources::RuntimeMetrics {
             cpu: cpu_metrics,
             memory: memory_metrics,
             storage: toadstool::resources::StorageMetrics::default(),
             network: toadstool::resources::NetworkMetrics::default(),
             gpu: None,
             timing: toadstool::resources::TimingMetrics {
-                start_time: chrono::Utc::now() - chrono::Duration::from_std(duration).unwrap_or_default(),
+                start_time: chrono::Utc::now()
+                    - chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
                 end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::from_std(duration).unwrap_or_default(),
+                duration: chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
             },
         };
 
@@ -502,12 +499,16 @@ impl WasmRuntimeEngine {
             output,
             metrics,
             duration,
-            runtime_used: RuntimeType::Wasm,
+            runtime_used: toadstool::execution::RuntimeType::Wasm,
             warnings: Vec::new(),
         })
     }
 
-    async fn extract_cpu_metrics(&self, store: &Store<WasiCtx>, duration: &Duration) -> toadstool::resources::CpuMetrics {
+    async fn extract_cpu_metrics(
+        &self,
+        store: &Store<WasiCtx>,
+        duration: &Duration,
+    ) -> toadstool::resources::CpuMetrics {
         // Extract CPU usage based on fuel consumption and execution time
         let fuel_consumed = if self.config.fuel_limit.is_some() {
             // Calculate fuel consumption as a proxy for CPU usage
@@ -538,14 +539,19 @@ impl WasmRuntimeEngine {
         }
     }
 
-    async fn extract_memory_metrics(&self, store: &mut Store<WasiCtx>, instance: &Instance) -> toadstool::resources::MemoryMetrics {
+    async fn extract_memory_metrics(
+        &self,
+        store: &mut Store<WasiCtx>,
+        instance: &Instance,
+    ) -> toadstool::resources::MemoryMetrics {
         // Extract actual memory usage from WASM instance
         let mut usage_bytes = 0u64;
         let mut peak_usage_bytes = 0u64;
 
         // Query memory exports from the instance
         // First collect export names to avoid borrowing conflicts
-        let memory_export_names: Vec<String> = instance.exports(&mut *store)
+        let memory_export_names: Vec<String> = instance
+            .exports(&mut *store)
             .filter_map(|export| {
                 let name = export.name().to_string();
                 if export.into_memory().is_some() {
@@ -555,7 +561,7 @@ impl WasmRuntimeEngine {
                 }
             })
             .collect();
-        
+
         // Now get memory sizes using the names
         for name in memory_export_names {
             if let Some(memory) = instance.get_memory(&mut *store, &name) {
@@ -577,12 +583,14 @@ impl WasmRuntimeEngine {
             peak_bytes: peak_usage_bytes,
         }
     }
-
 }
 
 #[async_trait]
 impl RuntimeEngine for WasmRuntimeEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
+    async fn initialize(
+        &mut self,
+        _config: toadstool::execution::RuntimeConfig,
+    ) -> ToadStoolResult<()> {
         info!("Initializing WebAssembly runtime engine");
 
         // Validate configuration
@@ -622,9 +630,9 @@ impl RuntimeEngine for WasmRuntimeEngine {
         self.execute_module(&request, module).await
     }
 
-    fn get_capabilities(&self) -> RuntimeCapabilities {
-        RuntimeCapabilities {
-            supported_workloads: vec![WorkloadType::Wasm],
+    fn get_capabilities(&self) -> toadstool::execution::RuntimeCapabilities {
+        toadstool::execution::RuntimeCapabilities {
+            supported_workloads: vec![toadstool::workload::WorkloadType::Wasm],
             max_concurrent_executions: Some(1000),
             supported_architectures: vec!["wasm32".to_string(), "wasm64".to_string()],
             platform_features: {
@@ -642,11 +650,11 @@ impl RuntimeEngine for WasmRuntimeEngine {
         }
     }
 
-    fn supports_workload(&self, workload_type: &WorkloadType) -> bool {
-        matches!(workload_type, WorkloadType::Wasm)
+    fn supports_workload(&self, workload_type: &toadstool::workload::WorkloadType) -> bool {
+        matches!(workload_type, toadstool::workload::WorkloadType::Wasm)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
+    async fn get_metrics(&self) -> ToadStoolResult<toadstool::resources::RuntimeMetrics> {
         let executions = self.active_executions.read().await;
         let active_count = executions.len();
 
@@ -654,7 +662,8 @@ impl RuntimeEngine for WasmRuntimeEngine {
         let cached_modules = cache.len();
 
         // Calculate actual memory usage of cached modules
-        let cache_memory_usage: u64 = cache.values()
+        let cache_memory_usage: u64 = cache
+            .values()
             .map(|cached_module| cached_module.size_bytes as u64)
             .sum();
 
@@ -686,10 +695,10 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         custom_metrics.insert(
             "cache_hit_rate_percent".to_string(),
-            serde_json::Value::String(format!("{:.1}", cache_hit_rate)),
+            serde_json::Value::String(format!("{cache_hit_rate:.1}")),
         );
 
-        Ok(RuntimeMetrics {
+        Ok(toadstool::resources::RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: active_count as f64,
                 cores_used: active_count as f64 / 100.0,
@@ -712,9 +721,9 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         // Wait for active executions to complete (with timeout)
         let shutdown_timeout = Duration::from_secs(30);
-        let start_time = SystemTime::now();
+        let start_time = Instant::now();
 
-        while start_time.elapsed().unwrap_or_default() < shutdown_timeout {
+        while start_time.elapsed() < shutdown_timeout {
             let executions = self.active_executions.read().await;
             if executions.is_empty() {
                 break;
@@ -755,8 +764,13 @@ impl Default for CacheMetrics {
 
 impl std::fmt::Display for CacheMetrics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CacheMetrics(modules: {}, size: {} bytes, hit_rate: {:.2}%)", 
-               self.total_modules, self.total_size_bytes, self.cache_hit_rate * 100.0)
+        write!(
+            f,
+            "CacheMetrics(modules: {}, size: {} bytes, hit_rate: {:.2}%)",
+            self.total_modules,
+            self.total_size_bytes,
+            self.cache_hit_rate * 100.0
+        )
     }
 }
 
@@ -780,7 +794,7 @@ mod tests {
 
         assert!(capabilities
             .supported_workloads
-            .contains(&WorkloadType::Wasm));
+            .contains(&toadstool::workload::WorkloadType::Wasm));
         assert!(capabilities
             .platform_features
             .get("wasi_support")
@@ -797,9 +811,9 @@ mod tests {
         let config = WasmRuntimeConfig::default();
         let engine = WasmRuntimeEngine::new(config).unwrap();
 
-        assert!(engine.supports_workload(&WorkloadType::Wasm));
-        assert!(!engine.supports_workload(&WorkloadType::Container));
-        assert!(!engine.supports_workload(&WorkloadType::Native));
+        assert!(engine.supports_workload(&toadstool::workload::WorkloadType::Wasm));
+        assert!(!engine.supports_workload(&toadstool::workload::WorkloadType::Container));
+        assert!(!engine.supports_workload(&toadstool::workload::WorkloadType::Native));
     }
 
     #[tokio::test]
@@ -897,11 +911,11 @@ mod tests {
             ..Default::default()
         };
         let engine = WasmRuntimeEngine::new(config).unwrap();
-        
+
         // Fixed: Move the match expression inside the function
         let _result = match "wasmtime" {
             "wasmtime" => "Wasmtime engine optimized",
-            "wasmer" => "Wasmer engine optimized", 
+            "wasmer" => "Wasmer engine optimized",
             _ => "Default optimization applied",
         };
     }
@@ -914,7 +928,7 @@ mod tests {
             ..Default::default()
         };
         let _engine = WasmRuntimeEngine::new(config).unwrap();
-        
+
         // Move this inside the function where it belongs
         let _result = match "wasmtime" {
             "wasmtime" => "Wasmtime stress tested",

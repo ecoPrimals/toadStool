@@ -13,11 +13,11 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use sysinfo::{CpuExt, System, SystemExt};
 use tokio::fs;
 use tokio::time::{Duration, Instant};
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use sysinfo::{System, SystemExt, CpuExt};
 
 use toadstool_distributed::substrate_detection::{
     PlatformType, SubstrateCapabilities, SubstrateDetector,
@@ -530,22 +530,27 @@ impl UniversalComputeManager {
         // Perform platform-specific capability testing
         let platform_name = match &platform.platform_type {
             PlatformType::Linux { .. } => "linux",
-            PlatformType::MacOS { .. } => "macos", 
+            PlatformType::MacOS { .. } => "macos",
             PlatformType::Windows { .. } => "windows",
             _ => "unknown",
         };
-        
+
         let _capabilities_result = match platform_name {
             "linux" => self.test_linux_capabilities().await,
             "macos" => self.test_macos_capabilities().await,
             "windows" => self.test_windows_capabilities().await,
             _ => {
-                warn!("Unknown platform type '{}', using generic tests", platform_name);
+                warn!(
+                    "Unknown platform type '{}', using generic tests",
+                    platform_name
+                );
                 self.test_generic_capabilities().await
             }
         };
         match &platform.platform_type {
-            PlatformType::Linux { .. } | PlatformType::Windows { .. } | PlatformType::MacOS { .. } => {
+            PlatformType::Linux { .. }
+            | PlatformType::Windows { .. }
+            | PlatformType::MacOS { .. } => {
                 // Test native platform capabilities
                 match std::process::Command::new("echo").arg("test").output() {
                     Ok(output) => Ok(output.status.success()),
@@ -565,7 +570,10 @@ impl UniversalComputeManager {
                 Ok(true)
             }
             _ => {
-                warn!("⚠️  Platform capability testing not implemented for: {}", platform_id);
+                warn!(
+                    "⚠️  Platform capability testing not implemented for: {}",
+                    platform_id
+                );
                 Ok(false) // Conservative approach for unknown platforms
             }
         }
@@ -775,7 +783,7 @@ impl UniversalComputeManager {
                 system.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0)
             },
             storage_type: "SSD/HDD".to_string(), // Generic storage detection
-            gpu_info: None, // GPU detection requires specialized libraries
+            gpu_info: None,                      // GPU detection requires specialized libraries
         }
     }
 
@@ -796,24 +804,31 @@ impl UniversalComputeManager {
     }
 
     async fn execute_live_migration(&self, plan: &MigrationPlan) -> Result<()> {
-        info!("🔄 Executing live migration: {} → {}", plan.source_platform, plan.target_platform);
-        
+        info!(
+            "🔄 Executing live migration: {} → {}",
+            plan.source_platform, plan.target_platform
+        );
+
         // Step 1: Prepare target platform
         self.prepare_target_platform(&plan.target_platform).await?;
-        
+
         // Step 2: Create checkpoint of source workload
-        let checkpoint = self.create_workload_checkpoint(&plan.source_platform).await?;
-        
+        let checkpoint = self
+            .create_workload_checkpoint(&plan.source_platform)
+            .await?;
+
         // Step 3: Transfer checkpoint to target
-        self.transfer_checkpoint(&checkpoint, &plan.target_platform).await?;
-        
+        self.transfer_checkpoint(&checkpoint, &plan.target_platform)
+            .await?;
+
         // Step 4: Restore on target platform
-        self.restore_from_checkpoint(&checkpoint, &plan.target_platform).await?;
-        
+        self.restore_from_checkpoint(&checkpoint, &plan.target_platform)
+            .await?;
+
         // Step 5: Verify migration success
         if self.verify_migration_success(plan).await? {
             info!("✅ Live migration completed successfully");
-            
+
             // Clean up source if specified
             if plan.cleanup_source {
                 self.cleanup_source_workload(&plan.source_platform).await?;
@@ -821,60 +836,75 @@ impl UniversalComputeManager {
         } else {
             return Err(anyhow::anyhow!("Migration verification failed"));
         }
-        
+
         Ok(())
     }
 
     async fn execute_cold_migration(&self, plan: &MigrationPlan) -> Result<()> {
-        info!("❄️ Executing cold migration: {} → {}", plan.source_platform, plan.target_platform);
-        
+        info!(
+            "❄️ Executing cold migration: {} → {}",
+            plan.source_platform, plan.target_platform
+        );
+
         // Step 1: Stop source workload
         self.stop_source_workload(&plan.source_platform).await?;
-        
+
         // Step 2: Export workload state
         let export_data = self.export_workload_state(&plan.source_platform).await?;
-        
+
         // Step 3: Transfer to target platform
-        self.transfer_workload_data(&export_data, &plan.target_platform).await?;
-        
+        self.transfer_workload_data(&export_data, &plan.target_platform)
+            .await?;
+
         // Step 4: Import and start on target
-        self.import_and_start_workload(&export_data, &plan.target_platform).await?;
-        
+        self.import_and_start_workload(&export_data, &plan.target_platform)
+            .await?;
+
         info!("✅ Cold migration completed successfully");
         Ok(())
     }
 
     async fn execute_hot_migration(&self, plan: &MigrationPlan) -> Result<()> {
-        info!("🔥 Executing hot migration: {} → {}", plan.source_platform, plan.target_platform);
-        
+        info!(
+            "🔥 Executing hot migration: {} → {}",
+            plan.source_platform, plan.target_platform
+        );
+
         // Step 1: Start replication to target
-        let replication_handle = self.start_continuous_replication(&plan.source_platform, &plan.target_platform).await?;
-        
+        let replication_handle = self
+            .start_continuous_replication(&plan.source_platform, &plan.target_platform)
+            .await?;
+
         // Step 2: Wait for replication to sync
         self.wait_for_replication_sync(&replication_handle).await?;
-        
+
         // Step 3: Quick switchover
-        self.perform_quick_switchover(&plan.source_platform, &plan.target_platform).await?;
-        
+        self.perform_quick_switchover(&plan.source_platform, &plan.target_platform)
+            .await?;
+
         // Step 4: Stop replication
         self.stop_replication(&replication_handle).await?;
-        
+
         info!("✅ Hot migration completed successfully");
         Ok(())
     }
 
     async fn execute_clone_migration(&self, plan: &MigrationPlan) -> Result<()> {
-        info!("🐑 Executing clone migration: {} → {}", plan.source_platform, plan.target_platform);
-        
+        info!(
+            "🐑 Executing clone migration: {} → {}",
+            plan.source_platform, plan.target_platform
+        );
+
         // Step 1: Create workload snapshot
         let snapshot = self.create_workload_snapshot(&plan.source_platform).await?;
-        
+
         // Step 2: Deploy snapshot to target platform
-        self.deploy_snapshot_to_target(&snapshot, &plan.target_platform).await?;
-        
+        self.deploy_snapshot_to_target(&snapshot, &plan.target_platform)
+            .await?;
+
         // Step 3: Start cloned workload
         self.start_cloned_workload(&plan.target_platform).await?;
-        
+
         info!("✅ Clone migration completed successfully");
         Ok(())
     }
@@ -886,18 +916,20 @@ impl UniversalComputeManager {
     }
 
     async fn verify_migration_success(&self, plan: &MigrationPlan) -> Result<bool> {
-        info!("🔍 Verifying migration success for: {}", plan.target_platform);
-        
+        info!(
+            "🔍 Verifying migration success for: {}",
+            plan.target_platform
+        );
+
         // Check if target workload is running
         let status_check = std::process::Command::new("toadstool")
             .args(&["ps", "--format", "json"])
-            .output()
-?;
-            
+            .output()?;
+
         if !status_check.status.success() {
             return Ok(false);
         }
-        
+
         // Parse output and verify target is running
         let output_str = String::from_utf8_lossy(&status_check.stdout);
         // Simple check - in real implementation would parse JSON and verify specific biome
@@ -930,15 +962,15 @@ impl UniversalComputeManager {
 
     async fn start_peer_monitoring(&self, addr: &SocketAddr) -> Result<()> {
         info!("👁️ Starting peer monitoring for: {}", addr);
-        
+
         // Start background task for heartbeat monitoring
         let addr_clone = *addr;
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Send heartbeat ping
                 match Self::send_heartbeat_ping(&addr_clone).await {
                     Ok(latency) => {
@@ -950,7 +982,7 @@ impl UniversalComputeManager {
                 }
             }
         });
-        
+
         Ok(())
     }
 
@@ -1264,14 +1296,14 @@ impl UniversalComputeManager {
     }
 
     async fn get_system_hardware_info(&self) -> Result<HardwareInfo> {
-        use sysinfo::{System, SystemExt, CpuExt};
-        
+        use sysinfo::{CpuExt, System, SystemExt};
+
         let mut sys = System::new_all();
         sys.refresh_all();
-        
+
         let cpu_model = sys.global_cpu_info().brand().to_string();
         let memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-        
+
         // Detect storage type (basic implementation)
         let storage_type = if std::path::Path::new("/sys/block/nvme0n1").exists() {
             "NVMe SSD".to_string()
@@ -1280,10 +1312,10 @@ impl UniversalComputeManager {
         } else {
             "Unknown".to_string()
         };
-        
+
         // Basic GPU detection
         let gpu_info = self.detect_gpu_info().await.ok();
-        
+
         Ok(HardwareInfo {
             cpu_model,
             cpu_cores: sys.physical_core_count().unwrap_or(1) as u32,
@@ -1298,7 +1330,7 @@ impl UniversalComputeManager {
         if let Ok(output) = std::process::Command::new("nvidia-smi")
             .arg("--query-gpu=name,memory.total")
             .arg("--format=csv,noheader,nounits")
-            .output() 
+            .output()
         {
             if output.status.success() {
                 let output_str = String::from_utf8_lossy(&output.stdout);
@@ -1313,7 +1345,7 @@ impl UniversalComputeManager {
                 }
             }
         }
-        
+
         // Check for AMD GPU
         if let Ok(output) = std::process::Command::new("rocm-smi")
             .arg("--showproductname")
@@ -1331,7 +1363,7 @@ impl UniversalComputeManager {
                 }
             }
         }
-        
+
         Err(anyhow::anyhow!("No GPU detected"))
     }
 
@@ -1351,13 +1383,21 @@ impl UniversalComputeManager {
         })
     }
 
-    async fn transfer_checkpoint(&self, checkpoint: &WorkloadCheckpoint, target: &str) -> Result<()> {
+    async fn transfer_checkpoint(
+        &self,
+        checkpoint: &WorkloadCheckpoint,
+        target: &str,
+    ) -> Result<()> {
         info!("🚚 Transferring checkpoint to: {}", target);
         // Transfer implementation
         Ok(())
     }
 
-    async fn restore_from_checkpoint(&self, checkpoint: &WorkloadCheckpoint, target: &str) -> Result<()> {
+    async fn restore_from_checkpoint(
+        &self,
+        checkpoint: &WorkloadCheckpoint,
+        target: &str,
+    ) -> Result<()> {
         info!("🔄 Restoring from checkpoint on: {}", target);
         // Restoration implementation
         Ok(())
@@ -1396,8 +1436,15 @@ impl UniversalComputeManager {
         Ok(())
     }
 
-    async fn start_continuous_replication(&self, source: &str, target: &str) -> Result<ReplicationHandle> {
-        info!("🔄 Starting continuous replication: {} → {}", source, target);
+    async fn start_continuous_replication(
+        &self,
+        source: &str,
+        target: &str,
+    ) -> Result<ReplicationHandle> {
+        info!(
+            "🔄 Starting continuous replication: {} → {}",
+            source, target
+        );
         Ok(ReplicationHandle {
             id: uuid::Uuid::new_v4(),
             source: source.to_string(),
@@ -1432,7 +1479,11 @@ impl UniversalComputeManager {
         })
     }
 
-    async fn deploy_snapshot_to_target(&self, snapshot: &WorkloadSnapshot, target: &str) -> Result<()> {
+    async fn deploy_snapshot_to_target(
+        &self,
+        snapshot: &WorkloadSnapshot,
+        target: &str,
+    ) -> Result<()> {
         info!("🚀 Deploying snapshot to target: {}", target);
         // Deployment implementation
         Ok(())
@@ -1458,7 +1509,7 @@ impl UniversalComputeManager {
 
     async fn send_heartbeat_ping(addr: &SocketAddr) -> Result<std::time::Duration> {
         let start = std::time::Instant::now();
-        
+
         // Simple TCP connection test
         match tokio::net::TcpStream::connect(addr).await {
             Ok(_) => Ok(start.elapsed()),
@@ -1473,9 +1524,11 @@ impl UniversalComputeManager {
         let has_namespaces = std::fs::metadata("/proc/self/ns").is_ok();
         let has_seccomp = std::fs::read_to_string("/proc/version")
             .map_or(false, |v| v.contains("CONFIG_SECCOMP"));
-        
-        info!("Linux capabilities: cgroups={}, namespaces={}, seccomp={}", 
-              has_cgroups, has_namespaces, has_seccomp);
+
+        info!(
+            "Linux capabilities: cgroups={}, namespaces={}, seccomp={}",
+            has_cgroups, has_namespaces, has_seccomp
+        );
         Ok(has_cgroups && has_namespaces)
     }
 
@@ -1485,10 +1538,13 @@ impl UniversalComputeManager {
             .arg("sandbox-exec")
             .output()
             .map_or(false, |o| o.status.success());
-        
+
         let has_system_integrity = std::fs::metadata("/System/Library/Sandbox").is_ok();
-        
-        info!("macOS capabilities: sandbox={}, sip={}", has_sandbox, has_system_integrity);
+
+        info!(
+            "macOS capabilities: sandbox={}, sip={}",
+            has_sandbox, has_system_integrity
+        );
         Ok(has_sandbox)
     }
 
@@ -1498,7 +1554,7 @@ impl UniversalComputeManager {
             .arg("powershell")
             .output()
             .map_or(false, |o| o.status.success());
-        
+
         info!("Windows capabilities: powershell={}", has_powershell);
         Ok(has_powershell)
     }
@@ -1507,8 +1563,11 @@ impl UniversalComputeManager {
         // Generic capability tests that work across platforms
         let has_proc_info = sysinfo::System::new_all().processes().len() > 0;
         let has_filesystem = std::env::current_dir().is_ok();
-        
-        info!("Generic capabilities: proc_info={}, filesystem={}", has_proc_info, has_filesystem);
+
+        info!(
+            "Generic capabilities: proc_info={}, filesystem={}",
+            has_proc_info, has_filesystem
+        );
         Ok(has_proc_info && has_filesystem)
     }
 }
@@ -1592,5 +1651,3 @@ pub struct WorkloadSnapshot {
     pub snapshot_id: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
-
-

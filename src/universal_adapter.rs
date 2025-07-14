@@ -4,14 +4,20 @@
 //! using a universal compute orchestration pattern. It manages workload execution coordination
 //! and provides seamless integration for compute-related Primal interactions.
 
+use crate::resources::UniversalResourceManager;
+use crate::scheduler::UniversalScheduler;
+use crate::security::UniversalSecurityManager;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use toadstool::ToadStoolResult;
+use toadstool_config::constants::network;
+use toadstool_config::helpers;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{info, warn, error};
 use uuid::Uuid;
@@ -123,11 +129,11 @@ pub enum SessionStatus {
 
 impl ToadstoolUniversalAdapter {
     /// Create a new universal adapter for Toadstool
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, AdapterError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| AdapterError::ConfigurationError(format!("Failed to create HTTP client: {}", e)))?;
             
         let compute_identity = ComputeIdentity {
             instance_id: format!("toadstool-{}", Uuid::new_v4().simple()),
@@ -184,13 +190,13 @@ impl ToadstoolUniversalAdapter {
             active_workloads: HashMap::new(),
         };
         
-        Self {
+        Ok(Self {
             client,
             primal_configs: Arc::new(RwLock::new(HashMap::new())),
             compute_identity,
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
             resource_tracker: Arc::new(RwLock::new(resource_tracker)),
-        }
+        })
     }
     
     /// Initialize the universal adapter with default Primal configurations
@@ -200,7 +206,7 @@ impl ToadstoolUniversalAdapter {
         // Songbird for orchestration coordination
         configs.insert("songbird".to_string(), PrimalCoordination {
             enabled: true,
-            endpoint: Some("http://songbird:8080".to_string()),
+            endpoint: Some(helpers::default_songbird_endpoint()),
             capabilities: vec![
                 "orchestration".to_string(),
                 "service_discovery".to_string(),
@@ -214,7 +220,7 @@ impl ToadstoolUniversalAdapter {
         // NestGate for storage coordination
         configs.insert("nestgate".to_string(), PrimalCoordination {
             enabled: true,
-            endpoint: Some("http://nestgate:8082".to_string()),
+            endpoint: Some(helpers::default_nestgate_endpoint()),
             capabilities: vec![
                 "storage".to_string(),
                 "volume_management".to_string(),
@@ -228,7 +234,7 @@ impl ToadstoolUniversalAdapter {
         // BearDog for security coordination
         configs.insert("beardog".to_string(), PrimalCoordination {
             enabled: false, // Will be enabled when ready
-            endpoint: Some("http://beardog:9000".to_string()),
+            endpoint: Some(helpers::default_beardog_endpoint()),
             capabilities: vec![
                 "security".to_string(),
                 "authentication".to_string(),
@@ -241,7 +247,7 @@ impl ToadstoolUniversalAdapter {
         
         // Squirrel for AI coordination
         configs.insert("squirrel".to_string(), PrimalCoordination {
-            enabled: false, // Will be enabled when MCP is ready
+            enabled: true, // Squirrel MCP is now production ready!
             endpoint: Some("http://squirrel:5000".to_string()),
             capabilities: vec![
                 "ai".to_string(),
@@ -249,9 +255,12 @@ impl ToadstoolUniversalAdapter {
                 "agents".to_string(),
                 "mcp".to_string(),
                 "ai_workloads".to_string(),
+                "natural_language".to_string(),
+                "context_management".to_string(),
+                "plugin_execution".to_string(),
             ],
             api_version: "universal/v1".to_string(),
-            priority: 80, // Medium priority for AI
+            priority: 90, // High priority for AI coordination
         });
         
         info!("Universal adapter initialized with {} Primal configurations", configs.len());

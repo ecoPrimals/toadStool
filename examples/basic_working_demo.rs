@@ -10,10 +10,8 @@ use toadstool::{
     execution::{
         ExecutionInput, ExecutionRequest, RuntimeConfig, RuntimeEngine, RuntimeType, WorkloadType,
     },
-    resources::{ResourceRequirements, ResourceMonitor},
-    security::{
-        Capability, IsolationLevel, SecurityContext,
-    },
+    resources::{ResourceMonitor, ResourceRequirements},
+    security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
 };
 
@@ -23,9 +21,7 @@ use toadstool_runtime_native::NativeRuntimeEngine;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     info!("🍄 ToadStool Basic Working Demo");
 
@@ -47,44 +43,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn test_resource_monitor() -> Result<(), Box<dyn std::error::Error>> {
     let monitor = SystemResourceMonitor::new();
-    
+
     // Test basic functionality
     let workload_id = "test-workload-1";
-    
+
     // Start monitoring
     monitor.start_monitoring(workload_id)?;
     info!("✓ Started monitoring for {}", workload_id);
-    
+
     // Get metrics (should return default since no actual process)
     let metrics = monitor.get_metrics(workload_id)?;
-    info!("✓ Retrieved metrics: CPU {}%, Memory {} bytes", 
-          metrics.cpu.usage_percent, metrics.memory.usage_bytes);
-    
+    info!(
+        "✓ Retrieved metrics: CPU {}%, Memory {} bytes",
+        metrics.cpu.usage_percent, metrics.memory.usage_bytes
+    );
+
     // Stop monitoring
     monitor.stop_monitoring(workload_id)?;
     info!("✓ Stopped monitoring for {}", workload_id);
-    
+
     Ok(())
 }
 
 async fn test_native_runtime() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = NativeRuntimeEngine::new();
-    
+
     // Initialize the engine
     engine.initialize(RuntimeConfig::default()).await?;
     info!("✓ Native runtime engine initialized");
-    
+
     // Test capabilities
     let capabilities = engine.get_capabilities();
-    info!("✓ Engine supports {} workload types", capabilities.supported_workloads.len());
+    info!(
+        "✓ Engine supports {} workload types",
+        capabilities.supported_workloads.len()
+    );
     assert!(engine.supports_workload(&WorkloadType::Native));
-    
+
     // Test simple execution (platform-specific)
     #[cfg(unix)]
     {
         let request = create_echo_request("Hello ToadStool!");
         let response = engine.execute(request).await?;
-        
+
         match response.status {
             toadstool::execution::ExecutionStatus::Success => {
                 info!("✓ Echo command executed successfully");
@@ -97,12 +98,12 @@ async fn test_native_runtime() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     #[cfg(windows)]
     {
         let request = create_windows_echo_request("Hello ToadStool!");
         let response = engine.execute(request).await?;
-        
+
         match response.status {
             toadstool::execution::ExecutionStatus::Success => {
                 info!("✓ Echo command executed successfully");
@@ -115,30 +116,31 @@ async fn test_native_runtime() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     // Shutdown
     engine.shutdown().await?;
     info!("✓ Native runtime engine shut down");
-    
+
     Ok(())
 }
 
 async fn test_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Create resource monitor
     let monitor = Arc::new(SystemResourceMonitor::new());
-    
+
     // Create native runtime with monitor
-    let mut engine = NativeRuntimeEngine::new().with_resource_monitor(monitor.clone() as Arc<dyn ResourceMonitor>);
+    let mut engine = NativeRuntimeEngine::new()
+        .with_resource_monitor(monitor.clone() as Arc<dyn ResourceMonitor>);
     engine.initialize(RuntimeConfig::default()).await?;
-    
+
     info!("✓ Created integrated runtime with monitoring");
-    
+
     // Execute a simple command with monitoring
     #[cfg(unix)]
     {
         let request = create_echo_request("Integration test!");
         let response = engine.execute(request).await?;
-        
+
         match response.status {
             toadstool::execution::ExecutionStatus::Success => {
                 info!("✓ Integrated execution successful");
@@ -150,10 +152,10 @@ async fn test_integration() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     engine.shutdown().await?;
     info!("✓ Integration test completed");
-    
+
     Ok(())
 }
 
@@ -190,7 +192,11 @@ fn create_windows_echo_request(message: &str) -> ExecutionRequest {
             executable: ExecutableSource::File {
                 path: PathBuf::from("cmd"),
             },
-            args: Some(vec!["/C".to_string(), "echo".to_string(), message.to_string()]),
+            args: Some(vec![
+                "/C".to_string(),
+                "echo".to_string(),
+                message.to_string(),
+            ]),
             working_dir: None,
             env_vars: HashMap::new(),
             user: None,
@@ -205,4 +211,4 @@ fn create_windows_echo_request(message: &str) -> ExecutionRequest {
         input_data: ExecutionInput::default(),
         callback_config: None,
     }
-} 
+}

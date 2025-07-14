@@ -392,7 +392,7 @@ impl FilePolicyManager {
 
     /// Generate policy file path
     fn policy_file_path(&self, policy_id: &str) -> PathBuf {
-        self.config.policy_dir.join(format!("{}.yaml", policy_id))
+        self.config.policy_dir.join(format!("{policy_id}.yaml"))
     }
 
     /// Check if cached policy is still valid
@@ -565,7 +565,7 @@ impl PolicyManager for FilePolicyManager {
             })?;
 
         while let Some(entry) = dir.next_entry().await.map_err(|e| {
-            ToadStoolError::configuration(format!("Failed to read directory entry: {}", e))
+            ToadStoolError::configuration(format!("Failed to read directory entry: {e}"))
         })? {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
@@ -600,16 +600,16 @@ impl PolicyManager for FilePolicyManager {
         // Validate rules
         for (i, rule) in policy.rules.iter().enumerate() {
             if rule.id.is_empty() {
-                errors.push(format!("Rule {} has empty ID", i));
+                errors.push(format!("Rule {i} has empty ID"));
             }
 
             if rule.name.is_empty() {
-                errors.push(format!("Rule {} has empty name", i));
+                errors.push(format!("Rule {i} has empty name"));
             }
 
             // Validate condition
             if let Err(e) = self.condition_evaluator.validate_condition(&rule.condition) {
-                errors.push(format!("Rule {} has invalid condition: {}", i, e));
+                errors.push(format!("Rule {i} has invalid condition: {e}"));
             }
         }
 
@@ -1096,7 +1096,7 @@ impl ActionExecutor {
                 result.result = PolicyResult::RequiresAuth;
                 result.warnings.push(PolicyWarning {
                     level: "info".to_string(),
-                    message: format!("Additional authentication required: {}", method),
+                    message: format!("Additional authentication required: {method}"),
                     rule_id: None,
                 });
             }
@@ -1116,7 +1116,7 @@ impl ActionExecutor {
                 );
                 result.warnings.push(PolicyWarning {
                     level: "info".to_string(),
-                    message: format!("Custom action executed: {}", action),
+                    message: format!("Custom action executed: {action}"),
                     rule_id: None,
                 });
             }
@@ -1201,7 +1201,7 @@ mod tests {
             ..Default::default()
         };
 
-        let manager = FilePolicyManager::new(config).unwrap();
+        let _manager = FilePolicyManager::new(config).unwrap();
         assert!(temp_dir.path().exists());
     }
 
@@ -1292,12 +1292,12 @@ mod tests {
             max_composition_depth: 10,
             validation_timeout_ms: 5000,
         };
-        
+
         // Ensure temp directory exists
         std::fs::create_dir_all(&temp_dir).ok();
-        
+
         let manager = FilePolicyManager::new(config).unwrap();
-        
+
         // Clean up
         std::fs::remove_dir_all(&temp_dir).ok();
         // Test passes if no panics occur

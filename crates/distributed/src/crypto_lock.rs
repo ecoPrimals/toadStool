@@ -542,20 +542,17 @@ impl ToadStoolCryptoLock {
         match target {
             ExternalTarget::CloudProvider { provider, .. } => {
                 format!(
-                    "Get BearDog crypto permission for {:?} cloud provider",
-                    provider
+                    "Get BearDog crypto permission for {provider:?} cloud provider"
                 )
             }
             ExternalTarget::ContainerPlatform { platform, .. } => {
                 format!(
-                    "Get BearDog crypto permission for {:?} container platform",
-                    platform
+                    "Get BearDog crypto permission for {platform:?} container platform"
                 )
             }
             ExternalTarget::ExternalTool { tool_name, .. } => {
                 format!(
-                    "Get BearDog crypto permission for {} external tool",
-                    tool_name
+                    "Get BearDog crypto permission for {tool_name} external tool"
                 )
             }
             _ => "Get appropriate BearDog crypto permission for this external integration"
@@ -687,8 +684,8 @@ pub struct UsageQuotas {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CryptoAlgorithm {
     Ed25519,
-    ECDSA_P256,
-    RSA_4096,
+    EcdsaP256,
+    Rsa4096,
     BearDogCustom,
 }
 

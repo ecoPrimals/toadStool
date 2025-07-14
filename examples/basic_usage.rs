@@ -1,5 +1,5 @@
 //! Basic usage example for ToadStool
-//! 
+//!
 //! This example demonstrates the core functionality of ToadStool including:
 //! - Configuration loading
 //! - Security context creation
@@ -9,51 +9,55 @@
 //! - Runtime orchestration
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use toadstool::{
-    execution::{ExecutionRequest, ExecutionInput, RuntimeType},
+    execution::{ExecutionRequest, RuntimeType},
     resources::ResourceRequirements,
-    security::{SecurityContext, IsolationLevel, Capability},
-    workload::{WorkloadSpec, ExecutableSource},
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
-    error::ToadStoolResult,
+    security::{IsolationLevel, SecurityContext},
+    workload::{ExecutableSource, WorkloadSpec},
+    ToadStoolResult,
 };
-use toadstool_config::{load_config, ToadStoolConfig};
+
+use toadstool_config::ConfigManager;
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> ToadStoolResult<()> {
-    // Initialize logging
-    env_logger::init();
-    
+    println!("🍄 ToadStool Basic Usage Demo");
+    println!("Demonstrating core functionality");
+
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
     // Load configuration
-    let config = load_config().unwrap_or_else(|_| {
-        println!("Using default configuration");
-        ToadStoolConfig::default()
-    });
+    let config_manager = ConfigManager::new();
+    let config = config_manager.get_config().await;
     println!("Loaded configuration successfully");
-    
+
     // Create security context with standard isolation
-    let security_context = SecurityContext::for_isolation_level(IsolationLevel::Standard)
-        .with_capability(Capability::Execute)
-        .with_capability(Capability::Read);
-    
+    let security_context = SecurityContext::for_isolation_level(IsolationLevel::Standard);
+    println!("Created security context");
+
+    // Create runtime orchestrator
+    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    println!("Created runtime orchestrator");
+
     // Define resource requirements
     let resource_requirements = ResourceRequirements::default();
-    
+
     // Create workload specification for a simple echo command
     let workload_spec = WorkloadSpec::Native {
-        executable: ExecutableSource::File { 
-            path: PathBuf::from("/bin/echo")
+        executable: ExecutableSource::File {
+            path: "/bin/echo".into(),
         },
         args: Some(vec!["Hello".to_string(), "ToadStool!".to_string()]),
         working_dir: None,
         env_vars: HashMap::new(),
         user: None,
     };
-    
+
     // Create execution request
     let execution_request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
@@ -63,19 +67,28 @@ async fn main() -> ToadStoolResult<()> {
         security_context,
         timeout: Some(Duration::from_secs(30)),
         environment: HashMap::new(),
-        input_data: ExecutionInput::default(),
+        input_data: Default::default(),
         callback_config: None,
     };
-    
-    // Create runtime orchestrator
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
-    
-    println!("Created execution request: {:?}", execution_request.execution_id);
-    println!("Workload type: {:?}", execution_request.workload.workload_type());
-    println!("Security isolation: {:?}", execution_request.security_context.isolation_level);
-    
+
+    println!(
+        "Created execution request: {:?}",
+        execution_request.execution_id
+    );
+    println!(
+        "Workload type: {:?}",
+        execution_request.workload.workload_type()
+    );
+    println!(
+        "Security isolation: {:?}",
+        execution_request.security_context.isolation_level
+    );
+
     // Note: Actual execution would require registered runtime engines
     // This example demonstrates the API structure and configuration
-    
+    println!("✅ Basic usage example completed successfully!");
+    println!("📝 This demonstrates the ToadStool API structure");
+    println!("🔧 To actually execute workloads, register runtime engines with the orchestrator");
+
     Ok(())
-} 
+}

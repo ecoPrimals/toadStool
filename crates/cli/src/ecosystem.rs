@@ -6,6 +6,7 @@
 //! - NestGate: Distributed storage and data management
 
 use anyhow::{bail, Context, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -14,12 +15,11 @@ use tokio::fs;
 use tokio::time::{timeout, Duration};
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use chrono::{Utc, DateTime};
 
 // Add cryptographic verification dependencies
-use ring::{signature, digest};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ring::signature::{Ed25519KeyPair, KeyPair, UnparsedPublicKey, ED25519};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use ring::{digest, signature};
 use std::collections::BTreeMap;
 
 /// Ecosystem service discovery and integration
@@ -157,7 +157,7 @@ impl Default for CryptoVerificationContext {
     fn default() -> Self {
         // Load trusted public keys from environment or configuration
         let mut trusted_keys = HashMap::new();
-        
+
         // Production keys should be loaded from secure configuration
         if let Ok(songbird_key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
             trusted_keys.insert("songbird".to_string(), songbird_key);
@@ -217,7 +217,10 @@ impl CryptoVerificationContext {
 
         // Check if key is revoked
         if self.revoked_keys.contains(public_key_base64) {
-            error!("Attempted to use revoked public key for service: {}", service_type);
+            error!(
+                "Attempted to use revoked public key for service: {}",
+                service_type
+            );
             return Ok(false);
         }
 
@@ -225,17 +228,19 @@ impl CryptoVerificationContext {
         let response_age = chrono::Utc::now()
             .signed_duration_since(response.timestamp)
             .num_minutes();
-        
+
         if response_age > self.max_age_minutes as i64 {
             warn!("Service response is too old: {} minutes", response_age);
             return Ok(false);
         }
 
         // Decode public key and signature
-        let public_key_bytes = BASE64.decode(public_key_base64)
+        let public_key_bytes = BASE64
+            .decode(public_key_base64)
             .map_err(|e| anyhow::anyhow!("Failed to decode public key: {}", e))?;
-        
-        let signature_bytes = BASE64.decode(&response.signature.signature)
+
+        let signature_bytes = BASE64
+            .decode(&response.signature.signature)
             .map_err(|e| anyhow::anyhow!("Failed to decode signature: {}", e))?;
 
         // Create canonical message for verification
@@ -254,14 +259,14 @@ impl CryptoVerificationContext {
         let timestamp = response.timestamp.to_rfc3339();
         data.insert("timestamp", &timestamp);
         data.insert("nonce", &response.signature.nonce);
-        
+
         let capabilities_json = serde_json::to_string(&response.capabilities)
             .map_err(|e| anyhow::anyhow!("Failed to serialize capabilities: {}", e))?;
         data.insert("capabilities", &capabilities_json);
 
         let canonical_json = serde_json::to_string(&data)
             .map_err(|e| anyhow::anyhow!("Failed to create canonical message: {}", e))?;
-        
+
         Ok(canonical_json.into_bytes())
     }
 }
@@ -618,17 +623,21 @@ impl EcosystemIntegrator {
         // Send ping to Songbird and verify response signature
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/health/signed", addr))
-        ).await {
+            reqwest::get(&format!("http://{}/health/signed", addr)),
+        )
+        .await
+        {
             Ok(Ok(response)) => {
                 if response.status().is_success() {
                     // Parse signed response
                     match response.json::<SignedServiceResponse>().await {
                         Ok(signed_response) => {
                             let crypto_context = CryptoVerificationContext::new();
-                            
+
                             // Verify cryptographic signature of response
-                            match crypto_context.verify_service_signature("songbird", &signed_response) {
+                            match crypto_context
+                                .verify_service_signature("songbird", &signed_response)
+                            {
                                 Ok(true) => {
                                     info!("✅ Songbird service cryptographically verified");
                                     Ok(true)
@@ -653,7 +662,7 @@ impl EcosystemIntegrator {
                     Ok(false)
                 }
             }
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
@@ -661,17 +670,21 @@ impl EcosystemIntegrator {
         // Verify BearDog cryptographic service with proper signature validation
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/crypto/identity/signed", addr))
-        ).await {
+            reqwest::get(&format!("http://{}/crypto/identity/signed", addr)),
+        )
+        .await
+        {
             Ok(Ok(response)) => {
                 if response.status().is_success() {
                     // Parse BearDog identity response
                     match response.json::<SignedServiceResponse>().await {
                         Ok(signed_response) => {
                             let crypto_context = CryptoVerificationContext::new();
-                            
+
                             // Verify BearDog cryptographic identity and signature
-                            match crypto_context.verify_service_signature("beardog", &signed_response) {
+                            match crypto_context
+                                .verify_service_signature("beardog", &signed_response)
+                            {
                                 Ok(true) => {
                                     // Additional BearDog-specific verification
                                     if self.verify_beardog_capabilities(&signed_response).await? {
@@ -683,7 +696,9 @@ impl EcosystemIntegrator {
                                     }
                                 }
                                 Ok(false) => {
-                                    error!("❌ BearDog cryptographic signature verification failed");
+                                    error!(
+                                        "❌ BearDog cryptographic signature verification failed"
+                                    );
                                     Ok(false)
                                 }
                                 Err(e) => {
@@ -693,7 +708,9 @@ impl EcosystemIntegrator {
                             }
                         }
                         Err(_) => {
-                            error!("🚨 BearDog service does not support cryptographic verification");
+                            error!(
+                                "🚨 BearDog service does not support cryptographic verification"
+                            );
                             Ok(false) // SECURITY: Always fail for BearDog without crypto
                         }
                     }
@@ -701,7 +718,7 @@ impl EcosystemIntegrator {
                     Ok(false)
                 }
             }
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
@@ -709,17 +726,21 @@ impl EcosystemIntegrator {
         // Verify NestGate storage service with proper access controls
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/storage/access/signed", addr))
-        ).await {
+            reqwest::get(&format!("http://{}/storage/access/signed", addr)),
+        )
+        .await
+        {
             Ok(Ok(response)) => {
                 if response.status().is_success() {
                     // Parse NestGate access control response
                     match response.json::<SignedServiceResponse>().await {
                         Ok(signed_response) => {
                             let crypto_context = CryptoVerificationContext::new();
-                            
+
                             // Verify storage service permissions and encryption keys
-                            match crypto_context.verify_service_signature("nestgate", &signed_response) {
+                            match crypto_context
+                                .verify_service_signature("nestgate", &signed_response)
+                            {
                                 Ok(true) => {
                                     // Additional NestGate-specific verification
                                     if self.verify_nestgate_permissions(&signed_response).await? {
@@ -749,7 +770,7 @@ impl EcosystemIntegrator {
                     Ok(false)
                 }
             }
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 
@@ -757,9 +778,9 @@ impl EcosystemIntegrator {
         // Verify BearDog has required cryptographic capabilities
         let required_capabilities = vec![
             "ed25519_signing",
-            "key_generation", 
+            "key_generation",
             "signature_verification",
-            "identity_management"
+            "identity_management",
         ];
 
         for capability in required_capabilities {
@@ -778,7 +799,7 @@ impl EcosystemIntegrator {
             "zfs_management",
             "encryption_support",
             "access_control",
-            "snapshot_management"
+            "snapshot_management",
         ];
 
         for capability in required_capabilities {
@@ -833,17 +854,19 @@ impl EcosystemIntegrator {
 
         // Implement proper cryptographic verification
         let crypto_context = CryptoVerificationContext::new();
-        
+
         // Get public key for BearDog permission verification
         if let Some(beardog_key) = crypto_context.trusted_public_keys.get("beardog") {
             // Create canonical permission message for verification
             let permission_message = self.create_permission_message(permission)?;
-            
+
             // Decode signature and public key
-            let signature_bytes = BASE64.decode(&permission.signature)
+            let signature_bytes = BASE64
+                .decode(&permission.signature)
                 .map_err(|e| anyhow::anyhow!("Failed to decode permission signature: {}", e))?;
-            
-            let public_key_bytes = BASE64.decode(beardog_key)
+
+            let public_key_bytes = BASE64
+                .decode(beardog_key)
                 .map_err(|e| anyhow::anyhow!("Failed to decode BearDog public key: {}", e))?;
 
             // Verify signature using BearDog public key cryptography
@@ -877,14 +900,14 @@ impl EcosystemIntegrator {
         data.insert("permission_id", permission.permission_id.to_string());
         data.insert("granted_to", permission.granted_to.clone());
         data.insert("valid_until", permission.valid_until.to_rfc3339());
-        
+
         let capabilities_json = serde_json::to_string(&permission.capabilities)
             .map_err(|e| anyhow::anyhow!("Failed to serialize permission capabilities: {}", e))?;
         data.insert("capabilities", capabilities_json);
 
         let canonical_json = serde_json::to_string(&data)
             .map_err(|e| anyhow::anyhow!("Failed to create canonical permission message: {}", e))?;
-        
+
         Ok(canonical_json.into_bytes())
     }
 
@@ -982,16 +1005,18 @@ impl EcosystemIntegrator {
         // Get discovery ranges from configuration or environment
         let discovery_ranges = std::env::var("TOADSTOOL_DISCOVERY_RANGES")
             .map(|ranges| ranges.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_else(|_| vec![
-                "127.0.0.1/32".to_string(),
-                "192.168.1.0/24".to_string(),
-                "10.0.0.0/24".to_string(),
-                "172.16.0.0/24".to_string(),
-            ]);
+            .unwrap_or_else(|_| {
+                vec![
+                    "127.0.0.1/32".to_string(),
+                    "192.168.1.0/24".to_string(),
+                    "10.0.0.0/24".to_string(),
+                    "172.16.0.0/24".to_string(),
+                ]
+            });
 
         for range in discovery_ranges {
             info!("Scanning network range: {}", range);
-            
+
             // Parse CIDR range and scan for services
             match self.scan_cidr_range(&range).await {
                 Ok(mut services) => discovered.append(&mut services),
@@ -1004,19 +1029,20 @@ impl EcosystemIntegrator {
 
     async fn scan_cidr_range(&self, cidr: &str) -> Result<Vec<DiscoveredService>> {
         let mut services = Vec::new();
-        
+
         // Parse CIDR notation
         if cidr.contains('/') {
             let parts: Vec<&str> = cidr.split('/').collect();
             if parts.len() == 2 {
                 let base_ip = parts[0];
                 let prefix_len: u32 = parts[1].parse().unwrap_or(24);
-                
+
                 // Generate IP range based on CIDR
                 let ip_range = self.generate_ip_range(base_ip, prefix_len)?;
-                
+
                 // Scan each IP in range
-                for ip in ip_range.iter().take(254) { // Limit scan size
+                for ip in ip_range.iter().take(254) {
+                    // Limit scan size
                     if let Ok(discovered) = self.scan_ip_for_services(ip).await {
                         services.extend(discovered);
                     }
@@ -1028,13 +1054,13 @@ impl EcosystemIntegrator {
                 services.extend(discovered);
             }
         }
-        
+
         Ok(services)
     }
 
     fn generate_ip_range(&self, base_ip: &str, prefix_len: u32) -> Result<Vec<String>> {
         let mut ips = Vec::new();
-        
+
         // Simple implementation for common cases
         if prefix_len == 24 {
             // Class C subnet (e.g., 192.168.1.0/24)
@@ -1048,17 +1074,17 @@ impl EcosystemIntegrator {
             ips.push(base_ip.to_string());
         }
         // Add more CIDR handling as needed
-        
+
         Ok(ips)
     }
 
     async fn scan_ip_for_services(&self, ip: &str) -> Result<Vec<DiscoveredService>> {
         let mut services = Vec::new();
-        
+
         // Common service ports to scan
         let service_ports = [
             (8080, ServiceType::Songbird),
-            (8081, ServiceType::NestGate), 
+            (8081, ServiceType::NestGate),
             (8082, ServiceType::BearDog),
             (8083, ServiceType::ToadStool),
         ];
@@ -1084,8 +1110,10 @@ impl EcosystemIntegrator {
     async fn is_port_open(&self, addr: &SocketAddr) -> bool {
         match tokio::time::timeout(
             Duration::from_millis(1000),
-            tokio::net::TcpStream::connect(addr)
-        ).await {
+            tokio::net::TcpStream::connect(addr),
+        )
+        .await
+        {
             Ok(Ok(_)) => true,
             _ => false,
         }

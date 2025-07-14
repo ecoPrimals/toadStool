@@ -2,6 +2,42 @@
 name = "toadstool-client"
 version.workspace = true
 edition.workspace = true
-description = "ToadStool client component"
+description = "ToadStool universal compute client library"
 
 [dependencies]
+# HTTP client and networking
+reqwest = { version = "0.11", features = ["json", "stream"] }
+url = "2.4"
+
+# WebSocket support (optional)
+tokio-tungstenite = { version = "0.20", optional = true }
+futures-util = { version = "0.3", optional = true }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# UUID support
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Base64 encoding (for basic auth)
+base64 = "0.21"
+
+[features]
+default = ["websocket"]
+websocket = ["tokio-tungstenite", "futures-util"]
+
+[dev-dependencies]
+tokio-test = "0.4"

@@ -17,8 +17,8 @@
 //! Mock resource monitors for testing
 
 use mockall::mock;
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 use toadstool::{
     error::ToadStoolResult,
@@ -61,18 +61,17 @@ impl MockResourceMonitor {
         mock.expect_get_metrics()
             .returning(|_workload_id| Ok(create_test_runtime_metrics()));
 
-        mock.expect_get_system_resources()
-            .returning(|| {
-                Box::pin(async move {
-                    Ok(SystemResources {
-                        available_cpu_cores: 8.0,
-                        available_memory_bytes: 16 * 1024 * 1024 * 1024, // 16GB
-                        available_storage_bytes: 1024 * 1024 * 1024 * 1024, // 1TB
-                        available_network_bandwidth: Some(1000000000), // 1Gbps
-                        available_gpu_units: 1,
-                    })
+        mock.expect_get_system_resources().returning(|| {
+            Box::pin(async move {
+                Ok(SystemResources {
+                    available_cpu_cores: 8.0,
+                    available_memory_bytes: 16 * 1024 * 1024 * 1024, // 16GB
+                    available_storage_bytes: 1024 * 1024 * 1024 * 1024, // 1TB
+                    available_network_bandwidth: Some(1000000000),   // 1Gbps
+                    available_gpu_units: 1,
                 })
-            });
+            })
+        });
 
         mock
     }
@@ -97,18 +96,17 @@ impl MockResourceMonitor {
             Ok(metrics)
         });
 
-        mock.expect_get_system_resources()
-            .returning(|| {
-                Box::pin(async move {
-                    Ok(SystemResources {
-                        available_cpu_cores: 2.0, // Limited resources
-                        available_memory_bytes: 4 * 1024 * 1024 * 1024, // 4GB
-                        available_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
-                        available_network_bandwidth: Some(100000000), // 100Mbps
-                        available_gpu_units: 0,
-                    })
+        mock.expect_get_system_resources().returning(|| {
+            Box::pin(async move {
+                Ok(SystemResources {
+                    available_cpu_cores: 2.0,                          // Limited resources
+                    available_memory_bytes: 4 * 1024 * 1024 * 1024,    // 4GB
+                    available_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
+                    available_network_bandwidth: Some(100000000),      // 100Mbps
+                    available_gpu_units: 0,
                 })
-            });
+            })
+        });
 
         mock
     }
@@ -138,14 +136,13 @@ impl MockResourceMonitor {
             ))
         });
 
-        mock.expect_get_system_resources()
-            .returning(|| {
-                Box::pin(async move {
-                    Err(toadstool::error::ToadStoolError::resource(
-                        "Failed to get system resources",
-                    ))
-                })
-            });
+        mock.expect_get_system_resources().returning(|| {
+            Box::pin(async move {
+                Err(toadstool::error::ToadStoolError::resource(
+                    "Failed to get system resources",
+                ))
+            })
+        });
 
         mock
     }
@@ -154,7 +151,6 @@ impl MockResourceMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixtures::create_test_resource_requirements;
 
     #[test]
     fn test_successful_mock() {

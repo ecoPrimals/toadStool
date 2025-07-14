@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 53ce8c48d07c4e912cc4104c2f61d922d5ecd38fb61245bc0de8b4ae2d596249 # shrinks to health_statuses = [PrimalHealthStatus { primal_type: BearDog, status: Unhealthy, timestamp: 2025-07-12T13:45:57.568975145Z, message: None, details: {} }, PrimalHealthStatus { primal_type: Songbird, status: Stopping, timestamp: 2025-07-12T13:45:57.568978927Z, message: None, details: {} }, PrimalHealthStatus { primal_type: ToadStool, status: Stopping, timestamp: 2025-07-12T13:45:57.568979651Z, message: None, details: {} }]

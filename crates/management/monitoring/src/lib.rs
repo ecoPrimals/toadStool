@@ -3,11 +3,11 @@
 //! Cross-platform resource monitoring with configurable granularity.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::pin::Pin;
-use std::future::Future;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,9 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::resources::{ResourceMonitor, ResourceRequirements, RuntimeMetrics, SystemResources};
+use toadstool::resources::{
+    ResourceMonitor, ResourceRequirements, RuntimeMetrics, SystemResources,
+};
 
 /// Monitoring granularity levels
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -145,19 +147,19 @@ impl std::fmt::Display for ResourceMonitorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ResourceMonitorError::ProcessNotRegistered(id) => {
-                write!(f, "Process not registered for monitoring: {}", id)
+                write!(f, "Process not registered for monitoring: {id}")
             }
             ResourceMonitorError::ProcessNotFound(id) => {
-                write!(f, "Process not found: {}", id)
+                write!(f, "Process not found: {id}")
             }
             ResourceMonitorError::CommandExecutionFailed(msg) => {
-                write!(f, "Command execution failed: {}", msg)
+                write!(f, "Command execution failed: {msg}")
             }
             ResourceMonitorError::ParseError(msg) => {
-                write!(f, "Parse error: {}", msg)
+                write!(f, "Parse error: {msg}")
             }
             ResourceMonitorError::PlatformNotSupported(platform) => {
-                write!(f, "Platform not supported: {}", platform)
+                write!(f, "Platform not supported: {platform}")
             }
             ResourceMonitorError::ResourceLimitExceeded {
                 process_id,
@@ -167,8 +169,7 @@ impl std::fmt::Display for ResourceMonitorError {
             } => {
                 write!(
                     f,
-                    "Resource limit exceeded for {}: {} current={}, limit={}",
-                    process_id, resource_type, current_value, limit
+                    "Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}"
                 )
             }
             ResourceMonitorError::NetworkMonitoringNotAvailable => {
@@ -182,11 +183,10 @@ impl std::fmt::Display for ResourceMonitorError {
             } => {
                 write!(
                     f,
-                    "Threshold violation for {}: {} current={}, threshold={}",
-                    workload_id, resource_type, current_value, threshold
+                    "Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}"
                 )
             }
-            ResourceMonitorError::Other(msg) => write!(f, "Other error: {}", msg),
+            ResourceMonitorError::Other(msg) => write!(f, "Other error: {msg}"),
         }
     }
 }
@@ -240,7 +240,11 @@ impl SystemResourceMonitor {
         let mut process_map = self.process_map.write().await;
         let process_info = ProcessInfo {
             pid: process_handle,
-            name: executable_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+            name: executable_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
             cpu_usage: 0.0,
             last_cpu_time: 0,
             memory_usage: 0,
@@ -378,7 +382,7 @@ impl SystemResourceMonitor {
     /// Measures resources for a specific process
     async fn measure_process_resources(
         pid: u32,
-        name: &str,
+        _name: &str,
         start_time: u64,
         last_cpu_time: &u64,
         memory_usage: &u64,
@@ -393,7 +397,9 @@ impl SystemResourceMonitor {
         platform_metrics.timing.start_time =
             Utc::now() - chrono::Duration::seconds(elapsed_secs as i64);
         platform_metrics.timing.end_time = None;
-        platform_metrics.timing.duration = chrono::Duration::from_std(std::time::Duration::from_secs(elapsed_secs)).unwrap_or_default();
+        platform_metrics.timing.duration =
+            chrono::Duration::from_std(std::time::Duration::from_secs(elapsed_secs))
+                .unwrap_or_default();
 
         // Update CPU usage
         platform_metrics.cpu.usage_percent = *last_cpu_time as f64 / 100.0;
@@ -458,7 +464,7 @@ impl SystemResourceMonitor {
         use std::fs;
 
         // Read from /proc/[pid]/stat for CPU info
-        let stat_path = format!("/proc/{}/stat", pid);
+        let stat_path = format!("/proc/{pid}/stat");
         let stat_content = fs::read_to_string(&stat_path)
             .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
 
@@ -482,7 +488,7 @@ impl SystemResourceMonitor {
             })?;
 
         // Read memory info from /proc/[pid]/status
-        let status_path = format!("/proc/{}/status", pid);
+        let status_path = format!("/proc/{pid}/status");
         let status_content = fs::read_to_string(&status_path)
             .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
 
@@ -490,7 +496,7 @@ impl SystemResourceMonitor {
         let _vm_size = Self::parse_proc_status_value(&status_content, "VmSize")?;
 
         // Read IO stats from /proc/[pid]/io
-        let io_path = format!("/proc/{}/io", pid);
+        let io_path = format!("/proc/{pid}/io");
         let io_content = fs::read_to_string(&io_path).unwrap_or_default();
 
         let read_bytes = Self::parse_proc_io_value(&io_content, "read_bytes").unwrap_or(0);
@@ -514,7 +520,7 @@ impl SystemResourceMonitor {
             memory: toadstool::resources::MemoryMetrics {
                 used_bytes: (vm_rss * 1024.0) as u64, // VmRSS is in KB
                 peak_bytes: (vm_rss * 1024.0) as u64,
-                usage_percent: (vm_rss * 1024.0 * 100.0) as f64 / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
+                usage_percent: (vm_rss * 1024.0 * 100.0) / (4.0 * 1024.0 * 1024.0 * 1024.0), // Assume 4GB total
             },
             storage: toadstool::resources::StorageMetrics {
                 usage_percent: 0.0,
@@ -535,7 +541,7 @@ impl SystemResourceMonitor {
         use std::fs;
 
         // Read network stats from /proc/[pid]/net/dev
-        let net_dev_path = format!("/proc/{}/net/dev", pid);
+        let net_dev_path = format!("/proc/{pid}/net/dev");
         let net_content = fs::read_to_string(&net_dev_path)
             .or_else(|_| fs::read_to_string("/proc/net/dev")) // Fallback to system-wide stats
             .map_err(|_e| ResourceMonitorError::NetworkMonitoringNotAvailable)?;
@@ -586,8 +592,7 @@ impl SystemResourceMonitor {
             }
         }
         Err(ResourceMonitorError::ParseError(format!(
-            "Field {} not found",
-            field
+            "Field {field} not found"
         )))
     }
 
@@ -604,8 +609,7 @@ impl SystemResourceMonitor {
             }
         }
         Err(ResourceMonitorError::ParseError(format!(
-            "Field {} not found",
-            field
+            "Field {field} not found"
         )))
     }
 
@@ -919,22 +923,25 @@ impl ResourceMonitor for SystemResourceMonitor {
         })
     }
 
-    fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
+    fn get_system_resources(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
             // Get system-wide resource information
             let mut available_cpu_cores = 1.0;
             let mut available_memory_bytes = 1024 * 1024 * 1024; // 1GB default
             let available_storage_bytes = 10 * 1024 * 1024 * 1024; // 10GB default
-            
+
             #[cfg(target_os = "linux")]
             {
                 // Get CPU info from /proc/cpuinfo
                 if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-                    available_cpu_cores = cpuinfo.lines()
+                    available_cpu_cores = cpuinfo
+                        .lines()
                         .filter(|line| line.starts_with("processor"))
                         .count() as f64;
                 }
-                
+
                 // Get memory info from /proc/meminfo
                 if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
                     for line in meminfo.lines() {
@@ -949,7 +956,7 @@ impl ResourceMonitor for SystemResourceMonitor {
                     }
                 }
             }
-            
+
             #[cfg(target_os = "macos")]
             {
                 // Use sysctl for macOS
@@ -963,7 +970,7 @@ impl ResourceMonitor for SystemResourceMonitor {
                         }
                     }
                 }
-                
+
                 if let Ok(output) = std::process::Command::new("sysctl")
                     .args(&["-n", "hw.memsize"])
                     .output()
@@ -975,7 +982,7 @@ impl ResourceMonitor for SystemResourceMonitor {
                     }
                 }
             }
-            
+
             Ok(SystemResources {
                 available_cpu_cores,
                 available_memory_bytes,

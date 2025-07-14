@@ -43,18 +43,23 @@ thiserror = { workspace = true }
 # System monitoring
 sysinfo = { workspace = true }
 
+# Encoding
+base64 = "0.22"
+
 # Networking for ecosystem integration (optional)
 reqwest = { workspace = true, features = ["json", "rustls-tls"], optional = true }
 tokio-tungstenite = { version = "0.20", optional = true }
-tonic = { version = "0.10", optional = true }
+# tonic = { version = "0.10", optional = true } # REMOVED: protobuf dependency
 
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+toadstool-testing = { path = "../../testing" }
 
 [features]
 default = ["pure-ecosystem"]
 pure-ecosystem = []
 networking = ["reqwest", "tokio-tungstenite"]
-grpc = ["tonic", "networking"]
-full-ecosystem = ["grpc"] 
+# grpc = ["tonic", "networking"] # REMOVED: protobuf dependency
+# full-ecosystem = ["grpc"] # REMOVED: protobuf dependency
+full-ecosystem = ["networking"] 

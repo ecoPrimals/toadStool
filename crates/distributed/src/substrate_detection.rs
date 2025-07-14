@@ -56,9 +56,9 @@ impl SubstrateDetector {
                 simulation: true,
             },
         }));
-        all_specialized.extend(neuromorphic.into_iter().map(|p| p));
-        all_specialized.extend(quantum.into_iter().map(|p| p));
-        all_specialized.extend(edge.into_iter().map(|p| p));
+        all_specialized.extend(neuromorphic.into_iter());
+        all_specialized.extend(quantum.into_iter());
+        all_specialized.extend(edge.into_iter());
 
         Ok(SubstrateCapabilities {
             traditional_platforms: traditional,
@@ -363,7 +363,7 @@ impl SubstrateDetector {
 
         // Check for actual neuromorphic hardware
         if let Ok(devices) = fs::read_dir("/dev") {
-            let mut devices = devices;
+            let devices = devices;
             for entry in devices.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     if name.contains("loihi") || name.contains("neuromorphic") {
@@ -386,7 +386,7 @@ impl SubstrateDetector {
         for (tool, description) in &fpga_tools {
             if self.command_exists(tool).await {
                 platforms.push(PlatformType::NeuromorphicComputing {
-                    platform: format!("{} FPGA Neuromorphic", description),
+                    platform: format!("{description} FPGA Neuromorphic"),
                     hardware: true,
                 });
             }
@@ -398,12 +398,12 @@ impl SubstrateDetector {
     /// Check if a Python package exists
     async fn python_package_exists(&self, package: &str) -> bool {
         if let Ok(output) = std::process::Command::new("python3")
-            .args(&["-c", &format!("import {}", package)])
+            .args(["-c", &format!("import {package}")])
             .output()
         {
             output.status.success()
         } else if let Ok(output) = std::process::Command::new("python")
-            .args(&["-c", &format!("import {}", package)])
+            .args(["-c", &format!("import {package}")])
             .output()
         {
             output.status.success()

@@ -16,11 +16,11 @@
 
 //! Performance testing utilities
 
+use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use anyhow::Result;
 
 /// Performance test configuration
 #[derive(Debug, Clone)]
@@ -189,25 +189,26 @@ impl PerformanceTestManager {
 
         // Measurement phase
         let mut iteration_times = Vec::new();
-        
+
         for i in 0..self.config.measurement_iterations {
             let start = Instant::now();
-            
+
             match test_fn().await {
                 Ok(()) => {
                     let duration = start.elapsed();
                     iteration_times.push(duration);
-                    
+
                     // Sample resource usage periodically
                     if i % 10 == 0 && self.config.memory_profiling {
                         // Get mutable reference to context for resource sampling
-                        if let Some(ctx) = self.active_benchmarks.write().await.get_mut(&test_name) {
+                        if let Some(ctx) = self.active_benchmarks.write().await.get_mut(&test_name)
+                        {
                             ctx.resource_monitor.sample_resources();
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("Benchmark iteration {} failed: {}", i, e);
+                    eprintln!("Benchmark iteration {i} failed: {e}");
                 }
             }
         }
@@ -215,7 +216,9 @@ impl PerformanceTestManager {
         // Calculate results
         let context_ref = self.active_benchmarks.read().await;
         let context = context_ref.get(&test_name).unwrap();
-        let result = self.calculate_benchmark_result(test_name.clone(), iteration_times, context).await;
+        let result = self
+            .calculate_benchmark_result(test_name.clone(), iteration_times, context)
+            .await;
 
         // Remove from active benchmarks
         {
@@ -233,7 +236,11 @@ impl PerformanceTestManager {
     }
 
     /// Execute a concurrent load test
-    pub async fn load_test<F, Fut>(&self, config: LoadTestConfig, test_fn: F) -> Result<LoadTestResult>
+    pub async fn load_test<F, Fut>(
+        &self,
+        config: LoadTestConfig,
+        test_fn: F,
+    ) -> Result<LoadTestResult>
     where
         F: Fn() -> Fut + Send + Sync + Clone + 'static,
         Fut: std::future::Future<Output = Result<()>> + Send + 'static,
@@ -257,7 +264,7 @@ impl PerformanceTestManager {
                 let user_start = Instant::now();
                 while user_start.elapsed() < duration {
                     let request_start = Instant::now();
-                    
+
                     match test_fn().await {
                         Ok(()) => {
                             let response_time = request_start.elapsed();
@@ -274,7 +281,7 @@ impl PerformanceTestManager {
                     }
                 }
             });
-            
+
             handles.push(handle);
         }
 
@@ -288,7 +295,7 @@ impl PerformanceTestManager {
         let failed = *failed_requests.lock().unwrap();
         let total_requests = successful + failed;
         let response_times = response_times.lock().unwrap();
-        
+
         let average_response_time = if !response_times.is_empty() {
             response_times.iter().sum::<Duration>() / response_times.len() as u32
         } else {
@@ -317,18 +324,25 @@ impl PerformanceTestManager {
     }
 
     /// Compare two benchmark results
-    pub fn compare_results(&self, baseline: &BenchmarkResult, current: &BenchmarkResult) -> PerformanceComparison {
+    pub fn compare_results(
+        &self,
+        baseline: &BenchmarkResult,
+        current: &BenchmarkResult,
+    ) -> PerformanceComparison {
         let baseline_avg = baseline.average_duration.as_nanos() as f64;
         let current_avg = current.average_duration.as_nanos() as f64;
-        
+
         let improvement_percent = ((baseline_avg - current_avg) / baseline_avg) * 100.0;
         let regression_detected = improvement_percent < -5.0; // 5% regression threshold
         let significant_change = improvement_percent.abs() > 2.0; // 2% significance threshold
 
         let summary = if regression_detected {
-            format!("⚠️  Performance regression detected: {:.1}% slower", improvement_percent.abs())
+            format!(
+                "⚠️  Performance regression detected: {:.1}% slower",
+                improvement_percent.abs()
+            )
         } else if improvement_percent > 5.0 {
-            format!("🚀 Performance improvement: {:.1}% faster", improvement_percent)
+            format!("🚀 Performance improvement: {improvement_percent:.1}% faster")
         } else {
             "📊 Performance unchanged".to_string()
         };
@@ -346,7 +360,7 @@ impl PerformanceTestManager {
     /// Generate performance report
     pub async fn generate_report(&self) -> PerformanceReport {
         let results = self.results.read().await.clone();
-        
+
         PerformanceReport {
             total_benchmarks: results.len(),
             results,
@@ -364,7 +378,7 @@ impl PerformanceTestManager {
         }
 
         iteration_times.sort();
-        
+
         let total_duration: Duration = iteration_times.iter().sum();
         let iterations = iteration_times.len() as u32;
         let average_duration = total_duration / iterations;
@@ -396,7 +410,9 @@ impl PerformanceTestManager {
             percentiles,
             throughput,
             resource_usage: ResourceUsageMetrics::default(),
-            custom_metrics: context.custom_metrics.iter()
+            custom_metrics: context
+                .custom_metrics
+                .iter()
                 .map(|(k, v)| (k.clone(), v.iter().sum::<f64>() / v.len() as f64))
                 .collect(),
         }
@@ -416,7 +432,10 @@ impl BenchmarkContext {
 
     /// Record a custom metric value
     pub fn record_metric(&mut self, name: &str, value: f64) {
-        self.custom_metrics.entry(name.to_string()).or_insert_with(Vec::new).push(value);
+        self.custom_metrics
+            .entry(name.to_string())
+            .or_default()
+            .push(value);
     }
 }
 
@@ -435,7 +454,7 @@ impl ResourceMonitor {
         // In a real implementation, this would use system APIs to sample resource usage
         // For now, we'll use placeholder values
         self.memory_samples.push(100); // MB
-        self.cpu_samples.push(50.0);   // Percent
+        self.cpu_samples.push(50.0); // Percent
         self.disk_io_samples.push(1024); // Bytes
         self.network_io_samples.push(2048); // Bytes
     }

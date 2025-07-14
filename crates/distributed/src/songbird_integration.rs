@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     CpuRequirements, JobPriority, MemoryRequirements, ResourceRequirements, UniversalJob,
-    UniversalJobType, UniversalWorkloadScheduler,
+    UniversalJobType, UniversalScheduler,
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -32,7 +32,7 @@ pub struct ToadStoolSongbirdIntegration {
     /// Local capacity management
     local_capacity: Arc<LocalCapacityManager>,
     /// Universal workload scheduler
-    workload_scheduler: Arc<UniversalWorkloadScheduler>,
+    workload_scheduler: Arc<UniversalScheduler>,
 }
 
 /// Songbird connection configuration  
@@ -190,11 +190,21 @@ impl ToadStoolSongbirdIntegration {
 
         // Submit to Songbird via appropriate protocol
         let response = match &self.connection.protocol_config.protocol {
-            SongbirdProtocol::HTTP => self.submit_via_http(songbird_request, &self.connection.active_endpoint).await?,
-            SongbirdProtocol::GRPC => self.submit_via_grpc(songbird_request, &self.connection.active_endpoint).await?,
-            SongbirdProtocol::WebSocket => self.submit_via_websocket(songbird_request, &self.connection.active_endpoint).await?,
+            SongbirdProtocol::HTTP => {
+                self.submit_via_http(songbird_request, &self.connection.active_endpoint)
+                    .await?
+            }
+            SongbirdProtocol::GRPC => {
+                self.submit_via_grpc(songbird_request, &self.connection.active_endpoint)
+                    .await?
+            }
+            SongbirdProtocol::WebSocket => {
+                self.submit_via_websocket(songbird_request, &self.connection.active_endpoint)
+                    .await?
+            }
             SongbirdProtocol::MessageQueue => {
-                self.submit_via_message_queue(songbird_request, "global").await?
+                self.submit_via_message_queue(songbird_request, "global")
+                    .await?
             }
         };
 
@@ -227,18 +237,18 @@ impl ToadStoolSongbirdIntegration {
             .timeout(std::time::Duration::from_secs(30))
             .send()
             .await
-            .map_err(|e| ToadStoolError::network(format!("HTTP submission failed: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("HTTP submission failed: {e}")))?;
 
         if response.status().is_success() {
             let job_response: SongbirdJobResponse = response
                 .json()
                 .await
-                .map_err(|e| ToadStoolError::network(format!("Failed to parse response: {}", e)))?;
-            
+                .map_err(|e| ToadStoolError::network(format!("Failed to parse response: {e}")))?;
+
             Ok(job_response)
         } else {
             Err(ToadStoolError::network(format!(
-                "HTTP submission failed with status: {}", 
+                "HTTP submission failed with status: {}",
                 response.status()
             )))
         }
@@ -252,12 +262,13 @@ impl ToadStoolSongbirdIntegration {
         debug!("Submitting job via gRPC to: {}", endpoint);
 
         // Parse gRPC endpoint
-        let uri = endpoint.parse::<http::Uri>()
-            .map_err(|e| ToadStoolError::network(format!("Invalid gRPC endpoint: {}", e)))?;
+        let uri = endpoint
+            .parse::<http::Uri>()
+            .map_err(|e| ToadStoolError::network(format!("Invalid gRPC endpoint: {e}")))?;
 
         // In a real implementation, this would use tonic or similar gRPC client
         // For now, simulate gRPC call with successful response
-        
+
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
         Ok(SongbirdJobResponse::Success {
@@ -279,12 +290,12 @@ impl ToadStoolSongbirdIntegration {
         let ws_url = if endpoint.starts_with("ws://") || endpoint.starts_with("wss://") {
             endpoint.to_string()
         } else {
-            format!("ws://{}", endpoint)
+            format!("ws://{endpoint}")
         };
 
         // In a real implementation, this would establish WebSocket connection
         // and send the job request over the persistent connection
-        
+
         tokio::time::sleep(std::time::Duration::from_millis(150)).await;
 
         Ok(SongbirdJobResponse::Success {
@@ -330,7 +341,7 @@ impl ToadStoolSongbirdIntegration {
                 .map_err(|e| ToadStoolError::validation(e.to_string()))?,
             target_nodes: vec![], // Will be determined by Songbird
             resource_requirements: job.resource_requirements.clone(),
-            priority: job.priority.clone() as u8,
+            priority: job.priority as u8,
             constraints: vec![], // Add constraints if needed
         };
 
@@ -843,15 +854,15 @@ impl SongbirdConnection {
                     ))
                     .build()
                     .map_err(|e| {
-                        ToadStoolError::runtime(&format!("Failed to create HTTP client: {}", e))
+                        ToadStoolError::runtime(format!("Failed to create HTTP client: {e}"))
                     })?;
 
-                let health_url = format!("{}/health", endpoint);
+                let health_url = format!("{endpoint}/health");
                 client
                     .get(&health_url)
                     .send()
                     .await
-                    .map_err(|e| ToadStoolError::runtime(&format!("Health check failed: {}", e)))?;
+                    .map_err(|e| ToadStoolError::runtime(format!("Health check failed: {e}")))?;
                 Ok(())
             }
             SongbirdProtocol::GRPC => {
@@ -940,7 +951,7 @@ impl MassiveJobDistributor {
             JobComplexity::Simple => {
                 // Single subtask for simple jobs
                 let job_payload = serde_json::to_vec(&job.execution_request).map_err(|e| {
-                    ToadStoolError::runtime(&format!("Failed to serialize job: {}", e))
+                    ToadStoolError::runtime(format!("Failed to serialize job: {e}"))
                 })?;
 
                 Ok(vec![SubTask {
@@ -1013,7 +1024,7 @@ impl MassiveJobDistributor {
     ) -> ToadStoolResult<Vec<SubTask>> {
         let mut subtasks = Vec::new();
         let job_payload = serde_json::to_vec(&job.execution_request)
-            .map_err(|e| ToadStoolError::runtime(&format!("Failed to serialize job: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize job: {e}")))?;
 
         // Calculate resource allocation per subtask
         let cpu_per_task = base_requirements.cpu.min_cores / count as f64;
@@ -1038,7 +1049,7 @@ impl MassiveJobDistributor {
             let mut subtask_payload = job_payload.clone();
             // Add partition metadata (simplified)
             let partition_info =
-                format!("{{\"partition\": {}, \"total_partitions\": {}}}", i, count);
+                format!("{{\"partition\": {i}, \"total_partitions\": {count}}}");
             subtask_payload.extend(partition_info.as_bytes());
 
             subtasks.push(SubTask {
@@ -1086,7 +1097,7 @@ impl SongbirdNetworkDiscovery {
             loop {
                 interval.tick().await;
                 if let Err(e) = discovery_clone.perform_discovery().await {
-                    eprintln!("Discovery failed: {}", e);
+                    eprintln!("Discovery failed: {e}");
                 }
             }
         });
@@ -1521,6 +1532,12 @@ pub struct LoadEstimator {
     historical_data: Vec<LoadMetric>,
 }
 
+impl Default for LoadEstimator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadEstimator {
     pub fn new() -> Self {
         Self {
@@ -1544,6 +1561,12 @@ pub struct LoadMetric {
 
 pub struct JobCoordinator {
     active_jobs: HashMap<Uuid, CoordinationJob>,
+}
+
+impl Default for JobCoordinator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl JobCoordinator {
@@ -1570,7 +1593,7 @@ impl DiscoveryClient {
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .map_err(|e| {
-                ToadStoolError::runtime(&format!("Failed to create HTTP client: {}", e))
+                ToadStoolError::runtime(format!("Failed to create HTTP client: {e}"))
             })?;
 
         Ok(Self {
@@ -1587,18 +1610,18 @@ impl DiscoveryClient {
 
         // Add authentication if available
         if let Some(ref token) = self.connection.auth_token {
-            request = request.header("Authorization", format!("Bearer {}", token));
+            request = request.header("Authorization", format!("Bearer {token}"));
         }
 
         let response = request
             .send()
             .await
-            .map_err(|e| ToadStoolError::runtime(&format!("Discovery request failed: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Discovery request failed: {e}")))?;
 
         if response.status().is_success() {
             // Parse response and convert to NodeRegistration format
             let nodes_json: serde_json::Value = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(&format!("Failed to parse discovery response: {}", e))
+                ToadStoolError::runtime(format!("Failed to parse discovery response: {e}"))
             })?;
 
             let mut discovered_nodes = Vec::new();
@@ -1612,7 +1635,7 @@ impl DiscoveryClient {
 
             Ok(discovered_nodes)
         } else {
-            Err(ToadStoolError::runtime(&format!(
+            Err(ToadStoolError::runtime(format!(
                 "Discovery failed with status: {}",
                 response.status()
             )))
@@ -1707,6 +1730,12 @@ pub struct NodeRegistry {
     last_seen: HashMap<NodeId, chrono::DateTime<chrono::Utc>>,
 }
 
+impl Default for NodeRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodeRegistry {
     pub fn new() -> Self {
         Self {
@@ -1745,7 +1774,7 @@ impl NodeRegistry {
                     && self
                         .last_seen
                         .get(*node_id)
-                        .map_or(false, |&last_seen| last_seen > cutoff_time)
+                        .is_some_and(|&last_seen| last_seen > cutoff_time)
             })
             .map(|(_, node)| node)
             .collect()
@@ -1774,6 +1803,12 @@ pub struct CapabilityTracker {
     capability_history: HashMap<NodeId, Vec<CapabilitySnapshot>>,
 }
 
+impl Default for CapabilityTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapabilityTracker {
     pub fn new() -> Self {
         Self {
@@ -1790,8 +1825,7 @@ impl CapabilityTracker {
         // In a real implementation, this would use Arc<RwLock<_>> for thread safety
         // For now, we'll just simulate the update
         println!(
-            "Updated capabilities for node {}: {:?}",
-            node_id, capabilities
+            "Updated capabilities for node {node_id}: {capabilities:?}"
         );
         Ok(())
     }

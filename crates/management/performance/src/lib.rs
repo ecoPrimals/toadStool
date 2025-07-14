@@ -651,8 +651,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         let stats = self.runtime_stats.read().await;
         stats.get(&runtime_type).cloned().ok_or_else(|| {
             ToadStoolError::runtime(format!(
-                "No statistics available for runtime: {:?}",
-                runtime_type
+                "No statistics available for runtime: {runtime_type:?}"
             ))
         })
     }
@@ -752,7 +751,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 recommendations.push(OptimizationRecommendation {
                     id: Uuid::new_v4().to_string(),
                     recommendation_type: RecommendationType::RuntimeSwitch,
-                    target: format!("Switch from {:?} runtime", runtime_type),
+                    target: format!("Switch from {runtime_type:?} runtime"),
                     expected_improvement: (90.0 - runtime_stats.success_rate) * 1.5,
                     confidence: 85.0,
                     description: format!(
@@ -772,7 +771,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 recommendations.push(OptimizationRecommendation {
                     id: Uuid::new_v4().to_string(),
                     recommendation_type: RecommendationType::ResourceAdjustment,
-                    target: format!("Optimize {:?} runtime resources", runtime_type),
+                    target: format!("Optimize {runtime_type:?} runtime resources"),
                     expected_improvement: (50.0 - runtime_stats.efficiency_score) * 2.0,
                     confidence: 75.0,
                     description: format!(
@@ -788,7 +787,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
                 recommendations.push(OptimizationRecommendation {
                     id: Uuid::new_v4().to_string(),
                     recommendation_type: RecommendationType::Scaling,
-                    target: format!("Scale {:?} runtime capacity", runtime_type),
+                    target: format!("Scale {runtime_type:?} runtime capacity"),
                     expected_improvement: runtime_stats.current_load - 70.0,
                     confidence: 90.0,
                     description: format!(
@@ -824,13 +823,26 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
     }
 
     async fn update_model(&self) -> ToadStoolResult<()> {
-        debug!("Updating performance prediction models");
-
-        // This is a placeholder for more sophisticated model updates
-        // In a real implementation, this would retrain ML models with new data
-
-        info!("Performance models updated successfully");
+        // Placeholder implementation
+        info!("Updating performance model");
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct RuntimeSelector {
+    preferred_runtime: Option<RuntimeType>,
+    fallback_strategy: String,
+    selection_criteria: HashMap<String, f64>,
+}
+
+impl Default for RuntimeSelector {
+    fn default() -> Self {
+        Self {
+            preferred_runtime: None,
+            fallback_strategy: "load_balance".to_string(),
+            selection_criteria: HashMap::new(),
+        }
     }
 }
 
@@ -844,21 +856,12 @@ struct PredictionModel {
     parameters: HashMap<String, f64>,
 }
 
-#[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
 struct BaselineMetrics {
     cpu_baseline: f64,
     memory_baseline: f64,
     duration_baseline: f64,
     last_updated: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug, Default)]
-#[allow(dead_code)]
-struct RuntimeSelector {
-    preferred_runtime: Option<RuntimeType>,
-    fallback_strategy: String,
-    selection_criteria: HashMap<String, f64>,
 }
 
 #[cfg(test)]
@@ -884,27 +887,19 @@ mod tests {
             execution_duration: Some(Duration::from_secs(1)),
             resource_metrics: RuntimeMetrics {
                 memory: toadstool::resources::MemoryMetrics {
-                    usage_bytes: 100 * 1024 * 1024,         // 100 MB
-                    peak_usage_bytes: 120 * 1024 * 1024,    // 120 MB
-                    average_usage_bytes: 110 * 1024 * 1024, // 110 MB
-                    allocation_count: 10,
-                    deallocation_count: 5,
-                    page_faults: 2,
-                    swap_usage_bytes: 0,
+                    usage_percent: 50.0,
+                    used_bytes: 100 * 1024 * 1024,         // 100 MB
+                    peak_bytes: 120 * 1024 * 1024,         // 120 MB
                 },
                 cpu: toadstool::resources::CpuMetrics {
                     usage_percent: 50.0,
-                    peak_usage_percent: 80.0,
-                    average_usage_percent: 60.0,
-                    cpu_time_ms: 1000,
-                    cpu_cycles: Some(1000000),
-                    throttle_events: 0,
+                    cores_used: 2.0,
+                    cpu_time_seconds: 1.0,
                 },
                 storage: toadstool::resources::StorageMetrics::default(),
                 network: toadstool::resources::NetworkMetrics::default(),
                 gpu: None,
                 timing: toadstool::resources::TimingMetrics::default(),
-                custom: std::collections::HashMap::new(),
             },
             success: true,
             error_message: None,

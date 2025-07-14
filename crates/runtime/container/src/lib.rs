@@ -26,10 +26,11 @@ use bollard::{
 };
 
 use toadstool::{
-    ToadStoolResult, ToadStoolError, ExecutionRequest, ExecutionResponse,
-    ExecutionStatus, ExecutionOutput, RuntimeType, WorkloadType,
-    RuntimeConfig, RuntimeEngine, RuntimeCapabilities,
+    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
+    RuntimeEngine, RuntimeType, ToadStoolError, ToadStoolResult, WorkloadType,
 };
+
+use toadstool::execution::RuntimeConfig;
 
 use toadstool::{
     resources::{
@@ -529,7 +530,9 @@ impl ContainerRuntimeEngine {
             let _container = docker
                 .create_container(Some(container_options), config)
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Container creation failed: {}", e)))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Container creation failed: {}", e))
+                })?;
 
             // Return basic success response
             Ok(ExecutionResponse {
@@ -593,7 +596,7 @@ impl ContainerRuntimeEngine {
         _args: Option<&Vec<String>>,
         _ports: &[PortMapping],
     ) -> ToadStoolResult<Config<String>> {
-        // Simplified container configuration  
+        // Simplified container configuration
         let config = Config {
             image: Some(image.to_string()),
             ..Default::default()
@@ -648,7 +651,10 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         {
             let test_config = ContainerExecutionConfig {
                 image: image.clone(),
-                args: args.as_ref().map(|a| a.clone()).unwrap_or_else(|| vec!["echo".to_string(), "test".to_string()]),
+                args: args
+                    .as_ref()
+                    .map(|a| a.clone())
+                    .unwrap_or_else(|| vec!["echo".to_string(), "test".to_string()]),
                 working_dir: working_dir.clone(),
                 env_vars: HashMap::new(),
                 volumes: volumes.clone(),
@@ -677,47 +683,57 @@ impl RuntimeEngine for ContainerRuntimeEngine {
     async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
         // Collect system-level metrics that represent container runtime state
         // In a full implementation, this would integrate with Docker/containerd APIs
-        
+
         use std::time::SystemTime;
         let start_time = SystemTime::now();
-        
+
         // Get basic system metrics as a proxy for container metrics
         let mut custom_metrics = HashMap::new();
-        custom_metrics.insert("active_containers".to_string(), serde_json::Value::Number(serde_json::Number::from(0))); // Would query Docker API
-        custom_metrics.insert("available_engines".to_string(), serde_json::Value::Number(serde_json::Number::from(1)));
-        custom_metrics.insert("runtime_health".to_string(), serde_json::Value::Number(serde_json::Number::from(1))); // 1 = healthy
-        
+        custom_metrics.insert(
+            "active_containers".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(0)),
+        ); // Would query Docker API
+        custom_metrics.insert(
+            "available_engines".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(1)),
+        );
+        custom_metrics.insert(
+            "runtime_health".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(1)),
+        ); // 1 = healthy
+
         // Basic CPU and memory estimates (in production, would query container stats)
         let cpu_metrics = CpuMetrics {
             usage_percent: 0.0, // Would aggregate from container stats
             cores_used: 0.0,
             cpu_time_seconds: 0.0,
         };
-        
+
         let memory_metrics = MemoryMetrics {
             usage_percent: 0.0,
             used_bytes: 0, // Would sum from container memory usage
             peak_bytes: 0,
         };
-        
+
         let network_metrics = NetworkMetrics {
             bytes_sent: 0, // Would aggregate from container network stats
             bytes_received: 0,
             packets_sent: 0,
             packets_received: 0,
         };
-        
+
         let storage_metrics = StorageMetrics {
             usage_percent: 0.0,
             used_bytes: 0, // Would aggregate from container I/O stats
             bytes_read: 0,
             bytes_written: 0,
         };
-        
+
         let timing_metrics = TimingMetrics {
             start_time: chrono::DateTime::from(start_time),
             end_time: Some(chrono::Utc::now()),
-            duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default()).unwrap_or_default(),
+            duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default())
+                .unwrap_or_default(),
         };
 
         Ok(RuntimeMetrics {
@@ -765,7 +781,25 @@ impl RuntimeEngine for ContainerRuntimeEngine {
 
 impl Default for ContainerRuntimeEngine {
     fn default() -> Self {
-        Self::new().expect("Failed to create default container runtime engine")
+        match Self::new() {
+            Ok(engine) => engine,
+            Err(_) => {
+                // Return a minimal engine configuration if creation fails
+                Self {
+                    config: ContainerRuntimeConfig::default(),
+                    docker: None,
+                    active_containers: Arc::new(RwLock::new(HashMap::new())),
+                    resource_monitor: None,
+                    capabilities: RuntimeCapabilities {
+                        supported_workloads: vec![],
+                        max_concurrent_executions: Some(0),
+                        supported_architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
+                        platform_features: HashMap::new(),
+                        version: "1.0.0".to_string(),
+                    },
+                }
+            }
+        }
     }
 }
 

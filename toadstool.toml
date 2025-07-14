@@ -1,0 +1,371 @@
+# ToadStool Universal Compute Platform Configuration
+# This file provides centralized configuration for all ToadStool components
+# with full support for Songbird port orchestration
+
+[environment]
+name = "dev"  # dev, staging, prod
+debug = false
+verbose = false
+
+[network]
+bind_address = "0.0.0.0"
+port = 8081  # This can be overridden by Songbird port orchestration
+
+[network.songbird_orchestration]
+enabled = true
+endpoint = "http://localhost:8080"
+port_allocation_strategy = "Dynamic"  # Dynamic, PreferredWithFallback, Fixed, EnvironmentRange
+conflict_resolution = "Songbird"  # Increment, Random, Fail, Songbird
+
+[network.songbird_orchestration.dynamic_port_range]
+start = 8080
+end = 8999
+
+[network.songbird_orchestration.health_checks]
+enabled = true
+endpoint = "/health"
+interval_secs = 30
+timeout_secs = 5
+failure_threshold = 3
+success_threshold = 2
+
+[network.songbird_orchestration.registration]
+auto_register = true
+registration_interval_secs = 30
+capability_update_interval_secs = 60
+deregister_on_shutdown = true
+tags = ["compute", "toadstool", "universal"]
+
+[network.service_discovery]
+enabled = true
+discovery_methods = ["Songbird"]
+cache_ttl_secs = 300
+refresh_interval_secs = 60
+
+[network.load_balancing]
+strategy = "RoundRobin"  # RoundRobin, WeightedRoundRobin, LeastConnections, LeastResponseTime, ResourceAware
+health_check_enabled = true
+weight_adjustment = false
+sticky_sessions = false
+
+[network.security]
+tls_enabled = false
+allowed_origins = ["*"]
+
+[network.security.rate_limiting]
+enabled = false
+requests_per_second = 100
+burst_size = 1000
+window_size_secs = 60
+
+[network.security.authentication]
+enabled = false
+token_expiry_secs = 3600
+refresh_token_enabled = false
+
+[network.connection_pooling]
+enabled = true
+max_connections = 1000
+min_connections = 10
+connection_timeout_secs = 10
+idle_timeout_secs = 300
+
+[network.timeouts]
+request_timeout_secs = 60
+connection_timeout_secs = 10
+read_timeout_secs = 60
+write_timeout_secs = 60
+
+[resources]
+[resources.limits]
+max_cpu_percent = 100.0
+max_memory_bytes = 1073741824  # 1GB
+max_storage_bytes = 107374182400  # 100GB
+max_network_mbps = 1000.0
+max_gpu_percent = 100.0
+max_concurrent_executions = 100
+
+[resources.monitoring]
+enabled = true
+collection_interval_secs = 60
+retention_days = 30
+
+[resources.monitoring.alert_thresholds]
+cpu_percent = 90.0
+memory_percent = 90.0
+storage_percent = 90.0
+network_percent = 90.0
+gpu_percent = 90.0
+
+[resources.allocation]
+strategy = "Balanced"  # FirstFit, BestFit, WorstFit, Balanced, LoadAware
+preemption_enabled = false
+oversubscription_ratio = 1.5
+reservation_timeout_secs = 300
+
+[resources.optimization]
+enabled = true
+optimization_interval_secs = 300
+defragmentation_enabled = false
+power_management_enabled = false
+
+[security]
+isolation_level = "Standard"  # None, Basic, Standard, High, Maximum
+
+[security.sandboxing]
+enabled = true
+sandbox_type = "Container"  # Container, VM, Process, Custom
+resource_limits_enabled = true
+network_isolation_enabled = true
+filesystem_isolation_enabled = true
+
+[security.permission_management]
+enabled = true
+permission_expiry_hours = 24
+max_delegation_depth = 5
+audit_permission_changes = true
+
+[security.audit_logging]
+enabled = true
+log_level = "info"
+retention_days = 30
+structured_logging = true
+
+[security.crypto_settings]
+enabled = true
+algorithm = "AES-256-GCM"
+key_length = 32
+key_rotation_days = 90
+
+[monitoring]
+enabled = true
+
+[monitoring.metrics_collection]
+enabled = true
+collection_interval_secs = 60
+retention_days = 30
+metrics_types = ["System", "Application"]
+
+[monitoring.alerting]
+enabled = true
+
+[[monitoring.alerting.notification_channels]]
+type = "Email"
+address = "admin@example.com"
+
+[[monitoring.alerting.alert_rules]]
+name = "High CPU Usage"
+condition = "cpu_percent > 90"
+threshold = 90.0
+duration_secs = 300
+severity = "Critical"
+
+[[monitoring.alerting.alert_rules]]
+name = "High Memory Usage"
+condition = "memory_percent > 90"
+threshold = 90.0
+duration_secs = 300
+severity = "Critical"
+
+[monitoring.dashboard]
+enabled = true
+port = 3000
+authentication_required = true
+refresh_interval_secs = 30
+
+[monitoring.external_integrations]
+[monitoring.external_integrations.prometheus]
+enabled = true
+endpoint = "http://localhost:9090"
+scrape_interval_secs = 60
+
+[monitoring.external_integrations.grafana]
+enabled = true
+dashboard_url = "http://localhost:3000"
+api_key = "admin"
+
+[monitoring.external_integrations.jaeger]
+enabled = true
+endpoint = "http://localhost:16686"
+sampling_rate = 1.0
+
+[ecosystem]
+[ecosystem.primals]
+[ecosystem.primals.songbird]
+enabled = true
+endpoint = "http://localhost:8080"
+health_check_enabled = true
+
+[ecosystem.primals.songbird.retry_config]
+max_attempts = 3
+base_delay_ms = 100
+max_delay_ms = 1000
+backoff_multiplier = 2.0
+jitter_percent = 0.1
+
+[ecosystem.primals.beardog]
+enabled = true
+endpoint = "http://localhost:8082"
+health_check_enabled = true
+
+[ecosystem.primals.beardog.retry_config]
+max_attempts = 3
+base_delay_ms = 100
+max_delay_ms = 1000
+backoff_multiplier = 2.0
+jitter_percent = 0.1
+
+[ecosystem.primals.nestgate]
+enabled = true
+endpoint = "http://localhost:8083"
+health_check_enabled = true
+
+[ecosystem.primals.nestgate.retry_config]
+max_attempts = 3
+base_delay_ms = 100
+max_delay_ms = 1000
+backoff_multiplier = 2.0
+jitter_percent = 0.1
+
+[ecosystem.primals.squirrel]
+enabled = true
+endpoint = "http://localhost:7070"
+health_check_enabled = true
+
+[ecosystem.primals.squirrel.retry_config]
+max_attempts = 3
+base_delay_ms = 100
+max_delay_ms = 1000
+backoff_multiplier = 2.0
+jitter_percent = 0.1
+
+[ecosystem.federation]
+enabled = true
+discovery_methods = ["Dns"]
+trust_domains = ["example.com"]
+
+[ecosystem.federation.certificate_management]
+auto_renewal = true
+renewal_threshold_days = 30
+
+[ecosystem.service_mesh]
+enabled = true
+mesh_type = "Istio"  # Istio, Linkerd, Consul, Custom
+
+[ecosystem.service_mesh.sidecar_config]
+enabled = true
+image = "toadstool/sidecar:latest"
+
+[ecosystem.service_mesh.traffic_management]
+[ecosystem.service_mesh.traffic_management.circuit_breaker]
+enabled = true
+failure_threshold = 5
+recovery_timeout_secs = 300
+success_threshold = 1
+
+[runtime]
+[runtime.engines]
+[runtime.engines.native]
+enabled = true
+execution_timeout_secs = 300
+memory_limit_bytes = 1073741824  # 1GB
+cpu_limit_percent = 100.0
+allowed_executables = ["/bin/bash", "/bin/sh", "/usr/bin/python3"]
+
+[runtime.engines.container]
+enabled = true
+runtime_type = "Docker"  # Docker, Containerd, Podman, CriO
+image_pull_policy = "IfNotPresent"  # Always, IfNotPresent, Never
+
+[runtime.engines.container.security_context]
+run_as_user = 1000
+run_as_group = 1000
+privileged = false
+read_only_root_filesystem = false
+capabilities = ["CAP_NET_BIND_SERVICE"]
+
+[runtime.engines.wasm]
+enabled = true
+engine = "Wasmtime"  # Wasmtime, Wasmer, WasmEdge
+memory_limit_bytes = 1073741824  # 1GB
+execution_timeout_secs = 300
+fuel_limit = 1073741824  # 1GB
+wasi_enabled = true
+
+[runtime.engines.gpu]
+enabled = true
+frameworks = ["Cuda"]  # Cuda, OpenCL, Vulkan, OpenGL
+memory_limit_bytes = 1073741824  # 1GB
+device_selection = "Auto"  # Auto, Specific, ByCapability
+
+[runtime.caching]
+enabled = true
+cache_type = "Memory"  # Memory, Disk, Redis, Memcached
+max_size_bytes = 1073741824  # 1GB
+ttl_secs = 3600
+eviction_policy = "Lru"  # Lru, Lfu, Ttl, Random
+
+[runtime.optimization]
+enabled = true
+jit_compilation = true
+ahead_of_time_compilation = false
+profile_guided_optimization = false
+
+[songbird]
+[songbird.integration]
+enabled = true
+endpoint = "http://localhost:8080"
+
+[songbird.integration.registration]
+auto_register = true
+registration_interval_secs = 30
+capability_update_interval_secs = 60
+deregister_on_shutdown = true
+tags = ["compute", "toadstool"]
+
+[songbird.integration.capability_reporting]
+enabled = true
+reporting_interval_secs = 60
+include_detailed_metrics = true
+include_platform_info = true
+
+[songbird.service_discovery]
+enabled = true
+discovery_endpoint = "http://localhost:8080/api/v1/discovery"
+cache_ttl_secs = 300
+refresh_interval_secs = 60
+
+[songbird.load_balancing]
+enabled = true
+strategy = "RoundRobin"
+health_check_enabled = true
+weight_adjustment = false
+
+[songbird.health_monitoring]
+enabled = true
+health_check_interval_secs = 60
+health_check_timeout_secs = 10
+failure_threshold = 3
+
+[job_distribution]
+enabled = true
+distribution_strategy = "Simple"  # Simple, Weighted, ResourceAware, LatencyOptimized, Custom
+max_subtasks = 100
+subtask_size_threshold = 1073741824  # 1GB
+
+[platform]
+[platform.detection]
+enabled = true
+detection_timeout_secs = 30
+detection_methods = ["Hardware", "Software", "Container"]
+cache_results = true
+
+[platform.capabilities]
+refresh_interval_secs = 60
+detailed_detection = true
+performance_benchmarking = false
+
+[platform.optimization]
+enabled = true
+optimization_level = "Release"  # Debug, Release, ReleaseLto, Custom
+adaptive_optimization = false 

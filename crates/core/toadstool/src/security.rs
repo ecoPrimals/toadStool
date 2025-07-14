@@ -45,38 +45,43 @@ impl SecurityContext {
             filesystem_security: FilesystemSecurity::default(),
         }
     }
-    
+
     /// Add a capability to the security context
     pub fn with_capability(mut self, capability: Capability) -> Self {
         self.capabilities.push(capability);
         self
     }
-    
+
     /// Check if a capability is granted
     pub fn has_capability(&self, capability: &Capability) -> bool {
         self.capabilities.contains(capability)
     }
-    
+
     /// Set user context
     pub fn with_user_context(mut self, user_context: UserContext) -> Self {
         self.user_context = Some(user_context);
         self
     }
-    
+
     /// Validate the security context
     pub fn validate(&self) -> ToadStoolResult<()> {
         // Basic validation of the security context
         if self.capabilities.is_empty() {
-            return Err(ToadStoolError::validation("Security context must have at least one capability"));
+            return Err(ToadStoolError::validation(
+                "Security context must have at least one capability",
+            ));
         }
-        
+
         // Check for conflicting capabilities
-        if self.capabilities.contains(&Capability::Read) && 
-           self.capabilities.contains(&Capability::Write) && 
-           self.filesystem_security.read_only {
-            return Err(ToadStoolError::validation("Cannot have write capability with read-only filesystem"));
+        if self.capabilities.contains(&Capability::Read)
+            && self.capabilities.contains(&Capability::Write)
+            && self.filesystem_security.read_only
+        {
+            return Err(ToadStoolError::validation(
+                "Cannot have write capability with read-only filesystem",
+            ));
         }
-        
+
         Ok(())
     }
 }
@@ -131,7 +136,7 @@ pub struct UserContext {
 }
 
 /// Network security settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkSecurity {
     /// Allow outbound connections
     pub allow_outbound: bool,
@@ -147,21 +152,8 @@ pub struct NetworkSecurity {
     pub blocked_ports: Vec<u16>,
 }
 
-impl Default for NetworkSecurity {
-    fn default() -> Self {
-        Self {
-            allow_outbound: false,
-            allow_inbound: false,
-            allowed_domains: Vec::new(),
-            blocked_domains: Vec::new(),
-            allowed_ports: Vec::new(),
-            blocked_ports: Vec::new(),
-        }
-    }
-}
-
 /// File system security settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FilesystemSecurity {
     /// Read-only file system
     pub read_only: bool,
@@ -171,17 +163,6 @@ pub struct FilesystemSecurity {
     pub allowed_write_paths: Vec<String>,
     /// Blocked paths
     pub blocked_paths: Vec<String>,
-}
-
-impl Default for FilesystemSecurity {
-    fn default() -> Self {
-        Self {
-            read_only: false,
-            allowed_read_paths: Vec::new(),
-            allowed_write_paths: Vec::new(),
-            blocked_paths: Vec::new(),
-        }
-    }
 }
 
 /// Security settings for runtime configuration
@@ -273,20 +254,35 @@ pub enum AuditEvent {
 #[async_trait]
 pub trait SecurityProvider: Send + Sync {
     /// Create a security context
-    async fn create_security_context(&self, policy: &SecurityPolicy) -> ToadStoolResult<SecurityContext>;
-    
+    async fn create_security_context(
+        &self,
+        policy: &SecurityPolicy,
+    ) -> ToadStoolResult<SecurityContext>;
+
     /// Validate a security context
     async fn validate_security_context(&self, context: &SecurityContext) -> ToadStoolResult<()>;
-    
+
     /// Apply security context to a workload
-    async fn apply_security_context(&self, context: &SecurityContext, workload_id: &str) -> ToadStoolResult<()>;
-    
+    async fn apply_security_context(
+        &self,
+        context: &SecurityContext,
+        workload_id: &str,
+    ) -> ToadStoolResult<()>;
+
     /// Remove security context from a workload
     async fn remove_security_context(&self, workload_id: &str) -> ToadStoolResult<()>;
-    
+
     /// Check if a capability is allowed
-    async fn check_capability(&self, context: &SecurityContext, capability: &Capability) -> ToadStoolResult<bool>;
-    
+    async fn check_capability(
+        &self,
+        context: &SecurityContext,
+        capability: &Capability,
+    ) -> ToadStoolResult<bool>;
+
     /// Audit security event
-    async fn audit_event(&self, event: AuditEvent, context: &SecurityContext) -> ToadStoolResult<()>;
+    async fn audit_event(
+        &self,
+        event: AuditEvent,
+        context: &SecurityContext,
+    ) -> ToadStoolResult<()>;
 }

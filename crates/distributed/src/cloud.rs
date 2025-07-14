@@ -414,7 +414,7 @@ impl UniversalCloudOrchestrator {
     ) -> ToadStoolResult<CloudDeploymentResult> {
         let providers = self.providers.read().await;
         let provider = providers.get(provider_name).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Cloud provider not found: {}", provider_name))
+            ToadStoolError::not_found(format!("Cloud provider not found: {provider_name}"))
         })?;
 
         let handle = provider.deploy_job(job).await?;
@@ -441,7 +441,7 @@ impl UniversalCloudOrchestrator {
         for (provider_name, job_part) in job_parts {
             let providers_guard = self.providers.read().await;
             let provider = providers_guard.get(&provider_name).ok_or_else(|| {
-                ToadStoolError::not_found(format!("Provider not found: {}", provider_name))
+                ToadStoolError::not_found(format!("Provider not found: {provider_name}"))
             })?;
 
             let handle = provider.deploy_job(&job_part).await?;
@@ -461,7 +461,7 @@ impl UniversalCloudOrchestrator {
         // Try primary provider first
         let providers = self.providers.read().await;
         let primary = providers.get(primary_provider).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Primary provider not found: {}", primary_provider))
+            ToadStoolError::not_found(format!("Primary provider not found: {primary_provider}"))
         })?;
 
         // Check if primary can handle the full load

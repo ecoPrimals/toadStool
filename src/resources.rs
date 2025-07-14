@@ -495,8 +495,19 @@ impl ResourceManager {
     async fn allocate_network_resources(&self, service: &ServiceConfig) -> Result<NetworkAllocation, ResourceError> {
         let ports = service.ports.iter().map(|p| p.container_port).collect();
         
+        // Calculate bandwidth limit based on service configuration
+        let bandwidth_limit = if let Some(resources) = &service.resources {
+            // Parse bandwidth specification (e.g., "100M", "1G", "500K")
+            resources.network_limit.as_ref().map(|limit| {
+                self.parse_bandwidth_limit(limit)
+            }).transpose()?
+        } else {
+            // Default bandwidth limit: 100 Mbps
+            Some(100 * 1024 * 1024 / 8) // 100 Mbps in bytes per second
+        };
+        
         Ok(NetworkAllocation {
-            bandwidth_limit: None, // TODO: Implement bandwidth limiting
+            bandwidth_limit,
             ports,
         })
     }
@@ -562,6 +573,13 @@ impl ResourceManager {
             warn!("Disk usage alert: {:.1}% (threshold: {:.1}%)", disk_usage_percent, thresholds.disk_usage);
         }
         
+        // Check network usage (convert bytes to MB for percentage calculation)
+        let network_total_mb = (usage.network_rx + usage.network_tx) as f64 / (1024.0 * 1024.0);
+        let network_usage_percent = (network_total_mb / 1000.0) * 100.0; // Assume 1GB/s baseline
+        if network_usage_percent > thresholds.network_usage {
+            warn!("Network usage alert: {:.1} MB total (threshold: {:.1}%)", network_total_mb, thresholds.network_usage);
+        }
+        
         Ok(())
     }
 
@@ -597,13 +615,29 @@ impl ResourceManager {
     }
 
     async fn get_current_network_rx(&self) -> Result<u64, ResourceError> {
-        // TODO: Implement network monitoring
-        Ok(0)
+        use sysinfo::{System, SystemExt, NetworkExt};
+        
+        let mut system = System::new();
+        system.refresh_networks();
+        
+        let total_rx: u64 = system.networks().iter()
+            .map(|(_name, network)| network.received())
+            .sum();
+        
+        Ok(total_rx)
     }
 
     async fn get_current_network_tx(&self) -> Result<u64, ResourceError> {
-        // TODO: Implement network monitoring
-        Ok(0)
+        use sysinfo::{System, SystemExt, NetworkExt};
+        
+        let mut system = System::new();
+        system.refresh_networks();
+        
+        let total_tx: u64 = system.networks().iter()
+            .map(|(_name, network)| network.transmitted())
+            .sum();
+        
+        Ok(total_tx)
     }
 
     fn parse_cpu_spec(spec: &str) -> Result<f64, ResourceError> {
@@ -652,6 +686,44 @@ impl ResourceManager {
 
     fn parse_disk_size(size: &str) -> Result<u64, ResourceError> {
         Self::parse_memory_size(size) // Same parsing logic
+    }
+
+    fn parse_bandwidth_limit(&self, limit: &str) -> Result<u64, ResourceError> {
+        let limit = limit.to_uppercase();
+        
+        // Parse bandwidth in bits per second, convert to bytes per second
+        let bits_per_second = if limit.ends_with("GBPS") {
+            let gbps: f64 = limit[..limit.len()-4].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (gbps * 1_000_000_000.0) as u64
+        } else if limit.ends_with("MBPS") {
+            let mbps: f64 = limit[..limit.len()-4].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (mbps * 1_000_000.0) as u64
+        } else if limit.ends_with("KBPS") {
+            let kbps: f64 = limit[..limit.len()-4].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (kbps * 1_000.0) as u64
+        } else if limit.ends_with("G") {
+            let gbps: f64 = limit[..limit.len()-1].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (gbps * 1_000_000_000.0) as u64
+        } else if limit.ends_with("M") {
+            let mbps: f64 = limit[..limit.len()-1].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (mbps * 1_000_000.0) as u64
+        } else if limit.ends_with("K") {
+            let kbps: f64 = limit[..limit.len()-1].parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?;
+            (kbps * 1_000.0) as u64
+        } else {
+            // Default to bits per second
+            limit.parse()
+                .map_err(|_| ResourceError::InvalidResourceSpec { spec: limit.to_string() })?
+        };
+        
+        // Convert bits per second to bytes per second
+        Ok(bits_per_second / 8)
     }
 
     fn format_bytes(bytes: u64) -> String {
@@ -730,5 +802,23 @@ mod tests {
         assert_eq!(ResourceManager::format_bytes(1024), "1.0 KB");
         assert_eq!(ResourceManager::format_bytes(1024 * 1024), "1.0 MB");
         assert_eq!(ResourceManager::format_bytes(1024 * 1024 * 1024), "1.0 GB");
+    }
+
+    #[tokio::test]
+    async fn test_bandwidth_parsing() {
+        let manager = ResourceManager::new().await.unwrap();
+        
+        // Test standard bandwidth formats
+        assert_eq!(manager.parse_bandwidth_limit("100M").unwrap(), 100 * 1_000_000 / 8);
+        assert_eq!(manager.parse_bandwidth_limit("1G").unwrap(), 1_000_000_000 / 8);
+        assert_eq!(manager.parse_bandwidth_limit("500K").unwrap(), 500 * 1_000 / 8);
+        
+        // Test explicit format
+        assert_eq!(manager.parse_bandwidth_limit("100Mbps").unwrap(), 100 * 1_000_000 / 8);
+        assert_eq!(manager.parse_bandwidth_limit("1Gbps").unwrap(), 1_000_000_000 / 8);
+        assert_eq!(manager.parse_bandwidth_limit("500Kbps").unwrap(), 500 * 1_000 / 8);
+        
+        // Test raw bits per second
+        assert_eq!(manager.parse_bandwidth_limit("8000000").unwrap(), 1_000_000); // 8 Mbps = 1 MB/s
     }
 } 

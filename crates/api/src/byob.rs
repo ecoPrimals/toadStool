@@ -7,14 +7,13 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use tokio::sync::RwLock;
 use std::sync::Arc;
-use tracing::{info, debug, error};
+use tokio::sync::RwLock;
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use toadstool::{
@@ -38,9 +37,18 @@ impl ByobApi {
         Router::new()
             .route("/byob/deploy", post(deploy_biome))
             .route("/byob/deployments", get(list_deployments))
-            .route("/byob/deployments/:deployment_id", get(get_deployment_status))
-            .route("/byob/deployments/:deployment_id/stop", post(stop_deployment))
-            .route("/byob/deployments/:deployment_id/usage", get(get_resource_usage))
+            .route(
+                "/byob/deployments/:deployment_id",
+                get(get_deployment_status),
+            )
+            .route(
+                "/byob/deployments/:deployment_id/stop",
+                post(stop_deployment),
+            )
+            .route(
+                "/byob/deployments/:deployment_id/usage",
+                get(get_resource_usage),
+            )
             .route("/byob/health", get(health_check))
             .with_state(self.executor.clone())
     }
@@ -51,11 +59,17 @@ async fn deploy_biome(
     State(executor): State<Arc<dyn ByobExecutor>>,
     Json(request): Json<ByobDeploymentRequest>,
 ) -> Result<Json<ByobDeploymentResponse>, ApiError> {
-    info!("Received BYOB deployment request for team {}", request.team_id);
+    info!(
+        "Received BYOB deployment request for team {}",
+        request.team_id
+    );
 
     match executor.deploy_biome(request).await {
         Ok(response) => {
-            info!("BYOB deployment {} completed successfully", response.deployment_id);
+            info!(
+                "BYOB deployment {} completed successfully",
+                response.deployment_id
+            );
             Ok(Json(response))
         }
         Err(e) => {
@@ -152,6 +166,15 @@ pub struct ApiError {
     pub message: String,
 }
 
+impl ApiError {
+    pub fn new(status: StatusCode, message: &str) -> Self {
+        Self {
+            status,
+            message: message.to_string(),
+        }
+    }
+}
+
 impl From<ToadStoolError> for ApiError {
     fn from(err: ToadStoolError) -> Self {
         match err {
@@ -206,4 +229,4 @@ mod tests {
         let api_error = ApiError::from(error);
         assert_eq!(api_error.status, StatusCode::NOT_FOUND);
     }
-} 
+}

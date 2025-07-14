@@ -1,8 +1,10 @@
 //! ToadStool Universal Compute Platform Demo
 //! Showcases core functionality without external dependencies
 
+use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
+use toadstool::universal::{get_platform_status, PrimalContext, NetworkLocation, SecurityLevel, PrimalCapability, PrimalRequest};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -13,92 +15,135 @@ async fn main() -> anyhow::Result<()> {
 
     println!("🍄 ToadStool Universal Compute Platform - Working Demo");
     println!("{}", "=".repeat(60));
-    
+
     // Initialize ToadStool
     println!("\n🚀 Initializing ToadStool...");
     toadstool::init()?;
-    
+
     // Show core capabilities
     println!("\n✨ Core Capabilities:");
     for capability in toadstool::UNIVERSAL_CAPABILITIES {
-        println!("   ✓ {}", capability);
+        println!("   ✓ {capability}");
     }
-    
+
     // Create universal compute platform
     println!("\n🏗️  Creating Universal Compute Platform...");
     let platform = toadstool::UniversalComputePlatform::new().await?;
     println!("   ✅ Platform created successfully!");
-    
+
     // Get platform status
     println!("\n📊 Platform Status:");
-    let status = platform.get_platform_status().await?;
-    println!("   Runtime Engines: {:?}", status.runtime_engines);
-    println!("   Active Jobs: {}", status.active_jobs_count);
-    println!("   Ecosystem Integration: {}", status.ecosystem_integration);
-    println!("   biomeOS Integration: {}", status.biomeos_integration);
-    println!("   Pure Ecosystem: {}", status.pure_ecosystem);
-    
-    // Demonstrate biomeOS integration
-    println!("\n🌱 biomeOS Integration:");
-    let biomeos_platform = toadstool::UniversalComputePlatform::new_with_biomeos().await?;
-    let biomeos_status = biomeos_platform.get_platform_status().await?;
-    println!("   ✅ biomeOS platform created");
-    println!("   Integration enabled: {}", biomeos_status.biomeos_integration);
-    
-    // Show recursive hosting
-    println!("\n🔄 Recursive Hosting:");
-    let child_config = toadstool::UniversalPlatformConfig {
+    let status = get_platform_status().await;
+    println!("   Platform Status: {:?}", status);
+    println!("   Ecosystem Integration: {}", platform.get_config().ecosystem_integration);
+    println!("   BiomeOS Integration: {}", platform.get_config().biomeos_integration);
+    println!("   Recursive Hosting: {}", platform.get_config().recursive_hosting);
+
+    // Initialize platform with biomeOS as a primal (through ecosystem)
+    let biomeos_platform = toadstool::init_with_ecosystem().await?;
+    println!("   ✅ BiomeOS platform created!");
+    let biomeos_status = get_platform_status().await;
+    println!("   BiomeOS Platform Status: {:?}", biomeos_status);
+
+    // Test universal configuration
+    println!("\n⚙️  Testing Universal Configuration...");
+    let config = toadstool::UniversalPlatformConfig {
         recursive_hosting: true,
-        os_layer_compatibility: true,
-        ecosystem_integration: false,
-        biomeos_integration: false,
-        max_nesting_depth: 5,
-        pure_ecosystem: true,
+        ecosystem_integration: true,
+        biomeos_integration: true,
+        max_concurrent_jobs: 10,
+        pure_ecosystem: false,
     };
-    
-    let child_platform = platform.create_child_instance(child_config).await?;
-    println!("   ✅ Child ToadStool instance created");
-    
-    // Create a universal job
-    println!("\n🎯 Universal Job Example:");
+    let custom_platform = toadstool::UniversalComputePlatform::new_with_config(config).await?;
+    println!("   ✅ Custom platform created with universal configuration!");
+
+    // Create universal job
+    println!("\n🎯 Creating Universal Job...");
+    let context = PrimalContext {
+        user_id: "demo-user".to_string(),
+        device_id: "demo-device".to_string(),
+        session_id: Uuid::new_v4().to_string(),
+        network_location: NetworkLocation {
+            ip_address: "127.0.0.1".to_string(),
+            subnet: Some("192.168.1.0/24".to_string()),
+            network_id: Some("local".to_string()),
+            geo_location: Some("localhost".to_string()),
+        },
+        security_level: SecurityLevel::Standard,
+        metadata: HashMap::new(),
+    };
+
     let job = toadstool::UniversalJob {
         id: Uuid::new_v4(),
         job_type: toadstool::UniversalJobType::Native {
             executable: "/bin/echo".to_string(),
-            args: vec!["Hello".to_string(), "from".to_string(), "ToadStool!".to_string()],
-            env: std::collections::HashMap::new(),
+            args: vec!["Hello from ToadStool Universal Platform!".to_string()],
+            env: HashMap::new(),
         },
         priority: toadstool::JobPriority::Normal,
-        resources: toadstool::UniversalResourceRequirements::default(),
+        resources: toadstool::ResourceRequirements::default(),
         timeout: Some(Duration::from_secs(30)),
         created_at: chrono::Utc::now(),
-        nesting_level: 0,
+        context,
     };
-    
+
     println!("   Job ID: {}", job.id);
-    println!("   Priority: {:?}", job.priority);
-    println!("   ✅ Universal job created");
-    
-    // Show OS layer compatibility
-    println!("\n💻 OS Layer Compatibility:");
-    let os_manager = toadstool::OSLayerManager::new().await?;
-    let platform_info = os_manager.get_platform_info();
-    println!("   Current OS: {}", platform_info.os);
-    println!("   Architecture: {}", platform_info.arch);
-    println!("   ✅ OS compatibility layer ready");
-    
-    println!("\n🎉 ToadStool Demo Complete!");
-    println!("🌟 Successfully Demonstrated:");
+
+    // Execute universal job
+    println!("   🏃 Executing universal job...");
+    let result = platform.execute_universal_job(job).await?;
+    println!("   ✅ Job completed successfully!");
+    println!("   📋 Output: {:?}", result.output);
+
+    // Test capability discovery
+    println!("\n🔍 Testing Universal Capability Discovery...");
+    let native_capability = PrimalCapability::NativeExecution { 
+        architectures: vec!["x86_64".to_string()] 
+    };
+    let providers = platform.find_primals_by_capability(&native_capability).await;
+    println!("   Found {} providers with native execution capability", providers.len());
+
+    // Test primal request routing
+    println!("\n🔀 Testing Universal Primal Request Routing...");
+    let primal_request = PrimalRequest {
+        id: Uuid::new_v4(),
+        source: "demo-client".to_string(),
+        target: "toadstool".to_string(),
+        request_type: "health_check".to_string(),
+        payload: serde_json::json!({}),
+        context: PrimalContext {
+            user_id: "demo-user".to_string(),
+            device_id: "demo-device".to_string(),
+            session_id: Uuid::new_v4().to_string(),
+            network_location: NetworkLocation {
+                ip_address: "127.0.0.1".to_string(),
+                subnet: None,
+                network_id: None,
+                geo_location: None,
+            },
+            security_level: SecurityLevel::Standard,
+            metadata: HashMap::new(),
+        },
+        metadata: HashMap::new(),
+        timestamp: chrono::Utc::now(),
+    };
+
+    let response = platform.route_primal_request(primal_request).await?;
+    println!("   ✅ Primal request routed successfully!");
+    println!("   📋 Response status: {:?}", response.status);
+
+    println!("\n🎉 ToadStool Universal Demo Complete!");
+    println!("🌟 Key Features Demonstrated:");
     println!("   ✅ Universal compute platform initialization");
-    println!("   ✅ Pure ecosystem mode (no Docker dependencies)");
-    println!("   ✅ biomeOS integration capabilities");
-    println!("   ✅ Recursive hosting (ToadStool hosting ToadStool)");
-    println!("   ✅ Universal job creation and scheduling");
-    println!("   ✅ OS-layer compatibility across platforms");
-    println!("   ✅ Resource management and coordination");
-    
-    println!("\n🚀 ToadStool Universal Compute Platform is ready!");
-    println!("💡 Next steps: Register runtime engines and start executing workloads");
-    
+    println!("   ✅ BiomeOS integration capabilities");
+    println!("   ✅ Universal configuration management");
+    println!("   ✅ Universal job creation and execution");
+    println!("   ✅ Capability-based primal discovery");
+    println!("   ✅ Universal primal request routing");
+    println!("   ✅ Modern, clean universal architecture");
+
+    println!("\n🚀 ToadStool Universal Compute Platform is WORKING!");
+    println!("💡 Ready to execute workloads on any substrate!");
+
     Ok(())
-} 
+}

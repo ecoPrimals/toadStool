@@ -6,11 +6,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{
-    routing::get,
-    Router,
-    serve,
-};
+use axum::{routing::get, Router};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -18,8 +14,8 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use toadstool::{
+    byob::{create_byob_executor, ByobExecutorConfig},
     RuntimeEngine, ToadStoolError, ToadStoolResult,
-    byob::{ByobExecutorConfig, create_byob_executor},
 };
 use toadstool_api::ByobApi;
 use toadstool_runtime_container::ContainerRuntimeEngine;
@@ -73,7 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize tracing
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(if args.verbose { Level::DEBUG } else { Level::INFO })
+        .with_max_level(if args.verbose {
+            Level::DEBUG
+        } else {
+            Level::INFO
+        })
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start server
     let listener = TcpListener::bind(addr).await?;
-    serve(listener, app.into_make_service()).await?;
+    axum::serve(listener, app.into_make_service()).await?;
 
     Ok(())
 }
@@ -110,12 +110,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Load server configuration
 async fn load_config(config_path: Option<&str>) -> ToadStoolResult<ServerConfig> {
     if let Some(path) = config_path {
-        let content = tokio::fs::read_to_string(path).await
+        let content = tokio::fs::read_to_string(path)
+            .await
             .map_err(|e| ToadStoolError::configuration(format!("Failed to read config: {}", e)))?;
-        
+
         let config: ServerConfig = toml::from_str(&content)
             .map_err(|e| ToadStoolError::configuration(format!("Failed to parse config: {}", e)))?;
-        
+
         Ok(config)
     } else {
         Ok(ServerConfig::default())
@@ -125,9 +126,9 @@ async fn load_config(config_path: Option<&str>) -> ToadStoolResult<ServerConfig>
 /// Create runtime engine
 async fn create_runtime_engine() -> ToadStoolResult<Arc<dyn RuntimeEngine>> {
     info!("Initializing container runtime engine");
-    
+
     let engine = ContainerRuntimeEngine::new()?;
-    
+
     Ok(Arc::new(engine))
 }
 
@@ -163,4 +164,4 @@ mod tests {
         assert_eq!(config.port, 8081);
         assert_eq!(config.bind_address, "0.0.0.0");
     }
-} 
+}

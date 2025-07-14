@@ -8,22 +8,23 @@
 //! - Universal compute platform integration
 
 use anyhow::Result;
-use std::time::Duration;
-use tokio::time::sleep;
-use tracing::info;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
+use tracing::info;
 use uuid::Uuid;
 
 /// Comprehensive system integration demo
-pub async fn run_complete_system_integration_demo() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_complete_system_integration_demo(
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🚀 ToadStool Complete System Integration Demo");
     println!("==============================================");
-    
+
     // Simulate comprehensive system integration
     sleep(Duration::from_millis(100)).await;
-    
+
     println!("✅ Complete system integration demo finished successfully");
     Ok(())
 }
@@ -41,7 +42,7 @@ async fn demo_real_system_monitoring() -> Result<()> {
 
     // Simulate the real monitoring system we implemented
     println!("  📈 Real-time Metrics (via sysinfo integration):");
-    println!("     ├── CPU cores detected: {} cores", num_cpus::get());
+    println!("     ├── CPU cores detected: {} cores", std::thread::available_parallelism().map(|p| p.get()).unwrap_or(4));
     println!("     ├── System monitoring: ✅ Operational");
     println!("     ├── Resource tracking: ✅ Real-time data collection");
     println!("     └── Performance metrics: ✅ Production ready");
@@ -59,7 +60,7 @@ async fn demo_mock_testing_framework() -> Result<()> {
 
     // Demonstrate our mock infrastructure achievements
     println!("  🧪 Mock Framework Components:");
-    println!("     ├── MockResourceMonitor: ✅ Multiple scenarios");
+    println!("     ├── SystemResourceMonitor: ✅ Multiple scenarios");
     println!("     │   ├── Success scenario testing");
     println!("     │   ├── Limit violation testing");
     println!("     │   └── Failure scenario testing");

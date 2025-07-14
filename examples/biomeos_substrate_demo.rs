@@ -9,8 +9,7 @@ use tracing::info;
 
 use toadstool::error::ToadStoolResult;
 use toadstool_distributed::{
-    substrate_detection::SubstrateDetector,
-    DistributedCoordinator, DistributedConfig,
+    substrate_detection::SubstrateDetector, DistributedConfig, DistributedCoordinator,
 };
 
 #[tokio::main]
@@ -50,12 +49,27 @@ async fn demonstrate_substrate_detection() -> ToadStoolResult<()> {
     let capabilities = detector.detect_all().await?;
 
     info!("📊 Detected Substrate Summary:");
-    info!("  🖥️  Traditional Platforms: {}", capabilities.traditional_platforms.len());
-    info!("  📦 Container Platforms: {}", capabilities.container_platforms.len());
-    info!("  💻 Language Runtimes: {}", capabilities.language_runtimes.len());
+    info!(
+        "  🖥️  Traditional Platforms: {}",
+        capabilities.traditional_platforms.len()
+    );
+    info!(
+        "  📦 Container Platforms: {}",
+        capabilities.container_platforms.len()
+    );
+    info!(
+        "  💻 Language Runtimes: {}",
+        capabilities.language_runtimes.len()
+    );
     info!("  🎮 GPU Platforms: {}", capabilities.gpu_platforms.len());
-    info!("  🔬 Specialized Platforms: {}", capabilities.specialized_platforms.len());
-    info!("  🧪 Experimental Platforms: {}", capabilities.experimental_platforms.len());
+    info!(
+        "  🔬 Specialized Platforms: {}",
+        capabilities.specialized_platforms.len()
+    );
+    info!(
+        "  🧪 Experimental Platforms: {}",
+        capabilities.experimental_platforms.len()
+    );
 
     // Show specific platform details relevant to biomeOS
     info!("");
@@ -224,5 +238,6 @@ workloads:
     runtime: "native"
     port: 8080
     health_check: "/health"
-"#.to_string()
-} 
+"#
+    .to_string()
+}

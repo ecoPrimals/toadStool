@@ -2,6 +2,43 @@
 name = "toadstool-server"
 version.workspace = true
 edition.workspace = true
-description = "ToadStool server component"
+description = "ToadStool universal compute server library"
 
 [dependencies]
+# ToadStool core dependencies
+toadstool = { path = "../core/toadstool", features = ["networking"] }
+
+# HTTP server framework (optional)
+axum = { version = "0.7", features = ["ws"], optional = true }
+tower = { version = "0.4", optional = true }
+tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
+
+# Async runtime and channels
+tokio = { version = "1.0", features = ["full"] }
+
+# Async utilities
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# UUID support
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+default = ["api", "websocket"]
+api = ["axum", "tower", "tower-http"]
+websocket = ["axum/ws"]
+
+[dev-dependencies]
+tokio-test = "0.4"

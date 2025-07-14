@@ -28,7 +28,7 @@
 ### 4. Comprehensive Testing Infrastructure ✅
 - **Before**: No mock framework, broken test infrastructure
 - **After**: Complete mock system with multiple test scenarios
-- **Implementation**: `MockResourceMonitor` with success/failure/edge-case testing
+- **Implementation**: `SystemResourceMonitor` with success/failure/edge-case testing
 - **Impact**: Quality gates can be implemented for reliable releases
 
 ### 5. Compilation Stabilization ✅
@@ -102,7 +102,7 @@ pub const DEFAULT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(300);
 
 ### Mock Testing Framework
 ```rust
-impl MockResourceMonitor {
+impl SystemResourceMonitor {
     pub fn new_successful() -> Self { /* Normal operation testing */ }
     pub fn new_limit_violations() -> Self { /* Resource constraint testing */ }
     pub fn new_monitoring_failure() -> Self { /* System failure testing */ }

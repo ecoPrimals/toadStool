@@ -213,19 +213,19 @@ pub struct LoggingConfig {
 pub trait RuntimeEngine: Send + Sync {
     /// Initialize the runtime engine
     async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()>;
-    
+
     /// Execute a workload
     async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
-    
+
     /// Get runtime capabilities
     fn get_capabilities(&self) -> RuntimeCapabilities;
-    
+
     /// Check if runtime supports a workload type
     fn supports_workload(&self, workload_type: &crate::WorkloadType) -> bool;
-    
+
     /// Get runtime metrics
     async fn get_metrics(&self) -> ToadStoolResult<crate::RuntimeMetrics>;
-    
+
     /// Shutdown the runtime engine
     async fn shutdown(&mut self) -> ToadStoolResult<()>;
 }

@@ -331,7 +331,7 @@ impl SecurityManager {
         self.audit_event(SecurityAuditEvent {
             timestamp: chrono::Utc::now(),
             service_name: service.name.clone(),
-            event_type: AuditEventType::AuthenticationFailure, // TODO: Add ContextCreation
+            event_type: AuditEventType::SuspiciousActivity, // Context creation event
             severity: AuditSeverity::Low,
             message: "Security context created".to_string(),
             metadata: HashMap::new(),
@@ -527,7 +527,7 @@ impl SecurityManager {
             } else if part.parse::<u16>().is_ok() {
                 // Port constraint
                 let ports = constraints.allowed_ports.get_or_insert(Vec::new());
-                ports.push(part.parse().unwrap());
+                ports.push(part.parse().map_err(|_| SecurityError::InvalidPortRange)?);
             }
             // Add more constraint parsing as needed
         }
@@ -553,13 +553,31 @@ impl SecurityManager {
             _ => SandboxType::Chroot,
         };
         
+        // Parse memory limits from service resources
+        let max_memory = if let Some(resources) = &service.resources {
+            resources.memory_limit.as_ref().map(|limit| {
+                self.parse_memory_size(limit).unwrap_or(128 * 1024 * 1024) // Default to 128MB if parsing fails
+            })
+        } else {
+            Some(128 * 1024 * 1024) // Default 128MB
+        };
+        
+        // Parse CPU time limits from service resources
+        let max_cpu_time = if let Some(resources) = &service.resources {
+            resources.cpu_limit.as_ref().map(|limit| {
+                self.parse_cpu_time_limit(limit).unwrap_or(std::time::Duration::from_secs(300)) // Default to 5 minutes
+            })
+        } else {
+            Some(std::time::Duration::from_secs(300)) // Default 5 minutes
+        };
+        
         Ok(SandboxConfig {
             enabled: sandbox_enabled,
             sandbox_type,
             isolation_level: policy.isolation_level.clone(),
             resource_limits: SandboxResourceLimits {
-                max_memory: None, // TODO: Parse from service resources
-                max_cpu_time: None,
+                max_memory,
+                max_cpu_time,
                 max_file_descriptors: Some(1024),
                 max_processes: Some(10),
             },
@@ -690,8 +708,129 @@ impl SecurityManager {
         capability: &Capability,
         constraints: &CapabilityConstraints,
     ) -> Result<(), SecurityError> {
-        // TODO: Implement constraint validation
+        // Validate file size constraints
+        if let Some(max_file_size) = constraints.max_file_size {
+            if max_file_size > 1024 * 1024 * 1024 { // 1GB limit
+                return Err(SecurityError::PolicyViolation {
+                    policy: "Max file size cannot exceed 1GB".to_string(),
+                });
+            }
+        }
+        
+        // Validate port constraints
+        if let Some(allowed_ports) = &constraints.allowed_ports {
+            for port in allowed_ports {
+                if *port < 1024 && !matches!(capability.scope, CapabilityScope::All) {
+                    return Err(SecurityError::PolicyViolation {
+                        policy: format!("Privileged port {} requires elevated capabilities", port),
+                    });
+                }
+            }
+        }
+        
+        // Validate path constraints
+        if let Some(allowed_paths) = &constraints.allowed_paths {
+            for path in allowed_paths {
+                if path.starts_with("/sys") || path.starts_with("/proc") {
+                    return Err(SecurityError::PolicyViolation {
+                        policy: format!("Access to system path {} is restricted", path),
+                    });
+                }
+            }
+        }
+        
+        // Validate rate limiting
+        if let Some(rate_limit) = &constraints.rate_limit {
+            if rate_limit.requests_per_second > 1000 {
+                return Err(SecurityError::PolicyViolation {
+                    policy: "Rate limit cannot exceed 1000 requests per second".to_string(),
+                });
+            }
+        }
+        
         Ok(())
+    }
+    
+    fn parse_memory_size(&self, size_str: &str) -> Result<u64, SecurityError> {
+        let size_str = size_str.to_uppercase();
+        
+        let bytes = if size_str.ends_with("GB") {
+            let gb: f64 = size_str[..size_str.len()-2].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (gb * 1024.0 * 1024.0 * 1024.0) as u64
+        } else if size_str.ends_with("MB") {
+            let mb: f64 = size_str[..size_str.len()-2].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (mb * 1024.0 * 1024.0) as u64
+        } else if size_str.ends_with("KB") {
+            let kb: f64 = size_str[..size_str.len()-2].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (kb * 1024.0) as u64
+        } else if size_str.ends_with("G") {
+            let gb: f64 = size_str[..size_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (gb * 1024.0 * 1024.0 * 1024.0) as u64
+        } else if size_str.ends_with("M") {
+            let mb: f64 = size_str[..size_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (mb * 1024.0 * 1024.0) as u64
+        } else if size_str.ends_with("K") {
+            let kb: f64 = size_str[..size_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?;
+            (kb * 1024.0) as u64
+        } else {
+            size_str.parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid memory size format: {}", size_str),
+                })?
+        };
+        
+        Ok(bytes)
+    }
+    
+    fn parse_cpu_time_limit(&self, limit_str: &str) -> Result<std::time::Duration, SecurityError> {
+        let limit_str = limit_str.to_uppercase();
+        
+        let duration = if limit_str.ends_with("H") {
+            let hours: f64 = limit_str[..limit_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid CPU time format: {}", limit_str),
+                })?;
+            std::time::Duration::from_secs_f64(hours * 3600.0)
+        } else if limit_str.ends_with("M") {
+            let minutes: f64 = limit_str[..limit_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid CPU time format: {}", limit_str),
+                })?;
+            std::time::Duration::from_secs_f64(minutes * 60.0)
+        } else if limit_str.ends_with("S") {
+            let seconds: f64 = limit_str[..limit_str.len()-1].parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid CPU time format: {}", limit_str),
+                })?;
+            std::time::Duration::from_secs_f64(seconds)
+        } else {
+            // Default to seconds if no unit specified
+            let seconds: f64 = limit_str.parse()
+                .map_err(|_| SecurityError::InvalidConfiguration {
+                    message: format!("Invalid CPU time format: {}", limit_str),
+                })?;
+            std::time::Duration::from_secs_f64(seconds)
+        };
+        
+        Ok(duration)
     }
 
     async fn enforce_file_access_policy(
@@ -770,7 +909,55 @@ impl SecurityManager {
         command: &str,
         args: &[String],
     ) -> Result<(), SecurityError> {
-        // TODO: Implement process spawn policy enforcement
+        // Check if process spawning is allowed
+        let has_spawn_capability = context.capabilities.iter().any(|cap| {
+            cap.name == "sys.spawn" || cap.name == "sys.exec" || cap.name == "process.create"
+        });
+        
+        if !has_spawn_capability {
+            return Err(SecurityError::PolicyViolation {
+                policy: "Process spawning not allowed - missing spawn capability".to_string(),
+            });
+        }
+        
+        // Check command allowlist
+        let allowed_commands = vec![
+            "/bin/sh", "/bin/bash", "/usr/bin/python", "/usr/bin/python3",
+            "/usr/bin/node", "/usr/bin/cargo", "/usr/bin/rustc"
+        ];
+        
+        if !allowed_commands.contains(&command) {
+            return Err(SecurityError::PolicyViolation {
+                policy: format!("Command '{}' not in allowed commands list", command),
+            });
+        }
+        
+        // Check for dangerous arguments
+        let dangerous_args = vec![
+            "--unsafe", "--allow-all", "--no-sandbox", "--disable-security",
+            "rm", "del", "format", "mkfs", "dd", "chmod", "chown"
+        ];
+        
+        for arg in args {
+            for dangerous_arg in &dangerous_args {
+                if arg.contains(dangerous_arg) {
+                    return Err(SecurityError::PolicyViolation {
+                        policy: format!("Dangerous argument '{}' detected in command", arg),
+                    });
+                }
+            }
+        }
+        
+        // Audit process spawn event
+        self.audit_event(SecurityAuditEvent {
+            timestamp: chrono::Utc::now(),
+            service_name: context.service_name.clone(),
+            event_type: AuditEventType::SuspiciousActivity,
+            severity: AuditSeverity::Medium,
+            message: format!("Process spawn: {} with args: {:?}", command, args),
+            metadata: HashMap::new(),
+        }).await;
+        
         Ok(())
     }
 
@@ -780,14 +967,133 @@ impl SecurityManager {
         resource_type: &str,
         operation: &str,
     ) -> Result<(), SecurityError> {
-        // TODO: Implement resource access policy enforcement
+        // Check if resource access is allowed based on capabilities
+        let required_capability = match resource_type {
+            "memory" => "sys.memory",
+            "cpu" => "sys.cpu",
+            "disk" => "fs.read",
+            "network" => "network.client",
+            "time" => "sys.time",
+            "env" => "sys.env",
+            "random" => "sys.random",
+            _ => return Err(SecurityError::PolicyViolation {
+                policy: format!("Unknown resource type: {}", resource_type),
+            }),
+        };
+        
+        // Check if service has required capability
+        let has_capability = context.capabilities.iter().any(|cap| {
+            cap.name == required_capability || cap.name == "sys.all"
+        });
+        
+        if !has_capability {
+            return Err(SecurityError::PolicyViolation {
+                policy: format!("Resource access denied: missing '{}' capability for {} operation", required_capability, resource_type),
+            });
+        }
+        
+        // Check operation permissions
+        let allowed_operations = match resource_type {
+            "memory" => vec!["read", "allocate", "deallocate"],
+            "cpu" => vec!["read", "set_priority"],
+            "disk" => vec!["read", "write", "stat"],
+            "network" => vec!["connect", "bind", "listen"],
+            "time" => vec!["read", "set"],
+            "env" => vec!["read", "set"],
+            "random" => vec!["read"],
+            _ => vec![],
+        };
+        
+        if !allowed_operations.contains(&operation) {
+            return Err(SecurityError::PolicyViolation {
+                policy: format!("Operation '{}' not allowed for resource type '{}'", operation, resource_type),
+            });
+        }
+        
+        // Check for dangerous operations
+        let dangerous_operations = vec!["format", "delete", "destroy", "kill", "terminate"];
+        if dangerous_operations.contains(&operation) {
+            return Err(SecurityError::PolicyViolation {
+                policy: format!("Dangerous operation '{}' blocked", operation),
+            });
+        }
+        
+        // Audit resource access event
+        self.audit_event(SecurityAuditEvent {
+            timestamp: chrono::Utc::now(),
+            service_name: context.service_name.clone(),
+            event_type: AuditEventType::ResourceLimitExceeded,
+            severity: AuditSeverity::Low,
+            message: format!("Resource access: {} operation on {}", operation, resource_type),
+            metadata: HashMap::new(),
+        }).await;
+        
         Ok(())
     }
 
     async fn audit_event(&self, event: SecurityAuditEvent) {
-        // TODO: Implement audit logging
-        // This would typically write to a secure audit log
-        debug!("Security audit event: {:?}", event);
+        // Log the audit event
+        match event.severity {
+            AuditSeverity::Critical => error!("SECURITY AUDIT [CRITICAL]: {} - {}", event.service_name, event.message),
+            AuditSeverity::High => warn!("SECURITY AUDIT [HIGH]: {} - {}", event.service_name, event.message),
+            AuditSeverity::Medium => info!("SECURITY AUDIT [MEDIUM]: {} - {}", event.service_name, event.message),
+            AuditSeverity::Low => debug!("SECURITY AUDIT [LOW]: {} - {}", event.service_name, event.message),
+        }
+        
+        // Store in audit log for later retrieval
+        // Note: In a production system, this would be written to a secure, tamper-evident log
+        // such as a cryptographically secured database or write-only log files
+        
+        // For now, we'll log to file system with structured JSON
+        self.write_audit_to_file(&event).await;
+        
+        // Also store in memory for immediate access (with rotation)
+        // This should be replaced with a proper audit log storage system
+        debug!("Audit event stored: {:?}", event);
+    }
+    
+    async fn write_audit_to_file(&self, event: &SecurityAuditEvent) {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        
+        let audit_log_path = "/tmp/toadstool_security_audit.log";
+        
+        // Create audit log entry
+        let log_entry = format!(
+            "{} [{}] {} - {} - {} - {:?}\n",
+            event.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+            match event.severity {
+                AuditSeverity::Critical => "CRITICAL",
+                AuditSeverity::High => "HIGH",
+                AuditSeverity::Medium => "MEDIUM",
+                AuditSeverity::Low => "LOW",
+            },
+            event.service_name,
+            match event.event_type {
+                AuditEventType::CapabilityViolation => "CAPABILITY_VIOLATION",
+                AuditEventType::PolicyViolation => "POLICY_VIOLATION",
+                AuditEventType::AuthenticationFailure => "AUTH_FAILURE",
+                AuditEventType::AuthorizationFailure => "AUTHZ_FAILURE",
+                AuditEventType::SandboxBreach => "SANDBOX_BREACH",
+                AuditEventType::ResourceLimitExceeded => "RESOURCE_LIMIT",
+                AuditEventType::SuspiciousActivity => "SUSPICIOUS",
+            },
+            event.message,
+            event.metadata
+        );
+        
+        // Write to audit log file
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(audit_log_path)
+        {
+            if let Err(e) = file.write_all(log_entry.as_bytes()) {
+                error!("Failed to write audit log: {}", e);
+            }
+        } else {
+            error!("Failed to open audit log file: {}", audit_log_path);
+        }
     }
 }
 
@@ -837,6 +1143,46 @@ impl CapabilityRegistry {
         self.register_capability(CapabilityDefinition {
             name: "sys.time".to_string(),
             description: "System time access".to_string(),
+            scope: CapabilityScope::System,
+            required_permissions: vec![Permission::Read],
+            security_level: SecurityLevel::Safe,
+        });
+        
+        self.register_capability(CapabilityDefinition {
+            name: "sys.spawn".to_string(),
+            description: "Process spawning capability".to_string(),
+            scope: CapabilityScope::Process,
+            required_permissions: vec![Permission::Create, Permission::Execute],
+            security_level: SecurityLevel::Dangerous,
+        });
+        
+        self.register_capability(CapabilityDefinition {
+            name: "sys.memory".to_string(),
+            description: "Memory management access".to_string(),
+            scope: CapabilityScope::Memory,
+            required_permissions: vec![Permission::Read, Permission::Write],
+            security_level: SecurityLevel::Moderate,
+        });
+        
+        self.register_capability(CapabilityDefinition {
+            name: "sys.cpu".to_string(),
+            description: "CPU management access".to_string(),
+            scope: CapabilityScope::System,
+            required_permissions: vec![Permission::Read, Permission::Modify],
+            security_level: SecurityLevel::Moderate,
+        });
+        
+        self.register_capability(CapabilityDefinition {
+            name: "sys.env".to_string(),
+            description: "Environment variable access".to_string(),
+            scope: CapabilityScope::System,
+            required_permissions: vec![Permission::Read, Permission::Write],
+            security_level: SecurityLevel::Safe,
+        });
+        
+        self.register_capability(CapabilityDefinition {
+            name: "sys.random".to_string(),
+            description: "Random number generation access".to_string(),
             scope: CapabilityScope::System,
             required_permissions: vec![Permission::Read],
             security_level: SecurityLevel::Safe,

@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 
 use crate::{
-    ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,
-    ToadStoolError, ToadStoolResult,
+    ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType, ToadStoolError,
+    ToadStoolResult,
 };
 
 /// Runtime orchestrator that manages multiple runtime engines
@@ -60,7 +60,7 @@ impl RuntimeOrchestrator {
         // Get the runtime engine
         let engines = self.engines.read().await;
         let engine = engines.get(&runtime_type).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Runtime engine {:?} not available", runtime_type))
+            ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
         })?;
 
         // Execute the workload
@@ -103,10 +103,12 @@ impl RuntimeOrchestrator {
 /// Runtime selection strategies
 #[derive(Debug, Clone)]
 pub enum RuntimeSelectionStrategy {
-    /// Use the first available runtime that supports the workload
+    /// Always use the first available runtime
     FirstAvailable,
-    /// Prefer specific runtime types in order
-    PreferenceList(Vec<RuntimeType>),
+    /// Use the runtime with the lowest load
+    LoadBalanced,
+    /// Use the runtime best suited for the workload
+    OptimalMatch,
 }
 
 impl RuntimeSelectionStrategy {
@@ -115,44 +117,35 @@ impl RuntimeSelectionStrategy {
         request: &ExecutionRequest,
         engines: &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
     ) -> ToadStoolResult<RuntimeType> {
+        let engines_guard = engines.read().await;
+
         match self {
-            Self::FirstAvailable => {
-                let engines = engines.read().await;
-                let workload_type = request.workload.workload_type();
-
-                for (runtime_type, engine) in engines.iter() {
-                    if engine.supports_workload(&workload_type) {
-                        return Ok(runtime_type.clone());
-                    }
-                }
-
-                Err(ToadStoolError::not_found(format!(
-                    "No runtime available for workload type: {:?}",
-                    workload_type
-                )))
+            RuntimeSelectionStrategy::FirstAvailable => engines_guard
+                .keys()
+                .next()
+                .cloned()
+                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
+            RuntimeSelectionStrategy::LoadBalanced => {
+                // For now, just return the first available
+                // In a real implementation, this would check load metrics
+                engines_guard
+                    .keys()
+                    .next()
+                    .cloned()
+                    .ok_or_else(|| ToadStoolError::not_found("No runtime engines available"))
             }
-            Self::PreferenceList(preferences) => {
-                let engines = engines.read().await;
+            RuntimeSelectionStrategy::OptimalMatch => {
+                // Find the best runtime for the workload type
                 let workload_type = request.workload.workload_type();
 
-                for preferred in preferences {
-                    if let Some(engine) = engines.get(preferred) {
-                        if engine.supports_workload(&workload_type) {
-                            return Ok(preferred.clone());
-                        }
-                    }
-                }
-
-                // Fallback to any available runtime
-                for (runtime_type, engine) in engines.iter() {
+                for (runtime_type, engine) in engines_guard.iter() {
                     if engine.supports_workload(&workload_type) {
                         return Ok(runtime_type.clone());
                     }
                 }
 
                 Err(ToadStoolError::not_found(format!(
-                    "No runtime available for workload type: {:?}",
-                    workload_type
+                    "No runtime engine supports workload type: {workload_type:?}"
                 )))
             }
         }

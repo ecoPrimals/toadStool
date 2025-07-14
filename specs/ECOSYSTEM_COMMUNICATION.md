@@ -185,9 +185,8 @@ pub enum CommunicationProtocol {
         compression: Option<CompressionType>,
     },
     
-    /// gRPC for high-performance communication
-    Grpc {
-        service_definition: String,
+    /// Pure Rust tRPC for high-performance communication
+    TRpc {
         endpoint: String,
         tls_config: Option<TlsConfig>,
         streaming_support: bool,

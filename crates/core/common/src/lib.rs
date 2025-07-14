@@ -1,7 +1,25 @@
-//! Common utilities and types for ToadStool
+//! # ToadStool Common Utilities
 //!
-//! This crate provides shared types, utilities, and constants used across
-//! all ToadStool components.
+//! This crate provides common utilities, types, and functionality shared across all ToadStool components.
+//! It serves as the foundation for the universal compute platform.
+//!
+//! ## Features
+//!
+//! - **Duration Formatting**: Human-readable duration formatting (e.g., "1h30m45s")
+//! - **System Information**: Cross-platform system resource detection
+//! - **Common Types**: Shared data structures and enums
+//! - **Utility Functions**: Helper functions for common operations
+//!
+//! ## Examples
+//!
+//! ```rust
+//! use toadstool_common::format_duration;
+//! use std::time::Duration;
+//!
+//! let duration = Duration::from_secs(3661);
+//! let formatted = format_duration(duration);
+//! assert_eq!(formatted, "1h1m1s");
+//! ```
 
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
@@ -32,7 +50,7 @@ impl PlatformInfo {
     pub fn current() -> Self {
         let mut system = System::new();
         system.refresh_memory();
-        
+
         Self {
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
@@ -69,16 +87,16 @@ pub fn format_duration(duration: std::time::Duration) -> String {
     let total_seconds = duration.as_secs();
 
     if total_seconds < 60 {
-        format!("{}s", total_seconds)
+        format!("{total_seconds}s")
     } else if total_seconds < 3600 {
         let minutes = total_seconds / 60;
         let seconds = total_seconds % 60;
-        format!("{}m{}s", minutes, seconds)
+        format!("{minutes}m{seconds}s")
     } else {
         let hours = total_seconds / 3600;
         let minutes = (total_seconds % 3600) / 60;
         let seconds = total_seconds % 60;
-        format!("{}h{}m{}s", hours, minutes, seconds)
+        format!("{hours}h{minutes}m{seconds}s")
     }
 }
 

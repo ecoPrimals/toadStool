@@ -2,6 +2,36 @@
 name = "toadstool-integration-nestgate"
 version.workspace = true
 edition.workspace = true
-description = "ToadStool nestgate component"
+description = "ToadStool NestGate storage and data pipeline integration"
 
 [dependencies]
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# UUID support
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Base64 encoding (for artifact data)
+base64 = "0.21"
+
+# Cryptographic hashing (for checksums)
+sha2 = "0.10"
+
+[dev-dependencies]
+tokio-test = "0.4"

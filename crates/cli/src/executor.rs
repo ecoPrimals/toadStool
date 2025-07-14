@@ -14,13 +14,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::time::{sleep, timeout, Duration};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use toadstool::RuntimeSelectionStrategy;
 use toadstool::{
-    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType,
-    SecurityContext, WorkloadSpec,
+    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
+    WorkloadSpec,
 };
 use toadstool_config::ToadStoolConfig;
 use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
@@ -588,11 +588,11 @@ impl BiomeExecutor {
                 wasi_config,
             } => {
                 // Load WASM module from source with verification
-                let module_data = self.load_wasm_with_verification(source, &Some(checksum.clone())).await?;
+                let module_data = self
+                    .load_wasm_with_verification(source, &Some(checksum.clone()))
+                    .await?;
                 Ok(WorkloadSpec::Wasm {
-                    module: toadstool::workload::WasmModuleSource::Bytes {
-                        data: module_data,
-                    },
+                    module: toadstool::workload::WasmModuleSource::Bytes { data: module_data },
                     args: None,
                     wasi_config: None, // WASI config conversion not implemented
                     env_vars: HashMap::new(),
@@ -668,18 +668,21 @@ impl BiomeExecutor {
     async fn graceful_stop_process(&self, execution_id: &Uuid) -> Result<()> {
         // Find the process by execution ID
         let biomes = self.biomes.read().await;
-        
+
         for (biome_name, biome) in biomes.iter() {
             for process in &biome.process_handles {
                 if process.execution_id == *execution_id {
                     if let Some(pid) = process.pid {
-                        info!("Gracefully stopping process {} (PID: {})", execution_id, pid);
+                        info!(
+                            "Gracefully stopping process {} (PID: {})",
+                            execution_id, pid
+                        );
                         return self.send_signal_to_process(pid, "TERM").await;
                     }
                 }
             }
         }
-        
+
         warn!("Process {} not found for graceful stop", execution_id);
         Ok(())
     }
@@ -687,7 +690,7 @@ impl BiomeExecutor {
     async fn force_kill_process(&self, execution_id: &Uuid) -> Result<()> {
         // Find the process by execution ID
         let biomes = self.biomes.read().await;
-        
+
         for (biome_name, biome) in biomes.iter() {
             for process in &biome.process_handles {
                 if process.execution_id == *execution_id {
@@ -698,7 +701,7 @@ impl BiomeExecutor {
                 }
             }
         }
-        
+
         warn!("Process {} not found for force kill", execution_id);
         Ok(())
     }
@@ -820,7 +823,7 @@ impl BiomeExecutor {
         let file = fs::File::open(log_file).await?;
         let reader = BufReader::new(file);
         let mut all_lines = Vec::new();
-        
+
         let mut lines_stream = reader.lines();
         while let Some(line) = lines_stream.next_line().await? {
             all_lines.push(line);
@@ -870,10 +873,10 @@ impl BiomeExecutor {
         level_filter: Option<String>,
         grep_pattern: Option<String>,
     ) -> Result<()> {
-        use tokio::fs;
-        use tokio::time::{sleep, Duration};
         use std::io::SeekFrom;
-        use tokio::io::{AsyncSeekExt, AsyncBufReadExt, BufReader};
+        use tokio::fs;
+        use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
+        use tokio::time::{sleep, Duration};
 
         info!("👁️  Tailing log file: {}", log_file.display());
 
@@ -883,18 +886,25 @@ impl BiomeExecutor {
         }
 
         // Show initial lines
-        self.show_log_file(log_file, initial_lines, timestamps, level_filter.clone(), grep_pattern.clone()).await?;
+        self.show_log_file(
+            log_file,
+            initial_lines,
+            timestamps,
+            level_filter.clone(),
+            grep_pattern.clone(),
+        )
+        .await?;
 
         // Start tailing
         let mut file = fs::File::open(log_file).await?;
         file.seek(SeekFrom::End(0)).await?;
-        
+
         println!("--- Following log file (Ctrl+C to stop) ---");
-        
+
         loop {
             let reader = BufReader::new(&mut file);
             let mut lines_stream = reader.lines();
-            
+
             while let Some(line) = lines_stream.next_line().await? {
                 // Apply filters
                 if let Some(pattern) = &grep_pattern {
@@ -920,24 +930,58 @@ impl BiomeExecutor {
                     println!("{}", cleaned_line);
                 }
             }
-            
+
             sleep(Duration::from_millis(500)).await;
         }
     }
 
     // Helper methods for improved functionality
     async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
-        // In a real implementation, this would query the running process
-        // For now, return a mock PID
-        Ok(std::process::id())
+        // Get the actual PID from the running biome processes
+        let biomes = self.biomes.read().await;
+        if let Some(biome) = biomes.get(biome_name) {
+            // Return the first process PID if available
+            if let Some(process) = biome.process_handles.first() {
+                if let Some(pid) = process.pid {
+                    return Ok(pid);
+                }
+            }
+        }
+        
+        // If no processes found, try to find by process name
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(output) = std::process::Command::new("pgrep")
+                .arg("-f")
+                .arg(biome_name)
+                .output()
+            {
+                if output.status.success() {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    if let Some(pid_str) = stdout.lines().next() {
+                        if let Ok(pid) = pid_str.parse::<u32>() {
+                            return Ok(pid);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback: return current process ID as last resort
+        Err(anyhow::anyhow!("Biome not found: {}", biome_name))
     }
 
-    async fn load_wasm_with_verification(&self, source: &str, checksum: &Option<String>) -> Result<Vec<u8>> {
+    async fn load_wasm_with_verification(
+        &self,
+        source: &str,
+        checksum: &Option<String>,
+    ) -> Result<Vec<u8>> {
+        use sha2::{Digest, Sha256};
         use tokio::fs;
-        use sha2::{Sha256, Digest};
 
         // Load the WASM file
-        let module_data = fs::read(source).await
+        let module_data = fs::read(source)
+            .await
             .with_context(|| format!("Failed to read WASM file: {}", source))?;
 
         // Verify checksum if provided
@@ -945,11 +989,11 @@ impl BiomeExecutor {
             let mut hasher = Sha256::new();
             hasher.update(&module_data);
             let actual_checksum = format!("{:x}", hasher.finalize());
-            
+
             if actual_checksum != *expected_checksum {
                 return Err(anyhow::anyhow!(
-                    "WASM checksum verification failed. Expected: {}, Got: {}", 
-                    expected_checksum, 
+                    "WASM checksum verification failed. Expected: {}, Got: {}",
+                    expected_checksum,
                     actual_checksum
                 ));
             }
@@ -958,36 +1002,39 @@ impl BiomeExecutor {
         Ok(module_data)
     }
 
-    async fn execute_wasm_module(&self, biome_name: &str, module_data: Vec<u8>, _wasi_config: HashMap<String, String>) -> Result<()> {
+    async fn execute_wasm_module(
+        &self,
+        biome_name: &str,
+        module_data: Vec<u8>,
+        _wasi_config: HashMap<String, String>,
+    ) -> Result<()> {
         info!("Executing WASM module for biome: {}", biome_name);
-        
+
         // This would integrate with our WASM runtime engine
         // For now, we'll simulate execution
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        
+
         info!("WASM module execution completed for biome: {}", biome_name);
         Ok(())
     }
 
     async fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
         use std::process::Command;
-        
+
         info!("Sending {} signal to PID {}", signal, pid);
-        
+
         let output = Command::new("kill")
             .arg(format!("-{}", signal))
             .arg(pid.to_string())
             .output()?;
-            
+
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("Failed to send signal: {}", error_msg));
         }
-        
+
         Ok(())
     }
-
-
 }
 
 impl ProcessType {

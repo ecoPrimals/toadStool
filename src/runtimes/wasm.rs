@@ -175,7 +175,8 @@ impl WasmRuntime {
         // In reality, we'd return a handle that can be used to control the task
         Ok(WasmTaskHandle {
             task_id,
-            instance: Instance::new(&mut Store::new(&self.engine, wasm_context), &module, &[]).unwrap(),
+            instance: Instance::new(&mut Store::new(&self.engine, wasm_context), &module, &[])
+                .map_err(|e| RuntimeError::ExecutionError(format!("Failed to create WASM instance: {}", e)))?,
             store: Store::new(&self.engine, WasmContext {
                 service_name: service.name.clone(),
                 security_context: security_context.clone(),

@@ -85,9 +85,9 @@ println!("Storage: {:.1}%", metrics.storage.usage_percent);
 ### **🧪 Comprehensive Testing**
 ```rust
 // Rich mock framework for testing
-let monitor = MockResourceMonitor::new_successful();
-let high_load_monitor = MockResourceMonitor::new_limit_violations();
-let failing_monitor = MockResourceMonitor::new_monitoring_failure();
+let monitor = SystemResourceMonitor::new();
+let high_load_monitor = SystemResourceMonitor::new_limit_violations();
+let failing_monitor = SystemResourceMonitor::new_monitoring_failure();
 ```
 
 ### **🔐 Crypto Lock Security**

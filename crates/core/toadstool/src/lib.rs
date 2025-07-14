@@ -39,40 +39,56 @@
 //!     └── Ecosystem Integration (All primals)
 //! ```
 
+pub mod byob;
+pub mod ecosystem;
 pub mod error;
 pub mod execution;
+pub mod os_layer;
 pub mod resources;
 pub mod runtime;
 pub mod security;
-pub mod workload;
-pub mod byob;
 pub mod universal;
-pub mod ecosystem;
-pub mod os_layer;
+pub mod workload;
+// biomeOS integration is now handled as a primal through the ecosystem module
+// No longer need hard integration - biomeOS interacts as a primal like Songbird
 
 // Re-export core types
+pub use ecosystem::{
+    EcosystemConfig, EcosystemCoordinator, EcosystemMessage as EcosystemCoreMessage,
+    EcosystemMessageType as EcosystemCoreMessageType, PrimalChannel, PrimalClient, PrimalInstance,
+    PrimalStatus, PrimalType,
+};
 pub use error::*;
-pub use execution::*;
+pub use execution::{
+    CallbackConfig, CallbackEvent, ExecutionInput, ExecutionOutput, ExecutionRequest,
+    ExecutionResponse, ExecutionStatus, LoggingConfig, RuntimeCapabilities,
+    RuntimeConfig as ExecutionRuntimeConfig, RuntimeEngine, RuntimeType,
+};
+pub use os_layer::{
+    LegacyCompatibilityLayer, LinuxCompatibilityLayer, MacOSCompatibilityLayer,
+    ManagerCompatibilityLayer as CompatibilityLayer, OSLayerConfig, OSLayerManager,
+    PlatformInfo as OSPlatformInfo, WindowsCompatibilityLayer,
+};
 pub use resources::{
-    ResourceRequirements, CpuRequirements, MemoryRequirements, StorageRequirements, 
-    NetworkRequirements, GpuRequirements, RuntimeMetrics, ResourceMonitor, SystemResources,
-    ResourceLimits
+    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
+    ResourceMonitor, ResourceRequirements, RuntimeMetrics, StorageRequirements, SystemResources,
+    SystemResourceMonitor,
 };
 pub use runtime::*;
 pub use security::*;
-pub use workload::*;
 pub use universal::{
-    UniversalComputePlatform, UniversalPlatformConfig, UniversalJob, UniversalJobType,
-    UniversalScheduler, JobPriority, PlatformStatus, init_with_runtime_engines,
-    ResourceRequirements as UniversalResourceRequirements, SystemResources as UniversalSystemResources
+    init_with_runtime_engines, JobPriority, PlatformStatus,
+    SystemResources as UniversalSystemResources, UniversalComputePlatform, UniversalJob,
+    UniversalJobType, UniversalPlatformConfig, UniversalScheduler,
 };
-pub use ecosystem::*;
-pub use os_layer::{
-    OSLayerManager, OSLayerConfig, CompatibilityLayer, LinuxCompatibilityLayer,
-    WindowsCompatibilityLayer, MacOSCompatibilityLayer, LegacyCompatibilityLayer,
-    BiomeOrchestrator, BiomeOSConfig, BiomeDeployment, BiomeDeploymentStatus,
-    PlatformInfo as OSPlatformInfo
+pub use resources::ResourceRequirements as UniversalResourceRequirements;
+pub use workload::{
+    ExecutableSource, GpuArgument, GpuProgramSource, PortMapping as WorkloadPortMapping,
+    PortProtocol, PythonSource, RegistryAuth, VolumeMount, VolumeMountType, WasiConfig,
+    WasmModuleSource, WorkloadSpec, WorkloadType,
 };
+// biomeOS integration types are now available through the ecosystem primal interface
+// No longer need hard integration re-exports - biomeOS interacts as a primal
 
 // Re-export common utilities
 pub use toadstool_common::*;
@@ -84,7 +100,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Universal compute platform capabilities
 pub const UNIVERSAL_CAPABILITIES: &[&str] = &[
     "native_execution",
-    "wasm_execution", 
+    "wasm_execution",
     "universal_scheduling",
     "recursive_hosting",
     "os_layer_compatibility",
@@ -103,40 +119,43 @@ pub fn init() -> anyhow::Result<()> {
         .try_init()
         .map_err(|e| anyhow::anyhow!("Failed to initialize tracing: {}", e))?;
 
-    tracing::info!("🍄 ToadStool Universal Compute Platform v{} initialized", VERSION);
+    tracing::info!(
+        "🍄 ToadStool Universal Compute Platform v{} initialized",
+        VERSION
+    );
     tracing::info!("🌟 Capabilities: {:?}", UNIVERSAL_CAPABILITIES);
     tracing::info!("🚀 Ready for universal compute execution");
-    
+
     Ok(())
 }
 
 /// Initialize ToadStool with ecosystem integration
 pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
     init()?;
-    
+
     tracing::info!("🌐 Initializing ecosystem integration...");
-    
+
     // Create universal compute platform
     let platform = UniversalComputePlatform::new().await?;
-    
+
     // Discover and integrate with ecosystem primals
     platform.discover_ecosystem().await?;
-    
+
     tracing::info!("✅ ToadStool Universal Compute Platform ready with ecosystem integration");
-    
+
     Ok(platform)
 }
 
-/// Initialize ToadStool with biomeOS integration
+/// Initialize ToadStool with biomeOS as a primal (same as ecosystem init)
 pub async fn init_with_biomeos() -> anyhow::Result<UniversalComputePlatform> {
     init()?;
-    
-    tracing::info!("🌱 Initializing biomeOS integration...");
-    
-    // Create universal compute platform with biomeOS
-    let platform = UniversalComputePlatform::new_with_biomeos().await?;
-    
-    tracing::info!("✅ ToadStool ready as universal OS compute layer");
-    
+
+    tracing::info!("🌱 Initializing with biomeOS as primal...");
+
+    // biomeOS is now handled as a primal through the ecosystem
+    let platform = init_with_ecosystem().await?;
+
+    tracing::info!("✅ ToadStool ready with biomeOS primal integration");
+
     Ok(platform)
 }

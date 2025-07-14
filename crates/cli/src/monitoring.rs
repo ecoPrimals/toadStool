@@ -660,12 +660,20 @@ impl MetricsStore {
     }
 
     async fn cleanup_old_data(&mut self) {
-        let cutoff_time = Utc::now() - chrono::Duration::from_std(self.retention_period).unwrap();
-
-        for series in self.series.values_mut() {
-            series
-                .data_points
-                .retain(|point| point.timestamp > cutoff_time);
+        match chrono::Duration::from_std(self.retention_period) {
+            Ok(duration) => {
+                let cutoff_time = Utc::now() - duration;
+                
+                for series in self.series.values_mut() {
+                    series
+                        .data_points
+                        .retain(|point| point.timestamp > cutoff_time);
+                }
+            }
+            Err(_) => {
+                // If conversion fails, skip cleanup to avoid panic
+                tracing::warn!("Failed to convert retention period to chrono::Duration, skipping cleanup");
+            }
         }
     }
 }

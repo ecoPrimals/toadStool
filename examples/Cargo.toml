@@ -15,6 +15,14 @@ name = "basic_working_demo"
 path = "basic_working_demo.rs"
 
 [[bin]]
+name = "production_universal_demo"
+path = "production_universal_demo.rs"
+
+[[bin]]
+name = "performance_benchmark"
+path = "performance_benchmark.rs"
+
+[[bin]]
 name = "biomeos_substrate_demo"
 path = "biomeos_substrate_demo.rs"
 
@@ -55,6 +63,10 @@ name = "runtime_engines_demo"
 path = "runtime_engines_demo.rs"
 
 [[bin]]
+name = "simple_demo"
+path = "simple_demo.rs"
+
+[[bin]]
 name = "simplified_distributed_demo"
 path = "simplified_distributed_demo.rs"
 
@@ -79,6 +91,10 @@ name = "sprint5_zero_touch_demo"
 path = "sprint5_zero_touch_demo.rs"
 
 [[bin]]
+name = "squirrel_mcp_coordination_demo"
+path = "squirrel_mcp_coordination_demo.rs"
+
+[[bin]]
 name = "standalone_universal_compute"
 path = "standalone_universal_compute.rs"
 
@@ -89,6 +105,10 @@ path = "universal_compute_bridge_demo.rs"
 [[bin]]
 name = "universal_compute_demo"
 path = "universal_compute_demo.rs"
+
+[[bin]]
+name = "universal_compute_ecosystem_demo"
+path = "universal_compute_ecosystem_demo.rs"
 
 [[bin]]
 name = "universal_compute_platform_demo"
@@ -103,18 +123,15 @@ name = "universal_substrate_demonstration"
 path = "universal_substrate_demonstration.rs"
 
 [[bin]]
-name = "universal_compute_ecosystem_demo"
-path = "universal_compute_ecosystem_demo.rs"
-
-[[bin]]
-name = "simple_demo"
-path = "simple_demo.rs"
+name = "universal_platform_test"
+path = "universal_platform_test.rs"
 
 [dependencies]
 # Core ToadStool
 toadstool = { path = "../crates/core/toadstool" }
 toadstool-common = { path = "../crates/core/common" }
 toadstool-config = { path = "../crates/core/config" }
+# toadstool-auto-config = { path = "../crates/auto_config" }  # Temporarily excluded due to compilation issues
 
 # Pure Ecosystem Runtime Engines (no external dependencies)
 toadstool-runtime-native = { path = "../crates/runtime/native" }
@@ -158,10 +175,11 @@ colored = "2.0"
 # Networking (for ecosystem integration)
 reqwest = { workspace = true, features = ["json"] }
 tokio-tungstenite = "0.20"
-tonic = { version = "0.10", optional = true }
+# tonic = { version = "0.10", optional = true } # REMOVED: protobuf dependency
 
 [features]
 default = ["pure-ecosystem"]
 pure-ecosystem = []
-grpc = ["tonic"]
-full-ecosystem = ["grpc"] 
+# grpc = ["tonic"] # REMOVED: protobuf dependency
+# full-ecosystem = ["grpc"] # REMOVED: protobuf dependency
+full-ecosystem = ["pure-ecosystem"] 

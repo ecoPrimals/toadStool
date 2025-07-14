@@ -45,12 +45,20 @@ ocl = { version = "0.19", optional = true }
 # Universal intermediate representations
 spirv = { version = "0.3", optional = true }
 
+# CUDA support (NVIDIA-specific)
+cudarc = { version = "0.11", optional = true, features = ["cuda-12050"] }
+
+# Metal support (Apple-specific) - Not available on Linux, so commenting out for now
+# metal = { version = "0.25", optional = true }
+
 # JIT compilation and optimization (using compatible versions)
 cranelift-jit = { version = "0.100", optional = true }
 wasmtime = { version = "18", optional = true }
 
 [features]
-default = ["universal-basic", "webgpu", "opencl", "vulkan"]
+default = ["universal-basic"]
+# Advanced features (require additional setup)
+full = ["webgpu", "opencl", "vulkan", "cuda"]
 universal-basic = []
 universal-detection = []
 universal-optimized = []
@@ -58,8 +66,8 @@ webgpu = ["wgpu"]
 opencl = ["ocl"]
 vulkan = ["vulkano", "ash"]
 # Add missing features to fix cfg warnings
-cuda = []
-metal = []
+cuda = ["cudarc"]
+# metal = ["metal"] # Not available on Linux
 rocm = []
 directcompute = []
 spirv = ["dep:spirv"]

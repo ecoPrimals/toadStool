@@ -1,52 +1,50 @@
 [package]
 name = "toadstool-auto-config"
-version = "0.1.0"
-edition = "2021"
-description = "Intelligent auto-configuration and zero-touch setup for ToadStool"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Zero-touch auto-configuration system for ToadStool Universal Compute Platform"
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-# Core dependencies
-tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_yaml = "0.9"
-anyhow = "1.0"
-thiserror = "1.0"
-tracing = "0.1"
-uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-
-# System detection
-sysinfo = "0.30"
-hostname = "0.3"
-local-ip-address = "0.5"
-
-# Network discovery
-mdns = "3.0"
-reqwest = { version = "0.12", features = ["json"] }
-
-# Configuration
-config = "0.14"
-toml = "0.8"
-
-# Natural language processing
-regex = "1.0"
-once_cell = "1.19"
-
-# ToadStool dependencies
+# Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
+toadstool-config = { path = "../core/config" }
+
+# Workspace dependencies
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+futures = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+regex = "1.0"
+
+# System information
+sysinfo = { workspace = true }
+
+# Process management
+nix = { workspace = true }
 
 [dev-dependencies]
-tokio-test = "0.4"
-tempfile = "3.8"
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
 
 [features]
 default = []
-gpu-detection = ["opencl3"]
-advanced-nlp = []
-
-[dependencies.opencl3]
-version = "0.9"
-optional = true 
+gpu-support = []
+ml-optimization = []
+enterprise-features = [] 

@@ -2,7 +2,7 @@
 name = "toadstool-api"
 version = "0.1.0"
 edition = "2021"
-description = "Advanced API and interface layer for ToadStool"
+description = "Modern API and interface layer for ToadStool"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
@@ -12,41 +12,85 @@ toadstool-common = { path = "../core/common" }
 toadstool-management-monitoring = { path = "../management/monitoring" }
 toadstool-management-analytics = { path = "../management/analytics" }
 toadstool-distributed = { path = "../distributed" }
+toadstool-config = { path = "../core/config" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
 
-# Web framework
-axum = { version = "0.7", features = ["ws"] }
-tower = { version = "0.4", features = ["make"] }
-tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+# Modern web framework with middleware
+axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
+tower = { version = "0.4", features = ["make", "util", "timeout", "load-shed", "limit"] }
+tower-http = { version = "0.5", features = ["cors", "fs", "trace", "timeout", "validate-request", "compression-br", "compression-gzip", "auth"] }
 hyper = { version = "1.0", features = ["full"] }
 
-# Serialization
+# OpenAPI and documentation
+utoipa = { version = "4.0", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
+utoipa-redoc = { version = "3.0", features = ["axum"] }
+utoipa-rapidoc = { version = "3.0", features = ["axum"] }
+
+# Serialization with validation
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+validator = { version = "0.16", features = ["derive"] }
 
-# WebSocket support
+# WebSocket and real-time
 futures-util = "0.3"
+tokio-tungstenite = "0.20"
+
+# Authentication and security
+jsonwebtoken = "9.0"
+bcrypt = "0.15"
+argon2 = "0.5"
 
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
-# Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+# Database with migrations
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
 
-# CLI interface
-clap = { version = "4.0", features = ["derive"] }
+# CLI interface with better UX
+clap = { version = "4.0", features = ["derive", "color"] }
 console = "0.15"
 indicatif = "0.17"
+dialoguer = "0.11"
 
 # Utilities
 uuid = { version = "1.0", features = ["v4", "serde"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+num_cpus = "1.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.21"
+opentelemetry = "0.21"
 thiserror = "1.0"
 anyhow = "1.0"
 
-# Configuration
-config = "0.14" 
+# Configuration and environment
+config = "0.14"
+dotenvy = "0.15"
+
+# HTTP client for health checks
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# Metrics and monitoring
+prometheus = "0.13"
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+
+# Rate limiting
+# tower_governor = "0.0.4"
+# governor = "0.6"
+
+# Caching
+moka = { version = "0.12", features = ["future"] }
+
+# Template engine for dashboard
+askama = "0.12"
+askama_axum = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+axum-test = "14.0"
+wiremock = "0.5"
+tempfile = "3.8" 

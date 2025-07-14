@@ -48,6 +48,9 @@ pub mod network {
     /// Default NestGate port
     pub const DEFAULT_NESTGATE_PORT: u16 = 8083;
     
+    /// Default bootstrap URL for federation
+    pub const DEFAULT_BOOTSTRAP_URL: &str = "http://bootstrap.toadstool.org";
+    
     /// Default localhost address
     pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
     

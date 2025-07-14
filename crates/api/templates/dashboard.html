@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToadStool Universal Compute Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h3 {
+            color: #2d3748;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-icon {
+            width: 20px;
+            height: 20px;
+            opacity: 0.7;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .metric-label {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .status-healthy { color: #38a169; }
+        .status-warning { color: #d69e2e; }
+        .status-error { color: #e53e3e; }
+        .status-info { color: #3182ce; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #38a169, #68d391);
+            transition: width 0.3s ease;
+        }
+
+        .events-container {
+            grid-column: 1 / -1;
+            max-height: 400px;
+        }
+
+        .events-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+
+        .event-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-timestamp {
+            color: #718096;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .event-type {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .event-execution { background: #e6fffa; color: #00a3c4; }
+        .event-cluster { background: #f0fff4; color: #38a169; }
+        .event-alert { background: #fed7d7; color: #e53e3e; }
+        .event-system { background: #ebf8ff; color: #3182ce; }
+
+        .connection-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .connection-connected {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .connection-disconnected {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .connection-connecting {
+            background: #fef5e7;
+            color: #d69e2e;
+        }
+
+        .refresh-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .refresh-button:hover {
+            transform: scale(1.05);
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        <span id="connectionText">Connecting...</span>
+    </div>
+
+    <header class="header">
+        <h1>🍄 ToadStool Universal Compute Platform</h1>
+        <div class="subtitle">Real-time monitoring and management dashboard</div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>
+                    <span class="card-icon">🖥️</span>
+                    Cluster Status
+                </h3>
+                <div class="metric">
+                    <span class="metric-label">Total Nodes</span>
+                    <span class="metric-value status-info" id="totalNodes">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Healthy Nodes</span>
+                    <span class="metric-value status-healthy" id="healthyNodes">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Cluster Load</span>
+                    <span class="metric-value" id="clusterLoad">-</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="loadProgress" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>
+                    <span class="card-icon">⚡</span>
+                    Executions
+                </h3>
+                <div class="metric">
+                    <span class="metric-label">Active</span>
+                    <span class="metric-value status-info" id="activeExecutions">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Queued</span>
+                    <span class="metric-value status-warning" id="queuedExecutions">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Completed Today</span>
+                    <span class="metric-value status-healthy" id="completedToday">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value" id="successRate">-</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>
+                    <span class="card-icon">📊</span>
+                    Performance
+                </h3>
+                <div class="metric">
+                    <span class="metric-label">Avg Response Time</span>
+                    <span class="metric-value" id="avgResponseTime">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Requests/min</span>
+                    <span class="metric-value" id="requestsPerMin">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">CPU Usage</span>
+                    <span class="metric-value" id="cpuUsage">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Memory Usage</span>
+                    <span class="metric-value" id="memoryUsage">-</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>
+                    <span class="card-icon">🔧</span>
+                    System Health
+                </h3>
+                <div class="metric">
+                    <span class="metric-label">API Status</span>
+                    <span class="metric-value status-healthy" id="apiStatus">Healthy</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Database</span>
+                    <span class="metric-value status-healthy" id="dbStatus">Connected</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">WebSocket</span>
+                    <span class="metric-value" id="wsStatus">Connected</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Uptime</span>
+                    <span class="metric-value" id="uptime">-</span>
+                </div>
+            </div>
+
+            <div class="card events-container">
+                <h3>
+                    <span class="card-icon">📡</span>
+                    Real-time Events
+                </h3>
+                <div class="events-list" id="eventsList">
+                    <div class="event-item">
+                        <span class="event-timestamp">--:--:--</span>
+                        <span class="event-type event-system">SYSTEM</span>
+                        <span>Dashboard initialized</span>
+                    </div>
+                </div>
+                <button class="refresh-button" onclick="refreshData()">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        const reconnectDelay = 3000;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+            refreshData();
+            setInterval(refreshData, 30000); // Refresh every 30 seconds
+        });
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            updateConnectionStatus('connecting');
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket connected');
+                updateConnectionStatus('connected');
+                reconnectAttempts = 0;
+                
+                // Subscribe to all event types
+                ws.send(JSON.stringify({
+                    type: 'Subscribe',
+                    data: {
+                        event_types: ['execution', 'cluster', 'alert', 'system']
+                    }
+                }));
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleWebSocketMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse WebSocket message:', e);
+                }
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus('disconnected');
+                
+                // Attempt to reconnect
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, reconnectDelay);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus('disconnected');
+            };
+        }
+
+        function handleWebSocketMessage(message) {
+            console.log('Received WebSocket message:', message);
+            
+            switch (message.type) {
+                case 'Event':
+                    addEvent(message.data.event);
+                    break;
+                case 'Connected':
+                    console.log('Connection acknowledged:', message.data.connection_id);
+                    break;
+                case 'Pong':
+                    console.log('Received pong');
+                    break;
+                case 'Error':
+                    console.error('WebSocket error:', message.data);
+                    break;
+            }
+        }
+
+        function addEvent(event) {
+            const eventsList = document.getElementById('eventsList');
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let eventType = 'system';
+            let eventText = 'Unknown event';
+            
+            // Parse event based on type
+            if (event.ExecutionStarted) {
+                eventType = 'execution';
+                eventText = `Execution ${event.ExecutionStarted.execution_id} started`;
+            } else if (event.ExecutionCompleted) {
+                eventType = 'execution';
+                eventText = `Execution ${event.ExecutionCompleted.execution_id} completed (${event.ExecutionCompleted.status})`;
+            } else if (event.ClusterNodeAdded) {
+                eventType = 'cluster';
+                eventText = `Node ${event.ClusterNodeAdded.node_id} added to cluster`;
+            } else if (event.AlertTriggered) {
+                eventType = 'alert';
+                eventText = `Alert: ${event.AlertTriggered.message}`;
+            }
+            
+            eventItem.innerHTML = `
+                <span class="event-timestamp">${timestamp}</span>
+                <span class="event-type event-${eventType}">${eventType.toUpperCase()}</span>
+                <span>${eventText}</span>
+            `;
+            
+            eventsList.insertBefore(eventItem, eventsList.firstChild);
+            
+            // Keep only last 50 events
+            while (eventsList.children.length > 50) {
+                eventsList.removeChild(eventsList.lastChild);
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            const textElement = document.getElementById('connectionText');
+            
+            statusElement.className = `connection-status connection-${status}`;
+            
+            switch (status) {
+                case 'connected':
+                    textElement.textContent = '🟢 Connected';
+                    break;
+                case 'connecting':
+                    textElement.textContent = '🟡 Connecting...';
+                    break;
+                case 'disconnected':
+                    textElement.textContent = '🔴 Disconnected';
+                    break;
+            }
+        }
+
+        async function refreshData() {
+            try {
+                // Fetch cluster status
+                const clusterResponse = await fetch('/api/v2/cluster/status');
+                if (clusterResponse.ok) {
+                    const clusterData = await clusterResponse.json();
+                    updateClusterData(clusterData);
+                }
+                
+                // Fetch API metrics
+                const metricsResponse = await fetch('/api/v2/metrics');
+                if (metricsResponse.ok) {
+                    const metricsData = await metricsResponse.json();
+                    updateMetricsData(metricsData);
+                }
+                
+                // Fetch health status
+                const healthResponse = await fetch('/api/v2/health');
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    updateHealthData(healthData);
+                }
+                
+            } catch (error) {
+                console.error('Failed to refresh data:', error);
+            }
+        }
+
+        function updateClusterData(data) {
+            document.getElementById('totalNodes').textContent = data.total_nodes;
+            document.getElementById('healthyNodes').textContent = data.healthy_nodes;
+            document.getElementById('clusterLoad').textContent = `${data.cluster_load}%`;
+            document.getElementById('activeExecutions').textContent = data.active_executions;
+            document.getElementById('queuedExecutions').textContent = data.queued_executions;
+            
+            // Update progress bar
+            document.getElementById('loadProgress').style.width = `${data.cluster_load}%`;
+        }
+
+        function updateMetricsData(data) {
+            document.getElementById('avgResponseTime').textContent = `${data.average_response_time_ms.toFixed(1)}ms`;
+            document.getElementById('requestsPerMin').textContent = Math.round(data.total_requests / (data.uptime_seconds / 60));
+            document.getElementById('completedToday').textContent = data.successful_requests;
+            
+            const successRate = data.total_requests > 0 ? 
+                ((data.successful_requests / data.total_requests) * 100).toFixed(1) : 0;
+            document.getElementById('successRate').textContent = `${successRate}%`;
+        }
+
+        function updateHealthData(data) {
+            document.getElementById('apiStatus').textContent = data.status;
+            document.getElementById('uptime').textContent = formatUptime(data.uptime_seconds);
+            
+            // Update WebSocket status
+            const wsStatusElement = document.getElementById('wsStatus');
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                wsStatusElement.textContent = 'Connected';
+                wsStatusElement.className = 'metric-value status-healthy';
+            } else {
+                wsStatusElement.textContent = 'Disconnected';
+                wsStatusElement.className = 'metric-value status-error';
+            }
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) {
+                return `${days}d ${hours}h ${minutes}m`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        }
+
+        // Mock data for demonstration
+        function generateMockData() {
+            document.getElementById('cpuUsage').textContent = `${Math.floor(Math.random() * 40 + 20)}%`;
+            document.getElementById('memoryUsage').textContent = `${Math.floor(Math.random() * 30 + 40)}%`;
+        }
+
+        // Generate mock data every 5 seconds
+        setInterval(generateMockData, 5000);
+        generateMockData();
+    </script>
+</body>
+</html> 

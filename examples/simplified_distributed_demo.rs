@@ -7,10 +7,16 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use std::path::PathBuf;
+use std::collections::HashMap;
 
-use toadstool::execution::{RuntimeType, ExecutionRequest, ExecutionInput};
-use toadstool::workload::{WorkloadSpec, WorkloadType, ExecutableSource};
-use toadstool_distributed::{DistributedConfig, StandaloneConfig, SongbirdConfig, DistributedCoordinator};
+use uuid::Uuid;
+
+use toadstool::execution::{ExecutionInput, ExecutionRequest, RuntimeType, ResourceRequirements, SecurityContext};
+use toadstool::workload::{ExecutableSource, WorkloadSpec, WorkloadType};
+use toadstool_distributed::{
+    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating standalone ToadStool instance...");
-    
+
     // Create standalone configuration
     let config = DistributedConfig {
         instance_id: "toadstool-standalone".to_string(),
@@ -59,7 +65,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
 
     // Submit some test executions
     println!("Submitting test executions...");
-    
+
     let executions = vec![
         ("Hello World Script", "echo 'Hello from ToadStool!'"),
         ("Simple Math", "echo $((2 + 3))"),
@@ -67,14 +73,25 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
     ];
 
     for (name, code) in executions {
-        let request = ExecutionRequest::new(
-            RuntimeType::Native,
-            WorkloadSpec::new(
-                WorkloadType::Script,
-                ExecutableSource::Code(code.to_string()),
-                ExecutionInput::None,
-            ),
-        );
+        let request = ExecutionRequest {
+            execution_id: Uuid::new_v4(),
+            workload: WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: PathBuf::from("echo"),
+                },
+                args: Some(vec!["Hello from ToadStool!".to_string()]),
+                working_dir: None,
+                env_vars: HashMap::new(),
+                user: None,
+            },
+            runtime_hint: Some(RuntimeType::Native),
+            resources: ResourceRequirements::default(),
+            security_context: SecurityContext::default(),
+            timeout: Some(Duration::from_secs(30)),
+            environment: HashMap::new(),
+            input_data: ExecutionInput::default(),
+            callback_config: None,
+        };
 
         let execution_id = coordinator.submit_execution(request).await?;
         println!("✓ Submitted execution '{}': {}", name, execution_id);
@@ -89,7 +106,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
 
 async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating ToadStool instance with Songbird integration...");
-    
+
     // Create configuration with Songbird integration
     let config = DistributedConfig {
         instance_id: "toadstool-songbird-integrated".to_string(),
@@ -108,9 +125,9 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
 
     // Create and start coordinator
     let coordinator = Arc::new(DistributedCoordinator::new(config).await?);
-    
+
     println!("✓ Coordinator with Songbird integration created");
-    
+
     // Note: In a real scenario, this would register with Songbird
     // For demo purposes, we'll simulate the integration
     println!("📡 Would register with Songbird at http://localhost:8080");
@@ -120,12 +137,22 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     // Show the capabilities that would be reported
     let capabilities = coordinator.get_capabilities().await;
     println!("🏷️  Capabilities to report:");
-    println!("   - Execution Environments: {:?}", capabilities.execution_environments);
-    println!("   - Supported Runtimes: {:?}", capabilities.supported_runtimes);
-    println!("   - Platform: {} ({})", 
-             capabilities.platform_capabilities.os,
-             capabilities.platform_capabilities.architecture);
-    println!("   - CPU Cores: {}", capabilities.platform_capabilities.cpu_cores);
+    println!(
+        "   - Execution Environments: {:?}",
+        capabilities.execution_environments
+    );
+    println!(
+        "   - Supported Runtimes: {:?}",
+        capabilities.supported_runtimes
+    );
+    println!(
+        "   - Platform: {} ({})",
+        capabilities.platform_capabilities.os, capabilities.platform_capabilities.architecture
+    );
+    println!(
+        "   - CPU Cores: {}",
+        capabilities.platform_capabilities.cpu_cores
+    );
 
     // Simulate receiving a request from Songbird
     println!("\n🔄 Simulating request from Songbird...");
@@ -149,7 +176,7 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
 
 async fn compare_architectures() -> Result<(), Box<dyn std::error::Error>> {
     println!("Comparing ToadStool architectures:");
-    
+
     println!("\n❌ OLD ARCHITECTURE (Complex, Duplicated):");
     println!("   ┌─────────────────────────────────────┐");
     println!("   │ ToadStool Instance                  │");
@@ -196,4 +223,4 @@ async fn compare_architectures() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Reduction: ~90% less complexity!");
 
     Ok(())
-} 
+}

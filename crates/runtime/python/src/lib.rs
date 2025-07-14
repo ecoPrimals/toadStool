@@ -1,5 +1,5 @@
 //! Python runtime implementation for toadStool
-//! 
+//!
 //! This module provides Python execution capabilities through subprocess execution.
 //! PyO3 embedded execution is disabled due to compatibility issues.
 
@@ -10,19 +10,15 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::process::Command as TokioCommand;
-use std::process::Stdio;
 use tokio::sync::RwLock;
-use tokio::time::timeout;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
-    ExecutionInput, ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus,
-    IsolationLevel, ResourceMonitor, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
-    RuntimeMetrics, RuntimeType, SecurityContext, ToadStoolError, ToadStoolResult, WorkloadSpec,
-    WorkloadType,
-    resources::{CpuMetrics, MemoryMetrics, StorageMetrics, NetworkMetrics, TimingMetrics},
+    resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, StorageMetrics, TimingMetrics},
+    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionRuntimeConfig, ExecutionStatus,
+    ResourceMonitor, RuntimeCapabilities, RuntimeEngine, RuntimeMetrics, RuntimeType,
+    ToadStoolResult, WorkloadType,
 };
 
 /// Python runtime configuration
@@ -55,7 +51,7 @@ impl Default for PythonRuntimeConfig {
 /// Python runtime engine (subprocess only)
 pub struct PythonRuntimeEngine {
     config: PythonRuntimeConfig,
-    runtime_config: RuntimeConfig,
+    runtime_config: ExecutionRuntimeConfig,
     active_executions: Arc<RwLock<HashMap<Uuid, Instant>>>,
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
     capabilities: RuntimeCapabilities,
@@ -67,7 +63,10 @@ impl std::fmt::Debug for PythonRuntimeEngine {
             .field("config", &self.config)
             .field("runtime_config", &self.runtime_config)
             .field("active_executions", &self.active_executions)
-            .field("resource_monitor", &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"))
+            .field(
+                "resource_monitor",
+                &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"),
+            )
             .field("capabilities", &self.capabilities)
             .finish()
     }
@@ -91,7 +90,7 @@ impl PythonRuntimeEngine {
 
         Ok(Self {
             config,
-            runtime_config: RuntimeConfig::default(),
+            runtime_config: ExecutionRuntimeConfig::default(),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             resource_monitor: None,
             capabilities,
@@ -107,10 +106,10 @@ impl PythonRuntimeEngine {
 
 #[async_trait]
 impl RuntimeEngine for PythonRuntimeEngine {
-    async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()> {
+    async fn initialize(&mut self, config: ExecutionRuntimeConfig) -> ToadStoolResult<()> {
         info!("Initializing Python runtime engine");
         self.runtime_config = config;
-        
+
         // Verify Python interpreter is available
         let test_result = std::process::Command::new(&self.config.interpreter_path)
             .arg("--version")
@@ -131,10 +130,10 @@ impl RuntimeEngine for PythonRuntimeEngine {
 
     async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
         info!("Executing Python workload: {:?}", request.execution_id);
-        
+
         // For now, return a simple success response
         // Full implementation would handle subprocess execution
-        
+
         Ok(ExecutionResponse {
             execution_id: request.execution_id,
             status: ExecutionStatus::Success,
@@ -155,8 +154,8 @@ impl RuntimeEngine for PythonRuntimeEngine {
     }
 
     async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        let active_count = self.active_executions.read().await.len();
-        
+        let _active_count = self.active_executions.read().await.len();
+
         Ok(RuntimeMetrics {
             cpu: CpuMetrics::default(),
             memory: MemoryMetrics::default(),
@@ -183,12 +182,11 @@ impl Default for PythonRuntimeEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool::{ResourceRequirements, WorkloadSpec};
 
     #[tokio::test]
     async fn test_engine_initialization() {
         let mut engine = PythonRuntimeEngine::new().unwrap();
-        let result = engine.initialize(RuntimeConfig::default()).await;
+        let result = engine.initialize(ExecutionRuntimeConfig::default()).await;
         assert!(result.is_ok());
     }
 
@@ -198,4 +196,4 @@ mod tests {
         let caps = engine.get_capabilities();
         assert!(caps.supported_workloads.contains(&WorkloadType::Python));
     }
-} 
+}

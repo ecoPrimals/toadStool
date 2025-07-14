@@ -1,11 +1,11 @@
 //! # ToadStool Ecosystem Massive Job Distribution Demo
-//! 
+//!
 //! This demo showcases how ToadStool works within the broader ecosystem:
 //! - 🎼 Songbird handles orchestration/load balancing/discovery/broadcasting
 //! - 🍄 ToadStool handles universal compute execution
 //! - 🏠 NestGate handles smart storage with ZFS behaviors
 //! - 🐻 BearDog handles encryption and security management
-//! 
+//!
 //! When ultra-massive jobs drop, ToadStool breaks them up and sends them
 //! via Songbird to hundreds of nodes across the federation.
 
@@ -13,52 +13,52 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use tokio::time::sleep;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use toadstool::distributed::{
-    SongbirdIntegration, SongbirdIntegrationConfig, SongbirdConnectionConfig,
-    DistributionConfig, DiscoveryConfig, LoadBalancerConfig, BroadcastConfig,
-    CapacityConfig, ReceiverConfig, SongbirdProtocolConfig, SongbirdProtocol,
-    AuthConfig, AuthType, UniversalJob, UniversalJobType, ResourceRequirements,
-    CPURequirements, MemoryRequirements, StorageRequirements, 
-    JobComplexity, MassiveJobResult, NodeType, NetworkStatus,
+    AuthConfig, AuthType, BroadcastConfig, CPURequirements, CapacityConfig, DiscoveryConfig,
+    DistributionConfig, JobComplexity, LoadBalancerConfig, MassiveJobResult, MemoryRequirements,
+    NetworkStatus, NodeType, ReceiverConfig, ResourceRequirements, SongbirdConnectionConfig,
+    SongbirdIntegration, SongbirdIntegrationConfig, SongbirdProtocol, SongbirdProtocolConfig,
+    StorageRequirements, UniversalJob, UniversalJobType,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt::init();
-    
+
     info!("🚀 Starting ToadStool Ecosystem Massive Job Distribution Demo");
     info!("🎼 Songbird: Universal orchestration, load balancing, discovery, broadcasting");
     info!("🍄 ToadStool: Universal compute execution engine");
     info!("🏠 NestGate: Smart storage with ZFS behaviors");
     info!("🐻 BearDog: Encryption and security management");
-    
+
     // Initialize ToadStool-Songbird integration
     let songbird_integration = initialize_songbird_integration().await?;
-    
+
     // Register ToadStool with Songbird network
     register_with_ecosystem(&songbird_integration).await?;
-    
+
     // Start job receiver for Songbird-distributed work
     start_job_receiver(&songbird_integration).await?;
-    
+
     // Simulate various massive job scenarios
     simulate_massive_job_scenarios(&songbird_integration).await?;
-    
+
     // Demonstrate ecosystem network effects
     demonstrate_network_effects(&songbird_integration).await?;
-    
+
     info!("🎉 Demo completed successfully!");
     Ok(())
 }
 
 /// Initialize Songbird integration with ToadStool
-async fn initialize_songbird_integration() -> Result<SongbirdIntegration, Box<dyn std::error::Error>> {
+async fn initialize_songbird_integration() -> Result<SongbirdIntegration, Box<dyn std::error::Error>>
+{
     info!("🔧 Initializing ToadStool-Songbird integration");
-    
+
     let config = SongbirdIntegrationConfig {
         connection_config: SongbirdConnectionConfig {
             endpoints: vec![
@@ -75,7 +75,10 @@ async fn initialize_songbird_integration() -> Result<SongbirdIntegration, Box<dy
             auth_config: AuthConfig {
                 auth_type: AuthType::BearDogAuth, // Using BearDog for security
                 credentials: HashMap::from([
-                    ("bearer_token".to_string(), "toadstool-bearer-token".to_string()),
+                    (
+                        "bearer_token".to_string(),
+                        "toadstool-bearer-token".to_string(),
+                    ),
                     ("node_id".to_string(), "toadstool-node-001".to_string()),
                 ]),
             },
@@ -115,31 +118,35 @@ async fn initialize_songbird_integration() -> Result<SongbirdIntegration, Box<dy
             job_timeout: Duration::from_hours(24),
         },
     };
-    
+
     let integration = SongbirdIntegration::new(config).await?;
-    
+
     info!("✅ ToadStool-Songbird integration initialized successfully");
     Ok(integration)
 }
 
 /// Register ToadStool with the ecosystem
-async fn register_with_ecosystem(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn register_with_ecosystem(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("📡 Registering ToadStool with Songbird ecosystem");
-    
+
     // Register with Songbird
     integration.register_with_songbird().await?;
-    
+
     // Broadcast initial capability update
     integration.broadcast_capability_update().await?;
-    
+
     info!("🌐 ToadStool successfully registered with ecosystem");
     Ok(())
 }
 
 /// Start job receiver for Songbird work
-async fn start_job_receiver(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn start_job_receiver(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("👂 Starting job receiver for Songbird-distributed work");
-    
+
     // Start job receiver in background
     let integration_clone = integration.clone();
     tokio::spawn(async move {
@@ -147,41 +154,45 @@ async fn start_job_receiver(integration: &SongbirdIntegration) -> Result<(), Box
             error!("Job receiver error: {}", e);
         }
     });
-    
+
     // Give it a moment to start
     sleep(Duration::from_secs(1)).await;
-    
+
     info!("✅ Job receiver started successfully");
     Ok(())
 }
 
 /// Simulate various massive job scenarios
-async fn simulate_massive_job_scenarios(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_massive_job_scenarios(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🎯 Simulating massive job scenarios");
-    
+
     // Scenario 1: Ultra-massive ML training job
     simulate_ml_training_job(integration).await?;
-    
+
     // Scenario 2: Planetary-scale data processing
     simulate_data_processing_job(integration).await?;
-    
+
     // Scenario 3: Massive simulation workload
     simulate_simulation_job(integration).await?;
-    
+
     // Scenario 4: Global rendering farm
     simulate_rendering_job(integration).await?;
-    
+
     // Scenario 5: Scientific computing cluster
     simulate_scientific_computing_job(integration).await?;
-    
+
     info!("🎉 All massive job scenarios completed");
     Ok(())
 }
 
 /// Simulate ultra-massive ML training job
-async fn simulate_ml_training_job(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_ml_training_job(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🤖 Simulating ultra-massive ML training job");
-    
+
     let job = UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: UniversalJobType::EcosystemTool {
@@ -191,7 +202,10 @@ async fn simulate_ml_training_job(integration: &SongbirdIntegration) -> Result<(
                 ("model_type".to_string(), "transformer".to_string()),
                 ("dataset_size".to_string(), "1TB".to_string()),
                 ("training_steps".to_string(), "1000000".to_string()),
-                ("distributed_strategy".to_string(), "data_parallel".to_string()),
+                (
+                    "distributed_strategy".to_string(),
+                    "data_parallel".to_string(),
+                ),
             ]),
         },
         resource_requirements: ResourceRequirements {
@@ -226,53 +240,79 @@ async fn simulate_ml_training_job(integration: &SongbirdIntegration) -> Result<(
             ("estimated_cost".to_string(), "$100000".to_string()),
         ]),
     };
-    
+
     info!("📊 ML Training Job Requirements:");
-    info!("   - CPU: {} cores", job.resource_requirements.cpu.min_cores);
-    info!("   - Memory: {:.1} TB", job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - Storage: {:.1} TB", job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0);
+    info!(
+        "   - CPU: {} cores",
+        job.resource_requirements.cpu.min_cores
+    );
+    info!(
+        "   - Memory: {:.1} TB",
+        job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - Storage: {:.1} TB",
+        job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0
+    );
     info!("   - GPUs: {}", job.resource_requirements.gpu.unwrap_or(0));
-    
+
     // Process the massive job
     let result = integration.process_massive_job(job).await?;
-    
+
     match result {
         MassiveJobResult::Local { result } => {
             info!("⚠️  ML job executed locally (unexpected for this size)");
         }
-        MassiveJobResult::Distributed { 
-            original_job_id, 
-            subtask_handles, 
-            coordination_job, 
-            distribution_plan 
+        MassiveJobResult::Distributed {
+            original_job_id,
+            subtask_handles,
+            coordination_job,
+            distribution_plan,
         } => {
             info!("🌐 ML job distributed via Songbird:");
             info!("   - Original job ID: {}", original_job_id);
             info!("   - Subtasks created: {}", subtask_handles.len());
-            info!("   - Target nodes: {}", distribution_plan.target_nodes.len());
+            info!(
+                "   - Target nodes: {}",
+                distribution_plan.target_nodes.len()
+            );
             info!("   - Coordination job: {}", coordination_job.job_id);
             info!("   - Expected completion: Thousands of nodes working in parallel");
         }
     }
-    
+
     info!("✅ ML training job processed successfully");
     Ok(())
 }
 
 /// Simulate planetary-scale data processing job
-async fn simulate_data_processing_job(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_data_processing_job(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🌍 Simulating planetary-scale data processing job");
-    
+
     let job = UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: UniversalJobType::EcosystemTool {
             tool_name: "data_processing".to_string(),
             tool_version: "2.0.0".to_string(),
             parameters: HashMap::from([
-                ("data_source".to_string(), "global_sensor_network".to_string()),
-                ("processing_type".to_string(), "real_time_analytics".to_string()),
-                ("output_format".to_string(), "structured_insights".to_string()),
-                ("geographic_distribution".to_string(), "worldwide".to_string()),
+                (
+                    "data_source".to_string(),
+                    "global_sensor_network".to_string(),
+                ),
+                (
+                    "processing_type".to_string(),
+                    "real_time_analytics".to_string(),
+                ),
+                (
+                    "output_format".to_string(),
+                    "structured_insights".to_string(),
+                ),
+                (
+                    "geographic_distribution".to_string(),
+                    "worldwide".to_string(),
+                ),
             ]),
         },
         resource_requirements: ResourceRequirements {
@@ -307,26 +347,41 @@ async fn simulate_data_processing_job(integration: &SongbirdIntegration) -> Resu
             ("geographic_scope".to_string(), "worldwide".to_string()),
         ]),
     };
-    
+
     info!("📊 Data Processing Job Requirements:");
-    info!("   - CPU: {} cores", job.resource_requirements.cpu.min_cores);
-    info!("   - Memory: {:.1} TB", job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - Storage: {:.1} TB", job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0);
+    info!(
+        "   - CPU: {} cores",
+        job.resource_requirements.cpu.min_cores
+    );
+    info!(
+        "   - Memory: {:.1} TB",
+        job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - Storage: {:.1} TB",
+        job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0
+    );
     info!("   - Network: Ultra high bandwidth required");
     info!("   - Special: Requires NestGate integration");
-    
+
     let result = integration.process_massive_job(job).await?;
-    
+
     match result {
-        MassiveJobResult::Distributed { 
-            original_job_id, 
-            subtask_handles, 
-            coordination_job, 
-            distribution_plan 
+        MassiveJobResult::Distributed {
+            original_job_id,
+            subtask_handles,
+            coordination_job,
+            distribution_plan,
         } => {
             info!("🌐 Data processing job distributed globally:");
-            info!("   - Subtasks: {} (distributed across continents)", subtask_handles.len());
-            info!("   - Geographic distribution: {} regions", distribution_plan.target_nodes.len());
+            info!(
+                "   - Subtasks: {} (distributed across continents)",
+                subtask_handles.len()
+            );
+            info!(
+                "   - Geographic distribution: {} regions",
+                distribution_plan.target_nodes.len()
+            );
             info!("   - NestGate nodes: Integrated for distributed storage");
             info!("   - Real-time processing: Enabled across the network");
         }
@@ -334,25 +389,33 @@ async fn simulate_data_processing_job(integration: &SongbirdIntegration) -> Resu
             warn!("⚠️  Unexpected result for planetary-scale job");
         }
     }
-    
+
     info!("✅ Data processing job distributed successfully");
     Ok(())
 }
 
 /// Simulate massive simulation job
-async fn simulate_simulation_job(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_simulation_job(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🧪 Simulating massive scientific simulation job");
-    
+
     let job = UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: UniversalJobType::EcosystemTool {
             tool_name: "scientific_simulation".to_string(),
             tool_version: "3.0.0".to_string(),
             parameters: HashMap::from([
-                ("simulation_type".to_string(), "climate_modeling".to_string()),
+                (
+                    "simulation_type".to_string(),
+                    "climate_modeling".to_string(),
+                ),
                 ("time_span".to_string(), "100_years".to_string()),
                 ("resolution".to_string(), "1km_global".to_string()),
-                ("parameter_sweep".to_string(), "monte_carlo_1000".to_string()),
+                (
+                    "parameter_sweep".to_string(),
+                    "monte_carlo_1000".to_string(),
+                ),
             ]),
         },
         resource_requirements: ResourceRequirements {
@@ -384,30 +447,48 @@ async fn simulate_simulation_job(integration: &SongbirdIntegration) -> Result<()
         deadline: Some(chrono::Utc::now() + chrono::Duration::weeks(2)),
         metadata: HashMap::from([
             ("project".to_string(), "climate_research".to_string()),
-            ("institution".to_string(), "global_climate_consortium".to_string()),
+            (
+                "institution".to_string(),
+                "global_climate_consortium".to_string(),
+            ),
             ("funding".to_string(), "nsf_grant_12345".to_string()),
         ]),
     };
-    
+
     info!("📊 Scientific Simulation Job Requirements:");
-    info!("   - CPU: {} cores (HPC-class)", job.resource_requirements.cpu.min_cores);
-    info!("   - Memory: {:.1} TB", job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - Storage: {:.1} PB", job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000_000.0);
+    info!(
+        "   - CPU: {} cores (HPC-class)",
+        job.resource_requirements.cpu.min_cores
+    );
+    info!(
+        "   - Memory: {:.1} TB",
+        job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - Storage: {:.1} PB",
+        job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000_000.0
+    );
     info!("   - GPUs: {}", job.resource_requirements.gpu.unwrap_or(0));
     info!("   - Network: HPC interconnect required");
-    
+
     let result = integration.process_massive_job(job).await?;
-    
+
     match result {
-        MassiveJobResult::Distributed { 
-            original_job_id, 
-            subtask_handles, 
-            coordination_job, 
-            distribution_plan 
+        MassiveJobResult::Distributed {
+            original_job_id,
+            subtask_handles,
+            coordination_job,
+            distribution_plan,
         } => {
             info!("🌐 Scientific simulation distributed:");
-            info!("   - Parameter sweep: {} parallel simulations", subtask_handles.len());
-            info!("   - HPC clusters: {} supercomputing centers", distribution_plan.target_nodes.len());
+            info!(
+                "   - Parameter sweep: {} parallel simulations",
+                subtask_handles.len()
+            );
+            info!(
+                "   - HPC clusters: {} supercomputing centers",
+                distribution_plan.target_nodes.len()
+            );
             info!("   - Estimated completion: 2 weeks on global HPC network");
             info!("   - Data management: Coordinated via NestGate parallel filesystem");
         }
@@ -415,15 +496,17 @@ async fn simulate_simulation_job(integration: &SongbirdIntegration) -> Result<()
             warn!("⚠️  Unexpected result for massive simulation");
         }
     }
-    
+
     info!("✅ Scientific simulation job distributed successfully");
     Ok(())
 }
 
 /// Simulate massive rendering job
-async fn simulate_rendering_job(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_rendering_job(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🎬 Simulating massive rendering farm job");
-    
+
     let job = UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: UniversalJobType::EcosystemTool {
@@ -470,27 +553,45 @@ async fn simulate_rendering_job(integration: &SongbirdIntegration) -> Result<(),
             ("deadline_critical".to_string(), "true".to_string()),
         ]),
     };
-    
+
     info!("📊 Rendering Job Requirements:");
     info!("   - Frames: 250,000 (8K HDR)");
-    info!("   - CPU: {} cores", job.resource_requirements.cpu.min_cores);
-    info!("   - Memory: {:.1} TB", job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - Storage: {:.1} TB", job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - GPUs: {} (Massive render farm)", job.resource_requirements.gpu.unwrap_or(0));
+    info!(
+        "   - CPU: {} cores",
+        job.resource_requirements.cpu.min_cores
+    );
+    info!(
+        "   - Memory: {:.1} TB",
+        job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - Storage: {:.1} TB",
+        job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - GPUs: {} (Massive render farm)",
+        job.resource_requirements.gpu.unwrap_or(0)
+    );
     info!("   - Deadline: 72 hours");
-    
+
     let result = integration.process_massive_job(job).await?;
-    
+
     match result {
-        MassiveJobResult::Distributed { 
-            original_job_id, 
-            subtask_handles, 
-            coordination_job, 
-            distribution_plan 
+        MassiveJobResult::Distributed {
+            original_job_id,
+            subtask_handles,
+            coordination_job,
+            distribution_plan,
         } => {
             info!("🌐 Rendering job distributed globally:");
-            info!("   - Frame batches: {} (distributed across render farms)", subtask_handles.len());
-            info!("   - Render farms: {} worldwide", distribution_plan.target_nodes.len());
+            info!(
+                "   - Frame batches: {} (distributed across render farms)",
+                subtask_handles.len()
+            );
+            info!(
+                "   - Render farms: {} worldwide",
+                distribution_plan.target_nodes.len()
+            );
             info!("   - GPU acceleration: Enabled across global network");
             info!("   - Content delivery: Integrated for rapid distribution");
             info!("   - Estimated completion: 72 hours on global render network");
@@ -499,24 +600,35 @@ async fn simulate_rendering_job(integration: &SongbirdIntegration) -> Result<(),
             warn!("⚠️  Unexpected result for rendering job");
         }
     }
-    
+
     info!("✅ Rendering job distributed successfully");
     Ok(())
 }
 
 /// Simulate scientific computing job
-async fn simulate_scientific_computing_job(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn simulate_scientific_computing_job(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🔬 Simulating massive scientific computing job");
-    
+
     let job = UniversalJob {
         job_id: Uuid::new_v4(),
         job_type: UniversalJobType::EcosystemTool {
             tool_name: "scientific_computing".to_string(),
             tool_version: "5.0.0".to_string(),
             parameters: HashMap::from([
-                ("computation_type".to_string(), "genomic_analysis".to_string()),
-                ("dataset_size".to_string(), "100_million_genomes".to_string()),
-                ("analysis_type".to_string(), "population_genetics".to_string()),
+                (
+                    "computation_type".to_string(),
+                    "genomic_analysis".to_string(),
+                ),
+                (
+                    "dataset_size".to_string(),
+                    "100_million_genomes".to_string(),
+                ),
+                (
+                    "analysis_type".to_string(),
+                    "population_genetics".to_string(),
+                ),
                 ("algorithms".to_string(), "gwas_pca_phylogeny".to_string()),
             ]),
         },
@@ -549,32 +661,50 @@ async fn simulate_scientific_computing_job(integration: &SongbirdIntegration) ->
         priority: 1,
         deadline: Some(chrono::Utc::now() + chrono::Duration::weeks(4)),
         metadata: HashMap::from([
-            ("project".to_string(), "global_genomics_initiative".to_string()),
+            (
+                "project".to_string(),
+                "global_genomics_initiative".to_string(),
+            ),
             ("compliance".to_string(), "hipaa_gdpr".to_string()),
-            ("collaboration".to_string(), "international_consortium".to_string()),
+            (
+                "collaboration".to_string(),
+                "international_consortium".to_string(),
+            ),
         ]),
     };
-    
+
     info!("📊 Scientific Computing Job Requirements:");
     info!("   - Dataset: 100 million genomes");
-    info!("   - CPU: {} cores", job.resource_requirements.cpu.min_cores);
-    info!("   - Memory: {:.1} TB", job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0);
-    info!("   - Storage: {:.1} PB", job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000_000.0);
+    info!(
+        "   - CPU: {} cores",
+        job.resource_requirements.cpu.min_cores
+    );
+    info!(
+        "   - Memory: {:.1} TB",
+        job.resource_requirements.memory.min_bytes as f64 / 1_000_000_000_000.0
+    );
+    info!(
+        "   - Storage: {:.1} PB",
+        job.resource_requirements.storage.min_bytes as f64 / 1_000_000_000_000_000.0
+    );
     info!("   - GPUs: {}", job.resource_requirements.gpu.unwrap_or(0));
     info!("   - Compliance: HIPAA + GDPR required");
-    
+
     let result = integration.process_massive_job(job).await?;
-    
+
     match result {
-        MassiveJobResult::Distributed { 
-            original_job_id, 
-            subtask_handles, 
-            coordination_job, 
-            distribution_plan 
+        MassiveJobResult::Distributed {
+            original_job_id,
+            subtask_handles,
+            coordination_job,
+            distribution_plan,
         } => {
             info!("🌐 Scientific computing job distributed:");
             info!("   - Genomic analysis tasks: {}", subtask_handles.len());
-            info!("   - Research institutions: {} worldwide", distribution_plan.target_nodes.len());
+            info!(
+                "   - Research institutions: {} worldwide",
+                distribution_plan.target_nodes.len()
+            );
             info!("   - Compliance: HIPAA/GDPR enforced via BearDog");
             info!("   - Data management: Secure genomic storage via NestGate");
             info!("   - Estimated completion: 4 weeks on global research network");
@@ -583,56 +713,72 @@ async fn simulate_scientific_computing_job(integration: &SongbirdIntegration) ->
             warn!("⚠️  Unexpected result for scientific computing job");
         }
     }
-    
+
     info!("✅ Scientific computing job distributed successfully");
     Ok(())
 }
 
 /// Demonstrate ecosystem network effects
-async fn demonstrate_network_effects(integration: &SongbirdIntegration) -> Result<(), Box<dyn std::error::Error>> {
+async fn demonstrate_network_effects(
+    integration: &SongbirdIntegration,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("🌐 Demonstrating ecosystem network effects");
-    
+
     // Get network status from Songbird
     let network_status = integration.get_network_status().await?;
     info!("📊 Current Network Status:");
     info!("   - Total nodes: {}", network_status.total_nodes);
     info!("   - Active nodes: {}", network_status.active_nodes);
-    info!("   - Network utilization: {:.1}%", network_status.current_utilization * 100.0);
-    info!("   - Total CPU cores: {:.0}", network_status.total_capacity.cpu_cores);
-    info!("   - Total memory: {:.1} TB", network_status.total_capacity.memory_gb / 1024.0);
-    info!("   - Total storage: {:.1} PB", network_status.total_capacity.storage_gb / (1024.0 * 1024.0));
-    
+    info!(
+        "   - Network utilization: {:.1}%",
+        network_status.current_utilization * 100.0
+    );
+    info!(
+        "   - Total CPU cores: {:.0}",
+        network_status.total_capacity.cpu_cores
+    );
+    info!(
+        "   - Total memory: {:.1} TB",
+        network_status.total_capacity.memory_gb / 1024.0
+    );
+    info!(
+        "   - Total storage: {:.1} PB",
+        network_status.total_capacity.storage_gb / (1024.0 * 1024.0)
+    );
+
     // Request load balancing advice
-    let advice = integration.request_load_balancing_advice(&ResourceRequirements {
-        cpu: CPURequirements {
-            min_cores: 1000.0,
-            max_cores: Some(5000.0),
-            cpu_type: Some("general_purpose".to_string()),
-        },
-        memory: MemoryRequirements {
-            min_bytes: 1_000_000_000_000,
-            max_bytes: Some(5_000_000_000_000),
-            memory_type: Some("standard".to_string()),
-        },
-        storage: StorageRequirements {
-            min_bytes: 10_000_000_000_000,
-            max_bytes: Some(50_000_000_000_000),
-            storage_type: Some("ssd".to_string()),
-        },
-        gpu: Some(10),
-        network: Some("standard".to_string()),
-        special_requirements: vec![],
-    }).await?;
-    
+    let advice = integration
+        .request_load_balancing_advice(&ResourceRequirements {
+            cpu: CPURequirements {
+                min_cores: 1000.0,
+                max_cores: Some(5000.0),
+                cpu_type: Some("general_purpose".to_string()),
+            },
+            memory: MemoryRequirements {
+                min_bytes: 1_000_000_000_000,
+                max_bytes: Some(5_000_000_000_000),
+                memory_type: Some("standard".to_string()),
+            },
+            storage: StorageRequirements {
+                min_bytes: 10_000_000_000_000,
+                max_bytes: Some(50_000_000_000_000),
+                storage_type: Some("ssd".to_string()),
+            },
+            gpu: Some(10),
+            network: Some("standard".to_string()),
+            special_requirements: vec![],
+        })
+        .await?;
+
     info!("🧠 Songbird Load Balancing Advice:");
     info!("   - Recommended nodes: {}", advice.recommended_nodes.len());
     info!("   - Reasoning: {}", advice.reasoning);
     info!("   - Load distribution strategy: Optimized for current network state");
-    
+
     // Broadcast capability update
     integration.broadcast_capability_update().await?;
     info!("📡 Broadcasted ToadStool capability update to ecosystem");
-    
+
     // Simulate network effects
     info!("🌊 Network Effects Simulation:");
     info!("   - ToadStool nodes: Self-organizing and load-balancing");
@@ -640,7 +786,7 @@ async fn demonstrate_network_effects(integration: &SongbirdIntegration) -> Resul
     info!("   - NestGate storage: Providing distributed data access");
     info!("   - BearDog security: Ensuring secure multi-tenant execution");
     info!("   - Ecosystem synergy: Enabling planetary-scale computing");
-    
+
     // Simulate cascade effects
     info!("🌪️  Cascade Effects:");
     info!("   - Job submission triggers network-wide resource discovery");
@@ -648,7 +794,7 @@ async fn demonstrate_network_effects(integration: &SongbirdIntegration) -> Resul
     info!("   - Automatic failover and load redistribution");
     info!("   - Dynamic scaling based on demand patterns");
     info!("   - Cross-ecosystem collaboration and resource sharing");
-    
+
     info!("✅ Network effects demonstration completed");
     Ok(())
 }
@@ -697,9 +843,9 @@ async fn test_songbird_integration() {
             job_timeout: Duration::from_secs(60),
         },
     };
-    
+
     // This would normally initialize the integration
     // For testing, we just verify the config is valid
     assert!(config.connection_config.endpoints.len() > 0);
     assert!(config.distribution_config.max_subtasks > 0);
-} 
+}

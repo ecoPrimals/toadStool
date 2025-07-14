@@ -13,9 +13,7 @@ use tracing::{debug, info};
 use toadstool::error::ToadStoolResult;
 use toadstool_security_policies::SecurityPolicy;
 
-use crate::{
-    FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec,
-};
+use crate::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
 
 /// Linux-specific sandbox manager
 pub struct LinuxSandboxManager {
@@ -33,7 +31,11 @@ impl LinuxSandboxManager {
     }
 
     /// Create sandbox using Linux namespaces
-    pub async fn create_sandbox(&self, spec: &SandboxSpec, _sandbox_dir: &PathBuf) -> ToadStoolResult<()> {
+    pub async fn create_sandbox(
+        &self,
+        spec: &SandboxSpec,
+        _sandbox_dir: &PathBuf,
+    ) -> ToadStoolResult<()> {
         debug!("Creating Linux sandbox: {}", spec.sandbox_id);
 
         // For now, this is a basic implementation
@@ -54,7 +56,7 @@ impl LinuxSandboxManager {
         // Basic command execution - in a real implementation this would
         // be executed within the created namespaces and cgroups
         // For now, we'll just track that execution started
-        
+
         info!("Started execution in Linux sandbox {}", sandbox_id);
         Ok(())
     }
@@ -103,8 +105,15 @@ impl LinuxSandboxManager {
     }
 
     /// Set up filesystem mount
-    pub async fn setup_mount(&self, mount: &FilesystemMount, _target_path: &PathBuf) -> ToadStoolResult<()> {
-        debug!("Setting up filesystem mount: {:?} -> {:?}", mount.source, mount.target);
+    pub async fn setup_mount(
+        &self,
+        mount: &FilesystemMount,
+        _target_path: &PathBuf,
+    ) -> ToadStoolResult<()> {
+        debug!(
+            "Setting up filesystem mount: {:?} -> {:?}",
+            mount.source, mount.target
+        );
 
         // In a real implementation, this would:
         // 1. Create mount point if it doesn't exist
@@ -192,16 +201,16 @@ pub fn has_namespaces() -> bool {
 /// Get available namespace types
 pub fn get_available_namespaces() -> Vec<String> {
     let mut namespaces = Vec::new();
-    
+
     // Check for common namespace types
     let ns_types = ["user", "pid", "net", "mnt", "ipc", "uts", "cgroup"];
-    
+
     for ns_type in &ns_types {
-        let ns_path = format!("/proc/self/ns/{}", ns_type);
+        let ns_path = format!("/proc/self/ns/{ns_type}");
         if std::path::Path::new(&ns_path).exists() {
             namespaces.push(ns_type.to_string());
         }
     }
-    
+
     namespaces
-} 
+}

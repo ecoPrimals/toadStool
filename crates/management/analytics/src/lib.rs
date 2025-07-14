@@ -415,7 +415,7 @@ impl IntelligentAnalyticsEngine {
             .bind(data_point.timestamp.to_rfc3339())
             .bind(&data_point.metric_name)
             .bind(data_point.value)
-            .bind(data_point.runtime_type.as_ref().map(|rt| format!("{:?}", rt)))
+            .bind(data_point.runtime_type.as_ref().map(|rt| format!("{rt:?}")))
             .bind(&data_point.execution_id)
             .bind(tags_json)
             .execute(&self.database).await
@@ -569,8 +569,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
         if rows.is_empty() {
             return Err(ToadStoolError::not_found(format!(
-                "No data found for metric: {}",
-                metric_name
+                "No data found for metric: {metric_name}"
             )));
         }
 
@@ -653,8 +652,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
         if rows.is_empty() {
             return Err(ToadStoolError::not_found(format!(
-                "No data found for metric: {}",
-                metric_name
+                "No data found for metric: {metric_name}"
             )));
         }
 
@@ -694,7 +692,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             if metric_name.contains("cpu") && value > self.config.alert_thresholds.cpu_threshold {
                 triggered_alerts.push(Alert {
                     id: Uuid::new_v4(),
-                    name: format!("High CPU Usage: {}", metric_name),
+                    name: format!("High CPU Usage: {metric_name}"),
                     metric_name: metric_name.clone(),
                     condition: AlertCondition::Threshold {
                         operator: ">".to_string(),
@@ -714,7 +712,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
             {
                 triggered_alerts.push(Alert {
                     id: Uuid::new_v4(),
-                    name: format!("High Memory Usage: {}", metric_name),
+                    name: format!("High Memory Usage: {metric_name}"),
                     metric_name: metric_name.clone(),
                     condition: AlertCondition::Threshold {
                         operator: ">".to_string(),
@@ -752,7 +750,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
         let dashboards = self.dashboards.read().await;
         let dashboard = dashboards.get(&dashboard_id).ok_or_else(|| {
-            ToadStoolError::not_found(format!("Dashboard not found: {}", dashboard_id))
+            ToadStoolError::not_found(format!("Dashboard not found: {dashboard_id}"))
         })?;
 
         let mut dashboard_data = serde_json::Map::new();
@@ -878,9 +876,10 @@ impl IntelligentAnalyticsEngine {
             .map_err(|e| ToadStoolError::network(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(ToadStoolError::network(
-                format!("Webhook error: HTTP {}", response.status()),
-            ));
+            return Err(ToadStoolError::network(format!(
+                "Webhook error: HTTP {}",
+                response.status()
+            )));
         }
 
         Ok(())

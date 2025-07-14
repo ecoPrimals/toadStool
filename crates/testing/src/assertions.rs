@@ -112,13 +112,11 @@ pub fn assert_stdout_contains(response: &ExecutionResponse, expected: &str) {
         Some(stdout) => {
             assert!(
                 stdout.contains(expected),
-                "Expected stdout to contain '{}', got: '{}'",
-                expected,
-                stdout
+                "Expected stdout to contain '{expected}', got: '{stdout}'"
             );
         }
         None => {
-            panic!("Expected stdout to be present, but it was None");
+            assert!(false, "Expected stdout to be present, but it was None");
         }
     }
 }
@@ -129,13 +127,11 @@ pub fn assert_stderr_contains(response: &ExecutionResponse, expected: &str) {
         Some(stderr) => {
             assert!(
                 stderr.contains(expected),
-                "Expected stderr to contain '{}', got: '{}'",
-                expected,
-                stderr
+                "Expected stderr to contain '{expected}', got: '{stderr}'"
             );
         }
         None => {
-            panic!("Expected stderr to be present, but it was None");
+            assert!(false, "Expected stderr to be present, but it was None");
         }
     }
 }
@@ -144,14 +140,10 @@ pub fn assert_stderr_contains(response: &ExecutionResponse, expected: &str) {
 pub fn assert_exit_code(response: &ExecutionResponse, expected: i32) {
     match response.output.exit_code {
         Some(code) => {
-            assert_eq!(
-                code, expected,
-                "Expected exit code {}, got {}",
-                expected, code
-            );
+            assert_eq!(code, expected, "Expected exit code {expected}, got {code}");
         }
         None => {
-            panic!("Expected exit code to be present, but it was None");
+            assert!(false, "Expected exit code to be present, but it was None");
         }
     }
 }
@@ -161,10 +153,7 @@ pub fn assert_duration_within(response: &ExecutionResponse, min_ms: u64, max_ms:
     let duration_ms = response.duration.as_millis() as u64;
     assert!(
         duration_ms >= min_ms && duration_ms <= max_ms,
-        "Expected duration between {}ms and {}ms, got {}ms",
-        min_ms,
-        max_ms,
-        duration_ms
+        "Expected duration between {min_ms}ms and {max_ms}ms, got {duration_ms}ms"
     );
 }
 
@@ -184,12 +173,12 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
         metrics.memory.used_bytes > 0,
         "Memory usage should be positive"
     );
-    
+
     assert!(
         metrics.memory.used_bytes <= u64::MAX,
         "Memory usage should be within valid range"
     );
-    
+
     assert!(
         metrics.memory.peak_bytes >= metrics.memory.used_bytes,
         "Peak memory usage should be >= current usage"
@@ -197,7 +186,8 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
 
     // Timing should be consistent
     assert!(
-        metrics.timing.duration <= chrono::Duration::from_std(response.duration).unwrap_or_default(),
+        metrics.timing.duration
+            <= chrono::Duration::from_std(response.duration).unwrap_or_default(),
         "Timing duration should be consistent with response duration"
     );
 
@@ -206,17 +196,17 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
         metrics.network.bytes_sent <= u64::MAX,
         "Network bytes sent should be within valid range"
     );
-    
+
     assert!(
         metrics.network.bytes_received <= u64::MAX,
         "Network bytes received should be within valid range"
     );
-    
+
     assert!(
         metrics.network.packets_sent <= u64::MAX,
         "Network packets sent should be within valid range"
     );
-    
+
     assert!(
         metrics.network.packets_received <= u64::MAX,
         "Network packets received should be within valid range"

@@ -11,6 +11,32 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 use uuid::Uuid;
+use thiserror::Error;
+
+/// CLI-specific error types
+#[derive(Error, Debug)]
+pub enum CliError {
+    #[error("Biome not found: {0}")]
+    BiomeNotFound(String),
+    
+    #[error("Biome already exists: {0}")]
+    BiomeAlreadyExists(String),
+    
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
+    
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+    
+    #[error("System error: {0}")]
+    System(String),
+    
+    #[error("Other error: {0}")]
+    Other(String),
+}
 
 /// ToadStool - Universal Compute Platform for Sovereign Science
 #[derive(Parser)]

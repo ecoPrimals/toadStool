@@ -214,6 +214,9 @@ pub struct ServiceResourceConfig {
     
     #[serde(default)]
     pub disk_limit: Option<String>,
+    
+    #[serde(default)]
+    pub network_limit: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -568,7 +571,7 @@ impl ManifestLoader {
     fn validate_resources(&self, resources: &ResourceConfig) -> Result<(), ManifestError> {
         // Validate resource format (e.g., "100m", "1Gi")
         if let Some(cpu) = &resources.cpu_limit {
-            if !self.is_valid_resource_spec(cpu) {
+            if !self.is_valid_resource_spec(cpu)? {
                 return Err(ManifestError::ResourceError {
                     constraint: format!("Invalid CPU limit: {}", cpu),
                 });
@@ -576,7 +579,7 @@ impl ManifestLoader {
         }
 
         if let Some(memory) = &resources.memory_limit {
-            if !self.is_valid_resource_spec(memory) {
+            if !self.is_valid_resource_spec(memory)? {
                 return Err(ManifestError::ResourceError {
                     constraint: format!("Invalid memory limit: {}", memory),
                 });
@@ -639,10 +642,13 @@ impl ManifestLoader {
         matches!(policy, "beardog_verified" | "manual" | "auto" | "strict")
     }
 
-    fn is_valid_resource_spec(&self, spec: &str) -> bool {
+    fn is_valid_resource_spec(&self, spec: &str) -> Result<bool, ManifestError> {
         // Basic resource specification validation
-        let re = regex::Regex::new(r"^\d+(\.\d+)?[mMgGtTkK]?i?$").unwrap();
-        re.is_match(spec)
+        let re = regex::Regex::new(r"^\d+(\.\d+)?[mMgGtTkK]?i?$")
+            .map_err(|e| ManifestError::ValidationError {
+                message: format!("Invalid regex pattern: {}", e)
+            })?;
+        Ok(re.is_match(spec))
     }
 }
 

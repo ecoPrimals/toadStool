@@ -104,7 +104,7 @@ impl WorkloadSpec {
             WorkloadSpec::Python { .. } => WorkloadType::Python,
         }
     }
-    
+
     /// Validate the workload specification
     pub fn validate(&self) -> ToadStoolResult<()> {
         match self {
@@ -116,7 +116,9 @@ impl WorkloadSpec {
             }
             WorkloadSpec::Container { image, .. } => {
                 if image.is_empty() {
-                    return Err(ToadStoolError::validation("Container image cannot be empty"));
+                    return Err(ToadStoolError::validation(
+                        "Container image cannot be empty",
+                    ));
                 }
             }
             WorkloadSpec::Gpu { program, .. } => {
@@ -128,13 +130,16 @@ impl WorkloadSpec {
         }
         Ok(())
     }
-    
+
     /// Validate executable source
     fn validate_executable(&self, executable: &ExecutableSource) -> ToadStoolResult<()> {
         match executable {
             ExecutableSource::File { path } => {
                 if !path.exists() {
-                    return Err(ToadStoolError::validation(format!("Executable file not found: {}", path.display())));
+                    return Err(ToadStoolError::validation(format!(
+                        "Executable file not found: {}",
+                        path.display()
+                    )));
                 }
             }
             ExecutableSource::Url { url } => {
@@ -144,35 +149,44 @@ impl WorkloadSpec {
             }
             ExecutableSource::Bytes { data } => {
                 if data.is_empty() {
-                    return Err(ToadStoolError::validation("Executable data cannot be empty"));
+                    return Err(ToadStoolError::validation(
+                        "Executable data cannot be empty",
+                    ));
                 }
             }
         }
         Ok(())
     }
-    
+
     /// Validate WASM module source
     fn validate_wasm_module(&self, module: &WasmModuleSource) -> ToadStoolResult<()> {
         match module {
             WasmModuleSource::File { path } => {
                 if !path.exists() {
-                    return Err(ToadStoolError::validation(format!("WASM module file not found: {}", path.display())));
+                    return Err(ToadStoolError::validation(format!(
+                        "WASM module file not found: {}",
+                        path.display()
+                    )));
                 }
             }
             WasmModuleSource::Bytes { data } => {
                 if data.is_empty() {
-                    return Err(ToadStoolError::validation("WASM module data cannot be empty"));
+                    return Err(ToadStoolError::validation(
+                        "WASM module data cannot be empty",
+                    ));
                 }
             }
             WasmModuleSource::Url { url } => {
                 if url.is_empty() {
-                    return Err(ToadStoolError::validation("WASM module URL cannot be empty"));
+                    return Err(ToadStoolError::validation(
+                        "WASM module URL cannot be empty",
+                    ));
                 }
             }
         }
         Ok(())
     }
-    
+
     /// Validate GPU program source
     fn validate_gpu_program(&self, program: &GpuProgramSource) -> ToadStoolResult<()> {
         match program {
@@ -194,7 +208,7 @@ impl WorkloadSpec {
         }
         Ok(())
     }
-    
+
     /// Validate Python source
     fn validate_python_source(&self, source: &PythonSource) -> ToadStoolResult<()> {
         match source {
@@ -205,12 +219,17 @@ impl WorkloadSpec {
             }
             PythonSource::File { path } => {
                 if !path.exists() {
-                    return Err(ToadStoolError::validation(format!("Python file not found: {}", path.display())));
+                    return Err(ToadStoolError::validation(format!(
+                        "Python file not found: {}",
+                        path.display()
+                    )));
                 }
             }
             PythonSource::Module { name } => {
                 if name.is_empty() {
-                    return Err(ToadStoolError::validation("Python module name cannot be empty"));
+                    return Err(ToadStoolError::validation(
+                        "Python module name cannot be empty",
+                    ));
                 }
             }
         }
@@ -357,4 +376,3 @@ pub enum PythonSource {
     /// Python module name
     Module { name: String },
 }
-

@@ -280,10 +280,20 @@ fn setup_shutdown_handler() -> tokio::sync::broadcast::Receiver<()> {
     let (tx, rx) = tokio::sync::broadcast::channel(1);
     
     tokio::spawn(async move {
-        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
-            .expect("Failed to install SIGINT handler");
-        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Failed to install SIGTERM handler");
+        let mut sigint = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()) {
+            Ok(signal) => signal,
+            Err(e) => {
+                eprintln!("Failed to install SIGINT handler: {}", e);
+                return;
+            }
+        };
+        let mut sigterm = match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(signal) => signal,
+            Err(e) => {
+                eprintln!("Failed to install SIGTERM handler: {}", e);
+                return;
+            }
+        };
         
         tokio::select! {
             _ = sigint.recv() => {

@@ -53,14 +53,17 @@ async fn main() -> Result<()> {
     match execute_command(&cli, &ctx).await {
         Ok(()) => {
             let duration = start_time.elapsed();
-            debug!("Command executed successfully in {:.2}s", duration.as_secs_f64());
-            
+            debug!(
+                "Command executed successfully in {:.2}s",
+                duration.as_secs_f64()
+            );
+
             // Show success message for longer operations
             if duration.as_secs() > 2 {
                 print_success_message("Operation completed successfully!");
                 print_operation_summary("Command execution", duration, None);
             }
-            
+
             Ok(())
         }
         Err(e) => {
@@ -77,7 +80,7 @@ async fn main() -> Result<()> {
 
 /// Initialize enhanced logging with better formatting
 fn init_enhanced_logging(verbose: bool) -> Result<()> {
-    use tracing_subscriber::{EnvFilter, fmt::format::FmtSpan};
+    use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 
     let filter = if verbose {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"))
@@ -519,11 +522,17 @@ fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
 
     // File system errors
     if error_str.contains("no such file or directory") {
-        return Some("💡 Check that the file path is correct and the file exists. Use 'ls' to verify.".to_string());
+        return Some(
+            "💡 Check that the file path is correct and the file exists. Use 'ls' to verify."
+                .to_string(),
+        );
     }
 
     if error_str.contains("permission denied") {
-        return Some("💡 Try running with sudo or check file permissions with 'chmod' and 'chown'.".to_string());
+        return Some(
+            "💡 Try running with sudo or check file permissions with 'chmod' and 'chown'."
+                .to_string(),
+        );
     }
 
     // Network errors
@@ -532,7 +541,10 @@ fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
     }
 
     if error_str.contains("connection timeout") {
-        return Some("💡 Check network connectivity and firewall settings. The service may be overloaded.".to_string());
+        return Some(
+            "💡 Check network connectivity and firewall settings. The service may be overloaded."
+                .to_string(),
+        );
     }
 
     // ToadStool specific errors
@@ -558,11 +570,17 @@ fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
 
     // Runtime errors
     if error_str.contains("wasm") {
-        return Some("💡 Verify WASM module is valid and all required dependencies are available.".to_string());
+        return Some(
+            "💡 Verify WASM module is valid and all required dependencies are available."
+                .to_string(),
+        );
     }
 
     if error_str.contains("gpu") {
-        return Some("💡 Check GPU drivers and CUDA/OpenCL installation with 'nvidia-smi' or 'clinfo'.".to_string());
+        return Some(
+            "💡 Check GPU drivers and CUDA/OpenCL installation with 'nvidia-smi' or 'clinfo'."
+                .to_string(),
+        );
     }
 
     if error_str.contains("container") {
@@ -579,12 +597,18 @@ fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
     }
 
     if error_str.contains("beardog") {
-        return Some("💡 Install BearDog permissions with 'toadstool ecosystem auth <permission-file>'.".to_string());
+        return Some(
+            "💡 Install BearDog permissions with 'toadstool ecosystem auth <permission-file>'."
+                .to_string(),
+        );
     }
 
     // General suggestions
     if error_str.contains("parse") || error_str.contains("invalid") {
-        return Some("💡 Check syntax and format of configuration files. Use '--help' for command usage.".to_string());
+        return Some(
+            "💡 Check syntax and format of configuration files. Use '--help' for command usage."
+                .to_string(),
+        );
     }
 
     if error_str.contains("timeout") {
@@ -598,10 +622,10 @@ fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
 fn print_enhanced_error(error: &anyhow::Error) {
     eprintln!("\n{}", "💥 ERROR".red().bold());
     eprintln!("{}", "═".repeat(60).red());
-    
+
     // Main error message
     eprintln!("{} {}", "Message:".red().bold(), error);
-    
+
     // Error chain
     if error.chain().count() > 1 {
         eprintln!("\n{}", "📋 Error Chain:".yellow().bold());
@@ -611,16 +635,16 @@ fn print_enhanced_error(error: &anyhow::Error) {
             }
         }
     }
-    
+
     // Suggestion
     if let Some(suggestion) = get_error_suggestion(error) {
         eprintln!("\n{}", suggestion.green());
     }
-    
+
     // Help resources
     eprintln!("\n{}", "📚 Need Help?".blue().bold());
     eprintln!("  {} toadstool --help", "•".blue());
-    eprintln!("  {} toadstool <command> --help", "•".blue()); 
+    eprintln!("  {} toadstool <command> --help", "•".blue());
     eprintln!("  {} https://docs.toadstool.dev", "•".blue());
     eprintln!();
 }

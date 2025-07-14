@@ -16,10 +16,10 @@
 
 //! Property-based testing utilities
 
+use anyhow::Result;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
-use anyhow::Result;
 
 /// Property-based test configuration
 #[derive(Debug, Clone)]
@@ -158,7 +158,7 @@ impl PropertyTestRunner {
         if let Some(seed) = config.seed {
             rng.seed(seed);
         }
-        
+
         Self { config, rng }
     }
 
@@ -187,14 +187,14 @@ impl PropertyTestRunner {
                 }
                 Err(error) => {
                     if self.config.verbose {
-                        println!("Property failure on input: {:?}", input);
+                        println!("Property failure on input: {input:?}");
                     }
 
                     // Attempt to shrink the failing input
                     let shrunk_input = self.shrink_input(&generator, &property, &input);
                     let failure = PropertyFailure {
-                        original_input: format!("{:?}", input),
-                        shrunk_input: format!("{:?}", shrunk_input),
+                        original_input: format!("{input:?}"),
+                        shrunk_input: format!("{shrunk_input:?}"),
                         error_message: error.to_string(),
                         shrink_steps: 0, // Shrink step tracking implemented in shrink_input method
                     };
@@ -206,7 +206,7 @@ impl PropertyTestRunner {
             // Check timeout
             if start_time.elapsed() > self.config.timeout {
                 if self.config.verbose {
-                    println!("Property test timed out after {} test cases", test_cases_run);
+                    println!("Property test timed out after {test_cases_run} test cases");
                 }
                 break;
             }
@@ -231,7 +231,7 @@ impl PropertyTestRunner {
         let base_size = 1;
         let max_size = 100;
         let growth_rate = 0.1;
-        
+
         let size = base_size + (iteration as f64 * growth_rate) as usize;
         size.min(max_size)
     }
@@ -276,7 +276,10 @@ impl PropertyTestRunner {
     {
         // Update input distribution (simplified)
         let input_type = std::any::type_name::<T>();
-        *statistics.input_distribution.entry(input_type.to_string()).or_insert(0) += 1;
+        *statistics
+            .input_distribution
+            .entry(input_type.to_string())
+            .or_insert(0) += 1;
     }
 }
 
@@ -295,7 +298,7 @@ impl Generator<i64> for IntegerGenerator {
 
     fn shrink(&self, input: &i64) -> Vec<i64> {
         let mut candidates = Vec::new();
-        
+
         // Shrink towards zero
         if *input > 0 {
             candidates.push(input / 2);
@@ -341,13 +344,13 @@ impl Generator<String> for StringGenerator {
 
     fn shrink(&self, input: &String) -> Vec<String> {
         let mut candidates = Vec::new();
-        
+
         // Shrink by removing characters
         if input.len() > 1 {
             candidates.push(input[..input.len() - 1].to_string());
             candidates.push(input[..input.len() / 2].to_string());
         }
-        
+
         // Shrink to empty string
         if !input.is_empty() {
             candidates.push(String::new());
@@ -409,7 +412,7 @@ where
     fn test(&self, input: &T) -> Result<()> {
         let encoded = (self.encode)(input)?;
         let decoded = (self.decode)(&encoded)?;
-        
+
         if *input == decoded {
             Ok(())
         } else {
@@ -454,10 +457,22 @@ impl TestStatistics {
         sorted_times.sort();
 
         let mut percentiles = HashMap::new();
-        percentiles.insert("p50".to_string(), sorted_times[sorted_times.len() * 50 / 100]);
-        percentiles.insert("p90".to_string(), sorted_times[sorted_times.len() * 90 / 100]);
-        percentiles.insert("p95".to_string(), sorted_times[sorted_times.len() * 95 / 100]);
-        percentiles.insert("p99".to_string(), sorted_times[sorted_times.len() * 99 / 100]);
+        percentiles.insert(
+            "p50".to_string(),
+            sorted_times[sorted_times.len() * 50 / 100],
+        );
+        percentiles.insert(
+            "p90".to_string(),
+            sorted_times[sorted_times.len() * 90 / 100],
+        );
+        percentiles.insert(
+            "p95".to_string(),
+            sorted_times[sorted_times.len() * 95 / 100],
+        );
+        percentiles.insert(
+            "p99".to_string(),
+            sorted_times[sorted_times.len() * 99 / 100],
+        );
 
         percentiles
     }
@@ -504,7 +519,11 @@ impl PropertyTestResult {
              Test Cases: {}\n\
              Duration: {:.2}ms\n",
             self.test_name,
-            if self.success { "✅ PASSED" } else { "❌ FAILED" },
+            if self.success {
+                "✅ PASSED"
+            } else {
+                "❌ FAILED"
+            },
             self.test_cases_run,
             self.duration.as_secs_f64() * 1000.0
         );

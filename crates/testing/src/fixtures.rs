@@ -23,7 +23,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use chrono::Utc;
 use fake::{Fake, Faker};
 use uuid::Uuid;
 
@@ -34,7 +33,10 @@ use toadstool::{
         NetworkRequirements, ResourceRequirements, RuntimeMetrics, StorageMetrics,
         StorageRequirements, TimingMetrics,
     },
-    security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext, UserContext},
+    security::{
+        Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext,
+        UserContext,
+    },
     workload::{ExecutableSource, WasmModuleSource, WorkloadSpec},
 };
 
@@ -215,10 +217,7 @@ pub fn create_test_execution_output() -> ExecutionOutput {
         data: b"test output data".to_vec(),
         result: {
             let mut result = HashMap::new();
-            result.insert(
-                "status".to_string(),
-                "success".to_string(),
-            );
+            result.insert("status".to_string(), "success".to_string());
             result
         },
         stdout: Some("Test execution successful".to_string()),
@@ -356,7 +355,9 @@ pub mod random {
             },
             storage: StorageRequirements {
                 min_bytes: (1024 * 1024 * 1024..1024 * 1024 * 1024 * 100).fake::<u64>(),
-                max_bytes: Some((1024 * 1024 * 1024 * 100..1024 * 1024 * 1024 * 1000).fake::<u64>()),
+                max_bytes: Some(
+                    (1024 * 1024 * 1024 * 100..1024 * 1024 * 1024 * 1000).fake::<u64>(),
+                ),
                 storage_type: Some(Faker.fake::<String>()),
             },
             network: NetworkRequirements {
@@ -385,10 +386,7 @@ pub mod random {
             metadata: {
                 let mut params = HashMap::new();
                 for _ in 0..3 {
-                    params.insert(
-                        Faker.fake::<String>(),
-                        Faker.fake::<String>(),
-                    );
+                    params.insert(Faker.fake::<String>(), Faker.fake::<String>());
                 }
                 params
             },
@@ -427,7 +425,7 @@ mod tests {
             requirements.memory.min_bytes,
             TestConstants::DEFAULT_MEMORY_LIMIT
         );
-        assert!(requirements.network.internet_access);
+        assert!(requirements.network.min_bandwidth.is_some());
     }
 
     #[test]
@@ -435,8 +433,8 @@ mod tests {
         let context = create_test_security_context();
         assert_eq!(context.isolation_level, IsolationLevel::Standard);
         assert!(context.capabilities.contains(&Capability::Execute));
-        assert!(context.network_security.internet_access);
-        assert!(context.filesystem_security.temp_access);
+        assert!(context.network_security.allow_outbound);
+        assert!(!context.filesystem_security.read_only);
     }
 
     #[test]

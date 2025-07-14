@@ -13,13 +13,15 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use uuid::Uuid;
 use tracing::info;
+use uuid::Uuid;
 
 use toadstool::execution::RuntimeType;
-use toadstool::resources::{MemoryMetrics, CpuMetrics, NetworkMetrics, StorageMetrics, RuntimeMetrics, TimingMetrics};
+use toadstool::resources::{
+    CpuMetrics, MemoryMetrics, NetworkMetrics, RuntimeMetrics, StorageMetrics, TimingMetrics,
+};
 use toadstool::security::IsolationLevel;
-use toadstool::workload::{WorkloadSpec, ExecutableSource, WasmModuleSource};
+use toadstool::workload::{ExecutableSource, WasmModuleSource, WorkloadSpec};
 
 // For demo purposes, we'll simulate the Sprint 4 components instead of importing them
 // since they have compilation issues that prevent the demo from running
@@ -85,7 +87,12 @@ pub enum PolicyAction {
 pub struct PolicyEvaluationContext;
 
 impl PolicyEvaluationContext {
-    pub fn new(_workload: WorkloadSpec, _security: toadstool::security::SecurityContext, _user: Option<String>, _system: std::collections::HashMap<String, String>) -> Self {
+    pub fn new(
+        _workload: WorkloadSpec,
+        _security: toadstool::security::SecurityContext,
+        _user: Option<String>,
+        _system: std::collections::HashMap<String, String>,
+    ) -> Self {
         Self
     }
 }
@@ -137,68 +144,58 @@ impl PerformanceHistory {
         let metrics = RuntimeMetrics {
             cpu: CpuMetrics {
                 usage_percent: 15.0 + (duration_secs * 10.0).min(50.0),
-                peak_usage_percent: 20.0 + (duration_secs * 15.0).min(60.0),
-                average_usage_percent: 18.0 + (duration_secs * 12.0).min(55.0),
-                cpu_time_ms: (duration_secs * 1000.0) as u64,
-                cpu_cycles: Some(1_000_000),
-                throttle_events: 0,
+                cores_used: 1.0,
+                cpu_time_seconds: duration_secs,
             },
             memory: MemoryMetrics {
-                usage_bytes: (100 * 1024 * 1024) as u64, // 100 MB
-                peak_usage_bytes: (120 * 1024 * 1024) as u64,
-                average_usage_bytes: (110 * 1024 * 1024) as u64,
-                allocation_count: 1000,
-                deallocation_count: 900,
-                page_faults: 10,
-                swap_usage_bytes: 0,
+                usage_percent: 50.0,
+                used_bytes: (100 * 1024 * 1024) as u64, // 100 MB
+                peak_bytes: (120 * 1024 * 1024) as u64,
             },
             storage: StorageMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0,
                 bytes_read: 1024 * 1024,
                 bytes_written: 512 * 1024,
-                read_ops: 100,
-                write_ops: 50,
-                read_iops: 1000.0,
-                write_iops: 500.0,
-                avg_read_latency_us: 2500.0, // 2.5ms in microseconds
-                avg_write_latency_us: 3500.0, // 3.5ms in microseconds
             },
             network: NetworkMetrics {
+                bytes_sent: 1024,
                 bytes_received: 2048,
-                bytes_transmitted: 1024,
+                packets_sent: 10,
                 packets_received: 15,
-                packets_transmitted: 10,
-                errors: 0,
-                drops: 0,
-                avg_latency_us: 25000.0, // 25ms in microseconds
             },
             gpu: None,
             timing: TimingMetrics::default(),
-            custom: std::collections::HashMap::new(),
         };
 
         self.metrics_history.push(metrics);
 
         // Update runtime statistics
         let runtime_clone = runtime.clone();
-        let stats = self.runtime_stats.entry(runtime_clone).or_insert((0, 0.0, 0.0));
+        let stats = self
+            .runtime_stats
+            .entry(runtime_clone)
+            .or_insert((0, 0.0, 0.0));
         stats.0 += 1; // count
         stats.1 = (stats.1 * (stats.0 - 1) as f64 + duration_secs) / stats.0 as f64; // avg_time
-        
+
         let execution_time = match runtime {
-            RuntimeType::Native => 20 + (stats.0 % 5) * 3,
-            RuntimeType::Container => 45 + (stats.0 % 7) * 4,
-            RuntimeType::Wasm => 30 + (stats.0 % 6) * 2,
-            RuntimeType::Gpu => 50 + (stats.0 % 5) * 5,
+            RuntimeType::Native => 20 + (stats.0 % 5) * 2,
+            RuntimeType::Container => 25 + (stats.0 % 3) * 5,
+            RuntimeType::Wasm => 15 + (stats.0 % 4) * 3,
+            RuntimeType::GPU => 30 + (stats.0 % 6) * 4,
             RuntimeType::Custom(_) => 35 + (stats.0 % 4) * 3,
+            RuntimeType::Python => 22 + (stats.0 % 3) * 4,
         };
 
-        let performance_score = if success { 
+        let performance_score = if success {
             100.0 - (execution_time as f64 / 100.0 * 100.0).min(90.0)
         } else {
             20.0
         };
-        
-        stats.2 = (stats.2 * (stats.0 - 1) as f64 + performance_score) / stats.0 as f64; // avg_score
+
+        stats.2 = (stats.2 * (stats.0 - 1) as f64 + performance_score) / stats.0 as f64;
+        // avg_score
     }
 
     fn get_recommendation(&self) -> RuntimeRecommendation {
@@ -207,8 +204,10 @@ impl PerformanceHistory {
         let mut improvement = 0.0;
 
         for (runtime, &(count, avg_time, avg_score)) in &self.runtime_stats {
-            info!("Runtime {:?}: {} executions, {:.2}s avg, {:.1}% score", 
-                  runtime, count, avg_time, avg_score);
+            info!(
+                "Runtime {:?}: {} executions, {:.2}s avg, {:.1}% score",
+                runtime, count, avg_time, avg_score
+            );
             if count > 0 && avg_score > best_score {
                 improvement = avg_score - best_score;
                 best_score = avg_score;
@@ -256,7 +255,7 @@ impl DemoSandboxManager {
 
     fn create_sandbox(&mut self, _workload: &WorkloadSpec, isolation: IsolationLevel) -> String {
         let sandbox_id = Uuid::new_v4().to_string();
-        
+
         let info = SandboxInfo {
             sandbox_id: sandbox_id.clone(),
             status: SandboxStatus::Running,
@@ -275,7 +274,10 @@ impl DemoSandboxManager {
         };
 
         self.active_sandboxes.insert(sandbox_id.clone(), info);
-        info!("🏗️  Created sandbox {} with {:?} isolation", sandbox_id, isolation);
+        info!(
+            "🏗️  Created sandbox {} with {:?} isolation",
+            sandbox_id, isolation
+        );
         sandbox_id
     }
 
@@ -289,8 +291,6 @@ impl DemoSandboxManager {
         }
     }
 }
-
-
 
 async fn demonstrate_security_policies() -> Result<(), Box<dyn std::error::Error>> {
     info!("🔒 === Security Policy Evaluation Demo ===");
@@ -308,34 +308,47 @@ async fn demonstrate_security_policies() -> Result<(), Box<dyn std::error::Error
 
     // Test different workload types with policies
     let workloads = vec![
-        ("Native Binary", WorkloadSpec::Native {
-            executable: ExecutableSource::File { path: "/bin/echo".into() },
-            args: Some(vec!["Hello World".to_string()]),
-            working_dir: Some("/tmp".into()),
-            env_vars: HashMap::new(),
-            user: None,
-        }),
-        ("Container", WorkloadSpec::Container {
-            image: "alpine:latest".to_string(),
-            command: Some(vec!["echo".to_string()]),
-            args: Some(vec!["Hello from container!".to_string()]),
-            working_dir: Some("/app".to_string()),
-            user: None,
-            volumes: Vec::new(),
-            ports: Vec::new(),
-            registry_auth: None,
-        }),
-        ("WASM Module", WorkloadSpec::Wasm {
-            module_source: WasmModuleSource::File { path: "module.wasm".into() },
-            wasi_config: None,
-            host_functions: Vec::new(),
-            memory_limit: Some(16 * 1024 * 1024), // 16 MB
-        }),
+        (
+            "Native Binary",
+            WorkloadSpec::Native {
+                executable: ExecutableSource::File {
+                    path: "/bin/echo".into(),
+                },
+                args: Some(vec!["Hello World".to_string()]),
+                working_dir: Some("/tmp".into()),
+                env_vars: HashMap::new(),
+                user: None,
+            },
+        ),
+        (
+            "Container",
+            WorkloadSpec::Container {
+                image: "alpine:latest".to_string(),
+                command: Some(vec!["echo".to_string()]),
+                args: Some(vec!["Hello from container!".to_string()]),
+                working_dir: Some("/app".to_string()),
+                user: None,
+                volumes: Vec::new(),
+                ports: Vec::new(),
+                registry_auth: None,
+            },
+        ),
+        (
+            "WASM Module",
+            WorkloadSpec::Wasm {
+                module_source: WasmModuleSource::File {
+                    path: "module.wasm".into(),
+                },
+                wasi_config: None,
+                host_functions: Vec::new(),
+                memory_limit: Some(16 * 1024 * 1024), // 16 MB
+            },
+        ),
     ];
 
     for (name, workload) in workloads {
         info!("📋 Evaluating policies for: {}", name);
-        
+
         let context = PolicyEvaluationContext::new(
             workload.clone(),
             Default::default(),
@@ -344,7 +357,10 @@ async fn demonstrate_security_policies() -> Result<(), Box<dyn std::error::Error
         );
 
         // Simulate policy evaluation (the actual implementation would call the policy manager)
-        let policy_result = format!("Policy evaluation for {} completed - ALLOW with monitoring", name);
+        let policy_result = format!(
+            "Policy evaluation for {} completed - ALLOW with monitoring",
+            name
+        );
         info!("  ✅ {}", policy_result);
     }
 
@@ -372,10 +388,12 @@ async fn demonstrate_performance_optimization() -> Result<(), Box<dyn std::error
     // Simulate multiple execution scenarios
     info!("🧪 Simulating workload executions across different runtimes...");
 
-    let runtimes = [RuntimeType::Native,
-        RuntimeType::Container, 
+    let runtimes = [
+        RuntimeType::Native,
+        RuntimeType::Container,
         RuntimeType::Wasm,
-        RuntimeType::Gpu];
+        RuntimeType::Gpu,
+    ];
 
     // Simulate 20 executions across different runtimes
     for i in 0..20 {
@@ -390,9 +408,12 @@ async fn demonstrate_performance_optimization() -> Result<(), Box<dyn std::error
         let success = i % 10 != 9; // 90% success rate
 
         history.add_execution(runtime.clone(), duration, success);
-        
+
         if i % 5 == 4 {
-            info!("  📊 Completed {} executions, analyzing performance...", i + 1);
+            info!(
+                "  📊 Completed {} executions, analyzing performance...",
+                i + 1
+            );
         }
     }
 
@@ -403,13 +424,19 @@ async fn demonstrate_performance_optimization() -> Result<(), Box<dyn std::error
     info!("🎛️  Testing custom selection strategies...");
     let strategies = vec![
         ("FastestExecution", SelectionStrategy::FastestExecution),
-        ("LowestResourceUsage", SelectionStrategy::LowestResourceUsage),
+        (
+            "LowestResourceUsage",
+            SelectionStrategy::LowestResourceUsage,
+        ),
         ("BestEfficiency", SelectionStrategy::BestEfficiency),
         ("LoadBalance", SelectionStrategy::LoadBalance),
     ];
 
     for (name, _strategy) in strategies {
-        info!("  🔧 Strategy: {} - Simulated optimal runtime selection", name);
+        info!(
+            "  🔧 Strategy: {} - Simulated optimal runtime selection",
+            name
+        );
     }
 
     Ok(())
@@ -432,10 +459,12 @@ async fn demonstrate_sandbox_management() -> Result<(), Box<dyn std::error::Erro
 
     for (name, level) in isolation_levels {
         info!("🔒 Testing {} isolation level", name);
-        
+
         let workload = match level {
             IsolationLevel::Basic | IsolationLevel::Standard => WorkloadSpec::Native {
-                executable: ExecutableSource::File { path: "/bin/echo".into() },
+                executable: ExecutableSource::File {
+                    path: "/bin/echo".into(),
+                },
                 args: Some(vec!["test".to_string()]),
                 working_dir: Some("/tmp".into()),
                 env_vars: HashMap::new(),
@@ -459,9 +488,15 @@ async fn demonstrate_sandbox_management() -> Result<(), Box<dyn std::error::Erro
         // Simulate monitoring
         if let Some(info) = sandbox_manager.get_sandbox_info(&sandbox_id) {
             info!("  📊 Sandbox Status: {:?}", info.status);
-            info!("  💾 Memory Usage: {:.1} MB", info.resource_usage.memory_bytes as f64 / 1024.0 / 1024.0);
+            info!(
+                "  💾 Memory Usage: {:.1} MB",
+                info.resource_usage.memory_bytes as f64 / 1024.0 / 1024.0
+            );
             info!("  🖥️  CPU Usage: {:.1}%", info.resource_usage.cpu_percent);
-            info!("  🚨 Security Violations: {}", info.security_violations.len());
+            info!(
+                "  🚨 Security Violations: {}",
+                info.security_violations.len()
+            );
         }
     }
 
@@ -478,11 +513,13 @@ async fn demonstrate_integrated_scenario() -> Result<(), Box<dyn std::error::Err
     info!("🚀 === Integrated Security & Performance Scenario ===");
 
     info!("📝 Scenario: High-security financial computation workload");
-    
+
     // 1. Policy Evaluation
     info!("1️⃣  Evaluating security policies...");
     let workload = WorkloadSpec::Native {
-        executable: ExecutableSource::File { path: "/opt/financial-calc/trader".into() },
+        executable: ExecutableSource::File {
+            path: "/opt/financial-calc/trader".into(),
+        },
         args: Some(vec!["--market".to_string(), "crypto".to_string()]),
         working_dir: Some("/opt/financial-calc".into()),
         env_vars: HashMap::new(),
@@ -493,29 +530,41 @@ async fn demonstrate_integrated_scenario() -> Result<(), Box<dyn std::error::Err
     // 2. Performance Selection
     info!("2️⃣  Selecting optimal runtime...");
     let mut history = PerformanceHistory::new();
-    
+
     // Simulate historical data for financial workloads
     history.add_execution(RuntimeType::Native, 0.1, true);
     history.add_execution(RuntimeType::Container, 0.3, true);
     history.add_execution(RuntimeType::Wasm, 0.2, true);
-    
+
     let recommendation = history.get_recommendation();
-    info!("  🎯 Selected: {:?} (Confidence: {:.1}%)", 
-          recommendation.recommended_runtime, recommendation.confidence * 100.0);
+    info!(
+        "  🎯 Selected: {:?} (Confidence: {:.1}%)",
+        recommendation.recommended_runtime,
+        recommendation.confidence * 100.0
+    );
 
     // 3. Sandbox Creation
     info!("3️⃣  Creating secure sandbox...");
     let mut sandbox_manager = DemoSandboxManager::new();
     let sandbox_id = sandbox_manager.create_sandbox(&workload, IsolationLevel::Maximum);
-    
+
     // 4. Execution Monitoring
     info!("4️⃣  Monitoring execution...");
     if let Some(info) = sandbox_manager.get_sandbox_info(&sandbox_id) {
         info!("  📊 Real-time metrics:");
-        info!("    💾 Memory: {:.1} MB", info.resource_usage.memory_bytes as f64 / 1024.0 / 1024.0);
+        info!(
+            "    💾 Memory: {:.1} MB",
+            info.resource_usage.memory_bytes as f64 / 1024.0 / 1024.0
+        );
         info!("    🖥️  CPU: {:.1}%", info.resource_usage.cpu_percent);
-        info!("    🌐 Network: ↑{}B ↓{}B", info.resource_usage.network_bytes_sent, info.resource_usage.network_bytes_received);
-        info!("    🚨 Security: {} violations detected", info.security_violations.len());
+        info!(
+            "    🌐 Network: ↑{}B ↓{}B",
+            info.resource_usage.network_bytes_sent, info.resource_usage.network_bytes_received
+        );
+        info!(
+            "    🚨 Security: {} violations detected",
+            info.security_violations.len()
+        );
     }
 
     // 5. Cleanup
@@ -555,4 +604,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("   • Integrated scenario executed with full monitoring");
 
     Ok(())
-} 
+}

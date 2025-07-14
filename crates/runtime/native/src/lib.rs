@@ -40,7 +40,10 @@ impl std::fmt::Debug for NativeRuntimeEngine {
         f.debug_struct("NativeRuntimeEngine")
             .field("config", &self.config)
             .field("active_processes", &self.active_processes)
-            .field("resource_monitor", &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"))
+            .field(
+                "resource_monitor",
+                &self.resource_monitor.as_ref().map(|_| "ResourceMonitor"),
+            )
             .field("capabilities", &self.capabilities)
             .finish()
     }
@@ -102,9 +105,8 @@ impl NativeRuntimeEngine {
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
-                    let metadata = std::fs::metadata(path).map_err(|e| {
-                        ToadStoolError::io(format!("Failed to read metadata: {}", e))
-                    })?;
+                    let metadata = std::fs::metadata(path)
+                        .map_err(|e| ToadStoolError::io(format!("Failed to read metadata: {e}")))?;
                     let permissions = metadata.permissions();
                     if permissions.mode() & 0o111 == 0 {
                         return Err(ToadStoolError::permission_denied(format!(
@@ -246,7 +248,7 @@ impl NativeRuntimeEngine {
         let execution_future = async {
             let child = command
                 .spawn()
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to spawn process: {}", e)))?;
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to spawn process: {e}")))?;
 
             // Store the process handle
             {
@@ -266,7 +268,7 @@ impl NativeRuntimeEngine {
             let output = child
                 .wait_with_output()
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Process execution failed: {}", e)))?;
+                .map_err(|e| ToadStoolError::runtime(format!("Process execution failed: {e}")))?;
 
             Ok::<_, ToadStoolError>(output)
         };
@@ -299,9 +301,13 @@ impl NativeRuntimeEngine {
         // Stop monitoring and get metrics
         let metrics = if let Some(monitor) = &self.resource_monitor {
             monitor.stop_monitoring(&request.execution_id.to_string())?;
-            monitor
-                .get_metrics(&request.execution_id.to_string())
-                .unwrap_or_default()
+            match monitor.get_metrics(&request.execution_id.to_string()) {
+                Ok(metrics) => metrics,
+                Err(e) => {
+                    warn!("Failed to get metrics for execution {}: {}", request.execution_id, e);
+                    RuntimeMetrics::default()
+                }
+            }
         } else {
             RuntimeMetrics::default()
         };
@@ -392,8 +398,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 Ok(())
             }
             Err(e) => Err(ToadStoolError::runtime(format!(
-                "Failed to initialize native runtime: {}",
-                e
+                "Failed to initialize native runtime: {e}"
             ))),
         }
     }
@@ -462,7 +467,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down Native Runtime Engine");
-        
+
         // Kill all active processes
         let mut processes = self.active_processes.write().await;
         for (execution_id, mut process_handle) in processes.drain() {
@@ -472,7 +477,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
                 }
             }
         }
-        
+
         info!("Native runtime engine shut down successfully");
         Ok(())
     }

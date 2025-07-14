@@ -16,6 +16,8 @@ use crate::{
     WorkloadSource,
 };
 
+use toadstool_config::constants::network;
+
 /// Available biome template types
 #[derive(Debug, Clone)]
 pub enum BiomeTemplate {
@@ -867,7 +869,11 @@ impl TemplateGenerator {
                 config: HashMap::new(),
                 dependencies: vec!["beardog".to_string()],
                 health_check: Some(HealthCheck {
-                    command: vec!["songbird".to_string(), "health".to_string()],
+                    command: vec![
+                        "curl".to_string(),
+                        "-f".to_string(),
+                        format!("http://{}:{}/health", network::DEFAULT_LOCALHOST, network::DEFAULT_SONGBIRD_PORT),
+                    ],
                     interval: 30,
                     timeout: 10,
                     retries: 3,
