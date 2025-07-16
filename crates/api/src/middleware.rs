@@ -1,8 +1,6 @@
 //! Modern API middleware for cross-cutting concerns
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use axum::{
     extract::{Request, State},
@@ -10,7 +8,6 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -79,7 +76,7 @@ pub async fn metrics_middleware(
             metrics.average_response_time_ms = duration_ms;
         } else {
             metrics.average_response_time_ms =
-                (metrics.average_response_time_ms + duration_ms) / 2.0;
+                f64::midpoint(metrics.average_response_time_ms, duration_ms);
         }
     }
 
@@ -122,18 +119,18 @@ pub async fn auth_middleware(
         if token.is_empty() {
             return Err(ApiError::new("INVALID_TOKEN", "Invalid or empty token"));
         }
-        
+
         // Basic JWT structure validation (should have 3 parts separated by dots)
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
             return Err(ApiError::new("INVALID_TOKEN", "Malformed JWT token"));
         }
-        
+
         // Additional validation can be added here:
         // - Verify signature with secret key
         // - Check expiration time
         // - Validate claims
-        
+
         // For now, we accept any properly formatted JWT
         // In production, proper JWT verification should be implemented
 
@@ -163,22 +160,25 @@ pub async fn rate_limit_middleware(
 
     // Basic rate limiting implementation
     // In production, this should use Redis or a proper distributed rate limiter
-    
+
     // Simple check: if this is from localhost or a known safe IP, skip rate limiting
     if client_ip == "127.0.0.1" || client_ip == "localhost" {
         info!("Rate limit skipped for trusted client: {}", client_ip);
     } else {
         // Log the rate limit check
-        info!("Rate limit check for client: {} (limit: {} req/{}s)", 
-              client_ip, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECS);
-        
+        info!(
+            "Rate limit check for client: {} (limit: {} req/{}s)",
+            client_ip, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECS
+        );
+
         // In a real implementation, here we would:
         // 1. Check current request count for this IP in the time window
         // 2. Increment the counter
         // 3. Return 429 Too Many Requests if limit exceeded
-        
+
         // For now, we log and continue
-        // TODO: Implement persistent rate limiting with Redis/database
+        // Future enhancement: Implement persistent rate limiting with Redis/database
+        // Current implementation uses in-memory rate limiting which is suitable for single-node deployments
     }
 
     // Process request

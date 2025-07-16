@@ -83,9 +83,9 @@ pub enum ArtifactType {
 
 /// Integration test manager
 pub struct IntegrationTestManager {
-    config: IntegrationTestConfig,
+    _config: IntegrationTestConfig,
     results: Arc<RwLock<Vec<IntegrationTestResult>>>,
-    active_tests: Arc<RwLock<HashMap<String, TestContext>>>,
+    _active_tests: Arc<RwLock<HashMap<String, TestContext>>>,
 }
 
 /// Configuration for integration tests
@@ -196,9 +196,9 @@ impl IntegrationTestManager {
     /// Create a new integration test manager
     pub fn new(config: IntegrationTestConfig) -> Self {
         Self {
-            config,
+            _config: config,
             results: Arc::new(RwLock::new(Vec::new())),
-            active_tests: Arc::new(RwLock::new(HashMap::new())),
+            _active_tests: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -271,8 +271,6 @@ impl IntegrationTestManager {
         let total_tests = test_data.len();
         let status = if passed_tests == total_tests {
             TestStatus::Passed
-        } else if passed_tests > 0 {
-            TestStatus::Failed
         } else {
             TestStatus::Failed
         };
@@ -687,8 +685,6 @@ impl IntegrationTestManager {
         let total_tests = test_data.len();
         let status = if passed_tests == total_tests {
             TestStatus::Passed
-        } else if passed_tests > 0 {
-            TestStatus::Failed
         } else {
             TestStatus::Failed
         };
@@ -1364,11 +1360,11 @@ mod tests {
     #[tokio::test]
     async fn test_integration_test_manager() {
         let config = IntegrationTestConfig::default();
-        let manager = IntegrationTestManager::new(config);
+        let manager = IntegrationTestManager::new(config.clone());
 
-        // Test manager creation
-        assert_eq!(manager.config.max_concurrent_tests, 10);
-        assert_eq!(manager.config.default_timeout, Duration::from_secs(300));
+        // Test manager creation and config values
+        assert_eq!(config.max_concurrent_tests, 10);
+        assert_eq!(config.default_timeout, Duration::from_secs(300));
 
         // Test initial state
         let results = manager.get_results().await;
@@ -1423,12 +1419,15 @@ mod tests {
 
         // Record some metrics
         collector.record_metric("test_metric", 42.0);
-        collector.record_metric("another_metric", 3.14);
+        collector.record_metric("another_metric", std::f64::consts::PI);
 
         // Finalize and check
         let metrics = collector.finalize();
         assert_eq!(metrics.custom_metrics.get("test_metric"), Some(&42.0));
-        assert_eq!(metrics.custom_metrics.get("another_metric"), Some(&3.14));
+        assert_eq!(
+            metrics.custom_metrics.get("another_metric"),
+            Some(&std::f64::consts::PI)
+        );
         assert!(metrics.custom_metrics.contains_key("duration_ms"));
     }
 

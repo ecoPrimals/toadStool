@@ -14,20 +14,20 @@ pub struct ComputeResourceCoordinator {
     /// Global resource pools
     resource_pools: Arc<RwLock<HashMap<DeviceId, ResourcePool>>>,
     /// Allocation tracking
-    allocations: Arc<RwLock<HashMap<Uuid, ResourceAllocation>>>,
+    _allocations: Arc<RwLock<HashMap<Uuid, ResourceAllocation>>>,
     /// Load balancer
     load_balancer: Arc<Mutex<Box<dyn LoadBalancer>>>,
     /// Configuration
-    config: ResourceConfig,
+    _config: ResourceConfig,
 }
 
 impl ComputeResourceCoordinator {
     pub fn new(config: ResourceConfig) -> Self {
         Self {
             resource_pools: Arc::new(RwLock::new(HashMap::new())),
-            allocations: Arc::new(RwLock::new(HashMap::new())),
+            _allocations: Arc::new(RwLock::new(HashMap::new())),
             load_balancer: Arc::new(Mutex::new(Box::new(WeightedRoundRobinBalancer::new()))),
-            config,
+            _config: config,
         }
     }
 

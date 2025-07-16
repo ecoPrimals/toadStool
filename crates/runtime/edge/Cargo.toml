@@ -1,0 +1,60 @@
+[package]
+name = "toadstool-runtime-edge"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team"]
+description = "Edge/IoT runtime engine for ToadStool Universal Compute Platform"
+license = "Apache-2.0"
+repository = "https://github.com/toadstool-platform/toadstool"
+
+[dependencies]
+# Core dependencies
+toadstool = { path = "../../core/toadstool" }
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.8", features = ["v4", "serde"] }
+tracing = "0.1"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+md5 = "0.7"
+
+# Edge-specific dependencies
+serialport = "4.3"
+embedded-hal = "1.0"
+rppal = { version = "0.17", optional = true }
+esp-idf-sys = { version = "0.34", optional = true }
+arduino-hal = { version = "0.1", optional = true }
+cross = "0.2"
+cc = "1.0"
+bindgen = "0.69"
+
+# Network and communication
+reqwest = { version = "0.11", features = ["json"] }
+mdns = "3.0"
+zeroconf = "0.12"
+mqtt = "0.4"
+coap = "0.10"
+
+# Device discovery and management
+sysinfo = "0.30"
+udev = "0.8"
+libudev = "0.3"
+
+# Cross-compilation support
+cargo-cross = "0.2"
+cross-toolchain = "0.1"
+
+[features]
+default = ["raspberry-pi", "arduino", "esp32"]
+raspberry-pi = ["rppal"]
+arduino = ["arduino-hal"]
+esp32 = ["esp-idf-sys"]
+all-platforms = ["raspberry-pi", "arduino", "esp32"]
+
+[build-dependencies]
+bindgen = "0.69"
+cc = "1.0" 

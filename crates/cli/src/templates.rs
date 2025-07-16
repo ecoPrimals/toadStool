@@ -16,7 +16,7 @@ use crate::{
     WorkloadSource,
 };
 
-use toadstool_config::constants::network;
+use toadstool_config::network;
 
 /// Available biome template types
 #[derive(Debug, Clone)]
@@ -202,6 +202,7 @@ impl TemplateGenerator {
         })
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_basic_template(
         &self,
     ) -> (
@@ -325,6 +326,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_science_template(
         &self,
     ) -> (
@@ -404,7 +406,10 @@ impl TemplateGenerator {
                 environment: vec![
                     ("POSTGRES_DB".to_string(), "science".to_string()),
                     ("POSTGRES_USER".to_string(), "scientist".to_string()),
-                    ("POSTGRES_PASSWORD".to_string(), "changeme".to_string()),
+                    (
+                        "POSTGRES_PASSWORD".to_string(),
+                        "${POSTGRES_PASSWORD:-}".to_string(),
+                    ),
                 ]
                 .into_iter()
                 .collect(),
@@ -455,6 +460,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_ai_research_template(
         &self,
     ) -> (
@@ -586,6 +592,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_quantum_template(
         &self,
     ) -> (
@@ -664,6 +671,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_genomics_template(
         &self,
     ) -> (
@@ -756,6 +764,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_vision_template(
         &self,
     ) -> (
@@ -835,6 +844,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_distributed_template(
         &self,
     ) -> (
@@ -872,7 +882,11 @@ impl TemplateGenerator {
                     command: vec![
                         "curl".to_string(),
                         "-f".to_string(),
-                        format!("http://{}:{}/health", network::DEFAULT_LOCALHOST, network::DEFAULT_SONGBIRD_PORT),
+                        format!(
+                            "http://{}:{}/health",
+                            network::DEFAULT_LOCALHOST,
+                            network::DEFAULT_SONGBIRD_PORT
+                        ),
                     ],
                     interval: 30,
                     timeout: 10,
@@ -937,6 +951,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_sovereign_template(
         &self,
     ) -> (
@@ -1001,6 +1016,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_development_template(
         &self,
     ) -> (
@@ -1036,7 +1052,7 @@ impl TemplateGenerator {
                     memory_limit: Some("8GB".to_string()),
                     storage_limit: Some("50GB".to_string()),
                 },
-                environment: vec![("PASSWORD".to_string(), "changeme".to_string())]
+                environment: vec![("PASSWORD".to_string(), "${APP_PASSWORD:-}".to_string())]
                     .into_iter()
                     .collect(),
                 ports: vec![ServicePort {
@@ -1076,6 +1092,7 @@ impl TemplateGenerator {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     fn create_custom_template(
         &self,
         spec: &CustomTemplateSpec,

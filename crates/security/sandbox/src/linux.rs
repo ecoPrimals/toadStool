@@ -4,7 +4,7 @@
 //! cgroups, seccomp, and other Linux kernel features.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use tokio::sync::RwLock;
@@ -17,7 +17,7 @@ use crate::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
 
 /// Linux-specific sandbox manager
 pub struct LinuxSandboxManager {
-    config: SandboxConfig,
+    _config: SandboxConfig,
     processes: RwLock<HashMap<String, u32>>, // sandbox_id -> pid
 }
 
@@ -25,7 +25,7 @@ impl LinuxSandboxManager {
     /// Create a new Linux sandbox manager
     pub fn new(config: SandboxConfig) -> Self {
         Self {
-            config,
+            _config: config,
             processes: RwLock::new(HashMap::new()),
         }
     }
@@ -34,7 +34,7 @@ impl LinuxSandboxManager {
     pub async fn create_sandbox(
         &self,
         spec: &SandboxSpec,
-        _sandbox_dir: &PathBuf,
+        _sandbox_dir: &Path,
     ) -> ToadStoolResult<()> {
         debug!("Creating Linux sandbox: {}", spec.sandbox_id);
 
@@ -108,7 +108,7 @@ impl LinuxSandboxManager {
     pub async fn setup_mount(
         &self,
         mount: &FilesystemMount,
-        _target_path: &PathBuf,
+        _target_path: &Path,
     ) -> ToadStoolResult<()> {
         debug!(
             "Setting up filesystem mount: {:?} -> {:?}",
@@ -184,21 +184,25 @@ impl LinuxSandboxManager {
 }
 
 /// Linux capability detection
+#[allow(dead_code)]
 pub fn has_cgroups_v2() -> bool {
     std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists()
 }
 
 /// Check if Linux supports seccomp
+#[allow(dead_code)]
 pub fn has_seccomp() -> bool {
     std::path::Path::new("/proc/sys/kernel/seccomp").exists()
 }
 
 /// Check if Linux supports namespaces
+#[allow(dead_code)]
 pub fn has_namespaces() -> bool {
     std::path::Path::new("/proc/self/ns").exists()
 }
 
 /// Get available namespace types
+#[allow(dead_code)]
 pub fn get_available_namespaces() -> Vec<String> {
     let mut namespaces = Vec::new();
 

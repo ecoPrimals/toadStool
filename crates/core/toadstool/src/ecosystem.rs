@@ -17,7 +17,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{ToadStoolError, ToadStoolResult};
-use toadstool_config::constants::network;
+use toadstool_config::network;
 
 /// Ecosystem coordinator for primal integration
 pub struct EcosystemCoordinator {
@@ -328,7 +328,10 @@ impl EcosystemCoordinator {
 
         for (name, dns_name) in dns_names {
             match self
-                .discover_primal_at_endpoint(name, &format!("http://{dns_name}:{}", network::DEFAULT_SONGBIRD_PORT))
+                .discover_primal_at_endpoint(
+                    name,
+                    &format!("http://{dns_name}:{}", network::DEFAULT_SONGBIRD_PORT),
+                )
                 .await
             {
                 Ok(primal) => discovered.push(primal),
@@ -348,12 +351,12 @@ impl EcosystemCoordinator {
 
         // Scan common ports for primals
         let common_ports = vec![
-            network::DEFAULT_SONGBIRD_PORT, 
-            network::DEFAULT_TOADSTOOL_PORT, 
-            network::DEFAULT_BEARDOG_PORT, 
-            network::DEFAULT_NESTGATE_PORT, 
-            8084, 
-            8085
+            network::DEFAULT_SONGBIRD_PORT,
+            network::DEFAULT_TOADSTOOL_PORT,
+            network::DEFAULT_BEARDOG_PORT,
+            network::DEFAULT_NESTGATE_PORT,
+            8084,
+            8085,
         ];
         let localhost = network::DEFAULT_LOCALHOST;
 
@@ -523,10 +526,7 @@ impl EcosystemCoordinator {
     }
 
     /// Create communication channel with a primal
-    fn create_primal_channel(
-        &self,
-        primal: &PrimalInstance,
-    ) -> ToadStoolResult<PrimalChannel> {
+    fn create_primal_channel(&self, primal: &PrimalInstance) -> ToadStoolResult<PrimalChannel> {
         debug!("📡 Creating communication channel with {}", primal.name);
 
         #[cfg(feature = "networking")]

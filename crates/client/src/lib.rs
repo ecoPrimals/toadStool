@@ -176,6 +176,13 @@ impl Default for ClientConfig {
     }
 }
 
+impl ClientConfig {
+    /// Build an API URL with the given endpoint (zero-copy optimization)
+    fn api_url(&self, endpoint: &str) -> String {
+        format!("{}/api/v1/{}", self.base_url, endpoint)
+    }
+}
+
 /// Authentication configuration
 #[derive(Debug, Clone)]
 pub enum AuthConfig {
@@ -348,6 +355,10 @@ pub struct ToadStoolClient {
 
 impl ToadStoolClient {
     /// Create a new ToadStool client
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the base URL is invalid or client initialization fails
     pub async fn new(base_url: &str) -> ClientResult<Self> {
         let config = ClientConfig {
             base_url: base_url.to_string(),
@@ -358,6 +369,10 @@ impl ToadStoolClient {
     }
 
     /// Create a new ToadStool client with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is invalid or client initialization fails
     pub async fn with_config(config: ClientConfig) -> ClientResult<Self> {
         // Validate configuration
         let _parsed_url = Url::parse(&config.base_url)?;
@@ -375,20 +390,19 @@ impl ToadStoolClient {
                 AuthConfig::ApiKey { key, header_name } => {
                     default_headers.insert(
                         reqwest::header::HeaderName::from_bytes(header_name.as_bytes()).map_err(
-                            |e| ClientError::Configuration(format!("Invalid header name: {e}")),
+                            |e| ClientError::Configuration(format!("Invalid API key header name '{header_name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens.")),
                         )?,
                         reqwest::header::HeaderValue::from_str(key).map_err(|e| {
-                            ClientError::Configuration(format!("Invalid header value: {e}"))
+                            ClientError::Configuration(format!("Invalid API key value: {e}. Header values must contain only visible ASCII characters."))
                         })?,
                     );
                 }
                 AuthConfig::BearerToken { token } => {
                     default_headers.insert(
                         reqwest::header::AUTHORIZATION,
-                        reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
-                            .map_err(|e| {
-                                ClientError::Configuration(format!("Invalid bearer token: {e}"))
-                            })?,
+                        reqwest::header::HeaderValue::from_str(&format!("Bearer {token}")).map_err(
+                            |e| ClientError::Configuration(format!("Invalid bearer token '{token}': {e}. Token must contain only visible ASCII characters and no newlines.")),
+                        )?,
                     );
                 }
                 AuthConfig::Basic { username, password } => {
@@ -397,20 +411,19 @@ impl ToadStoolClient {
                         .encode(format!("{username}:{password}"));
                     default_headers.insert(
                         reqwest::header::AUTHORIZATION,
-                        reqwest::header::HeaderValue::from_str(&format!("Basic {credentials}"))
-                            .map_err(|e| {
-                                ClientError::Configuration(format!("Invalid basic auth: {e}"))
-                            })?,
+                        reqwest::header::HeaderValue::from_str(&format!("Basic {credentials}")).map_err(
+                            |e| ClientError::Configuration(format!("Invalid basic auth credentials for user '{username}': {e}. Username and password must contain only visible ASCII characters.")),
+                        )?,
                     );
                 }
                 AuthConfig::Custom { headers } => {
                     for (name, value) in headers {
                         default_headers.insert(
                             reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(
-                                |e| ClientError::Configuration(format!("Invalid header name: {e}")),
+                                |e| ClientError::Configuration(format!("Invalid custom header name '{name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens.")),
                             )?,
                             reqwest::header::HeaderValue::from_str(value).map_err(|e| {
-                                ClientError::Configuration(format!("Invalid header value: {e}"))
+                                ClientError::Configuration(format!("Invalid custom header value for '{name}': {e}. Header values must contain only visible ASCII characters."))
                             })?,
                         );
                     }
@@ -422,10 +435,10 @@ impl ToadStoolClient {
         for (name, value) in &config.custom_headers {
             default_headers.insert(
                 reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|e| {
-                    ClientError::Configuration(format!("Invalid custom header name: {e}"))
+                    ClientError::Configuration(format!("Invalid custom header name '{name}': {e}. Header names must contain only ASCII letters, numbers, and hyphens."))
                 })?,
                 reqwest::header::HeaderValue::from_str(value).map_err(|e| {
-                    ClientError::Configuration(format!("Invalid custom header value: {e}"))
+                    ClientError::Configuration(format!("Invalid custom header value for '{name}': {e}. Header values must contain only visible ASCII characters."))
                 })?,
             );
         }
@@ -452,6 +465,10 @@ impl ToadStoolClient {
     }
 
     /// Submit a workload for execution
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job submission fails or the server returns an error
     pub async fn submit_workload(
         &self,
         workload: WorkloadSubmission,
@@ -468,7 +485,7 @@ impl ToadStoolClient {
             "metadata": workload.metadata,
         });
 
-        let url = format!("{}/api/v1/executions", self.config.base_url);
+        let url = self.config.api_url("executions");
 
         let response = self
             .http_client
@@ -496,12 +513,16 @@ impl ToadStoolClient {
             let error_text = response
                 .text()
                 .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+                .unwrap_or_else(|_| "Unknown error".to_owned());
             Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
         }
     }
 
     /// Get execution status
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job ID is invalid or the server returns an error
     pub async fn get_execution_status(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         debug!("Getting execution status for: {}", execution_id);
 
@@ -527,12 +548,16 @@ impl ToadStoolClient {
             let error_text = response
                 .text()
                 .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+                .unwrap_or_else(|_| "Unknown error".to_owned());
             Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
         }
     }
 
     /// Cancel an execution
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job ID is invalid or the server returns an error
     pub async fn cancel_execution(&self, execution_id: Uuid) -> ClientResult<()> {
         debug!("Cancelling execution: {}", execution_id);
 
@@ -551,16 +576,21 @@ impl ToadStoolClient {
             let error_text = response
                 .text()
                 .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+                .unwrap_or_else(|_| "Unknown error".to_owned());
             Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
         }
     }
 
     /// Wait for execution completion
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job ID is invalid or the server returns an error
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         debug!("Waiting for execution completion: {}", execution_id);
 
-        let polling_interval = Duration::from_secs(1);
+        let mut polling_interval = Duration::from_millis(500); // Start with 500ms
+        let max_polling_interval = Duration::from_secs(5); // Cap at 5 seconds
         let max_wait_time = Duration::from_secs(300); // 5 minutes default
         let start_time = std::time::Instant::now();
 
@@ -582,22 +612,31 @@ impl ToadStoolClient {
                     // Check timeout
                     if start_time.elapsed() > max_wait_time {
                         return Err(ClientError::Timeout(format!(
-                            "Execution {execution_id} did not complete within timeout"
+                            "Execution {execution_id} did not complete within {max_wait_time:?}. Current status: {:?}. Try increasing the timeout or check if the workload is stuck.",
+                            execution_info.status
                         )));
                     }
 
-                    // Wait before next poll
+                    // Wait before next poll with exponential backoff
                     tokio::time::sleep(polling_interval).await;
+
+                    // Exponential backoff: increase interval by 50% each time, capped at max
+                    polling_interval =
+                        std::cmp::min(polling_interval * 3 / 2, max_polling_interval);
                 }
             }
         }
     }
 
     /// Get cluster status
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server returns an error
     pub async fn get_cluster_status(&self) -> ClientResult<ClusterStatus> {
         debug!("Getting cluster status");
 
-        let url = format!("{}/api/v1/cluster/status", self.config.base_url);
+        let url = self.config.api_url("cluster/status");
 
         let response = self.http_client.get(&url).send().await?;
 
@@ -609,28 +648,38 @@ impl ToadStoolClient {
             let error_text = response
                 .text()
                 .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+                .unwrap_or_else(|_| "Unknown error".to_owned());
             Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
         }
     }
 
     /// Health check
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server returns an error
     pub async fn health_check(&self) -> ClientResult<()> {
-        let url = format!("{}/api/v1/health", self.config.base_url);
+        let url = self.config.api_url("health");
 
         let response = self.http_client.get(&url).send().await?;
 
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(ClientError::Server(format!(
-                "Health check failed: HTTP {}",
-                response.status()
-            )))
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_owned());
+            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
         }
     }
 
     /// List active executions
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server returns an error
     pub async fn list_executions(&self) -> ClientResult<Vec<ExecutionInfo>> {
         let executions = self.active_executions.read().await;
         Ok(executions.values().cloned().collect())
@@ -646,7 +695,11 @@ impl ToadStoolClient {
     }
 
     /// Start WebSocket connection for real-time events
-    pub async fn start_event_stream(&self) -> ClientResult<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if WebSocket is disabled or connection fails
+    pub fn start_event_stream(&self) -> ClientResult<()> {
         if !self.config.enable_websocket {
             return Ok(());
         }
@@ -699,27 +752,78 @@ pub struct ClusterStatus {
 
 impl WorkloadSubmission {
     /// Create a native workload submission
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use toadstool_client::WorkloadSubmission;
+    /// use std::collections::HashMap;
+    ///
+    /// let workload = WorkloadSubmission::native()
+    ///     .executable("/bin/echo")
+    ///     .args(vec!["Hello, World!".to_string()])
+    ///     .build()?;
+    /// ```
     pub fn native() -> NativeWorkloadBuilder {
         NativeWorkloadBuilder::new()
     }
 
     /// Create a container workload submission
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use toadstool_client::WorkloadSubmission;
+    /// use std::collections::HashMap;
+    ///
+    /// let workload = WorkloadSubmission::container()
+    ///     .image("ubuntu:latest")
+    ///     .command(vec!["echo".to_string()])
+    ///     .args(vec!["Hello from container!".to_string()])
+    ///     .build();
+    /// ```
     pub fn container() -> ContainerWorkloadBuilder {
         ContainerWorkloadBuilder::new()
     }
 
     /// Create a WASM workload submission
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use toadstool_client::WorkloadSubmission;
+    /// use std::collections::HashMap;
+    ///
+    /// let wasm_module = std::fs::read("hello.wasm")?;
+    /// let workload = WorkloadSubmission::wasm()
+    ///     .module_data(wasm_module)
+    ///     .args(vec!["arg1".to_string(), "arg2".to_string()])
+    ///     .build();
+    /// ```
     pub fn wasm() -> WasmWorkloadBuilder {
         WasmWorkloadBuilder::new()
     }
 
     /// Create a Python workload submission
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use toadstool_client::WorkloadSubmission;
+    /// use std::collections::HashMap;
+    ///
+    /// let workload = WorkloadSubmission::python()
+    ///     .script("print('Hello from Python!')")
+    ///     .requirements(vec!["requests>=2.28.0".to_string()])
+    ///     .build();
+    /// ```
     pub fn python() -> PythonWorkloadBuilder {
         PythonWorkloadBuilder::new()
     }
 }
 
 /// Builder for native workloads
+#[must_use]
 pub struct NativeWorkloadBuilder {
     executable: Option<String>,
     args: Vec<String>,
@@ -738,6 +842,7 @@ impl Default for NativeWorkloadBuilder {
 }
 
 impl NativeWorkloadBuilder {
+    /// Create a new native workload builder
     pub fn new() -> Self {
         Self {
             executable: None,
@@ -751,51 +856,90 @@ impl NativeWorkloadBuilder {
         }
     }
 
+    /// Set the executable path for the native workload
+    ///
+    /// # Arguments
+    ///
+    /// * `executable` - The path to the executable to run
     pub fn executable<S: Into<String>>(mut self, executable: S) -> Self {
         self.executable = Some(executable.into());
         self
     }
 
+    /// Set command-line arguments for the executable
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - Vector of command-line arguments to pass to the executable
     pub fn args(mut self, args: Vec<String>) -> Self {
         self.args = args;
         self
     }
 
+    /// Set the working directory for the execution
+    ///
+    /// # Arguments
+    ///
+    /// * `working_dir` - The directory path where the executable should run
     pub fn working_dir<S: Into<String>>(mut self, working_dir: S) -> Self {
         self.working_dir = Some(working_dir.into());
         self
     }
 
+    /// Set environment variables for the execution
+    ///
+    /// # Arguments
+    ///
+    /// * `environment` - HashMap of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self
     }
 
+    /// Set the execution priority for the workload
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The job priority level (affects scheduling order)
     pub fn priority(mut self, priority: JobPriority) -> Self {
         self.priority = Some(priority);
         self
     }
 
+    /// Set the maximum execution timeout
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration the workload is allowed to run before being terminated
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    /// Set resource requirements for the workload
     pub fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }
 
+    /// Set metadata for the workload
     pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
         self.metadata = metadata;
         self
     }
 
+    /// Build the workload submission
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the workload configuration is invalid
     pub fn build(self) -> Result<WorkloadSubmission, ClientError> {
         let executable = self.executable.ok_or_else(|| {
-            ClientError::Configuration("Executable is required for native workload".to_string())
+            ClientError::Configuration(
+                "Executable path is required for native workload. Use .executable(\"/path/to/binary\") to set it.".to_string()
+            )
         })?;
-        
+
         Ok(WorkloadSubmission {
             workload_type: WorkloadType::Native {
                 executable,
@@ -813,6 +957,7 @@ impl NativeWorkloadBuilder {
 }
 
 /// Builder for container workloads
+#[must_use]
 pub struct ContainerWorkloadBuilder {
     image: Option<String>,
     command: Option<Vec<String>>,
@@ -832,6 +977,7 @@ impl Default for ContainerWorkloadBuilder {
 }
 
 impl ContainerWorkloadBuilder {
+    /// Create a new container workload builder
     pub fn new() -> Self {
         Self {
             image: None,
@@ -846,51 +992,101 @@ impl ContainerWorkloadBuilder {
         }
     }
 
+    /// Set the container image
+    ///
+    /// # Examples
+    /// ```
+    /// use toadstool_client::WorkloadSubmission;
+    /// let workload = WorkloadSubmission::container()
+    ///     .image("alpine:latest")
+    ///     .build();
+    /// ```
     pub fn image<S: Into<String>>(mut self, image: S) -> Self {
         self.image = Some(image.into());
         self
     }
 
+    /// Set the container command
     pub fn command(mut self, command: Vec<String>) -> Self {
         self.command = Some(command);
         self
     }
 
+    /// Set command-line arguments for the executable
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - Vector of command-line arguments to pass to the executable
     pub fn args(mut self, args: Vec<String>) -> Self {
         self.args = Some(args);
         self
     }
 
+    /// Set the working directory for the execution
+    ///
+    /// # Arguments
+    ///
+    /// * `working_dir` - The directory path where the executable should run
     pub fn working_dir<S: Into<String>>(mut self, working_dir: S) -> Self {
         self.working_dir = Some(working_dir.into());
         self
     }
 
+    /// Set environment variables
+    ///
+    /// # Arguments
+    ///
+    /// * `environment` - HashMap of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self
     }
 
+    /// Set job priority
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The job priority level (affects scheduling order)
     pub fn priority(mut self, priority: JobPriority) -> Self {
         self.priority = Some(priority);
         self
     }
 
+    /// Set execution timeout
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration the workload is allowed to run before being terminated
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    /// Set resource requirements
+    ///
+    /// # Arguments
+    ///
+    /// * `resources` - Resource requirements for the workload
     pub fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }
 
+    /// Set metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - HashMap of metadata key-value pairs
     pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
         self.metadata = metadata;
         self
     }
 
+    /// Build the workload submission
+    ///
+    /// # Panics
+    /// Panics if the image is not set, as it is required for container workloads
+    #[must_use]
     pub fn build(self) -> WorkloadSubmission {
         WorkloadSubmission {
             workload_type: WorkloadType::Container {
@@ -912,6 +1108,7 @@ impl ContainerWorkloadBuilder {
 }
 
 /// Builder for WASM workloads
+#[must_use]
 pub struct WasmWorkloadBuilder {
     module_data: Option<Vec<u8>>,
     args: Vec<String>,
@@ -929,6 +1126,7 @@ impl Default for WasmWorkloadBuilder {
 }
 
 impl WasmWorkloadBuilder {
+    /// Create a new WASM workload builder
     pub fn new() -> Self {
         Self {
             module_data: None,
@@ -941,41 +1139,77 @@ impl WasmWorkloadBuilder {
         }
     }
 
+    /// Set the WASM module data
     pub fn module_data(mut self, module_data: Vec<u8>) -> Self {
         self.module_data = Some(module_data);
         self
     }
 
+    /// Set command line arguments
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - Vector of command-line arguments to pass to the executable
     pub fn args(mut self, args: Vec<String>) -> Self {
         self.args = args;
         self
     }
 
+    /// Set environment variables
+    ///
+    /// # Arguments
+    ///
+    /// * `environment` - HashMap of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self
     }
 
+    /// Set job priority
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The job priority level (affects scheduling order)
     pub fn priority(mut self, priority: JobPriority) -> Self {
         self.priority = Some(priority);
         self
     }
 
+    /// Set execution timeout
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration the workload is allowed to run before being terminated
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    /// Set resource requirements
+    ///
+    /// # Arguments
+    ///
+    /// * `resources` - Resource requirements for the workload
     pub fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }
 
+    /// Set metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - HashMap of metadata key-value pairs
     pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
         self.metadata = metadata;
         self
     }
 
+    /// Build the workload submission
+    ///
+    /// # Panics
+    /// Panics if the module data is not set, as it is required for WASM workloads
+    #[must_use]
     pub fn build(self) -> WorkloadSubmission {
         WorkloadSubmission {
             workload_type: WorkloadType::Wasm {
@@ -995,6 +1229,7 @@ impl WasmWorkloadBuilder {
 }
 
 /// Builder for Python workloads
+#[must_use]
 pub struct PythonWorkloadBuilder {
     script: Option<String>,
     requirements: Vec<String>,
@@ -1012,6 +1247,7 @@ impl Default for PythonWorkloadBuilder {
 }
 
 impl PythonWorkloadBuilder {
+    /// Create a new Python workload builder
     pub fn new() -> Self {
         Self {
             script: None,
@@ -1024,41 +1260,81 @@ impl PythonWorkloadBuilder {
         }
     }
 
+    /// Set the Python script
+    ///
+    /// # Arguments
+    ///
+    /// * `script` - The Python script to execute.
     pub fn script<S: Into<String>>(mut self, script: S) -> Self {
         self.script = Some(script.into());
         self
     }
 
+    /// Set Python requirements
+    ///
+    /// # Arguments
+    ///
+    /// * `requirements` - Vector of Python package requirements (e.g., "requests>=2.28.0").
     pub fn requirements(mut self, requirements: Vec<String>) -> Self {
         self.requirements = requirements;
         self
     }
 
+    /// Set environment variables
+    ///
+    /// # Arguments
+    ///
+    /// * `environment` - HashMap of environment variable names to values
     pub fn environment(mut self, environment: HashMap<String, String>) -> Self {
         self.environment = environment;
         self
     }
 
+    /// Set job priority
+    ///
+    /// # Arguments
+    ///
+    /// * `priority` - The job priority level (affects scheduling order)
     pub fn priority(mut self, priority: JobPriority) -> Self {
         self.priority = Some(priority);
         self
     }
 
+    /// Set execution timeout
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Maximum duration the workload is allowed to run before being terminated
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    /// Set resource requirements
+    ///
+    /// # Arguments
+    ///
+    /// * `resources` - Resource requirements for the workload
     pub fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }
 
+    /// Set metadata
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - HashMap of metadata key-value pairs
     pub fn metadata(mut self, metadata: HashMap<String, String>) -> Self {
         self.metadata = metadata;
         self
     }
 
+    /// Build the workload submission
+    ///
+    /// # Panics
+    /// Panics if the script is not set, as it is required for Python workloads
+    #[must_use]
     pub fn build(self) -> WorkloadSubmission {
         WorkloadSubmission {
             workload_type: WorkloadType::Python {
@@ -1103,7 +1379,10 @@ mod tests {
                 assert_eq!(executable, "/bin/echo");
                 assert_eq!(args, vec!["Hello", "World"]);
             }
-            _ => assert!(false, "Expected native workload type, got: {:?}", workload.workload_type),
+            _ => panic!(
+                "Expected native workload type, got: {:?}",
+                workload.workload_type
+            ),
         }
 
         assert_eq!(workload.priority, Some(JobPriority::High));
@@ -1129,7 +1408,10 @@ mod tests {
                 assert_eq!(command, Some(vec!["echo".to_string()]));
                 assert_eq!(args, Some(vec!["Hello from container".to_string()]));
             }
-            _ => assert!(false, "Expected container workload type, got: {:?}", workload.workload_type),
+            _ => panic!(
+                "Expected container workload type, got: {:?}",
+                workload.workload_type
+            ),
         }
 
         assert_eq!(workload.runtime_hint, Some("container".to_string()));
@@ -1150,7 +1432,10 @@ mod tests {
                 assert_eq!(script, "print('Hello, Python!')");
                 assert_eq!(requirements, vec!["requests==2.28.0"]);
             }
-            _ => assert!(false, "Expected Python workload type, got: {:?}", workload.workload_type),
+            _ => panic!(
+                "Expected Python workload type, got: {:?}",
+                workload.workload_type
+            ),
         }
 
         assert_eq!(workload.runtime_hint, Some("python".to_string()));

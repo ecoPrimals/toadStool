@@ -31,9 +31,8 @@ pub async fn start_background_services(state: ServerState) {
     });
 
     // Start cleanup task
-    let cleanup_state = state.clone();
     tokio::spawn(async move {
-        cleanup_task(cleanup_state).await;
+        cleanup_task(state).await;
     });
 
     info!("Background services started");
@@ -66,7 +65,8 @@ async fn resource_monitoring_task(state: ServerState) {
             cpu_usage_percent, memory_usage_percent, system_resources.available_cpu_cores, system_resources.available_memory_bytes
         );
 
-        let active_executions = state.active_executions.read().await.len() as u32;
+        let active_executions =
+            u32::try_from(state.active_executions.read().await.len()).unwrap_or(0);
 
         let _ = state
             .event_broadcaster
@@ -178,7 +178,7 @@ async fn cleanup_task(state: ServerState) {
                         status: toadstool::ExecutionStatus::Failed {
                             error: "Execution timed out".to_string(),
                         },
-                        duration_ms: execution.timeout.as_millis() as u64,
+                        duration_ms: u64::try_from(execution.timeout.as_millis()).unwrap_or(0),
                         timestamp: now,
                     });
             }
@@ -201,7 +201,7 @@ async fn perform_health_check(state: &ServerState) -> bool {
             // In a real implementation, we'd track usage over time
             let cpu_usage_percent = 50.0; // Placeholder - would need historical tracking
             let memory_usage_percent = 45.0; // Placeholder - would calculate from available vs total
-            
+
             if cpu_usage_percent > config.cpu_threshold_percent
                 || memory_usage_percent > config.memory_threshold_percent
             {
@@ -222,7 +222,7 @@ async fn perform_health_check(state: &ServerState) -> bool {
 
         // Check runtime engine health
         let runtime_engines = state.runtime_engines.read().await;
-        
+
         // Verify each engine is responding
         for (name, engine) in runtime_engines.iter() {
             // Basic engine health check - verify it can get metrics
@@ -237,7 +237,7 @@ async fn perform_health_check(state: &ServerState) -> bool {
                 }
             }
         }
-        
+
         // Check if we have at least one working runtime engine
         if runtime_engines.is_empty() {
             warn!("No runtime engines available");

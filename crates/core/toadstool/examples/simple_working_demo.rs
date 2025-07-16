@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get platform status
     println!("\n📊 Platform Status:");
     let status = toadstool::universal::get_platform_status().await;
-    println!("   Platform Status: {:?}", status);
+    println!("   Platform Status: {status:?}");
     println!("   Universal Support: ENABLED");
 
     // Create a universal job
@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("   Job ID: {}", job.id);
-    
+
     // Execute the universal job
     println!("   🏃 Executing universal job...");
     let result = platform.execute_universal_job(job).await?;
@@ -76,7 +76,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         architectures: vec!["x86_64".to_string()],
     };
     let providers = platform.find_primals_by_capability(&capability).await;
-    println!("   Found {} providers with native execution capability", providers.len());
+    println!(
+        "   Found {} providers with native execution capability",
+        providers.len()
+    );
     println!("\n🎉 ToadStool Demo Complete!");
     println!("🌟 Key Features Demonstrated:");
     println!("   ✅ Universal compute platform initialization");

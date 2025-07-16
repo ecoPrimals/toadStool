@@ -175,7 +175,23 @@ impl RuntimeEngine for PythonRuntimeEngine {
 
 impl Default for PythonRuntimeEngine {
     fn default() -> Self {
-        Self::new().unwrap()
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("Failed to create default PythonRuntimeEngine: {}", e);
+            // Create a minimal fallback engine that indicates Python is not available
+            PythonRuntimeEngine {
+                config: PythonRuntimeConfig::default(),
+                runtime_config: ExecutionRuntimeConfig::default(),
+                active_executions: Arc::new(RwLock::new(HashMap::new())),
+                resource_monitor: None,
+                capabilities: RuntimeCapabilities {
+                    supported_workloads: vec![],
+                    max_concurrent_executions: Some(1),
+                    supported_architectures: vec!["x86_64".to_string()],
+                    platform_features: HashMap::new(),
+                    version: "python-3.x".to_string(),
+                },
+            }
+        })
     }
 }
 

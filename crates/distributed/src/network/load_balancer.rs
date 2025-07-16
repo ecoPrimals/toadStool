@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::types::*;
+use crate::types::{BackoffStrategy, LoadBalancingStrategy};
 
-/// Network load balancer
+/// Network load balancer for distributed execution
 pub struct NetworkLoadBalancer {
-    strategies: Vec<LoadBalancingStrategy>,
-    node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
+    _strategies: Vec<LoadBalancingStrategy>,
+    _node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
 }
 
 /// Node health information
@@ -19,10 +19,11 @@ pub struct NodeHealth {
 }
 
 impl NetworkLoadBalancer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            strategies: vec![LoadBalancingStrategy::RoundRobin],
-            node_health: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            _strategies: vec![LoadBalancingStrategy::RoundRobin],
+            _node_health: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
     }
 }
@@ -33,10 +34,10 @@ impl Default for NetworkLoadBalancer {
     }
 }
 
-/// Fault tolerance manager
+/// Fault tolerance manager for network distribution
 pub struct FaultToleranceManager {
-    circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
-    retries: Arc<RetryManager>,
+    _circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
+    _retries: Arc<RetryManager>,
 }
 
 /// Circuit breaker for fault tolerance
@@ -62,10 +63,11 @@ pub struct RetryManager {
 }
 
 impl FaultToleranceManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            circuit_breakers: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            retries: Arc::new(RetryManager {
+            _circuit_breakers: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            _retries: Arc::new(RetryManager {
                 max_retries: 3,
                 backoff_strategy: BackoffStrategy::Exponential {
                     base_ms: 1000,

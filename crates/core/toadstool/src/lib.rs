@@ -29,7 +29,7 @@
 //!
 //! ## Architecture
 //!
-//! ```
+//! ```text
 //! biomeOS (Universal OS)
 //!     ↓
 //! ToadStool (Universal Compute)
@@ -39,20 +39,25 @@
 //!     └── Ecosystem Integration (All primals)
 //! ```
 
+pub mod biomeos_integration;
 pub mod byob;
 pub mod ecosystem;
 pub mod error;
 pub mod execution;
 pub mod os_layer;
+pub mod performance_hardening;
+pub mod production_hardening;
 pub mod resources;
 pub mod runtime;
 pub mod security;
+pub mod security_hardening;
 pub mod universal;
 pub mod workload;
 // biomeOS integration is now handled as a primal through the ecosystem module
 // No longer need hard integration - biomeOS interacts as a primal like Songbird
 
 // Re-export core types
+pub use biomeos_integration::*;
 pub use ecosystem::{
     EcosystemConfig, EcosystemCoordinator, EcosystemMessage as EcosystemCoreMessage,
     EcosystemMessageType as EcosystemCoreMessageType, PrimalChannel, PrimalClient, PrimalInstance,
@@ -69,19 +74,22 @@ pub use os_layer::{
     ManagerCompatibilityLayer as CompatibilityLayer, OSLayerConfig, OSLayerManager,
     PlatformInfo as OSPlatformInfo, WindowsCompatibilityLayer,
 };
+pub use resources::ResourceRequirements as UniversalResourceRequirements;
 pub use resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceMonitor, ResourceRequirements, RuntimeMetrics, StorageRequirements, SystemResources,
-    SystemResourceMonitor,
+    ResourceMonitor, ResourceRequirements, RuntimeMetrics, StorageRequirements,
+    SystemResourceMonitor, SystemResources,
 };
 pub use runtime::*;
-pub use security::*;
+pub use security::{
+    AuditEvent, AuditSettings, Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity,
+    SecurityContext, SecurityPolicy as ToadStoolSecurityPolicy, SecuritySettings,
+};
 pub use universal::{
     init_with_runtime_engines, JobPriority, PlatformStatus,
     SystemResources as UniversalSystemResources, UniversalComputePlatform, UniversalJob,
     UniversalJobType, UniversalPlatformConfig, UniversalScheduler,
 };
-pub use resources::ResourceRequirements as UniversalResourceRequirements;
 pub use workload::{
     ExecutableSource, GpuArgument, GpuProgramSource, PortMapping as WorkloadPortMapping,
     PortProtocol, PythonSource, RegistryAuth, VolumeMount, VolumeMountType, WasiConfig,

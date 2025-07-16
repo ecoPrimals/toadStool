@@ -116,7 +116,7 @@ pub fn assert_stdout_contains(response: &ExecutionResponse, expected: &str) {
             );
         }
         None => {
-            assert!(false, "Expected stdout to be present, but it was None");
+            panic!("Expected stdout to be present, but it was None");
         }
     }
 }
@@ -131,7 +131,7 @@ pub fn assert_stderr_contains(response: &ExecutionResponse, expected: &str) {
             );
         }
         None => {
-            assert!(false, "Expected stderr to be present, but it was None");
+            panic!("Expected stderr to be present, but it was None");
         }
     }
 }
@@ -143,14 +143,14 @@ pub fn assert_exit_code(response: &ExecutionResponse, expected: i32) {
             assert_eq!(code, expected, "Expected exit code {expected}, got {code}");
         }
         None => {
-            assert!(false, "Expected exit code to be present, but it was None");
+            panic!("Expected exit code to be present, but it was None");
         }
     }
 }
 
 /// Assert that execution duration is within expected range
 pub fn assert_duration_within(response: &ExecutionResponse, min_ms: u64, max_ms: u64) {
-    let duration_ms = response.duration.as_millis() as u64;
+    let duration_ms = u64::try_from(response.duration.as_millis()).unwrap_or(0);
     assert!(
         duration_ms >= min_ms && duration_ms <= max_ms,
         "Expected duration between {min_ms}ms and {max_ms}ms, got {duration_ms}ms"
@@ -174,10 +174,7 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
         "Memory usage should be positive"
     );
 
-    assert!(
-        metrics.memory.used_bytes <= u64::MAX,
-        "Memory usage should be within valid range"
-    );
+    // Memory usage validation - all u64 values are valid by definition
 
     assert!(
         metrics.memory.peak_bytes >= metrics.memory.used_bytes,
@@ -192,35 +189,17 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
     );
 
     // Network metrics validation - basic sanity checks only
-    assert!(
-        metrics.network.bytes_sent <= u64::MAX,
-        "Network bytes sent should be within valid range"
-    );
+    // Network bytes sent validation - all u64 values are valid by definition
 
-    assert!(
-        metrics.network.bytes_received <= u64::MAX,
-        "Network bytes received should be within valid range"
-    );
+    // Network bytes received validation - all u64 values are valid by definition
 
-    assert!(
-        metrics.network.packets_sent <= u64::MAX,
-        "Network packets sent should be within valid range"
-    );
+    // Network packets sent validation - all u64 values are valid by definition
 
-    assert!(
-        metrics.network.packets_received <= u64::MAX,
-        "Network packets received should be within valid range"
-    );
+    // Network packets received validation - all u64 values are valid by definition
 
     // Storage metrics validation - basic sanity checks only
-    assert!(
-        metrics.storage.bytes_read <= u64::MAX,
-        "Storage bytes read should be within valid range"
-    );
-    assert!(
-        metrics.storage.bytes_written <= u64::MAX,
-        "Storage bytes written should be within valid range"
-    );
+    // Storage bytes read validation - all u64 values are valid by definition
+    // Storage bytes written validation - all u64 values are valid by definition
 }
 
 /// Assert that execution warnings are present
@@ -281,56 +260,21 @@ pub fn assert_memory_metrics_reasonable(metrics: &RuntimeMetrics) {
         "Peak memory usage should be >= current usage"
     );
 
-    assert!(
-        metrics.memory.used_bytes >= 0,
-        "Allocations should be >= deallocations during execution"
-    );
+    // Memory used_bytes is u64, always non-negative - no need to check >= 0
 }
 
 /// Assert that network metrics are reasonable
 pub fn assert_network_metrics_reasonable(metrics: &RuntimeMetrics) {
-    assert!(
-        metrics.network.bytes_received >= 0,
-        "Bytes received should be non-negative"
-    );
-
-    assert!(
-        metrics.network.bytes_sent >= 0,
-        "Bytes transmitted should be non-negative"
-    );
-
-    assert!(
-        metrics.network.packets_received >= 0,
-        "Packets received should be non-negative"
-    );
-
-    assert!(
-        metrics.network.packets_sent >= 0,
-        "Packets transmitted should be non-negative"
-    );
+    // Network metrics are u64 values, always non-negative - no need to check >= 0
+    // This function exists for potential future validations
+    let _ = metrics; // Suppress unused variable warning
 }
 
 /// Assert that storage metrics are reasonable
 pub fn assert_storage_metrics_reasonable(metrics: &RuntimeMetrics) {
-    assert!(
-        metrics.storage.bytes_read >= 0,
-        "Bytes read should be non-negative"
-    );
-
-    assert!(
-        metrics.storage.bytes_written >= 0,
-        "Bytes written should be non-negative"
-    );
-
-    assert!(
-        metrics.storage.bytes_read >= 0,
-        "Read operations should be non-negative"
-    );
-
-    assert!(
-        metrics.storage.bytes_written >= 0,
-        "Write operations should be non-negative"
-    );
+    // Storage metrics are u64 values, always non-negative - no need to check >= 0
+    // This function exists for potential future validations
+    let _ = metrics; // Suppress unused variable warning
 }
 
 #[cfg(test)]

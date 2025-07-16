@@ -7,12 +7,11 @@ use tracing::{info, Level};
 use uuid::Uuid;
 
 use toadstool::{
-    execution::{
-        ExecutionInput, ExecutionRequest, RuntimeConfig, RuntimeEngine, RuntimeType, WorkloadType,
-    },
+    execution::{ExecutionInput, ExecutionRequest, RuntimeConfig, RuntimeEngine, RuntimeType},
     resources::{ResourceMonitor, ResourceRequirements},
     security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
+    WorkloadType,
 };
 
 use toadstool_management_monitoring::SystemResourceMonitor;
@@ -55,7 +54,7 @@ async fn test_resource_monitor() -> Result<(), Box<dyn std::error::Error>> {
     let metrics = monitor.get_metrics(workload_id)?;
     info!(
         "✓ Retrieved metrics: CPU {}%, Memory {} bytes",
-        metrics.cpu.usage_percent, metrics.memory.usage_bytes
+        metrics.cpu.usage_percent, metrics.memory.used_bytes
     );
 
     // Stop monitoring

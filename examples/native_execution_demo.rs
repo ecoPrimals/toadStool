@@ -1,4 +1,3 @@
-use env_logger;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -10,11 +9,12 @@ use uuid::Uuid;
 
 use toadstool::{
     execution::{ExecutionInput, ExecutionRequest, RuntimeType},
-    monitoring::MonitoringGranularity,
-    resources::{ResourceMonitor, ResourceRequirements},
+    init,
+    resources::ResourceRequirements,
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
-    security::{Capability, IsolationLevel, SecurityContext, NetworkSecurity, FilesystemSecurity},
-    workload::{ExecutableSource, NativeWorkload, WorkloadSpec},
+    security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext},
+    ExecutableSource, JobPriority, ToadStoolResult, UniversalComputePlatform, UniversalJob,
+    UniversalJobType, WorkloadSpec,
 };
 use toadstool_management_monitoring::{
     MonitoringConfig, MonitoringGranularity, SystemResourceMonitor,
@@ -54,7 +54,7 @@ impl Default for DemoConfig {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let config = DemoConfig::default();
 
@@ -73,14 +73,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut resource_monitor = SystemResourceMonitor::with_config(monitoring_config);
     resource_monitor.start_monitoring_loop().await?;
 
-    // Initialize native runtime engine
-    let native_engine = NativeRuntimeEngine::new();
+    // Initialize Universal Compute Platform
+    let platform = UniversalComputePlatform::new().await?;
 
-    // Register the native engine
+    // Create runtime orchestrator
     let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
-    orchestrator
-        .register_engine(RuntimeType::Native, Box::new(native_engine))
-        .await?;
 
     info!("✅ ToadStool runtime environment initialized");
 

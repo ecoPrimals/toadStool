@@ -48,7 +48,7 @@
 //!     
 //!     // Scan system capabilities
 //!     let hardware = hardware_detector.scan_system().await?;
-//!     println!("System: {} cores, {:.1}GB RAM, {} GPUs", 
+//!     println!("System: {} cores, {:.1}GB RAM, {} GPUs",
 //!              hardware.cpu_cores, hardware.memory_gb, hardware.gpu_count);
 //!     
 //!     // Discover ecosystem services
@@ -95,24 +95,24 @@ pub mod natural_language;
 pub mod squirrel_mcp;
 
 // Re-export the main types for easy access
-pub use ecosystem::{EcosystemDiscoverer, DiscoveredServices, ServiceInfo, ServiceType};
+pub use ecosystem::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo, ServiceType};
 pub use hardware::{
-    HardwareDetector, SystemCapabilities, CpuInfo, MemoryInfo, GpuInfo, StorageInfo,
-    PerformanceClass, StorageType,
+    CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,
+    SystemCapabilities,
 };
 pub use intelligent::{
-    IntelligentAutoConfig, PlatformOptimizer, UsageLearner, PlatformConfig, UsageHints,
-    ConfigSnapshot,
+    ConfigSnapshot, IntelligentAutoConfig, PlatformConfig, PlatformOptimizer, UsageHints,
+    UsageLearner,
 };
 pub use natural_language::{
-    NaturalLanguageConfig, ConfigurationTemplate, ConfigurationIntent, 
-    PerformancePreference, SecurityPreference, IntentAnalysis, ExplicitPreferences,
-    RuntimePreferences, ResourcePreferences, UsagePattern,
+    ConfigurationIntent, ConfigurationTemplate, ExplicitPreferences, IntentAnalysis,
+    NaturalLanguageConfig, PerformancePreference, ResourcePreferences, RuntimePreferences,
+    SecurityPreference, UsagePattern,
 };
 pub use squirrel_mcp::{
-    SquirrelMcpInterface, SquirrelMcpRequest, SquirrelMcpResponse, SquirrelRequestType,
-    ExecutionIntent, PerformanceExpectations, ResourceHints, AiPreferences, AiSession,
-    SessionInfo, ConfigurationSummary,
+    AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, PerformanceExpectations,
+    ResourceHints, SessionInfo, SquirrelMcpInterface, SquirrelMcpRequest, SquirrelMcpResponse,
+    SquirrelRequestType,
 };
 
 // Common result types
@@ -186,11 +186,19 @@ impl ToadStoolError {
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let config = quick_start().await?;
-///     println!("ToadStool is ready with {} runtime engines enabled!", 
+///     println!("ToadStool is ready with {} runtime engines enabled!",
 ///              config.runtime.enabled_runtimes().len());
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - Hardware detection fails
+/// - System capabilities cannot be determined
+/// - Configuration validation fails
+/// - File system permissions prevent writing configuration files
 pub async fn quick_start() -> ToadStoolResult<toadstool_config::ToadStoolConfig> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -237,6 +245,7 @@ pub struct ConfigBuilder {
 
 impl ConfigBuilder {
     /// Create a new configuration builder with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self {
             enable_hardware_detection: true,
@@ -278,6 +287,14 @@ impl ConfigBuilder {
     }
 
     /// Build the configuration using the specified settings
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - Hardware detection fails and hardware detection is enabled
+    /// - Ecosystem discovery times out and ecosystem discovery is enabled
+    /// - Performance optimization fails and performance optimization is enabled
+    /// - Configuration validation fails
     pub async fn build(self) -> ToadStoolResult<toadstool_config::ToadStoolConfig> {
         use tracing::info;
 
@@ -308,15 +325,15 @@ impl ConfigBuilder {
 
         let platform_config = if self.enable_performance_optimization {
             info!("⚡ Performance optimization enabled");
-            auto_config.platform_optimizer.optimize_for_platform(&hardware).await?
+            auto_config
+                .platform_optimizer
+                .optimize_for_platform(&hardware)
+                .await?
         } else {
             info!("⚡ Performance optimization disabled");
             intelligent::PlatformConfig {
                 platform_name: std::env::consts::OS.to_string(),
-                supports_containers: false,
-                supports_sandboxing: false,
-                supports_process_isolation: false,
-                supports_network_isolation: false,
+                supported_features: std::collections::HashSet::new(),
                 optimizations: Vec::new(),
             }
         };
@@ -330,12 +347,9 @@ impl ConfigBuilder {
         };
 
         // Generate the final configuration
-        let config = auto_config.generate_optimal_config(
-            hardware,
-            platform_config,
-            ecosystem,
-            usage_hints,
-        ).await?;
+        let config = auto_config
+            .generate_optimal_config(hardware, platform_config, ecosystem, usage_hints)
+            .await?;
 
         info!("✅ Custom configuration build complete");
         Ok(config)
@@ -367,18 +381,20 @@ impl SystemSummary {
         ecosystem: &DiscoveredServices,
     ) -> Self {
         Self {
-            cpu_info: format!("{} ({} cores)", 
-                             capabilities.cpu_info.model_name, 
-                             capabilities.cpu_cores),
+            cpu_info: format!(
+                "{} ({} cores)",
+                capabilities.cpu_info.model_name, capabilities.cpu_cores
+            ),
             memory_info: format!("{:.1} GB", capabilities.memory_gb),
             gpu_info: if capabilities.gpu_count > 0 {
                 format!("{} GPU(s)", capabilities.gpu_count)
             } else {
                 "Integrated Graphics".to_string()
             },
-            storage_info: format!("{:.1} GB {:?}", 
-                                 capabilities.storage_gb, 
-                                 capabilities.storage_info.storage_type),
+            storage_info: format!(
+                "{:.1} GB {:?}",
+                capabilities.storage_gb, capabilities.storage_info.storage_type
+            ),
             ecosystem_services: ecosystem.discovered_services.keys().cloned().collect(),
             performance_class: format!("{:?}", capabilities.performance_class),
             optimal_runtimes: vec!["Native".to_string()], // Would be determined by configuration
@@ -393,12 +409,14 @@ impl SystemSummary {
         println!("   GPU: {}", self.gpu_info);
         println!("   Storage: {}", self.storage_info);
         println!("   Performance: {}", self.performance_class);
-        println!("   Ecosystem Services: {}", 
-                 if self.ecosystem_services.is_empty() {
-                     "None".to_string()
-                 } else {
-                     self.ecosystem_services.join(", ")
-                 });
+        println!(
+            "   Ecosystem Services: {}",
+            if self.ecosystem_services.is_empty() {
+                "None".to_string()
+            } else {
+                self.ecosystem_services.join(", ")
+            }
+        );
         println!("   Optimal Runtimes: {}", self.optimal_runtimes.join(", "));
     }
 }
@@ -424,6 +442,7 @@ pub async fn get_system_summary() -> ToadStoolResult<SystemSummary> {
     let mut hardware_detector = HardwareDetector::new();
     let mut ecosystem_discoverer = EcosystemDiscoverer::new();
 
+    // Run hardware detection and ecosystem discovery sequentially (both need &mut self)
     let capabilities = hardware_detector.scan_system().await?;
     let ecosystem = ecosystem_discoverer.discover_services().await?;
 
@@ -438,12 +457,12 @@ mod tests {
     async fn test_quick_start() {
         // Test that quick_start doesn't panic
         let result = quick_start().await;
-        
+
         // Should either succeed or fail gracefully
         match result {
             Ok(config) => {
                 // Config should have some sensible defaults
-                assert!(config.runtime.native_workers > 0);
+                assert!(config.runtime.max_concurrent_executions > 0);
             }
             Err(e) => {
                 // Errors should be informative
@@ -455,7 +474,7 @@ mod tests {
     #[test]
     fn test_config_builder_creation() {
         let builder = ConfigBuilder::new();
-        
+
         assert!(builder.enable_hardware_detection);
         assert!(builder.enable_ecosystem_discovery);
         assert!(builder.enable_performance_optimization);
@@ -469,7 +488,7 @@ mod tests {
             .with_ecosystem_discovery(false)
             .with_performance_optimization(true)
             .with_usage_learning(true);
-        
+
         assert!(!builder.enable_hardware_detection);
         assert!(!builder.enable_ecosystem_discovery);
         assert!(builder.enable_performance_optimization);
@@ -480,10 +499,12 @@ mod tests {
     fn test_error_creation() {
         let config_error = ToadStoolError::configuration("test config error");
         assert!(config_error.to_string().contains("Configuration error"));
-        
+
         let hardware_error = ToadStoolError::hardware("test hardware error");
-        assert!(hardware_error.to_string().contains("Hardware detection error"));
-        
+        assert!(hardware_error
+            .to_string()
+            .contains("Hardware detection error"));
+
         let network_error = ToadStoolError::network("test network error");
         assert!(network_error.to_string().contains("Network error"));
     }
@@ -496,9 +517,9 @@ mod tests {
             discovery_summary: ecosystem::DiscoverySummary::default(),
             discovery_timestamp: chrono::Utc::now(),
         };
-        
+
         let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);
-        
+
         assert!(!summary.cpu_info.is_empty());
         assert!(!summary.memory_info.is_empty());
         assert!(!summary.performance_class.is_empty());
@@ -515,7 +536,7 @@ mod tests {
             performance_class: "Mainstream".to_string(),
             optimal_runtimes: vec!["Native".to_string()],
         };
-        
+
         // Test that display doesn't panic
         summary.display();
     }

@@ -370,7 +370,7 @@ impl MonitoringSystem {
         metric_name: String,
         start_time: DateTime<Utc>,
         end_time: DateTime<Utc>,
-        labels: HashMap<String, String>,
+        _labels: HashMap<String, String>,
     ) -> Result<Vec<DataPoint>> {
         let metrics_store = self.metrics_store.read().await;
 
@@ -412,7 +412,7 @@ impl MonitoringSystem {
         for (name, series) in &metrics_store.series {
             if let Some(latest) = series.data_points.last() {
                 // Format as Prometheus metric
-                output.push_str(&format!("# TYPE {} gauge\n", name));
+                output.push_str(&format!("# TYPE {name} gauge\n"));
                 output.push_str(&format!("{} {}\n", name, latest.value));
             }
         }
@@ -505,8 +505,8 @@ impl MonitoringSystem {
     async fn spawn_collection_task(
         &self,
         session_id: Uuid,
-        target: MonitoringTarget,
-        metrics: Vec<String>,
+        _target: MonitoringTarget,
+        _metrics: Vec<String>,
         interval: Duration,
     ) {
         let sessions = self.sessions.clone();
@@ -663,7 +663,7 @@ impl MetricsStore {
         match chrono::Duration::from_std(self.retention_period) {
             Ok(duration) => {
                 let cutoff_time = Utc::now() - duration;
-                
+
                 for series in self.series.values_mut() {
                     series
                         .data_points
@@ -672,7 +672,9 @@ impl MetricsStore {
             }
             Err(_) => {
                 // If conversion fails, skip cleanup to avoid panic
-                tracing::warn!("Failed to convert retention period to chrono::Duration, skipping cleanup");
+                tracing::warn!(
+                    "Failed to convert retention period to chrono::Duration, skipping cleanup"
+                );
             }
         }
     }

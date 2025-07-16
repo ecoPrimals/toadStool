@@ -247,9 +247,9 @@ pub struct IntelligentPerformanceOptimizer {
     config: PerformanceConfig,
     metrics_history: Arc<RwLock<VecDeque<PerformanceMetrics>>>,
     runtime_stats: Arc<RwLock<HashMap<RuntimeType, RuntimeStats>>>,
-    runtime_metrics: Arc<RwLock<HashMap<RuntimeType, PerformanceMetrics>>>,
-    baseline_measurements: Arc<RwLock<HashMap<String, BaselineMetrics>>>,
-    runtime_selector: Arc<RwLock<RuntimeSelector>>,
+    _runtime_metrics: Arc<RwLock<HashMap<RuntimeType, PerformanceMetrics>>>,
+    _baseline_measurements: Arc<RwLock<HashMap<String, BaselineMetrics>>>,
+    _runtime_selector: Arc<RwLock<RuntimeSelector>>,
     #[allow(dead_code)]
     prediction_models: Arc<RwLock<HashMap<String, PredictionModel>>>,
     selection_strategy: RuntimeSelectionStrategy,
@@ -264,9 +264,9 @@ impl IntelligentPerformanceOptimizer {
             config,
             metrics_history: Arc::new(RwLock::new(VecDeque::new())),
             runtime_stats: Arc::new(RwLock::new(HashMap::new())),
-            runtime_metrics: Arc::new(RwLock::new(HashMap::new())),
-            baseline_measurements: Arc::new(RwLock::new(HashMap::new())),
-            runtime_selector: Arc::new(RwLock::new(RuntimeSelector::default())),
+            _runtime_metrics: Arc::new(RwLock::new(HashMap::new())),
+            _baseline_measurements: Arc::new(RwLock::new(HashMap::new())),
+            _runtime_selector: Arc::new(RwLock::new(RuntimeSelector::default())),
             prediction_models: Arc::new(RwLock::new(HashMap::new())),
             selection_strategy: strategy,
         }
@@ -696,7 +696,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         // Calculate predictions based on historical averages
         let execution_times: Vec<f64> = similar_executions
             .iter()
-            .map(|m| m.execution_duration.unwrap().as_secs_f64())
+            .filter_map(|m| m.execution_duration.map(|d| d.as_secs_f64()))
             .collect();
 
         let memory_usages: Vec<f64> = similar_executions
@@ -831,17 +831,17 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
 
 #[derive(Debug, Clone)]
 struct RuntimeSelector {
-    preferred_runtime: Option<RuntimeType>,
-    fallback_strategy: String,
-    selection_criteria: HashMap<String, f64>,
+    _preferred_runtime: Option<RuntimeType>,
+    _fallback_strategy: String,
+    _selection_criteria: HashMap<String, f64>,
 }
 
 impl Default for RuntimeSelector {
     fn default() -> Self {
         Self {
-            preferred_runtime: None,
-            fallback_strategy: "load_balance".to_string(),
-            selection_criteria: HashMap::new(),
+            _preferred_runtime: None,
+            _fallback_strategy: "load_balance".to_string(),
+            _selection_criteria: HashMap::new(),
         }
     }
 }
@@ -857,6 +857,7 @@ struct PredictionModel {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BaselineMetrics {
     cpu_baseline: f64,
     memory_baseline: f64,
@@ -888,8 +889,8 @@ mod tests {
             resource_metrics: RuntimeMetrics {
                 memory: toadstool::resources::MemoryMetrics {
                     usage_percent: 50.0,
-                    used_bytes: 100 * 1024 * 1024,         // 100 MB
-                    peak_bytes: 120 * 1024 * 1024,         // 120 MB
+                    used_bytes: 100 * 1024 * 1024, // 100 MB
+                    peak_bytes: 120 * 1024 * 1024, // 120 MB
                 },
                 cpu: toadstool::resources::CpuMetrics {
                     usage_percent: 50.0,

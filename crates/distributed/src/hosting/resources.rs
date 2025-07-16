@@ -33,6 +33,7 @@ impl Default for HostingResourceConfig {
 
 impl HostingResourceManager {
     /// Create a new resource manager
+    #[must_use]
     pub fn new(config: HostingResourceConfig) -> Self {
         Self {
             config,
@@ -41,7 +42,7 @@ impl HostingResourceManager {
     }
 
     /// Allocate resources
-    pub async fn allocate_resources(
+    pub fn allocate_resources(
         &mut self,
         requirements: &HashMap<String, u64>,
     ) -> toadstool::ToadStoolResult<()> {
@@ -53,7 +54,7 @@ impl HostingResourceManager {
     }
 
     /// Deallocate resources
-    pub async fn deallocate_resources(
+    pub fn deallocate_resources(
         &mut self,
         resources: &HashMap<String, u64>,
     ) -> toadstool::ToadStoolResult<()> {

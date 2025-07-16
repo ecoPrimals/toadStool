@@ -383,13 +383,12 @@ impl IntelligentAnalyticsEngine {
         });
 
         // Start alert evaluation task
-        let alert_engine = self.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(60)); // Check every minute
 
             loop {
                 interval.tick().await;
-                if let Err(e) = alert_engine.evaluate_alerts().await {
+                if let Err(e) = self.evaluate_alerts().await {
                     error!("Error evaluating alerts: {:?}", e);
                 }
             }
@@ -756,7 +755,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         let mut dashboard_data = serde_json::Map::new();
         dashboard_data.insert(
             "dashboard".to_string(),
-            serde_json::to_value(dashboard).unwrap(),
+            serde_json::to_value(dashboard).map_err(|e| {
+                tracing::error!("Failed to serialize dashboard data: {}", e);
+                ToadStoolError::runtime(format!("Dashboard serialization failed: {e}"))
+            })?,
         );
 
         // Fetch data for each panel
@@ -889,7 +891,7 @@ impl IntelligentAnalyticsEngine {
 /// Helper function to calculate median
 fn calculate_median(data: &[f64]) -> f64 {
     let mut sorted = data.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let len = sorted.len();
     if len == 0 {
@@ -906,7 +908,7 @@ fn calculate_median(data: &[f64]) -> f64 {
 /// Helper function to calculate percentile
 fn calculate_percentile(data: &[f64], p: f64) -> f64 {
     let mut sorted = data.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let len = sorted.len();
     if len == 0 {

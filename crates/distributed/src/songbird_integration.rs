@@ -1,11 +1,11 @@
 //! # Songbird Integration - Universal Signal Coordination
 //!
-//! ToadStool's integration with Songbird, the universal signal coordinator.
+//! `ToadStool`'s integration with Songbird, the universal signal coordinator.
 //! Songbird handles orchestration, load balancing, discovery, and broadcasting.
-//! ToadStool handles compute execution.
+//! `ToadStool` handles compute execution.
 //!
-//! When ToadStool needs to talk outside local (or even sometimes local), it uses Songbird.
-//! When massive jobs drop, ToadStool breaks them up and sends them via Songbird to hundreds of nodes.
+//! When `ToadStool` needs to talk outside local (or even sometimes local), it uses Songbird.
+//! When massive jobs drop, `ToadStool` breaks them up and sends them via Songbird to hundreds of nodes.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,22 +17,23 @@ use tokio::sync::{mpsc, RwLock};
 use tracing::debug;
 use uuid::Uuid;
 
+use crate::universal::UniversalScheduler;
 use crate::{
     CpuRequirements, JobPriority, MemoryRequirements, ResourceRequirements, UniversalJob,
-    UniversalJobType, UniversalScheduler,
+    UniversalJobType,
 };
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-/// Songbird service integration for ToadStool
+/// Songbird service integration for `ToadStool`
 pub struct ToadStoolSongbirdIntegration {
-    /// ToadStool instance identifier
-    instance_id: String,
+    /// `ToadStool` instance identifier
+    _instance_id: String,
     /// Songbird connection details
-    connection: SongbirdConnection,
+    _connection: SongbirdConnection,
     /// Local capacity management
-    local_capacity: Arc<LocalCapacityManager>,
+    _local_capacity: Arc<LocalCapacityManager>,
     /// Universal workload scheduler
-    workload_scheduler: Arc<UniversalScheduler>,
+    _workload_scheduler: Arc<UniversalScheduler>,
 }
 
 /// Songbird connection configuration  
@@ -50,47 +51,47 @@ pub struct SongbirdConnection {
 /// Massive Job Distributor - breaks up ultra-massive jobs for Songbird distribution
 pub struct MassiveJobDistributor {
     /// Job splitting strategies
-    splitting_strategies: HashMap<UniversalJobType, JobSplittingStrategy>,
+    _splitting_strategies: HashMap<UniversalJobType, JobSplittingStrategy>,
     /// Distribution algorithms
-    distribution_algorithms: Vec<DistributionAlgorithm>,
+    _distribution_algorithms: Vec<DistributionAlgorithm>,
     /// Load estimation
-    load_estimator: LoadEstimator,
+    _load_estimator: LoadEstimator,
     /// Job coordination
-    job_coordinator: JobCoordinator,
+    _job_coordinator: JobCoordinator,
 }
 
 /// Network Discovery via Songbird
 pub struct SongbirdNetworkDiscovery {
     /// Discovery client
-    discovery_client: DiscoveryClient,
+    _discovery_client: DiscoveryClient,
     /// Node registry
-    node_registry: RwLock<NodeRegistry>,
+    _node_registry: RwLock<NodeRegistry>,
     /// Capability tracking
-    capability_tracker: CapabilityTracker,
+    _capability_tracker: CapabilityTracker,
     /// Health monitoring
-    health_monitor: NetworkHealthMonitor,
+    _health_monitor: NetworkHealthMonitor,
 }
 
 /// Load Balancing Coordinator - works with Songbird for optimal distribution
 pub struct SongbirdLoadBalancer {
     /// Load balancing strategies
-    strategies: HashMap<String, LoadBalancingStrategy>,
+    _strategies: HashMap<String, LoadBalancingStrategy>,
     /// Node capacity tracking
-    capacity_tracker: NodeCapacityTracker,
+    _capacity_tracker: NodeCapacityTracker,
     /// Performance metrics
-    performance_metrics: PerformanceMetrics,
+    _performance_metrics: PerformanceMetrics,
     /// Feedback loop to Songbird
-    feedback_sender: SongbirdFeedbackSender,
+    _feedback_sender: SongbirdFeedbackSender,
 }
 
 /// Broadcasting System - uses Songbird for network-wide communication
 pub struct SongbirdBroadcaster {
     /// Broadcast channels
-    channels: HashMap<String, BroadcastChannel>,
+    _channels: HashMap<String, BroadcastChannel>,
     /// Message types
-    message_types: MessageTypeRegistry,
+    _message_types: MessageTypeRegistry,
     /// Subscription manager
-    subscription_manager: SubscriptionManager,
+    _subscription_manager: SubscriptionManager,
 }
 
 /// Request to submit job to Songbird
@@ -116,12 +117,13 @@ pub struct JobAnalysis {
 
 impl ToadStoolSongbirdIntegration {
     /// Analyze job to determine optimal distribution strategy
+    #[allow(dead_code)]
     async fn analyze_job_for_distribution(
         &self,
         job: &UniversalJob,
     ) -> ToadStoolResult<JobAnalysis> {
         let complexity = self.analyze_job_complexity(job).await?;
-        let local_capacity = self.local_capacity.get_available_capacity().await?;
+        let local_capacity = self._local_capacity.get_available_capacity().await?;
 
         let distribution_strategy = match &complexity {
             JobComplexity::Simple => {
@@ -149,10 +151,11 @@ impl ToadStoolSongbirdIntegration {
         })
     }
 
-    /// Distribute job subtasks to multiple ToadStool instances
+    /// Distribute job subtasks to multiple `ToadStool` instances
+    #[allow(dead_code)]
     async fn distribute_job_subtasks(
         &self,
-        job: &UniversalJob,
+        _job: &UniversalJob,
         subtasks: Vec<(SubTask, Vec<String>)>,
     ) -> ToadStoolResult<Vec<SubTaskHandle>> {
         let mut handles = Vec::new();
@@ -189,17 +192,17 @@ impl ToadStoolSongbirdIntegration {
         };
 
         // Submit to Songbird via appropriate protocol
-        let response = match &self.connection.protocol_config.protocol {
+        let response = match &self._connection.protocol_config.protocol {
             SongbirdProtocol::HTTP => {
-                self.submit_via_http(songbird_request, &self.connection.active_endpoint)
+                self.submit_via_http(songbird_request, &self._connection.active_endpoint)
                     .await?
             }
             SongbirdProtocol::GRPC => {
-                self.submit_via_grpc(songbird_request, &self.connection.active_endpoint)
+                self.submit_via_grpc(songbird_request, &self._connection.active_endpoint)
                     .await?
             }
             SongbirdProtocol::WebSocket => {
-                self.submit_via_websocket(songbird_request, &self.connection.active_endpoint)
+                self.submit_via_websocket(songbird_request, &self._connection.active_endpoint)
                     .await?
             }
             SongbirdProtocol::MessageQueue => {
@@ -256,13 +259,13 @@ impl ToadStoolSongbirdIntegration {
 
     async fn submit_via_grpc(
         &self,
-        request: SongbirdJobRequest,
+        _request: SongbirdJobRequest,
         endpoint: &str,
     ) -> ToadStoolResult<SongbirdJobResponse> {
         debug!("Submitting job via gRPC to: {}", endpoint);
 
         // Parse gRPC endpoint
-        let uri = endpoint
+        let _uri = endpoint
             .parse::<http::Uri>()
             .map_err(|e| ToadStoolError::network(format!("Invalid gRPC endpoint: {e}")))?;
 
@@ -281,13 +284,13 @@ impl ToadStoolSongbirdIntegration {
 
     async fn submit_via_websocket(
         &self,
-        request: SongbirdJobRequest,
+        _request: SongbirdJobRequest,
         endpoint: &str,
     ) -> ToadStoolResult<SongbirdJobResponse> {
         debug!("Submitting job via WebSocket to: {}", endpoint);
 
         // Parse WebSocket endpoint
-        let ws_url = if endpoint.starts_with("ws://") || endpoint.starts_with("wss://") {
+        let _ws_url = if endpoint.starts_with("ws://") || endpoint.starts_with("wss://") {
             endpoint.to_string()
         } else {
             format!("ws://{endpoint}")
@@ -308,7 +311,7 @@ impl ToadStoolSongbirdIntegration {
 
     async fn submit_via_message_queue(
         &self,
-        request: SongbirdJobRequest,
+        _request: SongbirdJobRequest,
         queue_name: &str,
     ) -> ToadStoolResult<SongbirdJobResponse> {
         debug!("Submitting job via message queue: {}", queue_name);
@@ -331,6 +334,7 @@ impl ToadStoolSongbirdIntegration {
     }
 
     /// Create Songbird job request from Universal job
+    #[allow(dead_code)]
     fn create_songbird_job_request(
         &self,
         job: &UniversalJob,
@@ -397,7 +401,8 @@ pub struct CapacityInfo {
 }
 
 impl CapacityInfo {
-    pub fn can_handle_job(&self, _job: &UniversalJob) -> bool {
+    #[must_use]
+    pub const fn can_handle_job(&self, _job: &UniversalJob) -> bool {
         // Simple capacity check stub
         true
     }
@@ -701,7 +706,7 @@ pub enum AuthType {
 
 pub enum SongbirdJobMessage {
     ExecuteJob {
-        job: UniversalJob,
+        job: Box<UniversalJob>,
         reply_channel: mpsc::Sender<SongbirdJobResponse>,
     },
     CancelJob {
@@ -810,7 +815,7 @@ impl SongbirdConnection {
 
         for endpoint in &config.endpoints {
             match Self::test_endpoint_health(endpoint, &config.protocol_config).await {
-                Ok(_) => {
+                Ok(()) => {
                     active_endpoint = endpoint.clone();
                     health_status = ConnectionHealth::Healthy;
                     break;
@@ -929,10 +934,10 @@ impl MassiveJobDistributor {
         ];
 
         Ok(Self {
-            splitting_strategies,
-            distribution_algorithms,
-            load_estimator: LoadEstimator::new(),
-            job_coordinator: JobCoordinator::new(),
+            _splitting_strategies: splitting_strategies,
+            _distribution_algorithms: distribution_algorithms,
+            _load_estimator: LoadEstimator::new(),
+            _job_coordinator: JobCoordinator::new(),
         })
     }
 
@@ -942,8 +947,8 @@ impl MassiveJobDistributor {
         analysis: &JobAnalysis,
     ) -> ToadStoolResult<Vec<SubTask>> {
         let job_type = Self::determine_job_type(job);
-        let strategy = self
-            .splitting_strategies
+        let _strategy = self
+            ._splitting_strategies
             .get(&job_type)
             .unwrap_or(&JobSplittingStrategy::default());
 
@@ -989,29 +994,28 @@ impl MassiveJobDistributor {
 
     fn determine_job_type(job: &UniversalJob) -> UniversalJobType {
         // Use the job type if available, otherwise analyze characteristics
-        match &job.job_type {
-            Some(job_type) => job_type.clone(),
-            None => {
-                // Analyze execution request to determine type
-                let request_str = format!("{:?}", job.execution_request);
-                if request_str.contains("ml")
-                    || request_str.contains("ai")
-                    || request_str.contains("neural")
-                {
-                    UniversalJobType::MachineLearning
-                } else if request_str.contains("data")
-                    || request_str.contains("process")
-                    || request_str.contains("batch")
-                {
-                    UniversalJobType::DataProcessing
-                } else if request_str.contains("simulation")
-                    || request_str.contains("model")
-                    || request_str.contains("physics")
-                {
-                    UniversalJobType::Simulation
-                } else {
-                    UniversalJobType::ComputeIntensive
-                }
+        if let Some(job_type) = &job.job_type {
+            job_type.clone()
+        } else {
+            // Analyze execution request to determine type
+            let request_str = format!("{:?}", job.execution_request);
+            if request_str.contains("ml")
+                || request_str.contains("ai")
+                || request_str.contains("neural")
+            {
+                UniversalJobType::MachineLearning
+            } else if request_str.contains("data")
+                || request_str.contains("process")
+                || request_str.contains("batch")
+            {
+                UniversalJobType::DataProcessing
+            } else if request_str.contains("simulation")
+                || request_str.contains("model")
+                || request_str.contains("physics")
+            {
+                UniversalJobType::Simulation
+            } else {
+                UniversalJobType::ComputeIntensive
             }
         }
     }
@@ -1048,8 +1052,7 @@ impl MassiveJobDistributor {
             // Create subtask with partition information
             let mut subtask_payload = job_payload.clone();
             // Add partition metadata (simplified)
-            let partition_info =
-                format!("{{\"partition\": {i}, \"total_partitions\": {count}}}");
+            let partition_info = format!("{{\"partition\": {i}, \"total_partitions\": {count}}}");
             subtask_payload.extend(partition_info.as_bytes());
 
             subtasks.push(SubTask {
@@ -1083,10 +1086,10 @@ impl SongbirdNetworkDiscovery {
         let health_monitor = NetworkHealthMonitor::new(config.node_timeout);
 
         let discovery = Self {
-            discovery_client,
-            node_registry,
-            capability_tracker,
-            health_monitor,
+            _discovery_client: discovery_client,
+            _node_registry: node_registry,
+            _capability_tracker: capability_tracker,
+            _health_monitor: health_monitor,
         };
 
         // Start periodic discovery in a background task
@@ -1106,7 +1109,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     pub async fn get_network_capacity(&self) -> ToadStoolResult<NetworkCapacity> {
-        let registry = self.node_registry.read().await;
+        let registry = self._node_registry.read().await;
         let nodes = registry.get_active_nodes();
 
         let mut total_cpu_cores = 0.0;
@@ -1132,7 +1135,7 @@ impl SongbirdNetworkDiscovery {
         subtasks: &[SubTask],
         preferred_types: &[NodeType],
     ) -> ToadStoolResult<DistributionPlan> {
-        let registry = self.node_registry.read().await;
+        let registry = self._node_registry.read().await;
         let available_nodes = registry.get_nodes_by_types(preferred_types);
 
         if available_nodes.is_empty() {
@@ -1225,7 +1228,7 @@ impl SongbirdNetworkDiscovery {
         &self,
         registration: NodeRegistration,
     ) -> ToadStoolResult<RegistrationResponse> {
-        let mut registry = self.node_registry.write().await;
+        let mut registry = self._node_registry.write().await;
 
         // Validate registration
         if registration.node_id.is_empty() {
@@ -1242,7 +1245,7 @@ impl SongbirdNetworkDiscovery {
         registry.register_node(registration.clone())?;
 
         // Update capability tracker
-        self.capability_tracker
+        self._capability_tracker
             .update_capabilities(&registration.node_id, registration.capabilities.clone())
             .await?;
 
@@ -1257,7 +1260,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     pub async fn get_network_status(&self) -> ToadStoolResult<NetworkStatus> {
-        let registry = self.node_registry.read().await;
+        let registry = self._node_registry.read().await;
         let all_nodes = registry.get_all_nodes();
         let active_nodes = registry.get_active_nodes();
 
@@ -1295,9 +1298,9 @@ impl SongbirdNetworkDiscovery {
 
     async fn perform_discovery(&self) -> ToadStoolResult<()> {
         // Discover new nodes through Songbird
-        let discovered_nodes = self.discovery_client.discover_nodes().await?;
+        let discovered_nodes = self._discovery_client.discover_nodes().await?;
 
-        let mut registry = self.node_registry.write().await;
+        let mut registry = self._node_registry.write().await;
         for node in discovered_nodes {
             registry.update_node_health(&node.node_id, true);
         }
@@ -1309,10 +1312,10 @@ impl SongbirdNetworkDiscovery {
 impl Clone for SongbirdNetworkDiscovery {
     fn clone(&self) -> Self {
         Self {
-            discovery_client: self.discovery_client.clone(),
-            node_registry: RwLock::new(NodeRegistry::new()), // Create new empty registry for clone
-            capability_tracker: self.capability_tracker.clone(),
-            health_monitor: self.health_monitor.clone(),
+            _discovery_client: self._discovery_client.clone(),
+            _node_registry: RwLock::new(NodeRegistry::new()), // Create new empty registry for clone
+            _capability_tracker: self._capability_tracker.clone(),
+            _health_monitor: self._health_monitor.clone(),
         }
     }
 }
@@ -1324,10 +1327,10 @@ impl SongbirdLoadBalancer {
     ) -> ToadStoolResult<Self> {
         // Placeholder implementation - returns basic load balancer
         Ok(Self {
-            strategies: HashMap::new(),
-            capacity_tracker: NodeCapacityTracker,
-            performance_metrics: PerformanceMetrics,
-            feedback_sender: SongbirdFeedbackSender,
+            _strategies: HashMap::new(),
+            _capacity_tracker: NodeCapacityTracker,
+            _performance_metrics: PerformanceMetrics,
+            _feedback_sender: SongbirdFeedbackSender,
         })
     }
 
@@ -1351,9 +1354,9 @@ impl SongbirdBroadcaster {
     ) -> ToadStoolResult<Self> {
         // Placeholder implementation - returns basic broadcaster
         Ok(Self {
-            channels: HashMap::new(),
-            message_types: MessageTypeRegistry,
-            subscription_manager: SubscriptionManager,
+            _channels: HashMap::new(),
+            _message_types: MessageTypeRegistry,
+            _subscription_manager: SubscriptionManager,
         })
     }
 
@@ -1427,7 +1430,9 @@ impl JobReceiver {
         _connection: Arc<SongbirdConnection>,
     ) -> ToadStoolResult<Self> {
         let (_tx, receiver) = tokio::sync::mpsc::channel(100);
-        Ok(Self { receiver })
+        Ok(Self {
+            _receiver: receiver,
+        })
     }
 }
 
@@ -1449,6 +1454,7 @@ pub struct AvailableCapacity {
 }
 
 impl AvailableCapacity {
+    #[must_use]
     pub fn can_handle_job(&self, requirements: &ResourceRequirements) -> bool {
         self.cpu_cores >= requirements.cpu.min_cores
             && self.memory_gb >= (requirements.memory.min_bytes as f64 / (1024.0 * 1024.0 * 1024.0))
@@ -1479,7 +1485,8 @@ pub struct JobSplittingStrategy {
 }
 
 impl JobSplittingStrategy {
-    pub fn default() -> Self {
+    #[must_use]
+    pub const fn default() -> Self {
         Self {
             strategy_type: SplittingStrategyType::Adaptive,
             max_subtasks: 100,
@@ -1487,6 +1494,7 @@ impl JobSplittingStrategy {
         }
     }
 
+    #[must_use]
     pub fn from_string(strategy_str: &str) -> Self {
         match strategy_str {
             "round_robin" => Self {
@@ -1529,7 +1537,7 @@ pub enum DistributionAlgorithm {
 }
 
 pub struct LoadEstimator {
-    historical_data: Vec<LoadMetric>,
+    _historical_data: Vec<LoadMetric>,
 }
 
 impl Default for LoadEstimator {
@@ -1539,13 +1547,15 @@ impl Default for LoadEstimator {
 }
 
 impl LoadEstimator {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
-            historical_data: Vec::new(),
+            _historical_data: Vec::new(),
         }
     }
 
-    pub fn estimate_load(&self, _job: &UniversalJob) -> f64 {
+    #[must_use]
+    pub const fn estimate_load(&self, _job: &UniversalJob) -> f64 {
         // Simplified load estimation based on job characteristics
         0.75 // Default moderate load estimate
     }
@@ -1570,6 +1580,7 @@ impl Default for JobCoordinator {
 }
 
 impl JobCoordinator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             active_jobs: HashMap::new(),
@@ -1592,9 +1603,7 @@ impl DiscoveryClient {
         let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to create HTTP client: {e}"))
-            })?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to create HTTP client: {e}")))?;
 
         Ok(Self {
             connection,
@@ -1737,6 +1746,7 @@ impl Default for NodeRegistry {
 }
 
 impl NodeRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -1764,6 +1774,7 @@ impl NodeRegistry {
         }
     }
 
+    #[must_use]
     pub fn get_active_nodes(&self) -> Vec<&NodeRegistration> {
         let cutoff_time = chrono::Utc::now() - chrono::Duration::minutes(5);
 
@@ -1780,10 +1791,12 @@ impl NodeRegistry {
             .collect()
     }
 
+    #[must_use]
     pub fn get_all_nodes(&self) -> Vec<&NodeRegistration> {
         self.nodes.values().collect()
     }
 
+    #[must_use]
     pub fn get_nodes_by_types(&self, preferred_types: &[NodeType]) -> Vec<&NodeRegistration> {
         self.get_active_nodes()
             .into_iter()
@@ -1800,7 +1813,7 @@ impl NodeRegistry {
 #[derive(Clone)]
 pub struct CapabilityTracker {
     node_capabilities: HashMap<NodeId, NodeCapabilities>,
-    capability_history: HashMap<NodeId, Vec<CapabilitySnapshot>>,
+    _capability_history: HashMap<NodeId, Vec<CapabilitySnapshot>>,
 }
 
 impl Default for CapabilityTracker {
@@ -1810,10 +1823,11 @@ impl Default for CapabilityTracker {
 }
 
 impl CapabilityTracker {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             node_capabilities: HashMap::new(),
-            capability_history: HashMap::new(),
+            _capability_history: HashMap::new(),
         }
     }
 
@@ -1824,12 +1838,11 @@ impl CapabilityTracker {
     ) -> ToadStoolResult<()> {
         // In a real implementation, this would use Arc<RwLock<_>> for thread safety
         // For now, we'll just simulate the update
-        println!(
-            "Updated capabilities for node {node_id}: {capabilities:?}"
-        );
+        println!("Updated capabilities for node {node_id}: {capabilities:?}");
         Ok(())
     }
 
+    #[must_use]
     pub fn get_capabilities(&self, node_id: &str) -> Option<&NodeCapabilities> {
         self.node_capabilities.get(node_id)
     }
@@ -1849,6 +1862,7 @@ pub struct NetworkHealthMonitor {
 }
 
 impl NetworkHealthMonitor {
+    #[must_use]
     pub fn new(node_timeout: std::time::Duration) -> Self {
         Self {
             node_timeout,
@@ -1900,7 +1914,7 @@ pub struct JobResult {
 
 #[derive(Debug)]
 pub struct JobReceiver {
-    receiver: tokio::sync::mpsc::Receiver<UniversalJob>,
+    _receiver: tokio::sync::mpsc::Receiver<UniversalJob>,
 }
 
 /// Universal job processor

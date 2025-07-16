@@ -1,19 +1,20 @@
 // Universal Substrate Demonstration - ToadStool runs on EVERYTHING
 // From DNA computers to quantum processors to gaming consoles
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio;
 use uuid::Uuid;
 
+use toadstool::{ExecutionRequest, ToadStoolResult};
+use toadstool_distributed::universal::{AdapterConfig, UniversalAdapter};
 use toadstool_distributed::{
-    BiologicalComputingPlatform, ContainerPlatform, CpuRequirements, EdgeIoTPlatform,
-    ExecutionRequest, ExecutionTarget, ExperimentalPlatform, JobPriority, LanguageRuntime,
-    MemoryRequirements, NetworkRequirements, NeuromorphicPlatform, OperatingSystemSupport,
+    substrate::ContainerPlatform, types::NetworkRequirements, BiologicalComputingPlatform,
+    CpuRequirements, EdgeIoTPlatform, ExecutionTarget, ExperimentalPlatform, JobPriority,
+    LanguageRuntime, MemoryRequirements, NeuromorphicPlatform, OperatingSystemSupport,
     QuantumPlatform, ResourceRequirements, RetryConfig, SpecializedArchitecture,
-    StorageRequirements, ToadStoolResult, TraditionalPlatform, UniversalExecutionResult,
-    UniversalJob, UniversalJobType, UniversalRuntimeAdapter, UniversalSubstrateCapabilities,
+    StorageRequirements, TraditionalPlatform, UniversalExecutionResult, UniversalJob,
+    UniversalJobType, UniversalSubstrateCapabilities,
 };
 
 #[tokio::main]
@@ -68,7 +69,7 @@ async fn main() -> ToadStoolResult<()> {
     Ok(())
 }
 
-async fn create_demo_adapter() -> ToadStoolResult<UniversalRuntimeAdapter> {
+async fn create_demo_adapter() -> ToadStoolResult<UniversalAdapter> {
     // In a real implementation, this would detect actual hardware
     // For demo, we'll simulate the adapter
     println!("   ✓ Runtime translators initialized");
@@ -77,34 +78,42 @@ async fn create_demo_adapter() -> ToadStoolResult<UniversalRuntimeAdapter> {
     println!("   ✓ Quantum backends connected");
     println!("   ✓ Universal dependency coordinator active");
 
-    UniversalRuntimeAdapter::new().await
+    Ok(UniversalAdapter::new(AdapterConfig::default()))
 }
 
 async fn simulate_universal_detection() -> UniversalSubstrateCapabilities {
     UniversalSubstrateCapabilities {
         traditional_platforms: vec![
-            TraditionalPlatform::X86Desktop {
-                os: "Ubuntu 22.04".to_string(),
+            TraditionalPlatform::X86_64 {
+                cpu_model: "Intel Core i7-12700K".to_string(),
+                cores: 12,
+                threads: 24,
+                cache_mb: 30,
+                memory_gb: 32,
                 features: vec!["AVX2".to_string(), "Hyper-Threading".to_string()],
             },
-            TraditionalPlatform::ARM64Server {
-                os: "Rocky Linux 9".to_string(),
+            TraditionalPlatform::ARM64 {
+                cpu_model: "Apple M1 Max".to_string(),
+                cores: 10,
+                big_little: true,
+                memory_gb: 32,
                 features: vec!["NEON".to_string(), "SVE".to_string()],
             },
-            TraditionalPlatform::Android {
-                version: "14".to_string(),
-                api_level: 34,
+            TraditionalPlatform::RISCV {
+                cpu_model: "RISC-V Rocket Chip".to_string(),
+                cores: 4,
+                extensions: vec!["RV64GC".to_string()],
+                memory_gb: 8,
             },
-            TraditionalPlatform::DOS {
-                version: "6.22".to_string(),
-                memory_model: "Extended".to_string(),
-            },
-            TraditionalPlatform::TempleOS {
-                version: "5.03".to_string(),
+            TraditionalPlatform::PowerPC {
+                cpu_model: "IBM POWER9".to_string(),
+                cores: 2,
+                memory_gb: 128,
+                features: vec!["VSX".to_string(), "SPE".to_string()],
             },
         ],
 
-        biological_computing: vec![
+        biological_platforms: vec![
             BiologicalComputingPlatform::DNAComputing {
                 platform: "Twist Bioscience DNA Synthesizer".to_string(),
                 synthesis_method: "Silicon chip-based".to_string(),
@@ -126,33 +135,25 @@ async fn simulate_universal_detection() -> UniversalSubstrateCapabilities {
             },
         ],
 
-        neuromorphic_computing: vec![
+        neuromorphic_platforms: vec![
             NeuromorphicPlatform::NeuromorphicChip {
                 chip_name: "Intel Loihi 2".to_string(),
                 manufacturer: "Intel".to_string(),
                 core_count: 128,
                 neuron_count_per_core: 1024,
                 synapse_count_per_core: 131072,
-                power_consumption_mw: 30.0,
-            },
-            NeuromorphicPlatform::EchoStateNetwork {
-                platform: "Custom FPGA Implementation".to_string(),
-                reservoir_size: 1000,
-                connectivity_density: 0.1,
-                spectral_radius: 0.95,
-                input_scaling: 0.1,
-                leak_rate: 0.3,
+                power_consumption_mw: 100.0,
             },
             NeuromorphicPlatform::SpikingNeuralNetwork {
                 platform: "SpiNNaker-2".to_string(),
                 neuron_model: "Leaky Integrate-and-Fire".to_string(),
-                synapse_model: "Exponential".to_string(),
+                synapse_model: "Current-based".to_string(),
                 neuron_count: 1000000,
                 connectivity_pattern: "Small-world".to_string(),
             },
         ],
 
-        quantum_computing: vec![
+        quantum_platforms: vec![
             QuantumPlatform::GateBasedQuantum {
                 platform: "IBM Quantum Heron".to_string(),
                 qubit_count: 133,
@@ -291,40 +292,75 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
     );
     for platform in &capabilities.traditional_platforms {
         match platform {
-            TraditionalPlatform::X86Desktop { os, features } => {
-                println!("   💻 x86 Desktop: {} ({})", os, features.join(", "))
+            TraditionalPlatform::X86_64 {
+                cpu_model,
+                cores,
+                threads,
+                cache_mb,
+                memory_gb,
+                features,
+            } => {
+                println!(
+                    "   💻 x86_64 Desktop: {cpu_model} ({cores} cores, {threads} threads, {cache_mb}MB cache, {memory_gb}GB memory)"
+                )
             }
-            TraditionalPlatform::ARM64Server { os, features } => {
-                println!("   🖥️  ARM64 Server: {} ({})", os, features.join(", "))
+            TraditionalPlatform::ARM64 {
+                cpu_model,
+                cores,
+                big_little,
+                memory_gb,
+                features,
+            } => {
+                println!(
+                    "   🖥️  ARM64 Server: {cpu_model} ({cores} cores, big.LITTLE: {big_little}, {memory_gb}GB memory)"
+                )
             }
-            TraditionalPlatform::Android { version, api_level } => {
-                println!("   📱 Android {}, API {}", version, api_level)
+            TraditionalPlatform::RISCV {
+                cpu_model,
+                cores,
+                extensions,
+                memory_gb,
+            } => {
+                println!("   🔧 RISC-V: {cpu_model} ({cores} cores, {memory_gb}GB memory)")
             }
-            TraditionalPlatform::DOS {
-                version,
-                memory_model,
-            } => println!("   💾 MS-DOS {} ({})", version, memory_model),
-            TraditionalPlatform::TempleOS { version } => {
-                println!("   🏛️  TempleOS {} (The holiest OS)", version)
+            TraditionalPlatform::PowerPC {
+                cpu_model,
+                cores,
+                memory_gb,
+                features,
+            } => {
+                println!("   ⚡ PowerPC: {cpu_model} ({cores} cores, {memory_gb}GB memory)")
             }
-            _ => println!("   ⚙️  {:?}", platform),
+            TraditionalPlatform::SPARC {
+                cpu_model,
+                cores,
+                memory_gb,
+                features,
+            } => {
+                println!("   ☀️  SPARC: {cpu_model} ({cores} cores, {memory_gb}GB memory)")
+            }
+            TraditionalPlatform::MIPS {
+                cpu_model,
+                cores,
+                memory_gb,
+                features,
+            } => {
+                println!("   🔷 MIPS: {cpu_model} ({cores} cores, {memory_gb}GB memory)")
+            }
         }
     }
 
     println!(
         "\n🧬 Biological Computing Platforms ({}):",
-        capabilities.biological_computing.len()
+        capabilities.biological_platforms.len()
     );
-    for platform in &capabilities.biological_computing {
+    for platform in &capabilities.biological_platforms {
         match platform {
             BiologicalComputingPlatform::DNAComputing {
                 platform,
                 storage_capacity_bits,
                 ..
-            } => println!(
-                "   🧬 DNA Computer: {} ({} bits storage)",
-                platform, storage_capacity_bits
-            ),
+            } => println!("   🧬 DNA Computer: {platform} ({storage_capacity_bits} bits storage)"),
             BiologicalComputingPlatform::CellularComputing {
                 cell_type,
                 genetic_circuits,
@@ -338,19 +374,16 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 organoid_type,
                 neuron_count,
                 ..
-            } => println!(
-                "   🧠 Neural Organoid: {} ({} neurons)",
-                organoid_type, neuron_count
-            ),
-            _ => println!("   🔬 {:?}", platform),
+            } => println!("   🧠 Neural Organoid: {organoid_type} ({neuron_count} neurons)"),
+            _ => println!("   🔬 {platform:?}"),
         }
     }
 
     println!(
         "\n🧠 Neuromorphic Platforms ({}):",
-        capabilities.neuromorphic_computing.len()
+        capabilities.neuromorphic_platforms.len()
     );
-    for platform in &capabilities.neuromorphic_computing {
+    for platform in &capabilities.neuromorphic_platforms {
         match platform {
             NeuromorphicPlatform::NeuromorphicChip {
                 chip_name,
@@ -358,31 +391,22 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 neuron_count_per_core,
                 ..
             } => println!(
-                "   🔮 {}: {} cores, {} neurons/core",
-                chip_name, core_count, neuron_count_per_core
-            ),
-            NeuromorphicPlatform::EchoStateNetwork {
-                platform,
-                reservoir_size,
-                ..
-            } => println!(
-                "   🌊 Echo State Network: {} ({} reservoir)",
-                platform, reservoir_size
+                "   🔮 {chip_name}: {core_count} cores, {neuron_count_per_core} neurons/core"
             ),
             NeuromorphicPlatform::SpikingNeuralNetwork {
                 platform,
                 neuron_count,
                 ..
-            } => println!("   ⚡ Spiking NN: {} ({} neurons)", platform, neuron_count),
-            _ => println!("   🧠 {:?}", platform),
+            } => println!("   ⚡ Spiking NN: {platform} ({neuron_count} neurons)"),
+            _ => println!("   🧠 {platform:?}"),
         }
     }
 
     println!(
         "\n⚛️  Quantum Platforms ({}):",
-        capabilities.quantum_computing.len()
+        capabilities.quantum_platforms.len()
     );
-    for platform in &capabilities.quantum_computing {
+    for platform in &capabilities.quantum_platforms {
         match platform {
             QuantumPlatform::GateBasedQuantum {
                 platform,
@@ -390,18 +414,14 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 gate_fidelity,
                 ..
             } => println!(
-                "   ⚛️  Gate-based: {} ({} qubits, {:.3} fidelity)",
-                platform, qubit_count, gate_fidelity
+                "   ⚛️  Gate-based: {platform} ({qubit_count} qubits, {gate_fidelity:.3} fidelity)"
             ),
             QuantumPlatform::PhotonicQuantum {
                 platform,
                 photon_sources,
                 ..
-            } => println!(
-                "   💡 Photonic: {} ({} photon sources)",
-                platform, photon_sources
-            ),
-            _ => println!("   ⚛️  {:?}", platform),
+            } => println!("   💡 Photonic: {platform} ({photon_sources} photon sources)"),
+            _ => println!("   ⚛️  {platform:?}"),
         }
     }
 
@@ -416,19 +436,16 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 ram_kb,
                 flash_kb,
                 ..
-            } => println!(
-                "   🔧 MCU: {} ({}KB RAM, {}KB Flash)",
-                chip, ram_kb, flash_kb
-            ),
+            } => println!("   🔧 MCU: {chip} ({ram_kb}KB RAM, {flash_kb}KB Flash)"),
             EdgeIoTPlatform::SingleBoardComputer { board, ram_mb, .. } => {
-                println!("   🍓 SBC: {} ({}MB RAM)", board, ram_mb)
+                println!("   🍓 SBC: {board} ({ram_mb}MB RAM)")
             }
             EdgeIoTPlatform::NPU {
                 chip,
                 tops_performance,
                 ..
-            } => println!("   🚀 NPU: {} ({:.1} TOPS)", chip, tops_performance),
-            _ => println!("   📡 {:?}", platform),
+            } => println!("   🚀 NPU: {chip} ({tops_performance:.1} TOPS)"),
+            _ => println!("   📡 {platform:?}"),
         }
     }
 
@@ -438,15 +455,15 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
     );
     for platform in &capabilities.container_platforms {
         match platform {
-            ContainerPlatform::Docker { version, .. } => println!("   🐳 Docker {}", version),
+            ContainerPlatform::Docker { version, .. } => println!("   🐳 Docker {version}"),
             ContainerPlatform::Wasmtime { version, .. } => {
-                println!("   🕸️  WebAssembly Runtime: Wasmtime {}", version)
+                println!("   🕸️  WebAssembly Runtime: Wasmtime {version}")
             }
             ContainerPlatform::Kubernetes {
                 version,
                 distribution,
-            } => println!("   ☸️  Kubernetes {} ({})", version, distribution),
-            _ => println!("   📦 {:?}", platform),
+            } => println!("   ☸️  Kubernetes {version} ({distribution})"),
+            _ => println!("   📦 {platform:?}"),
         }
     }
 
@@ -460,9 +477,9 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 version,
                 target_triple,
                 ..
-            } => println!("   🦀 Rust {} ({})", version, target_triple),
+            } => println!("   🦀 Rust {version} ({target_triple})"),
             LanguageRuntime::Mojo { version, .. } => {
-                println!("   🔥 Mojo {} (AI-native language)", version)
+                println!("   🔥 Mojo {version} (AI-native language)")
             }
             LanguageRuntime::Brainfuck { .. } => {
                 println!("   🧠 Brainfuck (Esoteric but supported!)")
@@ -471,8 +488,8 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 architecture,
                 assembler,
                 ..
-            } => println!("   ⚙️  Assembly {} ({})", architecture, assembler),
-            _ => println!("   💻 {:?}", runtime),
+            } => println!("   ⚙️  Assembly {architecture} ({assembler})"),
+            _ => println!("   💻 {runtime:?}"),
         }
     }
 
@@ -486,44 +503,36 @@ fn display_detected_platforms(capabilities: &UniversalSubstrateCapabilities) {
                 platform,
                 molecular_basis,
                 ..
-            } => println!("   🧪 Molecular: {} ({})", platform, molecular_basis),
+            } => println!("   🧪 Molecular: {platform} ({molecular_basis})"),
             ExperimentalPlatform::CyborgSystems {
                 biological_component,
                 electronic_component,
                 ..
-            } => println!(
-                "   🤖 Cyborg: {} + {}",
-                biological_component, electronic_component
-            ),
+            } => println!("   🤖 Cyborg: {biological_component} + {electronic_component}"),
             ExperimentalPlatform::PlasmaComputing {
                 plasma_type,
                 processing_frequency_mhz,
                 ..
-            } => println!(
-                "   ⚡ Plasma: {} ({:.2} MHz)",
-                plasma_type, processing_frequency_mhz
-            ),
-            _ => println!("   🚀 {:?}", platform),
+            } => println!("   ⚡ Plasma: {plasma_type} ({processing_frequency_mhz:.2} MHz)"),
+            _ => println!("   🚀 {platform:?}"),
         }
     }
 
     let total_platforms = capabilities.traditional_platforms.len()
-        + capabilities.biological_computing.len()
-        + capabilities.neuromorphic_computing.len()
-        + capabilities.quantum_computing.len()
+        + capabilities.biological_platforms.len()
+        + capabilities.neuromorphic_platforms.len()
+        + capabilities.quantum_platforms.len()
         + capabilities.edge_iot_platforms.len()
         + capabilities.container_platforms.len()
         + capabilities.language_runtimes.len()
         + capabilities.specialized_architectures.len()
         + capabilities.experimental_platforms.len();
 
-    println!("\n📊 Total Computing Substrates: {}", total_platforms);
+    println!("\n📊 Total Computing Substrates: {total_platforms}");
     println!("🎯 ToadStool Compatibility: UNIVERSAL");
 }
 
-async fn demonstrate_traditional_computing(
-    _adapter: &UniversalRuntimeAdapter,
-) -> ToadStoolResult<()> {
+async fn demonstrate_traditional_computing(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n💻 Traditional Computing Demonstration");
     println!("=====================================");
 
@@ -545,8 +554,8 @@ async fn demonstrate_traditional_computing(
         "Fibonacci Calculator for DOS",
         UniversalJobType::Local,
         JobPriority::Normal,
-        0.1,               // Single core, low clock
-        0.5 * 1024 * 1024, // 512 KB (luxury for DOS!)
+        0.1,                            // Single core, low clock
+        (0.5 * 1024.0 * 1024.0) as u64, // 512 KB (luxury for DOS!)
     );
 
     println!("🕹️  Executing retro computing job...");
@@ -556,9 +565,7 @@ async fn demonstrate_traditional_computing(
     Ok(())
 }
 
-async fn demonstrate_biological_computing(
-    _adapter: &UniversalRuntimeAdapter,
-) -> ToadStoolResult<()> {
+async fn demonstrate_biological_computing(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n🧬 Biological Computing Demonstration");
     println!("====================================");
 
@@ -591,9 +598,7 @@ async fn demonstrate_biological_computing(
     Ok(())
 }
 
-async fn demonstrate_neuromorphic_computing(
-    _adapter: &UniversalRuntimeAdapter,
-) -> ToadStoolResult<()> {
+async fn demonstrate_neuromorphic_computing(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n🧠 Neuromorphic Computing Demonstration");
     println!("=======================================");
 
@@ -626,7 +631,7 @@ async fn demonstrate_neuromorphic_computing(
     Ok(())
 }
 
-async fn demonstrate_quantum_computing(_adapter: &UniversalRuntimeAdapter) -> ToadStoolResult<()> {
+async fn demonstrate_quantum_computing(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n⚛️  Quantum Computing Demonstration");
     println!("==================================");
 
@@ -646,7 +651,7 @@ async fn demonstrate_quantum_computing(_adapter: &UniversalRuntimeAdapter) -> To
     Ok(())
 }
 
-async fn demonstrate_edge_iot(_adapter: &UniversalRuntimeAdapter) -> ToadStoolResult<()> {
+async fn demonstrate_edge_iot(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n📡 Edge/IoT Computing Demonstration");
     println!("===================================");
 
@@ -679,9 +684,7 @@ async fn demonstrate_edge_iot(_adapter: &UniversalRuntimeAdapter) -> ToadStoolRe
     Ok(())
 }
 
-async fn demonstrate_container_platforms(
-    _adapter: &UniversalRuntimeAdapter,
-) -> ToadStoolResult<()> {
+async fn demonstrate_container_platforms(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n🐳 Container Platform Demonstration");
     println!("===================================");
 
@@ -701,7 +704,7 @@ async fn demonstrate_container_platforms(
     Ok(())
 }
 
-async fn demonstrate_language_runtimes(_adapter: &UniversalRuntimeAdapter) -> ToadStoolResult<()> {
+async fn demonstrate_language_runtimes(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n🔤 Language Runtime Demonstration");
     println!("=================================");
 
@@ -734,9 +737,7 @@ async fn demonstrate_language_runtimes(_adapter: &UniversalRuntimeAdapter) -> To
     Ok(())
 }
 
-async fn demonstrate_experimental_platforms(
-    _adapter: &UniversalRuntimeAdapter,
-) -> ToadStoolResult<()> {
+async fn demonstrate_experimental_platforms(_adapter: &UniversalAdapter) -> ToadStoolResult<()> {
     println!("\n🔬 Experimental Platform Demonstration");
     println!("======================================");
 
@@ -770,7 +771,7 @@ async fn demonstrate_experimental_platforms(
 }
 
 async fn demonstrate_multi_substrate_orchestration(
-    _adapter: &UniversalRuntimeAdapter,
+    _adapter: &UniversalAdapter,
 ) -> ToadStoolResult<()> {
     println!("\n🎼 Multi-Substrate Orchestration");
     println!("================================");
@@ -816,7 +817,7 @@ async fn demonstrate_multi_substrate_orchestration(
         + neuro_result.execution_time_ms
         + gpu_result.execution_time_ms
         + edge_result.execution_time_ms;
-    println!("   ⏱️  Total pipeline: {:.2}ms", total_time);
+    println!("   ⏱️  Total pipeline: {total_time:.2}ms");
 
     Ok(())
 }
@@ -832,30 +833,33 @@ fn create_job(
 ) -> UniversalJob {
     UniversalJob {
         job_id: Uuid::new_v4(),
-        job_type,
+        job_type: Some(job_type),
         execution_request: ExecutionRequest {
             execution_id: Uuid::new_v4(),
-            payload: name.as_bytes().to_vec(),
-            timeout_seconds: Some(300),
+            workload: Default::default(),
+            runtime_hint: None,
+            resources: Default::default(),
+            security_context: Default::default(),
+            timeout: Some(Duration::from_secs(300)),
             environment: HashMap::new(),
+            input_data: Default::default(),
+            callback_config: None,
         },
         target: ExecutionTarget::Local,
         priority,
         dependencies: vec![],
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
-                min_cores: 2.0,
-                max_cores: Some(4.0),
-                architecture: Some("x86_64".to_string()),
+                min_cores: cpu_cores,
+                max_cores: Some(cpu_cores * 2.0),
             },
             memory: MemoryRequirements {
                 min_bytes: memory_bytes,
-                max_bytes: Some(memory_bytes * 2),
+                max_bytes: None,
             },
             storage: StorageRequirements {
-                min_bytes: 100 * 1024 * 1024 * 1024, // 100GB
+                min_bytes: 1024 * 1024 * 1024, // 1GB
                 max_bytes: None,
-                storage_type: Some("ssd".to_string()),
             },
             network: NetworkRequirements {
                 bandwidth_mbps: Some(100),
@@ -1016,7 +1020,7 @@ async fn simulate_experimental_execution(
 }
 
 fn display_execution_result(result: &UniversalExecutionResult, platform_name: &str) {
-    println!("   ✅ Executed on {}", platform_name);
+    println!("   ✅ Executed on {platform_name}");
     println!("      ⏱️  Time: {:.2} ms", result.execution_time_ms);
     println!("      ⚡ Energy: {:.3} J", result.energy_consumed_joules);
     println!(
@@ -1027,7 +1031,7 @@ fn display_execution_result(result: &UniversalExecutionResult, platform_name: &s
             .unwrap_or(&0.0)
     );
     if let Some(health) = &result.substrate_health_post_execution {
-        println!("      🏥 Health: {}", health);
+        println!("      🏥 Health: {health}");
     }
     println!();
 }

@@ -1,19 +1,18 @@
 //! # BYOB HTTP API for Toadstool
 //!
 //! HTTP API endpoints for handling BYOB deployment requests from Songbird.
-//! Provides RESTful endpoints for deploying, monitoring, and managing team biomes.
+//! Provides `RESTful` endpoints for deploying, monitoring, and managing team biomes.
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{delete, get, post, put},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use uuid::Uuid;
 
 use toadstool::{
@@ -167,6 +166,7 @@ pub struct ApiError {
 }
 
 impl ApiError {
+    #[must_use]
     pub fn new(status: StatusCode, message: &str) -> Self {
         Self {
             status,
@@ -178,23 +178,23 @@ impl ApiError {
 impl From<ToadStoolError> for ApiError {
     fn from(err: ToadStoolError) -> Self {
         match err {
-            ToadStoolError::NotFound { message } => ApiError {
+            ToadStoolError::NotFound { message } => Self {
                 status: StatusCode::NOT_FOUND,
-                message: message.clone(),
+                message,
             },
-            ToadStoolError::Validation { message } => ApiError {
+            ToadStoolError::Validation { message } => Self {
                 status: StatusCode::BAD_REQUEST,
-                message: message.clone(),
+                message,
             },
-            ToadStoolError::Resource { message } => ApiError {
+            ToadStoolError::Resource { message } => Self {
                 status: StatusCode::INSUFFICIENT_STORAGE,
-                message: message.clone(),
+                message,
             },
-            ToadStoolError::NotSupported { message } => ApiError {
+            ToadStoolError::NotSupported { message } => Self {
                 status: StatusCode::NOT_IMPLEMENTED,
-                message: message.clone(),
+                message,
             },
-            _ => ApiError {
+            _ => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: "Internal server error".to_string(),
             },
@@ -215,7 +215,6 @@ impl axum::response::IntoResponse for ApiError {
 mod tests {
     use super::*;
     use axum::http::StatusCode;
-    use serde_json::json;
 
     #[tokio::test]
     async fn test_health_check() {

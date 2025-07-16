@@ -183,7 +183,7 @@ impl PerformanceHistory {
             RuntimeType::Native => 20 + (stats.0 % 5) * 2,
             RuntimeType::Container => 25 + (stats.0 % 3) * 5,
             RuntimeType::Wasm => 15 + (stats.0 % 4) * 3,
-            RuntimeType::GPU => 30 + (stats.0 % 6) * 4,
+            RuntimeType::Gpu => 30 + (stats.0 % 6) * 4,
             RuntimeType::Custom(_) => 35 + (stats.0 % 4) * 3,
             RuntimeType::Python => 22 + (stats.0 % 3) * 4,
         };
@@ -323,25 +323,25 @@ async fn demonstrate_security_policies() -> Result<(), Box<dyn std::error::Error
         (
             "Container",
             WorkloadSpec::Container {
-                image: "alpine:latest".to_string(),
-                command: Some(vec!["echo".to_string()]),
-                args: Some(vec!["Hello from container!".to_string()]),
-                working_dir: Some("/app".to_string()),
-                user: None,
-                volumes: Vec::new(),
-                ports: Vec::new(),
+                image: "debian:latest".to_string(),
+                command: Some(vec!["/bin/bash".to_string()]),
+                args: Some(vec!["-c".to_string(), "echo 'Extended test'".to_string()]),
+                working_dir: Some("/tmp".into()),
+                ports: vec![],
+                volumes: vec![],
                 registry_auth: None,
+                env_vars: HashMap::new(),
             },
         ),
         (
-            "WASM Module",
+            "WASM",
             WorkloadSpec::Wasm {
-                module_source: WasmModuleSource::File {
-                    path: "module.wasm".into(),
+                module: WasmModuleSource::File {
+                    path: "/path/to/module.wasm".into(),
                 },
+                args: Some(vec!["test".to_string()]),
+                env_vars: HashMap::new(),
                 wasi_config: None,
-                host_functions: Vec::new(),
-                memory_limit: Some(16 * 1024 * 1024), // 16 MB
             },
         ),
     ];
@@ -403,6 +403,7 @@ async fn demonstrate_performance_optimization() -> Result<(), Box<dyn std::error
             RuntimeType::Container => 1.2 + (i as f64 * 0.15) % 3.0,
             RuntimeType::Wasm => 0.8 + (i as f64 * 0.12) % 2.5,
             RuntimeType::Gpu => 0.3 + (i as f64 * 0.08) % 1.5,
+            RuntimeType::Python => 0.9 + (i as f64 * 0.13) % 2.3,
             RuntimeType::Custom(_) => 1.0 + (i as f64 * 0.1) % 2.0,
         };
         let success = i % 10 != 9; // 90% success rate
@@ -475,7 +476,7 @@ async fn demonstrate_sandbox_management() -> Result<(), Box<dyn std::error::Erro
                 command: Some(vec!["echo".to_string()]),
                 args: Some(vec!["secure test".to_string()]),
                 working_dir: Some("/app".to_string()),
-                user: None,
+                env_vars: HashMap::new(),
                 volumes: Vec::new(),
                 ports: Vec::new(),
                 registry_auth: None,

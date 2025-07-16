@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
-/// Network metrics collector
+/// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {
-    metrics: Arc<RwLock<NetworkMetricsData>>,
+    _metrics: Arc<RwLock<NetworkMetricsData>>,
 }
 
 /// Network metrics data
@@ -17,9 +17,10 @@ pub struct NetworkMetricsData {
 }
 
 impl NetworkMetricsCollector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(RwLock::new(NetworkMetricsData::default())),
+            _metrics: Arc::new(RwLock::new(NetworkMetricsData::default())),
         }
     }
 }

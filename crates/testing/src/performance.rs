@@ -20,6 +20,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use toadstool::ToadStoolError;
 use tokio::sync::RwLock;
 
 /// Performance test configuration
@@ -215,7 +216,9 @@ impl PerformanceTestManager {
 
         // Calculate results
         let context_ref = self.active_benchmarks.read().await;
-        let context = context_ref.get(&test_name).unwrap();
+        let context = context_ref.get(&test_name).ok_or_else(|| {
+            ToadStoolError::runtime(format!("Benchmark context not found for test: {test_name}"))
+        })?;
         let result = self
             .calculate_benchmark_result(test_name.clone(), iteration_times, context)
             .await;
@@ -268,11 +271,17 @@ impl PerformanceTestManager {
                     match test_fn().await {
                         Ok(()) => {
                             let response_time = request_start.elapsed();
-                            *successful.lock().unwrap() += 1;
-                            response_times.lock().unwrap().push(response_time);
+                            if let Ok(mut successful) = successful.lock() {
+                                *successful += 1;
+                            }
+                            if let Ok(mut times) = response_times.lock() {
+                                times.push(response_time);
+                            }
                         }
                         Err(_) => {
-                            *failed.lock().unwrap() += 1;
+                            if let Ok(mut failed) = failed.lock() {
+                                *failed += 1;
+                            }
                         }
                     }
 
@@ -291,10 +300,13 @@ impl PerformanceTestManager {
         }
 
         let total_duration = start_time.elapsed();
-        let successful = *successful_requests.lock().unwrap();
-        let failed = *failed_requests.lock().unwrap();
+        let successful = successful_requests.lock().map(|s| *s).unwrap_or(0);
+        let failed = failed_requests.lock().map(|f| *f).unwrap_or(0);
         let total_requests = successful + failed;
-        let response_times = response_times.lock().unwrap();
+        let response_times = response_times
+            .lock()
+            .map(|rt| rt.clone())
+            .unwrap_or_default();
 
         let average_response_time = if !response_times.is_empty() {
             response_times.iter().sum::<Duration>() / response_times.len() as u32
@@ -511,7 +523,7 @@ pub struct PerformanceReport {
 
 impl PerformanceReport {
     /// Generate human-readable report
-    pub fn to_string(&self) -> String {
+    pub fn to_report_string(&self) -> String {
         let mut report = format!(
             "Performance Test Report\n\
              =======================\n\

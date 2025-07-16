@@ -28,21 +28,19 @@ impl Default for AdapterConfig {
 
 impl UniversalAdapter {
     /// Create a new adapter
-    pub fn new(config: AdapterConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: AdapterConfig) -> Self {
         Self { config }
     }
 
     /// Adapt execution request for target environment
-    pub async fn adapt_request(
-        &self,
-        request: ExecutionRequest,
-    ) -> ToadStoolResult<ExecutionRequest> {
+    pub fn adapt_request(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionRequest> {
         // Stub implementation - adapt request for target environment
         Ok(request)
     }
 
     /// Adapt execution response from target environment
-    pub async fn adapt_response(
+    pub fn adapt_response(
         &self,
         response: ExecutionResponse,
     ) -> ToadStoolResult<ExecutionResponse> {

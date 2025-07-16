@@ -20,11 +20,12 @@ use toadstool::{
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
     security::SecurityContext,
     workload::{WasmModuleSource, WorkloadSpec},
+    WorkloadType,
 };
 
 // Import our runtime engines
-use toadstool_runtime_container::ContainerRuntimeEngine;
-use toadstool_runtime_gpu::GpuRuntimeEngine;
+use toadstool_runtime_gpu::UniversalGpuEngine as GpuRuntimeEngine;
+use toadstool_runtime_native::NativeRuntimeEngine as ContainerRuntimeEngine;
 use toadstool_runtime_wasm::{WasmRuntimeConfig, WasmRuntimeEngine};
 
 #[tokio::main]
@@ -74,7 +75,7 @@ async fn test_wasm_runtime() -> ToadStoolResult<()> {
     );
 
     // Test workload support
-    let workload_type = toadstool::execution::WorkloadType::Wasm;
+    let workload_type = WorkloadType::Wasm;
     assert!(wasm_engine.supports_workload(&workload_type));
     info!("✓ WASM engine supports WASM workloads");
 
@@ -82,7 +83,7 @@ async fn test_wasm_runtime() -> ToadStoolResult<()> {
     let metrics = wasm_engine.get_metrics().await?;
     info!(
         "✓ WASM engine metrics retrieved: {} MB memory usage",
-        metrics.memory.usage_bytes / (1024 * 1024)
+        metrics.memory.used_bytes / (1024 * 1024)
     );
 
     info!("✓ WASM Runtime Engine test completed");
@@ -92,7 +93,7 @@ async fn test_wasm_runtime() -> ToadStoolResult<()> {
 async fn test_container_runtime() -> ToadStoolResult<()> {
     info!("🐳 Creating Container Runtime Engine...");
 
-    let mut container_engine = ContainerRuntimeEngine::new()?;
+    let mut container_engine = ContainerRuntimeEngine::new();
 
     // Initialize with configuration
     let config = RuntimeConfig::default();
@@ -106,7 +107,7 @@ async fn test_container_runtime() -> ToadStoolResult<()> {
     );
 
     // Test workload support
-    let workload_type = toadstool::execution::WorkloadType::Container;
+    let workload_type = WorkloadType::Container;
     assert!(container_engine.supports_workload(&workload_type));
     info!("✓ Container engine supports container workloads");
 
@@ -114,7 +115,7 @@ async fn test_container_runtime() -> ToadStoolResult<()> {
     let metrics = container_engine.get_metrics().await?;
     info!(
         "✓ Container engine metrics retrieved: {} MB memory usage",
-        metrics.memory.usage_bytes / (1024 * 1024)
+        metrics.memory.used_bytes / (1024 * 1024)
     );
 
     info!("✓ Container Runtime Engine test completed");
@@ -124,11 +125,7 @@ async fn test_container_runtime() -> ToadStoolResult<()> {
 async fn test_gpu_runtime() -> ToadStoolResult<()> {
     info!("🎮 Creating GPU Runtime Engine...");
 
-    let mut gpu_engine = GpuRuntimeEngine::new()?;
-
-    // Initialize with configuration
-    let config = RuntimeConfig::default();
-    gpu_engine.initialize(config).await?;
+    let mut gpu_engine = GpuRuntimeEngine::new().await?;
 
     // Check capabilities
     let capabilities = gpu_engine.get_capabilities();
@@ -138,7 +135,7 @@ async fn test_gpu_runtime() -> ToadStoolResult<()> {
     );
 
     // Test workload support
-    let workload_type = toadstool::execution::WorkloadType::Gpu;
+    let workload_type = WorkloadType::Gpu;
     assert!(gpu_engine.supports_workload(&workload_type));
     info!("✓ GPU engine supports GPU workloads");
 
@@ -146,18 +143,18 @@ async fn test_gpu_runtime() -> ToadStoolResult<()> {
     let metrics = gpu_engine.get_metrics().await?;
     info!(
         "✓ GPU engine metrics retrieved: {} MB memory usage",
-        metrics.memory.usage_bytes / (1024 * 1024)
+        metrics.memory.used_bytes / (1024 * 1024)
     );
 
     // Test GPU device detection
     info!("🔍 Testing GPU device detection...");
-    let devices = gpu_engine.get_available_devices();
+    let devices = gpu_engine.get_available_devices().await;
     info!("✅ Detected {} GPU devices", devices.len());
     for device in devices {
         info!(
             "  - Device: {} (Memory: {} MB)",
-            device.name,
-            device.total_memory_bytes / (1024 * 1024)
+            device.info.name,
+            device.capabilities.total_memory_bytes / (1024 * 1024)
         );
     }
 
@@ -173,8 +170,8 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
     // Register all three runtime engines
     let wasm_config = WasmRuntimeConfig::default();
     let wasm_engine = WasmRuntimeEngine::new(wasm_config)?;
-    let container_engine = ContainerRuntimeEngine::new()?;
-    let gpu_engine = GpuRuntimeEngine::new()?;
+    let container_engine = ContainerRuntimeEngine::new();
+    let gpu_engine = GpuRuntimeEngine::new().await?;
 
     orchestrator
         .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
@@ -190,10 +187,10 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
 
     // Test execution request creation (basic validation)
     let wasm_workload = WorkloadSpec::Wasm {
-        module_source: WasmModuleSource::Bytes { data: vec![] },
+        module: WasmModuleSource::Bytes { data: vec![] },
+        args: Some(vec![]),
         wasi_config: None,
-        host_functions: vec![],
-        memory_limit: None,
+        env_vars: HashMap::new(),
     };
 
     let request = ExecutionRequest {
@@ -216,10 +213,10 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
         command: None,
         args: None,
         working_dir: None,
-        user: None,
         volumes: vec![],
         ports: vec![],
         registry_auth: None,
+        env_vars: HashMap::new(),
     };
 
     let container_request = ExecutionRequest {

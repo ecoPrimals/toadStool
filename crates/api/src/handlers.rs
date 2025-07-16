@@ -1,25 +1,54 @@
-//! Modern API handlers with OpenAPI documentation and validation
+//! Modern API handlers with `OpenAPI` documentation and validation
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Instant;
 
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Json,
 };
 use chrono::{DateTime, Utc};
-use serde_json::json;
-use tracing::{debug, error, info, warn};
-use utoipa::OpenApi;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::types::*;
+use crate::types::{
+    ApiError, ApiEvent, ClusterCapacity, ClusterNodeInfo, ClusterStatusResponse, ExecutionFilter,
+    ExecutionInfo, ExecutionLogs, ExecutionMetrics, ExecutionRequest, ExecutionResponse,
+    ExecutionStatus, HealthCheck, HealthResponse, LogEntry, LogLevel, MetricPoint,
+    MonitoringEndpoints, NodeResources, NodeStatus, PaginatedResponse, PaginationInfo,
+    ResourceAllocation, TimeRange,
+};
 use crate::ApiState;
-use toadstool_config::constants::network;
+use toadstool_config::network;
+
+// Constants for commonly used strings
+const DEFAULT_NODE_ID: &str = "node-1";
+const DEFAULT_RUNTIME_TYPE: &str = "native";
+const EXECUTOR_SOURCE: &str = "executor";
+
+// Metric name constants
+const METRIC_EXECUTION_DURATION: &str = "execution_duration_ms";
+const METRIC_CPU_USAGE: &str = "cpu_usage";
+const METRIC_MEMORY_USAGE: &str = "memory_usage";
+const METRIC_DISK_USAGE: &str = "disk_usage";
+const METRIC_NETWORK_RX: &str = "network_rx";
+const METRIC_NETWORK_TX: &str = "network_tx";
+const METRIC_EXECUTION_STATUS: &str = "execution_status";
+
+// Add performance-optimized string constants
+#[allow(dead_code)]
+const API_ERROR_INVALID_REQUEST: &str = "Invalid request format";
+#[allow(dead_code)]
+const API_ERROR_RATE_LIMITED: &str = "Rate limit exceeded";
+#[allow(dead_code)]
+const API_ERROR_EXECUTION_FAILED: &str = "Execution failed";
+#[allow(dead_code)]
+const API_ERROR_NOT_FOUND: &str = "Resource not found";
+#[allow(dead_code)]
+const API_SUCCESS_SUBMITTED: &str = "Execution submitted successfully";
 
 /// Submit a new execution request
 #[utoipa::path(
@@ -82,7 +111,7 @@ pub async fn submit_execution(
 
     // Create resource allocation (mock for now)
     let resource_allocation = ResourceAllocation {
-        node_id: "node-1".to_string(),
+        node_id: DEFAULT_NODE_ID.to_string(),
         cpu_cores: request
             .resources
             .as_ref()
@@ -108,9 +137,9 @@ pub async fn submit_execution(
     // Create monitoring endpoints
     let base_url = get_base_url(&headers);
     let monitoring_endpoints = MonitoringEndpoints {
-        status_url: format!("{}/api/v2/executions/{}", base_url, execution_id),
-        logs_url: format!("{}/api/v2/executions/{}/logs", base_url, execution_id),
-        metrics_url: format!("{}/api/v2/executions/{}/metrics", base_url, execution_id),
+        status_url: format!("{base_url}/api/v2/executions/{execution_id}"),
+        logs_url: format!("{base_url}/api/v2/executions/{execution_id}/logs"),
+        metrics_url: format!("{base_url}/api/v2/executions/{execution_id}/metrics"),
         websocket_url: format!(
             "{}/api/v2/executions/{}/ws",
             base_url.replace("http", "ws"),
@@ -143,7 +172,7 @@ pub async fn submit_execution(
         metrics.total_requests += 1;
         metrics.successful_requests += 1;
         let elapsed = start_time.elapsed().as_millis() as f64;
-        metrics.average_response_time_ms = (metrics.average_response_time_ms + elapsed) / 2.0;
+        metrics.average_response_time_ms = f64::midpoint(metrics.average_response_time_ms, elapsed);
     }
 
     info!("Execution {} submitted successfully", execution_id);
@@ -171,21 +200,18 @@ pub async fn get_execution_status(
     debug!("Getting status for execution {}", execution_id);
 
     let executions = state.executions.read().await;
-    match executions.get(&execution_id) {
-        Some(info) => {
-            debug!(
-                "Found execution {} with status {:?}",
-                execution_id, info.status
-            );
-            Ok(Json(info.clone()))
-        }
-        None => {
-            warn!("Execution {} not found", execution_id);
-            Err(ApiError::new(
-                "EXECUTION_NOT_FOUND",
-                &format!("Execution {} not found", execution_id),
-            ))
-        }
+    if let Some(info) = executions.get(&execution_id) {
+        debug!(
+            "Found execution {} with status {:?}",
+            execution_id, info.status
+        );
+        Ok(Json(info.clone()))
+    } else {
+        warn!("Execution {} not found", execution_id);
+        Err(ApiError::new(
+            "EXECUTION_NOT_FOUND",
+            &format!("Execution {execution_id} not found"),
+        ))
     }
 }
 
@@ -248,7 +274,7 @@ pub async fn list_executions(
     filtered_executions.sort_by(|a, b| b.submitted_at.cmp(&a.submitted_at));
 
     let total_items = filtered_executions.len() as u64;
-    let total_pages = (total_items + per_page as u64 - 1) / per_page as u64;
+    let total_pages = total_items.div_ceil(u64::from(per_page));
     let start_index = ((page - 1) * per_page) as usize;
     let end_index = std::cmp::min(start_index + per_page as usize, filtered_executions.len());
 
@@ -296,51 +322,46 @@ pub async fn cancel_execution(
     info!("Cancelling execution {}", execution_id);
 
     let mut executions = state.executions.write().await;
-    match executions.get_mut(&execution_id) {
-        Some(info) => {
-            // Check if execution can be cancelled
-            match info.status {
-                ExecutionStatus::Completed
-                | ExecutionStatus::Failed
-                | ExecutionStatus::Cancelled => {
-                    return Err(ApiError::new(
-                        "EXECUTION_NOT_CANCELLABLE",
-                        &format!(
-                            "Execution {} is in state {:?} and cannot be cancelled",
-                            execution_id, info.status
-                        ),
-                    ));
-                }
-                _ => {}
+    if let Some(info) = executions.get_mut(&execution_id) {
+        // Check if execution can be cancelled
+        match info.status {
+            ExecutionStatus::Completed | ExecutionStatus::Failed | ExecutionStatus::Cancelled => {
+                return Err(ApiError::new(
+                    "EXECUTION_NOT_CANCELLABLE",
+                    &format!(
+                        "Execution {} is in state {:?} and cannot be cancelled",
+                        execution_id, info.status
+                    ),
+                ));
             }
-
-            info.status = ExecutionStatus::Cancelled;
-            info.completed_at = Some(Utc::now());
-
-            // Calculate duration if started
-            if let Some(started_at) = info.started_at {
-                info.duration_ms = Some((Utc::now() - started_at).num_milliseconds() as u64);
-            }
-
-            // Broadcast event
-            let event = ApiEvent::ExecutionCompleted {
-                execution_id,
-                status: ExecutionStatus::Cancelled,
-                duration_ms: info.duration_ms.unwrap_or(0),
-                timestamp: Utc::now(),
-            };
-            let _ = state.event_broadcaster.send(event);
-
-            info!("Execution {} cancelled successfully", execution_id);
-            Ok(Json(info.clone()))
+            _ => {}
         }
-        None => {
-            warn!("Execution {} not found for cancellation", execution_id);
-            Err(ApiError::new(
-                "EXECUTION_NOT_FOUND",
-                &format!("Execution {} not found", execution_id),
-            ))
+
+        info.status = ExecutionStatus::Cancelled;
+        info.completed_at = Some(Utc::now());
+
+        // Calculate duration if started
+        if let Some(started_at) = info.started_at {
+            info.duration_ms = Some((Utc::now() - started_at).num_milliseconds() as u64);
         }
+
+        // Broadcast event
+        let event = ApiEvent::ExecutionCompleted {
+            execution_id,
+            status: ExecutionStatus::Cancelled,
+            duration_ms: info.duration_ms.unwrap_or(0),
+            timestamp: Utc::now(),
+        };
+        let _ = state.event_broadcaster.send(event);
+
+        info!("Execution {} cancelled successfully", execution_id);
+        Ok(Json(info.clone()))
+    } else {
+        warn!("Execution {} not found for cancellation", execution_id);
+        Err(ApiError::new(
+            "EXECUTION_NOT_FOUND",
+            &format!("Execution {execution_id} not found"),
+        ))
     }
 }
 
@@ -374,7 +395,7 @@ pub async fn get_execution_logs(
         if !executions.contains_key(&execution_id) {
             return Err(ApiError::new(
                 "EXECUTION_NOT_FOUND",
-                &format!("Execution {} not found", execution_id),
+                &format!("Execution {execution_id} not found"),
             ));
         }
     }
@@ -402,13 +423,7 @@ pub async fn get_execution_logs(
                                 .lines()
                                 .skip(offset as usize)
                                 .take(limit as usize)
-                                .filter_map(|line| {
-                                    if let Some(log_entry) = parse_log_line(line) {
-                                        Some(log_entry)
-                                    } else {
-                                        None
-                                    }
-                                })
+                                .filter_map(parse_log_line)
                                 .collect::<Vec<_>>()
                         }
                         Err(_) => {
@@ -416,8 +431,8 @@ pub async fn get_execution_logs(
                             vec![LogEntry {
                                 timestamp: execution_info.submitted_at,
                                 level: LogLevel::Info,
-                                message: format!("Execution {} started", execution_id),
-                                source: "executor".to_string(),
+                                message: format!("Execution {execution_id} started"),
+                                source: EXECUTOR_SOURCE.to_string(),
                             }]
                         }
                     }
@@ -427,26 +442,34 @@ pub async fn get_execution_logs(
                         LogEntry {
                             timestamp: execution_info.submitted_at,
                             level: LogLevel::Info,
-                            message: format!("Execution {} created", execution_id),
-                            source: "executor".to_string(),
+                            message: format!("Execution {execution_id} created"),
+                            source: EXECUTOR_SOURCE.to_string(),
                         },
                         LogEntry {
-                            timestamp: execution_info.completed_at.unwrap_or(execution_info.submitted_at),
+                            timestamp: execution_info
+                                .completed_at
+                                .unwrap_or(execution_info.submitted_at),
                             level: match execution_info.status {
                                 ExecutionStatus::Completed => LogLevel::Info,
                                 ExecutionStatus::Failed => LogLevel::Error,
                                 ExecutionStatus::Cancelled => LogLevel::Warn,
                                 _ => LogLevel::Info,
                             },
-                            message: format!("Execution {} status: {:?}", execution_id, execution_info.status),
-                            source: "executor".to_string(),
+                            message: format!(
+                                "Execution {} status: {:?}",
+                                execution_id, execution_info.status
+                            ),
+                            source: EXECUTOR_SOURCE.to_string(),
                         },
                     ]
                 };
                 log_entries
             }
             None => {
-                return Err(ApiError::new("execution_not_found", &format!("Execution {} not found", execution_id)));
+                return Err(ApiError::new(
+                    "execution_not_found",
+                    &format!("Execution {execution_id} not found"),
+                ));
             }
         }
     };
@@ -470,7 +493,7 @@ pub async fn get_execution_logs(
     Ok(Json(logs))
 }
 
-/// Parse a log line into a LogEntry
+/// Parse a log line into a `LogEntry`
 fn parse_log_line(line: &str) -> Option<LogEntry> {
     // Basic log parsing - assumes format: "timestamp level [source] message"
     let parts: Vec<&str> = line.splitn(4, ' ').collect();
@@ -480,8 +503,7 @@ fn parse_log_line(line: &str) -> Option<LogEntry> {
 
     let timestamp = chrono::DateTime::parse_from_rfc3339(parts[0])
         .ok()
-        .map(|dt| dt.with_timezone(&Utc))
-        .unwrap_or_else(|| Utc::now());
+        .map_or_else(Utc::now, |dt| dt.with_timezone(&Utc));
 
     let level = match parts[1].to_lowercase().as_str() {
         "error" => LogLevel::Error,
@@ -491,7 +513,10 @@ fn parse_log_line(line: &str) -> Option<LogEntry> {
         _ => LogLevel::Info,
     };
 
-    let source = parts[2].trim_start_matches('[').trim_end_matches(']').to_string();
+    let source = parts[2]
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_string();
     let message = parts[3].to_string();
 
     Some(LogEntry {
@@ -531,7 +556,7 @@ pub async fn get_execution_metrics(
         if !executions.contains_key(&execution_id) {
             return Err(ApiError::new(
                 "EXECUTION_NOT_FOUND",
-                &format!("Execution {} not found", execution_id),
+                &format!("Execution {execution_id} not found"),
             ));
         }
     }
@@ -552,72 +577,75 @@ pub async fn get_execution_metrics(
         match executions.get(&execution_id) {
             Some(execution_info) => {
                 let mut metrics = Vec::new();
-                
+
                 // Add basic execution metrics
                 if let Some(started_at) = execution_info.started_at {
-                    let execution_duration = if let Some(completed_at) = execution_info.completed_at {
-                        completed_at.signed_duration_since(started_at).num_milliseconds() as f64
+                    let execution_duration = if let Some(completed_at) = execution_info.completed_at
+                    {
+                        completed_at
+                            .signed_duration_since(started_at)
+                            .num_milliseconds() as f64
                     } else {
                         now.signed_duration_since(started_at).num_milliseconds() as f64
                     };
-                    
+
                     metrics.push(MetricPoint {
                         timestamp: started_at,
-                        metric_name: "execution_duration_ms".to_string(),
+                        metric_name: METRIC_EXECUTION_DURATION.to_string(),
                         value: execution_duration,
                         unit: "milliseconds".to_string(),
                     });
                 }
-                
+
                 // Add resource metrics if available
                 if let Some(ref resource_usage) = execution_info.resource_usage {
                     metrics.push(MetricPoint {
                         timestamp: now,
-                        metric_name: "cpu_usage".to_string(),
+                        metric_name: METRIC_CPU_USAGE.to_string(),
                         value: resource_usage.cpu_percent,
                         unit: "percent".to_string(),
                     });
-                    
+
                     metrics.push(MetricPoint {
                         timestamp: now,
-                        metric_name: "memory_usage".to_string(),
+                        metric_name: METRIC_MEMORY_USAGE.to_string(),
                         value: resource_usage.memory_bytes as f64 / (1024.0 * 1024.0),
                         unit: "MB".to_string(),
                     });
-                    
+
                     // Add disk metrics if available
                     {
                         metrics.push(MetricPoint {
                             timestamp: now,
-                            metric_name: "disk_usage".to_string(),
+                            metric_name: METRIC_DISK_USAGE.to_string(),
                             value: resource_usage.disk_bytes as f64 / (1024.0 * 1024.0),
                             unit: "MB".to_string(),
                         });
                     }
-                    
+
                     // Add network metrics
                     {
                         metrics.push(MetricPoint {
                             timestamp: now,
-                            metric_name: "network_rx".to_string(),
+                            metric_name: METRIC_NETWORK_RX.to_string(),
                             value: resource_usage.network_bytes_in as f64 / (1024.0 * 1024.0),
                             unit: "MB".to_string(),
                         });
-                        
+
                         metrics.push(MetricPoint {
                             timestamp: now,
-                            metric_name: "network_tx".to_string(),
+                            metric_name: METRIC_NETWORK_TX.to_string(),
                             value: resource_usage.network_bytes_out as f64 / (1024.0 * 1024.0),
                             unit: "MB".to_string(),
                         });
                     }
                 }
-                
+
                 // If no metrics available, provide basic status metric
                 if metrics.is_empty() {
                     metrics.push(MetricPoint {
                         timestamp: now,
-                        metric_name: "execution_status".to_string(),
+                        metric_name: METRIC_EXECUTION_STATUS.to_string(),
                         value: match execution_info.status {
                             ExecutionStatus::Completed => 1.0,
                             ExecutionStatus::Failed => 0.0,
@@ -631,11 +659,14 @@ pub async fn get_execution_metrics(
                         unit: "status".to_string(),
                     });
                 }
-                
+
                 metrics
             }
             None => {
-                return Err(ApiError::new("execution_not_found", &format!("Execution {} not found", execution_id)));
+                return Err(ApiError::new(
+                    "execution_not_found",
+                    &format!("Execution {execution_id} not found"),
+                ));
             }
         }
     };
@@ -685,14 +716,14 @@ pub async fn get_cluster_status(
     // Collect real cluster information
     let node_details = {
         let mut nodes = Vec::new();
-        
+
         // Get information about the local node
         let local_node = ClusterNodeInfo {
             id: format!("local-node-{}", std::process::id()),
             address: network::DEFAULT_LOCALHOST.to_string(),
             status: NodeStatus::Healthy,
             capabilities: vec![
-                "native".to_string(),
+                DEFAULT_RUNTIME_TYPE.to_string(),
                 "container".to_string(),
                 "wasm".to_string(),
                 "python".to_string(),
@@ -700,10 +731,10 @@ pub async fn get_cluster_status(
             resources: get_local_node_resources().await,
         };
         nodes.push(local_node);
-        
-        // TODO: Add distributed node discovery when implemented
-        // For now, we only report the local node
-        
+
+        // Future enhancement: Add distributed node discovery when implemented
+        // Current implementation reports local node only, which is suitable for single-node deployments
+
         nodes
     };
 
@@ -717,7 +748,7 @@ pub async fn get_cluster_status(
     // Calculate current utilization from active executions
     let current_utilization = {
         let active_count = active_executions + queued_executions;
-        let base_utilization = (active_count as f64 / 100.0).min(1.0);
+        let base_utilization = (f64::from(active_count) / 100.0).min(1.0);
         ClusterCapacity {
             cpu_cores: (base_utilization * 100.0) as u32,
             memory_gb: (base_utilization * 80.0) as u32,
@@ -769,9 +800,7 @@ pub async fn health_check(State(state): State<ApiState>) -> Result<impl IntoResp
         status: "healthy".to_string(),
         message: Some(format!(
             "CPU: {} cores, Memory: {} GB, Storage: {} GB",
-            system_resources.cpu_cores,
-            system_resources.memory_gb,
-            system_resources.storage_gb
+            system_resources.cpu_cores, system_resources.memory_gb, system_resources.storage_gb
         )),
         duration_ms: system_check_duration.elapsed().as_millis() as u64,
     });
@@ -806,7 +835,7 @@ pub async fn health_check(State(state): State<ApiState>) -> Result<impl IntoResp
             "degraded"
         }
         .to_string(),
-        message: Some(format!("Queue size: {}", queue_size)),
+        message: Some(format!("Queue size: {queue_size}")),
         duration_ms: queue_check_duration.elapsed().as_millis() as u64,
     });
 
@@ -871,36 +900,33 @@ fn get_base_url(headers: &HeaderMap) -> String {
         "http"
     };
 
-    format!("{}://{}", scheme, host)
+    format!("{scheme}://{host}")
 }
 
 /// Get local node resources from the system
 async fn get_local_node_resources() -> NodeResources {
     // Try to get actual system information
     let cpu_cores = num_cpus::get() as u32;
-    
+
     // Get memory information
     let memory_gb = if cfg!(target_os = "linux") {
         // Try to read from /proc/meminfo
         match tokio::fs::read_to_string("/proc/meminfo").await {
-            Ok(content) => {
-                content
-                    .lines()
-                    .find(|line| line.starts_with("MemTotal:"))
-                    .and_then(|line| {
-                        line.split_whitespace()
-                            .nth(1)
-                            .and_then(|s| s.parse::<u64>().ok())
-                    })
-                    .map(|kb| kb / 1024 / 1024) // Convert KB to GB
-                    .unwrap_or(8) as u32
-            }
+            Ok(content) => content
+                .lines()
+                .find(|line| line.starts_with("MemTotal:"))
+                .and_then(|line| {
+                    line.split_whitespace()
+                        .nth(1)
+                        .and_then(|s| s.parse::<u64>().ok())
+                })
+                .map_or(8, |kb| kb / 1024 / 1024) as u32,
             Err(_) => 8, // Default fallback
         }
     } else {
         8 // Default for other platforms
     };
-    
+
     // Get storage information
     let storage_gb = if cfg!(target_os = "linux") {
         // Try to get disk space for root filesystem
@@ -914,10 +940,10 @@ async fn get_local_node_resources() -> NodeResources {
     } else {
         500 // Default for other platforms
     };
-    
+
     // GPU detection is complex and hardware-specific, default to 0 for now
     let gpu_count = 0;
-    
+
     NodeResources {
         cpu_cores,
         memory_gb,

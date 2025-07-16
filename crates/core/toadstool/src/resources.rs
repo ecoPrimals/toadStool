@@ -1,12 +1,12 @@
 //! Resource management and monitoring for ToadStool
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use sysinfo::System;
+use tokio::sync::RwLock;
 
 use crate::ToadStoolResult;
 // ToadStoolError is available from crate::ToadStoolResult import
@@ -111,7 +111,7 @@ pub struct GpuRequirements {
 }
 
 /// Runtime metrics collected during execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RuntimeMetrics {
     /// CPU metrics
     pub cpu: CpuMetrics,
@@ -125,19 +125,6 @@ pub struct RuntimeMetrics {
     pub gpu: Option<GpuMetrics>,
     /// Timing metrics
     pub timing: TimingMetrics,
-}
-
-impl Default for RuntimeMetrics {
-    fn default() -> Self {
-        Self {
-            cpu: CpuMetrics::default(),
-            memory: MemoryMetrics::default(),
-            storage: StorageMetrics::default(),
-            network: NetworkMetrics::default(),
-            gpu: None,
-            timing: TimingMetrics::default(),
-        }
-    }
 }
 
 /// CPU metrics
@@ -207,7 +194,7 @@ impl Default for StorageMetrics {
 }
 
 /// Network metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkMetrics {
     /// Bytes sent
     pub bytes_sent: u64,
@@ -217,17 +204,6 @@ pub struct NetworkMetrics {
     pub packets_sent: u64,
     /// Packets received
     pub packets_received: u64,
-}
-
-impl Default for NetworkMetrics {
-    fn default() -> Self {
-        Self {
-            bytes_sent: 0,
-            bytes_received: 0,
-            packets_sent: 0,
-            packets_received: 0,
-        }
-    }
 }
 
 /// GPU metrics
@@ -432,7 +408,7 @@ impl SystemResourceMonitor {
     pub fn new() -> Self {
         let mut system = System::new_all();
         system.refresh_all();
-        
+
         Self {
             system: Arc::new(RwLock::new(system)),
             workload_metrics: Arc::new(RwLock::new(HashMap::new())),
@@ -448,7 +424,7 @@ impl SystemResourceMonitor {
     async fn get_cpu_usage(&self) -> ToadStoolResult<f64> {
         self.refresh_system().await?;
         let system = self.system.read().await;
-        let cpu_usage = system.global_cpu_info().cpu_usage() as f64;
+        let cpu_usage = system.global_cpu_usage() as f64;
         Ok(cpu_usage)
     }
 
@@ -465,35 +441,37 @@ impl SystemResourceMonitor {
         let _system = self.system.read().await;
         let disks = sysinfo::Disks::new_with_refreshed_list();
         let (mut used_space, mut total_space) = (0, 0);
-        
+
         for disk in &disks {
             total_space += disk.total_space();
             used_space += disk.total_space() - disk.available_space();
         }
-        
+
         Ok((used_space, total_space))
     }
 
     /// Get detailed process information for a specific workload
-    pub async fn get_process_info(&self, workload_id: &str) -> ToadStoolResult<Option<ProcessInfo>> {
+    pub async fn get_process_info(
+        &self,
+        workload_id: &str,
+    ) -> ToadStoolResult<Option<ProcessInfo>> {
         self.refresh_system().await?;
         let system = self.system.read().await;
-        
+
         // In a real implementation, we would track PIDs associated with workloads
         // For now, we'll return aggregate process information
         let processes = system.processes();
         let process_count = processes.len();
-        let total_cpu_time = processes.values()
+        let total_cpu_time = processes
+            .values()
             .map(|p| p.cpu_usage() as f64)
             .sum::<f64>();
-        
+
         Ok(Some(ProcessInfo {
             workload_id: workload_id.to_string(),
             process_count,
             total_cpu_time,
-            memory_usage: processes.values()
-                .map(|p| p.memory())
-                .sum::<u64>(),
+            memory_usage: processes.values().map(|p| p.memory()).sum::<u64>(),
             status: ProcessStatus::Running,
         }))
     }
@@ -503,19 +481,19 @@ impl SystemResourceMonitor {
         self.refresh_system().await?;
         let _system = self.system.read().await;
         let networks = sysinfo::Networks::new_with_refreshed_list();
-        
+
         let mut total_received = 0;
         let mut total_transmitted = 0;
         let mut total_packets_received = 0;
         let mut total_packets_transmitted = 0;
-        
+
         for (_interface_name, data) in &networks {
             total_received += data.received();
             total_transmitted += data.transmitted();
             total_packets_received += data.packets_received();
             total_packets_transmitted += data.packets_transmitted();
         }
-        
+
         Ok(NetworkStats {
             bytes_received: total_received,
             bytes_transmitted: total_transmitted,
@@ -529,7 +507,7 @@ impl SystemResourceMonitor {
     pub async fn get_load_averages(&self) -> ToadStoolResult<LoadAverages> {
         self.refresh_system().await?;
         let _system = self.system.read().await;
-        
+
         // Load averages are platform-specific
         #[cfg(unix)]
         {
@@ -540,7 +518,7 @@ impl SystemResourceMonitor {
                 fifteen_minutes: load_avg.fifteen,
             })
         }
-        
+
         #[cfg(not(unix))]
         {
             // For non-Unix systems, estimate load from CPU usage
@@ -564,8 +542,11 @@ impl SystemResourceMonitor {
             gpu: None,
             timing: TimingMetrics::default(),
         };
-        
-        self.workload_metrics.write().await.insert(workload_id.to_string(), metrics);
+
+        self.workload_metrics
+            .write()
+            .await
+            .insert(workload_id.to_string(), metrics);
         tracing::info!("Started real-time monitoring for workload: {}", workload_id);
         Ok(())
     }
@@ -576,7 +557,7 @@ impl SystemResourceMonitor {
         let (used_memory, total_memory) = self.get_memory_info().await?;
         let (used_storage, total_storage) = self.get_disk_info().await?;
         let network_stats = self.get_network_stats().await?;
-        
+
         let updated_metrics = RuntimeMetrics {
             cpu: CpuMetrics {
                 usage_percent: cpu_usage,
@@ -607,8 +588,11 @@ impl SystemResourceMonitor {
                 duration: chrono::Duration::zero(),
             },
         };
-        
-        self.workload_metrics.write().await.insert(workload_id.to_string(), updated_metrics);
+
+        self.workload_metrics
+            .write()
+            .await
+            .insert(workload_id.to_string(), updated_metrics);
         Ok(())
     }
 }
@@ -616,7 +600,7 @@ impl SystemResourceMonitor {
 impl ResourceMonitor for SystemResourceMonitor {
     fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
         tracing::info!("Starting resource monitoring for workload: {}", workload_id);
-        
+
         // Initialize metrics for this workload
         let metrics = RuntimeMetrics {
             cpu: CpuMetrics::default(),
@@ -630,7 +614,7 @@ impl ResourceMonitor for SystemResourceMonitor {
                 duration: chrono::Duration::zero(),
             },
         };
-        
+
         tokio::spawn({
             let workload_metrics = self.workload_metrics.clone();
             let workload_id = workload_id.to_string();
@@ -639,13 +623,13 @@ impl ResourceMonitor for SystemResourceMonitor {
                 metrics_map.insert(workload_id, metrics);
             }
         });
-        
+
         Ok(())
     }
 
     fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
         tracing::info!("Stopping resource monitoring for workload: {}", workload_id);
-        
+
         tokio::spawn({
             let workload_metrics = self.workload_metrics.clone();
             let workload_id = workload_id.to_string();
@@ -659,47 +643,49 @@ impl ResourceMonitor for SystemResourceMonitor {
                 }
             }
         });
-        
+
         Ok(())
     }
 
     fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
         let workload_metrics = self.workload_metrics.clone();
         let workload_id = workload_id.to_string();
-        
+
         let metrics = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let metrics_map = workload_metrics.read().await;
                 metrics_map.get(&workload_id).cloned().unwrap_or_default()
             })
         });
-        
+
         Ok(metrics)
     }
 
-    fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
+    fn get_system_resources(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
             // Refresh system information
             self.refresh_system().await?;
-            
+
             // Get CPU info
             let cpu_usage = self.get_cpu_usage().await?;
             let system = self.system.read().await;
             let cpu_cores = system.cpus().len() as f64;
             let available_cpu_cores = cpu_cores * (1.0 - cpu_usage / 100.0);
-            
+
             // Get memory info
             let (used_memory, total_memory) = self.get_memory_info().await?;
             let available_memory = total_memory - used_memory;
-            
+
             // Get disk info
             let (used_disk, total_disk) = self.get_disk_info().await?;
             let available_disk = total_disk - used_disk;
-            
+
             // For now, we don't have a reliable way to detect GPU units without additional crates
             // This could be enhanced with nvidia-ml-py or similar
             let available_gpu_units = 0;
-            
+
             Ok(SystemResources {
                 available_cpu_cores,
                 available_memory_bytes: available_memory,

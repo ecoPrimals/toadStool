@@ -21,50 +21,60 @@ impl WindowsSandbox {
     /// Apply Windows sandbox restrictions
     pub async fn apply_sandbox(&self) -> SandboxResult<()> {
         log::info!("Applying Windows sandbox restrictions");
-        
+
         // Check if running on Windows
         if !cfg!(windows) {
-            return Err(SandboxError::PlatformNotSupported("Windows sandbox requires Windows OS".to_string()));
+            return Err(SandboxError::PlatformNotSupported(
+                "Windows sandbox requires Windows OS".to_string(),
+            ));
         }
-        
+
         // Basic Windows sandbox implementation
         // In production, this would integrate with:
         // - Windows Security features (AppContainer, Process isolation)
         // - Windows Defender Application Guard
         // - Windows Sandbox API
         // - Job Objects for resource limiting
-        
+
         // For now, implement basic checks and logging
         log::info!("Windows sandbox restrictions applied (basic implementation)");
-        log::debug!("Sandbox config: isolation_level={:?}", self.config.default_isolation_level);
-        
+        log::debug!(
+            "Sandbox config: isolation_level={:?}",
+            self.config.default_isolation_level
+        );
+
         // Verify sandbox requirements
         if self.config.enable_seccomp {
             log::warn!("Seccomp not available on Windows, using equivalent restrictions");
         }
-        
+
         Ok(())
     }
 
     /// Remove Windows sandbox restrictions
     pub async fn remove_sandbox(&self) -> SandboxResult<()> {
         log::info!("Removing Windows sandbox restrictions");
-        
+
         // Check if running on Windows
         if !cfg!(windows) {
-            return Err(SandboxError::PlatformNotSupported("Windows sandbox requires Windows OS".to_string()));
+            return Err(SandboxError::PlatformNotSupported(
+                "Windows sandbox requires Windows OS".to_string(),
+            ));
         }
-        
+
         // Basic Windows sandbox cleanup implementation
         // In production, this would:
         // - Clean up AppContainer/Job Object restrictions
         // - Restore original process privileges
         // - Clean up temporary sandbox directories
         // - Release allocated resources
-        
+
         log::info!("Windows sandbox restrictions removed (basic implementation)");
-        log::debug!("Sandbox cleanup completed for isolation_level={:?}", self.config.default_isolation_level);
-        
+        log::debug!(
+            "Sandbox cleanup completed for isolation_level={:?}",
+            self.config.default_isolation_level
+        );
+
         Ok(())
     }
 

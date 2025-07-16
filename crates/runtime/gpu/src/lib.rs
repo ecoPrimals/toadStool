@@ -33,7 +33,6 @@ pub use engine::UniversalGpuEngine as GpuRuntime;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[tokio::test]
     async fn test_universal_gpu_engine_creation() {

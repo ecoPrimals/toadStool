@@ -71,19 +71,32 @@ struct WorkloadRequest {
     name: String,
     workload_type: WorkloadType,
     requires_proprietary: bool,
+    #[allow(dead_code)]
     preferred_frameworks: Vec<String>,
 }
 
 #[derive(Debug)]
 enum WorkloadType {
-    AiInference { model: String, framework: String },
-    GeneralCompute { parallel: bool },
+    AiInference {
+        #[allow(dead_code)]
+        model: String,
+        framework: String,
+    },
+    GeneralCompute {
+        #[allow(dead_code)]
+        parallel: bool,
+    },
+    #[allow(dead_code)]
     MediaProcessing { codec: String },
-    ScientificComputing { domain: String },
+    ScientificComputing {
+        #[allow(dead_code)]
+        domain: String,
+    },
 }
 
 #[derive(Debug)]
 struct SchedulingDecision {
+    #[allow(dead_code)]
     target_node: String,
     strategy: ExecutionStrategy,
     score: f64,
@@ -529,7 +542,7 @@ fn determine_execution_strategy(
 }
 
 fn generate_reasoning(
-    request: &WorkloadRequest,
+    _request: &WorkloadRequest,
     node: &ComputeNode,
     strategy: &ExecutionStrategy,
 ) -> String {
@@ -697,21 +710,14 @@ async fn show_strategic_metrics(
         / total_nodes as f64
         * 100.0;
 
-    println!("  Open Standards Coverage: {:.1}%", open_coverage);
-    println!(
-        "  CUDA Dependency: {:.1}% (lower is better)",
-        cuda_isolation
-    );
-    println!("  Cross-Platform Ready: {:.1}%", cross_platform);
+    println!("  Open Standards Coverage: {open_coverage:.1}%");
+    println!("  CUDA Dependency: {cuda_isolation:.1}% (lower is better)");
+    println!("  Cross-Platform Ready: {cross_platform:.1}%");
 
     println!("\n💡 The NVIDIA Incentive:");
+    println!("  Current reality: {mixed_nodes} nodes have CUDA but also open alternatives");
     println!(
-        "  Current reality: {} nodes have CUDA but also open alternatives",
-        mixed_nodes
-    );
-    println!(
-        "  Missed opportunity: {} CUDA-only nodes could join universal network with open drivers",
-        cuda_only_nodes
+        "  Missed opportunity: {cuda_only_nodes} CUDA-only nodes could join universal network with open drivers"
     );
     println!("  Market potential: Millions of gaming GPUs idle while AI demands compute");
     println!("  Strategic advantage: First-mover in federated AI compute gets the ecosystem");

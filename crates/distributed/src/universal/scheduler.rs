@@ -13,7 +13,7 @@ use crate::types::*;
 /// Universal scheduler for cross-platform job distribution
 pub struct UniversalScheduler {
     /// Scheduler configuration
-    config: UniversalSchedulerConfig,
+    _config: UniversalSchedulerConfig,
     /// Local job queue
     local_queue: Arc<RwLock<UniversalJobQueue>>,
     /// Network-aware job distribution
@@ -21,11 +21,11 @@ pub struct UniversalScheduler {
     /// Ecosystem caller for invoking other services
     ecosystem_caller: Arc<EcosystemCaller>,
     /// Recursive hosting manager
-    recursive_hosting_manager: Arc<RecursiveHostingManager>,
+    _recursive_hosting_manager: Arc<RecursiveHostingManager>,
     /// OS-layer manager
-    os_layer_manager: Arc<OSLayerManager>,
+    _os_layer_manager: Arc<OSLayerManager>,
     /// Metrics collector
-    metrics_collector: Arc<UniversalMetricsCollector>,
+    _metrics_collector: Arc<UniversalMetricsCollector>,
 }
 
 /// Configuration for the universal scheduler
@@ -85,8 +85,7 @@ pub struct RecursiveHostingConfig {
 }
 
 /// OS-layer configuration
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct OSLayerConfig {
     /// Enable virtual filesystem
     pub virtual_filesystem_enabled: bool,
@@ -165,13 +164,13 @@ impl UniversalScheduler {
         let metrics_collector = Arc::new(UniversalMetricsCollector::new());
 
         Ok(Self {
-            config,
+            _config: config,
             local_queue,
             network_distributor,
             ecosystem_caller,
-            recursive_hosting_manager,
-            os_layer_manager,
-            metrics_collector,
+            _recursive_hosting_manager: recursive_hosting_manager,
+            _os_layer_manager: os_layer_manager,
+            _metrics_collector: metrics_collector,
         })
     }
 
@@ -188,7 +187,7 @@ impl UniversalScheduler {
             }
             ExecutionTarget::ToadStool { .. } => {
                 // Route to specific ToadStool
-                self.network_distributor.distribute_job(job).await?;
+                self.network_distributor.distribute_job(job.clone())?;
             }
             ExecutionTarget::EcosystemService { .. } => {
                 // Route to ecosystem service
@@ -200,7 +199,7 @@ impl UniversalScheduler {
             }
             ExecutionTarget::LoadBalanced { .. } => {
                 // Load balance across resources
-                self.network_distributor.distribute_job(job).await?;
+                self.network_distributor.distribute_job(job.clone())?;
             }
         }
 
@@ -269,7 +268,6 @@ impl Default for RecursiveHostingConfig {
         }
     }
 }
-
 
 impl Default for NetworkLoadBalancing {
     fn default() -> Self {

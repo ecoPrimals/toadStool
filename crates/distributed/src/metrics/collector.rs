@@ -6,13 +6,13 @@ use tokio::sync::RwLock;
 /// Universal metrics collector
 pub struct UniversalMetricsCollector {
     /// Local metrics
-    local_metrics: Arc<RwLock<LocalMetrics>>,
+    _local_metrics: Arc<RwLock<LocalMetrics>>,
     /// Network metrics
-    network_metrics: Arc<RwLock<NetworkMetrics>>,
+    _network_metrics: Arc<RwLock<NetworkMetrics>>,
     /// Ecosystem metrics
-    ecosystem_metrics: Arc<RwLock<EcosystemMetrics>>,
+    _ecosystem_metrics: Arc<RwLock<EcosystemMetrics>>,
     /// Recursive hosting metrics
-    recursive_metrics: Arc<RwLock<RecursiveHostingMetrics>>,
+    _recursive_metrics: Arc<RwLock<RecursiveHostingMetrics>>,
 }
 
 /// Local metrics
@@ -33,8 +33,7 @@ pub struct NetworkMetrics {
 }
 
 /// Ecosystem metrics
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct EcosystemMetrics {
     pub active_ecosystem_jobs: u64,
     pub ecosystem_service_calls: HashMap<String, u64>,
@@ -50,12 +49,13 @@ pub struct RecursiveHostingMetrics {
 }
 
 impl UniversalMetricsCollector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            local_metrics: Arc::new(RwLock::new(LocalMetrics::default())),
-            network_metrics: Arc::new(RwLock::new(NetworkMetrics::default())),
-            ecosystem_metrics: Arc::new(RwLock::new(EcosystemMetrics::default())),
-            recursive_metrics: Arc::new(RwLock::new(RecursiveHostingMetrics::default())),
+            _local_metrics: Arc::new(RwLock::new(LocalMetrics::default())),
+            _network_metrics: Arc::new(RwLock::new(NetworkMetrics::default())),
+            _ecosystem_metrics: Arc::new(RwLock::new(EcosystemMetrics::default())),
+            _recursive_metrics: Arc::new(RwLock::new(RecursiveHostingMetrics::default())),
         }
     }
 }
@@ -75,7 +75,6 @@ impl Default for NetworkMetrics {
         }
     }
 }
-
 
 impl Default for RecursiveHostingMetrics {
     fn default() -> Self {

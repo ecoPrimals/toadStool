@@ -49,8 +49,8 @@ async fn main() -> ToadStoolResult<()> {
     let toadstool_access = crypto_lock.check_external_access(&toadstool_target).await?;
     let songbird_access = crypto_lock.check_external_access(&songbird_target).await?;
 
-    println!("✅ ToadStool access: {:?}", toadstool_access);
-    println!("✅ Songbird access: {:?}", songbird_access);
+    println!("✅ ToadStool access: {toadstool_access:?}");
+    println!("✅ Songbird access: {songbird_access:?}");
 
     // Demo 2: External cloud provider access (requires crypto permission)
     println!("\n🔐 Demo 2: External Cloud Provider Access");
@@ -76,8 +76,8 @@ async fn main() -> ToadStoolResult<()> {
     let aws_access = crypto_lock.check_external_access(&aws_target).await?;
     let azure_access = crypto_lock.check_external_access(&azure_target).await?;
 
-    println!("❌ AWS access (no permission): {:?}", aws_access);
-    println!("❌ Azure access (no permission): {:?}", azure_access);
+    println!("❌ AWS access (no permission): {aws_access:?}");
+    println!("❌ Azure access (no permission): {azure_access:?}");
 
     // Demo 3: Installing BearDog crypto permissions
     println!("\n📥 Demo 3: Installing BearDog Crypto Permissions");
@@ -101,7 +101,7 @@ async fn main() -> ToadStoolResult<()> {
 
     // Check access again (should now be granted)
     let aws_access_after = crypto_lock.check_external_access(&aws_target).await?;
-    println!("✅ AWS access (with permission): {:?}", aws_access_after);
+    println!("✅ AWS access (with permission): {aws_access_after:?}");
 
     // Demo 4: University gets free access
     println!("\n🎓 Demo 4: University Free Access");
@@ -122,10 +122,7 @@ async fn main() -> ToadStoolResult<()> {
         .await?;
 
     let azure_access_university = crypto_lock.check_external_access(&azure_target).await?;
-    println!(
-        "✅ Azure access (university): {:?}",
-        azure_access_university
-    );
+    println!("✅ Azure access (university): {azure_access_university:?}");
 
     // Demo 5: Permission delegation (lending access)
     println!("\n🤝 Demo 5: Permission Delegation");
@@ -206,7 +203,7 @@ async fn main() -> ToadStoolResult<()> {
         }),
     };
 
-    let distributed_coordinator = DistributedCoordinator::new(config).await?;
+    let _distributed_coordinator = DistributedCoordinator::new(config).await?;
 
     println!("🚀 Distributed coordinator initialized with crypto lock protection");
     println!("   - Pure Rust ecosystem: Always available");

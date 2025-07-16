@@ -1,0 +1,59 @@
+{
+  "biome": {
+    "name": "auto-generated-biome",
+    "version": "1.0.0",
+    "description": "Automatically generated biome configuration",
+    "resources": {
+      "cpu_limit": 19.200000000000003,
+      "memory_limit": "25466MB",
+      "storage_limit": "911GB",
+      "gpu_limit": 1
+    }
+  },
+  "runtime": {
+    "preferred_runtimes": [
+      "native",
+      "wasm",
+      "gpu"
+    ],
+    "container_runtime": "none",
+    "wasm_runtime": "wasmtime",
+    "gpu_runtime": "cuda"
+  },
+  "security": {
+    "level": "standard",
+    "isolation": "process",
+    "beardog_enabled": false,
+    "crypto_policies": [
+      "default"
+    ]
+  },
+  "network": {
+    "mode": "bridge",
+    "port_mappings": [
+      {
+        "host_port": 8080,
+        "container_port": 8080,
+        "protocol": "tcp"
+      }
+    ],
+    "dns_servers": [
+      "8.8.8.8",
+      "8.8.4.4"
+    ],
+    "songbird_enabled": false
+  },
+  "storage": {
+    "backend": "local",
+    "nestgate_enabled": false,
+    "volumes": [
+      {
+        "name": "data",
+        "size": "10GB",
+        "mount_point": "/data",
+        "read_only": false
+      }
+    ],
+    "backup_enabled": false
+  }
+}

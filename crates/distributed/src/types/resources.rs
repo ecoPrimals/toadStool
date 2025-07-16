@@ -292,7 +292,7 @@ impl Default for ProcessHandle {
 }
 
 /// GPU allocation information
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GpuAllocation {
     /// GPU device ID
     pub device_id: u32,

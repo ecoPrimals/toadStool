@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::ToadStoolResult;
-use toadstool_config::constants::network;
+use toadstool_config::network;
 use toadstool_config::helpers;
 use std::time::Duration;
 

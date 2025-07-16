@@ -5,12 +5,12 @@
 use std::time::Duration;
 use uuid::Uuid;
 
-use toadstool::universal::{
-    UniversalComputePlatform, UniversalJob, UniversalJobType, JobPriority,
-    PrimalContext, NetworkLocation, SecurityLevel, PlatformStatus,
-};
-use toadstool::resources::ResourceRequirements;
 use toadstool::error::ToadStoolResult;
+use toadstool::resources::ResourceRequirements;
+use toadstool::universal::{
+    JobPriority, NetworkLocation, PrimalContext, SecurityLevel, UniversalComputePlatform,
+    UniversalJob, UniversalJobType,
+};
 
 #[tokio::main]
 async fn main() -> ToadStoolResult<()> {
@@ -19,7 +19,7 @@ async fn main() -> ToadStoolResult<()> {
 
     // Initialize the platform
     let platform = UniversalComputePlatform::new().await?;
-    
+
     // Create a simple context
     let context = PrimalContext {
         user_id: "demo_user".to_string(),
@@ -53,7 +53,7 @@ async fn main() -> ToadStoolResult<()> {
     // Execute the job
     println!("Executing universal job...");
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("Job completed with status: {:?}", response.status);
     if let Some(stdout) = response.output.stdout {
         println!("Output: {}", stdout);

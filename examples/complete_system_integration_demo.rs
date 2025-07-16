@@ -8,13 +8,8 @@
 //! - Universal compute platform integration
 
 use anyhow::Result;
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
 use tokio::time::sleep;
-use tracing::info;
-use uuid::Uuid;
 
 /// Comprehensive system integration demo
 pub async fn run_complete_system_integration_demo(
@@ -35,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 
 /// Demo 1: Real System Monitoring
+#[allow(dead_code)]
 async fn demo_real_system_monitoring() -> Result<()> {
     println!("📊 Demo 1: Real System Monitoring");
     println!("  ├── Before: Hardcoded values (CPU: 45.2%, Memory: 62.8%)");
@@ -42,7 +38,12 @@ async fn demo_real_system_monitoring() -> Result<()> {
 
     // Simulate the real monitoring system we implemented
     println!("  📈 Real-time Metrics (via sysinfo integration):");
-    println!("     ├── CPU cores detected: {} cores", std::thread::available_parallelism().map(|p| p.get()).unwrap_or(4));
+    println!(
+        "     ├── CPU cores detected: {} cores",
+        std::thread::available_parallelism()
+            .map(|p| p.get())
+            .unwrap_or(4)
+    );
     println!("     ├── System monitoring: ✅ Operational");
     println!("     ├── Resource tracking: ✅ Real-time data collection");
     println!("     └── Performance metrics: ✅ Production ready");
@@ -53,6 +54,7 @@ async fn demo_real_system_monitoring() -> Result<()> {
 }
 
 /// Demo 2: Comprehensive Mock Testing Framework
+#[allow(dead_code)]
 async fn demo_mock_testing_framework() -> Result<()> {
     println!("🧪 Demo 2: Comprehensive Mock Testing Framework");
     println!("  ├── Before: No testing infrastructure");
@@ -74,6 +76,7 @@ async fn demo_mock_testing_framework() -> Result<()> {
 }
 
 /// Demo 3: Centralized Runtime Defaults
+#[allow(dead_code)]
 async fn demo_centralized_configuration() -> Result<()> {
     println!("⚙️  Demo 3: Centralized Runtime Defaults");
     println!("  ├── Before: Magic numbers scattered everywhere");
@@ -86,10 +89,10 @@ async fn demo_centralized_configuration() -> Result<()> {
     const DEFAULT_NESTGATE_PORT: u16 = 8083;
 
     println!("  🌐 Network Configuration:");
-    println!("     ├── ToadStool Port: {}", DEFAULT_TOADSTOOL_PORT);
-    println!("     ├── Songbird Port: {}", DEFAULT_SONGBIRD_PORT);
-    println!("     ├── BearDog Port: {}", DEFAULT_BEARDOG_PORT);
-    println!("     └── NestGate Port: {}", DEFAULT_NESTGATE_PORT);
+    println!("     ├── ToadStool Port: {DEFAULT_TOADSTOOL_PORT}");
+    println!("     ├── Songbird Port: {DEFAULT_SONGBIRD_PORT}");
+    println!("     ├── BearDog Port: {DEFAULT_BEARDOG_PORT}");
+    println!("     └── NestGate Port: {DEFAULT_NESTGATE_PORT}");
 
     println!("  ⏱️  Timeout Configuration:");
     println!("     ├── Execution Timeout: 300s");
@@ -109,6 +112,7 @@ async fn demo_centralized_configuration() -> Result<()> {
 }
 
 /// Demo 4: Universal Compute Platform Integration
+#[allow(dead_code)]
 async fn demo_universal_compute_integration() -> Result<()> {
     println!("🌍 Demo 4: Universal Compute Platform Integration");
     println!("  ├── Architecture: Complete ecosystem integration");
@@ -144,6 +148,7 @@ async fn demo_universal_compute_integration() -> Result<()> {
 }
 
 /// Demo 5: Production Readiness Features
+#[allow(dead_code)]
 async fn demo_production_readiness() -> Result<()> {
     println!("🚀 Demo 5: Production Readiness Features");
     println!("  ├── Stability: Zero TODO calls, stable compilation");

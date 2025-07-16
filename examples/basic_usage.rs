@@ -20,7 +20,7 @@ use toadstool::{
     ToadStoolResult,
 };
 
-use toadstool_config::ConfigManager;
+use toadstool::UniversalComputePlatform;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -31,18 +31,13 @@ async fn main() -> ToadStoolResult<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    // Load configuration
-    let config_manager = ConfigManager::new();
-    let config = config_manager.get_config().await;
-    println!("Loaded configuration successfully");
+    // Initialize ToadStool Universal Compute Platform
+    let _platform = UniversalComputePlatform::new().await?;
+    println!("Initialized ToadStool Universal Compute Platform");
 
     // Create security context with standard isolation
     let security_context = SecurityContext::for_isolation_level(IsolationLevel::Standard);
     println!("Created security context");
-
-    // Create runtime orchestrator
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
-    println!("Created runtime orchestrator");
 
     // Define resource requirements
     let resource_requirements = ResourceRequirements::default();

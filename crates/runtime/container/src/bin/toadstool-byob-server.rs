@@ -6,19 +6,28 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
+use axum::{
+    extract::{Json, Path, State},
+    routing::{get, post},
+    Router,
+};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
+use uuid::Uuid;
 
 use toadstool::{
-    byob::{create_byob_executor, ByobExecutorConfig},
+    byob::{
+        create_byob_executor, ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor,
+        ByobExecutorConfig, ResourceUsage,
+    },
     RuntimeEngine, ToadStoolError, ToadStoolResult,
 };
-use toadstool_api::ByobApi;
+use toadstool_api::byob::{ApiError, HealthResponse, StopDeploymentResponse};
 use toadstool_runtime_container::ContainerRuntimeEngine;
+// use toadstool_config::constants::network::DEFAULT_TOADSTOOL_PORT;
 
 /// Command line arguments
 #[derive(Parser, Debug)]
@@ -30,7 +39,7 @@ struct Args {
     bind: String,
 
     /// Server port
-    #[arg(short, long, default_value = "8081")]
+    #[arg(short, long, default_value_t = 8081)]
     port: u16,
 
     /// Enable verbose logging
@@ -86,15 +95,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create BYOB executor
     let byob_executor = create_byob_executor(runtime_engine);
 
-    // Create API router
-    let byob_api = ByobApi::new(byob_executor);
-    let byob_router = byob_api.router();
-
-    // Create main router
+    // Create stateless router first, then add state at the end
     let app = Router::new()
         .route("/", get(root_handler))
         .route("/health", get(health_handler))
-        .merge(byob_router);
+        // Add BYOB routes directly
+        .route("/byob/deploy", post(byob_deploy_handler))
+        .route("/byob/deployments", get(byob_list_deployments_handler))
+        .route(
+            "/byob/deployments/:deployment_id",
+            get(byob_get_deployment_status_handler),
+        )
+        .route(
+            "/byob/deployments/:deployment_id/stop",
+            post(byob_stop_deployment_handler),
+        )
+        .route(
+            "/byob/deployments/:deployment_id/usage",
+            get(byob_get_resource_usage_handler),
+        )
+        .route("/byob/health", get(byob_health_check_handler))
+        .with_state(byob_executor);
 
     // Create server address
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
@@ -144,6 +165,66 @@ async fn health_handler() -> axum::Json<serde_json::Value> {
         "service": "toadstool-byob-server",
         "version": env!("CARGO_PKG_VERSION"),
         "message": "Ready to execute team biomes"
+    }))
+}
+
+// BYOB API handlers
+async fn byob_deploy_handler(
+    State(executor): State<Arc<dyn ByobExecutor>>,
+    Json(request): Json<ByobDeploymentRequest>,
+) -> Result<Json<ByobDeploymentResponse>, ApiError> {
+    match executor.deploy_biome(request).await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+async fn byob_list_deployments_handler(
+    State(executor): State<Arc<dyn ByobExecutor>>,
+) -> Result<Json<Vec<ByobDeploymentResponse>>, ApiError> {
+    match executor.list_deployments().await {
+        Ok(deployments) => Ok(Json(deployments)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+async fn byob_get_deployment_status_handler(
+    State(executor): State<Arc<dyn ByobExecutor>>,
+    Path(deployment_id): Path<Uuid>,
+) -> Result<Json<ByobDeploymentResponse>, ApiError> {
+    match executor.get_deployment_status(deployment_id).await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+async fn byob_stop_deployment_handler(
+    State(executor): State<Arc<dyn ByobExecutor>>,
+    Path(deployment_id): Path<Uuid>,
+) -> Result<Json<StopDeploymentResponse>, ApiError> {
+    match executor.stop_deployment(deployment_id).await {
+        Ok(()) => Ok(Json(StopDeploymentResponse {
+            deployment_id,
+            message: "Deployment stopped successfully".to_string(),
+        })),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+async fn byob_get_resource_usage_handler(
+    State(executor): State<Arc<dyn ByobExecutor>>,
+    Path(deployment_id): Path<Uuid>,
+) -> Result<Json<ResourceUsage>, ApiError> {
+    match executor.get_resource_usage(deployment_id).await {
+        Ok(usage) => Ok(Json(usage)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+async fn byob_health_check_handler() -> Result<Json<HealthResponse>, ApiError> {
+    Ok(Json(HealthResponse {
+        status: "healthy".to_string(),
+        message: "Toadstool BYOB API is operational".to_string(),
     }))
 }
 

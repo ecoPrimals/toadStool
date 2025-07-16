@@ -2,8 +2,6 @@
 // ==================================================
 // "If it has a chip and memory, ToadStool runs on it"
 
-use std::collections::HashMap;
-
 fn main() {
     println!("🍄 ToadStool Universal Substrate Achievement");
     println!("===========================================");
@@ -130,9 +128,9 @@ fn display_substrate_coverage() {
     ];
 
     for (category, platforms) in substrates {
-        println!("📂 {}", category);
+        println!("📂 {category}");
         for platform in platforms {
-            println!("   ✓ {}", platform);
+            println!("   ✓ {platform}");
         }
         println!();
     }

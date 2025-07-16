@@ -33,7 +33,7 @@ pub struct UniversalGpuEngine {
     /// Active compute sessions (supports recursive execution)
     active_sessions: Arc<RwLock<HashMap<Uuid, ComputeSession>>>,
     /// Universal kernel compiler and optimizer
-    kernel_compiler: Arc<UniversalKernelCompiler>,
+    _kernel_compiler: Arc<UniversalKernelCompiler>,
     /// Device resource coordinator
     resource_coordinator: Arc<ComputeResourceCoordinator>,
     /// Configuration
@@ -61,7 +61,7 @@ impl UniversalGpuEngine {
             frameworks,
             devices,
             active_sessions,
-            kernel_compiler,
+            _kernel_compiler: kernel_compiler,
             resource_coordinator,
             config,
             resource_monitor: None,
@@ -114,7 +114,7 @@ impl UniversalGpuEngine {
     ) -> ToadStoolResult<Arc<dyn ParallelComputeFramework>> {
         match framework_type {
             GpuFramework::WebGpu => {
-                let framework = super::frameworks::WebGpuFramework::new().await?;
+                let framework = super::frameworks::WebGpuFramework::new()?;
                 Ok(Arc::new(framework))
             }
             _ => {
@@ -232,8 +232,7 @@ impl UniversalGpuEngine {
             let sessions = self.active_sessions.read().await;
             sessions
                 .get(&parent_id)
-                .map(|s| s.recursion_depth + 1)
-                .unwrap_or(0)
+                .map_or(0, |s| s.recursion_depth + 1)
         } else {
             0
         };
@@ -383,6 +382,7 @@ impl UniversalGpuEngine {
     }
 
     /// Set resource monitor
+    #[must_use]
     pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
         self.resource_monitor = Some(monitor);
         self
@@ -419,7 +419,7 @@ impl RuntimeEngine for UniversalGpuEngine {
     }
 
     async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        let workload = self.convert_request_to_workload(request.clone())?;
+        let workload = Self::convert_request_to_workload(&request)?;
         let result = self.execute_workload(workload).await?;
 
         Ok(ExecutionResponse {
@@ -431,7 +431,7 @@ impl RuntimeEngine for UniversalGpuEngine {
                     .buffers
                     .values()
                     .flatten()
-                    .cloned()
+                    .copied()
                     .collect(),
                 stdout: Some(format!(
                     "GPU execution completed on device: {:?}",
@@ -447,7 +447,7 @@ impl RuntimeEngine for UniversalGpuEngine {
                 result: HashMap::new(),
                 metadata: HashMap::new(),
             },
-            metrics: self.create_runtime_metrics(&result).await,
+            metrics: self.create_runtime_metrics(&result),
             duration: result.total_execution_time,
             runtime_used: RuntimeType::Gpu,
             warnings: if result.primary_output.errors.is_empty() {
@@ -525,7 +525,7 @@ impl RuntimeEngine for UniversalGpuEngine {
         // Destroy all active sessions
         let session_ids: Vec<Uuid> = {
             let sessions = self.active_sessions.read().await;
-            sessions.keys().cloned().collect()
+            sessions.keys().copied().collect()
         };
 
         for session_id in session_ids {
@@ -544,15 +544,12 @@ impl RuntimeEngine for UniversalGpuEngine {
 
 impl UniversalGpuEngine {
     /// Convert execution request to compute workload
-    fn convert_request_to_workload(
-        &self,
-        request: ExecutionRequest,
-    ) -> ToadStoolResult<ComputeWorkload> {
+    fn convert_request_to_workload(request: &ExecutionRequest) -> ToadStoolResult<ComputeWorkload> {
         let kernel_source = match &request.workload {
             WorkloadSpec::Gpu { program, .. } => {
                 match program {
-                    toadstool::workload::GpuProgramSource::OpenCL { source } => source.clone(),
-                    toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),
+                    toadstool::workload::GpuProgramSource::OpenCL { source }
+                    | toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),
                     toadstool::workload::GpuProgramSource::Vulkan { spirv } => {
                         // Convert SPIR-V bytes to string representation
                         format!("SPIR-V binary: {} bytes", spirv.len())
@@ -579,7 +576,7 @@ impl UniversalGpuEngine {
     }
 
     /// Create runtime metrics from compute result
-    async fn create_runtime_metrics(&self, result: &ComputeResult) -> RuntimeMetrics {
+    fn create_runtime_metrics(&self, result: &ComputeResult) -> RuntimeMetrics {
         RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: 0.0,
@@ -627,8 +624,10 @@ impl Default for UniversalGpuEngine {
             frameworks: Arc::new(RwLock::new(HashMap::new())),
             devices: Arc::new(RwLock::new(HashMap::new())),
             active_sessions: Arc::new(RwLock::new(HashMap::new())),
-            kernel_compiler: Arc::new(UniversalKernelCompiler::new(CompilationConfig::default())),
-            resource_coordinator: Arc::new(ComputeResourceCoordinator::new(ResourceConfig::default())),
+            _kernel_compiler: Arc::new(UniversalKernelCompiler::new(CompilationConfig::default())),
+            resource_coordinator: Arc::new(ComputeResourceCoordinator::new(
+                ResourceConfig::default(),
+            )),
             config: UniversalGpuConfig::default(),
             resource_monitor: None,
         }

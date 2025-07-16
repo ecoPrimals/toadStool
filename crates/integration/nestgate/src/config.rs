@@ -1,76 +1,61 @@
-//! Configuration structures for NestGate integration
+//! Configuration structures for `NestGate` integration
 
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::types::{CompressionType, EncryptionType, StorageTier};
 
-/// NestGate client configuration
-#[derive(Debug, Clone)]
+/// `NestGate` client configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestGateConfig {
-    /// NestGate server endpoint
+    /// `NestGate` server endpoint
     pub endpoint: String,
-
-    /// Authentication token
-    pub auth_token: Option<String>,
-
-    /// Request timeout
+    /// Request timeout duration
     pub timeout: Duration,
-
-    /// Connection pool size
-    pub max_connections: u32,
-
-    /// Enable compression
-    pub enable_compression: bool,
-
+    /// Number of retry attempts
+    pub max_retries: u32,
+    /// Authentication configuration
+    pub auth: Option<String>, // Simplified auth config
     /// Cache configuration
-    pub cache_config: CacheConfig,
-
-    /// Storage preferences
-    pub storage_preferences: StoragePreferences,
+    pub cache: Option<CacheConfig>,
 }
 
 impl Default for NestGateConfig {
     fn default() -> Self {
         Self {
-            endpoint: "http://localhost:4040".to_string(),
-            auth_token: None,
+            endpoint: "http://localhost:8084".to_string(),
             timeout: Duration::from_secs(30),
-            max_connections: 10,
-            enable_compression: true,
-            cache_config: CacheConfig::default(),
-            storage_preferences: StoragePreferences::default(),
+            max_retries: 3,
+            auth: None,
+            cache: Some(CacheConfig::default()),
         }
     }
 }
 
-/// Cache configuration for NestGate operations
-#[derive(Debug, Clone)]
+/// Cache configuration for `NestGate` operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheConfig {
     /// Enable local caching
     pub enabled: bool,
 
-    /// Cache size limit in bytes
-    pub max_size_bytes: u64,
-
-    /// Cache TTL for artifacts
-    pub artifact_ttl: Duration,
-
-    /// Cache TTL for metadata
-    pub metadata_ttl: Duration,
-
     /// Local cache directory
     pub cache_dir: Option<PathBuf>,
+
+    /// Cache size limit in bytes
+    pub max_size: u64,
+
+    /// Cache TTL for artifacts
+    pub ttl: Duration,
 }
 
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            max_size_bytes: 1024 * 1024 * 1024,      // 1GB
-            artifact_ttl: Duration::from_secs(3600), // 1 hour
-            metadata_ttl: Duration::from_secs(300),  // 5 minutes
             cache_dir: None,
+            max_size: 1024 * 1024 * 1024,   // 1GB
+            ttl: Duration::from_secs(3600), // 1 hour
         }
     }
 }

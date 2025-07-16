@@ -466,7 +466,6 @@ impl ByobComputeExecutor {
                         source: v.source.into(),
                         target: v.target.into(),
                         mount_type: match v.mount_type.as_str() {
-                            "bind" => crate::workload::VolumeMountType::Bind,
                             "volume" => crate::workload::VolumeMountType::Volume,
                             _ => crate::workload::VolumeMountType::Bind,
                         },
@@ -481,7 +480,6 @@ impl ByobComputeExecutor {
                         container_port: p.container_port,
                         host_port: p.host_port.unwrap_or(self.config.default_host_port),
                         protocol: match p.protocol.as_str() {
-                            "tcp" => crate::workload::PortProtocol::Tcp,
                             "udp" => crate::workload::PortProtocol::Udp,
                             _ => crate::workload::PortProtocol::Tcp,
                         },
@@ -756,12 +754,12 @@ impl ByobComputeExecutor {
 
                     // Simulate memory usage (60-90% of allocated)
                     if let Some(memory_bytes) = service_spec.resources.memory_bytes {
-                        total_memory += (memory_bytes as f64 * 0.75) as u64; // Simulate 75% usage
+                        total_memory += (memory_bytes * 3) / 4; // Simulate 75% usage
                     }
 
                     // Simulate storage usage (30-50% of allocated)
                     if let Some(storage_bytes) = service_spec.resources.storage_bytes {
-                        total_storage += (storage_bytes as f64 * 0.4) as u64; // Simulate 40% usage
+                        total_storage += (storage_bytes * 2) / 5; // Simulate 40% usage
                     }
 
                     // Simulate GPU usage
@@ -1171,8 +1169,8 @@ mod tests {
         let mut invalid_request = valid_request.clone();
         for i in 0..100 {
             invalid_request.services.insert(
-                format!("service-{}", i),
-                create_test_service_spec(&format!("service-{}", i)),
+                format!("service-{i}"),
+                create_test_service_spec(&format!("service-{i}")),
             );
         }
         assert!(executor
@@ -1224,7 +1222,7 @@ mod tests {
         let web_service = deployment_request.services.get("web-service").unwrap();
         assert_eq!(web_service.name, "web-service");
         assert!(web_service.image.is_some());
-        assert!(web_service.ports.len() > 0);
+        assert!(!web_service.ports.is_empty());
 
         let api_service = deployment_request.services.get("api-service").unwrap();
         assert_eq!(api_service.name, "api-service");
@@ -1280,7 +1278,7 @@ mod tests {
         ServiceSpec {
             name: name.to_string(),
             version: "1.0.0".to_string(),
-            image: Some(format!("test/{}:latest", name)),
+            image: Some(format!("test/{name}:latest")),
             command: Some(vec!["./start.sh".to_string()]),
             environment: HashMap::from([
                 ("ENV".to_string(), "test".to_string()),
@@ -1324,14 +1322,20 @@ mod tests {
 
     // Simple test runtime engine for testing
     struct TestRuntimeEngine;
-    
+
     #[async_trait::async_trait]
     impl RuntimeEngine for TestRuntimeEngine {
-        async fn initialize(&mut self, _config: crate::execution::RuntimeConfig) -> ToadStoolResult<()> {
+        async fn initialize(
+            &mut self,
+            _config: crate::execution::RuntimeConfig,
+        ) -> ToadStoolResult<()> {
             Ok(())
         }
-        
-        async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<crate::execution::ExecutionResponse> {
+
+        async fn execute(
+            &self,
+            request: ExecutionRequest,
+        ) -> ToadStoolResult<crate::execution::ExecutionResponse> {
             Ok(crate::execution::ExecutionResponse {
                 execution_id: request.execution_id,
                 status: ExecutionStatus::Success,
@@ -1342,7 +1346,7 @@ mod tests {
                 warnings: vec![],
             })
         }
-        
+
         fn get_capabilities(&self) -> crate::execution::RuntimeCapabilities {
             crate::execution::RuntimeCapabilities {
                 supported_workloads: vec![crate::workload::WorkloadType::Native],
@@ -1352,20 +1356,20 @@ mod tests {
                 version: "test-1.0.0".to_string(),
             }
         }
-        
+
         fn supports_workload(&self, _workload_type: &crate::workload::WorkloadType) -> bool {
             true
         }
-        
+
         async fn get_metrics(&self) -> ToadStoolResult<crate::resources::RuntimeMetrics> {
             Ok(crate::resources::RuntimeMetrics::default())
         }
-        
+
         async fn shutdown(&mut self) -> ToadStoolResult<()> {
             Ok(())
         }
     }
-    
+
     fn create_test_runtime_engine() -> Arc<dyn RuntimeEngine> {
         Arc::new(TestRuntimeEngine)
     }

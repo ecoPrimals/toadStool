@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::GpuFramework;
 
 /// Configuration for the universal GPU runtime
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UniversalGpuConfig {
     /// Auto-discovery settings
     pub discovery: DiscoveryConfig,
@@ -23,7 +22,6 @@ pub struct UniversalGpuConfig {
     /// Recursive execution settings
     pub recursion: RecursionConfig,
 }
-
 
 /// Auto-discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

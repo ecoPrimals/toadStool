@@ -1,7 +1,6 @@
-//! Modern API types with OpenAPI support and validation
+//! Modern API types with `OpenAPI` support and validation
 
 use std::collections::HashMap;
-use std::time::Duration;
 
 use axum::{
     http::StatusCode,
@@ -10,14 +9,14 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::{ToSchema, IntoParams};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
 use toadstool::RuntimeType;
 
 /// Modern execution status enum
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecutionStatus {
     /// Execution has been submitted but not started
@@ -69,7 +68,7 @@ pub struct ExecutionRequest {
     pub callback_url: Option<String>,
 }
 
-fn default_priority() -> u8 {
+const fn default_priority() -> u8 {
     5
 }
 
@@ -255,7 +254,7 @@ pub struct ClusterNodeInfo {
 }
 
 /// Node status enum
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeStatus {
     Healthy,
@@ -455,6 +454,7 @@ pub struct ApiError {
 }
 
 impl ApiError {
+    #[must_use]
     pub fn new(error_code: &str, message: &str) -> Self {
         Self {
             error_code: error_code.to_string(),
@@ -466,16 +466,19 @@ impl ApiError {
         }
     }
 
+    #[must_use]
     pub fn with_details(mut self, details: serde_json::Value) -> Self {
         self.details = Some(details);
         self
     }
 
+    #[must_use]
     pub fn with_request_id(mut self, request_id: String) -> Self {
         self.request_id = Some(request_id);
         self
     }
 
+    #[must_use]
     pub fn validation_error(errors: &validator::ValidationErrors) -> Self {
         let details = serde_json::to_value(errors).unwrap_or_default();
         Self::new("VALIDATION_ERROR", "Request validation failed").with_details(details)
@@ -520,7 +523,7 @@ pub struct ApiConfig {
     pub cors_enabled: bool,
     /// Request timeout in seconds
     pub request_timeout_secs: u64,
-    /// Enable OpenAPI documentation
+    /// Enable `OpenAPI` documentation
     pub enable_openapi: bool,
     /// API version
     pub api_version: String,

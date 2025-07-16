@@ -25,23 +25,26 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use toadstool::universal::{
-    NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest, SecurityLevel,
-    UniversalComputePlatform, UniversalJob, UniversalJobType, JobPriority,
+    JobPriority, NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest, SecurityLevel,
+    UniversalComputePlatform, UniversalJob, UniversalJobType,
 };
-use toadstool::{init, ResourceRequirements, ToadStoolResult, ToadStoolError, CpuRequirements, MemoryRequirements};
+use toadstool::{
+    init, CpuRequirements, MemoryRequirements, ResourceRequirements, ToadStoolError,
+    ToadStoolResult,
+};
 
 #[tokio::main]
 async fn main() -> ToadStoolResult<()> {
     // Initialize ToadStool
     init().map_err(|e| ToadStoolError::execution(e.to_string()))?;
-    
+
     println!("🍄 ToadStool Production Universal Architecture Demo");
     println!("{}", "=".repeat(60));
-    
+
     // Create universal compute platform
     let platform = UniversalComputePlatform::new().await?;
     println!("✅ Universal compute platform initialized");
-    
+
     // Demonstrate platform capabilities
     demo_platform_status(&platform).await?;
     demo_capability_discovery(&platform).await?;
@@ -52,10 +55,10 @@ async fn main() -> ToadStoolResult<()> {
     demo_resource_management(&platform).await?;
     demo_security_levels(&platform).await?;
     demo_ecosystem_integration(&platform).await?;
-    
+
     println!("\n🎉 Production Universal Architecture Demo Complete!");
     println!("All capabilities demonstrated successfully.");
-    
+
     Ok(())
 }
 
@@ -63,19 +66,22 @@ async fn main() -> ToadStoolResult<()> {
 async fn demo_platform_status(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n📊 Platform Status Monitoring");
     println!("{}", "-".repeat(40));
-    
+
     // Get platform configuration
     let config = platform.get_config();
     println!("🔧 Configuration:");
     println!("  • Recursive hosting: {}", config.recursive_hosting);
-    println!("  • Ecosystem integration: {}", config.ecosystem_integration);
+    println!(
+        "  • Ecosystem integration: {}",
+        config.ecosystem_integration
+    );
     println!("  • BiomeOS integration: {}", config.biomeos_integration);
     println!("  • Max concurrent jobs: {}", config.max_concurrent_jobs);
-    
+
     // Get available runtimes
     let runtimes = platform.get_available_runtimes().await;
-    println!("🏃 Available runtimes: {:?}", runtimes);
-    
+    println!("🏃 Available runtimes: {runtimes:?}");
+
     Ok(())
 }
 
@@ -83,39 +89,40 @@ async fn demo_platform_status(platform: &UniversalComputePlatform) -> ToadStoolR
 async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🔍 Capability-Based Primal Discovery");
     println!("{}", "-".repeat(40));
-    
+
     // Discover native execution capabilities
-    let native_providers = platform.find_primals_by_capability(
-        &PrimalCapability::NativeExecution {
+    let native_providers = platform
+        .find_primals_by_capability(&PrimalCapability::NativeExecution {
             architectures: vec!["x86_64".to_string()],
-        }
-    ).await;
+        })
+        .await;
     println!("🖥️  Native execution providers: {}", native_providers.len());
-    
+
     // Discover WASM capabilities
-    let wasm_providers = platform.find_primals_by_capability(
-        &PrimalCapability::WasmExecution {
-            wasi_support: true,
-        }
-    ).await;
+    let wasm_providers = platform
+        .find_primals_by_capability(&PrimalCapability::WasmExecution { wasi_support: true })
+        .await;
     println!("🕸️  WASM execution providers: {}", wasm_providers.len());
-    
+
     // Discover container capabilities
-    let container_providers = platform.find_primals_by_capability(
-        &PrimalCapability::ContainerRuntime {
+    let container_providers = platform
+        .find_primals_by_capability(&PrimalCapability::ContainerRuntime {
             orchestrators: vec!["docker".to_string()],
-        }
-    ).await;
-    println!("📦 Container runtime providers: {}", container_providers.len());
-    
+        })
+        .await;
+    println!(
+        "📦 Container runtime providers: {}",
+        container_providers.len()
+    );
+
     // Discover load balancing capabilities
-    let lb_providers = platform.find_primals_by_capability(
-        &PrimalCapability::LoadBalancing {
+    let lb_providers = platform
+        .find_primals_by_capability(&PrimalCapability::LoadBalancing {
             algorithms: vec!["round_robin".to_string()],
-        }
-    ).await;
+        })
+        .await;
     println!("⚖️  Load balancing providers: {}", lb_providers.len());
-    
+
     Ok(())
 }
 
@@ -123,9 +130,9 @@ async fn demo_capability_discovery(platform: &UniversalComputePlatform) -> ToadS
 async fn demo_native_execution(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🖥️  Native Execution Demo");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context("native_demo", SecurityLevel::Standard);
-    
+
     // Create native job
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -140,18 +147,18 @@ async fn demo_native_execution(platform: &UniversalComputePlatform) -> ToadStool
         created_at: chrono::Utc::now(),
         context,
     };
-    
+
     println!("🚀 Executing native job: {}", job.id);
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("✅ Native execution completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Duration: {:?}", response.duration);
     println!("  • Runtime: {:?}", response.runtime_used);
     if let Some(stdout) = &response.output.stdout {
-        println!("  • Output: {}", stdout);
+        println!("  • Output: {stdout}");
     }
-    
+
     Ok(())
 }
 
@@ -159,12 +166,12 @@ async fn demo_native_execution(platform: &UniversalComputePlatform) -> ToadStool
 async fn demo_wasm_execution(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🕸️  WASM Execution Demo");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context("wasm_demo", SecurityLevel::High);
-    
+
     // Create simple WASM module (mock)
     let wasm_module = create_mock_wasm_module();
-    
+
     let job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Wasm {
@@ -178,18 +185,18 @@ async fn demo_wasm_execution(platform: &UniversalComputePlatform) -> ToadStoolRe
         created_at: chrono::Utc::now(),
         context,
     };
-    
+
     println!("🚀 Executing WASM job: {}", job.id);
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("✅ WASM execution completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Duration: {:?}", response.duration);
     println!("  • Runtime: {:?}", response.runtime_used);
     if let Some(stdout) = &response.output.stdout {
-        println!("  • Output: {}", stdout);
+        println!("  • Output: {stdout}");
     }
-    
+
     Ok(())
 }
 
@@ -197,9 +204,9 @@ async fn demo_wasm_execution(platform: &UniversalComputePlatform) -> ToadStoolRe
 async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🎯 Primal Routing Demo");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context("primal_demo", SecurityLevel::Standard);
-    
+
     // Create primal request
     let request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -216,14 +223,14 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
         metadata: HashMap::new(),
         timestamp: chrono::Utc::now(),
     };
-    
+
     println!("🚀 Routing primal request: {}", request.id);
     let response = platform.route_primal_request(request).await?;
-    
+
     println!("✅ Primal routing completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Response: {}", response.payload);
-    
+
     // Create primal job
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -241,14 +248,14 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
         created_at: chrono::Utc::now(),
         context,
     };
-    
+
     println!("🚀 Executing primal job: {}", job.id);
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("✅ Primal execution completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Duration: {:?}", response.duration);
-    
+
     Ok(())
 }
 
@@ -256,9 +263,9 @@ async fn demo_primal_routing(platform: &UniversalComputePlatform) -> ToadStoolRe
 async fn demo_biomeos_integration(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🌱 BiomeOS Integration Demo");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context("biomeos_demo", SecurityLevel::Maximum);
-    
+
     // Create BiomeOS job
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -288,18 +295,18 @@ async fn demo_biomeos_integration(platform: &UniversalComputePlatform) -> ToadSt
         created_at: chrono::Utc::now(),
         context,
     };
-    
+
     println!("🚀 Executing BiomeOS job: {}", job.id);
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("✅ BiomeOS execution completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Duration: {:?}", response.duration);
     println!("  • Team: demo-team");
     if let Some(stdout) = &response.output.stdout {
-        println!("  • Output: {}", stdout);
+        println!("  • Output: {stdout}");
     }
-    
+
     Ok(())
 }
 
@@ -307,9 +314,9 @@ async fn demo_biomeos_integration(platform: &UniversalComputePlatform) -> ToadSt
 async fn demo_resource_management(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n💾 Resource Management Demo");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context("resource_demo", SecurityLevel::Standard);
-    
+
     // Create resource-intensive job
     let mut resources = ResourceRequirements::default();
     resources.cpu = CpuRequirements {
@@ -321,7 +328,7 @@ async fn demo_resource_management(platform: &UniversalComputePlatform) -> ToadSt
         min_bytes: 1024 * 1024 * 1024, // 1GB
         max_bytes: Some(1024 * 1024 * 1024),
     };
-    
+
     let job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Native {
@@ -335,19 +342,25 @@ async fn demo_resource_management(platform: &UniversalComputePlatform) -> ToadSt
         created_at: chrono::Utc::now(),
         context,
     };
-    
+
     println!("🚀 Executing resource-intensive job: {}", job.id);
     println!("  • CPU cores: {}", job.resources.cpu.min_cores);
-    println!("  • Memory: {} MB", job.resources.memory.min_bytes / (1024 * 1024));
-    
+    println!(
+        "  • Memory: {} MB",
+        job.resources.memory.min_bytes / (1024 * 1024)
+    );
+
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("✅ Resource management completed:");
     println!("  • Status: {:?}", response.status);
     println!("  • Duration: {:?}", response.duration);
     println!("  • CPU usage: {:.2}%", response.metrics.cpu.usage_percent);
-    println!("  • Memory usage: {} MB", response.metrics.memory.used_bytes / (1024 * 1024));
-    
+    println!(
+        "  • Memory usage: {} MB",
+        response.metrics.memory.used_bytes / (1024 * 1024)
+    );
+
     Ok(())
 }
 
@@ -355,17 +368,17 @@ async fn demo_resource_management(platform: &UniversalComputePlatform) -> ToadSt
 async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🔒 Security Levels Demo");
     println!("{}", "-".repeat(40));
-    
+
     let security_levels = vec![
         SecurityLevel::Basic,
         SecurityLevel::Standard,
         SecurityLevel::High,
         SecurityLevel::Maximum,
     ];
-    
+
     for level in security_levels {
-        let context = create_demo_context(&format!("security_{:?}", level), level);
-        
+        let context = create_demo_context(&format!("security_{level:?}"), level);
+
         let job = UniversalJob {
             id: Uuid::new_v4(),
             job_type: UniversalJobType::Native {
@@ -379,13 +392,13 @@ async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolR
             created_at: chrono::Utc::now(),
             context,
         };
-        
-        println!("🚀 Executing job with security level: {:?}", level);
+
+        println!("🚀 Executing job with security level: {level:?}");
         let response = platform.execute_universal_job(job).await?;
-        
+
         println!("  ✅ Status: {:?}", response.status);
     }
-    
+
     Ok(())
 }
 
@@ -393,12 +406,12 @@ async fn demo_security_levels(platform: &UniversalComputePlatform) -> ToadStoolR
 async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🌐 Ecosystem Integration Demo");
     println!("{}", "-".repeat(40));
-    
+
     // Discover ecosystem
     println!("🔍 Discovering ecosystem...");
     platform.discover_ecosystem().await?;
     println!("✅ Ecosystem discovery completed");
-    
+
     // Test different primal types
     let primal_types = vec![
         ("compute", "ToadStool compute primal"),
@@ -407,17 +420,18 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
         ("ai", "Squirrel AI primal"),
         ("network", "Songbird network primal"),
     ];
-    
+
     for (primal_type, description) in primal_types {
-        println!("🎯 Testing {} integration...", description);
-        
-        let context = create_demo_context(&format!("ecosystem_{}", primal_type), SecurityLevel::Standard);
-        
+        println!("🎯 Testing {description} integration...");
+
+        let context =
+            create_demo_context(&format!("ecosystem_{primal_type}"), SecurityLevel::Standard);
+
         let job = UniversalJob {
             id: Uuid::new_v4(),
             job_type: UniversalJobType::Primal {
                 primal_type: primal_type.to_string(),
-                endpoint: format!("http://localhost:8080/{}", primal_type),
+                endpoint: format!("http://localhost:8080/{primal_type}"),
                 payload: serde_json::json!({
                     "operation": "health_check",
                     "timestamp": chrono::Utc::now().to_rfc3339()
@@ -429,18 +443,18 @@ async fn demo_ecosystem_integration(platform: &UniversalComputePlatform) -> Toad
             created_at: chrono::Utc::now(),
             context,
         };
-        
+
         let response = platform.execute_universal_job(job).await?;
         println!("  ✅ {} integration: {:?}", description, response.status);
     }
-    
+
     Ok(())
 }
 
 /// Create a demo context for testing
 fn create_demo_context(demo_name: &str, security_level: SecurityLevel) -> PrimalContext {
     PrimalContext {
-        user_id: format!("demo-user-{}", demo_name),
+        user_id: format!("demo-user-{demo_name}"),
         device_id: "demo-device".to_string(),
         session_id: Uuid::new_v4().to_string(),
         network_location: NetworkLocation {
@@ -468,4 +482,4 @@ fn create_mock_wasm_module() -> Vec<u8> {
         0x00, 0x61, 0x73, 0x6d, // WASM magic number
         0x01, 0x00, 0x00, 0x00, // WASM version
     ]
-} 
+}

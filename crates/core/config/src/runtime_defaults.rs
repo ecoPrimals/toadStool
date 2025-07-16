@@ -1,693 +1,945 @@
-// ToadStool - Universal Compute Platform
-// Copyright (C) 2025 ToadStool Development Team
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-//! Runtime defaults and configuration loading for ToadStool
+//! Runtime configuration defaults and validation
 //!
-//! This module provides runtime configuration loading that integrates with
-//! the centralized configuration system and Songbird port orchestration.
+//! This module provides default values and validation for runtime configuration
+//! to eliminate hardcoded values scattered throughout the codebase.
 
-use std::collections::HashMap;
-use std::env;
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
-use crate::{ConfigError, ConfigResult, ToadStoolConfig};
+use crate::{CacheConfig, MetricsConfig, ToadStoolConfig};
 
-/// Runtime configuration loader that integrates with centralized config
-#[derive(Debug, Clone)]
-pub struct RuntimeConfigLoader {
-    config_paths: Vec<PathBuf>,
-    _env_prefix: String,
-    config_cache: std::sync::Arc<RwLock<Option<ToadStoolConfig>>>,
+/// Configuration error type
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("Invalid configuration: {0}")]
+    Invalid(String),
+    #[error("Missing required field: {0}")]
+    MissingField(String),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("TOML parse error: {0}")]
+    Toml(#[from] toml::de::Error),
+    #[error("JSON parse error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("Generic error: {0}")]
+    Generic(#[from] Box<dyn std::error::Error>),
 }
 
-impl RuntimeConfigLoader {
-    /// Create a new runtime config loader
-    pub fn new() -> Self {
-        Self {
-            config_paths: get_standard_config_paths(),
-            _env_prefix: "TOADSTOOL".to_string(),
-            config_cache: std::sync::Arc::new(RwLock::new(None)),
-        }
+/// Configuration result type
+pub type ConfigResult<T> = Result<T, ConfigError>;
+
+/// Runtime configuration defaults
+impl ToadStoolConfig {
+    /// Create optimized configuration for development
+    #[must_use]
+    pub fn development() -> Self {
+        Self::default().for_environment("development")
     }
 
-    /// Load configuration from all sources
-    pub async fn load_config(&self) -> ConfigResult<ToadStoolConfig> {
-        // Check cache first
-        if let Some(cached_config) = self.config_cache.read().await.as_ref() {
-            return Ok(cached_config.clone());
-        }
-
-        let mut config = ToadStoolConfig::default();
-
-        // Load from configuration files
-        for config_path in &self.config_paths {
-            if config_path.exists() {
-                match self.load_config_file(config_path) {
-                    Ok(file_config) => {
-                        config = merge_configs(config, file_config);
-                        info!("Loaded configuration from: {}", config_path.display());
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to load config from {}: {}",
-                            config_path.display(),
-                            e
-                        );
-                    }
-                }
-            }
-        }
-
-        // Load from environment variables
-        config = self.load_from_environment(config)?;
-
-        // Load from Songbird service discovery (if enabled)
-        if config.network.songbird_orchestration.enabled {
-            match self.load_from_songbird(&config).await {
-                Ok(songbird_config) => {
-                    config = merge_configs(config, songbird_config);
-                    info!("Loaded configuration from Songbird service discovery");
-                }
-                Err(e) => {
-                    warn!("Failed to load config from Songbird: {}", e);
-                }
-            }
-        }
-
-        // Validate configuration
-        self.validate_config(&config)?;
-
-        // Cache the configuration
-        *self.config_cache.write().await = Some(config.clone());
-
-        Ok(config)
+    /// Create optimized configuration for production
+    #[must_use]
+    pub fn production() -> Self {
+        Self::default().for_environment("production")
     }
 
-    /// Load configuration from a specific file
-    fn load_config_file(&self, path: &PathBuf) -> ConfigResult<ToadStoolConfig> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ConfigError::Loading(format!("Failed to read config file: {e}")))?;
-
-        let config = match path.extension().and_then(|ext| ext.to_str()) {
-            Some("toml") => toml::from_str(&content)
-                .map_err(|e| ConfigError::Loading(format!("Failed to parse TOML: {e}")))?,
-            Some("yaml") | Some("yml") => serde_yaml::from_str(&content)
-                .map_err(|e| ConfigError::Loading(format!("Failed to parse YAML: {e}")))?,
-            Some("json") => serde_json::from_str(&content)
-                .map_err(|e| ConfigError::Loading(format!("Failed to parse JSON: {e}")))?,
-            _ => {
-                return Err(ConfigError::Loading(
-                    "Unsupported config file format. Use .toml, .yaml, .yml, or .json".to_string(),
-                ))
-            }
-        };
-
-        Ok(config)
+    /// Create optimized configuration for testing
+    #[must_use]
+    pub fn testing() -> Self {
+        Self::default().for_environment("test")
     }
 
-    /// Load configuration from environment variables
-    fn load_from_environment(&self, mut config: ToadStoolConfig) -> ConfigResult<ToadStoolConfig> {
-        // Environment name
-        if let Ok(env_name) = env::var("TOADSTOOL_ENV") {
-            config.environment.name = env_name;
+    /// Apply environment variable overrides
+    pub fn apply_env_overrides(&mut self) -> ConfigResult<()> {
+        // Application overrides
+        if let Ok(env_name) = std::env::var("TOADSTOOL_ENV") {
+            self.app.environment = env_name;
         }
 
-        // Debug and verbose modes
-        if let Ok(debug) = env::var("TOADSTOOL_DEBUG") {
-            config.environment.debug = debug.to_lowercase() == "true";
+        if let Ok(debug) = std::env::var("TOADSTOOL_DEBUG") {
+            self.features.enable_debug = debug.to_lowercase() == "true";
         }
 
-        if let Ok(verbose) = env::var("TOADSTOOL_VERBOSE") {
-            config.environment.verbose = verbose.to_lowercase() == "true";
+        if let Ok(verbose) = std::env::var("TOADSTOOL_VERBOSE") {
+            self.logging.level = if verbose.to_lowercase() == "true" {
+                "debug".to_string()
+            } else {
+                "info".to_string()
+            };
         }
 
-        // Network configuration
-        if let Ok(bind_address) = env::var("TOADSTOOL_BIND_ADDRESS") {
-            config.network.bind_address = bind_address;
-        }
-
-        if let Ok(port) = env::var("TOADSTOOL_PORT") {
-            config.network.port = port
+        if let Ok(bind_address) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+            self.network.bind_address = bind_address
                 .parse()
-                .map_err(|e| ConfigError::Environment(format!("Invalid port: {e}")))?;
+                .map_err(|e| ConfigError::Invalid(format!("Invalid bind address: {e}")))?;
         }
 
-        // Songbird configuration
-        if let Ok(songbird_endpoint) = env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            config.network.songbird_orchestration.endpoint = songbird_endpoint;
-        }
-
-        if let Ok(songbird_enabled) = env::var("TOADSTOOL_SONGBIRD_ORCHESTRATION_ENABLED") {
-            config.network.songbird_orchestration.enabled =
-                songbird_enabled.to_lowercase() == "true";
-        }
-
-        // Resource limits
-        if let Ok(max_cpu) = env::var("TOADSTOOL_MAX_CPU_PERCENT") {
-            config.resources.limits.max_cpu_percent = max_cpu
+        if let Ok(port) = std::env::var("TOADSTOOL_PORT") {
+            let port: u16 = port
                 .parse()
-                .map_err(|e| ConfigError::Environment(format!("Invalid CPU limit: {e}")))?;
+                .map_err(|e| ConfigError::Invalid(format!("Invalid port: {e}")))?;
+            self.network.bind_address.set_port(port);
         }
 
-        if let Ok(max_memory) = env::var("TOADSTOOL_MAX_MEMORY_BYTES") {
-            config.resources.limits.max_memory_bytes = max_memory
+        if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
+            self.network.endpoints.songbird = songbird_endpoint;
+        }
+
+        if let Ok(beardog_endpoint) = std::env::var("TOADSTOOL_BEARDOG_ENDPOINT") {
+            self.network.endpoints.beardog = beardog_endpoint;
+        }
+
+        if let Ok(nestgate_endpoint) = std::env::var("TOADSTOOL_NESTGATE_ENDPOINT") {
+            self.network.endpoints.nestgate = nestgate_endpoint;
+        }
+
+        if let Ok(squirrel_endpoint) = std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT") {
+            self.network.endpoints.squirrel = squirrel_endpoint;
+        }
+
+        if let Ok(max_cpu) = std::env::var("TOADSTOOL_MAX_CPU") {
+            self.runtime.resource_limits.max_cpu_usage = max_cpu
                 .parse()
-                .map_err(|e| ConfigError::Environment(format!("Invalid memory limit: {e}")))?;
+                .map_err(|e| ConfigError::Invalid(format!("Invalid max CPU: {e}")))?;
         }
 
-        // Runtime engines
-        if let Ok(native_enabled) = env::var("TOADSTOOL_NATIVE_RUNTIME_ENABLED") {
-            config.runtime.engines.native.enabled = native_enabled.to_lowercase() == "true";
+        if let Ok(max_memory) = std::env::var("TOADSTOOL_MAX_MEMORY") {
+            self.runtime.resource_limits.max_memory_usage = max_memory
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid max memory: {e}")))?;
         }
 
-        if let Ok(container_enabled) = env::var("TOADSTOOL_CONTAINER_RUNTIME_ENABLED") {
-            config.runtime.engines.container.enabled = container_enabled.to_lowercase() == "true";
+        if let Ok(log_level) = std::env::var("TOADSTOOL_LOG_LEVEL") {
+            self.logging.level = log_level;
         }
 
-        if let Ok(wasm_enabled) = env::var("TOADSTOOL_WASM_RUNTIME_ENABLED") {
-            config.runtime.engines.wasm.enabled = wasm_enabled.to_lowercase() == "true";
+        if let Ok(data_dir) = std::env::var("TOADSTOOL_DATA_DIR") {
+            self.app.data_dir = data_dir;
         }
 
-        if let Ok(gpu_enabled) = env::var("TOADSTOOL_GPU_RUNTIME_ENABLED") {
-            config.runtime.engines.gpu.enabled = gpu_enabled.to_lowercase() == "true";
+        if let Ok(cache_dir) = std::env::var("TOADSTOOL_CACHE_DIR") {
+            self.app.cache_dir = cache_dir;
         }
 
-        debug!("Loaded configuration from environment variables");
-        Ok(config)
-    }
+        if let Ok(worker_threads) = std::env::var("TOADSTOOL_WORKER_THREADS") {
+            self.app.worker_threads = worker_threads
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid worker threads: {e}")))?;
+        }
 
-    /// Load configuration from Songbird service discovery
-    async fn load_from_songbird(
-        &self,
-        base_config: &ToadStoolConfig,
-    ) -> ConfigResult<ToadStoolConfig> {
-        let client = reqwest::Client::new();
-        let discovery_url = format!(
-            "{}/api/v1/discovery",
-            base_config.network.songbird_orchestration.endpoint
-        );
-
-        let response = client
-            .get(&discovery_url)
-            .timeout(Duration::from_secs(10))
-            .send()
-            .await
-            .map_err(|e| {
-                ConfigError::SongbirdIntegration(format!("Failed to connect to Songbird: {e}"))
+        if let Ok(max_concurrent) = std::env::var("TOADSTOOL_MAX_CONCURRENT_EXECUTIONS") {
+            self.runtime.max_concurrent_executions = max_concurrent.parse().map_err(|e| {
+                ConfigError::Invalid(format!("Invalid max concurrent executions: {e}"))
             })?;
-
-        if !response.status().is_success() {
-            return Err(ConfigError::SongbirdIntegration(format!(
-                "Songbird returned error: {}",
-                response.status()
-            )));
         }
 
-        let discovery_data: serde_json::Value = response.json().await.map_err(|e| {
-            ConfigError::SongbirdIntegration(format!("Failed to parse Songbird response: {e}"))
-        })?;
-
-        // Extract configuration from Songbird response
-        let mut config = base_config.clone();
-
-        // Update service endpoints from discovery
-        if let Some(services) = discovery_data.get("services").and_then(|s| s.as_array()) {
-            for service in services {
-                if let Some(service_name) = service.get("name").and_then(|n| n.as_str()) {
-                    if let Some(endpoint) = service.get("endpoint").and_then(|e| e.as_str()) {
-                        match service_name {
-                            "songbird" => {
-                                config.ecosystem.primals.songbird.endpoint = endpoint.to_string();
-                            }
-                            "beardog" => {
-                                config.ecosystem.primals.beardog.endpoint = endpoint.to_string();
-                            }
-                            "nestgate" => {
-                                config.ecosystem.primals.nestgate.endpoint = endpoint.to_string();
-                            }
-                            "squirrel" => {
-                                config.ecosystem.primals.squirrel.endpoint = endpoint.to_string();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
+        if let Ok(timeout) = std::env::var("TOADSTOOL_EXECUTION_TIMEOUT") {
+            let timeout_secs: u64 = timeout
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid execution timeout: {e}")))?;
+            self.runtime.execution_timeout = Duration::from_secs(timeout_secs);
         }
 
-        // Update port allocation if provided
-        if let Some(port_allocation) = discovery_data.get("port_allocation") {
-            if let Some(toadstool_port) = port_allocation.get("toadstool").and_then(|p| p.as_u64())
-            {
-                config.network.port = toadstool_port as u16;
-            }
+        if let Ok(request_timeout) = std::env::var("TOADSTOOL_REQUEST_TIMEOUT") {
+            let timeout_secs: u64 = request_timeout
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid request timeout: {e}")))?;
+            self.network.connection.request_timeout = Duration::from_secs(timeout_secs);
         }
 
-        Ok(config)
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_METRICS") {
+            self.metrics = if enabled.to_lowercase() == "true" {
+                Some(MetricsConfig::default())
+            } else {
+                None
+            };
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_CACHE") {
+            self.cache = if enabled.to_lowercase() == "true" {
+                Some(CacheConfig::default())
+            } else {
+                None
+            };
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_AUTH") {
+            self.security.auth.enabled = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_SANDBOX") {
+            self.security.sandbox.enabled = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_WEBSOCKET") {
+            self.features.enable_websocket = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_FEDERATION") {
+            self.features.enable_federation = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_DISTRIBUTED") {
+            self.features.enable_distributed = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_AUTO_CONFIG") {
+            self.features.enable_auto_config = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_HOT_RELOAD") {
+            self.features.enable_hot_reload = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_EXPERIMENTAL") {
+            self.features.enable_experimental = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_BETA") {
+            self.features.enable_beta = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_PROFILING") {
+            self.features.enable_profiling = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_OPENAPI") {
+            self.features.enable_openapi = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRPC") {
+            self.features.enable_grpc = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRAPHQL") {
+            self.features.enable_graphql = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(container_runtime) = std::env::var("TOADSTOOL_CONTAINER_RUNTIME") {
+            self.runtime.container.runtime = container_runtime;
+        }
+
+        if let Ok(registry) = std::env::var("TOADSTOOL_CONTAINER_REGISTRY") {
+            self.runtime.container.default_registry = registry;
+        }
+
+        if let Ok(network_mode) = std::env::var("TOADSTOOL_CONTAINER_NETWORK_MODE") {
+            self.runtime.container.network_mode = network_mode;
+        }
+
+        if let Ok(wasm_engine) = std::env::var("TOADSTOOL_WASM_ENGINE") {
+            self.runtime.wasm.engine = wasm_engine;
+        }
+
+        if let Ok(max_memory) = std::env::var("TOADSTOOL_WASM_MAX_MEMORY") {
+            self.runtime.wasm.max_memory = max_memory
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid WASM max memory: {e}")))?;
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_WASM_ENABLE_WASI") {
+            self.runtime.wasm.enable_wasi = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(python_exe) = std::env::var("TOADSTOOL_PYTHON_EXECUTABLE") {
+            self.runtime.python.executable = python_exe;
+        }
+
+        if let Ok(venv_path) = std::env::var("TOADSTOOL_PYTHON_VENV_PATH") {
+            self.runtime.python.venv_path = Some(venv_path);
+        }
+
+        if let Ok(index_url) = std::env::var("TOADSTOOL_PYTHON_INDEX_URL") {
+            self.runtime.python.index_url = index_url;
+        }
+
+        if let Ok(max_memory) = std::env::var("TOADSTOOL_PYTHON_MAX_MEMORY") {
+            self.runtime.python.max_memory = max_memory
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid Python max memory: {e}")))?;
+        }
+
+        if let Ok(jwt_secret) = std::env::var("TOADSTOOL_JWT_SECRET") {
+            self.security.auth.jwt_secret = Some(jwt_secret);
+        }
+
+        if let Ok(session_timeout) = std::env::var("TOADSTOOL_SESSION_TIMEOUT") {
+            let timeout_secs: u64 = session_timeout
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid session timeout: {e}")))?;
+            self.security.auth.session_timeout = Duration::from_secs(timeout_secs);
+        }
+
+        if let Ok(max_attempts) = std::env::var("TOADSTOOL_MAX_LOGIN_ATTEMPTS") {
+            self.security.auth.max_login_attempts = max_attempts
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid max login attempts: {e}")))?;
+        }
+
+        if let Ok(lockout_duration) = std::env::var("TOADSTOOL_LOCKOUT_DURATION") {
+            let duration_secs: u64 = lockout_duration
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid lockout duration: {e}")))?;
+            self.security.auth.lockout_duration = Duration::from_secs(duration_secs);
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_ENCRYPTION_ENABLED") {
+            self.security.encryption.enabled = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(algorithm) = std::env::var("TOADSTOOL_ENCRYPTION_ALGORITHM") {
+            self.security.encryption.algorithm = algorithm;
+        }
+
+        if let Ok(key_length) = std::env::var("TOADSTOOL_ENCRYPTION_KEY_LENGTH") {
+            self.security.encryption.key_length = key_length
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid encryption key length: {e}")))?;
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_AUDIT_ENABLED") {
+            self.security.audit.enabled = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(log_file) = std::env::var("TOADSTOOL_AUDIT_LOG_FILE") {
+            self.security.audit.log_file = log_file;
+        }
+
+        if let Ok(log_level) = std::env::var("TOADSTOOL_AUDIT_LOG_LEVEL") {
+            self.security.audit.log_level = log_level;
+        }
+
+        if let Ok(sandbox_type) = std::env::var("TOADSTOOL_SANDBOX_TYPE") {
+            self.security.sandbox.sandbox_type = sandbox_type;
+        }
+
+        if let Ok(allow_network) = std::env::var("TOADSTOOL_SANDBOX_ALLOW_NETWORK") {
+            self.security.sandbox.allow_network = allow_network.to_lowercase() == "true";
+        }
+
+        if let Ok(allow_file_access) = std::env::var("TOADSTOOL_SANDBOX_ALLOW_FILE_ACCESS") {
+            self.security.sandbox.allow_file_access = allow_file_access.to_lowercase() == "true";
+        }
+
+        if let Ok(log_to_file) = std::env::var("TOADSTOOL_LOG_TO_FILE") {
+            self.logging.log_to_file = log_to_file.to_lowercase() == "true";
+        }
+
+        if let Ok(log_file) = std::env::var("TOADSTOOL_LOG_FILE") {
+            self.logging.log_file = log_file;
+        }
+
+        if let Ok(log_format) = std::env::var("TOADSTOOL_LOG_FORMAT") {
+            self.logging.format = log_format;
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_COLORS") {
+            self.logging.enable_colors = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_TIMESTAMPS") {
+            self.logging.enable_timestamps = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_THREAD_IDS") {
+            self.logging.enable_thread_ids = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_MODULE_PATHS") {
+            self.logging.enable_module_paths = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(enabled) = std::env::var("TOADSTOOL_LOG_ROTATION") {
+            self.logging.log_rotation = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(max_size) = std::env::var("TOADSTOOL_LOG_MAX_SIZE") {
+            self.logging.max_log_size = max_size
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid log max size: {e}")))?;
+        }
+
+        if let Ok(max_files) = std::env::var("TOADSTOOL_LOG_MAX_FILES") {
+            self.logging.max_log_files = max_files
+                .parse()
+                .map_err(|e| ConfigError::Invalid(format!("Invalid log max files: {e}")))?;
+        }
+
+        Ok(())
     }
 
-    /// Validate configuration
-    fn validate_config(&self, config: &ToadStoolConfig) -> ConfigResult<()> {
-        // Validate port ranges
-        if config.network.port == 0 {
-            return Err(ConfigError::Validation("Port cannot be 0".to_string()));
+    /// Validate configuration values
+    pub fn validate_runtime_config(&self) -> ConfigResult<()> {
+        // Validate bind address
+        if self.network.bind_address.port() == 0 {
+            return Err(ConfigError::Invalid(
+                "Bind address port cannot be 0".to_string(),
+            ));
         }
 
-        // Validate Songbird orchestration settings
-        if config.network.songbird_orchestration.enabled {
-            if config.network.songbird_orchestration.endpoint.is_empty() {
-                return Err(ConfigError::Validation(
-                    "Songbird endpoint cannot be empty when orchestration is enabled".to_string(),
-                ));
-            }
+        // Validate endpoints
+        if self.network.endpoints.songbird.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Songbird endpoint cannot be empty".to_string(),
+            ));
+        }
 
-            let port_range = &config.network.songbird_orchestration.dynamic_port_range;
-            if port_range.start >= port_range.end {
-                return Err(ConfigError::Validation(
-                    "Invalid port range: start must be less than end".to_string(),
-                ));
-            }
+        if self.network.endpoints.beardog.is_empty() {
+            return Err(ConfigError::Invalid(
+                "BearDog endpoint cannot be empty".to_string(),
+            ));
+        }
+
+        if self.network.endpoints.nestgate.is_empty() {
+            return Err(ConfigError::Invalid(
+                "NestGate endpoint cannot be empty".to_string(),
+            ));
+        }
+
+        if self.network.endpoints.squirrel.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Squirrel endpoint cannot be empty".to_string(),
+            ));
         }
 
         // Validate resource limits
-        if config.resources.limits.max_cpu_percent <= 0.0
-            || config.resources.limits.max_cpu_percent > 100.0
+        if self.runtime.resource_limits.max_cpu_usage <= 0.0
+            || self.runtime.resource_limits.max_cpu_usage > 100.0
         {
-            return Err(ConfigError::Validation(
-                "CPU percentage must be between 0 and 100".to_string(),
+            return Err(ConfigError::Invalid(
+                "Max CPU usage must be between 0 and 100".to_string(),
             ));
         }
 
-        if config.resources.limits.max_memory_bytes == 0 {
-            return Err(ConfigError::Validation(
-                "Memory limit cannot be 0".to_string(),
+        if self.runtime.resource_limits.max_memory_usage <= 0.0
+            || self.runtime.resource_limits.max_memory_usage > 100.0
+        {
+            return Err(ConfigError::Invalid(
+                "Max memory usage must be between 0 and 100".to_string(),
             ));
         }
 
-        // Validate runtime engines
-        let enabled_engines = [
-            config.runtime.engines.native.enabled,
-            config.runtime.engines.container.enabled,
-            config.runtime.engines.wasm.enabled,
-            config.runtime.engines.gpu.enabled,
-        ];
-
-        if !enabled_engines.iter().any(|&enabled| enabled) {
-            return Err(ConfigError::Validation(
-                "At least one runtime engine must be enabled".to_string(),
+        if self.runtime.resource_limits.max_disk_usage <= 0.0
+            || self.runtime.resource_limits.max_disk_usage > 100.0
+        {
+            return Err(ConfigError::Invalid(
+                "Max disk usage must be between 0 and 100".to_string(),
             ));
         }
 
-        debug!("Configuration validation passed");
+        // Validate application settings
+        if self.app.name.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Application name cannot be empty".to_string(),
+            ));
+        }
+
+        if self.app.worker_threads == 0 {
+            return Err(ConfigError::Invalid(
+                "Worker threads must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.app.queue_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Queue size must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.app.batch_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Batch size must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate runtime settings
+        if self.runtime.max_concurrent_executions == 0 {
+            return Err(ConfigError::Invalid(
+                "Max concurrent executions must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.runtime.execution_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Execution timeout must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate network settings
+        if self.network.connection.request_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Request timeout must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.network.connection.connection_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Connection timeout must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.network.connection.max_retries == 0 {
+            return Err(ConfigError::Invalid(
+                "Max retries must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.network.connection.max_connections_per_host == 0 {
+            return Err(ConfigError::Invalid(
+                "Max connections per host must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate container settings
+        if self.runtime.container.runtime.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Container runtime cannot be empty".to_string(),
+            ));
+        }
+
+        if self.runtime.container.default_registry.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Default registry cannot be empty".to_string(),
+            ));
+        }
+
+        if self.runtime.container.port_range.0 >= self.runtime.container.port_range.1 {
+            return Err(ConfigError::Invalid(
+                "Container port range start must be less than end".to_string(),
+            ));
+        }
+
+        // Validate WASM settings
+        if self.runtime.wasm.engine.is_empty() {
+            return Err(ConfigError::Invalid(
+                "WASM engine cannot be empty".to_string(),
+            ));
+        }
+
+        if self.runtime.wasm.max_memory == 0 {
+            return Err(ConfigError::Invalid(
+                "WASM max memory must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.runtime.wasm.max_execution_time == 0 {
+            return Err(ConfigError::Invalid(
+                "WASM max execution time must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate Python settings
+        if self.runtime.python.executable.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Python executable cannot be empty".to_string(),
+            ));
+        }
+
+        if self.runtime.python.index_url.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Python index URL cannot be empty".to_string(),
+            ));
+        }
+
+        if self.runtime.python.max_memory == 0 {
+            return Err(ConfigError::Invalid(
+                "Python max memory must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.runtime.python.max_execution_time == 0 {
+            return Err(ConfigError::Invalid(
+                "Python max execution time must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate logging settings
+        if self.logging.level.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Log level cannot be empty".to_string(),
+            ));
+        }
+
+        if self.logging.format.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Log format cannot be empty".to_string(),
+            ));
+        }
+
+        if self.logging.max_log_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Max log size must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.logging.max_log_files == 0 {
+            return Err(ConfigError::Invalid(
+                "Max log files must be greater than 0".to_string(),
+            ));
+        }
+
+        // Validate security settings
+        if self.security.auth.enabled && self.security.auth.jwt_secret.is_none() {
+            return Err(ConfigError::Invalid(
+                "JWT secret is required when authentication is enabled".to_string(),
+            ));
+        }
+
+        if self.security.auth.session_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Session timeout must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.auth.max_login_attempts == 0 {
+            return Err(ConfigError::Invalid(
+                "Max login attempts must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.auth.lockout_duration.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Lockout duration must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.encryption.enabled && self.security.encryption.algorithm.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Encryption algorithm is required when encryption is enabled".to_string(),
+            ));
+        }
+
+        if self.security.encryption.key_length == 0 {
+            return Err(ConfigError::Invalid(
+                "Encryption key length must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.sandbox.enabled && self.security.sandbox.sandbox_type.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Sandbox type is required when sandboxing is enabled".to_string(),
+            ));
+        }
+
+        // Validate cache settings
+        if let Some(cache_config) = &self.cache {
+            if cache_config.cache_type.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Cache type cannot be empty".to_string(),
+                ));
+            }
+
+            if cache_config.max_size == 0 {
+                return Err(ConfigError::Invalid(
+                    "Cache max size must be greater than 0".to_string(),
+                ));
+            }
+
+            if cache_config.ttl.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Cache TTL must be greater than 0".to_string(),
+                ));
+            }
+        }
+
+        // Validate metrics settings
+        if let Some(metrics_config) = &self.metrics {
+            if metrics_config.endpoint.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Metrics endpoint cannot be empty".to_string(),
+                ));
+            }
+
+            if metrics_config.format.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Metrics format cannot be empty".to_string(),
+                ));
+            }
+
+            if metrics_config.collection_interval.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Metrics collection interval must be greater than 0".to_string(),
+                ));
+            }
+        }
+
+        // Validate database settings
+        if let Some(database_config) = &self.database {
+            if database_config.url.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Database URL cannot be empty".to_string(),
+                ));
+            }
+
+            if database_config.database_type.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Database type cannot be empty".to_string(),
+                ));
+            }
+
+            if database_config.max_connections == 0 {
+                return Err(ConfigError::Invalid(
+                    "Database max connections must be greater than 0".to_string(),
+                ));
+            }
+
+            if database_config.connection_timeout.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Database connection timeout must be greater than 0".to_string(),
+                ));
+            }
+
+            if database_config.query_timeout.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Database query timeout must be greater than 0".to_string(),
+                ));
+            }
+        }
+
         Ok(())
     }
 
-    /// Clear configuration cache
-    pub async fn clear_cache(&self) {
-        *self.config_cache.write().await = None;
-    }
+    /// Get optimized configuration for current environment
+    #[must_use]
+    pub fn for_current_environment() -> Self {
+        let environment = std::env::var("TOADSTOOL_ENVIRONMENT")
+            .or_else(|_| std::env::var("TOADSTOOL_ENV"))
+            .or_else(|_| std::env::var("ENVIRONMENT"))
+            .or_else(|_| std::env::var("ENV"))
+            .unwrap_or_else(|_| "development".to_string());
 
-    /// Reload configuration (clears cache and loads fresh)
-    pub async fn reload_config(&self) -> ConfigResult<ToadStoolConfig> {
-        self.clear_cache().await;
-        self.load_config().await
-    }
-}
+        let mut config = Self::default().for_environment(&environment);
 
-impl Default for RuntimeConfigLoader {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Get standard configuration file paths
-fn get_standard_config_paths() -> Vec<PathBuf> {
-    let mut paths = vec![
-        PathBuf::from("toadstool.toml"),
-        PathBuf::from("toadstool.yaml"),
-        PathBuf::from("toadstool.yml"),
-        PathBuf::from("toadstool.json"),
-    ];
-
-    // Configuration directory
-    if let Ok(config_dir) = env::var("TOADSTOOL_CONFIG_DIR") {
-        let config_dir = PathBuf::from(config_dir);
-        paths.push(config_dir.join("toadstool.toml"));
-        paths.push(config_dir.join("toadstool.yaml"));
-        paths.push(config_dir.join("toadstool.yml"));
-        paths.push(config_dir.join("toadstool.json"));
-    }
-
-    // User configuration directory
-    if let Ok(home_dir) = env::var("HOME") {
-        let home_dir = PathBuf::from(home_dir);
-        paths.push(home_dir.join(".config/toadstool/toadstool.toml"));
-        paths.push(home_dir.join(".config/toadstool/toadstool.yaml"));
-        paths.push(home_dir.join(".config/toadstool/toadstool.yml"));
-        paths.push(home_dir.join(".config/toadstool/toadstool.json"));
-    }
-
-    // System configuration directory
-    if cfg!(unix) {
-        paths.push(PathBuf::from("/etc/toadstool/toadstool.toml"));
-        paths.push(PathBuf::from("/etc/toadstool/toadstool.yaml"));
-        paths.push(PathBuf::from("/etc/toadstool/toadstool.yml"));
-        paths.push(PathBuf::from("/etc/toadstool/toadstool.json"));
-    }
-
-    paths
-}
-
-/// Merge two configurations, with the second taking precedence
-fn merge_configs(_base: ToadStoolConfig, override_config: ToadStoolConfig) -> ToadStoolConfig {
-    // For now, we'll use the override config entirely
-    // In a more sophisticated implementation, we would merge field by field
-    override_config
-}
-
-/// Environment variable mappings for configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnvironmentMappings {
-    pub mappings: HashMap<String, String>,
-}
-
-impl EnvironmentMappings {
-    /// Create default environment variable mappings
-    pub fn default_mappings() -> Self {
-        let mut mappings = HashMap::new();
-
-        // Environment
-        mappings.insert("TOADSTOOL_ENV".to_string(), "environment.name".to_string());
-        mappings.insert(
-            "TOADSTOOL_DEBUG".to_string(),
-            "environment.debug".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_VERBOSE".to_string(),
-            "environment.verbose".to_string(),
-        );
-
-        // Network
-        mappings.insert(
-            "TOADSTOOL_BIND_ADDRESS".to_string(),
-            "network.bind_address".to_string(),
-        );
-        mappings.insert("TOADSTOOL_PORT".to_string(), "network.port".to_string());
-
-        // Songbird
-        mappings.insert(
-            "TOADSTOOL_SONGBIRD_ENDPOINT".to_string(),
-            "network.songbird_orchestration.endpoint".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_SONGBIRD_ORCHESTRATION_ENABLED".to_string(),
-            "network.songbird_orchestration.enabled".to_string(),
-        );
-
-        // Resources
-        mappings.insert(
-            "TOADSTOOL_MAX_CPU_PERCENT".to_string(),
-            "resources.limits.max_cpu_percent".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_MAX_MEMORY_BYTES".to_string(),
-            "resources.limits.max_memory_bytes".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_MAX_STORAGE_BYTES".to_string(),
-            "resources.limits.max_storage_bytes".to_string(),
-        );
-
-        // Runtime Engines
-        mappings.insert(
-            "TOADSTOOL_NATIVE_RUNTIME_ENABLED".to_string(),
-            "runtime.engines.native.enabled".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_CONTAINER_RUNTIME_ENABLED".to_string(),
-            "runtime.engines.container.enabled".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_WASM_RUNTIME_ENABLED".to_string(),
-            "runtime.engines.wasm.enabled".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_GPU_RUNTIME_ENABLED".to_string(),
-            "runtime.engines.gpu.enabled".to_string(),
-        );
-
-        // Security
-        mappings.insert(
-            "TOADSTOOL_SECURITY_ISOLATION_LEVEL".to_string(),
-            "security.isolation_level".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_SECURITY_SANDBOXING_ENABLED".to_string(),
-            "security.sandboxing.enabled".to_string(),
-        );
-
-        // Monitoring
-        mappings.insert(
-            "TOADSTOOL_MONITORING_ENABLED".to_string(),
-            "monitoring.enabled".to_string(),
-        );
-        mappings.insert(
-            "TOADSTOOL_METRICS_COLLECTION_ENABLED".to_string(),
-            "monitoring.metrics_collection.enabled".to_string(),
-        );
-
-        Self { mappings }
-    }
-}
-
-/// Global configuration instance
-static CONFIG_LOADER: std::sync::OnceLock<RuntimeConfigLoader> = std::sync::OnceLock::new();
-
-/// Get global configuration loader
-pub fn get_config_loader() -> &'static RuntimeConfigLoader {
-    CONFIG_LOADER.get_or_init(RuntimeConfigLoader::new)
-}
-
-/// Load global configuration
-pub async fn load_global_config() -> ConfigResult<ToadStoolConfig> {
-    get_config_loader().load_config().await
-}
-
-/// Reload global configuration
-pub async fn reload_global_config() -> ConfigResult<ToadStoolConfig> {
-    get_config_loader().reload_config().await
-}
-
-/// Port orchestration utilities
-pub mod port_orchestration {
-    use super::*;
-
-    /// Request port allocation from Songbird
-    pub async fn request_port_allocation(
-        config: &ToadStoolConfig,
-        service_name: &str,
-        preferred_port: Option<u16>,
-    ) -> ConfigResult<u16> {
-        if !config.network.songbird_orchestration.enabled {
-            return preferred_port.ok_or_else(|| {
-                ConfigError::PortOrchestration(
-                    "Songbird orchestration disabled and no preferred port".to_string(),
-                )
-            });
+        // Apply environment variable overrides
+        if let Err(e) = config.apply_env_overrides() {
+            warn!("Failed to apply environment overrides: {}", e);
         }
 
-        let client = reqwest::Client::new();
-        let request_url = format!(
-            "{}/api/v1/port-allocation",
-            config.network.songbird_orchestration.endpoint
-        );
-
-        let request_body = serde_json::json!({
-            "service_name": service_name,
-            "preferred_port": preferred_port,
-            "port_range": {
-                "start": config.network.songbird_orchestration.dynamic_port_range.start,
-                "end": config.network.songbird_orchestration.dynamic_port_range.end
-            }
-        });
-
-        let response = client
-            .post(&request_url)
-            .json(&request_body)
-            .timeout(Duration::from_secs(10))
-            .send()
-            .await
-            .map_err(|e| {
-                ConfigError::PortOrchestration(format!("Failed to request port allocation: {e}"))
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ConfigError::PortOrchestration(format!(
-                "Port allocation request failed: {}",
-                response.status()
-            )));
-        }
-
-        let response_data: serde_json::Value = response.json().await.map_err(|e| {
-            ConfigError::PortOrchestration(format!("Failed to parse port allocation response: {e}"))
-        })?;
-
-        let allocated_port = response_data
-            .get("allocated_port")
-            .and_then(|p| p.as_u64())
-            .ok_or_else(|| {
-                ConfigError::PortOrchestration("No allocated port in response".to_string())
-            })?;
-
-        Ok(allocated_port as u16)
+        config
     }
 
-    /// Release port allocation to Songbird
-    pub async fn release_port_allocation(
-        config: &ToadStoolConfig,
-        service_name: &str,
-        port: u16,
-    ) -> ConfigResult<()> {
-        if !config.network.songbird_orchestration.enabled {
-            return Ok(());
+    /// Load configuration from file with environment overrides
+    ///
+    /// # Errors
+    /// Returns an error if the configuration file cannot be loaded or is invalid
+    pub fn load_with_overrides<P: AsRef<Path>>(path: P) -> ConfigResult<Self> {
+        let mut config = Self::load_from_file(path)?;
+        config.apply_env_overrides()?;
+        config.validate_runtime_config()?;
+        Ok(config)
+    }
+
+    /// Load configuration from environment only
+    ///
+    /// # Errors
+    /// Returns an error if the environment variables cannot be parsed
+    pub fn load_from_env_only() -> ConfigResult<Self> {
+        let mut config = Self::for_current_environment();
+        config.apply_env_overrides()?;
+        config.validate_runtime_config()?;
+        Ok(config)
+    }
+
+    /// Save configuration to file
+    ///
+    /// # Errors
+    /// Returns an error if the configuration file cannot be written
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> ConfigResult<()> {
+        let content = toml::to_string_pretty(self)
+            .map_err(|e| ConfigError::Invalid(format!("Failed to serialize config: {e}")))?;
+        std::fs::write(path, content)?;
+        Ok(())
+    }
+
+    /// Convert to JSON for API responses
+    ///
+    /// # Errors
+    /// Returns an error if the configuration cannot be serialized to JSON
+    pub fn to_json(&self) -> ConfigResult<String> {
+        serde_json::to_string_pretty(self).map_err(ConfigError::Json)
+    }
+
+    /// Print configuration summary
+    pub fn print_summary(&self) {
+        info!("🍄 ToadStool Configuration Summary");
+        info!("  Environment: {}", self.app.environment);
+        info!("  Bind Address: {}", self.network.bind_address);
+        info!("  Log Level: {}", self.logging.level);
+        info!("  Worker Threads: {}", self.app.worker_threads);
+        info!(
+            "  Max Concurrent Executions: {}",
+            self.runtime.max_concurrent_executions
+        );
+        info!("  Execution Timeout: {:?}", self.runtime.execution_timeout);
+        info!("  Features:");
+        info!("    WebSocket: {}", self.features.enable_websocket);
+        info!("    Federation: {}", self.features.enable_federation);
+        info!("    Distributed: {}", self.features.enable_distributed);
+        info!("    Auto-Config: {}", self.features.enable_auto_config);
+        info!("    Debug: {}", self.features.enable_debug);
+        info!("  External Services:");
+        info!("    Songbird: {}", self.network.endpoints.songbird);
+        info!("    BearDog: {}", self.network.endpoints.beardog);
+        info!("    NestGate: {}", self.network.endpoints.nestgate);
+        info!("    Squirrel: {}", self.network.endpoints.squirrel);
+        info!("  Security:");
+        info!("    Authentication: {}", self.security.auth.enabled);
+        info!("    Encryption: {}", self.security.encryption.enabled);
+        info!("    Sandbox: {}", self.security.sandbox.enabled);
+        info!("    Audit: {}", self.security.audit.enabled);
+        info!("  Runtime:");
+        info!("    Container Runtime: {}", self.runtime.container.runtime);
+        info!("    WASM Engine: {}", self.runtime.wasm.engine);
+        info!("    Python Executable: {}", self.runtime.python.executable);
+
+        if let Some(cache_config) = &self.cache {
+            info!("  Cache:");
+            info!("    Type: {}", cache_config.cache_type);
+            info!("    Max Size: {} bytes", cache_config.max_size);
+            info!("    TTL: {:?}", cache_config.ttl);
         }
 
-        let client = reqwest::Client::new();
-        let request_url = format!(
-            "{}/api/v1/port-allocation/{}",
-            config.network.songbird_orchestration.endpoint, port
-        );
-
-        let request_body = serde_json::json!({
-            "service_name": service_name,
-            "port": port
-        });
-
-        let response = client
-            .delete(&request_url)
-            .json(&request_body)
-            .timeout(Duration::from_secs(10))
-            .send()
-            .await
-            .map_err(|e| {
-                ConfigError::PortOrchestration(format!("Failed to release port allocation: {e}"))
-            })?;
-
-        if !response.status().is_success() {
-            warn!(
-                "Failed to release port allocation for {}: {}",
-                service_name,
-                response.status()
+        if let Some(metrics_config) = &self.metrics {
+            info!("  Metrics:");
+            info!("    Endpoint: {}", metrics_config.endpoint);
+            info!("    Format: {}", metrics_config.format);
+            info!(
+                "    Collection Interval: {:?}",
+                metrics_config.collection_interval
             );
         }
 
-        Ok(())
+        if let Some(database_config) = &self.database {
+            info!("  Database:");
+            info!("    Type: {}", database_config.database_type);
+            info!("    Max Connections: {}", database_config.max_connections);
+            info!(
+                "    Connection Timeout: {:?}",
+                database_config.connection_timeout
+            );
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use tempfile::tempdir;
+    use std::env;
+    use tempfile::NamedTempFile;
 
-    #[tokio::test]
-    async fn test_config_loader_creation() {
-        let loader = RuntimeConfigLoader::new();
-        assert!(!loader.config_paths.is_empty());
-        assert_eq!(loader._env_prefix, "TOADSTOOL");
+    #[test]
+    fn test_development_config() {
+        let config = ToadStoolConfig::development();
+        assert_eq!(config.app.environment, "development");
+        assert_eq!(config.logging.level, "debug");
+        assert!(config.features.enable_debug);
+        assert!(config.features.enable_hot_reload);
+        assert!(!config.security.auth.enabled);
     }
 
-    #[tokio::test]
-    async fn test_default_config_loading() {
-        let loader = RuntimeConfigLoader::new();
-        let config = loader.load_config().await.unwrap();
-
-        assert!(!config.network.bind_address.is_empty());
-        assert!(config.network.port > 0);
+    #[test]
+    fn test_production_config() {
+        let config = ToadStoolConfig::production();
+        assert_eq!(config.app.environment, "production");
+        assert_eq!(config.logging.level, "info");
+        assert!(!config.features.enable_debug);
+        assert!(!config.features.enable_hot_reload);
+        assert!(config.security.auth.enabled);
     }
 
-    #[tokio::test]
-    async fn test_config_validation() {
-        let loader = RuntimeConfigLoader::new();
+    #[test]
+    fn test_testing_config() {
+        let config = ToadStoolConfig::testing();
+        assert_eq!(config.app.environment, "test");
+        assert_eq!(config.logging.level, "debug");
+        assert!(!config.security.auth.enabled);
+    }
+
+    #[test]
+    fn test_env_overrides() {
+        env::set_var("TOADSTOOL_ENV", "test");
+        env::set_var("TOADSTOOL_DEBUG", "true");
+        env::set_var("TOADSTOOL_LOG_LEVEL", "debug");
+        env::set_var("TOADSTOOL_WORKER_THREADS", "8");
+        env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://test:8080");
+
         let mut config = ToadStoolConfig::default();
+        config.apply_env_overrides().unwrap();
 
-        // Test valid configuration
-        assert!(loader.validate_config(&config).is_ok());
+        assert_eq!(config.app.environment, "test");
+        assert!(config.features.enable_debug);
+        assert_eq!(config.logging.level, "debug");
+        assert_eq!(config.app.worker_threads, 8);
+        assert_eq!(config.network.endpoints.songbird, "http://test:8080");
 
-        // Test invalid port
-        config.network.port = 0;
-        assert!(loader.validate_config(&config).is_err());
-
-        // Test invalid CPU percentage
-        config.network.port = 8080;
-        config.resources.limits.max_cpu_percent = 150.0;
-        assert!(loader.validate_config(&config).is_err());
-    }
-
-    #[tokio::test]
-    async fn test_config_file_loading() {
-        let temp_dir = tempdir().unwrap();
-        let config_file = temp_dir.path().join("test.toml");
-
-        let config_content = r#"
-[environment]
-name = "test"
-debug = true
-
-[network]
-bind_address = "127.0.0.1"
-port = 9999
-"#;
-
-        fs::write(&config_file, config_content).unwrap();
-
-        let loader = RuntimeConfigLoader::new();
-        let config = loader.load_config_file(&config_file).unwrap();
-
-        assert_eq!(config.environment.name, "test");
-        assert!(config.environment.debug);
-        assert_eq!(config.network.bind_address, "127.0.0.1");
-        assert_eq!(config.network.port, 9999);
+        // Clean up
+        env::remove_var("TOADSTOOL_ENV");
+        env::remove_var("TOADSTOOL_DEBUG");
+        env::remove_var("TOADSTOOL_LOG_LEVEL");
+        env::remove_var("TOADSTOOL_WORKER_THREADS");
+        env::remove_var("TOADSTOOL_SONGBIRD_ENDPOINT");
     }
 
     #[test]
-    fn test_environment_mappings() {
-        let mappings = EnvironmentMappings::default_mappings();
-        assert!(mappings.mappings.contains_key("TOADSTOOL_ENV"));
-        assert!(mappings.mappings.contains_key("TOADSTOOL_BIND_ADDRESS"));
-        assert!(mappings
-            .mappings
-            .contains_key("TOADSTOOL_SONGBIRD_ENDPOINT"));
+    fn test_config_validation() {
+        let config = ToadStoolConfig::default();
+        assert!(config.validate_runtime_config().is_ok());
+
+        let mut invalid_config = config.clone();
+        invalid_config.app.name = String::new();
+        assert!(invalid_config.validate_runtime_config().is_err());
+
+        let mut invalid_config = config.clone();
+        invalid_config.app.worker_threads = 0;
+        assert!(invalid_config.validate_runtime_config().is_err());
+
+        let mut invalid_config = config.clone();
+        invalid_config.runtime.resource_limits.max_cpu_usage = 150.0;
+        assert!(invalid_config.validate_runtime_config().is_err());
+
+        let mut invalid_config = config.clone();
+        invalid_config.runtime.max_concurrent_executions = 0;
+        assert!(invalid_config.validate_runtime_config().is_err());
     }
 
     #[test]
-    fn test_standard_config_paths() {
-        let paths = get_standard_config_paths();
-        assert!(!paths.is_empty());
-        assert!(paths.iter().any(|p| p
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .starts_with("toadstool")));
+    fn test_config_file_operations() {
+        let config = ToadStoolConfig::development();
+        let temp_file = NamedTempFile::new().unwrap();
+        let temp_path = temp_file.path();
+
+        // Test save
+        config.save_to_file(temp_path).unwrap();
+
+        // Test load
+        let loaded_config = ToadStoolConfig::load_from_file(temp_path).unwrap();
+        assert_eq!(loaded_config.app.environment, config.app.environment);
+        assert_eq!(loaded_config.logging.level, config.logging.level);
+        assert_eq!(loaded_config.app.worker_threads, config.app.worker_threads);
+    }
+
+    #[test]
+    fn test_config_json_serialization() {
+        let config = ToadStoolConfig::default();
+        let json = config.to_json().unwrap();
+        assert!(json.contains("app"));
+        assert!(json.contains("network"));
+        assert!(json.contains("runtime"));
+        assert!(json.contains("security"));
+        assert!(json.contains("logging"));
+    }
+
+    #[test]
+    fn test_current_environment_detection() {
+        env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+        let config = ToadStoolConfig::for_current_environment();
+        assert_eq!(config.app.environment, "production");
+        env::remove_var("TOADSTOOL_ENVIRONMENT");
+
+        env::set_var("ENVIRONMENT", "staging");
+        let config = ToadStoolConfig::for_current_environment();
+        assert_eq!(config.app.environment, "staging");
+        env::remove_var("ENVIRONMENT");
     }
 }

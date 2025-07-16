@@ -7,15 +7,15 @@ use toadstool::universal::*;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Testing Rebuilt Universal Compute Platform");
-    
+
     // Create platform
     let platform = UniversalComputePlatform::new().await?;
     println!("✅ Universal platform created successfully");
-    
+
     // Test platform status
     let status = get_platform_status().await;
     println!("📊 Platform status: {:?}", status);
-    
+
     // Test job creation
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -42,20 +42,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             metadata: HashMap::new(),
         },
     };
-    
+
     // Execute job
     println!("🏃 Executing universal job...");
     let result = platform.execute_universal_job(job).await?;
     println!("✅ Job completed successfully!");
     println!("📋 Result: {:?}", result.output.stdout);
-    
+
     // Test primal capabilities
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
     let providers = platform.find_primals_by_capability(&capability).await;
-    println!("🔍 Found {} providers with native execution capability", providers.len());
-    
+    println!(
+        "🔍 Found {} providers with native execution capability",
+        providers.len()
+    );
+
     // Test different job types
     let wasm_job = UniversalJob {
         id: Uuid::new_v4(),
@@ -82,12 +85,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             metadata: HashMap::new(),
         },
     };
-    
+
     println!("🕸️ Executing WASM job...");
     let wasm_result = platform.execute_universal_job(wasm_job).await?;
     println!("✅ WASM job completed successfully!");
     println!("📋 WASM Result: {:?}", wasm_result.output.stdout);
-    
+
     // Test BiomeOS job
     let biome_job = UniversalJob {
         id: Uuid::new_v4(),
@@ -116,12 +119,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             metadata: HashMap::new(),
         },
     };
-    
+
     println!("🌱 Executing BiomeOS job...");
     let biome_result = platform.execute_universal_job(biome_job).await?;
     println!("✅ BiomeOS job completed successfully!");
     println!("📋 BiomeOS Result: {:?}", biome_result.output.stdout);
-    
+
     // Test primal request routing
     let primal_request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -145,14 +148,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         metadata: HashMap::new(),
         timestamp: chrono::Utc::now(),
     };
-    
+
     println!("🎯 Testing primal request routing...");
     let primal_response = platform.route_primal_request(primal_request).await?;
     println!("✅ Primal request completed successfully!");
     println!("📋 Primal Response: {:?}", primal_response.status);
-    
+
     println!("🎉 All tests passed! Universal platform is working correctly.");
     println!("🏗️ Successfully rebuilt ToadStool with clean, modern universal architecture!");
-    
+
     Ok(())
-} 
+}

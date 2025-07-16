@@ -1,7 +1,7 @@
-//! ToadStool Modern API & Interface Layer
+//! `ToadStool` Modern API & Interface Layer
 //!
 //! This module provides a modern, type-safe API interface with:
-//! - OpenAPI 3.0 compliant REST endpoints
+//! - `OpenAPI` 3.0 compliant REST endpoints
 //! - Type-safe request/response structures
 //! - Modern async-first patterns
 //! - Comprehensive error handling
@@ -12,48 +12,36 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use axum::{
-    extract::{Path, Query, State, WebSocketUpgrade},
-    http::{HeaderMap, StatusCode},
-    middleware::{self as axum_middleware, Next, from_fn, from_fn_with_state},
-    response::{Html, IntoResponse, Response, Json},
-    routing::{delete, get, post, put},
+    extract::{State, WebSocketUpgrade},
+    middleware::{from_fn, from_fn_with_state},
+    response::{Html, IntoResponse, Json},
+    routing::{delete, get, post},
     Router,
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::{Parser, Subcommand};
-use futures_util::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
-use tokio::sync::{RwLock, broadcast};
+
+use tokio::sync::{broadcast, RwLock};
 use tower::ServiceBuilder;
-use tower_http::{
-    cors::CorsLayer,
-    trace::TraceLayer,
-    timeout::TimeoutLayer,
-    validate_request::ValidateRequestHeaderLayer,
-};
-use tracing::{debug, error, info, warn};
-use utoipa::{OpenApi, ToSchema};
+use tower_http::{cors::CorsLayer, timeout::TimeoutLayer, trace::TraceLayer};
+use tracing::info;
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use uuid::Uuid;
-use validator::Validate;
 
-use toadstool::{RuntimeType, ToadStoolError, ToadStoolResult};
-use toadstool_common::*;
-use toadstool_distributed::DistributedCoordinator;
-use toadstool_management_analytics::AnalyticsEngine;
-use toadstool_management_monitoring::SystemResourceMonitor;
-use toadstool_config::constants::network;
+use toadstool::{ToadStoolError, ToadStoolResult};
+use toadstool_config::network;
 
 use crate::types::{
-    ApiConfig, ApiEvent, ApiMetrics, AuthClaims, AuthRequest, AuthResponse, ClusterCapacity,
-    ClusterNodeInfo, ClusterStatusResponse, ExecutionFilter, ExecutionInfo, ExecutionLogs,
-    ExecutionMetrics, ExecutionRequest, ExecutionResponse, ExecutionStatus, HealthCheck,
-    HealthResponse, LogEntry, LogLevel, MetricPoint, MonitoringEndpoints, NodeResources,
-    NodeStatus, PaginationInfo, ResourceAllocation, ResourceRequirements, ResourceUsage,
-    TimeRange, WorkloadSpec, AlertSeverity,
+    AlertSeverity, ApiConfig, ApiEvent, ApiMetrics, AuthClaims, AuthRequest, AuthResponse,
+    ClusterCapacity, ClusterNodeInfo, ClusterStatusResponse, ExecutionFilter, ExecutionInfo,
+    ExecutionLogs, ExecutionMetrics, ExecutionRequest, ExecutionResponse, ExecutionStatus,
+    HealthCheck, HealthResponse, LogEntry, LogLevel, MetricPoint, MonitoringEndpoints,
+    NodeResources, NodeStatus, PaginationInfo, ResourceAllocation, ResourceRequirements,
+    ResourceUsage, TimeRange, WorkloadSpec,
 };
 
 // Import local modules
@@ -64,10 +52,10 @@ pub mod types;
 pub mod websocket;
 
 // Re-export commonly used types
-pub use byob::{ByobApi};
+pub use byob::ByobApi;
 pub use types::{ApiError, PaginatedResponse};
 
-/// OpenAPI documentation
+/// `OpenAPI` documentation
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -176,6 +164,7 @@ pub struct ModernApiServer {
 
 impl ModernApiServer {
     /// Create a new modern API server
+    #[must_use]
     pub fn new(config: ApiConfig) -> Self {
         let (event_sender, _) = broadcast::channel(10000);
 
@@ -197,7 +186,7 @@ impl ModernApiServer {
             self.config.api_version, self.config.bind_address
         );
 
-        let mut app = self.build_router().await?;
+        let mut app = self.build_router()?;
 
         // Add comprehensive middleware stack
         app = app.layer(
@@ -216,25 +205,29 @@ impl ModernApiServer {
         );
 
         // Parse address
-        let addr: SocketAddr =
-            self.config.bind_address.parse().map_err(|e| {
-                ToadStoolError::configuration(format!("Invalid bind address: {}", e))
-            })?;
+        let _addr: SocketAddr = self
+            .config
+            .bind_address
+            .parse()
+            .map_err(|e| ToadStoolError::configuration(format!("Invalid bind address: {e}")))?;
 
         // Start the server
         let listener = tokio::net::TcpListener::bind(&self.config.bind_address).await?;
-        
-        info!("🚀 ToadStool API server starting on {}", self.config.bind_address);
-        
+
+        info!(
+            "🚀 ToadStool API server starting on {}",
+            self.config.bind_address
+        );
+
         axum::serve(listener, app.into_make_service())
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Server error: {}", e)))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Server error: {e}")))?;
 
         Ok(())
     }
 
     /// Build the modern router with all endpoints
-    async fn build_router(&self) -> ToadStoolResult<Router<()>> {
+    fn build_router(&self) -> ToadStoolResult<Router<()>> {
         let mut app = Router::new();
 
         // API v2 routes with modern handlers
@@ -294,7 +287,7 @@ impl ModernApiServer {
     }
 
     /// Start background tasks for monitoring and maintenance
-    async fn start_background_tasks(&self) {
+    fn _start_background_tasks(&self) {
         let state = self.state.clone();
 
         // Metrics collection task
@@ -372,6 +365,7 @@ pub enum CliCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool::RuntimeType;
 
     #[test]
     fn test_api_config_default() {
@@ -383,20 +377,27 @@ mod tests {
     }
 
     #[test]
-    fn test_execution_info_serialization() {
-        let info = ExecutionInfo {
-            execution_id: Uuid::new_v4(),
-            status: "running".to_string(),
-            runtime_type: RuntimeType::Native,
+    fn test_execution_info_serialization() -> Result<(), Box<dyn std::error::Error>> {
+        let execution_id = Uuid::new_v4();
+        let runtime_type = RuntimeType::Native;
+        let info = types::ExecutionInfo {
+            execution_id,
+            status: ExecutionStatus::Running,
+            runtime_type,
             submitted_at: Utc::now(),
-            started_at: None,
+            started_at: Some(Utc::now()),
             completed_at: None,
+            duration_ms: None,
+            progress: Some(50.0),
+            error_message: None,
+            resource_usage: None,
+            metadata: HashMap::new(),
         };
 
-        let json = serde_json::to_string(&info).map_err(|e| {
-            ToadStoolError::serialization(format!("Failed to serialize info: {}", e))
-        })?;
+        let json = serde_json::to_string(&info)
+            .map_err(|e| ToadStoolError::validation(format!("Failed to serialize info: {e}")))?;
         assert!(json.contains("execution_id"));
         assert!(json.contains("running"));
+        Ok(())
     }
 }

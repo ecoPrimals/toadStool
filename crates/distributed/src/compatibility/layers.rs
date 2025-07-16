@@ -10,19 +10,19 @@ use toadstool::{
 /// Linux compatibility layer
 #[derive(Debug, Clone)]
 pub struct LinuxCompatibilityLayer {
-    config: LinuxCompatConfig,
+    _config: LinuxCompatConfig,
 }
 
 /// Windows compatibility layer
 #[derive(Debug, Clone)]
 pub struct WindowsCompatibilityLayer {
-    config: WindowsCompatConfig,
+    _config: WindowsCompatConfig,
 }
 
 /// macOS compatibility layer
 #[derive(Debug, Clone)]
 pub struct MacOSCompatibilityLayer {
-    config: MacOSCompatConfig,
+    _config: MacOSCompatConfig,
 }
 
 /// Configuration for Linux compatibility
@@ -80,9 +80,10 @@ impl Default for LinuxCompatibilityLayer {
 }
 
 impl LinuxCompatibilityLayer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            config: LinuxCompatConfig::default(),
+            _config: LinuxCompatConfig::default(),
         }
     }
 
@@ -123,9 +124,10 @@ impl Default for WindowsCompatibilityLayer {
 }
 
 impl WindowsCompatibilityLayer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            config: WindowsCompatConfig::default(),
+            _config: WindowsCompatConfig::default(),
         }
     }
 
@@ -166,9 +168,10 @@ impl Default for MacOSCompatibilityLayer {
 }
 
 impl MacOSCompatibilityLayer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            config: MacOSCompatConfig::default(),
+            _config: MacOSCompatConfig::default(),
         }
     }
 

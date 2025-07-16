@@ -94,8 +94,8 @@ async fn demo_natural_language_config(
             println!("   🔧 Applied Configuration:");
             println!("      Security: {}", config.security_level);
             println!("      Performance: {}", config.performance_level);
-            println!("      Resources: {:.1} CPU cores, {:.1}GB RAM", 
-                     config.resource_allocation.cpu_cores, 
+            println!("      Resources: {:.1} CPU cores, {:.1}GB RAM",
+                     config.resource_allocation.cpu_cores,
                      config.resource_allocation.memory_gb);
             println!("      GPU: {}", if config.resource_allocation.gpu_enabled { "Enabled" } else { "Disabled" });
         }
@@ -274,8 +274,8 @@ async def process_data(data: dict):
             println!("   ⚙️ Optimized Configuration:");
             println!("      Type: {}", config.name);
             println!("      Performance: {}", config.performance_level);
-            println!("      Resources: {:.1} CPU cores, {:.1}GB RAM", 
-                     config.resource_allocation.cpu_cores, 
+            println!("      Resources: {:.1} CPU cores, {:.1}GB RAM",
+                     config.resource_allocation.cpu_cores,
                      config.resource_allocation.memory_gb);
         }
 
@@ -383,20 +383,20 @@ async fn demo_real_time_coordination(
     // Simulate rapid AI requests
     let rapid_requests = vec![
         ("Quick status check", SquirrelRequestType::GetSystemStatus),
-        ("Enable GPU mode", SquirrelRequestType::NaturalLanguageConfig { 
-            instruction: "Enable GPU acceleration for all workloads".to_string() 
+        ("Enable GPU mode", SquirrelRequestType::NaturalLanguageConfig {
+            instruction: "Enable GPU acceleration for all workloads".to_string()
         }),
-        ("Optimize for ML", SquirrelRequestType::OptimizeForTask { 
-            task_description: "Machine learning inference".to_string() 
+        ("Optimize for ML", SquirrelRequestType::OptimizeForTask {
+            task_description: "Machine learning inference".to_string()
         }),
-        ("Security boost", SquirrelRequestType::NaturalLanguageConfig { 
-            instruction: "Increase security to maximum level".to_string() 
+        ("Security boost", SquirrelRequestType::NaturalLanguageConfig {
+            instruction: "Increase security to maximum level".to_string()
         }),
     ];
 
     for (i, (description, request_type)) in rapid_requests.into_iter().enumerate() {
         println!("\n⚡ Rapid Request {}: {}", i + 1, description);
-        
+
         let request = SquirrelMcpRequest {
             request_id: format!("rapid-{}", i + 1),
             session_id: None,
@@ -411,7 +411,7 @@ async fn demo_real_time_coordination(
         let response_time = start_time.elapsed();
 
         println!("✅ {} ({}ms)", response.message, response_time.as_millis());
-        
+
         sleep(Duration::from_millis(200)).await;
     }
 
@@ -423,7 +423,7 @@ async fn demo_real_time_coordination(
     }
 
     Ok(())
-} 
+}
 */
 
 #[tokio::main]
@@ -432,4 +432,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("This demo is temporarily disabled due to auto_config crate compilation issues.");
     println!("It will be re-enabled once the issues are resolved.");
     Ok(())
-} 
+}

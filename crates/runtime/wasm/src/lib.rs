@@ -19,6 +19,9 @@
 //! High-performance WebAssembly runtime engine with Wasmtime integration,
 //! WASI support, module caching, and comprehensive security isolation.
 
+// Module declarations
+pub mod component_model;
+
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,11 +36,13 @@ use wasmtime::*;
 use toadstool::{
     error::{ToadStoolError, ToadStoolResult},
     execution::{
-        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus,
-        RuntimeEngine,
+        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeEngine,
     },
     security::SecurityContext,
 };
+
+// Re-export component model types
+pub use component_model::*;
 
 /// Helper function to convert wasmtime errors to ToadStoolError
 fn wasmtime_to_toadstool_error(err: wasmtime::Error) -> ToadStoolError {
@@ -65,6 +70,8 @@ pub struct WasmRuntimeConfig {
     pub module_load_timeout_ms: u64,
     /// Fuel limit for execution
     pub fuel_limit: Option<u64>,
+    /// Component model configuration
+    pub component_model: ComponentModelConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +94,7 @@ impl Default for WasmRuntimeConfig {
             execution_timeout_ms: 30000,
             module_load_timeout_ms: 10000,
             fuel_limit: Some(1_000_000),
+            component_model: ComponentModelConfig::default(),
         }
     }
 }
@@ -126,6 +134,8 @@ pub struct WasmRuntimeEngine {
     module_cache: Arc<RwLock<HashMap<String, CachedModule>>>,
     /// Active executions metadata (thread-safe)
     active_executions: Arc<RwLock<HashMap<uuid::Uuid, ExecutionHandle>>>,
+    /// Component model registry
+    component_registry: Arc<ComponentRegistry>,
 }
 
 impl std::fmt::Debug for WasmRuntimeEngine {
@@ -172,9 +182,10 @@ impl WasmRuntimeEngine {
 
         Ok(Self {
             engine,
-            config,
+            config: config.clone(),
             module_cache: Arc::new(RwLock::new(HashMap::new())),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
+            component_registry: Arc::new(ComponentRegistry::new(config.component_model)),
         })
     }
 
@@ -233,8 +244,7 @@ impl WasmRuntimeEngine {
             let cache = self.module_cache.read().await;
             if let Some(cached) = cache.get(&cache_key) {
                 // Check if cache entry is still valid
-                let age = Instant::now()
-                    .saturating_duration_since(cached.last_used);
+                let age = Instant::now().saturating_duration_since(cached.last_used);
 
                 if age < Duration::from_secs(300) {
                     // Use cached module if less than 5 minutes old
@@ -281,7 +291,7 @@ impl WasmRuntimeEngine {
                             e
                         ))
                     })?;
-                    self.load_module_from_bytes(&bytes).await
+                    self.load_module_from_bytes(&bytes)
                 }
                 toadstool::workload::WasmModuleSource::Url { url } => {
                     #[cfg(feature = "url-module-loading")]
@@ -296,7 +306,7 @@ impl WasmRuntimeEngine {
                             ))
                         })?;
 
-                        self.load_module_from_bytes(&bytes).await
+                        self.load_module_from_bytes(&bytes)
                     }
                     #[cfg(not(feature = "url-module-loading"))]
                     {
@@ -306,7 +316,7 @@ impl WasmRuntimeEngine {
                     }
                 }
                 toadstool::workload::WasmModuleSource::Bytes { data } => {
-                    self.load_module_from_bytes(data).await
+                    self.load_module_from_bytes(data)
                 }
             }
         };
@@ -322,7 +332,7 @@ impl WasmRuntimeEngine {
     }
 
     /// Load module from bytes
-    async fn load_module_from_bytes(&self, bytes: &[u8]) -> ToadStoolResult<Module> {
+    fn load_module_from_bytes(&self, bytes: &[u8]) -> ToadStoolResult<Module> {
         // Validate module size
         if bytes.len() > (self.config.max_memory_mb as usize * 1024 * 1024) {
             return Err(ToadStoolError::resource(format!(
@@ -337,13 +347,14 @@ impl WasmRuntimeEngine {
     }
 
     /// Create WASI context based on security level
+    #[allow(dead_code)]
     fn create_wasi_context(&self, _security_context: &SecurityContext) -> ToadStoolResult<WasiCtx> {
         let mut builder = WasiCtxBuilder::new();
 
         // Configure based on security level
         match self.config.security_level {
             SecurityLevel::None => {
-                builder.inherit_stdio().inherit_env();
+                let _ = builder.inherit_stdio().inherit_env();
             }
             SecurityLevel::Basic => {
                 // Minimal stdio setup
@@ -415,7 +426,7 @@ impl WasmRuntimeEngine {
         // Execute with timeout
         let timeout_ms = request
             .timeout
-            .map(|d| d.as_millis() as u64)
+            .map(|d| u64::try_from(d.as_millis()).unwrap_or(self.config.execution_timeout_ms))
             .unwrap_or(self.config.execution_timeout_ms);
 
         let execution_timeout = Duration::from_millis(timeout_ms);
@@ -460,8 +471,8 @@ impl WasmRuntimeEngine {
         };
 
         // Extract CPU and memory usage metrics
-        let cpu_metrics = self.extract_cpu_metrics(&store, &duration).await;
-        let memory_metrics = self.extract_memory_metrics(&mut store, &instance).await;
+        let cpu_metrics = self.extract_cpu_metrics(&store, &duration);
+        let memory_metrics = self.extract_memory_metrics(&mut store, &instance);
 
         // Create runtime metrics
         let metrics = toadstool::resources::RuntimeMetrics {
@@ -472,9 +483,11 @@ impl WasmRuntimeEngine {
             gpu: None,
             timing: toadstool::resources::TimingMetrics {
                 start_time: chrono::Utc::now()
-                    - chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
+                    - chrono::Duration::from_std(duration)
+                        .unwrap_or_else(|_| chrono::Duration::zero()),
                 end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
+                duration: chrono::Duration::from_std(duration)
+                    .unwrap_or_else(|_| chrono::Duration::zero()),
             },
         };
 
@@ -504,7 +517,7 @@ impl WasmRuntimeEngine {
         })
     }
 
-    async fn extract_cpu_metrics(
+    fn extract_cpu_metrics(
         &self,
         store: &Store<WasiCtx>,
         duration: &Duration,
@@ -539,7 +552,7 @@ impl WasmRuntimeEngine {
         }
     }
 
-    async fn extract_memory_metrics(
+    fn extract_memory_metrics(
         &self,
         store: &mut Store<WasiCtx>,
         instance: &Instance,
@@ -667,6 +680,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
             .map(|cached_module| cached_module.size_bytes as u64)
             .sum();
 
+        #[allow(clippy::collection_is_never_read)]
         let mut custom_metrics = HashMap::new();
         custom_metrics.insert(
             "active_executions".to_string(),
@@ -685,6 +699,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
             // Estimate cache hit rate based on access patterns
             let total_accesses: u64 = cache.values().map(|m| m.access_count).sum();
             if total_accesses > 0 {
+                #[allow(clippy::cast_precision_loss)]
                 (cached_modules as f64 / total_accesses as f64 * 100.0).min(100.0)
             } else {
                 0.0
@@ -700,11 +715,14 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         Ok(toadstool::resources::RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
+                #[allow(clippy::cast_precision_loss)]
                 usage_percent: active_count as f64,
+                #[allow(clippy::cast_precision_loss)]
                 cores_used: active_count as f64 / 100.0,
                 cpu_time_seconds: 0.0,
             },
             memory: toadstool::resources::MemoryMetrics {
+                #[allow(clippy::cast_precision_loss)]
                 usage_percent: (cache_memory_usage as f64 / (1024.0 * 1024.0 * 1024.0)) * 100.0,
                 used_bytes: cache_memory_usage,
                 peak_bytes: cache_memory_usage * 11 / 10, // Assume 10% higher peak
@@ -738,6 +756,97 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         info!("WebAssembly runtime engine shut down successfully");
         Ok(())
+    }
+}
+
+#[async_trait]
+impl ComponentModelSupport for WasmRuntimeEngine {
+    /// Check if component model is supported
+    fn supports_component_model(&self) -> bool {
+        self.config.component_model.enabled
+    }
+
+    /// Get component model configuration
+    fn get_component_config(&self) -> &ComponentModelConfig {
+        &self.config.component_model
+    }
+
+    /// Create component instance
+    async fn create_component_instance(&self, interface_name: &str) -> ToadStoolResult<String> {
+        if !self.supports_component_model() {
+            return Err(ToadStoolError::not_supported(
+                "Component model support is disabled".to_string(),
+            ));
+        }
+
+        self.component_registry
+            .create_instance(interface_name)
+            .await
+    }
+
+    /// Execute component function
+    async fn execute_component_function(
+        &self,
+        instance_id: &str,
+        function_name: &str,
+        args: &[ComponentValue],
+    ) -> ToadStoolResult<ComponentValue> {
+        if !self.supports_component_model() {
+            return Err(ToadStoolError::not_supported(
+                "Component model support is disabled".to_string(),
+            ));
+        }
+
+        // Get the component instance
+        let _instance = self.component_registry.get_instance(instance_id).await?;
+
+        // Update instance state to running
+        self.component_registry
+            .update_state(instance_id, ComponentState::Running)
+            .await?;
+
+        // For now, return a mock response - in a real implementation, this would
+        // invoke the actual component function through Wasmtime
+        info!(
+            "Executing component function: {} on instance: {}",
+            function_name, instance_id
+        );
+
+        // Simulate function execution result
+        let result = match function_name {
+            "add" => {
+                if args.len() == 2 {
+                    match (&args[0], &args[1]) {
+                        (ComponentValue::U32(a), ComponentValue::U32(b)) => {
+                            ComponentValue::U32(a + b)
+                        }
+                        _ => ComponentValue::String("Type error".to_string()),
+                    }
+                } else {
+                    ComponentValue::String("Argument count error".to_string())
+                }
+            }
+            "greet" => {
+                if args.len() == 1 {
+                    match &args[0] {
+                        ComponentValue::String(name) => {
+                            ComponentValue::String(format!("Hello, {name}!"))
+                        }
+                        _ => ComponentValue::String("Type error".to_string()),
+                    }
+                } else {
+                    ComponentValue::String("Argument count error".to_string())
+                }
+            }
+            _ => ComponentValue::String(format!("Unknown function: {function_name}")),
+        };
+
+        // Update instance state back to ready
+        self.component_registry
+            .update_state(instance_id, ComponentState::Ready)
+            .await?;
+
+        Ok(result)
     }
 }
 
@@ -819,7 +928,7 @@ mod tests {
     #[tokio::test]
     async fn test_security_isolation() {
         let config = WasmRuntimeConfig::default();
-        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let _engine = WasmRuntimeEngine::new(config).unwrap();
 
         // Test security context validation
         let security_context = SecurityContext::for_isolation_level(IsolationLevel::Basic);
@@ -828,9 +937,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_resource_management() {
-        let mut config = WasmRuntimeConfig::default();
-        config.max_memory_mb = 64;
-        config.execution_timeout_ms = 5000;
+        let config = WasmRuntimeConfig {
+            max_memory_mb: 64,
+            execution_timeout_ms: 5000,
+            ..Default::default()
+        };
 
         let engine = WasmRuntimeEngine::new(config).unwrap();
         let capabilities = engine.get_capabilities();
@@ -874,10 +985,12 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_validation() {
         // Test various configuration options
-        let mut config = WasmRuntimeConfig::default();
-        config.cache_enabled = true;
-        config.max_memory_mb = 128;
-        config.execution_timeout_ms = 10000;
+        let config = WasmRuntimeConfig {
+            cache_enabled: true,
+            max_memory_mb: 128,
+            execution_timeout_ms: 10000,
+            ..Default::default()
+        };
 
         let engine = WasmRuntimeEngine::new(config);
         assert!(engine.is_ok());
@@ -885,9 +998,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_wasi_configuration() {
-        let mut config = WasmRuntimeConfig::default();
-        config.cache_enabled = true;
-        config.max_memory_mb = 256;
+        let config = WasmRuntimeConfig {
+            cache_enabled: true,
+            max_memory_mb: 256,
+            ..Default::default()
+        };
 
         let engine = WasmRuntimeEngine::new(config).unwrap();
         let capabilities = engine.get_capabilities();
@@ -904,13 +1019,14 @@ mod tests {
             .unwrap_or(false));
     }
 
-    async fn test_performance_optimization() {
+    #[test]
+    fn test_performance_optimization() {
         let config = WasmRuntimeConfig {
             max_memory_mb: 64,
             execution_timeout_ms: 5000,
             ..Default::default()
         };
-        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let _engine = WasmRuntimeEngine::new(config).unwrap();
 
         // Fixed: Move the match expression inside the function
         let _result = match "wasmtime" {
@@ -920,7 +1036,8 @@ mod tests {
         };
     }
 
-    async fn test_stress_testing() {
+    #[test]
+    fn test_stress_testing() {
         let config = WasmRuntimeConfig {
             cache_enabled: true,
             max_memory_mb: 32,
@@ -937,8 +1054,9 @@ mod tests {
         };
     }
 
-    async fn test_memory_management() {
-        let config = WasmRuntimeConfig {
+    #[test]
+    fn test_memory_management() {
+        let _config = WasmRuntimeConfig {
             cache_enabled: true,
             max_memory_mb: 256,
             ..Default::default()

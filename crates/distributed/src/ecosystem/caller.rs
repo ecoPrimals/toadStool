@@ -7,22 +7,22 @@ use tokio::sync::RwLock;
 
 use super::auth::AuthenticationManager;
 use super::registry::ServiceRegistry;
-use crate::types::*;
+use crate::types::UniversalJob;
 
 /// Ecosystem caller for invoking external services
 pub struct EcosystemCaller {
     /// HTTP client for REST APIs
-    http_client: Client,
+    _http_client: Client,
     /// gRPC client configurations
-    grpc_clients: HashMap<String, GrpcClientConfig>,
+    _grpc_clients: HashMap<String, GrpcClientConfig>,
     /// WebSocket connections
-    websocket_connections: Arc<RwLock<HashMap<String, WebSocketConnection>>>,
+    _websocket_connections: Arc<RwLock<HashMap<String, WebSocketConnection>>>,
     /// Message queue connections
-    message_queues: Arc<RwLock<HashMap<String, MessageQueueConnection>>>,
+    _message_queues: Arc<RwLock<HashMap<String, MessageQueueConnection>>>,
     /// Authentication manager
-    auth_manager: Arc<AuthenticationManager>,
+    _auth_manager: Arc<AuthenticationManager>,
     /// Service registry
-    service_registry: Arc<ServiceRegistry>,
+    _service_registry: Arc<ServiceRegistry>,
 }
 
 /// gRPC client configuration
@@ -50,14 +50,15 @@ pub struct MessageQueueConnection {
 }
 
 impl EcosystemCaller {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            http_client: Client::new(),
-            grpc_clients: HashMap::new(),
-            websocket_connections: Arc::new(RwLock::new(HashMap::new())),
-            message_queues: Arc::new(RwLock::new(HashMap::new())),
-            auth_manager: Arc::new(AuthenticationManager::new()),
-            service_registry: Arc::new(ServiceRegistry::new()),
+            _http_client: Client::new(),
+            _grpc_clients: HashMap::new(),
+            _websocket_connections: Arc::new(RwLock::new(HashMap::new())),
+            _message_queues: Arc::new(RwLock::new(HashMap::new())),
+            _auth_manager: Arc::new(AuthenticationManager::new()),
+            _service_registry: Arc::new(ServiceRegistry::new()),
         }
     }
 

@@ -33,6 +33,7 @@ pub struct PlatformDetector;
 
 impl PlatformDetector {
     /// Detect current platform
+    #[must_use]
     pub fn detect() -> PlatformInfo {
         PlatformInfo {
             name: std::env::consts::OS.to_string(),

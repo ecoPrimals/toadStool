@@ -21,6 +21,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
+/// Type alias for custom test functions to reduce complexity
+type CustomTestFunc = dyn Fn(&str) -> Vec<String>;
+
 /// Property-based test configuration
 #[derive(Debug, Clone)]
 pub struct PropertyTestConfig {
@@ -75,7 +78,7 @@ pub trait Property<T> {
 /// Property test runner
 pub struct PropertyTestRunner {
     config: PropertyTestConfig,
-    rng: Box<dyn RandomNumberGenerator>,
+    _rng: Box<dyn RandomNumberGenerator>,
 }
 
 /// Random number generator trait for testability
@@ -98,34 +101,34 @@ pub struct StringGenerator {
 }
 
 pub struct VectorGenerator<T, G: Generator<T>> {
-    element_generator: G,
-    min_length: usize,
-    max_length: usize,
+    _element_generator: G,
+    _min_length: usize,
+    _max_length: usize,
     _phantom: std::marker::PhantomData<T>,
 }
 
 pub struct CompositeGenerator<T> {
-    generators: Vec<Box<dyn Generator<T>>>,
-    weights: Vec<f64>,
+    _generators: Vec<Box<dyn Generator<T>>>,
+    _weights: Vec<f64>,
 }
 
 /// Predefined property types
 pub struct InvariantProperty<T, F> {
-    name: String,
+    _name: String,
     predicate: F,
     _phantom: std::marker::PhantomData<T>,
 }
 
 pub struct RoundTripProperty<T, F1, F2> {
-    name: String,
+    _name: String,
     encode: F1,
     decode: F2,
     _phantom: std::marker::PhantomData<T>,
 }
 
 pub struct MonotonicProperty<T, F> {
-    name: String,
-    function: F,
+    _name: String,
+    _function: F,
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -135,7 +138,7 @@ pub enum ShrinkStrategy {
     Linear,
     Binary,
     Recursive,
-    Custom(Box<dyn Fn(&str) -> Vec<String>>),
+    Custom(Box<CustomTestFunc>),
 }
 
 impl Default for PropertyTestConfig {
@@ -159,7 +162,7 @@ impl PropertyTestRunner {
             rng.seed(seed);
         }
 
-        Self { config, rng }
+        Self { config, _rng: rng }
     }
 
     /// Run property tests with a generator and property
@@ -225,7 +228,6 @@ impl PropertyTestRunner {
     /// Run multiple properties in sequence (removed due to trait object sizing issues)
     // This method was removed as Box<dyn Property<T>> creates sizing issues
     // Users should call run_test individually for each property instead
-
     fn calculate_test_size(&self, iteration: u32) -> usize {
         // Gradually increase test case size
         let base_size = 1;
@@ -367,7 +369,7 @@ where
 {
     pub fn new(name: String, predicate: F) -> Self {
         Self {
-            name,
+            _name: name,
             predicate,
             _phantom: std::marker::PhantomData,
         }
@@ -383,7 +385,7 @@ where
     }
 
     fn name(&self) -> &str {
-        &self.name
+        &self._name
     }
 }
 
@@ -395,7 +397,7 @@ where
 {
     pub fn new(name: String, encode: F1, decode: F2) -> Self {
         Self {
-            name,
+            _name: name,
             encode,
             decode,
             _phantom: std::marker::PhantomData,
@@ -425,7 +427,7 @@ where
     }
 
     fn name(&self) -> &str {
-        &self.name
+        &self._name
     }
 }
 
@@ -512,7 +514,7 @@ impl RandomNumberGenerator for DefaultRng {
 
 impl PropertyTestResult {
     /// Generate a human-readable test report
-    pub fn to_string(&self) -> String {
+    pub fn to_report_string(&self) -> String {
         let mut report = format!(
             "Property Test: {}\n\
              Status: {}\n\

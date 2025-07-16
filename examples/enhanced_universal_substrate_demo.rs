@@ -3,18 +3,18 @@
 //! This demo shows ToadStool's universal compute capabilities
 //! with a focus on core functionality and simplified examples.
 
+use chrono::Utc;
 use std::time::Duration;
 use uuid::Uuid;
-use chrono::Utc;
 
 use toadstool::error::ToadStoolResult;
-use toadstool::universal::{
-    UniversalComputePlatform, UniversalJob, UniversalJobType, JobPriority,
-    UniversalPlatformConfig, SystemResources, PrimalContext, NetworkLocation, SecurityLevel,
-};
 use toadstool::resources::{
-    ResourceRequirements, CpuRequirements, MemoryRequirements, 
-    NetworkRequirements, StorageRequirements,
+    CpuRequirements, MemoryRequirements, NetworkRequirements, ResourceRequirements,
+    StorageRequirements,
+};
+use toadstool::universal::{
+    JobPriority, NetworkLocation, PrimalContext, SecurityLevel, UniversalComputePlatform,
+    UniversalJob, UniversalJobType,
 };
 
 #[tokio::main]
@@ -25,16 +25,16 @@ async fn main() -> ToadStoolResult<()> {
 
     // Initialize the universal compute platform
     let platform = UniversalComputePlatform::new().await?;
-    
+
     // Demonstrate basic job execution
     demonstrate_basic_execution(&platform).await?;
-    
+
     // Demonstrate different job types
     demonstrate_job_types(&platform).await?;
-    
+
     // Demonstrate resource management
     demonstrate_resource_management(&platform).await?;
-    
+
     println!("\n✅ Enhanced Universal Substrate Demo completed successfully!");
     Ok(())
 }
@@ -42,9 +42,9 @@ async fn main() -> ToadStoolResult<()> {
 async fn demonstrate_basic_execution(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🔧 Demonstrating Basic Execution");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context();
-    
+
     let job = UniversalJob {
         id: Uuid::new_v4(),
         job_type: UniversalJobType::Native {
@@ -58,24 +58,24 @@ async fn demonstrate_basic_execution(platform: &UniversalComputePlatform) -> Toa
         created_at: Utc::now(),
         context,
     };
-    
+
     println!("  📋 Executing basic job...");
     let response = platform.execute_universal_job(job).await?;
-    
+
     println!("  ✅ Job completed with status: {:?}", response.status);
     if let Some(stdout) = response.output.stdout {
-        println!("  📤 Output: {}", stdout);
+        println!("  📤 Output: {stdout}");
     }
-    
+
     Ok(())
 }
 
 async fn demonstrate_job_types(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
     println!("\n🎯 Demonstrating Different Job Types");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context();
-    
+
     // Native job
     let native_job = UniversalJob {
         id: Uuid::new_v4(),
@@ -90,11 +90,11 @@ async fn demonstrate_job_types(platform: &UniversalComputePlatform) -> ToadStool
         created_at: Utc::now(),
         context: context.clone(),
     };
-    
+
     println!("  🖥️  Executing native job...");
     let _response = platform.execute_universal_job(native_job).await?;
     println!("  ✅ Native job completed");
-    
+
     // WASM job
     let wasm_job = UniversalJob {
         id: Uuid::new_v4(),
@@ -109,20 +109,22 @@ async fn demonstrate_job_types(platform: &UniversalComputePlatform) -> ToadStool
         created_at: Utc::now(),
         context,
     };
-    
+
     println!("  🔧 Executing WASM job...");
     let _response = platform.execute_universal_job(wasm_job).await?;
     println!("  ✅ WASM job completed");
-    
+
     Ok(())
 }
 
-async fn demonstrate_resource_management(platform: &UniversalComputePlatform) -> ToadStoolResult<()> {
+async fn demonstrate_resource_management(
+    platform: &UniversalComputePlatform,
+) -> ToadStoolResult<()> {
     println!("\n📊 Demonstrating Resource Management");
     println!("{}", "-".repeat(40));
-    
+
     let context = create_demo_context();
-    
+
     // Create a job with specific resource requirements
     let resource_job = UniversalJob {
         id: Uuid::new_v4(),
@@ -158,16 +160,16 @@ async fn demonstrate_resource_management(platform: &UniversalComputePlatform) ->
         created_at: Utc::now(),
         context,
     };
-    
+
     println!("  📋 Executing job with resource requirements...");
     println!("    - CPU: 2.0 cores");
     println!("    - Memory: 1GB");
     println!("    - Storage: 100MB");
     println!("    - Network: 10Mbps");
-    
+
     let _response = platform.execute_universal_job(resource_job).await?;
     println!("  ✅ Resource-managed job completed");
-    
+
     Ok(())
 }
 

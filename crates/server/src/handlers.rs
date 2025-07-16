@@ -6,7 +6,7 @@ use axum::{
     response::{Html, IntoResponse, Json},
 };
 use serde_json::json;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 // Removed mock dependency - using real system resources now
@@ -21,18 +21,21 @@ pub async fn health_check_handler(State(state): State<ServerState>) -> impl Into
         Ok(resources) => resources,
         Err(e) => {
             tracing::error!("Failed to get system resources: {}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "status": "error",
-                "message": "Failed to get system resources",
-                "timestamp": chrono::Utc::now(),
-            })));
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "status": "error",
+                    "message": "Failed to get system resources",
+                    "timestamp": chrono::Utc::now(),
+                })),
+            );
         }
     };
 
     // For now, we'll use simplified health metrics
     // In a real implementation, we'd track usage over time
     let cpu_usage_percent = 50.0; // Placeholder
-    let memory_usage_percent = 45.0; // Placeholder 
+    let memory_usage_percent = 45.0; // Placeholder
     let healthy = cpu_usage_percent < 90.0 && memory_usage_percent < 90.0;
 
     let response = json!({
@@ -116,10 +119,10 @@ pub async fn submit_execution_handler(
 
     // Parse the execution request
     let execution_id = Uuid::new_v4();
-    let runtime_type = request.get("runtime_type")
+    let runtime_type = request
+        .get("runtime_type")
         .and_then(|v| v.as_str())
         .map(|s| match s {
-            "native" => toadstool::RuntimeType::Native,
             "container" => toadstool::RuntimeType::Container,
             "wasm" => toadstool::RuntimeType::Wasm,
             "python" => toadstool::RuntimeType::Python,
@@ -127,7 +130,7 @@ pub async fn submit_execution_handler(
         })
         .unwrap_or(toadstool::RuntimeType::Native);
 
-    // Create execution info  
+    // Create execution info
     let execution_info = crate::state::ActiveExecution {
         execution_id,
         runtime_type: runtime_type.clone(),
@@ -207,27 +210,30 @@ pub async fn cancel_execution_handler(
 
     // Implement execution cancellation
     let mut active_executions = state.active_executions.write().await;
-    
+
     if let Some(execution_info) = active_executions.get_mut(&execution_id) {
         // Check if execution is still running
         match execution_info.status {
             toadstool::ExecutionStatus::Running | toadstool::ExecutionStatus::Pending => {
                 // Update status to cancelled
                 execution_info.status = toadstool::ExecutionStatus::Cancelled;
-                
+
                 // Runtime engines don't currently support direct cancellation
                 // We mark the execution as cancelled and rely on timeout mechanisms
                 info!("Marking execution {} as cancelled (runtime {:?} doesn't support direct cancellation)", 
                       execution_id, execution_info.runtime_type);
-                
+
                 // In a real implementation, this would:
                 // 1. Update the execution status in the database
                 // 2. Send a cancellation signal to the runtime if supported
                 // 3. Set up timeout mechanisms for cleanup
-                
+
                 // For now, we just log the cancellation request
-                info!("Cancellation request processed for execution {}", execution_id);
-                
+                info!(
+                    "Cancellation request processed for execution {}",
+                    execution_id
+                );
+
                 (
                     StatusCode::OK,
                     Json(json!({
@@ -244,7 +250,7 @@ pub async fn cancel_execution_handler(
                     StatusCode::BAD_REQUEST,
                     Json(json!({
                         "error": "INVALID_STATE",
-                        "message": format!("Execution {} cannot be cancelled in current state: {:?}", 
+                        "message": format!("Execution {} cannot be cancelled in current state: {:?}",
                                          execution_id, execution_info.status),
                         "execution_id": execution_id,
                         "current_status": format!("{:?}", execution_info.status)

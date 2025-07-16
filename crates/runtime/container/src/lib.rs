@@ -17,11 +17,8 @@ use uuid::Uuid;
 #[cfg(feature = "docker")]
 use bollard::{
     auth::DockerCredentials,
-    container::{
-        Config, CreateContainerOptions, LogOutput, StartContainerOptions, WaitContainerOptions,
-    },
+    container::{Config, CreateContainerOptions},
     image::CreateImageOptions,
-    models::{HostConfig, Mount, MountTypeEnum},
     Docker, API_DEFAULT_VERSION,
 };
 
@@ -37,8 +34,7 @@ use toadstool::{
         CpuMetrics, MemoryMetrics, NetworkMetrics, ResourceMonitor, RuntimeMetrics, StorageMetrics,
         TimingMetrics,
     },
-    security::{IsolationLevel, SecurityContext},
-    workload::{PortMapping, RegistryAuth, VolumeMount, VolumeMountType, WorkloadSpec},
+    workload::{PortMapping, RegistryAuth, VolumeMount, WorkloadSpec},
 };
 
 /// Container runtime engine configuration
@@ -401,7 +397,7 @@ impl ContainerRuntimeEngine {
                 socket_path,
                 api_version: _,
             } => {
-                let docker = if let Some(socket) = socket_path {
+                let docker = if let Some(_socket) = socket_path {
                     Docker::connect_with_socket_defaults()
                 } else {
                     Docker::connect_with_socket_defaults()
@@ -412,8 +408,7 @@ impl ContainerRuntimeEngine {
                     Err(e) => {
                         warn!("Failed to connect to Docker: {}", e);
                         Err(ToadStoolError::configuration(format!(
-                            "Docker connection failed: {}",
-                            e
+                            "Docker connection failed: {e}"
                         )))
                     }
                 }
@@ -444,7 +439,7 @@ impl ContainerRuntimeEngine {
             let images = docker
                 .list_images(None::<bollard::image::ListImagesOptions<String>>)
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to list images: {}", e)))?;
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to list images: {e}")))?;
 
             let image_exists = images
                 .iter()
@@ -472,7 +467,7 @@ impl ContainerRuntimeEngine {
 
                 use futures::TryStreamExt;
                 while let Some(info) = stream.try_next().await.map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to pull image {}: {}", image, e))
+                    ToadStoolError::runtime(format!("Failed to pull image {image}: {e}"))
                 })? {
                     debug!("Pull progress: {:?}", info);
                 }
@@ -530,9 +525,7 @@ impl ContainerRuntimeEngine {
             let _container = docker
                 .create_container(Some(container_options), config)
                 .await
-                .map_err(|e| {
-                    ToadStoolError::runtime(format!("Container creation failed: {}", e))
-                })?;
+                .map_err(|e| ToadStoolError::runtime(format!("Container creation failed: {e}")))?;
 
             // Return basic success response
             Ok(ExecutionResponse {
@@ -586,6 +579,8 @@ impl ContainerRuntimeEngine {
         Ok(())
     }
 
+    #[allow(dead_code)]
+    #[allow(clippy::too_many_arguments)]
     fn create_container_config(
         &self,
         image: &str,
@@ -620,8 +615,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                 }
                 Err(e) => {
                     return Err(ToadStoolError::configuration(format!(
-                        "Docker connection test failed: {}",
-                        e
+                        "Docker connection test failed: {e}"
                     )));
                 }
             }
@@ -640,10 +634,10 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         // Extract container workload details
         if let WorkloadSpec::Container {
             image,
-            command,
+            command: _command,
             args,
             working_dir,
-            env_vars,
+            env_vars: _env_vars,
             volumes,
             ports,
             registry_auth,
@@ -652,8 +646,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             let test_config = ContainerExecutionConfig {
                 image: image.clone(),
                 args: args
-                    .as_ref()
-                    .map(|a| a.clone())
+                    .clone()
                     .unwrap_or_else(|| vec!["echo".to_string(), "test".to_string()]),
                 working_dir: working_dir.clone(),
                 env_vars: HashMap::new(),
@@ -806,18 +799,19 @@ impl Default for ContainerRuntimeEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool::{IsolationLevel, SecurityContext, PortProtocol, VolumeMountType};
 
-    fn create_test_request(image: &str) -> ExecutionRequest {
+    fn create_test_request(_image: &str) -> ExecutionRequest {
         ExecutionRequest {
             execution_id: Uuid::new_v4(),
             workload: WorkloadSpec::Container {
-                image: image.to_string(),
-                command: Some(vec!["echo".to_string(), "hello".to_string()]),
+                image: "ubuntu:20.04".to_string(),
+                command: Some(vec!["echo".to_string(), "Hello World".to_string()]),
                 args: None,
-                working_dir: None,
-                user: None,
-                volumes: Vec::new(),
-                ports: Vec::new(),
+                env_vars: HashMap::new(),
+                working_dir: Some("/tmp".to_string()),
+                volumes: vec![],
+                ports: vec![],
                 registry_auth: None,
             },
             runtime_hint: Some(RuntimeType::Container),
@@ -923,7 +917,7 @@ mod tests {
             ports.push(PortMapping {
                 host_port: 8080,
                 container_port: 80,
-                protocol: "tcp".to_string(),
+                protocol: PortProtocol::Tcp,
             });
         }
 
@@ -938,8 +932,8 @@ mod tests {
         // Modify request to include volume mounts
         if let WorkloadSpec::Container { volumes, .. } = &mut request.workload {
             volumes.push(VolumeMount {
-                source: "/tmp".to_string(),
-                target: "/data".to_string(),
+                source: PathBuf::from("/tmp"),
+                target: PathBuf::from("/data"),
                 mount_type: VolumeMountType::Bind,
                 read_only: true,
             });
@@ -958,7 +952,7 @@ mod tests {
             *registry_auth = Some(RegistryAuth {
                 username: "testuser".to_string(),
                 password: "testpass".to_string(),
-                server: "private.registry.com".to_string(),
+                server_url: "private.registry.com".to_string(),
             });
         }
 
@@ -993,7 +987,7 @@ mod tests {
 pub type ContainerResources = ContainerResourceLimits;
 pub type ContainerSecurity = ContainerSecurityConfig;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ContainerExecutionConfig {
     pub image: String,
     pub args: Vec<String>,
@@ -1004,20 +998,4 @@ pub struct ContainerExecutionConfig {
     pub resources: ContainerResources,
     pub security: ContainerSecurity,
     pub registry_auth: Option<RegistryAuth>,
-}
-
-impl Default for ContainerExecutionConfig {
-    fn default() -> Self {
-        Self {
-            image: String::new(),
-            args: Vec::new(),
-            working_dir: None,
-            env_vars: HashMap::new(),
-            volumes: Vec::new(),
-            ports: Vec::new(),
-            resources: ContainerResourceLimits::default(),
-            security: ContainerSecurityConfig::default(),
-            registry_auth: None,
-        }
-    }
 }

@@ -7,9 +7,8 @@
 //! - Federation with other ToadStool instances
 
 use anyhow::{bail, Context, Result};
-use clap::Parser;
+
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -343,9 +342,12 @@ impl UniversalComputeManager {
         match output_format.as_str() {
             "json" => {
                 let json_output = serde_json::to_string_pretty(&self.benchmarks)?;
-                println!("{}", json_output);
+                println!("{json_output}");
             }
-            "table" | _ => {
+            "table" => {
+                self.print_benchmark_table().await?;
+            }
+            _ => {
                 self.print_benchmark_table().await?;
             }
         }
@@ -433,7 +435,7 @@ impl UniversalComputeManager {
         // Parse endpoint
         let peer_addr: SocketAddr = endpoint
             .parse()
-            .with_context(|| format!("Invalid federation endpoint: {}", endpoint))?;
+            .with_context(|| format!("Invalid federation endpoint: {endpoint}"))?;
 
         // Create federation request
         let federation_request = FederationRequest {
@@ -511,7 +513,10 @@ impl UniversalComputeManager {
                 };
                 println!("{}", serde_yaml::to_string(&capabilities)?);
             }
-            "table" | _ => {
+            "table" => {
+                self.print_capabilities_table(detailed).await?;
+            }
+            _ => {
                 self.print_capabilities_table(detailed).await?;
             }
         }
@@ -923,7 +928,7 @@ impl UniversalComputeManager {
 
         // Check if target workload is running
         let status_check = std::process::Command::new("toadstool")
-            .args(&["ps", "--format", "json"])
+            .args(["ps", "--format", "json"])
             .output()?;
 
         if !status_check.status.success() {
@@ -948,7 +953,7 @@ impl UniversalComputeManager {
 
     async fn connect_to_peer(
         &self,
-        addr: &SocketAddr,
+        _addr: &SocketAddr,
         request: &FederationRequest,
     ) -> Result<FederationResponse> {
         // Implement federation protocol with peer authentication
@@ -1014,7 +1019,7 @@ impl UniversalComputeManager {
                         PlatformStatus::Unavailable => "❌",
                         PlatformStatus::Error(_) => "💥",
                     };
-                    println!("   {} {}", status_icon, platform_id);
+                    println!("   {status_icon} {platform_id}");
                 }
             }
         }
@@ -1081,11 +1086,11 @@ impl UniversalComputeManager {
 
         if detailed {
             for (platform_id, platform) in &self.platforms {
-                println!("\n📦 {}", platform_id);
+                println!("\n📦 {platform_id}");
                 println!("   Status: {:?}", platform.status);
                 println!("   Capabilities: {:?}", platform.capabilities);
                 if let Some(score) = platform.performance_score {
-                    println!("   Performance Score: {:.2}", score);
+                    println!("   Performance Score: {score:.2}");
                 }
                 if let Some(tested) = platform.last_tested {
                     println!("   Last Tested: {}", tested.format("%Y-%m-%d %H:%M:%S"));
@@ -1109,7 +1114,7 @@ impl UniversalComputeManager {
 
                 let score_str = platform
                     .performance_score
-                    .map(|s| format!("{:.2}", s))
+                    .map(|s| format!("{s:.2}"))
                     .unwrap_or_else(|| "-".to_string());
 
                 let tested_str = platform
@@ -1117,10 +1122,7 @@ impl UniversalComputeManager {
                     .map(|t| t.format("%Y-%m-%d").to_string())
                     .unwrap_or_else(|| "-".to_string());
 
-                println!(
-                    "{:<25} {:<15} {:<10} {:<15}",
-                    platform_id, status_str, score_str, tested_str
-                );
+                println!("{platform_id:<25} {status_str:<15} {score_str:<10} {tested_str:<15}");
             }
         }
 
@@ -1153,19 +1155,19 @@ impl UniversalComputeManager {
                 distribution,
                 architecture,
             } => {
-                format!("linux_{}_{}", distribution, architecture)
+                format!("linux_{distribution}_{architecture}")
             }
             PlatformType::Windows {
                 version,
                 architecture,
             } => {
-                format!("windows_{}_{}", version, architecture)
+                format!("windows_{version}_{architecture}")
             }
             PlatformType::MacOS {
                 version,
                 architecture,
             } => {
-                format!("macos_{}_{}", version, architecture)
+                format!("macos_{version}_{architecture}")
             }
             PlatformType::Docker => "docker".to_string(),
             PlatformType::Podman => "podman".to_string(),
@@ -1175,22 +1177,22 @@ impl UniversalComputeManager {
                 format!("gpu_{}_{}", vendor.to_lowercase(), framework.to_lowercase())
             }
             PlatformType::WebAssembly { runtime } => format!("wasm_{}", runtime.to_lowercase()),
-            PlatformType::Other { os, architecture } => format!("other_{}_{}", os, architecture),
+            PlatformType::Other { os, architecture } => format!("other_{os}_{architecture}"),
             PlatformType::EdgeDevice {
                 device_type,
                 architecture,
-            } => format!("edge_{}_{}", device_type, architecture),
-            PlatformType::MCUDevelopment { platform, tool } => format!("mcu_{}_{}", platform, tool),
+            } => format!("edge_{device_type}_{architecture}"),
+            PlatformType::MCUDevelopment { platform, tool } => format!("mcu_{platform}_{tool}"),
             PlatformType::BiologicalComputing {
                 platform,
                 simulation,
-            } => format!("bio_{}_{}", platform, simulation),
+            } => format!("bio_{platform}_{simulation}"),
             PlatformType::Quantum {
                 framework,
                 simulator,
-            } => format!("quantum_{}_{}", framework, simulator),
+            } => format!("quantum_{framework}_{simulator}"),
             PlatformType::NeuromorphicComputing { platform, hardware } => {
-                format!("neuro_{}_{}", platform, hardware)
+                format!("neuro_{platform}_{hardware}")
             }
         }
     }
@@ -1295,6 +1297,7 @@ impl UniversalComputeManager {
         metadata
     }
 
+    #[allow(dead_code)]
     async fn get_system_hardware_info(&self) -> Result<HardwareInfo> {
         use sysinfo::{CpuExt, System, SystemExt};
 
@@ -1325,6 +1328,7 @@ impl UniversalComputeManager {
         })
     }
 
+    #[allow(dead_code)]
     async fn detect_gpu_info(&self) -> Result<GpuInfo> {
         // Check for NVIDIA GPU
         if let Ok(output) = std::process::Command::new("nvidia-smi")
@@ -1379,13 +1383,13 @@ impl UniversalComputeManager {
         Ok(WorkloadCheckpoint {
             biome_name: biome.to_string(),
             timestamp: chrono::Utc::now(),
-            data_path: PathBuf::from(format!("/tmp/toadstool-checkpoint-{}.tar.gz", biome)),
+            data_path: PathBuf::from(format!("/tmp/toadstool-checkpoint-{biome}.tar.gz")),
         })
     }
 
     async fn transfer_checkpoint(
         &self,
-        checkpoint: &WorkloadCheckpoint,
+        _checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> Result<()> {
         info!("🚚 Transferring checkpoint to: {}", target);
@@ -1395,7 +1399,7 @@ impl UniversalComputeManager {
 
     async fn restore_from_checkpoint(
         &self,
-        checkpoint: &WorkloadCheckpoint,
+        _checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> Result<()> {
         info!("🔄 Restoring from checkpoint on: {}", target);
@@ -1419,18 +1423,22 @@ impl UniversalComputeManager {
         info!("📤 Exporting workload state for: {}", biome);
         Ok(WorkloadExport {
             biome_name: biome.to_string(),
-            export_path: PathBuf::from(format!("/tmp/toadstool-export-{}.tar.gz", biome)),
+            export_path: PathBuf::from(format!("/tmp/toadstool-export-{biome}.tar.gz")),
             metadata: std::collections::HashMap::new(),
         })
     }
 
-    async fn transfer_workload_data(&self, export: &WorkloadExport, target: &str) -> Result<()> {
+    async fn transfer_workload_data(&self, _export: &WorkloadExport, target: &str) -> Result<()> {
         info!("🚛 Transferring workload data to: {}", target);
         // Transfer implementation
         Ok(())
     }
 
-    async fn import_and_start_workload(&self, export: &WorkloadExport, target: &str) -> Result<()> {
+    async fn import_and_start_workload(
+        &self,
+        _export: &WorkloadExport,
+        target: &str,
+    ) -> Result<()> {
         info!("📥 Importing and starting workload on: {}", target);
         // Import and start implementation
         Ok(())
@@ -1481,7 +1489,7 @@ impl UniversalComputeManager {
 
     async fn deploy_snapshot_to_target(
         &self,
-        snapshot: &WorkloadSnapshot,
+        _snapshot: &WorkloadSnapshot,
         target: &str,
     ) -> Result<()> {
         info!("🚀 Deploying snapshot to target: {}", target);
@@ -1495,13 +1503,15 @@ impl UniversalComputeManager {
         Ok(())
     }
 
-    async fn setup_https_federation(&self, endpoint: &url::Url, mode: &str) -> Result<()> {
+    #[allow(dead_code)]
+    async fn setup_https_federation(&self, endpoint: &url::Url, _mode: &str) -> Result<()> {
         info!("🔗 Setting up HTTPS federation to: {}", endpoint);
         // HTTPS federation setup
         Ok(())
     }
 
-    async fn setup_websocket_federation(&self, endpoint: &url::Url, mode: &str) -> Result<()> {
+    #[allow(dead_code)]
+    async fn setup_websocket_federation(&self, endpoint: &url::Url, _mode: &str) -> Result<()> {
         info!("🔌 Setting up WebSocket federation to: {}", endpoint);
         // WebSocket federation setup
         Ok(())
@@ -1522,8 +1532,8 @@ impl UniversalComputeManager {
         // Test Linux-specific capabilities like cgroups, namespaces, seccomp
         let has_cgroups = std::fs::metadata("/sys/fs/cgroup").is_ok();
         let has_namespaces = std::fs::metadata("/proc/self/ns").is_ok();
-        let has_seccomp = std::fs::read_to_string("/proc/version")
-            .map_or(false, |v| v.contains("CONFIG_SECCOMP"));
+        let has_seccomp =
+            std::fs::read_to_string("/proc/version").is_ok_and(|v| v.contains("CONFIG_SECCOMP"));
 
         info!(
             "Linux capabilities: cgroups={}, namespaces={}, seccomp={}",
@@ -1537,7 +1547,7 @@ impl UniversalComputeManager {
         let has_sandbox = std::process::Command::new("which")
             .arg("sandbox-exec")
             .output()
-            .map_or(false, |o| o.status.success());
+            .is_ok_and(|o| o.status.success());
 
         let has_system_integrity = std::fs::metadata("/System/Library/Sandbox").is_ok();
 
@@ -1553,7 +1563,7 @@ impl UniversalComputeManager {
         let has_powershell = std::process::Command::new("where")
             .arg("powershell")
             .output()
-            .map_or(false, |o| o.status.success());
+            .is_ok_and(|o| o.status.success());
 
         info!("Windows capabilities: powershell={}", has_powershell);
         Ok(has_powershell)
@@ -1561,7 +1571,7 @@ impl UniversalComputeManager {
 
     async fn test_generic_capabilities(&self) -> Result<bool> {
         // Generic capability tests that work across platforms
-        let has_proc_info = sysinfo::System::new_all().processes().len() > 0;
+        let has_proc_info = !sysinfo::System::new_all().processes().is_empty();
         let has_filesystem = std::env::current_dir().is_ok();
 
         info!(

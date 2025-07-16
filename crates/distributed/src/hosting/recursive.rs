@@ -4,22 +4,24 @@ use std::sync::Arc;
 use toadstool::ToadStoolResult;
 use tokio::sync::RwLock;
 
-use crate::types::*;
+use crate::types::{
+    InstanceStatus, ProcessHandle, ResourceAllocation, ResourceLimits, ToadStoolHostingConfig,
+};
 use crate::universal::RecursiveHostingConfig;
 
-/// Recursive hosting manager for hosting child ToadStool instances
+/// Recursive hosting manager for hosting child `ToadStool` instances
 pub struct RecursiveHostingManager {
     /// Configuration
-    config: RecursiveHostingConfig,
+    _config: RecursiveHostingConfig,
     /// Active child instances
     child_instances: Arc<RwLock<HashMap<String, ChildToadStoolInstance>>>,
     /// Resource allocator for children
-    resource_allocator: Arc<ChildResourceAllocator>,
+    _resource_allocator: Arc<ChildResourceAllocator>,
     /// Inter-instance communication
-    inter_instance_comm: Arc<InterInstanceCommunication>,
+    _inter_instance_comm: Arc<InterInstanceCommunication>,
 }
 
-/// Child ToadStool instance
+/// Child `ToadStool` instance
 #[derive(Debug, Clone)]
 pub struct ChildToadStoolInstance {
     /// Instance identification
@@ -38,13 +40,13 @@ pub struct ChildToadStoolInstance {
 
 /// Child resource allocator
 pub struct ChildResourceAllocator {
-    allocations: Arc<RwLock<HashMap<String, ResourceAllocation>>>,
-    total_resources: ResourceLimits,
+    _allocations: Arc<RwLock<HashMap<String, ResourceAllocation>>>,
+    _total_resources: ResourceLimits,
 }
 
 /// Inter-instance communication
 pub struct InterInstanceCommunication {
-    channels: Arc<RwLock<HashMap<String, CommunicationChannel>>>,
+    _channels: Arc<RwLock<HashMap<String, CommunicationChannel>>>,
 }
 
 /// Communication channel
@@ -58,10 +60,10 @@ pub struct CommunicationChannel {
 impl RecursiveHostingManager {
     pub async fn new(config: RecursiveHostingConfig) -> ToadStoolResult<Self> {
         Ok(Self {
-            config,
+            _config: config,
             child_instances: Arc::new(RwLock::new(HashMap::new())),
-            resource_allocator: Arc::new(ChildResourceAllocator::new()),
-            inter_instance_comm: Arc::new(InterInstanceCommunication::new()),
+            _resource_allocator: Arc::new(ChildResourceAllocator::new()),
+            _inter_instance_comm: Arc::new(InterInstanceCommunication::new()),
         })
     }
 
@@ -74,9 +76,7 @@ impl RecursiveHostingManager {
         let instance = ChildToadStoolInstance {
             instance_id: instance_id.clone(),
             process_handle: ProcessHandle::default(),
-            resource_allocation: toadstool_config
-                .resource_allocation
-                .unwrap_or_default(),
+            resource_allocation: toadstool_config.resource_allocation.unwrap_or_default(),
             endpoint: format!("http://localhost:8080/{instance_id}"),
             status: InstanceStatus::Starting,
             started_at: Utc::now(),
@@ -90,10 +90,11 @@ impl RecursiveHostingManager {
 }
 
 impl ChildResourceAllocator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            allocations: Arc::new(RwLock::new(HashMap::new())),
-            total_resources: ResourceLimits::default(),
+            _allocations: Arc::new(RwLock::new(HashMap::new())),
+            _total_resources: ResourceLimits::default(),
         }
     }
 }
@@ -105,9 +106,10 @@ impl Default for ChildResourceAllocator {
 }
 
 impl InterInstanceCommunication {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            channels: Arc::new(RwLock::new(HashMap::new())),
+            _channels: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }

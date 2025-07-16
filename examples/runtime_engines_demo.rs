@@ -12,13 +12,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow;
-use tokio;
 use uuid::Uuid;
 
 use toadstool::{
     config::ToadStoolConfig,
-    execution::{ExecutionInput, ExecutionRequest, RuntimeEngine, RuntimeType},
+    execution::{ExecutionInput, ExecutionRequest, RuntimeType},
     init,
     resources::{
         CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,
@@ -45,24 +43,28 @@ async fn main() -> anyhow::Result<()> {
     let config = ToadStoolConfig::default();
 
     // Create runtime orchestrator with selection strategy
-    let mut orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
 
     // Initialize and register all runtime engines
     println!("\n📦 Initializing Runtime Engines...");
 
     // 1. Native Runtime Engine (always available)
-    let mut native_engine = NativeRuntimeEngine::new();
+    let native_engine = NativeRuntimeEngine::new();
     println!("✅ Native Runtime Engine initialized");
-    orchestrator.register_engine(RuntimeType::Native, Box::new(native_engine));
+    let _ = orchestrator
+        .register_engine(RuntimeType::Native, Box::new(native_engine))
+        .await;
 
     // 2. WebAssembly Runtime Engine
     let wasm_config = toadstool_runtime_wasm::WasmRuntimeConfig::default();
     match WasmRuntimeEngine::new(wasm_config) {
-        Ok(mut wasm_engine) => {
+        Ok(wasm_engine) => {
             println!("✅ WebAssembly Runtime Engine initialized");
-            orchestrator.register_engine(RuntimeType::Wasm, Box::new(wasm_engine));
+            let _ = orchestrator
+                .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
+                .await;
         }
-        Err(e) => println!("❌ WebAssembly Runtime Engine failed: {}", e),
+        Err(e) => println!("❌ WebAssembly Runtime Engine failed: {e}"),
     }
 
     // 3. Container Runtime Engine (may fail if Docker not available)
@@ -97,10 +99,10 @@ async fn main() -> anyhow::Result<()> {
                 println!("   Output: {}", stdout.trim());
             }
             if let Some(exit_code) = response.output.exit_code {
-                println!("   Exit Code: {}", exit_code);
+                println!("   Exit Code: {exit_code}");
             }
         }
-        Err(e) => println!("❌ Native execution failed: {}", e),
+        Err(e) => println!("❌ Native execution failed: {e}"),
     }
 
     // Demo 2: WebAssembly Module Execution
@@ -119,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("   Warnings: {:?}", response.warnings);
             }
         }
-        Err(e) => println!("❌ WASM execution failed: {}", e),
+        Err(e) => println!("❌ WASM execution failed: {e}"),
     }
 
     // Demo 3: Container Execution
@@ -137,13 +139,10 @@ async fn main() -> anyhow::Result<()> {
                 println!("   Output: {}", stdout.trim());
             }
             if let Some(exit_code) = response.output.exit_code {
-                println!("   Exit Code: {}", exit_code);
+                println!("   Exit Code: {exit_code}");
             }
         }
-        Err(e) => println!(
-            "⚠️  Container execution failed (expected if Docker unavailable): {}",
-            e
-        ),
+        Err(e) => println!("⚠️  Container execution failed (expected if Docker unavailable): {e}"),
     }
 
     // Demo 4: GPU Foundation Check
@@ -158,7 +157,7 @@ async fn main() -> anyhow::Result<()> {
             println!("   Runtime: {:?}", response.runtime_used);
             println!("   Duration: {:?}", response.duration);
             if let Some(stdout) = &response.output.stdout {
-                println!("   Message: {}", stdout);
+                println!("   Message: {stdout}");
             }
             if !response.warnings.is_empty() {
                 println!("   Note: {}", response.warnings[0]);
@@ -166,10 +165,10 @@ async fn main() -> anyhow::Result<()> {
 
             // Display GPU metrics
             if let Some(devices) = response.output.result.get("available_devices") {
-                println!("   Available Devices: {}", devices);
+                println!("   Available Devices: {devices}");
             }
         }
-        Err(e) => println!("❌ GPU foundation check failed: {}", e),
+        Err(e) => println!("❌ GPU foundation check failed: {e}"),
     }
 
     // Demo 5: Runtime Selection and Capabilities
@@ -177,7 +176,7 @@ async fn main() -> anyhow::Result<()> {
     println!("🎛️  Demo 5: Runtime Capabilities Analysis");
     println!("{}", "=".repeat(60));
 
-    for runtime_type in vec![
+    for runtime_type in [
         RuntimeType::Native,
         RuntimeType::Wasm,
         RuntimeType::Container,
@@ -187,7 +186,7 @@ async fn main() -> anyhow::Result<()> {
             "\n📋 {} Runtime Capabilities:",
             format!("{:?}", runtime_type)
         );
-        println!("   Runtime type: {:?}", runtime_type);
+        println!("   Runtime type: {runtime_type:?}");
         println!("   Status: Available");
     }
 
@@ -205,7 +204,7 @@ async fn main() -> anyhow::Result<()> {
     ];
 
     for isolation_level in &isolation_levels {
-        println!("\n🔐 Testing {:?} Isolation Level:", isolation_level);
+        println!("\n🔐 Testing {isolation_level:?} Isolation Level:");
 
         let security_request = create_security_test_request(isolation_level.clone())?;
         match orchestrator.execute(security_request).await {
@@ -215,7 +214,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("   Duration: {:?}", response.duration);
             }
             Err(e) => {
-                println!("   ⚠️  Security validation: {}", e);
+                println!("   ⚠️  Security validation: {e}");
             }
         }
     }
@@ -233,7 +232,7 @@ async fn main() -> anyhow::Result<()> {
     ];
 
     for (test_name, memory_mb) in &resource_tests {
-        println!("\n💾 Testing {}: {} MB", test_name, memory_mb);
+        println!("\n💾 Testing {test_name}: {memory_mb} MB");
 
         let resource_request = create_resource_test_request(*memory_mb)?;
         match orchestrator.execute(resource_request).await {
@@ -246,7 +245,7 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
             Err(e) => {
-                println!("   ⚠️  Resource validation failed: {}", e);
+                println!("   ⚠️  Resource validation failed: {e}");
             }
         }
     }

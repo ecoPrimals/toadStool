@@ -8,7 +8,7 @@
 //! - Security policy enforcement
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -344,7 +344,7 @@ pub trait SandboxManager: Send + Sync {
 pub struct CrossPlatformSandboxManager {
     config: SandboxConfig,
     sandboxes: Arc<RwLock<HashMap<String, SandboxInfo>>>,
-    policy_manager: Arc<dyn PolicyManager>,
+    _policy_manager: Arc<dyn PolicyManager>,
 
     #[cfg(target_os = "linux")]
     linux_manager: LinuxSandboxManager,
@@ -398,7 +398,7 @@ impl CrossPlatformSandboxManager {
             windows_manager: WindowsSandboxManager::new(config.clone()).await?,
 
             config,
-            policy_manager,
+            _policy_manager: policy_manager,
         })
     }
 
@@ -481,7 +481,7 @@ impl CrossPlatformSandboxManager {
     /// Setup filesystem mounts for sandbox
     async fn setup_filesystem_mounts(
         &self,
-        sandbox_dir: &PathBuf,
+        sandbox_dir: &Path,
         mounts: &[FilesystemMount],
     ) -> ToadStoolResult<()> {
         for mount in mounts {
@@ -1303,7 +1303,9 @@ mod tests {
                 (MountType::Device, MountType::Device) => {}
                 (MountType::Proc, MountType::Proc) => {}
                 (MountType::Sys, MountType::Sys) => {}
-                _ => assert!(false, "Serialization/deserialization mismatch for MountType: {:?} != {:?}", mount_type, deserialized),
+                _ => panic!(
+                    "Serialization/deserialization mismatch for MountType: {mount_type:?} != {deserialized:?}"
+                ),
             }
         }
     }
@@ -1357,7 +1359,9 @@ mod tests {
                     assert_eq!(ttl1, ttl2);
                 }
                 (SandboxLifetime::Manual, SandboxLifetime::Manual) => {}
-                _ => assert!(false, "Serialization/deserialization mismatch for SandboxLifetime: {:?} != {:?}", lifetime, deserialized),
+                _ => panic!(
+                    "Serialization/deserialization mismatch for SandboxLifetime: {lifetime:?} != {deserialized:?}"
+                ),
             }
         }
     }
@@ -1383,7 +1387,9 @@ mod tests {
                 (ViolationSeverity::Medium, ViolationSeverity::Medium) => {}
                 (ViolationSeverity::High, ViolationSeverity::High) => {}
                 (ViolationSeverity::Critical, ViolationSeverity::Critical) => {}
-                _ => assert!(false, "Serialization/deserialization mismatch for ViolationSeverity: {:?} != {:?}", severity, deserialized),
+                _ => panic!(
+                    "Serialization/deserialization mismatch for ViolationSeverity: {severity:?} != {deserialized:?}"
+                ),
             }
         }
     }

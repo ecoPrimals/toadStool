@@ -313,7 +313,7 @@ pub struct SecurityContextBuilder {
     isolation_level: IsolationLevel,
     capabilities: Vec<Capability>,
     policies: Vec<String>,
-    custom_security: HashMap<String, String>,
+    _custom_security: HashMap<String, String>,
 }
 
 impl Default for SecurityContextBuilder {
@@ -328,7 +328,7 @@ impl SecurityContextBuilder {
             isolation_level: IsolationLevel::Standard,
             capabilities: vec![Capability::Execute],
             policies: vec![],
-            custom_security: HashMap::new(),
+            _custom_security: HashMap::new(),
         }
     }
 
@@ -510,7 +510,7 @@ mod tests {
             .build();
 
         // Custom metrics are not directly accessible via fields
-        assert!(true); // Test passes if we can build metrics
+        // Test passes if we can build metrics
         assert!(metrics.cpu.usage_percent > 0.0);
     }
 }

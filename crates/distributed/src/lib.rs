@@ -1,4 +1,4 @@
-//! # ToadStool Distributed Computing Integration
+//! # `ToadStool` Distributed Computing Integration
 //!
 //! Simplified distributed computing integration focused on:
 //! - Songbird ecosystem integration for network effects
@@ -33,17 +33,36 @@ pub mod substrate_detection;
 pub use compatibility::*;
 pub use core::*;
 pub use ecosystem::*;
-pub use hosting::*;
 pub use metrics::*;
 pub use network::*;
-pub use os_layer::*;
-pub use types::*;
-pub use universal::*;
 
-// Re-export existing modules  
-pub use cloud::*;
-pub use crypto_lock::*;
-pub use songbird_integration::*;
+// Specific exports to avoid ambiguous glob re-exports
+pub use hosting::{
+    ChildResourceAllocator, ChildToadStoolInstance, CommunicationChannel, HostingResourceConfig,
+    HostingResourceManager, InterInstanceCommunication, RecursiveHostingManager,
+};
+pub use os_layer::{OSLayerConfig, OSLayerManager};
+pub use types::{
+    CompatibilityMode, CpuRequirements, ExecutionTarget, GpuRequirements, InstanceStatus,
+    JobPriority, LoadBalancingStrategy, MemoryRequirements, NetworkRequirements, ProcessHandle,
+    ResourceAllocation, ResourceConstraints, ResourceLimits, ResourceRequirements, RetryConfig,
+    StorageRequirements, ToadStoolHostingConfig, UniversalJob, UniversalJobQueue, UniversalJobType,
+};
+pub use universal::{
+    RecursiveHostingConfig, UniversalAdapter, UniversalScheduler, UniversalSchedulerConfig,
+};
+
+// Re-export existing modules with specific types
+pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
+pub use crypto_lock::{
+    AccessPolicies, BearDogCryptoPermission, BearDogPermissionValidator, CryptoValidator,
+    DelegationValidator, ExternalTarget, PermissionHolder, PermissionRevocationList,
+    ToadStoolCryptoLock,
+};
+pub use songbird_integration::{
+    JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,
+    SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
+};
 pub use substrate_detection::*;
 
 // Tests module

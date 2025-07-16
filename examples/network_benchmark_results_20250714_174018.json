@@ -1,0 +1,134 @@
+[
+  {
+    "name": "DNS Service Discovery",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 593361502
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 1186723
+    },
+    "ops_per_second": 842.6566238535644,
+    "success_rate": 1.0,
+    "avg_latency_ms": 1.1862646040000004,
+    "p95_latency_ms": 2.067701,
+    "p99_latency_ms": 2.085965,
+    "throughput_mbs": 0.1,
+    "metrics": {
+      "avg_ttl_seconds": 300.0,
+      "resolution_failures": 0.0,
+      "cache_hit_rate": 85.0
+    }
+  },
+  {
+    "name": "Service Mesh Communication",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 13381729
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 26763
+    },
+    "ops_per_second": 37364.37944603422,
+    "success_rate": 0.99,
+    "avg_latency_ms": 1.3188833232323236,
+    "p95_latency_ms": 2.0877980000000003,
+    "p99_latency_ms": 2.08845,
+    "throughput_mbs": 36.12376528474011,
+    "metrics": {
+      "sidecar_cpu_usage": 15.0,
+      "connection_pool_efficiency": 92.0,
+      "mtls_overhead_ms": 0.5
+    }
+  },
+  {
+    "name": "Load Balancing",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 569688559
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 1139377
+    },
+    "ops_per_second": 877.6725319491627,
+    "success_rate": 1.0,
+    "avg_latency_ms": 1.1386265720000002,
+    "p95_latency_ms": 2.0608269999999997,
+    "p99_latency_ms": 2.079878,
+    "throughput_mbs": 0.5,
+    "metrics": {
+      "backend_count": 4.0,
+      "health_check_overhead_ms": 2.0,
+      "fairness_score": 100.0
+    }
+  },
+  {
+    "name": "Circuit Breaker",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 553141741
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 1106283
+    },
+    "ops_per_second": 903.9274437978095,
+    "success_rate": 1.0,
+    "avg_latency_ms": 1.1058786219999994,
+    "p95_latency_ms": 1.167923,
+    "p99_latency_ms": 2.070719,
+    "throughput_mbs": 0.3,
+    "metrics": {
+      "recovery_time_ms": 1000.0,
+      "circuit_trips": 2.0,
+      "failure_threshold": 5.0
+    }
+  },
+  {
+    "name": "Network Policies",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 580085159
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 1160170
+    },
+    "ops_per_second": 861.9424100798276,
+    "success_rate": 0.8,
+    "avg_latency_ms": 1.1670422575000006,
+    "p95_latency_ms": 2.0689480000000002,
+    "p99_latency_ms": 2.102577,
+    "throughput_mbs": 0.2,
+    "metrics": {
+      "policy_cache_hit_rate": 95.0,
+      "allow_rate": 80.0,
+      "policy_evaluations": 500.0
+    }
+  },
+  {
+    "name": "Cross-Primal Security",
+    "total_duration": {
+      "secs": 0,
+      "nanos": 688624714
+    },
+    "avg_duration": {
+      "secs": 0,
+      "nanos": 1377249
+    },
+    "ops_per_second": 726.0848904124576,
+    "success_rate": 0.95,
+    "avg_latency_ms": 1.3820368357894743,
+    "p95_latency_ms": 2.0805160000000003,
+    "p99_latency_ms": 2.1143099999999997,
+    "throughput_mbs": 0.1,
+    "metrics": {
+      "crypto_verification_ms": 1.5,
+      "beardog_auth_calls": 500.0,
+      "token_validation_ms": 0.8
+    }
+  }
+]

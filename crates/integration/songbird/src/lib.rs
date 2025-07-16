@@ -16,9 +16,7 @@ use tracing::{debug, error, info, instrument, warn};
 
 use toadstool::{
     error::{ToadStoolError, ToadStoolResult},
-    execution::{
-        ExecutionRequest, ExecutionResponse, RuntimeType,
-    },
+    execution::{ExecutionRequest, ExecutionResponse, RuntimeType},
     security::SecurityContext,
 };
 
@@ -635,42 +633,42 @@ impl SongbirdIntegration {
         );
 
         let payload = match request.request_type {
-            RequestType::Execute => {
-                match &self.execution_engine {
-                    Some(_engine) => {
-                        let execution_request = self.parse_execution_request(request.payload)?;
-                        let response = self.execute_request(execution_request).await?;
-                        serde_json::to_value(response).map_err(|e| {
-                            ToadStoolError::parsing(format!("Failed to serialize execution response: {}", e))
-                        })?
-                    }
-                    None => {
-                        serde_json::json!({"error": "No execution engine available"})
-                    }
+            RequestType::Execute => match &self.execution_engine {
+                Some(_engine) => {
+                    let execution_request = self.parse_execution_request(request.payload)?;
+                    let response = self.execute_request(execution_request).await?;
+                    serde_json::to_value(response).map_err(|e| {
+                        ToadStoolError::parsing(format!(
+                            "Failed to serialize execution response: {e}"
+                        ))
+                    })?
                 }
-            }
+                None => {
+                    serde_json::json!({"error": "No execution engine available"})
+                }
+            },
             RequestType::HealthCheck => {
                 let health = self.health_status.read().await.clone();
                 serde_json::to_value(health).map_err(|e| {
-                    ToadStoolError::parsing(format!("Failed to serialize health status: {}", e))
+                    ToadStoolError::parsing(format!("Failed to serialize health status: {e}"))
                 })?
             }
             RequestType::CapabilityQuery => {
                 let capabilities = self.capabilities.read().await.clone();
                 serde_json::to_value(capabilities).map_err(|e| {
-                    ToadStoolError::parsing(format!("Failed to serialize capabilities: {}", e))
+                    ToadStoolError::parsing(format!("Failed to serialize capabilities: {e}"))
                 })?
             }
             RequestType::ResourceStatus => {
                 let health = self.health_status.read().await;
                 serde_json::to_value(&health.resource_utilization).map_err(|e| {
-                    ToadStoolError::parsing(format!("Failed to serialize resource status: {}", e))
+                    ToadStoolError::parsing(format!("Failed to serialize resource status: {e}"))
                 })?
             }
             RequestType::MetricsQuery => {
                 let health = self.health_status.read().await;
                 serde_json::to_value(&health.performance).map_err(|e| {
-                    ToadStoolError::parsing(format!("Failed to serialize metrics: {}", e))
+                    ToadStoolError::parsing(format!("Failed to serialize metrics: {e}"))
                 })?
             }
         };
@@ -678,7 +676,7 @@ impl SongbirdIntegration {
         Ok(SongbirdResponse {
             request_id: request.request_id,
             status: ResponseStatus::Success,
-            payload: payload,
+            payload,
             metadata: HashMap::new(),
             timestamp: Utc::now(),
         })
@@ -932,9 +930,7 @@ impl SongbirdIntegration {
 
         if response.status().is_success() {
             let decision: serde_json::Value = response.json().await.map_err(|e| {
-                ToadStoolError::integration(format!(
-                    "Failed to parse orchestration response: {e}"
-                ))
+                ToadStoolError::integration(format!("Failed to parse orchestration response: {e}"))
             })?;
 
             info!("✅ Received orchestration decision from Songbird");
@@ -1073,14 +1069,17 @@ impl SongbirdIntegration {
             // If no execution engine is available, return a proper error
             // This indicates the Songbird integration is not fully configured
             Err(toadstool::ToadStoolError::configuration(
-                "Songbird integration requires an execution engine to be configured"
+                "Songbird integration requires an execution engine to be configured",
             ))
         }
     }
 
-    fn parse_execution_request(&self, payload: serde_json::Value) -> ToadStoolResult<ExecutionRequest> {
+    fn parse_execution_request(
+        &self,
+        payload: serde_json::Value,
+    ) -> ToadStoolResult<ExecutionRequest> {
         serde_json::from_value(payload)
-            .map_err(|e| ToadStoolError::parsing(format!("Invalid execution request: {}", e)))
+            .map_err(|e| ToadStoolError::parsing(format!("Invalid execution request: {e}")))
     }
 
     async fn collect_current_capabilities(&self) -> ToadStoolCapabilities {
@@ -1121,7 +1120,7 @@ impl SongbirdIntegration {
 
         // Detect actual system resources
         if let Ok(cpu_count) = std::thread::available_parallelism() {
-            capabilities.resource_capacity.cpu_cores = cpu_count.get() as u32;
+            capabilities.resource_capacity.cpu_cores = u32::try_from(cpu_count.get()).unwrap_or(4);
         }
 
         capabilities
@@ -1171,18 +1170,39 @@ impl SongbirdIntegration {
 
     // Helper methods for real system metrics
     fn get_system_load_average() -> Result<[f64; 3], std::io::Error> {
-        // This is a simplified load average - in production you'd use proper system APIs
-        // For now, return reasonable mock values
-        Ok([0.5, 0.7, 0.8])
+        #[cfg(feature = "system-metrics")]
+        {
+            // TODO: Implement actual system load average detection
+            // This is a simplified load average - in production you'd use proper system APIs
+            Ok([0.5, 0.7, 0.8])
+        }
+
+        #[cfg(not(feature = "system-metrics"))]
+        {
+            // For now, return reasonable mock values
+            Ok([0.5, 0.7, 0.8])
+        }
     }
 
     fn get_disk_info() -> Result<DiskInfo, std::io::Error> {
-        // This would use proper disk space detection in production
-        // For now, return reasonable estimates
-        Ok(DiskInfo {
-            total_gb: 1000.0,
-            available_gb: 400.0,
-        })
+        #[cfg(feature = "system-metrics")]
+        {
+            // TODO: Implement actual disk space detection
+            // This would use proper disk space detection in production
+            Ok(DiskInfo {
+                total_gb: 1000.0,
+                available_gb: 400.0,
+            })
+        }
+
+        #[cfg(not(feature = "system-metrics"))]
+        {
+            // For now, return reasonable estimates
+            Ok(DiskInfo {
+                total_gb: 1000.0,
+                available_gb: 400.0,
+            })
+        }
     }
 
     fn default_capabilities() -> ToadStoolCapabilities {

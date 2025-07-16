@@ -304,7 +304,10 @@ impl NativeRuntimeEngine {
             match monitor.get_metrics(&request.execution_id.to_string()) {
                 Ok(metrics) => metrics,
                 Err(e) => {
-                    warn!("Failed to get metrics for execution {}: {}", request.execution_id, e);
+                    warn!(
+                        "Failed to get metrics for execution {}: {}",
+                        request.execution_id, e
+                    );
                     RuntimeMetrics::default()
                 }
             }

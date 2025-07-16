@@ -1296,7 +1296,7 @@ mod tests {
         // Ensure temp directory exists
         std::fs::create_dir_all(&temp_dir).ok();
 
-        let manager = FilePolicyManager::new(config).unwrap();
+        let _manager = FilePolicyManager::new(config).unwrap();
 
         // Clean up
         std::fs::remove_dir_all(&temp_dir).ok();

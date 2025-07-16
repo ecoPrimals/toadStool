@@ -13,9 +13,9 @@ pub struct UniversalKernelCompiler {
     /// Compilation cache
     cache: Arc<RwLock<HashMap<String, CompiledKernel>>>,
     /// Supported input formats
-    input_formats: Vec<KernelFormat>,
+    _input_formats: Vec<KernelFormat>,
     /// Target frameworks for compilation
-    target_frameworks: Vec<GpuFramework>,
+    _target_frameworks: Vec<GpuFramework>,
     /// Optimization strategies
     optimizers: HashMap<GpuFramework, Box<dyn KernelOptimizer>>,
     /// Configuration
@@ -26,7 +26,7 @@ impl UniversalKernelCompiler {
     pub fn new(config: CompilationConfig) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
-            input_formats: vec![
+            _input_formats: vec![
                 KernelFormat::OpenClC,
                 KernelFormat::CudaC,
                 KernelFormat::Hlsl,
@@ -37,7 +37,7 @@ impl UniversalKernelCompiler {
                 KernelFormat::Wasm,
                 KernelFormat::Tucl,
             ],
-            target_frameworks: vec![
+            _target_frameworks: vec![
                 GpuFramework::WebGpu,
                 GpuFramework::Vulkan,
                 GpuFramework::OpenCl,
@@ -71,9 +71,8 @@ impl UniversalKernelCompiler {
         }
 
         // Compile kernel
-        let compiled_kernel = self
-            .compile_kernel_internal(kernel_source, format, target_framework, device)
-            .await?;
+        let compiled_kernel =
+            self.compile_kernel_internal(kernel_source, format, target_framework, device)?;
 
         // Cache the result
         if self.config.caching.enabled {
@@ -85,7 +84,7 @@ impl UniversalKernelCompiler {
     }
 
     /// Internal kernel compilation
-    async fn compile_kernel_internal(
+    fn compile_kernel_internal(
         &self,
         kernel_source: &str,
         _format: KernelFormat,

@@ -1,4 +1,4 @@
-//! Core types and data structures for NestGate integration
+//! Core types and data structures for `NestGate` integration
 
 use std::collections::HashMap;
 
@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// NestGate integration errors
+/// `NestGate` integration errors
 #[derive(Debug, thiserror::Error)]
 pub enum NestGateError {
     #[error("Connection failed: {0}")]
@@ -206,4 +206,41 @@ pub struct CachedArtifact {
     pub data: Option<Vec<u8>>,
     pub cached_at: DateTime<Utc>,
     pub access_count: u64,
+}
+
+/// Storage operation result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StorageResult {
+    /// Artifact ID
+    pub id: Uuid,
+    /// Storage operation status
+    pub status: StorageStatus,
+    /// Status message
+    pub message: String,
+}
+
+/// Storage operation status
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StorageStatus {
+    /// Operation succeeded
+    Success,
+    /// Operation failed
+    Failed,
+    /// Operation in progress
+    InProgress,
+    /// Operation cancelled
+    Cancelled,
+}
+
+/// Cache entry for artifacts
+#[derive(Debug, Clone)]
+pub struct CacheEntry {
+    /// Artifact ID
+    pub id: Uuid,
+    /// Cached data
+    pub data: Vec<u8>,
+    /// Artifact metadata
+    pub metadata: ArtifactMetadata,
+    /// Cache timestamp
+    pub cached_at: DateTime<Utc>,
 }

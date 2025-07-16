@@ -57,14 +57,17 @@ use toadstool::{RuntimeEngine, RuntimeType};
 // Re-export public types
 pub use config::*;
 pub use errors::*;
-pub use mocks::*;
 pub use state::*;
+
+#[cfg(test)]
+pub use mocks::*;
 
 // Module declarations
 pub mod background;
 pub mod config;
 pub mod errors;
 pub mod handlers;
+#[cfg(test)]
 pub mod mocks;
 pub mod state;
 pub mod websocket;

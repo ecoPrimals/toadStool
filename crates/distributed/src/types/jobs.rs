@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use toadstool::{ExecutionRequest, ToadStoolError, ToadStoolResult};
 
-use super::resources::*;
+use super::resources::{ResourceConstraints, ResourceRequirements, RetryConfig};
 
 /// Universal job for cross-platform execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,11 +39,11 @@ pub struct UniversalJob {
 pub enum UniversalJobType {
     /// Local execution
     Local,
-    /// Remote ToadStool execution
+    /// Remote `ToadStool` execution
     RemoteToadStool { endpoint: String },
     /// Ecosystem tool execution
     EcosystemTool { tool_name: String, endpoint: String },
-    /// Recursive ToadStool hosting
+    /// Recursive `ToadStool` hosting
     RecursiveHosting {
         toadstool_config: ToadStoolHostingConfig,
     },
@@ -55,6 +55,14 @@ pub enum UniversalJobType {
     // Job classification types for distributed scheduling
     /// CPU-intensive computational work
     ComputeIntensive,
+    /// Memory-intensive workloads
+    MemoryIntensive,
+    /// Network-intensive workloads
+    NetworkIntensive,
+    /// Storage-intensive workloads
+    StorageIntensive,
+    /// Hybrid workloads combining multiple resource types
+    Hybrid,
     /// Data processing and analytics
     DataProcessing,
     /// Machine learning and AI workloads
@@ -78,16 +86,20 @@ impl FromStr for UniversalJobType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "local" => Ok(UniversalJobType::Local),
-            "compute_intensive" => Ok(UniversalJobType::ComputeIntensive),
-            "data_processing" => Ok(UniversalJobType::DataProcessing),
-            "machine_learning" => Ok(UniversalJobType::MachineLearning),
-            "simulation" => Ok(UniversalJobType::Simulation),
-            "native" => Ok(UniversalJobType::Native),
-            "container" => Ok(UniversalJobType::Container),
-            "wasm" => Ok(UniversalJobType::WASM),
-            "gpu" => Ok(UniversalJobType::GPU),
-            _ => Ok(UniversalJobType::Custom(s.to_string())),
+            "local" => Ok(Self::Local),
+            "compute_intensive" => Ok(Self::ComputeIntensive),
+            "memory_intensive" => Ok(Self::MemoryIntensive),
+            "network_intensive" => Ok(Self::NetworkIntensive),
+            "storage_intensive" => Ok(Self::StorageIntensive),
+            "hybrid" => Ok(Self::Hybrid),
+            "data_processing" => Ok(Self::DataProcessing),
+            "machine_learning" => Ok(Self::MachineLearning),
+            "simulation" => Ok(Self::Simulation),
+            "native" => Ok(Self::Native),
+            "container" => Ok(Self::Container),
+            "wasm" => Ok(Self::WASM),
+            "gpu" => Ok(Self::GPU),
+            _ => Ok(Self::Custom(s.to_string())),
         }
     }
 }
@@ -97,7 +109,7 @@ impl FromStr for UniversalJobType {
 pub enum ExecutionTarget {
     /// Execute locally
     Local,
-    /// Execute on specific ToadStool instance
+    /// Execute on specific `ToadStool` instance
     ToadStool {
         instance_id: String,
         endpoint: String,
@@ -192,7 +204,7 @@ pub enum CompatibilityMode {
     LegacyCompat { system_type: String },
 }
 
-/// Configuration for ToadStool hosting
+/// Configuration for `ToadStool` hosting
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToadStoolHostingConfig {
     /// Enable hosting
@@ -242,6 +254,7 @@ impl Default for UniversalJobQueue {
 }
 
 impl UniversalJobQueue {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             priority_queues: BTreeMap::new(),
@@ -255,21 +268,24 @@ impl UniversalJobQueue {
         let job_id = job.job_id;
         let dependencies = job.dependencies.clone();
 
-        self.dependency_graph.add_job(job_id, dependencies).await?;
+        self.dependency_graph.add_job(job_id, dependencies)?;
 
         let metadata = JobMetadata::from_job(&job);
         self.job_metadata.insert(job_id, metadata);
 
         // Add to resource index
         self.resource_index
-            .add_job(job_id, job.resource_requirements)
-            .await?;
+            .add_job(job_id, job.resource_requirements)?;
 
         Ok(())
     }
 
+    #[must_use]
     pub fn total_jobs(&self) -> usize {
-        self.priority_queues.values().map(|q| q.len()).sum()
+        self.priority_queues
+            .values()
+            .map(std::collections::VecDeque::len)
+            .sum()
     }
 }
 
@@ -280,6 +296,7 @@ impl Default for DependencyGraph {
 }
 
 impl DependencyGraph {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             graph: HashMap::new(),
@@ -287,14 +304,11 @@ impl DependencyGraph {
         }
     }
 
-    pub async fn add_job(&mut self, job_id: Uuid, dependencies: Vec<Uuid>) -> ToadStoolResult<()> {
+    pub fn add_job(&mut self, job_id: Uuid, dependencies: Vec<Uuid>) -> ToadStoolResult<()> {
         self.graph.insert(job_id, dependencies.clone());
 
         for dep in dependencies {
-            self.reverse_graph
-                .entry(dep)
-                .or_default()
-                .push(job_id);
+            self.reverse_graph.entry(dep).or_default().push(job_id);
         }
 
         Ok(())
@@ -302,6 +316,7 @@ impl DependencyGraph {
 }
 
 impl JobMetadata {
+    #[must_use]
     pub fn from_job(job: &UniversalJob) -> Self {
         Self {
             job_id: job.job_id,
@@ -320,6 +335,7 @@ impl Default for ResourceRequirementIndex {
 }
 
 impl ResourceRequirementIndex {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cpu_index: HashMap::new(),
@@ -328,7 +344,7 @@ impl ResourceRequirementIndex {
         }
     }
 
-    pub async fn add_job(
+    pub fn add_job(
         &mut self,
         job_id: Uuid,
         requirements: ResourceRequirements,
@@ -346,17 +362,18 @@ impl ResourceRequirementIndex {
 }
 
 impl CompatibilityMode {
-    pub fn to_string(&self) -> String {
+    #[must_use]
+    pub fn to_mode_string(&self) -> String {
         match self {
-            CompatibilityMode::Native => "native".to_string(),
-            CompatibilityMode::Container => "container".to_string(),
-            CompatibilityMode::Emulated => "emulated".to_string(),
-            CompatibilityMode::Hybrid => "hybrid".to_string(),
-            CompatibilityMode::LinuxCompat => "linux_compat".to_string(),
-            CompatibilityMode::WindowsCompat => "windows_compat".to_string(),
-            CompatibilityMode::MacOSCompat => "macos_compat".to_string(),
-            CompatibilityMode::ContainerCompat => "container_compat".to_string(),
-            CompatibilityMode::LegacyCompat { system_type } => {
+            Self::Native => "native".to_string(),
+            Self::Container => "container".to_string(),
+            Self::Emulated => "emulated".to_string(),
+            Self::Hybrid => "hybrid".to_string(),
+            Self::LinuxCompat => "linux_compat".to_string(),
+            Self::WindowsCompat => "windows_compat".to_string(),
+            Self::MacOSCompat => "macos_compat".to_string(),
+            Self::ContainerCompat => "container_compat".to_string(),
+            Self::LegacyCompat { system_type } => {
                 format!("legacy_compat_{system_type}")
             }
         }

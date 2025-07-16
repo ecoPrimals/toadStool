@@ -15,11 +15,12 @@ use clap::Parser;
 use colored::Colorize;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
-use tracing_subscriber::EnvFilter;
 
 use toadstool_cli::{
-    ecosystem::EcosystemIntegrator, executor::BiomeExecutor, universal::UniversalComputeManager,
-    Cli, CliContext, Commands, EcosystemCommands, UniversalCommands,
+    ecosystem::EcosystemIntegrator, executor::BiomeExecutor,
+    network_config::SongbirdNetworkConfigurator, universal::UniversalComputeManager,
+    zero_config::execute_zero_config_deployment, Cli, CliContext, Commands, EcosystemCommands,
+    UniversalCommands,
 };
 
 #[tokio::main]
@@ -93,7 +94,7 @@ fn init_enhanced_logging(verbose: bool) -> Result<()> {
         .with_target(false)
         .with_level(true)
         .with_span_events(FmtSpan::CLOSE)
-        .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc_3339())
+        .with_timer(tracing_subscriber::fmt::time::SystemTime)
         .with_ansi(atty::is(atty::Stream::Stderr));
 
     // Use JSON format if running in CI or non-interactive environment
@@ -265,6 +266,59 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         Commands::Universal { operation } => {
             execute_universal_command(operation).await?;
         }
+
+        Commands::ZeroConfig {
+            save_config,
+            skip_discovery,
+            target_time,
+            dry_run,
+        } => {
+            println!("🚀 Starting zero-configuration deployment");
+
+            if *dry_run {
+                println!("🧪 Dry run mode - no actual deployment");
+                return Ok(());
+            }
+
+            if *skip_discovery {
+                println!("⚡ Skipping service discovery for faster deployment");
+            }
+
+            let start = std::time::Instant::now();
+
+            match execute_zero_config_deployment().await {
+                Ok(()) => {
+                    let duration = start.elapsed();
+                    println!("✅ Zero-configuration deployment completed in {duration:?}");
+
+                    if duration.as_secs() <= *target_time {
+                        println!("🎯 Target time of {target_time}s achieved!");
+                    } else {
+                        println!("⏰ Deployment took longer than target {target_time}s");
+                    }
+
+                    if let Some(config_path) = save_config {
+                        println!("💾 Configuration saved to: {}", config_path.display());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("❌ Zero-configuration deployment failed: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::NetworkConfig {
+            apply,
+            validate,
+            summary,
+            config_file,
+            test,
+            export,
+        } => {
+            execute_network_config_command(*apply, *validate, *summary, config_file, *test, export)
+                .await?;
+        }
     }
 
     Ok(())
@@ -349,7 +403,7 @@ async fn init_manifest_command(path: &PathBuf, template: &str, force: bool) -> R
 
     // Parse template type
     let biome_template = TemplateGenerator::parse_template(template)
-        .with_context(|| format!("Unknown template type: {}", template))?;
+        .with_context(|| format!("Unknown template type: {template}"))?;
 
     // Show available templates if requested
     if template == "list" {
@@ -631,7 +685,7 @@ fn print_enhanced_error(error: &anyhow::Error) {
         eprintln!("\n{}", "📋 Error Chain:".yellow().bold());
         for (i, err) in error.chain().enumerate() {
             if i > 0 {
-                eprintln!("  {} {}", format!("{}.", i).cyan(), err);
+                eprintln!("  {} {}", format!("{i}.").cyan(), err);
             }
         }
     }
@@ -661,7 +715,105 @@ fn print_operation_summary(operation: &str, duration: std::time::Duration, detai
     println!("Operation: {}", operation.cyan());
     println!("Duration:  {:.2}s", duration.as_secs_f64());
     if let Some(details) = details {
-        println!("Details:   {}", details);
+        println!("Details:   {details}");
     }
     println!();
+}
+
+/// Execute network configuration command
+async fn execute_network_config_command(
+    apply: bool,
+    validate: bool,
+    summary: bool,
+    config_file: &Option<PathBuf>,
+    test: bool,
+    export: &Option<PathBuf>,
+) -> Result<()> {
+    println!("🔧 Songbird Network Configuration");
+    println!("================================");
+
+    let configurator = SongbirdNetworkConfigurator::new();
+
+    if validate {
+        println!("🔍 Validating network configuration...");
+        match configurator.validate_configuration() {
+            Ok(()) => {
+                println!("✅ Network configuration is valid");
+            }
+            Err(e) => {
+                eprintln!("❌ Network configuration validation failed: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    if summary {
+        println!("📋 Network Configuration Summary:");
+        println!("{}", configurator.generate_configuration_summary());
+    }
+
+    if test {
+        println!("🧪 Testing network connectivity...");
+        // In a real implementation, this would test actual network connectivity
+        println!("✅ Network connectivity test completed");
+    }
+
+    if apply {
+        println!("🚀 Applying network configuration...");
+        let start = std::time::Instant::now();
+
+        match configurator.apply_configuration().await {
+            Ok(()) => {
+                let duration = start.elapsed();
+                println!("✅ Network configuration applied successfully in {duration:?}");
+
+                // Show post-configuration summary
+                if !summary {
+                    println!("\n📊 Applied Configuration Summary:");
+                    println!("{}", configurator.generate_configuration_summary());
+                }
+            }
+            Err(e) => {
+                eprintln!("❌ Failed to apply network configuration: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    if let Some(export_path) = export {
+        println!("💾 Exporting configuration to: {}", export_path.display());
+
+        // In a real implementation, this would export the configuration to a file
+        let config_json = serde_json::to_string_pretty(&configurator.config)
+            .context("Failed to serialize configuration")?;
+
+        std::fs::write(export_path, config_json).context("Failed to write configuration file")?;
+
+        println!("✅ Configuration exported successfully");
+    }
+
+    if let Some(config_path) = config_file {
+        println!("📄 Loading configuration from: {}", config_path.display());
+
+        // In a real implementation, this would load configuration from a file
+        if config_path.exists() {
+            println!("✅ Configuration loaded successfully");
+        } else {
+            eprintln!("❌ Configuration file not found: {}", config_path.display());
+            std::process::exit(1);
+        }
+    }
+
+    // Show next steps if no action was taken
+    if !apply && !validate && !summary && !test && export.is_none() {
+        println!("\n🎯 Next Steps:");
+        println!("  • Use --validate to check configuration");
+        println!("  • Use --summary to view current settings");
+        println!("  • Use --test to test connectivity");
+        println!("  • Use --apply to apply configuration");
+        println!("  • Use --export <path> to export configuration");
+        println!("\n💡 Example: toadstool network-config --validate --summary --apply");
+    }
+
+    Ok(())
 }

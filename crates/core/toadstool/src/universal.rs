@@ -18,7 +18,7 @@ use tracing::{debug, info};
 use crate::error::{ToadStoolError, ToadStoolResult};
 use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType};
 use crate::resources::ResourceRequirements;
-use toadstool_config::constants::network;
+use toadstool_config::network;
 
 //
 // ============================================================================
@@ -106,7 +106,7 @@ pub enum PrimalCapability {
     NativeExecution { architectures: Vec<String> },
     /// WASM execution
     WasmExecution { wasi_support: bool },
-    
+
     // Security capabilities
     /// Authentication
     Authentication { methods: Vec<String> },
@@ -114,7 +114,7 @@ pub enum PrimalCapability {
     Encryption { algorithms: Vec<String> },
     /// Key management
     KeyManagement { hsm_support: bool },
-    
+
     // Storage capabilities
     /// File system support
     FileSystem { supports_zfs: bool },
@@ -122,7 +122,7 @@ pub enum PrimalCapability {
     ObjectStorage { backends: Vec<String> },
     /// Data replication
     DataReplication { consistency: String },
-    
+
     // AI capabilities
     /// Model inference
     ModelInference { models: Vec<String> },
@@ -130,7 +130,7 @@ pub enum PrimalCapability {
     AgentFramework { mcp_support: bool },
     /// Machine learning
     MachineLearning { training_support: bool },
-    
+
     // Network capabilities
     /// Service discovery
     ServiceDiscovery { protocols: Vec<String> },
@@ -138,7 +138,7 @@ pub enum PrimalCapability {
     NetworkRouting { protocols: Vec<String> },
     /// Proxy services
     ProxyServices { types: Vec<String> },
-    
+
     // OS capabilities
     /// Process management
     ProcessManagement { container_support: bool },
@@ -146,9 +146,12 @@ pub enum PrimalCapability {
     ResourceManagement { quota_support: bool },
     /// Team isolation
     TeamIsolation { multi_tenant: bool },
-    
+
     // Custom capability
-    Custom { name: String, attributes: HashMap<String, String> },
+    Custom {
+        name: String,
+        attributes: HashMap<String, String>,
+    },
 }
 
 /// Primal health status
@@ -239,34 +242,37 @@ pub struct PrimalResponse {
 pub trait UniversalPrimalProvider: Send + Sync {
     /// Unique primal identifier
     fn primal_id(&self) -> &str;
-    
+
     /// Instance identifier
     fn instance_id(&self) -> &str;
-    
+
     /// Context this primal serves
     fn context(&self) -> &PrimalContext;
-    
+
     /// Primal type
     fn primal_type(&self) -> PrimalType;
-    
+
     /// Capabilities provided
     fn capabilities(&self) -> Vec<PrimalCapability>;
-    
+
     /// Health check
     async fn health_check(&self) -> PrimalHealth;
-    
+
     /// API endpoints
     fn endpoints(&self) -> PrimalEndpoints;
-    
+
     /// Handle inter-primal requests
-    async fn handle_primal_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse>;
-    
+    async fn handle_primal_request(
+        &self,
+        request: PrimalRequest,
+    ) -> ToadStoolResult<PrimalResponse>;
+
     /// Initialize with configuration
     async fn initialize(&mut self, config: serde_json::Value) -> ToadStoolResult<()>;
-    
+
     /// Shutdown gracefully
     async fn shutdown(&mut self) -> ToadStoolResult<()>;
-    
+
     /// Check if can serve context
     fn can_serve_context(&self, context: &PrimalContext) -> bool;
 }
@@ -305,45 +311,64 @@ impl UniversalPrimalRegistry {
             type_index: RwLock::new(HashMap::new()),
         }
     }
-    
+
     /// Register a primal provider
-    pub async fn register_primal(&self, provider: Arc<dyn UniversalPrimalProvider>) -> ToadStoolResult<()> {
+    pub async fn register_primal(
+        &self,
+        provider: Arc<dyn UniversalPrimalProvider>,
+    ) -> ToadStoolResult<()> {
         let instance_id = provider.instance_id().to_string();
         let capabilities = provider.capabilities();
         let context = provider.context().clone();
         let primal_type = provider.primal_type();
-        
+
         // Register provider
-        self.providers.write().await.insert(instance_id.clone(), provider);
-        
+        self.providers
+            .write()
+            .await
+            .insert(instance_id.clone(), provider);
+
         // Index capabilities
         let mut capability_index = self.capability_index.write().await;
         for capability in capabilities {
             let cap_key = format!("{capability:?}");
-            capability_index.entry(cap_key).or_insert_with(Vec::new).push(instance_id.clone());
+            capability_index
+                .entry(cap_key)
+                .or_insert_with(Vec::new)
+                .push(instance_id.clone());
         }
-        
+
         // Index context
         let mut context_index = self.context_index.write().await;
-        context_index.entry(context.user_id.clone()).or_insert_with(Vec::new).push(instance_id.clone());
-        
+        context_index
+            .entry(context.user_id.clone())
+            .or_insert_with(Vec::new)
+            .push(instance_id.clone());
+
         // Index type
         let mut type_index = self.type_index.write().await;
         let type_key = format!("{primal_type:?}");
-        type_index.entry(type_key).or_insert_with(Vec::new).push(instance_id.clone());
-        
+        type_index
+            .entry(type_key)
+            .or_insert_with(Vec::new)
+            .push(instance_id.clone());
+
         info!("Registered primal provider: {}", instance_id);
         Ok(())
     }
-    
+
     /// Find providers by capability
-    pub async fn find_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_by_capability(
+        &self,
+        capability: &PrimalCapability,
+    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
         let cap_key = format!("{capability:?}");
         let capability_index = self.capability_index.read().await;
         let providers = self.providers.read().await;
-        
+
         if let Some(instance_ids) = capability_index.get(&cap_key) {
-            instance_ids.iter()
+            instance_ids
+                .iter()
                 .filter_map(|id| providers.get(id))
                 .cloned()
                 .collect()
@@ -351,14 +376,18 @@ impl UniversalPrimalRegistry {
             Vec::new()
         }
     }
-    
+
     /// Find providers by context
-    pub async fn find_by_context(&self, context: &PrimalContext) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_by_context(
+        &self,
+        context: &PrimalContext,
+    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
         let context_index = self.context_index.read().await;
         let providers = self.providers.read().await;
-        
+
         if let Some(instance_ids) = context_index.get(&context.user_id) {
-            instance_ids.iter()
+            instance_ids
+                .iter()
                 .filter_map(|id| providers.get(id))
                 .filter(|provider| provider.can_serve_context(context))
                 .cloned()
@@ -367,18 +396,21 @@ impl UniversalPrimalRegistry {
             Vec::new()
         }
     }
-    
+
     /// Route a request to appropriate provider
     pub async fn route_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse> {
         let providers = self.providers.read().await;
-        
+
         if let Some(provider) = providers.get(&request.target) {
             provider.handle_primal_request(request).await
         } else {
-            Err(ToadStoolError::execution(format!("Target primal not found: {}", request.target)))
+            Err(ToadStoolError::execution(format!(
+                "Target primal not found: {}",
+                request.target
+            )))
         }
     }
-    
+
     /// Get all registered providers
     pub async fn get_all_providers(&self) -> Vec<Arc<dyn UniversalPrimalProvider>> {
         self.providers.read().await.values().cloned().collect()
@@ -496,45 +528,54 @@ impl ResourceCoordinator {
     /// Create new resource coordinator
     pub async fn new() -> ToadStoolResult<Self> {
         let available_resources = SystemResources {
-            cpu_cores: 8.0, // Default to 8 cores
-            memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB default
+            cpu_cores: 8.0,                          // Default to 8 cores
+            memory_bytes: 8 * 1024 * 1024 * 1024,    // 8GB default
             storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB default
-            network_bandwidth: 1000 * 1024 * 1024, // 1Gbps default
+            network_bandwidth: 1000 * 1024 * 1024,   // 1Gbps default
             gpu_units: 0,
             special_hardware: HashMap::new(),
         };
-        
+
         Ok(Self {
             available_resources: Arc::new(RwLock::new(available_resources)),
             allocation_history: Arc::new(RwLock::new(Vec::new())),
         })
     }
-    
+
     /// Allocate resources
-    pub async fn allocate_resources(&self, requirements: &ResourceRequirements) -> ToadStoolResult<ResourceAllocation> {
+    pub async fn allocate_resources(
+        &self,
+        requirements: &ResourceRequirements,
+    ) -> ToadStoolResult<ResourceAllocation> {
         let allocation = ResourceAllocation {
             job_id: Uuid::new_v4(),
             allocated_resources: requirements.clone(),
             allocated_at: chrono::Utc::now(),
             released_at: None,
         };
-        
-        self.allocation_history.write().await.push(allocation.clone());
+
+        self.allocation_history
+            .write()
+            .await
+            .push(allocation.clone());
         debug!("Allocated resources for job: {}", allocation.job_id);
         Ok(allocation)
     }
-    
+
     /// Release resources
-    pub async fn release_resources(&self, mut allocation: ResourceAllocation) -> ToadStoolResult<()> {
+    pub async fn release_resources(
+        &self,
+        mut allocation: ResourceAllocation,
+    ) -> ToadStoolResult<()> {
         allocation.released_at = Some(chrono::Utc::now());
-        
+
         // Add to history
         self.allocation_history.write().await.push(allocation);
-        
+
         debug!("Released resources for job");
         Ok(())
     }
-    
+
     /// Get available resources
     pub async fn get_available_resources(&self) -> SystemResources {
         self.available_resources.read().await.clone()
@@ -566,37 +607,45 @@ impl UniversalScheduler {
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
         })
     }
-    
+
     /// Schedule a job
     pub async fn schedule_job(&self, job: UniversalJob) -> ToadStoolResult<ExecutionResponse> {
         let job_id = job.id;
         info!("Scheduling job: {}", job_id);
-        
+
         // Add to active jobs
         self.active_jobs.write().await.insert(job_id, job.clone());
-        
+
         // Allocate resources
-        let _allocation = self.resource_coordinator.allocate_resources(&job.resources).await?;
-        
+        let _allocation = self
+            .resource_coordinator
+            .allocate_resources(&job.resources)
+            .await?;
+
         // Execute based on job type
         let result = match &job.job_type {
-            UniversalJobType::Native { executable, args, env } => {
-                self.execute_native(executable, args, env).await
-            }
+            UniversalJobType::Native {
+                executable,
+                args,
+                env,
+            } => self.execute_native(executable, args, env).await,
             UniversalJobType::Wasm { module, args, env } => {
                 self.execute_wasm(module, args, env).await
             }
-            UniversalJobType::Primal { primal_type, endpoint, payload } => {
-                self.execute_primal(primal_type, endpoint, payload).await
-            }
-            UniversalJobType::BiomeOS { biome_manifest, team_id } => {
-                self.execute_biome_os(biome_manifest, team_id).await
-            }
+            UniversalJobType::Primal {
+                primal_type,
+                endpoint,
+                payload,
+            } => self.execute_primal(primal_type, endpoint, payload).await,
+            UniversalJobType::BiomeOS {
+                biome_manifest,
+                team_id,
+            } => self.execute_biome_os(biome_manifest, team_id).await,
         };
-        
+
         // Remove from active jobs
         self.active_jobs.write().await.remove(&job_id);
-        
+
         result
     }
 
@@ -606,20 +655,31 @@ impl UniversalScheduler {
     }
 
     /// Find primals by capability using the registry
-    pub async fn find_primals_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_primals_by_capability(
+        &self,
+        capability: &PrimalCapability,
+    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
         self.primal_registry.find_by_capability(capability).await
     }
-    
-    async fn execute_native(&self, executable: &str, args: &[String], env: &HashMap<String, String>) -> ToadStoolResult<ExecutionResponse> {
+
+    async fn execute_native(
+        &self,
+        executable: &str,
+        args: &[String],
+        env: &HashMap<String, String>,
+    ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing native job: {} with args: {:?}", executable, args);
-        
+
         // Try to find a native runtime engine through the primal registry
-        let native_capability = PrimalCapability::NativeExecution { 
-            architectures: vec!["x86_64".to_string(), "aarch64".to_string()] 
+        let native_capability = PrimalCapability::NativeExecution {
+            architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
         };
-        
-        let providers = self.primal_registry.find_by_capability(&native_capability).await;
-        
+
+        let providers = self
+            .primal_registry
+            .find_by_capability(&native_capability)
+            .await;
+
         if let Some(provider) = providers.first() {
             // Create a primal request for native execution
             let request = PrimalRequest {
@@ -648,25 +708,41 @@ impl UniversalScheduler {
                 metadata: HashMap::new(),
                 timestamp: chrono::Utc::now(),
             };
-            
+
             let response = provider.handle_primal_request(request).await?;
-            
+
             // Convert primal response to execution response
             Ok(ExecutionResponse {
                 execution_id: response.request_id,
                 status: match response.status {
                     ResponseStatus::Success => crate::execution::ExecutionStatus::Success,
-                    ResponseStatus::Error { message, .. } => crate::execution::ExecutionStatus::Failed { error: message },
+                    ResponseStatus::Error { message, .. } => {
+                        crate::execution::ExecutionStatus::Failed { error: message }
+                    }
                     ResponseStatus::Timeout => crate::execution::ExecutionStatus::TimedOut,
-                    ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed { 
-                        error: "Service unavailable".to_string() 
-                    },
+                    ResponseStatus::ServiceUnavailable => {
+                        crate::execution::ExecutionStatus::Failed {
+                            error: "Service unavailable".to_string(),
+                        }
+                    }
                 },
                 output: crate::execution::ExecutionOutput {
                     data: response.payload.to_string().into_bytes(),
-                    stdout: response.payload.get("stdout").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    stderr: response.payload.get("stderr").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    exit_code: response.payload.get("exit_code").and_then(|v| v.as_i64()).map(|i| i as i32),
+                    stdout: response
+                        .payload
+                        .get("stdout")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    stderr: response
+                        .payload
+                        .get("stderr")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    exit_code: response
+                        .payload
+                        .get("exit_code")
+                        .and_then(|v| v.as_i64())
+                        .map(|i| i as i32),
                     format: Some("application/json".to_string()),
                     result: HashMap::new(),
                     metadata: response.metadata,
@@ -679,15 +755,15 @@ impl UniversalScheduler {
         } else {
             // Fallback to local execution if no primal provider available
             use std::process::Command;
-            
+
             let start_time = std::time::Instant::now();
             let mut cmd = Command::new(executable);
             cmd.args(args);
-            
+
             for (key, value) in env {
                 cmd.env(key, value);
             }
-            
+
             match cmd.output() {
                 Ok(output) => {
                     let duration = start_time.elapsed();
@@ -697,7 +773,10 @@ impl UniversalScheduler {
                             crate::execution::ExecutionStatus::Success
                         } else {
                             crate::execution::ExecutionStatus::Failed {
-                                error: format!("Process exited with code: {:?}", output.status.code())
+                                error: format!(
+                                    "Process exited with code: {:?}",
+                                    output.status.code()
+                                ),
                             }
                         },
                         output: crate::execution::ExecutionOutput {
@@ -715,18 +794,32 @@ impl UniversalScheduler {
                         warnings: Vec::new(),
                     })
                 }
-                Err(e) => Err(ToadStoolError::execution(format!("Failed to execute native command: {}", e))),
+                Err(e) => Err(ToadStoolError::execution(format!(
+                    "Failed to execute native command: {e}"
+                ))),
             }
         }
     }
-    
-    async fn execute_wasm(&self, module: &[u8], args: &[String], env: &HashMap<String, String>) -> ToadStoolResult<ExecutionResponse> {
-        debug!("Executing WASM job with {} bytes, args: {:?}", module.len(), args);
-        
+
+    async fn execute_wasm(
+        &self,
+        module: &[u8],
+        args: &[String],
+        env: &HashMap<String, String>,
+    ) -> ToadStoolResult<ExecutionResponse> {
+        debug!(
+            "Executing WASM job with {} bytes, args: {:?}",
+            module.len(),
+            args
+        );
+
         // Try to find a WASM runtime engine through the primal registry
         let wasm_capability = PrimalCapability::WasmExecution { wasi_support: true };
-        let providers = self.primal_registry.find_by_capability(&wasm_capability).await;
-        
+        let providers = self
+            .primal_registry
+            .find_by_capability(&wasm_capability)
+            .await;
+
         if let Some(provider) = providers.first() {
             // Create a primal request for WASM execution
             let request = PrimalRequest {
@@ -755,25 +848,41 @@ impl UniversalScheduler {
                 metadata: HashMap::new(),
                 timestamp: chrono::Utc::now(),
             };
-            
+
             let response = provider.handle_primal_request(request).await?;
-            
+
             // Convert primal response to execution response
             Ok(ExecutionResponse {
                 execution_id: response.request_id,
                 status: match response.status {
                     ResponseStatus::Success => crate::execution::ExecutionStatus::Success,
-                    ResponseStatus::Error { message, .. } => crate::execution::ExecutionStatus::Failed { error: message },
+                    ResponseStatus::Error { message, .. } => {
+                        crate::execution::ExecutionStatus::Failed { error: message }
+                    }
                     ResponseStatus::Timeout => crate::execution::ExecutionStatus::TimedOut,
-                    ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed { 
-                        error: "Service unavailable".to_string() 
-                    },
+                    ResponseStatus::ServiceUnavailable => {
+                        crate::execution::ExecutionStatus::Failed {
+                            error: "Service unavailable".to_string(),
+                        }
+                    }
                 },
                 output: crate::execution::ExecutionOutput {
                     data: response.payload.to_string().into_bytes(),
-                    stdout: response.payload.get("stdout").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    stderr: response.payload.get("stderr").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    exit_code: response.payload.get("exit_code").and_then(|v| v.as_i64()).map(|i| i as i32),
+                    stdout: response
+                        .payload
+                        .get("stdout")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    stderr: response
+                        .payload
+                        .get("stderr")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    exit_code: response
+                        .payload
+                        .get("exit_code")
+                        .and_then(|v| v.as_i64())
+                        .map(|i| i as i32),
                     format: Some("application/json".to_string()),
                     result: HashMap::new(),
                     metadata: response.metadata,
@@ -785,20 +894,34 @@ impl UniversalScheduler {
             })
         } else {
             // Return error if no WASM runtime available
-            Err(ToadStoolError::execution("No WASM runtime engine available"))
+            Err(ToadStoolError::execution(
+                "No WASM runtime engine available",
+            ))
         }
     }
-    
-    async fn execute_primal(&self, primal_type: &str, endpoint: &str, payload: &serde_json::Value) -> ToadStoolResult<ExecutionResponse> {
+
+    async fn execute_primal(
+        &self,
+        primal_type: &str,
+        endpoint: &str,
+        payload: &serde_json::Value,
+    ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing primal job: {} at {}", primal_type, endpoint);
-        
+
         // Find the appropriate primal provider by type
         let providers = self.primal_registry.get_all_providers().await;
-        let provider = providers.iter()
-            .find(|p| p.primal_id() == primal_type || 
-                     format!("{:?}", p.primal_type()).to_lowercase().contains(primal_type))
-            .ok_or_else(|| ToadStoolError::execution(format!("Primal provider {} not found", primal_type)))?;
-        
+        let provider = providers
+            .iter()
+            .find(|p| {
+                p.primal_id() == primal_type
+                    || format!("{:?}", p.primal_type())
+                        .to_lowercase()
+                        .contains(primal_type)
+            })
+            .ok_or_else(|| {
+                ToadStoolError::execution(format!("Primal provider {primal_type} not found"))
+            })?;
+
         // Create a primal request
         let request = PrimalRequest {
             id: Uuid::new_v4(),
@@ -822,18 +945,20 @@ impl UniversalScheduler {
             metadata: HashMap::new(),
             timestamp: chrono::Utc::now(),
         };
-        
+
         let response = provider.handle_primal_request(request).await?;
-        
+
         // Convert primal response to execution response
         Ok(ExecutionResponse {
             execution_id: response.request_id,
             status: match response.status {
                 ResponseStatus::Success => crate::execution::ExecutionStatus::Success,
-                ResponseStatus::Error { message, .. } => crate::execution::ExecutionStatus::Failed { error: message },
+                ResponseStatus::Error { message, .. } => {
+                    crate::execution::ExecutionStatus::Failed { error: message }
+                }
                 ResponseStatus::Timeout => crate::execution::ExecutionStatus::TimedOut,
-                ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed { 
-                    error: "Service unavailable".to_string() 
+                ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed {
+                    error: "Service unavailable".to_string(),
                 },
             },
             output: crate::execution::ExecutionOutput {
@@ -851,16 +976,21 @@ impl UniversalScheduler {
             warnings: Vec::new(),
         })
     }
-    
-    async fn execute_biome_os(&self, biome_manifest: &serde_json::Value, team_id: &str) -> ToadStoolResult<ExecutionResponse> {
+
+    async fn execute_biome_os(
+        &self,
+        biome_manifest: &serde_json::Value,
+        team_id: &str,
+    ) -> ToadStoolResult<ExecutionResponse> {
         debug!("Executing BiomeOS job for team: {}", team_id);
-        
+
         // Try to find a BiomeOS primal provider
         let providers = self.primal_registry.get_all_providers().await;
-        let biomeos_provider = providers.iter()
+        let biomeos_provider = providers
+            .iter()
             .find(|p| matches!(p.primal_type(), PrimalType::OS))
             .ok_or_else(|| ToadStoolError::execution("BiomeOS primal provider not found"))?;
-        
+
         // Create a primal request for BiomeOS execution
         let request = PrimalRequest {
             id: Uuid::new_v4(),
@@ -887,18 +1017,20 @@ impl UniversalScheduler {
             metadata: HashMap::new(),
             timestamp: chrono::Utc::now(),
         };
-        
+
         let response = biomeos_provider.handle_primal_request(request).await?;
-        
+
         // Convert primal response to execution response
         Ok(ExecutionResponse {
             execution_id: response.request_id,
             status: match response.status {
                 ResponseStatus::Success => crate::execution::ExecutionStatus::Success,
-                ResponseStatus::Error { message, .. } => crate::execution::ExecutionStatus::Failed { error: message },
+                ResponseStatus::Error { message, .. } => {
+                    crate::execution::ExecutionStatus::Failed { error: message }
+                }
                 ResponseStatus::Timeout => crate::execution::ExecutionStatus::TimedOut,
-                ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed { 
-                    error: "BiomeOS service unavailable".to_string() 
+                ResponseStatus::ServiceUnavailable => crate::execution::ExecutionStatus::Failed {
+                    error: "BiomeOS service unavailable".to_string(),
                 },
             },
             output: crate::execution::ExecutionOutput {
@@ -970,12 +1102,12 @@ impl UniversalComputePlatform {
     pub async fn new() -> ToadStoolResult<Self> {
         Self::new_with_config(UniversalPlatformConfig::default()).await
     }
-    
+
     /// Create new platform with config
     pub async fn new_with_config(config: UniversalPlatformConfig) -> ToadStoolResult<Self> {
         let primal_registry = Arc::new(UniversalPrimalRegistry::new());
         let scheduler = Arc::new(UniversalScheduler::new(primal_registry.clone()).await?);
-        
+
         let mut platform = Self {
             config,
             runtime_engines: Arc::new(RwLock::new(HashMap::new())),
@@ -983,14 +1115,14 @@ impl UniversalComputePlatform {
             primal_registry,
             toadstool_provider: None,
         };
-        
+
         // Register ToadStool as a primal provider
         platform.register_as_universal_primal().await?;
-        
+
         info!("Universal compute platform initialized");
         Ok(platform)
     }
-    
+
     /// Register ToadStool as a universal primal
     async fn register_as_universal_primal(&mut self) -> ToadStoolResult<()> {
         let context = PrimalContext {
@@ -1006,48 +1138,66 @@ impl UniversalComputePlatform {
             security_level: SecurityLevel::Standard,
             metadata: HashMap::new(),
         };
-        
+
         let provider = Arc::new(ToadStoolPrimalProvider::new(context));
-        self.primal_registry.register_primal(provider.clone()).await?;
+        self.primal_registry
+            .register_primal(provider.clone())
+            .await?;
         self.toadstool_provider = Some(provider);
-        
+
         info!("ToadStool registered as universal primal");
         Ok(())
     }
-    
+
     /// Execute a universal job
-    pub async fn execute_universal_job(&self, job: UniversalJob) -> ToadStoolResult<ExecutionResponse> {
+    pub async fn execute_universal_job(
+        &self,
+        job: UniversalJob,
+    ) -> ToadStoolResult<ExecutionResponse> {
         self.scheduler.schedule_job(job).await
     }
-    
+
     /// Register a runtime engine
-    pub async fn register_runtime_engine(&self, runtime_type: RuntimeType, engine: Box<dyn RuntimeEngine>) -> ToadStoolResult<()> {
-        self.runtime_engines.write().await.insert(runtime_type, engine);
+    pub async fn register_runtime_engine(
+        &self,
+        runtime_type: RuntimeType,
+        engine: Box<dyn RuntimeEngine>,
+    ) -> ToadStoolResult<()> {
+        self.runtime_engines
+            .write()
+            .await
+            .insert(runtime_type, engine);
         Ok(())
     }
-    
+
     /// Get available runtime types
     pub async fn get_available_runtimes(&self) -> Vec<RuntimeType> {
         self.runtime_engines.read().await.keys().cloned().collect()
     }
-    
+
     /// Find primals by capability
-    pub async fn find_primals_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_primals_by_capability(
+        &self,
+        capability: &PrimalCapability,
+    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
         self.primal_registry.find_by_capability(capability).await
     }
-    
+
     /// Route primal request
-    pub async fn route_primal_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse> {
+    pub async fn route_primal_request(
+        &self,
+        request: PrimalRequest,
+    ) -> ToadStoolResult<PrimalResponse> {
         self.primal_registry.route_request(request).await
     }
-    
+
     /// Discover ecosystem (legacy compatibility)
     pub async fn discover_ecosystem(&self) -> ToadStoolResult<()> {
         if !self.config.ecosystem_integration {
             debug!("Ecosystem integration disabled in configuration");
             return Ok(());
         }
-        
+
         info!("Discovering ecosystem through universal primal discovery");
         let _providers = self.primal_registry.get_all_providers().await;
         Ok(())
@@ -1098,19 +1248,19 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     fn primal_id(&self) -> &str {
         "toadstool"
     }
-    
+
     fn instance_id(&self) -> &str {
         "toadstool-main"
     }
-    
+
     fn context(&self) -> &PrimalContext {
         &self.context
     }
-    
+
     fn primal_type(&self) -> PrimalType {
         PrimalType::Compute
     }
-    
+
     fn capabilities(&self) -> Vec<PrimalCapability> {
         vec![
             PrimalCapability::NativeExecution {
@@ -1119,39 +1269,68 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
             PrimalCapability::ContainerRuntime {
                 orchestrators: vec!["docker".to_string(), "podman".to_string()],
             },
-            PrimalCapability::WasmExecution {
-                wasi_support: true,
-            },
+            PrimalCapability::WasmExecution { wasi_support: true },
             PrimalCapability::ServerlessExecution {
-                languages: vec!["rust".to_string(), "python".to_string(), "javascript".to_string()],
+                languages: vec![
+                    "rust".to_string(),
+                    "python".to_string(),
+                    "javascript".to_string(),
+                ],
             },
             PrimalCapability::LoadBalancing {
                 algorithms: vec!["round_robin".to_string(), "least_connections".to_string()],
             },
             PrimalCapability::AutoScaling {
-                metrics: vec!["cpu".to_string(), "memory".to_string(), "requests".to_string()],
+                metrics: vec![
+                    "cpu".to_string(),
+                    "memory".to_string(),
+                    "requests".to_string(),
+                ],
             },
         ]
     }
-    
+
     async fn health_check(&self) -> PrimalHealth {
         self.health_status.read().await.clone()
     }
-    
+
     fn endpoints(&self) -> PrimalEndpoints {
         PrimalEndpoints {
-            primary: format!("http://{}:{}", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT),
-            health: format!("http://{}:{}/health", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT),
-            metrics: Some(format!("http://{}:{}/metrics", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT)),
-            admin: Some(format!("http://{}:{}/admin", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT)),
-            websocket: Some(format!("ws://{}:{}/ws", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT)),
+            primary: format!(
+                "http://{}:{}",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            ),
+            health: format!(
+                "http://{}:{}/health",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            ),
+            metrics: Some(format!(
+                "http://{}:{}/metrics",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            )),
+            admin: Some(format!(
+                "http://{}:{}/admin",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            )),
+            websocket: Some(format!(
+                "ws://{}:{}/ws",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            )),
             custom: HashMap::new(),
         }
     }
-    
-    async fn handle_primal_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse> {
+
+    async fn handle_primal_request(
+        &self,
+        request: PrimalRequest,
+    ) -> ToadStoolResult<PrimalResponse> {
         debug!("Handling primal request: {:?}", request.request_type);
-        
+
         Ok(PrimalResponse {
             request_id: request.id,
             status: ResponseStatus::Success,
@@ -1163,17 +1342,17 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
             timestamp: chrono::Utc::now(),
         })
     }
-    
+
     async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
         info!("ToadStool primal provider initialized");
         Ok(())
     }
-    
+
     async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("ToadStool primal provider shutting down");
         Ok(())
     }
-    
+
     fn can_serve_context(&self, context: &PrimalContext) -> bool {
         // ToadStool can serve any context with appropriate security level
         context.security_level <= self.context.security_level
@@ -1201,14 +1380,16 @@ pub enum PlatformStatus {
 
 /// Initialize platform with runtime engines
 pub async fn init_with_runtime_engines(
-    engines: Vec<(RuntimeType, Box<dyn RuntimeEngine>)>
+    engines: Vec<(RuntimeType, Box<dyn RuntimeEngine>)>,
 ) -> ToadStoolResult<UniversalComputePlatform> {
     let platform = UniversalComputePlatform::new().await?;
-    
+
     for (runtime_type, engine) in engines {
-        platform.register_runtime_engine(runtime_type, engine).await?;
+        platform
+            .register_runtime_engine(runtime_type, engine)
+            .await?;
     }
-    
+
     Ok(platform)
 }
 
@@ -1217,4 +1398,3 @@ pub async fn get_platform_status() -> PlatformStatus {
     // For now, always return running
     PlatformStatus::Running
 }
-

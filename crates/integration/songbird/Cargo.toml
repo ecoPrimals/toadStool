@@ -36,5 +36,9 @@ whoami = "1.4"
 # Async traits
 async-trait = "0.1"
 
+[features]
+default = []
+system-metrics = []
+
 [dev-dependencies]
 tokio-test = "0.4"

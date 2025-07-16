@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use toadstool::{ToadStoolResult};
+use toadstool::ToadStoolResult;
 
 /// Universal substrate capabilities for all computing platforms
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,7 +225,7 @@ pub enum QuantumPlatform {
     },
 }
 
-/// Edge and IoT platforms
+/// Edge and `IoT` platforms
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EdgeIoTPlatform {
     /// Microcontrollers
@@ -245,7 +245,7 @@ pub enum EdgeIoTPlatform {
         storage_type: String,
         connectivity: Vec<String>,
     },
-    /// IoT sensors
+    /// `IoT` sensors
     IoTSensor {
         sensor_type: String,
         measurement_range: String,
@@ -1037,15 +1037,15 @@ impl UniversalSubstrateCapabilities {
     fn get_cpu_info() -> CpuInfo {
         CpuInfo {
             model: "Generic CPU".to_string(),
-            cores: num_cpus::get() as u32,
-            threads: num_cpus::get() as u32,
+            cores: u32::try_from(num_cpus::get()).unwrap_or(4),
+            threads: u32::try_from(num_cpus::get()).unwrap_or(4),
             cache_mb: 8,
             big_little: false,
             features: vec!["sse4.2".to_string(), "avx2".to_string()],
         }
     }
 
-    fn get_memory_gb() -> u32 {
+    const fn get_memory_gb() -> u32 {
         // This would use system APIs to get actual memory
         8
     }
@@ -1063,8 +1063,10 @@ impl UniversalSubstrateCapabilities {
             .arg("-c")
             .arg(command)
             .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-            .unwrap_or_else(|_| "unknown".to_string())
+            .map_or_else(
+                |_| "unknown".to_string(),
+                |output| String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )
     }
 
     fn get_rust_target_triple() -> String {
@@ -1072,8 +1074,10 @@ impl UniversalSubstrateCapabilities {
             .arg("--print")
             .arg("target-triple")
             .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-            .unwrap_or_else(|_| "unknown".to_string())
+            .map_or_else(
+                |_| "unknown".to_string(),
+                |output| String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )
     }
 
     fn get_linux_distribution() -> String {
@@ -1084,8 +1088,10 @@ impl UniversalSubstrateCapabilities {
         std::process::Command::new("uname")
             .arg("-r")
             .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-            .unwrap_or_else(|_| "unknown".to_string())
+            .map_or_else(
+                |_| "unknown".to_string(),
+                |output| String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )
     }
 
     fn get_init_system() -> String {
@@ -1112,8 +1118,10 @@ impl UniversalSubstrateCapabilities {
         std::process::Command::new("sw_vers")
             .arg("-productVersion")
             .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-            .unwrap_or_else(|_| "unknown".to_string())
+            .map_or_else(
+                |_| "unknown".to_string(),
+                |output| String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )
     }
 
     fn get_macos_frameworks() -> Vec<String> {
@@ -1136,15 +1144,17 @@ impl UniversalSubstrateCapabilities {
         std::process::Command::new("nvcc")
             .arg("--version")
             .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-            .unwrap_or_else(|_| "unknown".to_string())
+            .map_or_else(
+                |_| "unknown".to_string(),
+                |output| String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )
     }
 
     fn get_cuda_compute_capability() -> String {
         "7.5".to_string() // This would query the GPU
     }
 
-    fn get_gpu_memory_gb() -> u32 {
+    const fn get_gpu_memory_gb() -> u32 {
         8 // This would query the GPU
     }
 
@@ -1156,7 +1166,7 @@ impl UniversalSubstrateCapabilities {
         "gfx906".to_string() // This would query the GPU
     }
 
-    fn check_opencl_support() -> bool {
+    const fn check_opencl_support() -> bool {
         false // This would check for OpenCL runtime
     }
 
@@ -1168,7 +1178,7 @@ impl UniversalSubstrateCapabilities {
         "GPU".to_string()
     }
 
-    fn get_opencl_compute_units() -> u32 {
+    const fn get_opencl_compute_units() -> u32 {
         64
     }
 }

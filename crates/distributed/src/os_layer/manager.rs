@@ -50,9 +50,9 @@ pub enum CompatibilityLayerEnum {
 impl CompatibilityLayerEnum {
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         match self {
-            CompatibilityLayerEnum::Linux(layer) => layer.initialize().await,
-            CompatibilityLayerEnum::Windows(layer) => layer.initialize().await,
-            CompatibilityLayerEnum::MacOS(layer) => layer.initialize().await,
+            Self::Linux(layer) => layer.initialize().await,
+            Self::Windows(layer) => layer.initialize().await,
+            Self::MacOS(layer) => layer.initialize().await,
         }
     }
 
@@ -61,24 +61,23 @@ impl CompatibilityLayerEnum {
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         match self {
-            CompatibilityLayerEnum::Linux(layer) => layer.execute_with_compatibility(request).await,
-            CompatibilityLayerEnum::Windows(layer) => {
-                layer.execute_with_compatibility(request).await
-            }
-            CompatibilityLayerEnum::MacOS(layer) => layer.execute_with_compatibility(request).await,
+            Self::Linux(layer) => layer.execute_with_compatibility(request).await,
+            Self::Windows(layer) => layer.execute_with_compatibility(request).await,
+            Self::MacOS(layer) => layer.execute_with_compatibility(request).await,
         }
     }
 
     pub async fn cleanup(&self) -> ToadStoolResult<()> {
         match self {
-            CompatibilityLayerEnum::Linux(layer) => layer.cleanup().await,
-            CompatibilityLayerEnum::Windows(layer) => layer.cleanup().await,
-            CompatibilityLayerEnum::MacOS(layer) => layer.cleanup().await,
+            Self::Linux(layer) => layer.cleanup().await,
+            Self::Windows(layer) => layer.cleanup().await,
+            Self::MacOS(layer) => layer.cleanup().await,
         }
     }
 }
 
 impl OSLayerManager {
+    #[must_use]
     pub fn new(config: OSLayerConfig) -> Self {
         Self {
             config,

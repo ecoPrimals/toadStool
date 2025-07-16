@@ -31,31 +31,29 @@ impl Default for NetworkDistributorConfig {
 /// Network distributor for distributed execution
 pub struct NetworkDistributor {
     /// Configuration
-    config: NetworkDistributorConfig,
+    _config: NetworkDistributorConfig,
     /// Load balancer
-    load_balancer: Arc<NetworkLoadBalancer>,
+    _load_balancer: Arc<NetworkLoadBalancer>,
     /// Fault tolerance manager
-    fault_tolerance: Arc<FaultToleranceManager>,
+    _fault_tolerance: Arc<FaultToleranceManager>,
     /// Metrics collector
-    metrics: Arc<NetworkMetricsCollector>,
+    _metrics: Arc<NetworkMetricsCollector>,
 }
 
 impl NetworkDistributor {
     /// Create a new network distributor
+    #[must_use]
     pub fn new(config: NetworkDistributorConfig) -> Self {
         Self {
-            config,
-            load_balancer: Arc::new(NetworkLoadBalancer::new()),
-            fault_tolerance: Arc::new(FaultToleranceManager::new()),
-            metrics: Arc::new(NetworkMetricsCollector::new()),
+            _config: config,
+            _load_balancer: Arc::new(NetworkLoadBalancer::new()),
+            _fault_tolerance: Arc::new(FaultToleranceManager::new()),
+            _metrics: Arc::new(NetworkMetricsCollector::new()),
         }
     }
 
     /// Distribute a job across the network
-    pub async fn distribute_job(
-        &self,
-        _job: UniversalJob,
-    ) -> ToadStoolResult<DistributedExecution> {
+    pub fn distribute_job(&self, _job: UniversalJob) -> ToadStoolResult<DistributedExecution> {
         // Create distributed execution
         let distributed_execution = DistributedExecution {
             execution_id: Uuid::new_v4(),

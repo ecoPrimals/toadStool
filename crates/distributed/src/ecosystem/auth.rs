@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Authentication manager
+#[allow(dead_code)]
 pub struct AuthenticationManager {
     tokens: Arc<RwLock<HashMap<String, AuthToken>>>,
     credentials: Arc<RwLock<HashMap<String, Credentials>>>,
@@ -23,6 +24,7 @@ pub struct Credentials {
 }
 
 impl AuthenticationManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tokens: Arc::new(RwLock::new(HashMap::new())),

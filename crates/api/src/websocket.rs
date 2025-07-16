@@ -51,7 +51,14 @@ pub struct WebSocketManager {
     connections: Arc<RwLock<HashMap<Uuid, WebSocketConnection>>>,
 }
 
+impl Default for WebSocketManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WebSocketManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
@@ -79,7 +86,7 @@ impl WebSocketManager {
 
         // In a real implementation, you would send the event to each connection
         // For now, we just log it
-        for (id, conn) in connections.iter() {
+        for (id, _conn) in connections.iter() {
             debug!("Would send event to connection {}: {:?}", id, event);
         }
     }
@@ -88,7 +95,7 @@ impl WebSocketManager {
 /// Modern WebSocket handler with connection management
 pub async fn handle_websocket(socket: WebSocket, state: ApiState) {
     let connection_id = Uuid::new_v4();
-    let connection = WebSocketConnection {
+    let _connection = WebSocketConnection {
         id: connection_id,
         connected_at: chrono::Utc::now(),
         last_ping: None,
@@ -133,16 +140,20 @@ pub async fn handle_websocket(socket: WebSocket, state: ApiState) {
                                         "Client {} subscribed to: {:?}",
                                         connection_id, event_types
                                     );
-                                    
+
                                     // Update connection subscriptions
-                                    let mut connections = state.websocket_manager.connections.write().await;
+                                    let mut connections =
+                                        state.websocket_manager.connections.write().await;
                                     if let Some(connection) = connections.get_mut(&connection_id) {
                                         for event_type in event_types {
                                             if !connection.subscriptions.contains(&event_type) {
                                                 connection.subscriptions.push(event_type);
                                             }
                                         }
-                                        debug!("Updated subscriptions for client {}: {:?}", connection_id, connection.subscriptions);
+                                        debug!(
+                                            "Updated subscriptions for client {}: {:?}",
+                                            connection_id, connection.subscriptions
+                                        );
                                     }
                                 }
                                 WebSocketMessage::Unsubscribe { event_types } => {
@@ -150,14 +161,20 @@ pub async fn handle_websocket(socket: WebSocket, state: ApiState) {
                                         "Client {} unsubscribed from: {:?}",
                                         connection_id, event_types
                                     );
-                                    
+
                                     // Update connection subscriptions
-                                    let mut connections = state.websocket_manager.connections.write().await;
+                                    let mut connections =
+                                        state.websocket_manager.connections.write().await;
                                     if let Some(connection) = connections.get_mut(&connection_id) {
                                         for event_type in &event_types {
-                                            connection.subscriptions.retain(|sub| sub != event_type);
+                                            connection
+                                                .subscriptions
+                                                .retain(|sub| sub != event_type);
                                         }
-                                        debug!("Updated subscriptions for client {}: {:?}", connection_id, connection.subscriptions);
+                                        debug!(
+                                            "Updated subscriptions for client {}: {:?}",
+                                            connection_id, connection.subscriptions
+                                        );
                                     }
                                 }
                                 WebSocketMessage::Ping { timestamp } => {

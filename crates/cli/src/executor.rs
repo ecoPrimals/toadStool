@@ -10,14 +10,13 @@
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
-use tokio::time::{sleep, timeout, Duration};
-use tracing::{error, info, warn};
+use tokio::time::{timeout, Duration};
+use tracing::{info, warn};
 use uuid::Uuid;
 
-use toadstool::RuntimeSelectionStrategy;
 use toadstool::{
     ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
     WorkloadSpec,
@@ -37,14 +36,14 @@ pub struct BiomeExecutor {
     /// Running biomes registry
     biomes: Arc<tokio::sync::RwLock<HashMap<String, RunningBiome>>>,
     /// Configuration
-    config: ToadStoolConfig,
+    _config: ToadStoolConfig,
 }
 
 /// Running biome state
 #[derive(Debug, Clone)]
 struct RunningBiome {
     info: BiomeInfo,
-    manifest: BiomeManifest,
+    _manifest: BiomeManifest,
     process_handles: Vec<BiomeProcess>,
     log_files: HashMap<String, PathBuf>,
 }
@@ -55,14 +54,14 @@ struct BiomeProcess {
     process_type: ProcessType,
     execution_id: Uuid,
     pid: Option<u32>,
-    started_at: DateTime<Utc>,
+    _started_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone)]
 enum ProcessType {
     Primal(String),
     Service(String),
-    HealthCheck(String),
+    _HealthCheck(String),
 }
 
 impl BiomeExecutor {
@@ -84,14 +83,15 @@ impl BiomeExecutor {
         Ok(Self {
             distributed,
             biomes: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            config,
+            _config: config,
         })
     }
 
     /// Execute 'run' command - start biome in foreground
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_biome(
         &self,
-        ctx: &CliContext,
+        _ctx: &CliContext,
         manifest_path: PathBuf,
         name: Option<String>,
         env: Vec<String>,
@@ -158,15 +158,16 @@ impl BiomeExecutor {
     }
 
     /// Execute 'up' command - start biome in background
+    #[allow(clippy::too_many_arguments)]
     pub async fn up_biome(
         &self,
-        ctx: &CliContext,
+        _ctx: &CliContext,
         manifest_path: PathBuf,
         detach: bool,
         name: Option<String>,
         env: Vec<String>,
         restart: bool,
-        health_interval: u64,
+        _health_interval: u64,
     ) -> Result<()> {
         info!("🚀 Starting biome in background mode");
 
@@ -263,14 +264,16 @@ impl BiomeExecutor {
 
         // Apply status filter
         if let Some(filter_status) = &status_filter {
-            biome_list.retain(|b| match (&b.info.status, filter_status.as_str()) {
-                (BiomeStatus::Running, "running") => true,
-                (BiomeStatus::Stopped, "stopped") => true,
-                (BiomeStatus::Starting, "starting") => true,
-                (BiomeStatus::Stopping, "stopping") => true,
-                (BiomeStatus::Error(_), "error") => true,
-                (BiomeStatus::Migrating, "migrating") => true,
-                _ => false,
+            biome_list.retain(|b| {
+                matches!(
+                    (&b.info.status, filter_status.as_str()),
+                    (BiomeStatus::Running, "running")
+                        | (BiomeStatus::Stopped, "stopped")
+                        | (BiomeStatus::Starting, "starting")
+                        | (BiomeStatus::Stopping, "stopping")
+                        | (BiomeStatus::Error(_), "error")
+                        | (BiomeStatus::Migrating, "migrating")
+                )
             });
         }
 
@@ -284,14 +287,17 @@ impl BiomeExecutor {
                 let json_output = serde_json::to_string_pretty(
                     &biome_list.iter().map(|b| &b.info).collect::<Vec<_>>(),
                 )?;
-                println!("{}", json_output);
+                println!("{json_output}");
             }
             "yaml" => {
                 let yaml_output =
                     serde_yaml::to_string(&biome_list.iter().map(|b| &b.info).collect::<Vec<_>>())?;
-                println!("{}", yaml_output);
+                println!("{yaml_output}");
             }
-            "table" | _ => {
+            "table" => {
+                self.print_biomes_table(&biome_list, resources).await?;
+            }
+            _ => {
                 self.print_biomes_table(&biome_list, resources).await?;
             }
         }
@@ -357,8 +363,8 @@ impl BiomeExecutor {
         biome_name: String,
         manifest: BiomeManifest,
         env_vars: Vec<String>,
-        detached: bool,
-        debug: bool,
+        _detached: bool,
+        _debug: bool,
         security_level: String,
     ) -> Result<BiomeInfo> {
         let biome_id = Uuid::new_v4();
@@ -367,7 +373,7 @@ impl BiomeExecutor {
         info!("🔧 Initializing biome infrastructure");
 
         // Create log directory
-        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{}", biome_name));
+        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
         fs::create_dir_all(&log_dir).await?;
 
         // Parse environment variables
@@ -420,7 +426,7 @@ impl BiomeExecutor {
                 processes.push(process);
                 log_files.insert(
                     primal_name.clone(),
-                    log_dir.join(format!("{}.log", primal_name)),
+                    log_dir.join(format!("{primal_name}.log")),
                 );
             }
         }
@@ -440,7 +446,7 @@ impl BiomeExecutor {
             processes.push(process);
             log_files.insert(
                 service_name.clone(),
-                log_dir.join(format!("{}.log", service_name)),
+                log_dir.join(format!("{service_name}.log")),
             );
         }
 
@@ -475,7 +481,7 @@ impl BiomeExecutor {
         // Store running biome
         let running_biome = RunningBiome {
             info: biome_info.clone(),
-            manifest,
+            _manifest: manifest,
             process_handles: processes,
             log_files,
         };
@@ -493,8 +499,8 @@ impl BiomeExecutor {
         name: &str,
         config: &crate::PrimalConfig,
         environment: &HashMap<String, String>,
-        log_dir: &PathBuf,
-        security_level: &str,
+        _log_dir: &Path,
+        _security_level: &str,
     ) -> Result<BiomeProcess> {
         let execution_id = Uuid::new_v4();
 
@@ -521,7 +527,7 @@ impl BiomeExecutor {
             process_type: ProcessType::Primal(name.to_string()),
             execution_id,
             pid: Some(1000 + (execution_id.as_u128() % 30000) as u32),
-            started_at: Utc::now(),
+            _started_at: Utc::now(),
         })
     }
 
@@ -530,8 +536,8 @@ impl BiomeExecutor {
         name: &str,
         config: &crate::ServiceConfig,
         environment: &HashMap<String, String>,
-        log_dir: &PathBuf,
-        security_level: &str,
+        _log_dir: &Path,
+        _security_level: &str,
     ) -> Result<BiomeProcess> {
         let execution_id = Uuid::new_v4();
 
@@ -561,7 +567,7 @@ impl BiomeExecutor {
             process_type: ProcessType::Service(name.to_string()),
             execution_id,
             pid: Some(2000 + (execution_id.as_u128() % 30000) as u32),
-            started_at: Utc::now(),
+            _started_at: Utc::now(),
         })
     }
 
@@ -573,7 +579,7 @@ impl BiomeExecutor {
                 tag,
                 ..
             } => Ok(WorkloadSpec::Container {
-                image: format!("{}/{}:{}", registry, image, tag),
+                image: format!("{registry}/{image}:{tag}"),
                 command: None,
                 args: None,
                 working_dir: None,
@@ -585,7 +591,7 @@ impl BiomeExecutor {
             WorkloadSource::Wasm {
                 source,
                 checksum,
-                wasi_config,
+                wasi_config: _wasi_config,
             } => {
                 // Load WASM module from source with verification
                 let module_data = self
@@ -669,7 +675,7 @@ impl BiomeExecutor {
         // Find the process by execution ID
         let biomes = self.biomes.read().await;
 
-        for (biome_name, biome) in biomes.iter() {
+        for (_biome_name, biome) in biomes.iter() {
             for process in &biome.process_handles {
                 if process.execution_id == *execution_id {
                     if let Some(pid) = process.pid {
@@ -691,7 +697,7 @@ impl BiomeExecutor {
         // Find the process by execution ID
         let biomes = self.biomes.read().await;
 
-        for (biome_name, biome) in biomes.iter() {
+        for (_biome_name, biome) in biomes.iter() {
             for process in &biome.process_handles {
                 if process.execution_id == *execution_id {
                     if let Some(pid) = process.pid {
@@ -707,8 +713,8 @@ impl BiomeExecutor {
     }
 
     async fn purge_biome_data(&self, biome_name: &str) -> Result<()> {
-        let data_dir = PathBuf::from(format!("/tmp/toadstool/data/{}", biome_name));
-        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{}", biome_name));
+        let data_dir = PathBuf::from(format!("/tmp/toadstool/data/{biome_name}"));
+        let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
 
         if data_dir.exists() {
             fs::remove_dir_all(&data_dir).await?;
@@ -850,7 +856,7 @@ impl BiomeExecutor {
             }
 
             if timestamps {
-                println!("{}", line);
+                println!("{line}");
             } else {
                 // Basic timestamp stripping (remove first timestamp-like pattern)
                 let cleaned_line = if line.len() > 20 && line.chars().nth(19) == Some(' ') {
@@ -858,7 +864,7 @@ impl BiomeExecutor {
                 } else {
                     line
                 };
-                println!("{}", cleaned_line);
+                println!("{cleaned_line}");
             }
         }
 
@@ -920,14 +926,14 @@ impl BiomeExecutor {
                 }
 
                 if timestamps {
-                    println!("{}", line);
+                    println!("{line}");
                 } else {
                     let cleaned_line = if line.len() > 20 && line.chars().nth(19) == Some(' ') {
                         &line[20..]
                     } else {
                         &line
                     };
-                    println!("{}", cleaned_line);
+                    println!("{cleaned_line}");
                 }
             }
 
@@ -936,6 +942,7 @@ impl BiomeExecutor {
     }
 
     // Helper methods for improved functionality
+    #[allow(dead_code)]
     async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
         // Get the actual PID from the running biome processes
         let biomes = self.biomes.read().await;
@@ -947,7 +954,7 @@ impl BiomeExecutor {
                 }
             }
         }
-        
+
         // If no processes found, try to find by process name
         #[cfg(target_os = "linux")]
         {
@@ -966,11 +973,12 @@ impl BiomeExecutor {
                 }
             }
         }
-        
+
         // Fallback: return current process ID as last resort
         Err(anyhow::anyhow!("Biome not found: {}", biome_name))
     }
 
+    #[allow(dead_code)]
     async fn load_wasm_with_verification(
         &self,
         source: &str,
@@ -982,7 +990,7 @@ impl BiomeExecutor {
         // Load the WASM file
         let module_data = fs::read(source)
             .await
-            .with_context(|| format!("Failed to read WASM file: {}", source))?;
+            .with_context(|| format!("Failed to read WASM file: {source}"))?;
 
         // Verify checksum if provided
         if let Some(expected_checksum) = checksum {
@@ -1002,19 +1010,17 @@ impl BiomeExecutor {
         Ok(module_data)
     }
 
+    #[allow(dead_code)]
     async fn execute_wasm_module(
         &self,
         biome_name: &str,
-        module_data: Vec<u8>,
+        _module_data: Vec<u8>,
         _wasi_config: HashMap<String, String>,
     ) -> Result<()> {
         info!("Executing WASM module for biome: {}", biome_name);
 
-        // This would integrate with our WASM runtime engine
-        // For now, we'll simulate execution
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-        info!("WASM module execution completed for biome: {}", biome_name);
+        // For now, we'll just return success
+        // This will be implemented when WASM runtime is integrated
         Ok(())
     }
 
@@ -1024,7 +1030,7 @@ impl BiomeExecutor {
         info!("Sending {} signal to PID {}", signal, pid);
 
         let output = Command::new("kill")
-            .arg(format!("-{}", signal))
+            .arg(format!("-{signal}"))
             .arg(pid.to_string())
             .output()?;
 
@@ -1038,11 +1044,12 @@ impl BiomeExecutor {
 }
 
 impl ProcessType {
+    #[allow(dead_code)]
     fn name(&self) -> &str {
         match self {
             ProcessType::Primal(name) => name,
             ProcessType::Service(name) => name,
-            ProcessType::HealthCheck(name) => name,
+            ProcessType::_HealthCheck(name) => name,
         }
     }
 }
@@ -1052,7 +1059,7 @@ impl BiomeProcess {
         match &self.process_type {
             ProcessType::Primal(_) => "primal",
             ProcessType::Service(_) => "service",
-            ProcessType::HealthCheck(_) => "healthcheck",
+            ProcessType::_HealthCheck(_) => "healthcheck",
         }
     }
 }

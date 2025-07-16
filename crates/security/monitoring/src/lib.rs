@@ -1,4 +1,4 @@
-//! ToadStool monitoring component
+//! `ToadStool` monitoring component
 //!
 //! This module will be implemented in future iterations.
 

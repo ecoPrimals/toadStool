@@ -145,13 +145,13 @@ pub struct BearDogIntegration {
 
 impl BearDogIntegration {
     /// Create a new BearDog integration client
-    pub fn new(config: BearDogConfig) -> Self {
+    pub fn new(config: BearDogConfig) -> Result<Self, ToadStoolError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.request_timeout_secs))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to create HTTP client: {e}")))?;
 
-        Self {
+        Ok(Self {
             config,
             client,
             access_token: Arc::new(Mutex::new(None)),
@@ -159,7 +159,7 @@ impl BearDogIntegration {
             active_policies: Arc::new(RwLock::new(Vec::new())),
             audit_buffer: Arc::new(Mutex::new(Vec::new())),
             last_validation: Arc::new(Mutex::new(Instant::now())),
-        }
+        })
     }
 
     /// Authenticate with BearDog and obtain access token

@@ -58,6 +58,9 @@ pub enum ToadStoolError {
 
     #[error("Integration error: {message}")]
     Integration { message: String },
+
+    #[error("Deployment error: {message}")]
+    Deployment { message: String },
 }
 
 /// Result type for ToadStool operations
@@ -186,6 +189,13 @@ impl ToadStoolError {
     /// Create an integration error
     pub fn integration<S: Into<String>>(message: S) -> Self {
         Self::Integration {
+            message: message.into(),
+        }
+    }
+
+    /// Create a deployment error
+    pub fn deployment<S: Into<String>>(message: S) -> Self {
+        Self::Deployment {
             message: message.into(),
         }
     }

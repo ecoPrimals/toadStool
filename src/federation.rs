@@ -11,7 +11,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use toadstool_config::constants::network;
+use toadstool_config::network;
 
 /// Signature response for authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1737,7 +1737,7 @@ mod tests {
         if let Err(FederationError::AuthenticationFailed { reason }) = result {
             assert!(reason.contains("No trusted key found"));
         } else {
-            assert!(false, "Expected AuthenticationFailed error, got: {:?}", result);
+            panic!("Expected AuthenticationFailed error, got: {:?}", result);
         }
     }
     
@@ -1846,7 +1846,7 @@ mod tests {
         if let Err(FederationError::TrustPolicyViolation { policy }) = result {
             assert_eq!(policy, "invalid_policy");
         } else {
-            assert!(false, "Expected TrustPolicyViolation error, got: {:?}", result);
+            panic!("Expected TrustPolicyViolation error, got: {:?}", result);
         }
     }
     

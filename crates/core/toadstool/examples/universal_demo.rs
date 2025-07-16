@@ -3,8 +3,11 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
+use toadstool::universal::{
+    get_platform_status, NetworkLocation, PrimalCapability, PrimalContext, PrimalRequest,
+    SecurityLevel,
+};
 use uuid::Uuid;
-use toadstool::universal::{get_platform_status, PrimalContext, NetworkLocation, SecurityLevel, PrimalCapability, PrimalRequest};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -34,16 +37,25 @@ async fn main() -> anyhow::Result<()> {
     // Get platform status
     println!("\n📊 Platform Status:");
     let status = get_platform_status().await;
-    println!("   Platform Status: {:?}", status);
-    println!("   Ecosystem Integration: {}", platform.get_config().ecosystem_integration);
-    println!("   BiomeOS Integration: {}", platform.get_config().biomeos_integration);
-    println!("   Recursive Hosting: {}", platform.get_config().recursive_hosting);
+    println!("   Platform Status: {status:?}");
+    println!(
+        "   Ecosystem Integration: {}",
+        platform.get_config().ecosystem_integration
+    );
+    println!(
+        "   BiomeOS Integration: {}",
+        platform.get_config().biomeos_integration
+    );
+    println!(
+        "   Recursive Hosting: {}",
+        platform.get_config().recursive_hosting
+    );
 
     // Initialize platform with biomeOS as a primal (through ecosystem)
-    let biomeos_platform = toadstool::init_with_ecosystem().await?;
+    let _biomeos_platform = toadstool::init_with_ecosystem().await?;
     println!("   ✅ BiomeOS platform created!");
     let biomeos_status = get_platform_status().await;
-    println!("   BiomeOS Platform Status: {:?}", biomeos_status);
+    println!("   BiomeOS Platform Status: {biomeos_status:?}");
 
     // Test universal configuration
     println!("\n⚙️  Testing Universal Configuration...");
@@ -54,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
         max_concurrent_jobs: 10,
         pure_ecosystem: false,
     };
-    let custom_platform = toadstool::UniversalComputePlatform::new_with_config(config).await?;
+    let _custom_platform = toadstool::UniversalComputePlatform::new_with_config(config).await?;
     println!("   ✅ Custom platform created with universal configuration!");
 
     // Create universal job
@@ -97,11 +109,16 @@ async fn main() -> anyhow::Result<()> {
 
     // Test capability discovery
     println!("\n🔍 Testing Universal Capability Discovery...");
-    let native_capability = PrimalCapability::NativeExecution { 
-        architectures: vec!["x86_64".to_string()] 
+    let native_capability = PrimalCapability::NativeExecution {
+        architectures: vec!["x86_64".to_string()],
     };
-    let providers = platform.find_primals_by_capability(&native_capability).await;
-    println!("   Found {} providers with native execution capability", providers.len());
+    let providers = platform
+        .find_primals_by_capability(&native_capability)
+        .await;
+    println!(
+        "   Found {} providers with native execution capability",
+        providers.len()
+    );
 
     // Test primal request routing
     println!("\n🔀 Testing Universal Primal Request Routing...");

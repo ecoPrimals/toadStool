@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(clippy::mixed_attributes_style)]
+#![allow(clippy::only_used_in_recursion)]
+#![allow(clippy::wrong_self_convention)]
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //
@@ -14,2103 +19,1412 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # ToadStool Configuration Management
+//! # `ToadStool` Configuration System
 //!
-//! This module provides comprehensive configuration management for ToadStool,
-//! integrating with Songbird's port orchestration and providing environment-aware
-//! configuration loading with dynamic updates.
+//! Centralized configuration management for eliminating hardcoded values
+//! and providing a unified configuration interface across the entire platform.
 
 use std::collections::HashMap;
-use std::env;
-use std::path::{Path, PathBuf};
-use std::sync::{mpsc, Arc};
+use std::net::SocketAddr;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-use notify::{watcher, RecursiveMode, Watcher};
-use validator::{Validate, ValidationError};
-use tokio::sync::{broadcast, RwLock};
 
-/// Configuration validation trait for custom validation logic
-pub trait ConfigValidation {
-    fn validate_custom(&self) -> Result<(), ConfigError>;
+pub mod config_utils;
+pub mod env_config;
+pub mod runtime_defaults;
+
+/// Network configuration constants
+pub mod network {
+    /// Default localhost address
+    pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+
+    /// Default Songbird service port
+    pub const DEFAULT_SONGBIRD_PORT: u16 = 8080;
+
+    /// Default `BearDog` service port
+    pub const DEFAULT_BEARDOG_PORT: u16 = 8081;
+
+    /// Default `NestGate` service port
+    pub const DEFAULT_NESTGATE_PORT: u16 = 8082;
+
+    /// Default Squirrel MCP service port
+    pub const DEFAULT_SQUIRREL_PORT: u16 = 8083;
+
+    /// Default `ToadStool` API port
+    pub const DEFAULT_TOADSTOOL_PORT: u16 = 8084;
+
+    /// Default federation port
+    pub const DEFAULT_FEDERATION_PORT: u16 = 7777;
+
+    /// Default metrics port
+    pub const DEFAULT_METRICS_PORT: u16 = 9090;
+
+    /// Default health check port
+    pub const DEFAULT_HEALTH_PORT: u16 = 8085;
+
+    /// Default WebSocket port
+    pub const DEFAULT_WEBSOCKET_PORT: u16 = 8086;
+
+    /// Default container port range start
+    pub const DEFAULT_CONTAINER_PORT_START: u16 = 3000;
+
+    /// Default container port range end
+    pub const DEFAULT_CONTAINER_PORT_END: u16 = 3999;
+
+    /// Default port allocation range start
+    pub const DEFAULT_PORT_RANGE_START: u16 = 8080;
+
+    /// Default port allocation range end
+    pub const DEFAULT_PORT_RANGE_END: u16 = 8999;
+
+    /// Default request timeout in seconds
+    pub const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
+
+    /// Default connection timeout in seconds
+    pub const DEFAULT_CONNECTION_TIMEOUT_SECS: u64 = 10;
+
+    /// Default max retry attempts
+    pub const DEFAULT_MAX_RETRIES: u32 = 3;
+
+    /// Default keepalive interval in seconds
+    pub const DEFAULT_KEEPALIVE_INTERVAL_SECS: u64 = 30;
+
+    /// Default max connections per host
+    pub const DEFAULT_MAX_CONNECTIONS_PER_HOST: u32 = 100;
+
+    /// Generate default Songbird endpoint
+    #[must_use]
+    pub fn default_songbird_endpoint() -> String {
+        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_SONGBIRD_PORT}")
+    }
+
+    /// Generate default `BearDog` endpoint
+    #[must_use]
+    pub fn default_beardog_endpoint() -> String {
+        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_BEARDOG_PORT}")
+    }
+
+    /// Generate default `NestGate` endpoint
+    #[must_use]
+    pub fn default_nestgate_endpoint() -> String {
+        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_NESTGATE_PORT}")
+    }
+
+    /// Generate default Squirrel MCP endpoint
+    #[must_use]
+    pub fn default_squirrel_endpoint() -> String {
+        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_SQUIRREL_PORT}")
+    }
+
+    /// Generate default `ToadStool` API endpoint
+    #[must_use]
+    pub fn default_toadstool_endpoint() -> String {
+        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_TOADSTOOL_PORT}")
+    }
+
+    /// Generate default federation address
+    #[must_use]
+    pub fn default_federation_address() -> std::net::SocketAddr {
+        format!("{DEFAULT_LOCALHOST}:{DEFAULT_FEDERATION_PORT}")
+            .parse()
+            .unwrap_or_else(|_| {
+                tracing::error!("Invalid default federation address configuration");
+                std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_FEDERATION_PORT))
+            })
+    }
 }
 
-/// Enhanced validation for network endpoints
-fn validate_endpoint(endpoint: &str) -> Result<(), ValidationError> {
-    if endpoint.is_empty() {
-        return Err(ValidationError::new("endpoint_empty"));
-    }
-    
-    // Basic URL validation
-    if !endpoint.starts_with("http://") && !endpoint.starts_with("https://") {
-        return Err(ValidationError::new("invalid_endpoint_scheme"));
-    }
-    
-    Ok(())
+/// Application configuration constants
+pub mod app {
+    /// Default application name
+    pub const DEFAULT_APP_NAME: &str = "toadstool";
+
+    /// Default environment
+    pub const DEFAULT_ENVIRONMENT: &str = "development";
+
+    /// Default log level
+    pub const DEFAULT_LOG_LEVEL: &str = "info";
+
+    /// Default config file name
+    pub const DEFAULT_CONFIG_FILE: &str = "toadstool.toml";
+
+    /// Default data directory
+    pub const DEFAULT_DATA_DIR: &str = "./data";
+
+    /// Default cache directory
+    pub const DEFAULT_CACHE_DIR: &str = "./cache";
+
+    /// Default logs directory
+    pub const DEFAULT_LOGS_DIR: &str = "./logs";
+
+    /// Default temp directory
+    pub const DEFAULT_TEMP_DIR: &str = "/tmp";
+
+    /// Default max file size in bytes (100MB)
+    pub const DEFAULT_MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
+
+    /// Default max log file size in bytes (10MB)
+    pub const DEFAULT_MAX_LOG_SIZE: u64 = 10 * 1024 * 1024;
+
+    /// Default max log files to keep
+    pub const DEFAULT_MAX_LOG_FILES: u32 = 10;
+
+    /// Default worker thread count
+    pub const DEFAULT_WORKER_THREADS: usize = 4;
+
+    /// Default queue size
+    pub const DEFAULT_QUEUE_SIZE: usize = 1000;
+
+    /// Default batch size
+    pub const DEFAULT_BATCH_SIZE: usize = 100;
+
+    /// Default polling interval in milliseconds
+    pub const DEFAULT_POLLING_INTERVAL_MS: u64 = 500;
+
+    /// Default heartbeat interval in seconds
+    pub const DEFAULT_HEARTBEAT_INTERVAL_SECS: u64 = 30;
+
+    /// Default health check interval in seconds
+    pub const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 60;
+
+    /// Default metrics collection interval in seconds
+    pub const DEFAULT_METRICS_INTERVAL_SECS: u64 = 30;
+
+    /// Default cleanup interval in seconds
+    pub const DEFAULT_CLEANUP_INTERVAL_SECS: u64 = 300;
+
+    /// Default session timeout in seconds
+    pub const DEFAULT_SESSION_TIMEOUT_SECS: u64 = 3600;
+
+    /// Default execution timeout in seconds
+    pub const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = 1800;
+
+    /// Default max concurrent executions
+    pub const DEFAULT_MAX_CONCURRENT_EXECUTIONS: u32 = 10;
+
+    /// Default max execution history
+    pub const DEFAULT_MAX_EXECUTION_HISTORY: u32 = 1000;
+
+    /// Default resource check interval in seconds
+    pub const DEFAULT_RESOURCE_CHECK_INTERVAL_SECS: u64 = 30;
+
+    /// Default max CPU usage percentage
+    pub const DEFAULT_MAX_CPU_USAGE: f64 = 80.0;
+
+    /// Default max memory usage percentage
+    pub const DEFAULT_MAX_MEMORY_USAGE: f64 = 85.0;
+
+    /// Default max disk usage percentage
+    pub const DEFAULT_MAX_DISK_USAGE: f64 = 90.0;
+
+    /// Default buffer size for I/O operations
+    pub const DEFAULT_BUFFER_SIZE: usize = 8192;
+
+    /// Default chunk size for large data processing
+    pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024; // 1MB
+
+    /// Default compression level
+    pub const DEFAULT_COMPRESSION_LEVEL: u32 = 6;
+
+    /// Default encryption key length
+    pub const DEFAULT_ENCRYPTION_KEY_LENGTH: usize = 32;
+
+    /// Default hash algorithm
+    pub const DEFAULT_HASH_ALGORITHM: &str = "sha256";
+
+    /// Default signature algorithm
+    pub const DEFAULT_SIGNATURE_ALGORITHM: &str = "ed25519";
+
+    /// Default cache TTL in seconds
+    pub const DEFAULT_CACHE_TTL_SECS: u64 = 3600;
+
+    /// Default cache max size in bytes (100MB)
+    pub const DEFAULT_CACHE_MAX_SIZE: u64 = 100 * 1024 * 1024;
+
+    /// Default rate limit per second
+    pub const DEFAULT_RATE_LIMIT_PER_SEC: u32 = 100;
+
+    /// Default burst limit
+    pub const DEFAULT_BURST_LIMIT: u32 = 200;
+
+    /// Default grace period in seconds
+    pub const DEFAULT_GRACE_PERIOD_SECS: u64 = 30;
+
+    /// Default shutdown timeout in seconds
+    pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 60;
 }
 
-/// Validate port ranges
-fn validate_port_range(port: u16) -> Result<(), ValidationError> {
-    if port < 1024 || port > 65535 {
-        return Err(ValidationError::new("port_out_of_range"));
-    }
-    Ok(())
+/// Testing configuration constants
+pub mod testing {
+    /// Default test timeout in seconds
+    pub const DEFAULT_TEST_TIMEOUT_SECS: u64 = 30;
+
+    /// Default test server port
+    pub const DEFAULT_TEST_PORT: u16 = 9999;
+
+    /// Default test data directory
+    pub const DEFAULT_TEST_DATA_DIR: &str = "./test_data";
+
+    /// Default test cache directory
+    pub const DEFAULT_TEST_CACHE_DIR: &str = "./test_cache";
+
+    /// Default test temp directory
+    pub const DEFAULT_TEST_TEMP_DIR: &str = "./test_temp";
+
+    /// Default test database URL
+    pub const DEFAULT_TEST_DATABASE_URL: &str = "sqlite::memory:";
+
+    /// Default test environment
+    pub const DEFAULT_TEST_ENVIRONMENT: &str = "test";
+
+    /// Default test log level
+    pub const DEFAULT_TEST_LOG_LEVEL: &str = "debug";
+
+    /// Default test concurrent connections
+    pub const DEFAULT_TEST_CONCURRENT_CONNECTIONS: u32 = 10;
+
+    /// Default test execution timeout in seconds
+    pub const DEFAULT_TEST_EXECUTION_TIMEOUT_SECS: u64 = 60;
+
+    /// Default test retry attempts
+    pub const DEFAULT_TEST_RETRY_ATTEMPTS: u32 = 3;
+
+    /// Default test retry delay in milliseconds
+    pub const DEFAULT_TEST_RETRY_DELAY_MS: u64 = 100;
+
+    /// Default test batch size
+    pub const DEFAULT_TEST_BATCH_SIZE: usize = 10;
+
+    /// Default test queue size
+    pub const DEFAULT_TEST_QUEUE_SIZE: usize = 100;
+
+    /// Default test polling interval in milliseconds
+    pub const DEFAULT_TEST_POLLING_INTERVAL_MS: u64 = 100;
+
+    /// Default test heartbeat interval in seconds
+    pub const DEFAULT_TEST_HEARTBEAT_INTERVAL_SECS: u64 = 5;
+
+    /// Default test health check interval in seconds
+    pub const DEFAULT_TEST_HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
+
+    /// Default test metrics interval in seconds
+    pub const DEFAULT_TEST_METRICS_INTERVAL_SECS: u64 = 5;
+
+    /// Default test cleanup interval in seconds
+    pub const DEFAULT_TEST_CLEANUP_INTERVAL_SECS: u64 = 30;
+
+    /// Default test session timeout in seconds
+    pub const DEFAULT_TEST_SESSION_TIMEOUT_SECS: u64 = 300;
+
+    /// Default test buffer size
+    pub const DEFAULT_TEST_BUFFER_SIZE: usize = 1024;
+
+    /// Default test chunk size
+    pub const DEFAULT_TEST_CHUNK_SIZE: usize = 4096;
+
+    /// Default test cache TTL in seconds
+    pub const DEFAULT_TEST_CACHE_TTL_SECS: u64 = 60;
+
+    /// Default test rate limit per second
+    pub const DEFAULT_TEST_RATE_LIMIT_PER_SEC: u32 = 50;
+
+    /// Default test burst limit
+    pub const DEFAULT_TEST_BURST_LIMIT: u32 = 100;
+
+    /// Default test grace period in seconds
+    pub const DEFAULT_TEST_GRACE_PERIOD_SECS: u64 = 10;
+
+    /// Default test shutdown timeout in seconds
+    pub const DEFAULT_TEST_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 }
 
-/// Validate timeout values
-fn validate_timeout(timeout: u64) -> Result<(), ValidationError> {
-    if timeout == 0 || timeout > 3600 {
-        return Err(ValidationError::new("timeout_out_of_range"));
-    }
-    Ok(())
+/// Development configuration constants
+pub mod development {
+    /// Default development environment
+    pub const DEFAULT_DEV_ENVIRONMENT: &str = "development";
+
+    /// Default development log level
+    pub const DEFAULT_DEV_LOG_LEVEL: &str = "debug";
+
+    /// Default development hot reload
+    pub const DEFAULT_DEV_HOT_RELOAD: bool = true;
+
+    /// Default development auto restart
+    pub const DEFAULT_DEV_AUTO_RESTART: bool = true;
+
+    /// Default development debug mode
+    pub const DEFAULT_DEV_DEBUG_MODE: bool = true;
+
+    /// Default development verbose logging
+    pub const DEFAULT_DEV_VERBOSE_LOGGING: bool = true;
+
+    /// Default development enable profiling
+    pub const DEFAULT_DEV_ENABLE_PROFILING: bool = true;
+
+    /// Default development enable metrics
+    pub const DEFAULT_DEV_ENABLE_METRICS: bool = true;
+
+    /// Default development enable tracing
+    pub const DEFAULT_DEV_ENABLE_TRACING: bool = true;
+
+    /// Default development watch file changes
+    pub const DEFAULT_DEV_WATCH_FILES: bool = true;
+
+    /// Default development mock external services
+    pub const DEFAULT_DEV_MOCK_EXTERNAL: bool = true;
+
+    /// Default development disable auth
+    pub const DEFAULT_DEV_DISABLE_AUTH: bool = false;
+
+    /// Default development enable cors
+    pub const DEFAULT_DEV_ENABLE_CORS: bool = true;
+
+    /// Default development pretty print logs
+    pub const DEFAULT_DEV_PRETTY_LOGS: bool = true;
+
+    /// Default development show stack traces
+    pub const DEFAULT_DEV_SHOW_TRACES: bool = true;
+
+    /// Default development validation level
+    pub const DEFAULT_DEV_VALIDATION_LEVEL: &str = "strict";
+
+    /// Default development performance mode
+    pub const DEFAULT_DEV_PERFORMANCE_MODE: &str = "debug";
+
+    /// Default development security mode
+    pub const DEFAULT_DEV_SECURITY_MODE: &str = "permissive";
+
+    /// Default development cache mode
+    pub const DEFAULT_DEV_CACHE_MODE: &str = "memory";
+
+    /// Default development database mode
+    pub const DEFAULT_DEV_DATABASE_MODE: &str = "embedded";
 }
 
-/// Constants module for configuration values
-pub mod constants {
-    /// Network configuration constants
-    pub mod network {
-        /// Default ToadStool port
-        pub const DEFAULT_TOADSTOOL_PORT: u16 = 8081;
-        
-        /// Default Songbird port
-        pub const DEFAULT_SONGBIRD_PORT: u16 = 8080;
-        
-        /// Default BearDog port
-        pub const DEFAULT_BEARDOG_PORT: u16 = 8082;
-        
-        /// Default NestGate port
-        pub const DEFAULT_NESTGATE_PORT: u16 = 8083;
-        
-        /// Default localhost address
-        pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
-        
-        /// Default bind address
-        pub const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0";
-        
-        /// Default maximum connections
-        pub const DEFAULT_MAX_CONNECTIONS: usize = 1000;
-    }
+/// Production configuration constants
+pub mod production {
+    /// Default production environment
+    pub const DEFAULT_PROD_ENVIRONMENT: &str = "production";
+
+    /// Default production log level
+    pub const DEFAULT_PROD_LOG_LEVEL: &str = "info";
+
+    /// Default production hot reload
+    pub const DEFAULT_PROD_HOT_RELOAD: bool = false;
+
+    /// Default production auto restart
+    pub const DEFAULT_PROD_AUTO_RESTART: bool = true;
+
+    /// Default production debug mode
+    pub const DEFAULT_PROD_DEBUG_MODE: bool = false;
+
+    /// Default production verbose logging
+    pub const DEFAULT_PROD_VERBOSE_LOGGING: bool = false;
+
+    /// Default production enable profiling
+    pub const DEFAULT_PROD_ENABLE_PROFILING: bool = false;
+
+    /// Default production enable metrics
+    pub const DEFAULT_PROD_ENABLE_METRICS: bool = true;
+
+    /// Default production enable tracing
+    pub const DEFAULT_PROD_ENABLE_TRACING: bool = true;
+
+    /// Default production watch file changes
+    pub const DEFAULT_PROD_WATCH_FILES: bool = false;
+
+    /// Default production mock external services
+    pub const DEFAULT_PROD_MOCK_EXTERNAL: bool = false;
+
+    /// Default production disable auth
+    pub const DEFAULT_PROD_DISABLE_AUTH: bool = false;
+
+    /// Default production enable cors
+    pub const DEFAULT_PROD_ENABLE_CORS: bool = false;
+
+    /// Default production pretty print logs
+    pub const DEFAULT_PROD_PRETTY_LOGS: bool = false;
+
+    /// Default production show stack traces
+    pub const DEFAULT_PROD_SHOW_TRACES: bool = false;
+
+    /// Default production validation level
+    pub const DEFAULT_PROD_VALIDATION_LEVEL: &str = "strict";
+
+    /// Default production performance mode
+    pub const DEFAULT_PROD_PERFORMANCE_MODE: &str = "optimized";
+
+    /// Default production security mode
+    pub const DEFAULT_PROD_SECURITY_MODE: &str = "strict";
+
+    /// Default production cache mode
+    pub const DEFAULT_PROD_CACHE_MODE: &str = "distributed";
+
+    /// Default production database mode
+    pub const DEFAULT_PROD_DATABASE_MODE: &str = "clustered";
 }
 
-/// Enhanced ToadStool configuration with environment variable support
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Main configuration structure
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ToadStoolConfig {
-    /// Server configuration
-    pub server: ServerConfig,
-    /// Runtime configurations
-    pub runtimes: RuntimesConfig,
+    /// Application configuration
+    pub app: ApplicationConfig,
+    /// Network configuration
+    pub network: NetworkConfig,
+    /// Runtime configuration
+    pub runtime: RuntimeConfig,
     /// Security configuration
     pub security: SecurityConfig,
-    /// Monitoring configuration
-    pub monitoring: MonitoringConfig,
-    /// Federation configuration
-    pub federation: FederationConfig,
-    /// Ecosystem integration configuration
-    pub ecosystem: EcosystemConfig,
-    /// Performance optimization configuration
-    pub performance: PerformanceConfig,
+    /// Logging configuration
+    pub logging: LoggingConfig,
+    /// Database configuration
+    pub database: Option<DatabaseConfig>,
+    /// Cache configuration
+    pub cache: Option<CacheConfig>,
+    /// Metrics configuration
+    pub metrics: Option<MetricsConfig>,
+    /// Feature flags
+    pub features: FeatureFlags,
+    /// Environment-specific overrides
+    pub overrides: HashMap<String, serde_json::Value>,
 }
 
+/// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerConfig {
-    /// Server bind address
-    pub bind_address: String,
-    /// Server port
-    pub port: u16,
-    /// Maximum concurrent connections
-    pub max_connections: usize,
-    /// Request timeout in seconds
-    pub request_timeout_seconds: u64,
-    /// Enable TLS
-    pub tls_enabled: bool,
-    /// TLS certificate path
-    pub tls_cert_path: Option<PathBuf>,
-    /// TLS private key path
-    pub tls_key_path: Option<PathBuf>,
+pub struct ApplicationConfig {
+    /// Application name
+    pub name: String,
+    /// Application version
+    pub version: String,
+    /// Environment (development, staging, production)
+    pub environment: String,
+    /// Data directory
+    pub data_dir: String,
+    /// Cache directory
+    pub cache_dir: String,
+    /// Logs directory
+    pub logs_dir: String,
+    /// Temporary directory
+    pub temp_dir: String,
+    /// Worker thread count
+    pub worker_threads: usize,
+    /// Queue size
+    pub queue_size: usize,
+    /// Batch processing size
+    pub batch_size: usize,
+    /// Graceful shutdown timeout
+    pub shutdown_timeout: Duration,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RuntimesConfig {
-    /// Native runtime configuration
-    pub native: NativeRuntimeConfig,
-    /// Container runtime configuration
-    pub container: ContainerRuntimeConfig,
-    /// WASM runtime configuration
-    pub wasm: WasmRuntimeConfig,
-    /// GPU runtime configuration
-    pub gpu: GpuRuntimeConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NativeRuntimeConfig {
-    /// Enable native runtime
-    pub enabled: bool,
-    /// Maximum concurrent executions
-    pub max_concurrent: usize,
-    /// Execution timeout in seconds
-    pub timeout_seconds: u64,
-    /// Resource limits
-    pub resource_limits: ResourceLimitsConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContainerRuntimeConfig {
-    /// Enable container runtime
-    pub enabled: bool,
-    /// Container runtime (docker, podman, containerd)
-    pub runtime: String,
-    /// Maximum concurrent containers
-    pub max_concurrent: usize,
-    /// Container timeout in seconds
-    pub timeout_seconds: u64,
-    /// Default container image
-    pub default_image: String,
-    /// Resource limits
-    pub resource_limits: ResourceLimitsConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WasmRuntimeConfig {
-    /// Enable WASM runtime
-    pub enabled: bool,
-    /// Maximum concurrent WASM instances
-    pub max_concurrent: usize,
-    /// WASM execution timeout in seconds
-    pub timeout_seconds: u64,
-    /// Memory limit per instance in MB
-    pub memory_limit_mb: usize,
-    /// Enable WASI support
-    pub wasi_enabled: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GpuRuntimeConfig {
-    /// Enable GPU runtime
-    pub enabled: bool,
-    /// GPU frameworks to enable (cuda, opencl, vulkan)
-    pub frameworks: Vec<String>,
-    /// Maximum concurrent GPU jobs
-    pub max_concurrent: usize,
-    /// GPU memory limit per job in MB
-    pub memory_limit_mb: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceLimitsConfig {
-    /// Maximum CPU cores per execution
-    pub max_cpu_cores: f64,
-    /// Maximum memory in MB
-    pub max_memory_mb: usize,
-    /// Maximum storage in MB
-    pub max_storage_mb: usize,
-    /// Maximum network bandwidth in Mbps
-    pub max_network_mbps: Option<usize>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityConfig {
-    /// Enable authentication
-    pub auth_enabled: bool,
-    /// Authentication method (bearer, jwt, api_key)
-    pub auth_method: String,
-    /// JWT secret for token validation
-    pub jwt_secret: Option<String>,
-    /// API key for simple authentication
-    pub api_key: Option<String>,
-    /// Enable sandboxing
-    pub sandbox_enabled: bool,
-    /// Sandbox type (chroot, docker, firejail)
-    pub sandbox_type: String,
-    /// Enable network isolation
-    pub network_isolation: bool,
-    /// Allowed network destinations
-    pub allowed_destinations: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonitoringConfig {
-    /// Enable metrics collection
-    pub metrics_enabled: bool,
-    /// Metrics collection interval in seconds
-    pub metrics_interval_seconds: u64,
-    /// Enable real-time monitoring
-    pub realtime_enabled: bool,
-    /// Metrics retention period in hours
-    pub retention_hours: u64,
-    /// Enable performance profiling
-    pub profiling_enabled: bool,
-    /// Export metrics to external systems
-    pub export_enabled: bool,
-    /// Export endpoints
-    pub export_endpoints: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FederationConfig {
-    /// Enable federation
-    pub enabled: bool,
-    /// Federation discovery method (dns, static, consul)
-    pub discovery_method: String,
-    /// Static federation peers
-    pub static_peers: Vec<String>,
-    /// Federation port
-    pub port: u16,
-    /// Enable encryption for federation traffic
-    pub encryption_enabled: bool,
-    /// Federation authentication key
-    pub auth_key: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EcosystemConfig {
-    /// Songbird integration configuration
-    pub songbird: SongbirdConfig,
-    /// BearDog integration configuration
-    pub beardog: BearDogConfig,
-    /// NestGate integration configuration
-    pub nestgate: NestGateConfig,
-    /// BiomeOS integration configuration
-    pub biomeos: BiomeOSConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdConfig {
-    /// Enable Songbird integration
-    pub enabled: bool,
-    /// Songbird endpoint URL
-    pub endpoint: String,
-    /// Connection timeout in seconds
-    pub timeout_seconds: u64,
-    /// Enable load balancing
-    pub load_balancing: bool,
-    /// Authentication token
-    pub auth_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogConfig {
-    /// Enable BearDog integration
-    pub enabled: bool,
-    /// BearDog endpoint URL
-    pub endpoint: String,
-    /// Security level (low, medium, high, maximum)
-    pub security_level: String,
-    /// Enable crypto lock
-    pub crypto_lock_enabled: bool,
-    /// Authentication key
-    pub auth_key: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NestGateConfig {
-    /// Enable NestGate integration
-    pub enabled: bool,
-    /// NestGate endpoint URL
-    pub endpoint: String,
-    /// Storage tier (hot, warm, cold)
-    pub storage_tier: String,
-    /// Enable distributed storage
-    pub distributed_enabled: bool,
-    /// Authentication token
-    pub auth_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BiomeOSConfig {
-    /// Enable BiomeOS integration
-    pub enabled: bool,
-    /// BiomeOS API endpoint
-    pub api_endpoint: String,
-    /// Enable BYOB (Bring Your Own Biome)
-    pub byob_enabled: bool,
-    /// Default team ID
-    pub default_team_id: Option<String>,
-    /// Authentication token
-    pub auth_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PerformanceConfig {
-    /// Enable performance optimization
-    pub optimization_enabled: bool,
-    /// Performance monitoring interval in seconds
-    pub monitoring_interval_seconds: u64,
-    /// Enable runtime selection optimization
-    pub runtime_selection_enabled: bool,
-    /// Enable resource prediction
-    pub resource_prediction_enabled: bool,
-    /// Performance threshold percentile
-    pub threshold_percentile: f64,
-    /// Target resource utilization percentage
-    pub target_utilization_percent: f64,
-}
-
-/// Configuration profile types
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ConfigProfile {
-    Development,
-    Staging,
-    Production,
-    Testing,
-    Custom(String),
-}
-
-/// Enhanced configuration manager with hot-reload support
-#[derive(Clone)]
-pub struct ConfigManager {
-    config: Arc<RwLock<ToadStoolConfig>>,
-    env_prefix: String,
-}
-
-impl ConfigManager {
-    /// Create a new configuration manager
-    pub fn new() -> Self {
+impl Default for ApplicationConfig {
+    fn default() -> Self {
         Self {
-            config: Arc::new(RwLock::new(ToadStoolConfig::default())),
-            env_prefix: "TOADSTOOL".to_string(),
+            name: app::DEFAULT_APP_NAME.to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            environment: app::DEFAULT_ENVIRONMENT.to_string(),
+            data_dir: app::DEFAULT_DATA_DIR.to_string(),
+            cache_dir: app::DEFAULT_CACHE_DIR.to_string(),
+            logs_dir: app::DEFAULT_LOGS_DIR.to_string(),
+            temp_dir: app::DEFAULT_TEMP_DIR.to_string(),
+            worker_threads: app::DEFAULT_WORKER_THREADS,
+            queue_size: app::DEFAULT_QUEUE_SIZE,
+            batch_size: app::DEFAULT_BATCH_SIZE,
+            shutdown_timeout: Duration::from_secs(app::DEFAULT_SHUTDOWN_TIMEOUT_SECS),
         }
     }
+}
 
-    /// Create configuration manager with custom environment prefix
-    pub fn with_prefix(prefix: &str) -> Self {
+/// Network configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkConfig {
+    /// Bind address
+    pub bind_address: SocketAddr,
+    /// External endpoints
+    pub endpoints: EndpointConfig,
+    /// Connection settings
+    pub connection: ConnectionConfig,
+    /// TLS configuration
+    pub tls: Option<TlsConfig>,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
         Self {
-            config: Arc::new(RwLock::new(ToadStoolConfig::default())),
-            env_prefix: prefix.to_string(),
+            bind_address: format!(
+                "{}:{}",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_TOADSTOOL_PORT
+            )
+            .parse()
+            .expect("Invalid default bind address"),
+            endpoints: EndpointConfig::default(),
+            connection: ConnectionConfig::default(),
+            tls: None,
         }
+    }
+}
+
+/// External service endpoints
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointConfig {
+    /// Songbird service endpoint
+    pub songbird: String,
+    /// `BearDog` service endpoint
+    pub beardog: String,
+    /// `NestGate` service endpoint
+    pub nestgate: String,
+    /// Squirrel MCP service endpoint
+    pub squirrel: String,
+    /// Federation endpoint
+    pub federation: String,
+    /// Metrics endpoint
+    pub metrics: String,
+    /// Health check endpoint
+    pub health: String,
+}
+
+impl Default for EndpointConfig {
+    fn default() -> Self {
+        Self {
+            songbird: network::default_songbird_endpoint(),
+            beardog: network::default_beardog_endpoint(),
+            nestgate: network::default_nestgate_endpoint(),
+            squirrel: network::default_squirrel_endpoint(),
+            federation: format!(
+                "http://{}:{}",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_FEDERATION_PORT
+            ),
+            metrics: format!(
+                "http://{}:{}",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_METRICS_PORT
+            ),
+            health: format!(
+                "http://{}:{}",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_HEALTH_PORT
+            ),
+        }
+    }
+}
+
+/// Connection configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectionConfig {
+    /// Request timeout
+    pub request_timeout: Duration,
+    /// Connection timeout
+    pub connection_timeout: Duration,
+    /// Max retry attempts
+    pub max_retries: u32,
+    /// Keepalive interval
+    pub keepalive_interval: Duration,
+    /// Max connections per host
+    pub max_connections_per_host: u32,
+    /// Connection pool size
+    pub pool_size: u32,
+    /// Enable HTTP/2
+    pub enable_http2: bool,
+    /// Enable compression
+    pub enable_compression: bool,
+}
+
+impl Default for ConnectionConfig {
+    fn default() -> Self {
+        Self {
+            request_timeout: Duration::from_secs(network::DEFAULT_REQUEST_TIMEOUT_SECS),
+            connection_timeout: Duration::from_secs(network::DEFAULT_CONNECTION_TIMEOUT_SECS),
+            max_retries: network::DEFAULT_MAX_RETRIES,
+            keepalive_interval: Duration::from_secs(network::DEFAULT_KEEPALIVE_INTERVAL_SECS),
+            max_connections_per_host: network::DEFAULT_MAX_CONNECTIONS_PER_HOST,
+            pool_size: 10,
+            enable_http2: true,
+            enable_compression: true,
+        }
+    }
+}
+
+/// TLS configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TlsConfig {
+    /// Certificate file path
+    pub cert_file: String,
+    /// Private key file path
+    pub key_file: String,
+    /// CA certificate file path
+    pub ca_file: Option<String>,
+    /// Verify certificates
+    pub verify_certs: bool,
+    /// TLS version
+    pub tls_version: String,
+    /// Cipher suites
+    pub cipher_suites: Vec<String>,
+}
+
+/// Runtime configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuntimeConfig {
+    /// Execution timeout
+    pub execution_timeout: Duration,
+    /// Max concurrent executions
+    pub max_concurrent_executions: u32,
+    /// Resource limits
+    pub resource_limits: ResourceLimits,
+    /// Container settings
+    pub container: ContainerConfig,
+    /// WASM settings
+    pub wasm: WasmConfig,
+    /// Python settings
+    pub python: PythonConfig,
+    /// GPU settings
+    pub gpu: Option<GpuConfig>,
+}
+
+impl Default for RuntimeConfig {
+    fn default() -> Self {
+        Self {
+            execution_timeout: Duration::from_secs(app::DEFAULT_EXECUTION_TIMEOUT_SECS),
+            max_concurrent_executions: app::DEFAULT_MAX_CONCURRENT_EXECUTIONS,
+            resource_limits: ResourceLimits::default(),
+            container: ContainerConfig::default(),
+            wasm: WasmConfig::default(),
+            python: PythonConfig::default(),
+            gpu: None,
+        }
+    }
+}
+
+/// Resource limits configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceLimits {
+    /// Max CPU usage percentage
+    pub max_cpu_usage: f64,
+    /// Max memory usage percentage
+    pub max_memory_usage: f64,
+    /// Max disk usage percentage
+    pub max_disk_usage: f64,
+    /// Max network bandwidth in bytes per second
+    pub max_network_bandwidth: u64,
+    /// Max open file descriptors
+    pub max_open_files: u64,
+    /// Max process count
+    pub max_processes: u32,
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self {
+            max_cpu_usage: app::DEFAULT_MAX_CPU_USAGE,
+            max_memory_usage: app::DEFAULT_MAX_MEMORY_USAGE,
+            max_disk_usage: app::DEFAULT_MAX_DISK_USAGE,
+            max_network_bandwidth: 1024 * 1024 * 1024, // 1 GB/s
+            max_open_files: 1024,
+            max_processes: 100,
+        }
+    }
+}
+
+/// Container runtime configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerConfig {
+    /// Container runtime (docker, podman, etc.)
+    pub runtime: String,
+    /// Default image registry
+    pub default_registry: String,
+    /// Port range for container ports
+    pub port_range: (u16, u16),
+    /// Network mode
+    pub network_mode: String,
+    /// Security options
+    pub security_opts: Vec<String>,
+    /// Volume mounts
+    pub volume_mounts: Vec<String>,
+    /// Environment variables
+    pub environment: HashMap<String, String>,
+}
+
+impl Default for ContainerConfig {
+    fn default() -> Self {
+        Self {
+            runtime: "docker".to_string(),
+            default_registry: "docker.io".to_string(),
+            port_range: (
+                network::DEFAULT_CONTAINER_PORT_START,
+                network::DEFAULT_CONTAINER_PORT_END,
+            ),
+            network_mode: "bridge".to_string(),
+            security_opts: vec!["no-new-privileges".to_string()],
+            volume_mounts: vec![],
+            environment: HashMap::new(),
+        }
+    }
+}
+
+/// WASM runtime configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WasmConfig {
+    /// WASM runtime engine
+    pub engine: String,
+    /// Max memory size in bytes
+    pub max_memory: u64,
+    /// Max execution time in seconds
+    pub max_execution_time: u64,
+    /// Enable WASI
+    pub enable_wasi: bool,
+    /// WASI allowed directories
+    pub wasi_allowed_dirs: Vec<String>,
+    /// WASI environment variables
+    pub wasi_env: HashMap<String, String>,
+}
+
+impl Default for WasmConfig {
+    fn default() -> Self {
+        Self {
+            engine: "wasmtime".to_string(),
+            max_memory: 64 * 1024 * 1024, // 64MB
+            max_execution_time: 300,      // 5 minutes
+            enable_wasi: true,
+            wasi_allowed_dirs: vec!["/tmp".to_string()],
+            wasi_env: HashMap::new(),
+        }
+    }
+}
+
+/// Python runtime configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PythonConfig {
+    /// Python executable path
+    pub executable: String,
+    /// Virtual environment path
+    pub venv_path: Option<String>,
+    /// Package index URL
+    pub index_url: String,
+    /// Max memory size in bytes
+    pub max_memory: u64,
+    /// Max execution time in seconds
+    pub max_execution_time: u64,
+    /// Allowed modules
+    pub allowed_modules: Vec<String>,
+    /// Restricted modules
+    pub restricted_modules: Vec<String>,
+}
+
+impl Default for PythonConfig {
+    fn default() -> Self {
+        Self {
+            executable: "python3".to_string(),
+            venv_path: None,
+            index_url: "https://pypi.org/simple".to_string(),
+            max_memory: 128 * 1024 * 1024, // 128MB
+            max_execution_time: 300,       // 5 minutes
+            allowed_modules: vec!["numpy".to_string(), "pandas".to_string()],
+            restricted_modules: vec!["os".to_string(), "subprocess".to_string()],
+        }
+    }
+}
+
+/// GPU runtime configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GpuConfig {
+    /// GPU runtime (cuda, opencl, etc.)
+    pub runtime: String,
+    /// GPU device IDs to use
+    pub device_ids: Vec<u32>,
+    /// Max memory usage per device
+    pub max_memory_per_device: u64,
+    /// Max execution time in seconds
+    pub max_execution_time: u64,
+    /// Enable profiling
+    pub enable_profiling: bool,
+}
+
+impl Default for GpuConfig {
+    fn default() -> Self {
+        Self {
+            runtime: "cuda".to_string(),
+            device_ids: vec![0],
+            max_memory_per_device: 2 * 1024 * 1024 * 1024, // 2GB
+            max_execution_time: 300,                       // 5 minutes
+            enable_profiling: false,
+        }
+    }
+}
+
+/// Security configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SecurityConfig {
+    /// Authentication settings
+    pub auth: AuthConfig,
+    /// Authorization settings
+    pub authz: AuthzConfig,
+    /// Encryption settings
+    pub encryption: EncryptionConfig,
+    /// Audit settings
+    pub audit: AuditConfig,
+    /// Sandbox settings
+    pub sandbox: SandboxConfig,
+}
+
+/// Authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    /// Enable authentication
+    pub enabled: bool,
+    /// Authentication provider
+    pub provider: String,
+    /// JWT secret key
+    pub jwt_secret: Option<String>,
+    /// Session timeout
+    pub session_timeout: Duration,
+    /// Max login attempts
+    pub max_login_attempts: u32,
+    /// Lockout duration
+    pub lockout_duration: Duration,
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: "local".to_string(),
+            jwt_secret: None,
+            session_timeout: Duration::from_secs(app::DEFAULT_SESSION_TIMEOUT_SECS),
+            max_login_attempts: 5,
+            lockout_duration: Duration::from_secs(300), // 5 minutes
+        }
+    }
+}
+
+/// Authorization configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthzConfig {
+    /// Enable authorization
+    pub enabled: bool,
+    /// Authorization provider
+    pub provider: String,
+    /// Default permissions
+    pub default_permissions: Vec<String>,
+    /// Admin permissions
+    pub admin_permissions: Vec<String>,
+}
+
+impl Default for AuthzConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: "local".to_string(),
+            default_permissions: vec!["read".to_string()],
+            admin_permissions: vec!["read".to_string(), "write".to_string(), "admin".to_string()],
+        }
+    }
+}
+
+/// Encryption configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EncryptionConfig {
+    /// Enable encryption
+    pub enabled: bool,
+    /// Encryption algorithm
+    pub algorithm: String,
+    /// Key derivation function
+    pub key_derivation: String,
+    /// Key length in bytes
+    pub key_length: usize,
+    /// Encryption at rest
+    pub encrypt_at_rest: bool,
+    /// Encryption in transit
+    pub encrypt_in_transit: bool,
+}
+
+impl Default for EncryptionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            algorithm: "aes-256-gcm".to_string(),
+            key_derivation: "pbkdf2".to_string(),
+            key_length: app::DEFAULT_ENCRYPTION_KEY_LENGTH,
+            encrypt_at_rest: false,
+            encrypt_in_transit: true,
+        }
+    }
+}
+
+/// Audit configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditConfig {
+    /// Enable audit logging
+    pub enabled: bool,
+    /// Audit log file path
+    pub log_file: String,
+    /// Audit log level
+    pub log_level: String,
+    /// Audit log format
+    pub log_format: String,
+    /// Audit log rotation
+    pub log_rotation: bool,
+    /// Max audit log size
+    pub max_log_size: u64,
+    /// Max audit log files
+    pub max_log_files: u32,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            log_file: "audit.log".to_string(),
+            log_level: "info".to_string(),
+            log_format: "json".to_string(),
+            log_rotation: true,
+            max_log_size: app::DEFAULT_MAX_LOG_SIZE,
+            max_log_files: app::DEFAULT_MAX_LOG_FILES,
+        }
+    }
+}
+
+/// Sandbox configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SandboxConfig {
+    /// Enable sandboxing
+    pub enabled: bool,
+    /// Sandbox type
+    pub sandbox_type: String,
+    /// Allowed system calls
+    pub allowed_syscalls: Vec<String>,
+    /// Blocked system calls
+    pub blocked_syscalls: Vec<String>,
+    /// Allowed network access
+    pub allow_network: bool,
+    /// Allowed file access
+    pub allow_file_access: bool,
+    /// Allowed directories
+    pub allowed_dirs: Vec<String>,
+    /// Blocked directories
+    pub blocked_dirs: Vec<String>,
+}
+
+impl Default for SandboxConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            sandbox_type: "seccomp".to_string(),
+            allowed_syscalls: vec![
+                "read".to_string(),
+                "write".to_string(),
+                "open".to_string(),
+                "close".to_string(),
+            ],
+            blocked_syscalls: vec![
+                "execve".to_string(),
+                "fork".to_string(),
+                "clone".to_string(),
+            ],
+            allow_network: false,
+            allow_file_access: true,
+            allowed_dirs: vec!["/tmp".to_string()],
+            blocked_dirs: vec!["/etc".to_string(), "/proc".to_string(), "/sys".to_string()],
+        }
+    }
+}
+
+/// Logging configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingConfig {
+    /// Log level
+    pub level: String,
+    /// Log format
+    pub format: String,
+    /// Log to file
+    pub log_to_file: bool,
+    /// Log file path
+    pub log_file: String,
+    /// Log rotation
+    pub log_rotation: bool,
+    /// Max log size
+    pub max_log_size: u64,
+    /// Max log files
+    pub max_log_files: u32,
+    /// Enable colors
+    pub enable_colors: bool,
+    /// Enable timestamps
+    pub enable_timestamps: bool,
+    /// Enable thread IDs
+    pub enable_thread_ids: bool,
+    /// Enable module paths
+    pub enable_module_paths: bool,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: app::DEFAULT_LOG_LEVEL.to_string(),
+            format: "pretty".to_string(),
+            log_to_file: false,
+            log_file: "toadstool.log".to_string(),
+            log_rotation: true,
+            max_log_size: app::DEFAULT_MAX_LOG_SIZE,
+            max_log_files: app::DEFAULT_MAX_LOG_FILES,
+            enable_colors: true,
+            enable_timestamps: true,
+            enable_thread_ids: false,
+            enable_module_paths: false,
+        }
+    }
+}
+
+/// Database configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatabaseConfig {
+    /// Database URL
+    pub url: String,
+    /// Database type
+    pub database_type: String,
+    /// Max connections
+    pub max_connections: u32,
+    /// Connection timeout
+    pub connection_timeout: Duration,
+    /// Query timeout
+    pub query_timeout: Duration,
+    /// Enable migrations
+    pub enable_migrations: bool,
+    /// Migration directory
+    pub migration_dir: String,
+}
+
+/// Cache configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheConfig {
+    /// Cache type
+    pub cache_type: String,
+    /// Cache URL
+    pub url: Option<String>,
+    /// Max size in bytes
+    pub max_size: u64,
+    /// TTL in seconds
+    pub ttl: Duration,
+    /// Enable compression
+    pub enable_compression: bool,
+    /// Compression algorithm
+    pub compression_algorithm: String,
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            cache_type: "memory".to_string(),
+            url: None,
+            max_size: app::DEFAULT_CACHE_MAX_SIZE,
+            ttl: Duration::from_secs(app::DEFAULT_CACHE_TTL_SECS),
+            enable_compression: false,
+            compression_algorithm: "gzip".to_string(),
+        }
+    }
+}
+
+/// Metrics configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsConfig {
+    /// Enable metrics
+    pub enabled: bool,
+    /// Metrics endpoint
+    pub endpoint: String,
+    /// Metrics format
+    pub format: String,
+    /// Collection interval
+    pub collection_interval: Duration,
+    /// Retention period
+    pub retention_period: Duration,
+    /// Enable histograms
+    pub enable_histograms: bool,
+    /// Enable counters
+    pub enable_counters: bool,
+    /// Enable gauges
+    pub enable_gauges: bool,
+}
+
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            endpoint: format!(
+                "http://{}:{}/metrics",
+                network::DEFAULT_LOCALHOST,
+                network::DEFAULT_METRICS_PORT
+            ),
+            format: "prometheus".to_string(),
+            collection_interval: Duration::from_secs(app::DEFAULT_METRICS_INTERVAL_SECS),
+            retention_period: Duration::from_secs(3600 * 24 * 7), // 7 days
+            enable_histograms: true,
+            enable_counters: true,
+            enable_gauges: true,
+        }
+    }
+}
+
+/// Feature flags configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeatureFlags {
+    /// Enable experimental features
+    pub enable_experimental: bool,
+    /// Enable beta features
+    pub enable_beta: bool,
+    /// Enable debug features
+    pub enable_debug: bool,
+    /// Enable profiling features
+    pub enable_profiling: bool,
+    /// Enable distributed mode
+    pub enable_distributed: bool,
+    /// Enable federation
+    pub enable_federation: bool,
+    /// Enable WebSocket
+    pub enable_websocket: bool,
+    /// Enable GraphQL
+    pub enable_graphql: bool,
+    /// Enable gRPC
+    pub enable_grpc: bool,
+    /// Enable `OpenAPI`
+    pub enable_openapi: bool,
+    /// Enable auto-configuration
+    pub enable_auto_config: bool,
+    /// Enable hot reload
+    pub enable_hot_reload: bool,
+    /// Enable live reload
+    pub enable_live_reload: bool,
+    /// Enable watch mode
+    pub enable_watch_mode: bool,
+    /// Custom feature flags
+    pub custom: HashMap<String, bool>,
+}
+
+impl Default for FeatureFlags {
+    fn default() -> Self {
+        Self {
+            enable_experimental: false,
+            enable_beta: false,
+            enable_debug: cfg!(debug_assertions),
+            enable_profiling: false,
+            enable_distributed: true,
+            enable_federation: true,
+            enable_websocket: true,
+            enable_graphql: false,
+            enable_grpc: false,
+            enable_openapi: true,
+            enable_auto_config: true,
+            enable_hot_reload: cfg!(debug_assertions),
+            enable_live_reload: cfg!(debug_assertions),
+            enable_watch_mode: cfg!(debug_assertions),
+            custom: HashMap::new(),
+        }
+    }
+}
+
+/// Configuration loading and validation
+impl ToadStoolConfig {
+    /// Load configuration from file
+    ///
+    /// # Errors
+    /// Returns an error if the configuration file cannot be read or parsed
+    pub fn load_from_file<P: AsRef<std::path::Path>>(
+        path: P,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = std::fs::read_to_string(path)?;
+        let config: Self = toml::from_str(&content)?;
+        config.validate()?;
+        Ok(config)
     }
 
     /// Load configuration from environment variables
-    pub async fn load_from_env(&self) -> Result<(), ConfigError> {
-        let mut config = self.config.write().await;
-        
-        // Server configuration
-        if let Ok(bind_address) = env::var(format!("{}_BIND_ADDRESS", self.env_prefix)) {
-            config.server.bind_address = bind_address;
-        }
-        
-        if let Ok(port) = env::var(format!("{}_PORT", self.env_prefix)) {
-            config.server.port = port.parse().map_err(|_| ConfigError::InvalidValue("port".to_string()))?;
-        }
-        
-        if let Ok(max_connections) = env::var(format!("{}_MAX_CONNECTIONS", self.env_prefix)) {
-            config.server.max_connections = max_connections.parse().map_err(|_| ConfigError::InvalidValue("max_connections".to_string()))?;
+    ///
+    /// # Errors
+    /// Returns an error if the environment variables cannot be parsed
+    pub fn load_from_env() -> Result<Self, Box<dyn std::error::Error>> {
+        let mut config = Self::default();
+
+        // Override with environment variables
+        if let Ok(env) = std::env::var("TOADSTOOL_ENVIRONMENT") {
+            config.app.environment = env;
         }
 
-        // Runtime configurations
-        if let Ok(native_enabled) = env::var(format!("{}_NATIVE_ENABLED", self.env_prefix)) {
-            config.runtimes.native.enabled = native_enabled.parse().unwrap_or(true);
+        if let Ok(log_level) = std::env::var("TOADSTOOL_LOG_LEVEL") {
+            config.logging.level = log_level;
         }
 
-        if let Ok(container_enabled) = env::var(format!("{}_CONTAINER_ENABLED", self.env_prefix)) {
-            config.runtimes.container.enabled = container_enabled.parse().unwrap_or(true);
+        if let Ok(bind_address) = std::env::var("TOADSTOOL_BIND_ADDRESS") {
+            config.network.bind_address = bind_address.parse()?;
         }
 
-        if let Ok(wasm_enabled) = env::var(format!("{}_WASM_ENABLED", self.env_prefix)) {
-            config.runtimes.wasm.enabled = wasm_enabled.parse().unwrap_or(true);
+        if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
+            config.network.endpoints.songbird = songbird_endpoint;
         }
 
-        if let Ok(gpu_enabled) = env::var(format!("{}_GPU_ENABLED", self.env_prefix)) {
-            config.runtimes.gpu.enabled = gpu_enabled.parse().unwrap_or(false);
-        }
-
-        // Security configuration
-        if let Ok(auth_enabled) = env::var(format!("{}_AUTH_ENABLED", self.env_prefix)) {
-            config.security.auth_enabled = auth_enabled.parse().unwrap_or(false);
-        }
-
-        if let Ok(jwt_secret) = env::var(format!("{}_JWT_SECRET", self.env_prefix)) {
-            config.security.jwt_secret = Some(jwt_secret);
-        }
-
-        // Ecosystem configuration
-        if let Ok(songbird_endpoint) = env::var(format!("{}_SONGBIRD_ENDPOINT", self.env_prefix)) {
-            config.ecosystem.songbird.endpoint = songbird_endpoint;
-        }
-
-        if let Ok(beardog_endpoint) = env::var(format!("{}_BEARDOG_ENDPOINT", self.env_prefix)) {
-            config.ecosystem.beardog.endpoint = beardog_endpoint;
-        }
-
-        if let Ok(nestgate_endpoint) = env::var(format!("{}_NESTGATE_ENDPOINT", self.env_prefix)) {
-            config.ecosystem.nestgate.endpoint = nestgate_endpoint;
-        }
-
-        if let Ok(biomeos_endpoint) = env::var(format!("{}_BIOMEOS_ENDPOINT", self.env_prefix)) {
-            config.ecosystem.biomeos.api_endpoint = biomeos_endpoint;
-        }
-
-        Ok(())
-    }
-
-    /// Load configuration from file
-    pub async fn load_from_file(&self, path: &PathBuf) -> Result<(), ConfigError> {
-        let content = tokio::fs::read_to_string(path).await
-            .map_err(|e| ConfigError::FileError(e.to_string()))?;
-        
-        let loaded_config: ToadStoolConfig = match path.extension().and_then(|s| s.to_str()) {
-            Some("yaml") | Some("yml") => {
-                serde_yaml::from_str(&content)
-                    .map_err(|e| ConfigError::ParseError(e.to_string()))?
-            }
-            Some("json") => {
-                serde_json::from_str(&content)
-                    .map_err(|e| ConfigError::ParseError(e.to_string()))?
-            }
-            Some("toml") => {
-                toml::from_str(&content)
-                    .map_err(|e| ConfigError::ParseError(e.to_string()))?
-            }
-            _ => return Err(ConfigError::UnsupportedFormat),
-        };
-
-        *self.config.write().await = loaded_config;
-        Ok(())
-    }
-
-    /// Get current configuration
-    pub async fn get_config(&self) -> ToadStoolConfig {
-        self.config.read().await.clone()
-    }
-
-    /// Update configuration at runtime
-    pub async fn update_config<F>(&self, updater: F) -> Result<(), ConfigError>
-    where
-        F: FnOnce(&mut ToadStoolConfig) -> Result<(), ConfigError>,
-    {
-        let mut config = self.config.write().await;
-        updater(&mut config)?;
-        self.validate_config(&config)?;
-        Ok(())
+        config.validate()?;
+        Ok(config)
     }
 
     /// Validate configuration
-    fn validate_config(&self, config: &ToadStoolConfig) -> Result<(), ConfigError> {
-        // Validate server configuration
-        if config.server.port == 0 {
-            return Err(ConfigError::ValidationError("Server port cannot be 0".to_string()));
+    ///
+    /// # Errors
+    /// Returns an error if the configuration is invalid
+    pub fn validate(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Validate application configuration
+        if self.app.name.is_empty() {
+            return Err("Application name cannot be empty".into());
         }
 
-        if config.server.max_connections == 0 {
-            return Err(ConfigError::ValidationError("Max connections cannot be 0".to_string()));
+        if self.app.worker_threads == 0 {
+            return Err("Worker threads must be greater than 0".into());
         }
 
-        // Validate runtime configurations
-        if !config.runtimes.native.enabled && !config.runtimes.container.enabled && 
-           !config.runtimes.wasm.enabled && !config.runtimes.gpu.enabled {
-            return Err(ConfigError::ValidationError("At least one runtime must be enabled".to_string()));
+        // Validate network configuration
+        if self.network.endpoints.songbird.is_empty() {
+            return Err("Songbird endpoint cannot be empty".into());
+        }
+
+        // Validate runtime configuration
+        if self.runtime.max_concurrent_executions == 0 {
+            return Err("Max concurrent executions must be greater than 0".into());
         }
 
         // Validate resource limits
-        if config.runtimes.native.resource_limits.max_cpu_cores <= 0.0 {
-            return Err(ConfigError::ValidationError("CPU cores limit must be positive".to_string()));
+        if self.runtime.resource_limits.max_cpu_usage <= 0.0
+            || self.runtime.resource_limits.max_cpu_usage > 100.0
+        {
+            return Err("Max CPU usage must be between 0 and 100".into());
         }
 
-        if config.runtimes.native.resource_limits.max_memory_mb == 0 {
-            return Err(ConfigError::ValidationError("Memory limit must be positive".to_string()));
+        if self.runtime.resource_limits.max_memory_usage <= 0.0
+            || self.runtime.resource_limits.max_memory_usage > 100.0
+        {
+            return Err("Max memory usage must be between 0 and 100".into());
         }
 
         Ok(())
     }
 
-    /// Get configuration value by path
-    pub async fn get_value(&self, path: &str) -> Option<String> {
-        let config = self.config.read().await;
-        
-        match path {
-            "server.bind_address" => Some(config.server.bind_address.clone()),
-            "server.port" => Some(config.server.port.to_string()),
-            "runtimes.native.enabled" => Some(config.runtimes.native.enabled.to_string()),
-            "runtimes.container.enabled" => Some(config.runtimes.container.enabled.to_string()),
-            "runtimes.wasm.enabled" => Some(config.runtimes.wasm.enabled.to_string()),
-            "runtimes.gpu.enabled" => Some(config.runtimes.gpu.enabled.to_string()),
-            "security.auth_enabled" => Some(config.security.auth_enabled.to_string()),
-            "monitoring.metrics_enabled" => Some(config.monitoring.metrics_enabled.to_string()),
-            "federation.enabled" => Some(config.federation.enabled.to_string()),
-            _ => None,
-        }
-    }
-}
+    /// Get environment-specific configuration
+    #[must_use]
+    pub fn for_environment(mut self, environment: &str) -> Self {
+        self.app.environment = environment.to_string();
 
-impl Default for ToadStoolConfig {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            runtimes: RuntimesConfig::default(),
-            security: SecurityConfig::default(),
-            monitoring: MonitoringConfig::default(),
-            federation: FederationConfig::default(),
-            ecosystem: EcosystemConfig::default(),
-            performance: PerformanceConfig::default(),
-        }
-    }
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            bind_address: "127.0.0.1".to_string(),
-            port: 8080,
-            max_connections: 1000,
-            request_timeout_seconds: 30,
-            tls_enabled: false,
-            tls_cert_path: None,
-            tls_key_path: None,
-        }
-    }
-}
-
-impl Default for RuntimesConfig {
-    fn default() -> Self {
-        Self {
-            native: NativeRuntimeConfig::default(),
-            container: ContainerRuntimeConfig::default(),
-            wasm: WasmRuntimeConfig::default(),
-            gpu: GpuRuntimeConfig::default(),
-        }
-    }
-}
-
-impl Default for NativeRuntimeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_concurrent: 10,
-            timeout_seconds: 300,
-            resource_limits: ResourceLimitsConfig::default(),
-        }
-    }
-}
-
-impl Default for ContainerRuntimeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            runtime: "docker".to_string(),
-            max_concurrent: 5,
-            timeout_seconds: 600,
-            default_image: "ubuntu:latest".to_string(),
-            resource_limits: ResourceLimitsConfig::default(),
-        }
-    }
-}
-
-impl Default for WasmRuntimeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_concurrent: 20,
-            timeout_seconds: 60,
-            memory_limit_mb: 128,
-            wasi_enabled: true,
-        }
-    }
-}
-
-impl Default for GpuRuntimeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            frameworks: vec!["cuda".to_string()],
-            max_concurrent: 2,
-            memory_limit_mb: 1024,
-        }
-    }
-}
-
-impl Default for ResourceLimitsConfig {
-    fn default() -> Self {
-        Self {
-            max_cpu_cores: 4.0,
-            max_memory_mb: 2048,
-            max_storage_mb: 10240,
-            max_network_mbps: Some(100),
-        }
-    }
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            auth_enabled: false,
-            auth_method: "bearer".to_string(),
-            jwt_secret: None,
-            api_key: None,
-            sandbox_enabled: true,
-            sandbox_type: "chroot".to_string(),
-            network_isolation: false,
-            allowed_destinations: vec!["127.0.0.1".to_string()],
-        }
-    }
-}
-
-impl Default for MonitoringConfig {
-    fn default() -> Self {
-        Self {
-            metrics_enabled: true,
-            metrics_interval_seconds: 60,
-            realtime_enabled: false,
-            retention_hours: 24,
-            profiling_enabled: false,
-            export_enabled: false,
-            export_endpoints: vec![],
-        }
-    }
-}
-
-impl Default for FederationConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            discovery_method: "static".to_string(),
-            static_peers: vec![],
-            port: 8081,
-            encryption_enabled: true,
-            auth_key: None,
-        }
-    }
-}
-
-impl Default for EcosystemConfig {
-    fn default() -> Self {
-        Self {
-            songbird: SongbirdConfig::default(),
-            beardog: BearDogConfig::default(),
-            nestgate: NestGateConfig::default(),
-            biomeos: BiomeOSConfig::default(),
-        }
-    }
-}
-
-impl Default for SongbirdConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            endpoint: "http://localhost:8090".to_string(),
-            timeout_seconds: 30,
-            load_balancing: false,
-            auth_token: None,
-        }
-    }
-}
-
-impl Default for BearDogConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            endpoint: "http://localhost:8091".to_string(),
-            security_level: "medium".to_string(),
-            crypto_lock_enabled: false,
-            auth_key: None,
-        }
-    }
-}
-
-impl Default for NestGateConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            endpoint: "http://localhost:8092".to_string(),
-            storage_tier: "hot".to_string(),
-            distributed_enabled: false,
-            auth_token: None,
-        }
-    }
-}
-
-impl Default for BiomeOSConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            api_endpoint: "http://localhost:8093".to_string(),
-            byob_enabled: false,
-            default_team_id: None,
-            auth_token: None,
-        }
-    }
-}
-
-impl Default for PerformanceConfig {
-    fn default() -> Self {
-        Self {
-            optimization_enabled: true,
-            monitoring_interval_seconds: 30,
-            runtime_selection_enabled: true,
-            resource_prediction_enabled: false,
-            threshold_percentile: 95.0,
-            target_utilization_percent: 80.0,
-        }
-    }
-}
-
-/// Configuration errors
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigError {
-    #[error("File error: {0}")]
-    FileError(String),
-    #[error("Parse error: {0}")]
-    ParseError(String),
-    #[error("Validation error: {0}")]
-    ValidationError(String),
-    #[error("Invalid value for {0}")]
-    InvalidValue(String),
-    #[error("Unsupported configuration format")]
-    UnsupportedFormat,
-    #[error("Network error: {0}")]
-    Network(String),
-    #[error("Other error: {0}")]
-    Other(String),
-}
-
-/// Configuration change notification
-#[derive(Debug, Clone)]
-pub struct ConfigChangeNotification {
-    pub config_path: PathBuf,
-    pub change_type: ConfigChangeType,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Debug, Clone)]
-pub enum ConfigChangeType {
-    Modified,
-    Created,
-    Deleted,
-    Renamed,
-}
-
-/// Hot-reload configuration manager
-pub struct HotReloadConfigManager {
-    config_manager: ConfigManager,
-    config_path: Option<PathBuf>,
-    watcher: Option<notify::RecommendedWatcher>,
-    change_notifier: Option<tokio::sync::broadcast::Sender<ConfigChangeNotification>>,
-}
-
-impl HotReloadConfigManager {
-    pub fn new() -> Self {
-        Self {
-            config_manager: ConfigManager::new(),
-            config_path: None,
-            watcher: None,
-            change_notifier: None,
-        }
-    }
-
-    pub async fn enable_hot_reload(&mut self, config_path: PathBuf) -> Result<(), ConfigError> {
-        let (tx, _rx) = tokio::sync::broadcast::channel(100);
-        let (watch_tx, watch_rx) = mpsc::channel();
-        
-        let mut watcher = watcher(watch_tx, Duration::from_secs(1))
-            .map_err(|e| ConfigError::FileError(format!("Failed to create file watcher: {}", e)))?;
-        
-        watcher.watch(&config_path, RecursiveMode::NonRecursive)
-            .map_err(|e| ConfigError::FileError(format!("Failed to watch config file: {}", e)))?;
-        
-        let tx_clone = tx.clone();
-        let config_path_clone = config_path.clone();
-        let config_manager_clone = self.config_manager.clone();
-        
-        tokio::spawn(async move {
-            while let Ok(event) = watch_rx.recv() {
-                match event {
-                    notify::DebouncedEvent::Write(_) | notify::DebouncedEvent::Create(_) => {
-                        // Reload configuration
-                        if let Err(e) = config_manager_clone.load_from_file(&config_path_clone).await {
-                            tracing::error!("Failed to reload configuration: {}", e);
-                        } else {
-                            tracing::info!("Configuration reloaded successfully");
-                            
-                            let notification = ConfigChangeNotification {
-                                config_path: config_path_clone.clone(),
-                                change_type: ConfigChangeType::Modified,
-                                timestamp: chrono::Utc::now(),
-                            };
-                            
-                            let _ = tx_clone.send(notification);
-                        }
-                    }
-                    _ => {}
-                }
+        // Apply environment-specific defaults
+        match environment {
+            "development" => {
+                self.logging.level = development::DEFAULT_DEV_LOG_LEVEL.to_string();
+                self.logging.enable_colors = true;
+                self.features.enable_debug = development::DEFAULT_DEV_DEBUG_MODE;
+                self.features.enable_hot_reload = development::DEFAULT_DEV_HOT_RELOAD;
+                self.security.auth.enabled = false;
             }
-        });
-        
-        self.config_path = Some(config_path);
-        self.watcher = Some(watcher);
-        self.change_notifier = Some(tx);
-        
-        Ok(())
-    }
-    
-    pub fn subscribe_to_changes(&self) -> Option<tokio::sync::broadcast::Receiver<ConfigChangeNotification>> {
-        self.change_notifier.as_ref().map(|tx| tx.subscribe())
-    }
-    
-    pub async fn get_config(&self) -> ToadStoolConfig {
-        self.config_manager.get_config().await
-    }
-    
-    pub async fn update_config<F>(&self, updater: F) -> Result<(), ConfigError>
-    where
-        F: FnOnce(&mut ToadStoolConfig) -> Result<(), ConfigError>,
-    {
-        self.config_manager.update_config(updater).await
-    }
-}
-
-/// Global configuration instance
-static CONFIG_MANAGER: once_cell::sync::Lazy<ConfigManager> = once_cell::sync::Lazy::new(|| {
-    ConfigManager::new()
-});
-
-/// Get global configuration manager
-pub fn get_config_manager() -> &'static ConfigManager {
-    &CONFIG_MANAGER
-}
-
-/// Initialize configuration from environment and file
-pub async fn initialize_config(config_file: Option<PathBuf>) -> Result<(), ConfigError> {
-    let manager = get_config_manager();
-    
-    // Load from file if provided
-    if let Some(path) = config_file {
-        manager.load_from_file(&path).await?;
-    }
-    
-    // Override with environment variables
-    manager.load_from_env().await?;
-    
-    Ok(())
-}
-
-/// Configuration with profile support
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProfiledConfig {
-    /// Active profile
-    pub profile: ConfigProfile,
-    /// Base configuration
-    pub base: ToadStoolConfig,
-    /// Profile-specific overrides
-    pub overrides: HashMap<ConfigProfile, serde_json::Value>,
-}
-
-impl ProfiledConfig {
-    pub fn new(profile: ConfigProfile) -> Self {
-        Self {
-            profile,
-            base: ToadStoolConfig::default(),
-            overrides: HashMap::new(),
-        }
-    }
-    
-    /// Get the effective configuration for the current profile
-    pub fn get_effective_config(&self) -> Result<ToadStoolConfig, ConfigError> {
-        let mut config = self.base.clone();
-        
-        // Apply profile-specific overrides
-        if let Some(overrides) = self.overrides.get(&self.profile) {
-            self.apply_overrides(&mut config, overrides)?;
-        }
-        
-        // Apply profile defaults
-        self.apply_profile_defaults(&mut config)?;
-        
-        Ok(config)
-    }
-    
-    fn apply_overrides(&self, config: &mut ToadStoolConfig, overrides: &serde_json::Value) -> Result<(), ConfigError> {
-        // Use serde_json to merge the overrides into the config
-        let config_value = serde_json::to_value(&*config)
-            .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
-        
-        let merged = merge_json_values(config_value, overrides.clone());
-        
-        *config = serde_json::from_value(merged)
-            .map_err(|e| ConfigError::ParseError(format!("Failed to deserialize merged config: {}", e)))?;
-        
-        Ok(())
-    }
-    
-    fn apply_profile_defaults(&self, config: &mut ToadStoolConfig) -> Result<(), ConfigError> {
-        match self.profile {
-            ConfigProfile::Development => {
-                // Development profile defaults
-                config.security.auth_enabled = false;
-                config.security.sandbox_enabled = false;
-                config.monitoring.metrics_enabled = true;
-                config.monitoring.profiling_enabled = true;
-                config.performance.optimization_enabled = false;
+            "production" => {
+                self.logging.level = production::DEFAULT_PROD_LOG_LEVEL.to_string();
+                self.logging.enable_colors = production::DEFAULT_PROD_PRETTY_LOGS;
+                self.features.enable_debug = production::DEFAULT_PROD_DEBUG_MODE;
+                self.features.enable_hot_reload = production::DEFAULT_PROD_HOT_RELOAD;
+                self.security.auth.enabled = true;
             }
-            ConfigProfile::Staging => {
-                // Staging profile defaults
-                config.security.auth_enabled = true;
-                config.security.sandbox_enabled = true;
-                config.monitoring.metrics_enabled = true;
-                config.monitoring.profiling_enabled = true;
-                config.performance.optimization_enabled = true;
+            "test" => {
+                self.logging.level = testing::DEFAULT_TEST_LOG_LEVEL.to_string();
+                self.app.data_dir = testing::DEFAULT_TEST_DATA_DIR.to_string();
+                self.app.cache_dir = testing::DEFAULT_TEST_CACHE_DIR.to_string();
+                self.runtime.execution_timeout =
+                    Duration::from_secs(testing::DEFAULT_TEST_EXECUTION_TIMEOUT_SECS);
+                self.security.auth.enabled = false;
             }
-            ConfigProfile::Production => {
-                // Production profile defaults
-                config.security.auth_enabled = true;
-                config.security.sandbox_enabled = true;
-                config.monitoring.metrics_enabled = true;
-                config.monitoring.profiling_enabled = false;
-                config.performance.optimization_enabled = true;
-                config.server.tls_enabled = true;
-            }
-            ConfigProfile::Testing => {
-                // Testing profile defaults
-                config.security.auth_enabled = false;
-                config.security.sandbox_enabled = false;
-                config.monitoring.metrics_enabled = false;
-                config.monitoring.profiling_enabled = false;
-                config.performance.optimization_enabled = false;
-            }
-            ConfigProfile::Custom(_) => {
-                // Custom profiles inherit from development by default
-                config.security.auth_enabled = false;
-                config.security.sandbox_enabled = false;
+            _ => {
+                // Use default configuration
             }
         }
-        
-        Ok(())
-    }
-}
 
-/// Merge two JSON values, with the second taking precedence
-fn merge_json_values(mut base: serde_json::Value, override_val: serde_json::Value) -> serde_json::Value {
-    match (&mut base, override_val) {
-        (serde_json::Value::Object(base_map), serde_json::Value::Object(override_map)) => {
-            for (key, value) in override_map {
-                match base_map.get_mut(&key) {
-                    Some(base_value) => {
-                        *base_value = merge_json_values(base_value.clone(), value);
-                    }
-                    None => {
-                        base_map.insert(key, value);
-                    }
-                }
-            }
-            base
-        }
-        (_, override_val) => override_val,
-    }
-}
-
-/// Enhanced environment variable configuration loader
-pub struct EnvConfigLoader {
-    prefix: String,
-    separator: String,
-}
-
-impl EnvConfigLoader {
-    pub fn new(prefix: &str) -> Self {
-        Self {
-            prefix: prefix.to_string(),
-            separator: "_".to_string(),
-        }
-    }
-    
-    pub fn with_separator(mut self, separator: &str) -> Self {
-        self.separator = separator.to_string();
         self
     }
-    
-    /// Load configuration from environment variables with nested structure support
-    pub fn load_from_env(&self) -> Result<ToadStoolConfig, ConfigError> {
+
+    /// Merge with override configuration
+    #[must_use]
+    pub fn merge(mut self, overrides: HashMap<String, serde_json::Value>) -> Self {
+        self.overrides.extend(overrides);
+        self
+    }
+
+    /// Get configuration value with override support
+    #[must_use]
+    pub fn get_override<T>(&self, key: &str, default: T) -> T
+    where
+        T: serde::de::DeserializeOwned + Clone,
+    {
+        self.overrides
+            .get(key)
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or(default)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_configuration() {
+        let config = ToadStoolConfig::default();
+        assert_eq!(config.app.name, app::DEFAULT_APP_NAME);
+        assert_eq!(config.app.environment, app::DEFAULT_ENVIRONMENT);
+        assert_eq!(config.logging.level, app::DEFAULT_LOG_LEVEL);
+        assert!(config.features.enable_websocket);
+        assert!(config.features.enable_federation);
+    }
+
+    #[test]
+    fn test_network_constants() {
+        assert_eq!(network::DEFAULT_LOCALHOST, "127.0.0.1");
+        assert_eq!(network::DEFAULT_SONGBIRD_PORT, 8080);
+        assert_eq!(network::DEFAULT_BEARDOG_PORT, 8081);
+        assert_eq!(network::DEFAULT_NESTGATE_PORT, 8082);
+
+        let songbird_endpoint = network::default_songbird_endpoint();
+        assert!(songbird_endpoint.contains("8080"));
+        assert!(songbird_endpoint.contains("127.0.0.1"));
+    }
+
+    #[test]
+    fn test_configuration_validation() {
         let mut config = ToadStoolConfig::default();
-        let env_vars = self.collect_env_vars();
-        
-        // Parse environment variables into nested structure
-        let nested_config = self.parse_nested_env_vars(&env_vars)?;
-        
-        // Merge with default config
-        let config_value = serde_json::to_value(&config)
-            .map_err(|e| ConfigError::ParseError(format!("Failed to serialize default config: {}", e)))?;
-        
-        let merged = merge_json_values(config_value, nested_config);
-        
-        config = serde_json::from_value(merged)
-            .map_err(|e| ConfigError::ParseError(format!("Failed to deserialize env config: {}", e)))?;
-        
-        Ok(config)
+        assert!(config.validate().is_ok());
+
+        config.app.name = String::new();
+        assert!(config.validate().is_err());
+
+        config.app.name = "test".to_string();
+        config.app.worker_threads = 0;
+        assert!(config.validate().is_err());
+
+        config.app.worker_threads = 4;
+        config.runtime.resource_limits.max_cpu_usage = 150.0;
+        assert!(config.validate().is_err());
     }
-    
-    fn collect_env_vars(&self) -> HashMap<String, String> {
-        env::vars()
-            .filter_map(|(key, value)| {
-                if key.starts_with(&self.prefix) {
-                    let stripped_key = key.strip_prefix(&self.prefix)
-                        .unwrap_or(&key)
-                        .strip_prefix(&self.separator)
-                        .unwrap_or(&key);
-                    Some((stripped_key.to_lowercase(), value))
-                } else {
-                    None
-                }
-            })
-            .collect()
+
+    #[test]
+    fn test_environment_specific_config() {
+        let config = ToadStoolConfig::default().for_environment("development");
+        assert_eq!(config.app.environment, "development");
+        assert_eq!(config.logging.level, "debug");
+        assert!(config.features.enable_debug);
+        assert!(!config.security.auth.enabled);
+
+        let config = ToadStoolConfig::default().for_environment("production");
+        assert_eq!(config.app.environment, "production");
+        assert_eq!(config.logging.level, "info");
+        assert!(!config.features.enable_debug);
+        assert!(config.security.auth.enabled);
     }
-    
-    fn parse_nested_env_vars(&self, env_vars: &HashMap<String, String>) -> Result<serde_json::Value, ConfigError> {
-        let mut result = serde_json::Map::new();
-        
-        for (key, value) in env_vars {
-            let path_parts: Vec<&str> = key.split(&self.separator).collect();
-            self.set_nested_value(&mut result, &path_parts, value)?;
-        }
-        
-        Ok(serde_json::Value::Object(result))
-    }
-    
-    fn set_nested_value(
-        &self,
-        object: &mut serde_json::Map<String, serde_json::Value>,
-        path: &[&str],
-        value: &str,
-    ) -> Result<(), ConfigError> {
-        if path.is_empty() {
-            return Ok(());
-        }
-        
-        if path.len() == 1 {
-            // Leaf node - parse the value
-            let parsed_value = self.parse_env_value(value)?;
-            object.insert(path[0].to_string(), parsed_value);
-        } else {
-            // Intermediate node - create nested object
-            let current_key = path[0];
-            let remaining_path = &path[1..];
-            
-            let nested_object = object
-                .entry(current_key.to_string())
-                .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-            
-            if let serde_json::Value::Object(nested_map) = nested_object {
-                self.set_nested_value(nested_map, remaining_path, value)?;
-            }
-        }
-        
-        Ok(())
-    }
-    
-    fn parse_env_value(&self, value: &str) -> Result<serde_json::Value, ConfigError> {
-        // Try to parse as different types
-        
-        // Boolean
-        if let Ok(bool_val) = value.parse::<bool>() {
-            return Ok(serde_json::Value::Bool(bool_val));
-        }
-        
-        // Integer
-        if let Ok(int_val) = value.parse::<i64>() {
-            return Ok(serde_json::Value::Number(serde_json::Number::from(int_val)));
-        }
-        
-        // Float
-        if let Ok(float_val) = value.parse::<f64>() {
-            if let Some(number) = serde_json::Number::from_f64(float_val) {
-                return Ok(serde_json::Value::Number(number));
-            }
-        }
-        
-        // Array (comma-separated)
-        if value.contains(',') {
-            let array_items: Vec<serde_json::Value> = value
-                .split(',')
-                .map(|item| self.parse_env_value(item.trim()).unwrap_or_else(|_| serde_json::Value::String(item.trim().to_string())))
-                .collect();
-            return Ok(serde_json::Value::Array(array_items));
-        }
-        
-        // JSON (if starts with { or [)
-        if value.starts_with('{') || value.starts_with('[') {
-            if let Ok(json_val) = serde_json::from_str(value) {
-                return Ok(json_val);
-            }
-        }
-        
-        // Default to string
-        Ok(serde_json::Value::String(value.to_string()))
-    }
-}
 
-/// Environment variable examples and documentation
-pub mod env_examples {
-    //! # Environment Variable Configuration Examples
-    //! 
-    //! ## Basic Usage
-    //! ```bash
-    //! export TOADSTOOL_SERVER_PORT=8081
-    //! export TOADSTOOL_SERVER_BIND_ADDRESS="0.0.0.0"
-    //! export TOADSTOOL_SECURITY_AUTH_ENABLED=true
-    //! ```
-    //! 
-    //! ## Nested Configuration
-    //! ```bash
-    //! export TOADSTOOL_ECOSYSTEM_SONGBIRD_ENABLED=true
-    //! export TOADSTOOL_ECOSYSTEM_SONGBIRD_ENDPOINT="http://songbird:8080"
-    //! export TOADSTOOL_RUNTIMES_NATIVE_MAX_CONCURRENT=10
-    //! ```
-    //! 
-    //! ## Array Values
-    //! ```bash
-    //! export TOADSTOOL_GPU_FRAMEWORKS="cuda,opencl,vulkan"
-    //! export TOADSTOOL_SECURITY_ALLOWED_DESTINATIONS="localhost,127.0.0.1,10.0.0.0/8"
-    //! ```
-    //! 
-    //! ## JSON Values
-    //! ```bash
-    //! export TOADSTOOL_CUSTOM_CONFIG='{"key": "value", "nested": {"setting": true}}'
-    //! ```
-}
-
-/// Secrets management for sensitive configuration values
-pub mod secrets {
-    use super::*;
-    use ring::rand::{SecureRandom, SystemRandom};
-    use base64::Engine;
-    use std::future::Future;
-    use std::pin::Pin;
-    
-    /// External secret provider interface (object-safe)
-    pub trait SecretProvider: Send + Sync {
-        fn get_secret<'a>(&'a self, key: &'a str) -> Pin<Box<dyn Future<Output = Result<String, ConfigError>> + Send + 'a>>;
-        fn set_secret<'a>(&'a self, key: &'a str, value: &'a str) -> Pin<Box<dyn Future<Output = Result<(), ConfigError>> + Send + 'a>>;
-        fn delete_secret<'a>(&'a self, key: &'a str) -> Pin<Box<dyn Future<Output = Result<(), ConfigError>> + Send + 'a>>;
-    }
-    
-    /// HashiCorp Vault secret provider
-    pub struct VaultSecretProvider {
-        client: reqwest::Client,
-        vault_url: String,
-        token: String,
-        mount_path: String,
-    }
-    
-    impl VaultSecretProvider {
-        pub fn new(vault_url: String, token: String, mount_path: Option<String>) -> Self {
-            Self {
-                client: reqwest::Client::new(),
-                vault_url,
-                token,
-                mount_path: mount_path.unwrap_or_else(|| "secret".to_string()),
-            }
-        }
-        
-        async fn get_secret_impl(&self, key: &str) -> Result<String, ConfigError> {
-            let url = format!("{}/v1/{}/data/{}", self.vault_url, self.mount_path, key);
-            
-            let response = self.client
-                .get(&url)
-                .header("X-Vault-Token", &self.token)
-                .send()
-                .await
-                .map_err(|e| ConfigError::Network(format!("Vault request failed: {}", e)))?;
-            
-            if !response.status().is_success() {
-                return Err(ConfigError::Other(format!("Vault returned status: {}", response.status())));
-            }
-            
-            let vault_response: serde_json::Value = response.json().await
-                .map_err(|e| ConfigError::ParseError(format!("Failed to parse Vault response: {}", e)))?;
-            
-            vault_response["data"]["data"]["value"]
-                .as_str()
-                .ok_or_else(|| ConfigError::Other("Secret not found in Vault response".to_string()))
-                .map(|s| s.to_string())
-        }
-    }
-    
-    impl SecretProvider for VaultSecretProvider {
-        fn get_secret<'a>(&'a self, key: &'a str) -> Pin<Box<dyn Future<Output = Result<String, ConfigError>> + Send + 'a>> {
-            Box::pin(self.get_secret_impl(key))
-        }
-        
-        fn set_secret<'a>(&'a self, key: &'a str, value: &'a str) -> Pin<Box<dyn Future<Output = Result<(), ConfigError>> + Send + 'a>> {
-            Box::pin(async move {
-                let url = format!("{}/v1/{}/data/{}", self.vault_url, self.mount_path, key);
-                let payload = serde_json::json!({
-                    "data": {
-                        "value": value
-                    }
-                });
-                
-                let response = self.client
-                    .post(&url)
-                    .header("X-Vault-Token", &self.token)
-                    .json(&payload)
-                    .send()
-                    .await
-                    .map_err(|e| ConfigError::Network(format!("Vault request failed: {}", e)))?;
-                
-                if !response.status().is_success() {
-                    return Err(ConfigError::Other(format!("Vault returned status: {}", response.status())));
-                }
-                
-                Ok(())
-            })
-        }
-        
-        fn delete_secret<'a>(&'a self, key: &'a str) -> Pin<Box<dyn Future<Output = Result<(), ConfigError>> + Send + 'a>> {
-            Box::pin(async move {
-                let url = format!("{}/v1/{}/metadata/{}", self.vault_url, self.mount_path, key);
-                
-                let response = self.client
-                    .delete(&url)
-                    .header("X-Vault-Token", &self.token)
-                    .send()
-                    .await
-                    .map_err(|e| ConfigError::Network(format!("Vault request failed: {}", e)))?;
-                
-                if !response.status().is_success() {
-                    return Err(ConfigError::Other(format!("Vault returned status: {}", response.status())));
-                }
-                
-                Ok(())
-            })
-        }
-    }
-}
-
-/// Configuration migration system for handling version upgrades
-pub mod migration {
-    use super::*;
-    use semver::Version;
-    
-    /// Configuration version information
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-    pub struct ConfigVersion {
-        pub major: u64,
-        pub minor: u64,
-        pub patch: u64,
-    }
-    
-    impl ConfigVersion {
-        pub fn new(major: u64, minor: u64, patch: u64) -> Self {
-            Self { major, minor, patch }
-        }
-        
-        pub fn current() -> Self {
-            Self::new(1, 0, 0)
-        }
-        
-        pub fn to_semver(&self) -> Version {
-            Version::new(self.major, self.minor, self.patch)
-        }
-        
-        pub fn from_semver(version: &Version) -> Self {
-            Self {
-                major: version.major,
-                minor: version.minor,
-                patch: version.patch,
-            }
-        }
-    }
-    
-    impl Default for ConfigVersion {
-        fn default() -> Self {
-            Self::current()
-        }
-    }
-    
-    impl std::fmt::Display for ConfigVersion {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
-        }
-    }
-    
-    /// Versioned configuration wrapper
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct VersionedConfig {
-        pub version: ConfigVersion,
-        pub config: serde_json::Value,
-        pub metadata: ConfigMetadata,
-    }
-    
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct ConfigMetadata {
-        pub created_at: chrono::DateTime<chrono::Utc>,
-        pub updated_at: chrono::DateTime<chrono::Utc>,
-        pub migration_history: Vec<MigrationRecord>,
-        pub checksum: Option<String>,
-    }
-    
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct MigrationRecord {
-        pub from_version: ConfigVersion,
-        pub to_version: ConfigVersion,
-        pub migrated_at: chrono::DateTime<chrono::Utc>,
-        pub migration_id: String,
-    }
-    
-    /// Migration trait for implementing version-specific migrations
-    pub trait ConfigMigration: Send + Sync {
-        fn id(&self) -> &str;
-        fn from_version(&self) -> ConfigVersion;
-        fn to_version(&self) -> ConfigVersion;
-        fn migrate(&self, config: serde_json::Value) -> Result<serde_json::Value, ConfigError>;
-        fn rollback(&self, config: serde_json::Value) -> Result<serde_json::Value, ConfigError>;
-    }
-    
-    /// Migration manager
-    pub struct MigrationManager {
-        migrations: Vec<Box<dyn ConfigMigration>>,
-    }
-    
-    impl MigrationManager {
-        pub fn new() -> Self {
-            Self {
-                migrations: Vec::new(),
-            }
-        }
-        
-        pub fn add_migration(&mut self, migration: Box<dyn ConfigMigration>) {
-            self.migrations.push(migration);
-        }
-        
-        /// Migrate configuration to the latest version
-        pub fn migrate_to_latest(&self, versioned_config: VersionedConfig) -> Result<VersionedConfig, ConfigError> {
-            let target_version = ConfigVersion::current();
-            self.migrate_to_version(versioned_config, target_version)
-        }
-        
-        /// Migrate configuration to a specific version
-        pub fn migrate_to_version(&self, mut versioned_config: VersionedConfig, target_version: ConfigVersion) -> Result<VersionedConfig, ConfigError> {
-            let current_version = versioned_config.version.clone();
-            
-            if current_version == target_version {
-                return Ok(versioned_config);
-            }
-            
-            // Find migration path
-            let migration_path = self.find_migration_path(&current_version, &target_version)?;
-            
-            // Apply migrations in sequence
-            for migration in migration_path {
-                let old_version = versioned_config.version.clone();
-                versioned_config.config = migration.migrate(versioned_config.config)?;
-                versioned_config.version = migration.to_version();
-                
-                // Record migration
-                let migration_record = MigrationRecord {
-                    from_version: old_version,
-                    to_version: migration.to_version(),
-                    migrated_at: chrono::Utc::now(),
-                    migration_id: migration.id().to_string(),
-                };
-                
-                versioned_config.metadata.migration_history.push(migration_record);
-                versioned_config.metadata.updated_at = chrono::Utc::now();
-            }
-            
-            Ok(versioned_config)
-        }
-        
-        fn find_migration_path(&self, from: &ConfigVersion, to: &ConfigVersion) -> Result<Vec<&dyn ConfigMigration>, ConfigError> {
-            // Simple linear migration path for now
-            // In a more complex system, this could use graph algorithms
-            
-            let mut path = Vec::new();
-            let mut current_version = from.clone();
-            
-            while current_version != *to {
-                let next_migration = self.migrations.iter()
-                    .find(|m| m.from_version() == current_version)
-                    .ok_or_else(|| ConfigError::Other(format!("No migration found from version {}", current_version)))?;
-                
-                path.push(next_migration.as_ref());
-                current_version = next_migration.to_version();
-                
-                // Prevent infinite loops
-                if path.len() > 100 {
-                    return Err(ConfigError::Other("Migration path too long".to_string()));
-                }
-            }
-            
-            Ok(path)
-        }
-        
-        /// Rollback configuration to a previous version
-        pub fn rollback_to_version(&self, mut versioned_config: VersionedConfig, target_version: ConfigVersion) -> Result<VersionedConfig, ConfigError> {
-            // Find rollback path from migration history
-            let rollback_migrations: Vec<_> = versioned_config.metadata.migration_history.iter()
-                .rev()
-                .take_while(|record| record.to_version != target_version)
-                .collect();
-            
-            for migration_record in rollback_migrations {
-                let migration = self.migrations.iter()
-                    .find(|m| m.id() == migration_record.migration_id)
-                    .ok_or_else(|| ConfigError::Other(format!("Migration {} not found for rollback", migration_record.migration_id)))?;
-                
-                versioned_config.config = migration.rollback(versioned_config.config)?;
-                versioned_config.version = migration.from_version();
-            }
-            
-            // Remove rolled back migrations from history
-            versioned_config.metadata.migration_history.retain(|record| {
-                record.to_version.to_semver() <= target_version.to_semver()
-            });
-            
-            versioned_config.metadata.updated_at = chrono::Utc::now();
-            
-            Ok(versioned_config)
-        }
-    }
-    
-    /// Example migration: v0.1.0 to v1.0.0
-    pub struct V0ToV1Migration;
-    
-    impl ConfigMigration for V0ToV1Migration {
-        fn id(&self) -> &str {
-            "v0_to_v1_initial"
-        }
-        
-        fn from_version(&self) -> ConfigVersion {
-            ConfigVersion::new(0, 1, 0)
-        }
-        
-        fn to_version(&self) -> ConfigVersion {
-            ConfigVersion::new(1, 0, 0)
-        }
-        
-        fn migrate(&self, mut config: serde_json::Value) -> Result<serde_json::Value, ConfigError> {
-            // Example migration: rename old fields, add new defaults
-            if let Some(obj) = config.as_object_mut() {
-                // Rename old security field
-                if let Some(old_security) = obj.remove("auth") {
-                    obj.insert("security".to_string(), old_security);
-                }
-                
-                // Add new performance section if missing
-                if !obj.contains_key("performance") {
-                    obj.insert("performance".to_string(), serde_json::json!({
-                        "optimization_enabled": false,
-                        "monitoring_interval_seconds": 60,
-                        "runtime_selection_enabled": true,
-                        "resource_prediction_enabled": false,
-                        "threshold_percentile": 95.0,
-                        "target_utilization_percent": 80.0
-                    }));
-                }
-            }
-            
-            Ok(config)
-        }
-        
-        fn rollback(&self, mut config: serde_json::Value) -> Result<serde_json::Value, ConfigError> {
-            if let Some(obj) = config.as_object_mut() {
-                // Reverse the migration
-                if let Some(security) = obj.remove("security") {
-                    obj.insert("auth".to_string(), security);
-                }
-                
-                obj.remove("performance");
-            }
-            
-            Ok(config)
-        }
-    }
-}
-
-/// Configuration documentation and examples
-pub mod documentation {
-    use super::*;
-    
-    /// Generate comprehensive configuration documentation
-    pub struct ConfigDocumentationGenerator;
-    
-    impl ConfigDocumentationGenerator {
-        /// Generate markdown documentation for all configuration options
-        pub fn generate_markdown() -> String {
-            let mut doc = String::new();
-            
-            doc.push_str("# ToadStool Configuration Reference\n\n");
-            doc.push_str("This document provides a comprehensive reference for all ToadStool configuration options.\n\n");
-            
-            doc.push_str("## Table of Contents\n\n");
-            doc.push_str("- [Server Configuration](#server-configuration)\n");
-            doc.push_str("- [Runtime Configuration](#runtime-configuration)\n");
-            doc.push_str("- [Security Configuration](#security-configuration)\n");
-            doc.push_str("- [Monitoring Configuration](#monitoring-configuration)\n");
-            doc.push_str("- [Federation Configuration](#federation-configuration)\n");
-            doc.push_str("- [Ecosystem Configuration](#ecosystem-configuration)\n");
-            doc.push_str("- [Performance Configuration](#performance-configuration)\n");
-            doc.push_str("- [Environment Variables](#environment-variables)\n");
-            doc.push_str("- [Configuration Profiles](#configuration-profiles)\n");
-            doc.push_str("- [Secrets Management](#secrets-management)\n\n");
-            
-            doc.push_str(&Self::generate_server_docs());
-            doc.push_str(&Self::generate_runtime_docs());
-            doc.push_str(&Self::generate_security_docs());
-            doc.push_str(&Self::generate_monitoring_docs());
-            doc.push_str(&Self::generate_federation_docs());
-            doc.push_str(&Self::generate_ecosystem_docs());
-            doc.push_str(&Self::generate_performance_docs());
-            doc.push_str(&Self::generate_env_vars_docs());
-            doc.push_str(&Self::generate_profiles_docs());
-            doc.push_str(&Self::generate_secrets_docs());
-            
-            doc
-        }
-        
-        fn generate_server_docs() -> String {
-            format!(r#"## Server Configuration
-
-The server configuration controls how ToadStool's API server operates.
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `bind_address` | String | `"{}"` | IP address to bind the server to |
-| `port` | u16 | `{}` | Port number for the API server |
-| `max_connections` | usize | `{}` | Maximum concurrent connections |
-| `request_timeout_seconds` | u64 | `30` | Request timeout in seconds |
-| `tls_enabled` | bool | `false` | Enable TLS/HTTPS |
-| `tls_cert_path` | Option<PathBuf> | `None` | Path to TLS certificate |
-| `tls_key_path` | Option<PathBuf> | `None` | Path to TLS private key |
-
-### Example Configuration
-
-```yaml
-server:
-  bind_address: "0.0.0.0"
-  port: 8081
-  max_connections: 1000
-  request_timeout_seconds: 30
-  tls_enabled: true
-  tls_cert_path: "/etc/toadstool/cert.pem"
-  tls_key_path: "/etc/toadstool/key.pem"
-```
-
-### Environment Variables
-
-```bash
-export TOADSTOOL_SERVER_BIND_ADDRESS="0.0.0.0"
-export TOADSTOOL_SERVER_PORT=8081
-export TOADSTOOL_SERVER_TLS_ENABLED=true
-```
-
-"#,
-                constants::network::DEFAULT_BIND_ADDRESS,
-                constants::network::DEFAULT_TOADSTOOL_PORT,
-                constants::network::DEFAULT_MAX_CONNECTIONS
-            )
-        }
-        
-        fn generate_runtime_docs() -> String {
-            r#"## Runtime Configuration
-
-Configure the various runtime engines available in ToadStool.
-
-### Native Runtime
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `true` | Enable native runtime |
-| `max_concurrent` | usize | `10` | Maximum concurrent executions |
-| `timeout_seconds` | u64 | `300` | Execution timeout |
-
-### Container Runtime
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `true` | Enable container runtime |
-| `runtime` | String | `"docker"` | Container runtime (docker, podman) |
-| `max_concurrent` | usize | `5` | Maximum concurrent containers |
-| `default_image` | String | `"alpine:latest"` | Default container image |
-
-### WASM Runtime
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `true` | Enable WASM runtime |
-| `max_concurrent` | usize | `20` | Maximum concurrent instances |
-| `memory_limit_mb` | usize | `128` | Memory limit per instance |
-| `wasi_enabled` | bool | `true` | Enable WASI support |
-
-### GPU Runtime
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable GPU runtime |
-| `frameworks` | Vec<String> | `["cuda"]` | GPU frameworks |
-| `max_concurrent` | usize | `2` | Maximum concurrent jobs |
-| `memory_limit_mb` | usize | `1024` | GPU memory limit |
-
-### Example Configuration
-
-```yaml
-runtimes:
-  native:
-    enabled: true
-    max_concurrent: 10
-    timeout_seconds: 300
-  container:
-    enabled: true
-    runtime: "docker"
-    max_concurrent: 5
-    default_image: "alpine:latest"
-  wasm:
-    enabled: true
-    max_concurrent: 20
-    memory_limit_mb: 128
-    wasi_enabled: true
-  gpu:
-    enabled: false
-    frameworks: ["cuda", "opencl"]
-    max_concurrent: 2
-    memory_limit_mb: 2048
-```
-
-"#.to_string()
-        }
-        
-        fn generate_security_docs() -> String {
-            r#"## Security Configuration
-
-Configure authentication, authorization, and sandboxing.
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `auth_enabled` | bool | `false` | Enable authentication |
-| `auth_method` | String | `"bearer"` | Authentication method |
-| `jwt_secret` | Option<String> | `None` | JWT signing secret |
-| `api_key` | Option<String> | `None` | API key for simple auth |
-| `sandbox_enabled` | bool | `false` | Enable sandboxing |
-| `sandbox_type` | String | `"chroot"` | Sandbox type |
-| `network_isolation` | bool | `false` | Enable network isolation |
-| `allowed_destinations` | Vec<String> | `[]` | Allowed network destinations |
-
-### Example Configuration
-
-```yaml
-security:
-  auth_enabled: true
-  auth_method: "jwt"
-  jwt_secret: "${TOADSTOOL_JWT_SECRET}"
-  sandbox_enabled: true
-  sandbox_type: "docker"
-  network_isolation: true
-  allowed_destinations:
-    - "localhost"
-    - "127.0.0.1"
-    - "10.0.0.0/8"
-```
-
-### Security Best Practices
-
-1. **Always enable authentication in production**
-2. **Use strong, randomly generated secrets**
-3. **Enable sandboxing for untrusted code**
-4. **Restrict network access with allow-lists**
-5. **Use TLS for all external communications**
-
-"#.to_string()
-        }
-        
-        fn generate_monitoring_docs() -> String {
-            r#"## Monitoring Configuration
-
-Configure metrics collection and monitoring.
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `metrics_enabled` | bool | `true` | Enable metrics collection |
-| `metrics_interval_seconds` | u64 | `60` | Metrics collection interval |
-| `realtime_enabled` | bool | `false` | Enable real-time monitoring |
-| `retention_hours` | u64 | `24` | Metrics retention period |
-| `profiling_enabled` | bool | `false` | Enable performance profiling |
-| `export_enabled` | bool | `false` | Export metrics externally |
-| `export_endpoints` | Vec<String> | `[]` | Export endpoints |
-
-### Example Configuration
-
-```yaml
-monitoring:
-  metrics_enabled: true
-  metrics_interval_seconds: 30
-  realtime_enabled: true
-  retention_hours: 72
-  profiling_enabled: true
-  export_enabled: true
-  export_endpoints:
-    - "http://prometheus:9090/api/v1/write"
-    - "http://grafana-agent:3100/loki/api/v1/push"
-```
-
-"#.to_string()
-        }
-        
-        fn generate_federation_docs() -> String {
-            r#"## Federation Configuration
-
-Configure federation with other ToadStool instances.
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable federation |
-| `discovery_method` | String | `"dns"` | Discovery method |
-| `static_peers` | Vec<String> | `[]` | Static federation peers |
-| `port` | u16 | `8084` | Federation port |
-| `encryption_enabled` | bool | `true` | Enable encryption |
-| `auth_key` | Option<String> | `None` | Federation auth key |
-
-### Example Configuration
-
-```yaml
-federation:
-  enabled: true
-  discovery_method: "static"
-  static_peers:
-    - "toadstool-1.example.com:8084"
-    - "toadstool-2.example.com:8084"
-  port: 8084
-  encryption_enabled: true
-  auth_key: "${TOADSTOOL_FEDERATION_KEY}"
-```
-
-"#.to_string()
-        }
-        
-        fn generate_ecosystem_docs() -> String {
-            format!(r#"## Ecosystem Configuration
-
-Configure integration with the broader ecosystem.
-
-### Songbird Configuration
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable Songbird integration |
-| `endpoint` | String | `"http://localhost:{}"` | Songbird endpoint |
-| `timeout_seconds` | u64 | `30` | Connection timeout |
-| `load_balancing` | bool | `false` | Enable load balancing |
-| `auth_token` | Option<String> | `None` | Authentication token |
-
-### BearDog Configuration
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable BearDog integration |
-| `endpoint` | String | `"http://localhost:{}"` | BearDog endpoint |
-| `security_level` | String | `"medium"` | Security level |
-| `crypto_lock_enabled` | bool | `false` | Enable crypto lock |
-| `auth_key` | Option<String> | `None` | Authentication key |
-
-### NestGate Configuration
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable NestGate integration |
-| `endpoint` | String | `"http://localhost:{}"` | NestGate endpoint |
-| `storage_tier` | String | `"hot"` | Storage tier |
-| `distributed_enabled` | bool | `false` | Enable distributed storage |
-| `auth_token` | Option<String> | `None` | Authentication token |
-
-### Example Configuration
-
-```yaml
-ecosystem:
-  songbird:
-    enabled: true
-    endpoint: "http://songbird.local:8080"
-    load_balancing: true
-    auth_token: "${{SONGBIRD_TOKEN}}"
-  beardog:
-    enabled: true
-    endpoint: "http://beardog.local:8082"
-    security_level: "high"
-    crypto_lock_enabled: true
-  nestgate:
-    enabled: true
-    endpoint: "http://nestgate.local:8083"
-    storage_tier: "warm"
-    distributed_enabled: true
-```
-
-"#,
-                constants::network::DEFAULT_SONGBIRD_PORT,
-                constants::network::DEFAULT_BEARDOG_PORT,
-                constants::network::DEFAULT_NESTGATE_PORT
-            )
-        }
-        
-        fn generate_performance_docs() -> String {
-            r#"## Performance Configuration
-
-Configure performance optimization settings.
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `optimization_enabled` | bool | `true` | Enable performance optimization |
-| `monitoring_interval_seconds` | u64 | `60` | Performance monitoring interval |
-| `runtime_selection_enabled` | bool | `true` | Enable intelligent runtime selection |
-| `resource_prediction_enabled` | bool | `false` | Enable resource prediction |
-| `threshold_percentile` | f64 | `95.0` | Performance threshold percentile |
-| `target_utilization_percent` | f64 | `80.0` | Target resource utilization |
-
-### Example Configuration
-
-```yaml
-performance:
-  optimization_enabled: true
-  monitoring_interval_seconds: 30
-  runtime_selection_enabled: true
-  resource_prediction_enabled: true
-  threshold_percentile: 99.0
-  target_utilization_percent: 85.0
-```
-
-"#.to_string()
-        }
-        
-        fn generate_env_vars_docs() -> String {
-            r#"## Environment Variables
-
-All configuration options can be overridden using environment variables with the `TOADSTOOL_` prefix.
-
-### Naming Convention
-
-Environment variables follow the pattern: `TOADSTOOL_<SECTION>_<OPTION>`
-
-Examples:
-- `TOADSTOOL_SERVER_PORT=8081`
-- `TOADSTOOL_SECURITY_AUTH_ENABLED=true`
-- `TOADSTOOL_RUNTIMES_NATIVE_MAX_CONCURRENT=20`
-
-### Nested Configuration
-
-For nested configuration, use underscores to separate levels:
-- `TOADSTOOL_ECOSYSTEM_SONGBIRD_ENABLED=true`
-- `TOADSTOOL_ECOSYSTEM_SONGBIRD_ENDPOINT="http://songbird:8080"`
-
-### Array Values
-
-Arrays can be specified as comma-separated values:
-- `TOADSTOOL_GPU_FRAMEWORKS="cuda,opencl,vulkan"`
-- `TOADSTOOL_SECURITY_ALLOWED_DESTINATIONS="localhost,127.0.0.1"`
-
-### JSON Values
-
-Complex values can be specified as JSON:
-- `TOADSTOOL_CUSTOM_CONFIG='{"key": "value", "nested": {"setting": true}}'`
-
-"#.to_string()
-        }
-        
-        fn generate_profiles_docs() -> String {
-            r#"## Configuration Profiles
-
-ToadStool supports configuration profiles for different environments.
-
-### Available Profiles
-
-- **Development**: Optimized for development with debugging enabled
-- **Staging**: Production-like environment for testing
-- **Production**: Optimized for production with security enabled
-- **Testing**: Minimal configuration for automated testing
-
-### Profile-Specific Defaults
-
-#### Development Profile
-```yaml
-security:
-  auth_enabled: false
-  sandbox_enabled: false
-monitoring:
-  metrics_enabled: true
-  profiling_enabled: true
-performance:
-  optimization_enabled: false
-```
-
-#### Production Profile
-```yaml
-security:
-  auth_enabled: true
-  sandbox_enabled: true
-server:
-  tls_enabled: true
-monitoring:
-  metrics_enabled: true
-  profiling_enabled: false
-performance:
-  optimization_enabled: true
-```
-
-### Using Profiles
-
-Set the profile using the `TOADSTOOL_PROFILE` environment variable:
-```bash
-export TOADSTOOL_PROFILE=production
-```
-
-Or specify in configuration:
-```yaml
-profile: production
-```
-
-"#.to_string()
-        }
-        
-        fn generate_secrets_docs() -> String {
-            r#"## Secrets Management
-
-ToadStool provides secure secrets management for sensitive configuration values.
-
-### Secret Providers
-
-#### HashiCorp Vault
-```yaml
-secrets:
-  vault:
-    url: "https://vault.example.com"
-    token: "${VAULT_TOKEN}"
-    mount_path: "secret"
-```
-
-#### Environment Variables
-```bash
-export TOADSTOOL_JWT_SECRET="your-secret-here"
-export TOADSTOOL_API_KEY="your-api-key"
-```
-
-### Encrypted Secrets
-
-Secrets can be encrypted in configuration files:
-```yaml
-security:
-  jwt_secret: "encrypted:base64encodedvalue"
-  api_key: "encrypted:anotherencryptedvalue"
-```
-
-### Best Practices
-
-1. **Never commit secrets to version control**
-2. **Use external secret providers in production**
-3. **Rotate secrets regularly**
-4. **Use different secrets for different environments**
-5. **Monitor secret access and usage**
-
-### Secret Rotation
-
-ToadStool supports hot-reload of secrets without restart:
-```bash
-# Update secret in Vault
-vault kv put secret/toadstool jwt_secret="new-secret"
-
-# ToadStool will automatically reload the secret
-```
-
-"#.to_string()
-        }
-        
-        /// Generate JSON schema for configuration validation
-        pub fn generate_json_schema() -> serde_json::Value {
-            // This would generate a JSON schema for the ToadStoolConfig
-            // In a real implementation, you might use the `schemars` crate
-            serde_json::json!({
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "title": "ToadStool Configuration",
-                "type": "object",
-                "properties": {
-                    "server": {
-                        "type": "object",
-                        "properties": {
-                            "bind_address": {"type": "string", "format": "ipv4"},
-                            "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
-                            "max_connections": {"type": "integer", "minimum": 1},
-                            "request_timeout_seconds": {"type": "integer", "minimum": 1},
-                            "tls_enabled": {"type": "boolean"},
-                            "tls_cert_path": {"type": ["string", "null"]},
-                            "tls_key_path": {"type": ["string", "null"]}
-                        },
-                        "required": ["bind_address", "port"]
-                    }
-                    // ... more schema definitions
-                }
-            })
-        }
-        
-        /// Generate example configurations for different use cases
-        pub fn generate_examples() -> HashMap<String, String> {
-            let mut examples = HashMap::new();
-            
-            examples.insert("minimal".to_string(), r#"# Minimal ToadStool Configuration
-server:
-  bind_address: "127.0.0.1"
-  port: 8081
-
-runtimes:
-  native:
-    enabled: true
-"#.to_string());
-            
-            examples.insert("production".to_string(), r#"# Production ToadStool Configuration
-profile: production
-
-server:
-  bind_address: "0.0.0.0"
-  port: 8081
-  max_connections: 1000
-  tls_enabled: true
-  tls_cert_path: "/etc/toadstool/cert.pem"
-  tls_key_path: "/etc/toadstool/key.pem"
-
-security:
-  auth_enabled: true
-  auth_method: "jwt"
-  jwt_secret: "${TOADSTOOL_JWT_SECRET}"
-  sandbox_enabled: true
-  network_isolation: true
-
-monitoring:
-  metrics_enabled: true
-  export_enabled: true
-  export_endpoints:
-    - "http://prometheus:9090/api/v1/write"
-
-ecosystem:
-  songbird:
-    enabled: true
-    endpoint: "https://songbird.example.com"
-  beardog:
-    enabled: true
-    endpoint: "https://beardog.example.com"
-    security_level: "high"
-"#.to_string());
-            
-            examples.insert("development".to_string(), r#"# Development ToadStool Configuration
-profile: development
-
-server:
-  bind_address: "127.0.0.1"
-  port: 8081
-
-security:
-  auth_enabled: false
-  sandbox_enabled: false
-
-monitoring:
-  metrics_enabled: true
-  profiling_enabled: true
-
-performance:
-  optimization_enabled: false
-"#.to_string());
-            
-            examples
-        }
+    #[test]
+    fn test_configuration_overrides() {
+        let mut overrides = HashMap::new();
+        overrides.insert("custom_setting".to_string(), serde_json::Value::Bool(true));
+
+        let config = ToadStoolConfig::default().merge(overrides);
+        assert!(config.get_override("custom_setting", false));
+        assert_eq!(config.get_override("non_existent", 42), 42);
     }
 }

@@ -20,7 +20,8 @@ impl Default for SubstrateDetector {
 }
 
 impl SubstrateDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -28,18 +29,30 @@ impl SubstrateDetector {
     pub async fn detect_all(&self) -> ToadStoolResult<SubstrateCapabilities> {
         info!("Starting comprehensive substrate detection");
 
-        let traditional = self.detect_traditional_platforms().await?;
-        let containers = self.detect_container_platforms().await?;
-        let languages = self.detect_language_runtimes().await?;
-        let gpu = self.detect_gpu_platforms().await?;
-        let specialized = self.detect_specialized_platforms().await?;
-
-        // NEW: Actually call the exotic platform detection methods
-        let biological = self.detect_biological_platforms().await?;
-        let neuromorphic = self.detect_neuromorphic_platforms().await?;
-        let quantum = self.detect_quantum_platforms().await?;
-        let edge = self.detect_edge_platforms().await?;
-        let experimental = self.detect_experimental_platforms().await?;
+        // Run all detection operations in parallel for better performance
+        let (
+            traditional,
+            containers,
+            languages,
+            gpu,
+            specialized,
+            biological,
+            neuromorphic,
+            quantum,
+            edge,
+            experimental,
+        ) = tokio::try_join!(
+            self.detect_traditional_platforms(),
+            self.detect_container_platforms(),
+            self.detect_language_runtimes(),
+            self.detect_gpu_platforms(),
+            self.detect_specialized_platforms(),
+            self.detect_biological_platforms(),
+            self.detect_neuromorphic_platforms(),
+            self.detect_quantum_platforms(),
+            self.detect_edge_platforms(),
+            self.detect_experimental_platforms()
+        )?;
 
         // Combine specialized and exotic platforms
         let mut all_specialized = specialized;
@@ -160,8 +173,8 @@ impl SubstrateDetector {
         for (command, name) in &runtimes {
             if self.command_exists(command).await {
                 platforms.push(PlatformType::Language {
-                    name: name.to_string(),
-                    command: command.to_string(),
+                    name: (*name).to_string(),
+                    command: (*command).to_string(),
                 });
             }
         }
@@ -204,7 +217,7 @@ impl SubstrateDetector {
         for (command, name) in &wasm_runtimes {
             if self.command_exists(command).await {
                 platforms.push(PlatformType::WebAssembly {
-                    runtime: name.to_string(),
+                    runtime: (*name).to_string(),
                 });
             }
         }
@@ -233,7 +246,7 @@ impl SubstrateDetector {
         for (command, name) in &quantum_frameworks {
             if self.command_exists(command).await || self.python_package_exists(command).await {
                 platforms.push(PlatformType::Quantum {
-                    framework: name.to_string(),
+                    framework: (*name).to_string(),
                     simulator: true,
                 });
             }
@@ -287,8 +300,8 @@ impl SubstrateDetector {
         for (tool, platform) in &mcu_tools {
             if self.command_exists(tool).await {
                 platforms.push(PlatformType::MCUDevelopment {
-                    platform: platform.to_string(),
-                    tool: tool.to_string(),
+                    platform: (*platform).to_string(),
+                    tool: (*tool).to_string(),
                 });
             }
         }
@@ -313,7 +326,7 @@ impl SubstrateDetector {
         for (tool, description) in &bio_tools {
             if self.command_exists(tool).await || self.python_package_exists(tool).await {
                 platforms.push(PlatformType::BiologicalComputing {
-                    platform: description.to_string(),
+                    platform: (*description).to_string(),
                     simulation: true,
                 });
             }
@@ -355,7 +368,7 @@ impl SubstrateDetector {
         for (framework, description) in &neuro_frameworks {
             if self.python_package_exists(framework).await {
                 platforms.push(PlatformType::NeuromorphicComputing {
-                    platform: description.to_string(),
+                    platform: (*description).to_string(),
                     hardware: false,
                 });
             }
@@ -488,7 +501,8 @@ pub struct SubstrateCapabilities {
 }
 
 impl SubstrateCapabilities {
-    pub fn total_platforms(&self) -> usize {
+    #[must_use]
+    pub const fn total_platforms(&self) -> usize {
         self.traditional_platforms.len()
             + self.container_platforms.len()
             + self.language_runtimes.len()
@@ -497,14 +511,17 @@ impl SubstrateCapabilities {
             + self.experimental_platforms.len()
     }
 
-    pub fn has_containers(&self) -> bool {
+    #[must_use]
+    pub const fn has_containers(&self) -> bool {
         !self.container_platforms.is_empty()
     }
 
-    pub fn has_gpu(&self) -> bool {
+    #[must_use]
+    pub const fn has_gpu(&self) -> bool {
         !self.gpu_platforms.is_empty()
     }
 
+    #[must_use]
     pub fn has_wasm(&self) -> bool {
         self.specialized_platforms
             .iter()

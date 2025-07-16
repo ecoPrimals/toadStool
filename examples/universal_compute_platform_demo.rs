@@ -21,14 +21,17 @@ use toadstool::{
     ToadStoolResult, WorkloadSpec,
 };
 use toadstool_distributed::{
-    types::jobs::LoadBalancingStrategy,
-    types::resources::ResourceLimits,
-    universal::scheduler::{OSLayerConfig, SongbirdIntegrationConfig},
-    CompatibilityMode, ExecutionTarget, FaultToleranceConfig, JobPriority, NetworkEffectsConfig,
-    NetworkLoadBalancing, RecursiveHostingConfig, ResourceSharingConfig, RetryConfig,
-    SchedulingAlgorithm, ToadStoolHostingConfig, UniversalJob, UniversalJobQueue, UniversalJobType,
-    UniversalScheduler, UniversalSchedulerConfig,
+    types::jobs::LoadBalancingStrategy, types::resources::ResourceLimits, CompatibilityMode,
+    ExecutionTarget, JobPriority, RetryConfig, ToadStoolHostingConfig, UniversalJob,
+    UniversalJobQueue, UniversalJobType,
 };
+
+use toadstool_distributed::universal::{
+    FaultToleranceConfig, NetworkEffectsConfig, NetworkLoadBalancing, RecursiveHostingConfig,
+    ResourceSharingConfig, SchedulingAlgorithm, UniversalScheduler, UniversalSchedulerConfig,
+};
+
+use toadstool_distributed::universal::scheduler::{OSLayerConfig, SongbirdIntegrationConfig};
 
 /// Universal ToadStool Platform - the complete compute orchestrator
 pub struct UniversalToadStoolPlatform {

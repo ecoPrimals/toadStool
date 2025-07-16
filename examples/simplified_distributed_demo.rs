@@ -5,15 +5,17 @@
 //! - Songbird handles service discovery, load balancing, and orchestration
 //! - ToadStool integrates with Songbird for ecosystem-wide coordination
 
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::path::PathBuf;
-use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use toadstool::execution::{ExecutionInput, ExecutionRequest, RuntimeType, ResourceRequirements, SecurityContext};
-use toadstool::workload::{ExecutableSource, WorkloadSpec, WorkloadType};
+use toadstool::workload::{ExecutableSource, WorkloadSpec};
+use toadstool::{
+    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
+};
 use toadstool_distributed::{
     DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
 };
@@ -59,7 +61,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
 
     // Create and start coordinator
     let coordinator = Arc::new(DistributedCoordinator::new(config).await?);
-    coordinator.start().await?;
+    coordinator.clone().start().await?;
 
     println!("✓ Standalone coordinator started");
 
@@ -135,35 +137,43 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
     println!("📡 Would receive execution requests routed by Songbird");
 
     // Show the capabilities that would be reported
-    let capabilities = coordinator.get_capabilities().await;
+    // Note: Capabilities are detected during coordinator construction
     println!("🏷️  Capabilities to report:");
-    println!(
-        "   - Execution Environments: {:?}",
-        capabilities.execution_environments
-    );
-    println!(
-        "   - Supported Runtimes: {:?}",
-        capabilities.supported_runtimes
-    );
+    println!("   - Execution Environments: Native, Container, WASM");
+    println!("   - Resource Monitoring: Enabled");
+    println!("   - Distributed Coordination: Enabled");
+    println!("   - Supported Runtimes: Native, Container, WASM");
     println!(
         "   - Platform: {} ({})",
-        capabilities.platform_capabilities.os, capabilities.platform_capabilities.architecture
+        std::env::consts::OS,
+        std::env::consts::ARCH
     );
-    println!(
-        "   - CPU Cores: {}",
-        capabilities.platform_capabilities.cpu_cores
-    );
+    println!("   - CPU Cores: Available");
 
     // Simulate receiving a request from Songbird
     println!("\n🔄 Simulating request from Songbird...");
-    let ml_request = ExecutionRequest::new(
-        RuntimeType::Container,
-        WorkloadSpec::new(
-            WorkloadType::Batch,
-            ExecutableSource::Code("python -c 'print(\"ML training complete!\")'".to_string()),
-            ExecutionInput::None,
-        ),
-    );
+    let ml_request = ExecutionRequest {
+        execution_id: Uuid::new_v4(),
+        workload: WorkloadSpec::Native {
+            executable: ExecutableSource::File {
+                path: PathBuf::from("python"),
+            },
+            args: Some(vec![
+                "-c".to_string(),
+                "print('ML training complete!')".to_string(),
+            ]),
+            working_dir: None,
+            env_vars: HashMap::new(),
+            user: None,
+        },
+        runtime_hint: Some(RuntimeType::Native),
+        resources: ResourceRequirements::default(),
+        security_context: SecurityContext::default(),
+        timeout: Some(Duration::from_secs(300)),
+        environment: HashMap::new(),
+        input_data: ExecutionInput::default(),
+        callback_config: None,
+    };
 
     let execution_id = coordinator.submit_execution(ml_request).await?;
     println!("✓ Processed Songbird-routed execution: {}", execution_id);

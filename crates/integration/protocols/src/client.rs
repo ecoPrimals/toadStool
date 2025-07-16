@@ -253,8 +253,17 @@ impl ProtocolClient {
                     interval_timer.tick().await;
 
                     // Check health of all registered services
-                    // Mock implementation for now
-                    debug!("Health check cycle completed");
+                    #[cfg(feature = "networking")]
+                    {
+                        // TODO: Implement actual health check logic
+                        debug!("Health check cycle completed");
+                    }
+                    
+                    #[cfg(not(feature = "networking"))]
+                    {
+                        // Mock implementation for testing
+                        debug!("Health check cycle completed (mock)");
+                    }
                 }
             });
         }
@@ -284,9 +293,19 @@ impl ProtocolClient {
         service_info: &ServiceInfo,
         _discovery_config: &DiscoveryConfig,
     ) -> ProtocolResult<()> {
-        // Mock implementation - would register with actual discovery service
-        debug!("Registering service with discovery: {}", service_info.id);
-        Ok(())
+        #[cfg(feature = "networking")]
+        {
+            // TODO: Implement actual discovery service registration
+            debug!("Registering service with discovery: {}", service_info.id);
+            Ok(())
+        }
+        
+        #[cfg(not(feature = "networking"))]
+        {
+            // Mock implementation - would register with actual discovery service
+            debug!("Registering service with discovery (mock): {}", service_info.id);
+            Ok(())
+        }
     }
 
     /// Discover services from registry
@@ -295,9 +314,19 @@ impl ProtocolClient {
         service_name: &str,
         _discovery_config: &DiscoveryConfig,
     ) -> ProtocolResult<Vec<ServiceInfo>> {
-        // Mock implementation - would query actual discovery service
-        debug!("Discovering services from registry: {}", service_name);
-        Ok(Vec::new())
+        #[cfg(feature = "networking")]
+        {
+            // TODO: Implement actual discovery service query
+            debug!("Discovering services from registry: {}", service_name);
+            Ok(Vec::new())
+        }
+        
+        #[cfg(not(feature = "networking"))]
+        {
+            // Mock implementation - would query actual discovery service
+            debug!("Discovering services from registry (mock): {}", service_name);
+            Ok(Vec::new())
+        }
     }
 
     /// Select service based on routing strategy

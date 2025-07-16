@@ -1,13 +1,11 @@
-use std::time::Duration;
 use tokio;
-use uuid::Uuid;
 
+use toadstool_distributed::universal::{
+    BiologicalComputingPlatform, NeuromorphicPlatform, UniversalAdapter,
+};
 use toadstool_distributed::{
-    BiologicalPlatform, DetectedPlatform, DistributedCoordinator, ExecutionRequest,
-    ExperimentalPlatform, NeuromorphicPlatform, PlatformType, QuantumPlatform,
-    ResourceRequirements, SubstrateDetectionEngine, UniversalRuntimeAdapter, WorkloadRequirements,
-    WorkloadSource, WorkloadType,
-    CpuRequirements, MemoryRequirements, StorageRequirements, NetworkRequirements, GpuRequirements,
+    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, PlatformType,
+    ResourceRequirements, StorageRequirements,
 };
 
 /// ToadStool Universal Compute Bridge Demonstration
@@ -34,20 +32,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     for platform in &detected_platforms {
         match &platform.platform_type {
-            PlatformType::BiologicalComputing { platform: bio_platform, simulation } => {
-                println!("  🧬 {}: {} (simulation: {}, {})", platform.name, bio_platform, simulation, platform.version);
+            PlatformType::BiologicalComputing {
+                platform: bio_platform,
+                simulation,
+            } => {
+                println!(
+                    "  🧬 {}: {} (simulation: {}, {})",
+                    platform.name, bio_platform, simulation, platform.version
+                );
             }
-            PlatformType::NeuromorphicComputing { platform: neuro_platform, hardware } => {
-                println!("  🧠 {}: {} (hardware: {}, {})", platform.name, neuro_platform, hardware, platform.version);
+            PlatformType::NeuromorphicComputing {
+                platform: neuro_platform,
+                hardware,
+            } => {
+                println!(
+                    "  🧠 {}: {} (hardware: {}, {})",
+                    platform.name, neuro_platform, hardware, platform.version
+                );
             }
-            PlatformType::Quantum { framework, simulator } => {
+            PlatformType::Quantum {
+                framework,
+                simulator,
+            } => {
                 println!(
                     "  ⚛️  {}: {} (simulator: {}, {})",
                     platform.name, framework, simulator, platform.version
                 );
             }
             PlatformType::GPU { vendor, framework } => {
-                println!("  🎮 {}: {} {} ({})", platform.name, vendor, framework, platform.version);
+                println!(
+                    "  🎮 {}: {} {} ({})",
+                    platform.name, vendor, framework, platform.version
+                );
             }
             _ => {
                 println!(
@@ -63,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize the universal runtime adapter
     println!("🌉 Phase 2: Universal Runtime Adapter Initialization");
-    let runtime_adapter = UniversalRuntimeAdapter::new().await?;
+    let runtime_adapter = UniversalAdapter::new(Default::default());
 
     // Demonstrate the universal compute bridge with real workflows
     println!("🚀 Phase 3: Universal Compute Bridge Demonstrations");
@@ -97,61 +113,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Demonstrate bridging from DNA computing to quantum computing
 async fn demo_dna_to_quantum_bridge(
-    adapter: &UniversalRuntimeAdapter,
+    adapter: &UniversalAdapter,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("🧬➡️⚛️  Demo 1: DNA Chip to Quantum Computer Bridge");
     println!("   Scenario: Protein folding simulation optimized via quantum annealing");
 
     // Define a workflow that starts on DNA platforms and optimizes on quantum
-    let dna_requirements = WorkloadRequirements {
-        resource_requirements: ResourceRequirements {
-            cpu: CpuRequirements {
-                min_cores: 2.0,
-                max_cores: Some(4.0),
-                architecture: Some("x86_64".to_string()),
-            },
-            memory: MemoryRequirements {
-                min_bytes: 4 * 1024 * 1024 * 1024, // 4GB
-                max_bytes: None,
-            },
-            storage: StorageRequirements {
-                min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-                max_bytes: None,
-                storage_type: Some("ssd".to_string()),
-            },
-            network: NetworkRequirements {
-                min_bandwidth: Some(10000 * 1024 * 1024), // 10Gbps
-                max_bandwidth: None,
-                max_latency_ms: None,
-            },
-            gpu: Some(GpuRequirements {
-                min_memory_gb: 24.0,
-                compute_capability: Some("7.0".to_string()),
-            }),
+    let dna_requirements = ResourceRequirements {
+        cpu: CpuRequirements {
+            min_cores: 2.0,
+            max_cores: Some(4.0),
         },
-        preferred_platforms: vec![
-            PlatformType::BiologicalComputing {
-                platform: BiologicalPlatform::DNASynthesis,
-                simulation: false,
-            },
-            PlatformType::BiologicalComputing {
-                platform: BiologicalPlatform::ProteinFolding,
-                simulation: false,
-            },
-        ],
-        fallback_platforms: vec![
-            PlatformType::GPU { 
-                vendor: "NVIDIA".to_string(), 
-                framework: "CUDA".to_string() 
-            }, 
-            PlatformType::Linux {
-                distribution: "Ubuntu".to_string(),
-                architecture: "x86_64".to_string(),
-            }
-        ],
-        constraints: vec!["LOW_POWER".to_string(), "HIGH_PRECISION".to_string()],
-        workload_type: WorkloadType::Simulation,
+        memory: MemoryRequirements {
+            min_bytes: 4 * 1024 * 1024 * 1024, // 4GB
+            max_bytes: None,
+        },
+        storage: StorageRequirements {
+            min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+            max_bytes: None,
+        },
+        network: NetworkRequirements {
+            bandwidth_mbps: Some(10000), // 10Gbps
+            latency_ms: None,
+        },
+        gpu: Some(GpuRequirements {
+            min_memory_gb: 24.0,
+            compute_capability: Some("7.0".to_string()),
+        }),
     };
+
+    // Note: preferred_platforms was removed as it's not part of ResourceRequirements
+    // Define preferred platforms separately if needed
+    let _preferred_platforms = vec![
+        PlatformType::BiologicalComputing {
+            platform: BiologicalComputingPlatform::DNAComputing {
+                platform: "DNA Synthesis".to_string(),
+                synthesis_method: "Enzymatic".to_string(),
+                storage_capacity_bits: 1024,
+                read_write_cycles: 100,
+            },
+            simulation: false,
+        },
+        PlatformType::BiologicalComputing {
+            platform: BiologicalComputingPlatform::ProteinFolding {
+                platform: "Protein Folding".to_string(),
+                protein_complexity: "High".to_string(),
+                computational_resources: "Moderate".to_string(),
+            },
+            simulation: false,
+        },
+    ];
 
     let optimal_path = adapter
         .plan_multi_substrate_execution(&dna_requirements)
@@ -178,60 +189,46 @@ async fn demo_dna_to_quantum_bridge(
 
 /// Demonstrate neuromorphic to traditional computing bridge
 async fn demo_neuromorphic_to_traditional_bridge(
-    adapter: &UniversalRuntimeAdapter,
+    adapter: &UniversalAdapter,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("🧠➡️💻 Demo 2: Neuromorphic to Traditional Bridge");
     println!("   Scenario: Spike neural network training with traditional validation");
 
-    let neuro_requirements = WorkloadRequirements {
-        resource_requirements: ResourceRequirements {
-            cpu: CpuRequirements {
-                min_cores: 8.0,
-                max_cores: Some(16.0),
-                architecture: Some("x86_64".to_string()),
-            },
-            memory: MemoryRequirements {
-                min_bytes: 16 * 1024 * 1024 * 1024, // 16GB
-                max_bytes: None,
-            },
-            storage: StorageRequirements {
-                min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-                max_bytes: None,
-                storage_type: Some("ssd".to_string()),
-            },
-            network: NetworkRequirements {
-                min_bandwidth: Some(1000 * 1024 * 1024), // 1Gbps
-                max_bandwidth: None,
-                max_latency_ms: None,
-            },
-            gpu: Some(GpuRequirements {
-                min_memory_gb: 8.0,
-                compute_capability: Some("7.0".to_string()),
-            }),
+    let neuro_requirements = ResourceRequirements {
+        cpu: CpuRequirements {
+            min_cores: 8.0,
+            max_cores: Some(16.0),
         },
-        preferred_platforms: vec![
-            PlatformType::NeuromorphicComputing {
-                platform: NeuromorphicPlatform::IntelLoihi,
-                hardware: false,
-            },
-            PlatformType::NeuromorphicComputing {
-                platform: NeuromorphicPlatform::Brian2,
-                hardware: false,
-            },
-        ],
-        fallback_platforms: vec![
-            PlatformType::GPU { 
-                vendor: "NVIDIA".to_string(), 
-                framework: "CUDA".to_string() 
-            }, 
-            PlatformType::Linux {
-                distribution: "Ubuntu".to_string(),
-                architecture: "x86_64".to_string(),
-            }
-        ],
-        constraints: vec!["REAL_TIME".to_string(), "LOW_LATENCY".to_string()],
-        workload_type: WorkloadType::MachineLearning,
+        memory: MemoryRequirements {
+            min_bytes: 16 * 1024 * 1024 * 1024, // 16GB
+            max_bytes: None,
+        },
+        storage: StorageRequirements {
+            min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+            max_bytes: None,
+        },
+        network: NetworkRequirements {
+            bandwidth_mbps: Some(1000), // 1Gbps
+            latency_ms: None,
+        },
+        gpu: Some(GpuRequirements {
+            min_memory_gb: 8.0,
+            compute_capability: Some("7.0".to_string()),
+        }),
     };
+
+    // Note: preferred_platforms was removed as it's not part of ResourceRequirements
+    // Define preferred platforms separately if needed
+    let _preferred_platforms = vec![
+        PlatformType::NeuromorphicComputing {
+            platform: NeuromorphicPlatform::IntelLoihi,
+            hardware: false,
+        },
+        PlatformType::NeuromorphicComputing {
+            platform: NeuromorphicPlatform::Brian2,
+            hardware: false,
+        },
+    ];
 
     let execution_plan = adapter
         .create_hybrid_execution_plan(&neuro_requirements)
@@ -247,75 +244,62 @@ async fn demo_neuromorphic_to_traditional_bridge(
 
 /// Demonstrate multi-paradigm orchestration across all platforms
 async fn demo_multi_paradigm_orchestration(
-    adapter: &UniversalRuntimeAdapter,
+    adapter: &UniversalAdapter,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("🌐 Demo 3: Multi-Paradigm Orchestration");
     println!("   Scenario: Complex workflow utilizing 5+ different computing paradigms");
 
-    let complex_requirements = WorkloadRequirements {
-        resource_requirements: ResourceRequirements {
-            cpu: CpuRequirements {
-                min_cores: 32.0,
-                max_cores: Some(64.0),
-                architecture: Some("x86_64".to_string()),
-            },
-            memory: MemoryRequirements {
-                min_bytes: 64 * 1024 * 1024 * 1024, // 64GB
-                max_bytes: None,
-            },
-            storage: StorageRequirements {
-                min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-                max_bytes: None,
-                storage_type: Some("ssd".to_string()),
-            },
-            network: NetworkRequirements {
-                min_bandwidth: Some(10000 * 1024 * 1024), // 10Gbps
-                max_bandwidth: None,
-                max_latency_ms: None,
-            },
-            gpu: Some(GpuRequirements {
-                min_memory_gb: 24.0,
-                compute_capability: Some("7.0".to_string()),
-            }),
+    let complex_requirements = ResourceRequirements {
+        cpu: CpuRequirements {
+            min_cores: 32.0,
+            max_cores: Some(64.0),
         },
-        preferred_platforms: vec![
-            PlatformType::BiologicalComputing {
-                platform: BiologicalPlatform::CellularComputing,
-                simulation: false,
-            },
-            PlatformType::NeuromorphicComputing {
-                platform: NeuromorphicPlatform::SpiNNaker,
-                hardware: false,
-            },
-            PlatformType::Quantum {
-                framework: "Qiskit".to_string(),
-                simulator: false,
-            },
-            PlatformType::GPU {
-                vendor: "NVIDIA".to_string(),
-                framework: "CUDA".to_string(),
-            },
-            PlatformType::Linux {
-                distribution: "Ubuntu".to_string(),
-                architecture: "x86_64".to_string(),
-            },
-        ],
-        fallback_platforms: vec![
-            PlatformType::EdgeDevice {
-                device_type: "IoT".to_string(),
-                architecture: "ARM".to_string(),
-            }, 
-            PlatformType::EdgeDevice {
-                device_type: "FPGA".to_string(),
-                architecture: "Xilinx".to_string(),
-            }
-        ],
-        constraints: vec![
-            "OPTIMIZE_ENERGY".to_string(),
-            "MAXIMIZE_THROUGHPUT".to_string(),
-        ],
-        workload_type: WorkloadType::DataProcessing,
+        memory: MemoryRequirements {
+            min_bytes: 64 * 1024 * 1024 * 1024, // 64GB
+            max_bytes: None,
+        },
+        storage: StorageRequirements {
+            min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+            max_bytes: None,
+        },
+        network: NetworkRequirements {
+            bandwidth_mbps: Some(10000), // 10Gbps
+            latency_ms: None,
+        },
+        gpu: Some(GpuRequirements {
+            min_memory_gb: 24.0,
+            compute_capability: Some("7.0".to_string()),
+        }),
     };
+
+    // Note: preferred_platforms was removed as it's not part of ResourceRequirements
+    // Define preferred platforms separately if needed
+    let _preferred_platforms = vec![
+        PlatformType::BiologicalComputing {
+            platform: BiologicalComputingPlatform::CellularComputing {
+                cell_type: "E. coli".to_string(),
+                genetic_circuits: vec!["lac operon".to_string()],
+                biosafety_level: 1,
+            },
+            simulation: false,
+        },
+        PlatformType::NeuromorphicComputing {
+            platform: NeuromorphicPlatform::SpiNNaker,
+            hardware: false,
+        },
+        PlatformType::Quantum {
+            framework: "Qiskit".to_string(),
+            simulator: false,
+        },
+        PlatformType::GPU {
+            vendor: "NVIDIA".to_string(),
+            framework: "CUDA".to_string(),
+        },
+        PlatformType::Linux {
+            distribution: "Ubuntu".to_string(),
+            architecture: "x86_64".to_string(),
+        },
+    ];
 
     let orchestration_plan = adapter
         .orchestrate_multi_paradigm_workflow(&complex_requirements)
@@ -334,64 +318,47 @@ async fn demo_multi_paradigm_orchestration(
 
 /// Demonstrate experimental platform integration
 async fn demo_experimental_platforms(
-    adapter: &UniversalRuntimeAdapter,
+    adapter: &UniversalAdapter,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("🔬 Demo 4: Experimental Platform Integration");
     println!("   Scenario: Cutting-edge computing paradigms integration");
 
-    let experimental_requirements = WorkloadRequirements {
-        resource_requirements: ResourceRequirements {
-            cpu: CpuRequirements {
-                min_cores: 4.0,
-                max_cores: Some(8.0),
-                architecture: Some("x86_64".to_string()),
-            },
-            memory: MemoryRequirements {
-                min_bytes: 8 * 1024 * 1024 * 1024, // 8GB
-                max_bytes: None,
-            },
-            storage: StorageRequirements {
-                min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-                max_bytes: None,
-                storage_type: Some("ssd".to_string()),
-            },
-            network: NetworkRequirements {
-                min_bandwidth: Some(1000 * 1024 * 1024), // 1Gbps
-                max_bandwidth: None,
-                max_latency_ms: None,
-            },
-            gpu: Some(GpuRequirements {
-                min_memory_gb: 4.0,
-                compute_capability: Some("7.0".to_string()),
-            }),
+    let experimental_requirements = ResourceRequirements {
+        cpu: CpuRequirements {
+            min_cores: 4.0,
+            max_cores: Some(8.0),
         },
-        preferred_platforms: vec![
-            PlatformType::Quantum {
-                framework: "Rigetti".to_string(),
-                simulator: false,
-            },
-            PlatformType::EdgeDevice {
-                device_type: "FPGA".to_string(),
-                architecture: "Xilinx".to_string(),
-            },
-            PlatformType::EdgeDevice {
-                device_type: "Custom".to_string(),
-                architecture: "ARM".to_string(),
-            },
-        ],
-        fallback_platforms: vec![
-            PlatformType::Quantum {
-                framework: "Rigetti".to_string(),
-                simulator: false,
-            },
-            PlatformType::Linux {
-                distribution: "Ubuntu".to_string(),
-                architecture: "x86_64".to_string(),
-            },
-        ],
-        constraints: vec!["EXPERIMENTAL_VALIDATION".to_string()],
-        workload_type: WorkloadType::Research,
+        memory: MemoryRequirements {
+            min_bytes: 8 * 1024 * 1024 * 1024, // 8GB
+            max_bytes: None,
+        },
+        storage: StorageRequirements {
+            min_bytes: 1 * 1024 * 1024 * 1024, // 1GB
+            max_bytes: None,
+        },
+        network: NetworkRequirements {
+            bandwidth_mbps: Some(100), // 100Mbps
+            latency_ms: Some(50),
+        },
+        gpu: None,
     };
+
+    // Note: preferred_platforms was removed as it's not part of ResourceRequirements
+    // Define preferred platforms separately if needed
+    let _preferred_platforms = vec![
+        PlatformType::Quantum {
+            framework: "Rigetti".to_string(),
+            simulator: false,
+        },
+        PlatformType::EdgeDevice {
+            device_type: "FPGA".to_string(),
+            architecture: "Xilinx".to_string(),
+        },
+        PlatformType::EdgeDevice {
+            device_type: "Custom".to_string(),
+            architecture: "ARM".to_string(),
+        },
+    ];
 
     let experimental_plan = adapter
         .validate_experimental_integration(&experimental_requirements)

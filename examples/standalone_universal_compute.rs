@@ -6,8 +6,6 @@
 // 2. ABSTRACT: Champion open alternatives (WebGPU, ROCm, llama.cpp)
 // 3. INCENTIVIZE: Create pressure for open standards adoption
 
-use std::collections::HashMap;
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🍄 ToadStool Universal Compute Demo: Breaking the CUDA Monopoly");
@@ -664,7 +662,7 @@ fn determine_execution_strategy(
 }
 
 fn generate_reasoning(
-    request: &WorkloadRequest,
+    _request: &WorkloadRequest,
     node: &ComputeNode,
     strategy: &ExecutionStrategy,
 ) -> String {
@@ -846,12 +844,9 @@ async fn show_strategic_metrics(
         / total_nodes as f64
         * 100.0;
 
-    println!("   ✅ Open Standards Coverage: {:.1}%", open_coverage);
-    println!(
-        "   ⚠️ CUDA Dependency: {:.1}% (goal: minimize)",
-        cuda_dependency
-    );
-    println!("   🌐 Cross-Platform Ready: {:.1}%", cross_platform);
+    println!("   ✅ Open Standards Coverage: {open_coverage:.1}%");
+    println!("   ⚠️ CUDA Dependency: {cuda_dependency:.1}% (goal: minimize)");
+    println!("   🌐 Cross-Platform Ready: {cross_platform:.1}%");
 
     let ecosystem_health = if cuda_only_nodes == 0 {
         "🌟 Excellent"
@@ -861,18 +856,12 @@ async fn show_strategic_metrics(
         "⚠️ Needs Work"
     };
 
-    println!("   🏥 Ecosystem Health: {}", ecosystem_health);
+    println!("   🏥 Ecosystem Health: {ecosystem_health}");
 
     println!("\n💡 The NVIDIA Proposition:");
     println!("   Current Reality:");
-    println!(
-        "     • {} NVIDIA nodes have both CUDA and open alternatives",
-        mixed_nodes
-    );
-    println!(
-        "     • {} nodes are trapped in CUDA-only ecosystem",
-        cuda_only_nodes
-    );
+    println!("     • {mixed_nodes} NVIDIA nodes have both CUDA and open alternatives");
+    println!("     • {cuda_only_nodes} nodes are trapped in CUDA-only ecosystem");
     println!("     • Millions of NVIDIA gaming GPUs sit idle while AI needs compute");
     println!();
     println!("   The Opportunity:");
@@ -899,7 +888,7 @@ async fn show_strategic_metrics(
         "   Current addressable nodes: {}",
         pure_open_nodes + mixed_nodes
     );
-    println!("   Potential with open NVIDIA drivers: {}", total_nodes);
+    println!("   Potential with open NVIDIA drivers: {total_nodes}");
     println!(
         "   Estimated gaming PC unlock: {:.0}k+ nodes",
         market_expansion / 1000.0

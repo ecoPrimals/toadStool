@@ -4,22 +4,22 @@
 //! and automatically configures optimal integration settings.
 
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
-use crate::{ToadStoolResult, ToadStoolError};
+use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_config::network::DEFAULT_LOCALHOST;
 
 /// Ecosystem discovery system for finding and configuring primal services
 pub struct EcosystemDiscoverer {
     /// Known service patterns and ports
     service_patterns: HashMap<String, ServicePattern>,
     /// Discovery timeout
-    discovery_timeout: Duration,
+    _discovery_timeout: Duration,
     /// Last discovery results (cached)
     last_discovery: Option<DiscoveredServices>,
 }
@@ -30,68 +30,89 @@ impl EcosystemDiscoverer {
         let mut service_patterns = HashMap::new();
 
         // Songbird - Network coordination primal
-        service_patterns.insert("songbird".to_string(), ServicePattern {
-            name: "songbird".to_string(),
-            description: "Network coordination and orchestration".to_string(),
-            default_ports: vec![8001, 8081, 9001],
-            health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
-            service_type: ServiceType::NetworkCoordination,
-            required_capabilities: vec!["network".to_string(), "coordination".to_string()],
-        });
+        service_patterns.insert(
+            "songbird".to_string(),
+            ServicePattern {
+                name: "songbird".to_string(),
+                description: "Network coordination and orchestration".to_string(),
+                default_ports: vec![8001, 8081, 9001],
+                health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
+                service_type: ServiceType::NetworkCoordination,
+                required_capabilities: vec!["network".to_string(), "coordination".to_string()],
+            },
+        );
 
         // BearDog - Security primal
-        service_patterns.insert("beardog".to_string(), ServicePattern {
-            name: "beardog".to_string(),
-            description: "Security and threat detection".to_string(),
-            default_ports: vec![8002, 8082, 9002],
-            health_endpoints: vec!["/health".to_string(), "/api/security/health".to_string()],
-            service_type: ServiceType::Security,
-            required_capabilities: vec!["security".to_string(), "authentication".to_string()],
-        });
+        service_patterns.insert(
+            "beardog".to_string(),
+            ServicePattern {
+                name: "beardog".to_string(),
+                description: "Security and threat detection".to_string(),
+                default_ports: vec![8002, 8082, 9002],
+                health_endpoints: vec!["/health".to_string(), "/api/security/health".to_string()],
+                service_type: ServiceType::Security,
+                required_capabilities: vec!["security".to_string(), "authentication".to_string()],
+            },
+        );
 
         // NestGate - Storage primal
-        service_patterns.insert("nestgate".to_string(), ServicePattern {
-            name: "nestgate".to_string(),
-            description: "Distributed storage and data management".to_string(),
-            default_ports: vec![8003, 8083, 9003],
-            health_endpoints: vec!["/health".to_string(), "/api/storage/health".to_string()],
-            service_type: ServiceType::Storage,
-            required_capabilities: vec!["storage".to_string(), "data_management".to_string()],
-        });
+        service_patterns.insert(
+            "nestgate".to_string(),
+            ServicePattern {
+                name: "nestgate".to_string(),
+                description: "Distributed storage and data management".to_string(),
+                default_ports: vec![8003, 8083, 9003],
+                health_endpoints: vec!["/health".to_string(), "/api/storage/health".to_string()],
+                service_type: ServiceType::Storage,
+                required_capabilities: vec!["storage".to_string(), "data_management".to_string()],
+            },
+        );
 
         // Squirrel - AI primal
-        service_patterns.insert("squirrel".to_string(), ServicePattern {
-            name: "squirrel".to_string(),
-            description: "AI and machine learning services".to_string(),
-            default_ports: vec![8004, 8084, 9004],
-            health_endpoints: vec!["/health".to_string(), "/api/ai/health".to_string()],
-            service_type: ServiceType::AI,
-            required_capabilities: vec!["ai".to_string(), "machine_learning".to_string()],
-        });
+        service_patterns.insert(
+            "squirrel".to_string(),
+            ServicePattern {
+                name: "squirrel".to_string(),
+                description: "AI and machine learning services".to_string(),
+                default_ports: vec![8004, 8084, 9004],
+                health_endpoints: vec!["/health".to_string(), "/api/ai/health".to_string()],
+                service_type: ServiceType::AI,
+                required_capabilities: vec!["ai".to_string(), "machine_learning".to_string()],
+            },
+        );
 
         // BiomeOS - Universal OS
-        service_patterns.insert("biomeos".to_string(), ServicePattern {
-            name: "biomeos".to_string(),
-            description: "Universal operating system and environment management".to_string(),
-            default_ports: vec![8005, 8085, 9005],
-            health_endpoints: vec!["/health".to_string(), "/api/biome/health".to_string()],
-            service_type: ServiceType::OperatingSystem,
-            required_capabilities: vec!["os_management".to_string(), "environment".to_string()],
-        });
+        service_patterns.insert(
+            "biomeos".to_string(),
+            ServicePattern {
+                name: "biomeos".to_string(),
+                description: "Universal operating system and environment management".to_string(),
+                default_ports: vec![8005, 8085, 9005],
+                health_endpoints: vec!["/health".to_string(), "/api/biome/health".to_string()],
+                service_type: ServiceType::OperatingSystem,
+                required_capabilities: vec!["os_management".to_string(), "environment".to_string()],
+            },
+        );
 
         // Other ToadStool instances (recursive hosting)
-        service_patterns.insert("toadstool".to_string(), ServicePattern {
-            name: "toadstool".to_string(),
-            description: "Other ToadStool universal compute instances".to_string(),
-            default_ports: vec![8080, 8000, 3000],
-            health_endpoints: vec!["/health".to_string(), "/api/v2/health".to_string()],
-            service_type: ServiceType::Compute,
-            required_capabilities: vec!["compute".to_string(), "universal_execution".to_string()],
-        });
+        service_patterns.insert(
+            "toadstool".to_string(),
+            ServicePattern {
+                name: "toadstool".to_string(),
+                description: "Other ToadStool universal compute instances".to_string(),
+                default_ports: vec![8080, 8000, 3000],
+                health_endpoints: vec!["/health".to_string(), "/api/v2/health".to_string()],
+                service_type: ServiceType::Compute,
+                required_capabilities: vec![
+                    "compute".to_string(),
+                    "universal_execution".to_string(),
+                ],
+            },
+        );
 
         Self {
             service_patterns,
-            discovery_timeout: Duration::from_secs(30),
+            _discovery_timeout: Duration::from_secs(30),
             last_discovery: None,
         }
     }
@@ -120,7 +141,7 @@ impl EcosystemDiscoverer {
 
         // Phase 4: mDNS/Zeroconf discovery (if available)
         info!("  📢 Phase 4: mDNS/Zeroconf discovery...");
-        let mdns_services = self.discover_mdns_services().await?;
+        let mdns_services = self.discover_mdns_services()?;
         discovered_services.extend(mdns_services);
 
         // Update discovery summary
@@ -143,7 +164,10 @@ impl EcosystemDiscoverer {
 
         info!("✅ Ecosystem discovery complete:");
         for (name, service) in &services.discovered_services {
-            info!("   🔗 {} -> {} ({})", name, service.endpoint, service.service_type);
+            info!(
+                "   🔗 {} -> {} ({})",
+                name, service.endpoint, service.service_type
+            );
         }
 
         Ok(services)
@@ -153,7 +177,7 @@ impl EcosystemDiscoverer {
     async fn discover_local_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
         let local_ips = vec![
-            "127.0.0.1".to_string(),
+            DEFAULT_LOCALHOST.to_string(),
             "localhost".to_string(),
             "0.0.0.0".to_string(),
         ];
@@ -161,11 +185,11 @@ impl EcosystemDiscoverer {
         for ip in local_ips {
             for (service_name, pattern) in &self.service_patterns {
                 for &port in &pattern.default_ports {
-                    let endpoint = format!("http://{}:{}", ip, port);
-                    
+                    let endpoint = format!("http://{ip}:{port}");
+
                     if let Ok(service_info) = self.probe_service(&endpoint, pattern).await {
                         debug!("Found local service: {} at {}", service_name, endpoint);
-                        services.insert(format!("{}_{}", service_name, port), service_info);
+                        services.insert(format!("{service_name}_{port}"), service_info);
                     }
                 }
             }
@@ -178,10 +202,10 @@ impl EcosystemDiscoverer {
     /// Discover services on the local network
     async fn discover_network_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
-        
+
         // Get local network ranges to scan
-        let network_ranges = self.get_local_network_ranges().await?;
-        
+        let network_ranges = self.get_local_network_ranges()?;
+
         for network_range in network_ranges {
             let range_services = self.scan_network_range(&network_range).await?;
             services.extend(range_services);
@@ -194,7 +218,7 @@ impl EcosystemDiscoverer {
     /// Discover services on well-known ports
     async fn discover_wellknown_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
-        
+
         // Common service discovery ports
         let wellknown_hosts = vec![
             "api.toadstool.dev".to_string(),
@@ -205,11 +229,11 @@ impl EcosystemDiscoverer {
         for host in wellknown_hosts {
             for (service_name, pattern) in &self.service_patterns {
                 for &port in &pattern.default_ports {
-                    let endpoint = format!("http://{}:{}", host, port);
-                    
+                    let endpoint = format!("http://{host}:{port}");
+
                     if let Ok(service_info) = self.probe_service(&endpoint, pattern).await {
                         debug!("Found well-known service: {} at {}", service_name, endpoint);
-                        services.insert(format!("{}_{}", service_name, host), service_info);
+                        services.insert(format!("{service_name}_{host}"), service_info);
                     }
                 }
             }
@@ -220,18 +244,18 @@ impl EcosystemDiscoverer {
     }
 
     /// Discover services using mDNS/Zeroconf
-    async fn discover_mdns_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
-        let mut services = HashMap::new();
-        
+    fn discover_mdns_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+        let services = HashMap::new();
+
         // This would be implemented with a proper mDNS library
         // For now, we'll do a simplified version
         debug!("mDNS discovery not fully implemented, using fallback");
-        
+
         // Fallback: try common mDNS service names
         let mdns_services = vec![
             "_toadstool._tcp.local",
             "_songbird._tcp.local",
-            "_beardog._tcp.local", 
+            "_beardog._tcp.local",
             "_nestgate._tcp.local",
             "_squirrel._tcp.local",
             "_biomeos._tcp.local",
@@ -248,71 +272,86 @@ impl EcosystemDiscoverer {
     }
 
     /// Probe a service endpoint to see if it's available and get info
-    async fn probe_service(&self, endpoint: &str, pattern: &ServicePattern) -> ToadStoolResult<ServiceInfo> {
+    async fn probe_service(
+        &self,
+        endpoint: &str,
+        pattern: &ServicePattern,
+    ) -> ToadStoolResult<ServiceInfo> {
         // First, try to connect to the endpoint
-        let url = endpoint.parse::<url::Url>()
-            .map_err(|_| ToadStoolError::network(format!("Invalid URL: {}", endpoint)))?;
-        
+        let url = endpoint
+            .parse::<url::Url>()
+            .map_err(|_| ToadStoolError::network(format!("Invalid URL: {endpoint}")))?;
+
         let host = url.host_str().unwrap_or("localhost");
         let port = url.port().unwrap_or(80);
-        let socket_addr = format!("{}:{}", host, port);
+        let socket_addr = format!("{host}:{port}");
 
         // Try to establish a TCP connection
-        if timeout(Duration::from_secs(2), TcpStream::connect(&socket_addr)).await.is_err() {
-            return Err(ToadStoolError::network(format!("Cannot connect to {}", socket_addr)));
+        if timeout(Duration::from_secs(2), TcpStream::connect(&socket_addr))
+            .await
+            .is_err()
+        {
+            return Err(ToadStoolError::network(format!(
+                "Cannot connect to {socket_addr}"
+            )));
         }
 
         // Try to get service info via HTTP
         let service_info = self.get_service_info(endpoint, pattern).await?;
-        
+
         Ok(service_info)
     }
 
     /// Get detailed service information via HTTP
-    async fn get_service_info(&self, endpoint: &str, pattern: &ServicePattern) -> ToadStoolResult<ServiceInfo> {
+    async fn get_service_info(
+        &self,
+        endpoint: &str,
+        pattern: &ServicePattern,
+    ) -> ToadStoolResult<ServiceInfo> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
-            .map_err(|e| ToadStoolError::network(format!("HTTP client error: {}", e)))?;
+            .map_err(|e| ToadStoolError::network(format!("HTTP client error: {e}")))?;
 
         // Try each health endpoint
         for health_endpoint in &pattern.health_endpoints {
-            let health_url = format!("{}{}", endpoint, health_endpoint);
-            
-            if let Ok(response) = timeout(Duration::from_secs(3), client.get(&health_url).send()).await {
-                if let Ok(response) = response {
-                    if response.status().is_success() {
-                        // Try to parse service information
-                        if let Ok(text) = response.text().await {
-                            if let Ok(health_info) = serde_json::from_str::<serde_json::Value>(&text) {
-                                return Ok(ServiceInfo {
-                                    name: pattern.name.clone(),
-                                    endpoint: endpoint.to_string(),
-                                    service_type: format!("{:?}", pattern.service_type),
-                                    version: health_info.get("version")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("unknown")
-                                        .to_string(),
-                                    capabilities: pattern.required_capabilities.clone(),
-                                    status: ServiceStatus::Healthy,
-                                    discovered_via: "http_probe".to_string(),
-                                    response_time_ms: 0, // Would measure actual response time
-                                });
-                            }
+            let health_url = format!("{endpoint}{health_endpoint}");
+
+            if let Ok(Ok(response)) =
+                timeout(Duration::from_secs(3), client.get(&health_url).send()).await
+            {
+                if response.status().is_success() {
+                    // Try to parse service information
+                    if let Ok(text) = response.text().await {
+                        if let Ok(health_info) = serde_json::from_str::<serde_json::Value>(&text) {
+                            return Ok(ServiceInfo {
+                                name: pattern.name.clone(),
+                                endpoint: endpoint.to_string(),
+                                service_type: format!("{:?}", pattern.service_type),
+                                version: health_info
+                                    .get("version")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("unknown")
+                                    .to_string(),
+                                capabilities: pattern.required_capabilities.clone(),
+                                status: ServiceStatus::Healthy,
+                                discovered_via: "http_probe".to_string(),
+                                response_time_ms: 0, // Would measure actual response time
+                            });
                         }
-                        
-                        // Fallback: create basic service info
-                        return Ok(ServiceInfo {
-                            name: pattern.name.clone(),
-                            endpoint: endpoint.to_string(),
-                            service_type: format!("{:?}", pattern.service_type),
-                            version: "unknown".to_string(),
-                            capabilities: pattern.required_capabilities.clone(),
-                            status: ServiceStatus::Healthy,
-                            discovered_via: "http_probe".to_string(),
-                            response_time_ms: 0,
-                        });
                     }
+
+                    // Fallback: create basic service info
+                    return Ok(ServiceInfo {
+                        name: pattern.name.clone(),
+                        endpoint: endpoint.to_string(),
+                        service_type: format!("{:?}", pattern.service_type),
+                        version: "unknown".to_string(),
+                        capabilities: pattern.required_capabilities.clone(),
+                        status: ServiceStatus::Healthy,
+                        discovered_via: "http_probe".to_string(),
+                        response_time_ms: 0,
+                    });
                 }
             }
         }
@@ -321,14 +360,13 @@ impl EcosystemDiscoverer {
     }
 
     /// Get local network ranges for scanning
-    async fn get_local_network_ranges(&self) -> ToadStoolResult<Vec<String>> {
-        let mut ranges = Vec::new();
-        
-        // Common local network ranges
-        ranges.push("192.168.1.0/24".to_string());
-        ranges.push("192.168.0.0/24".to_string());
-        ranges.push("10.0.0.0/24".to_string());
-        ranges.push("172.16.0.0/24".to_string());
+    fn get_local_network_ranges(&self) -> ToadStoolResult<Vec<String>> {
+        let ranges = vec![
+            "192.168.1.0/24".to_string(),
+            "192.168.0.0/24".to_string(),
+            "10.0.0.0/24".to_string(),
+            "172.16.0.0/24".to_string(),
+        ];
 
         // In a real implementation, this would:
         // 1. Get actual network interfaces
@@ -340,38 +378,45 @@ impl EcosystemDiscoverer {
     }
 
     /// Scan a network range for services
-    async fn scan_network_range(&self, range: &str) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+    async fn scan_network_range(
+        &self,
+        range: &str,
+    ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
-        
+
         // Parse CIDR range (simplified implementation)
         let base_ip = range.split('/').next().unwrap_or("192.168.1.0");
         let ip_parts: Vec<&str> = base_ip.split('.').collect();
-        
+
         if ip_parts.len() != 4 {
             return Ok(services);
         }
 
         let base = format!("{}.{}.{}", ip_parts[0], ip_parts[1], ip_parts[2]);
-        
+
         // Scan a subset of IPs (don't scan entire range to avoid being slow)
         let scan_ips = vec![1, 2, 10, 20, 50, 100, 200, 254];
-        
+
         for ip_suffix in scan_ips {
-            let ip = format!("{}.{}", base, ip_suffix);
-            
+            let ip = format!("{base}.{ip_suffix}");
+
             for (service_name, pattern) in &self.service_patterns {
                 for &port in &pattern.default_ports {
-                    let endpoint = format!("http://{}:{}", ip, port);
-                    
+                    let endpoint = format!("http://{ip}:{port}");
+
                     if let Ok(service_info) = self.probe_service(&endpoint, pattern).await {
                         debug!("Found network service: {} at {}", service_name, endpoint);
-                        services.insert(format!("{}_{}_{}", service_name, ip, port), service_info);
+                        services.insert(format!("{service_name}_{ip}_{port}"), service_info);
                     }
                 }
             }
         }
 
-        debug!("Network range {} scan found {} services", range, services.len());
+        debug!(
+            "Network range {} scan found {} services",
+            range,
+            services.len()
+        );
         Ok(services)
     }
 
@@ -503,18 +548,21 @@ mod tests {
     fn test_service_pattern_structure() {
         let discoverer = EcosystemDiscoverer::new();
         let songbird_pattern = discoverer.service_patterns.get("songbird").unwrap();
-        
+
         assert_eq!(songbird_pattern.name, "songbird");
         assert!(!songbird_pattern.default_ports.is_empty());
         assert!(!songbird_pattern.health_endpoints.is_empty());
-        assert!(matches!(songbird_pattern.service_type, ServiceType::NetworkCoordination));
+        assert!(matches!(
+            songbird_pattern.service_type,
+            ServiceType::NetworkCoordination
+        ));
     }
 
     #[tokio::test]
     async fn test_network_range_parsing() {
         let discoverer = EcosystemDiscoverer::new();
-        let ranges = discoverer.get_local_network_ranges().await.unwrap();
-        
+        let ranges = discoverer.get_local_network_ranges().unwrap();
+
         assert!(!ranges.is_empty());
         assert!(ranges.contains(&"192.168.1.0/24".to_string()));
     }

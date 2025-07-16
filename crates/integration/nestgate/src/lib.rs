@@ -1,40 +1,36 @@
-//! # ToadStool NestGate Integration
+//! # `ToadStool` `NestGate` Integration
 //!
-//! Integration module for connecting ToadStool with NestGate storage and data management.
-//! NestGate provides intelligent storage orchestration, data pipelines, and distributed
-//! file system capabilities for the ecoPrimals ecosystem.
+//! Integration module for connecting `ToadStool` with `NestGate` storage and data management.
+//! `NestGate` provides intelligent storage orchestration, data pipelines, and distributed
+//! cache management for the universal compute ecosystem.
 //!
 //! ## Features
 //!
-//! - **Storage Orchestration**: Automatic storage provisioning and management
-//! - **Data Pipeline Integration**: Stream processing and ETL capabilities  
-//! - **Distributed File System**: Access to NestGate's distributed storage
-//! - **Data Versioning**: Version control for datasets and artifacts
-//! - **Caching Layer**: Intelligent caching for frequently accessed data
-//! - **Security Integration**: Unified authentication with ecosystem services
+//! - **Artifact Storage**: Secure storage and retrieval of execution artifacts
+//! - **Data Pipeline Management**: Automated data processing workflows
+//! - **Distributed File System**: Access to `NestGate`'s distributed storage
+//! - **Metadata Management**: Rich metadata support for stored assets
+//! - **Cache Optimization**: Intelligent caching strategies
 //!
-//! ## Quick Start
+//! ## Usage
 //!
 //! ```rust
-//! use toadstool_nestgate::{NestGateClient, NestGateConfig, ArtifactType};
+//! use toadstool_integration_nestgate::NestGateClient;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Connect to NestGate
-//!     let client = NestGateClient::connect("http://nestgate:4040").await?;
-//!     
-//!     // Store execution artifacts
-//!     let metadata = client.store_artifact(
-//!         "execution-123",
-//!         b"result data",
-//!         ArtifactType::ExecutionOutput
-//!     ).await?;
-//!     
-//!     // Retrieve stored data
-//!     let data = client.retrieve_artifact("execution-123").await?;
-//!     
-//!     Ok(())
-//! }
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let client = NestGateClient::connect("http://nestgate:8080").await?;
+//!
+//! // Store an artifact
+//! let metadata = client.store_artifact(
+//!     "my-artifact",
+//!     b"Hello, world!",
+//!     ArtifactType::Binary,
+//! ).await?;
+//!
+//! // Retrieve the artifact
+//! let data = client.retrieve_artifact("my-artifact").await?;
+//! # Ok(())
+//! # }
 //! ```
 
 // Module declarations
@@ -70,9 +66,9 @@ mod tests {
     #[test]
     fn test_nestgate_config_default() {
         let config = NestGateConfig::default();
-        assert_eq!(config.endpoint, "http://localhost:4040");
-        assert!(config.cache_config.enabled);
-        assert_eq!(config.storage_preferences.replication_factor, 3);
+        assert_eq!(config.endpoint, "http://localhost:8084");
+        assert!(config.cache.as_ref().map(|c| c.enabled).unwrap_or(false));
+        // Future enhancement: Add storage preferences configuration
     }
 
     #[test]

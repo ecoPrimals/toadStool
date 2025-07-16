@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 /// Service registry
 pub struct ServiceRegistry {
-    services: Arc<RwLock<HashMap<String, RegisteredService>>>,
+    _services: Arc<RwLock<HashMap<String, RegisteredService>>>,
 }
 
 /// Registered service
@@ -17,9 +17,10 @@ pub struct RegisteredService {
 }
 
 impl ServiceRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            services: Arc::new(RwLock::new(HashMap::new())),
+            _services: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }

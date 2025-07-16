@@ -6,11 +6,11 @@
 //! - NestGate: Distributed storage and data management
 
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::time::{timeout, Duration};
 use tracing::{error, info, warn};
@@ -18,8 +18,7 @@ use uuid::Uuid;
 
 // Add cryptographic verification dependencies
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use ring::signature::{Ed25519KeyPair, KeyPair, UnparsedPublicKey, ED25519};
-use ring::{digest, signature};
+use ring::signature::{UnparsedPublicKey, ED25519};
 use std::collections::BTreeMap;
 
 /// Ecosystem service discovery and integration
@@ -63,15 +62,15 @@ struct ServiceConnection {
     endpoint: ServiceEndpoint,
     status: ConnectionStatus,
     last_heartbeat: chrono::DateTime<chrono::Utc>,
-    auth_token: Option<String>,
+    _auth_token: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 enum ConnectionStatus {
-    Connecting,
+    _Connecting,
     Connected,
-    Disconnected,
-    Error(String),
+    _Disconnected,
+    _Error(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -320,8 +319,8 @@ impl EcosystemIntegrator {
                 self.scan_for_service(service_type, &service_ports),
             )
             .await
-            .with_context(|| format!("Timeout scanning for {}", service_type))?
-            .with_context(|| format!("Failed to scan for {}", service_type))?;
+            .with_context(|| format!("Timeout scanning for {service_type}"))?
+            .with_context(|| format!("Failed to scan for {service_type}"))?;
 
             for service in services {
                 info!(
@@ -387,7 +386,7 @@ impl EcosystemIntegrator {
         // Parse endpoint
         let addr: SocketAddr = endpoint
             .parse()
-            .with_context(|| format!("Invalid Songbird endpoint: {}", endpoint))?;
+            .with_context(|| format!("Invalid Songbird endpoint: {endpoint}"))?;
 
         // Create registration payload
         let registration = SongbirdRegistration {
@@ -428,7 +427,7 @@ impl EcosystemIntegrator {
                     },
                     status: ConnectionStatus::Connected,
                     last_heartbeat: chrono::Utc::now(),
-                    auth_token: token,
+                    _auth_token: token,
                 };
 
                 self.connections.insert("songbird".to_string(), connection);
@@ -502,7 +501,7 @@ impl EcosystemIntegrator {
         // Parse endpoint
         let addr: SocketAddr = endpoint
             .parse()
-            .with_context(|| format!("Invalid NestGate endpoint: {}", endpoint))?;
+            .with_context(|| format!("Invalid NestGate endpoint: {endpoint}"))?;
 
         // Check if mount point exists
         if !mount_point.exists() {
@@ -532,7 +531,7 @@ impl EcosystemIntegrator {
             },
             status: ConnectionStatus::Connected,
             last_heartbeat: chrono::Utc::now(),
-            auth_token: None,
+            _auth_token: None,
         };
 
         self.connections.insert("nestgate".to_string(), connection);
@@ -552,7 +551,10 @@ impl EcosystemIntegrator {
                 };
                 println!("{}", serde_json::to_string_pretty(&status)?);
             }
-            "table" | _ => {
+            "table" => {
+                self.print_ecosystem_table().await?;
+            }
+            _ => {
                 self.print_ecosystem_table().await?;
             }
         }
@@ -573,8 +575,12 @@ impl EcosystemIntegrator {
 
         let mut services = Vec::new();
 
-        // Scan local network ranges
-        let local_ranges = vec!["127.0.0.1", "192.168.1.0/24", "10.0.0.0/24"];
+        // Scan local network ranges - configurable via environment
+        let local_ranges = std::env::var("TOADSTOOL_SCAN_RANGES")
+            .unwrap_or_else(|_| "127.0.0.1,192.168.1.0/24,10.0.0.0/24".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect::<Vec<String>>();
 
         for range in local_ranges {
             if range.contains('/') {
@@ -582,7 +588,7 @@ impl EcosystemIntegrator {
                 continue;
             } else {
                 // Single IP
-                let addr = format!("{}:{}", range, port);
+                let addr = format!("{range}:{port}");
                 if let Ok(socket_addr) = addr.parse::<SocketAddr>() {
                     if self.check_service_available(&socket_addr).await? {
                         services.push(ServiceEndpoint {
@@ -623,7 +629,7 @@ impl EcosystemIntegrator {
         // Send ping to Songbird and verify response signature
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/health/signed", addr)),
+            reqwest::get(&format!("http://{addr}/health/signed")),
         )
         .await
         {
@@ -670,7 +676,7 @@ impl EcosystemIntegrator {
         // Verify BearDog cryptographic service with proper signature validation
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/crypto/identity/signed", addr)),
+            reqwest::get(&format!("http://{addr}/crypto/identity/signed")),
         )
         .await
         {
@@ -726,7 +732,7 @@ impl EcosystemIntegrator {
         // Verify NestGate storage service with proper access controls
         match tokio::time::timeout(
             Duration::from_secs(5),
-            reqwest::get(&format!("http://{}/storage/access/signed", addr)),
+            reqwest::get(&format!("http://{addr}/storage/access/signed")),
         )
         .await
         {
@@ -831,7 +837,7 @@ impl EcosystemIntegrator {
     async fn send_songbird_registration(
         &self,
         addr: &SocketAddr,
-        registration: &SongbirdRegistration,
+        _registration: &SongbirdRegistration,
     ) -> Result<SongbirdResponse> {
         // Send HTTP POST to Songbird registration endpoint
         // This is a simplified implementation
@@ -921,7 +927,7 @@ impl EcosystemIntegrator {
     async fn mount_nestgate_dataset(
         &self,
         addr: &SocketAddr,
-        mount_point: &PathBuf,
+        mount_point: &Path,
         dataset: Option<&str>,
     ) -> Result<NestGateMount> {
         // Connect to NestGate and mount ZFS dataset
@@ -931,9 +937,9 @@ impl EcosystemIntegrator {
 
         Ok(NestGateMount {
             dataset_name: dataset_name.clone(),
-            mount_point: mount_point.clone(),
+            mount_point: mount_point.to_path_buf(),
             endpoint: addr.to_string(),
-            zfs_dataset: Some(format!("tank/{}", dataset_name)),
+            zfs_dataset: Some(format!("tank/{dataset_name}")),
             access_mode: "read-write".to_string(),
             encryption_key: None,
         })
@@ -956,7 +962,7 @@ impl EcosystemIntegrator {
             );
             println!("{}", "-".repeat(70));
 
-            for (key, endpoint) in &self.endpoints {
+            for endpoint in self.endpoints.values() {
                 println!(
                     "{:<20} {:<20} {:<15} {:<15}",
                     endpoint.service_type.name(),
@@ -975,7 +981,7 @@ impl EcosystemIntegrator {
             );
             println!("{}", "-".repeat(75));
 
-            for (key, connection) in &self.connections {
+            for connection in self.connections.values() {
                 println!(
                     "{:<20} {:<20} {:<15} {:<20}",
                     connection.endpoint.service_type.name(),
@@ -999,6 +1005,7 @@ impl EcosystemIntegrator {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn scan_local_networks(&self) -> Result<Vec<DiscoveredService>> {
         let mut discovered = Vec::new();
 
@@ -1027,6 +1034,7 @@ impl EcosystemIntegrator {
         Ok(discovered)
     }
 
+    #[allow(dead_code)]
     async fn scan_cidr_range(&self, cidr: &str) -> Result<Vec<DiscoveredService>> {
         let mut services = Vec::new();
 
@@ -1058,15 +1066,16 @@ impl EcosystemIntegrator {
         Ok(services)
     }
 
+    #[allow(dead_code)]
     fn generate_ip_range(&self, base_ip: &str, prefix_len: u32) -> Result<Vec<String>> {
         let mut ips = Vec::new();
 
         // Simple implementation for common cases
         if prefix_len == 24 {
             // Class C subnet (e.g., 192.168.1.0/24)
-            if let Some(base) = base_ip.rsplitn(2, '.').nth(1) {
+            if let Some(base) = base_ip.rsplit_once('.').map(|x| x.0) {
                 for i in 1..255 {
-                    ips.push(format!("{}.{}", base, i));
+                    ips.push(format!("{base}.{i}"));
                 }
             }
         } else if prefix_len == 32 {
@@ -1078,6 +1087,7 @@ impl EcosystemIntegrator {
         Ok(ips)
     }
 
+    #[allow(dead_code)]
     async fn scan_ip_for_services(&self, ip: &str) -> Result<Vec<DiscoveredService>> {
         let mut services = Vec::new();
 
@@ -1090,7 +1100,7 @@ impl EcosystemIntegrator {
         ];
 
         for (port, service_type) in service_ports {
-            let addr = format!("{}:{}", ip, port);
+            let addr = format!("{ip}:{port}");
             if let Ok(socket_addr) = addr.parse::<SocketAddr>() {
                 if self.is_port_open(&socket_addr).await {
                     services.push(DiscoveredService {
@@ -1107,16 +1117,16 @@ impl EcosystemIntegrator {
         Ok(services)
     }
 
+    #[allow(dead_code)]
     async fn is_port_open(&self, addr: &SocketAddr) -> bool {
-        match tokio::time::timeout(
-            Duration::from_millis(1000),
-            tokio::net::TcpStream::connect(addr),
+        matches!(
+            tokio::time::timeout(
+                Duration::from_millis(1000),
+                tokio::net::TcpStream::connect(addr),
+            )
+            .await,
+            Ok(Ok(_))
         )
-        .await
-        {
-            Ok(Ok(_)) => true,
-            _ => false,
-        }
     }
 }
 

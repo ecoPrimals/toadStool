@@ -30,6 +30,7 @@ pub enum GpuFramework {
 
 impl GpuFramework {
     /// Get human-readable framework name
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
             GpuFramework::WebGpu => "WebGPU",
@@ -44,7 +45,8 @@ impl GpuFramework {
     }
 
     /// Check if framework is universally supported
-    pub fn is_universal(&self) -> bool {
+    #[must_use]
+    pub const fn is_universal(&self) -> bool {
         matches!(
             self,
             GpuFramework::WebGpu | GpuFramework::Vulkan | GpuFramework::OpenCl
@@ -52,6 +54,7 @@ impl GpuFramework {
     }
 
     /// Get platform compatibility information
+    #[must_use]
     pub fn platform_compatibility(&self) -> Vec<&str> {
         match self {
             GpuFramework::WebGpu => vec!["Windows", "macOS", "Linux", "Web"],
@@ -78,7 +81,8 @@ pub struct DeviceId {
 }
 
 impl DeviceId {
-    pub fn new(framework: GpuFramework, device_index: u32, uuid: String) -> Self {
+    #[must_use]
+    pub const fn new(framework: GpuFramework, device_index: u32, uuid: String) -> Self {
         Self {
             framework,
             device_index,
@@ -256,12 +260,12 @@ impl Clone for FrameworkHandle {
     fn clone(&self) -> Self {
         match self {
             #[cfg(feature = "opencl")]
-            FrameworkHandle::OpenCl(device) => FrameworkHandle::OpenCl(device.clone()),
+            FrameworkHandle::OpenCl(device) => FrameworkHandle::OpenCl(*device),
             #[cfg(feature = "cuda")]
             FrameworkHandle::Cuda(_device) => {
                 // CudaDevice doesn't implement Clone, so we use a placeholder
                 FrameworkHandle::Placeholder("cuda_device_clone_not_supported".to_string())
-            },
+            }
             #[cfg(feature = "vulkan")]
             FrameworkHandle::Vulkan(device) => FrameworkHandle::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]
@@ -290,6 +294,7 @@ pub struct DeviceRequirements {
 
 impl DeviceRequirements {
     /// Create minimal device requirements
+    #[must_use]
     pub fn minimal() -> Self {
         Self {
             min_memory_bytes: Some(64 * 1024 * 1024), // 64MB
@@ -302,6 +307,7 @@ impl DeviceRequirements {
     }
 
     /// Create high-performance device requirements
+    #[must_use]
     pub fn high_performance() -> Self {
         Self {
             min_memory_bytes: Some(4 * 1024 * 1024 * 1024), // 4GB

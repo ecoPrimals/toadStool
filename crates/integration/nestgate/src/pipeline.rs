@@ -1,4 +1,4 @@
-//! Data pipeline structures and functionality for NestGate integration
+//! Data pipeline structures and functionality for `NestGate` integration
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -120,8 +120,13 @@ pub enum StepType {
         fields: Vec<String>,
         operation: String,
     },
-    /// ToadStool execution
-    ToadStoolExecution { workload: String },
+    /// `ToadStool` execution
+    ToadStool {
+        /// Workload specification
+        workload: String,
+        /// Runtime configuration
+        runtime: Option<String>,
+    },
     /// Custom processing
     Custom { processor: String },
 }

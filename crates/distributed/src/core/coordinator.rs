@@ -5,11 +5,9 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use toadstool::{
-    ExecutionRequest, ToadStoolResult,
-};
+use toadstool::{ExecutionRequest, ToadStoolResult};
 
-use super::config::*;
+use super::config::{DistributedConfig, StandaloneConfig, ToadStoolCapabilities};
 use crate::songbird_integration::SongbirdConnection;
 
 /// Main distributed computing coordinator - simplified for Songbird integration
@@ -29,6 +27,7 @@ pub struct StandaloneExecutor {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct ExecutionSession {
     pub execution_id: Uuid,
     pub request: ExecutionRequest,

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use toadstool::{IsolationLevel, RuntimeType};
 
-/// Configuration for ToadStool distributed integration
+/// Configuration for `ToadStool` distributed integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributedConfig {
     /// Instance identifier
@@ -36,7 +36,7 @@ pub struct SongbirdConfig {
     pub health_reporting_interval_secs: u64,
 }
 
-/// ToadStool capabilities reported to Songbird
+/// `ToadStool` capabilities reported to Songbird
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToadStoolCapabilities {
     /// Available execution environments
@@ -104,7 +104,7 @@ impl ToadStoolCapabilities {
         let platform_capabilities = PlatformCapabilities {
             os: std::env::consts::OS.to_string(),
             architecture: std::env::consts::ARCH.to_string(),
-            cpu_cores: num_cpus::get() as u32,
+            cpu_cores: u32::try_from(num_cpus::get()).unwrap_or(4),
         };
 
         Ok(Self {

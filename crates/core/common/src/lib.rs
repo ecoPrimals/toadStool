@@ -1,110 +1,135 @@
-//! # ToadStool Common Utilities
+//! # `ToadStool` Common Utilities
 //!
-//! This crate provides common utilities, types, and functionality shared across all ToadStool components.
-//! It serves as the foundation for the universal compute platform.
+//! This crate provides common utilities, types, and functionality shared across all `ToadStool` components.
 //!
 //! ## Features
 //!
-//! - **Duration Formatting**: Human-readable duration formatting (e.g., "1h30m45s")
-//! - **System Information**: Cross-platform system resource detection
-//! - **Common Types**: Shared data structures and enums
-//! - **Utility Functions**: Helper functions for common operations
-//!
-//! ## Examples
-//!
-//! ```rust
-//! use toadstool_common::format_duration;
-//! use std::time::Duration;
-//!
-//! let duration = Duration::from_secs(3661);
-//! let formatted = format_duration(duration);
-//! assert_eq!(formatted, "1h1m1s");
-//! ```
+//! - ID generation utilities
+//! - Time and timestamp handling
+//! - Format utilities for bytes and duration
+//! - Validation traits for type safety
 
-use serde::{Deserialize, Serialize};
-use sysinfo::System;
+use std::time::SystemTime;
 use uuid::Uuid;
 
-/// Generate a new unique identifier
+/// A unique identifier for `ToadStool` resources
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ToadStoolId(Uuid);
+
+impl ToadStoolId {
+    /// Generate a new random ID
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+
+    /// Get the inner UUID
+    #[must_use]
+    pub const fn inner(&self) -> Uuid {
+        self.0
+    }
+}
+
+impl Default for ToadStoolId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Generate a unique ID for `ToadStool` resources
+#[must_use]
 pub fn generate_id() -> Uuid {
     Uuid::new_v4()
 }
 
-/// Platform information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PlatformInfo {
-    /// Operating system
-    pub os: String,
-    /// Architecture
-    pub arch: String,
-    /// Number of CPU cores
-    pub cpu_cores: usize,
-    /// Total memory in bytes
-    pub total_memory: u64,
-    /// Available memory in bytes
-    pub available_memory: u64,
-}
+/// A timestamp representing a point in time in `ToadStool` systems
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct Timestamp(SystemTime);
 
-impl PlatformInfo {
-    /// Get current platform information
+impl Timestamp {
+    /// Create a new timestamp with the current time
+    #[must_use]
+    pub fn now() -> Self {
+        Self(SystemTime::now())
+    }
+
+    /// Create a timestamp from the current system time
+    #[must_use]
     pub fn current() -> Self {
-        let mut system = System::new();
-        system.refresh_memory();
+        Self(SystemTime::now())
+    }
 
-        Self {
-            os: std::env::consts::OS.to_string(),
-            arch: std::env::consts::ARCH.to_string(),
-            cpu_cores: num_cpus::get(),
-            total_memory: system.total_memory(),
-            available_memory: system.available_memory(),
-        }
+    /// Get the inner `SystemTime`
+    #[must_use]
+    pub const fn inner(&self) -> SystemTime {
+        self.0
     }
 }
 
-/// Common result type with string error
-pub type CommonResult<T> = Result<T, String>;
-
-/// Format bytes as human readable string
+/// Format bytes in a human-readable way
+///
+/// # Examples
+///
+/// ```
+/// # use toadstool_common::format_bytes;
+/// assert_eq!(format_bytes(1024), "1.0 KB");
+/// assert_eq!(format_bytes(1048576), "1.0 MB");
+/// ```
+#[must_use]
 pub fn format_bytes(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB", "PB"];
+    #[allow(clippy::cast_precision_loss)]
     let mut size = bytes as f64;
+    let units = ["B", "KB", "MB", "GB", "TB", "PB"];
     let mut unit_index = 0;
 
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
+    while size >= 1024.0 && unit_index < units.len() - 1 {
         size /= 1024.0;
         unit_index += 1;
     }
 
     if unit_index == 0 {
-        format!("{} {}", bytes, UNITS[unit_index])
+        format!("{} {}", bytes, units[unit_index])
     } else {
-        format!("{:.2} {}", size, UNITS[unit_index])
+        format!("{:.1} {}", size, units[unit_index])
     }
 }
 
-/// Format duration as human readable string
+/// Format a duration in a human-readable way
+///
+/// # Examples
+///
+/// ```
+/// # use std::time::Duration;
+/// # use toadstool_common::format_duration;
+/// assert_eq!(format_duration(Duration::from_secs(90)), "1m 30s");
+/// assert_eq!(format_duration(Duration::from_secs(3661)), "1h 1m 1s");
+/// ```
+#[must_use]
 pub fn format_duration(duration: std::time::Duration) -> String {
-    let total_seconds = duration.as_secs();
+    let secs = duration.as_secs();
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
 
-    if total_seconds < 60 {
-        format!("{total_seconds}s")
-    } else if total_seconds < 3600 {
-        let minutes = total_seconds / 60;
-        let seconds = total_seconds % 60;
-        format!("{minutes}m{seconds}s")
+    if hours > 0 {
+        format!("{hours}h {minutes}m {seconds}s")
+    } else if minutes > 0 {
+        format!("{minutes}m {seconds}s")
     } else {
-        let hours = total_seconds / 3600;
-        let minutes = (total_seconds % 3600) / 60;
-        let seconds = total_seconds % 60;
-        format!("{hours}h{minutes}m{seconds}s")
+        format!("{seconds}s")
     }
 }
 
-/// Validation trait for types that can be validated
+/// Trait for validating `ToadStool` types
 pub trait Validate {
+    /// The error type returned when validation fails
     type Error;
 
-    /// Validate the object
+    /// Validate the type
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the type is not valid according to its constraints
     fn validate(&self) -> Result<(), Self::Error>;
 }
 
@@ -149,18 +174,21 @@ mod tests {
     fn test_format_bytes() {
         assert_eq!(format_bytes(0), "0 B");
         assert_eq!(format_bytes(512), "512 B");
-        assert_eq!(format_bytes(1024), "1.00 KB");
-        assert_eq!(format_bytes(1536), "1.50 KB");
-        assert_eq!(format_bytes(1048576), "1.00 MB");
+        assert_eq!(format_bytes(1024), "1.0 KB");
+        assert_eq!(format_bytes(1536), "1.5 KB");
+        assert_eq!(format_bytes(1048576), "1.0 MB");
     }
 
     #[test]
     fn test_format_duration() {
         assert_eq!(format_duration(std::time::Duration::from_secs(30)), "30s");
-        assert_eq!(format_duration(std::time::Duration::from_secs(90)), "1m30s");
+        assert_eq!(
+            format_duration(std::time::Duration::from_secs(90)),
+            "1m 30s"
+        );
         assert_eq!(
             format_duration(std::time::Duration::from_secs(3661)),
-            "1h1m1s"
+            "1h 1m 1s"
         );
     }
 

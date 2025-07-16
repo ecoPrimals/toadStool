@@ -1,11 +1,11 @@
-//! # ToadStool Crypto Lock System
+//! # `ToadStool` Crypto Lock System
 //!
 //! Cryptographic access control for external integrations:
 //! - 🔓 Pure Rust ecosystem: Always unlocked, no crypto needed
-//! - 🔐 External integrations: Require BearDog crypto permissions
-//! - 🐻 BearDog controls all access: Crypto keys and permissions
+//! - 🔐 External integrations: Require `BearDog` crypto permissions
+//! - 🐻 `BearDog` controls all access: Crypto keys and permissions
 //! - 🚫 No phone home: Pure cryptographic proof system
-//! - 🤝 Delegatable: People can lend access through BearDog
+//! - 🤝 Delegatable: People can lend access through `BearDog`
 //! - 🎯 Granular: Fine-grained permission control
 
 use std::collections::HashMap;
@@ -17,31 +17,31 @@ use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-/// ToadStool Crypto Lock Manager - enforces cryptographic access control
+/// `ToadStool` Crypto Lock Manager - enforces cryptographic access control
 pub struct ToadStoolCryptoLock {
-    /// BearDog crypto permission validator
+    /// `BearDog` crypto permission validator
     permission_validator: BearDogPermissionValidator,
     /// Active permissions for external integrations
     active_permissions: HashMap<ExternalTarget, BearDogCryptoPermission>,
     /// Permission cache for performance
     permission_cache: PermissionCache,
     /// Access control policies
-    access_policies: AccessPolicies,
+    _access_policies: AccessPolicies,
 }
 
-/// BearDog Permission Validator - validates crypto permissions
+/// `BearDog` Permission Validator - validates crypto permissions
 pub struct BearDogPermissionValidator {
-    /// BearDog public keys for permission verification
-    beardog_public_keys: HashMap<String, BearDogPublicKey>,
+    /// `BearDog` public keys for permission verification
+    _beardog_public_keys: HashMap<String, BearDogPublicKey>,
     /// Cryptographic signature validator
-    crypto_validator: CryptoValidator,
+    _crypto_validator: CryptoValidator,
     /// Permission delegation chain validator
-    delegation_validator: DelegationValidator,
+    _delegation_validator: DelegationValidator,
     /// Permission revocation list
-    revocation_list: PermissionRevocationList,
+    _revocation_list: PermissionRevocationList,
 }
 
-/// BearDog Crypto Permission - cryptographic proof of access rights
+/// `BearDog` Crypto Permission - cryptographic proof of access rights
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogCryptoPermission {
     /// Permission ID
@@ -55,7 +55,7 @@ pub struct BearDogCryptoPermission {
     /// Valid time range
     pub valid_from: SystemTime,
     pub valid_until: SystemTime,
-    /// BearDog cryptographic proof
+    /// `BearDog` cryptographic proof
     pub crypto_proof: BearDogCryptoProof,
     /// Delegation chain (if this was delegated)
     pub delegation_chain: Option<DelegationChain>,
@@ -142,7 +142,7 @@ pub struct PermissionScope {
     pub feature_restrictions: Vec<String>,
 }
 
-/// BearDog cryptographic proof
+/// `BearDog` cryptographic proof
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogCryptoProof {
     /// Cryptographic signature
@@ -197,25 +197,25 @@ impl ToadStoolCryptoLock {
         let permission_cache = PermissionCache::new();
         let access_policies = AccessPolicies;
 
-        let mut crypto_lock = Self {
+        let crypto_lock = Self {
             permission_validator,
             active_permissions,
             permission_cache,
-            access_policies,
+            _access_policies: access_policies,
         };
 
         // Load any existing permissions
-        crypto_lock.load_permissions().await?;
+        crypto_lock.load_permissions()?;
 
         // Enable Pure Rust ecosystem (always unlocked)
-        crypto_lock.enable_pure_rust_ecosystem().await?;
+        crypto_lock.enable_pure_rust_ecosystem()?;
 
         info!("✅ ToadStool crypto lock system initialized");
         Ok(crypto_lock)
     }
 
     /// Enable Pure Rust ecosystem - ALWAYS UNLOCKED
-    async fn enable_pure_rust_ecosystem(&mut self) -> ToadStoolResult<()> {
+    fn enable_pure_rust_ecosystem(&self) -> ToadStoolResult<()> {
         info!("🔓 Pure Rust ecosystem always unlocked (no crypto needed)");
         // Pure Rust ecosystem doesn't need crypto permissions
         // ToadStool, BearDog, NestGate, Songbird always work
@@ -328,7 +328,7 @@ impl ToadStoolCryptoLock {
         }
     }
 
-    /// Install a BearDog crypto permission
+    /// Install a `BearDog` crypto permission
     pub async fn install_crypto_permission(
         &mut self,
         permission: BearDogCryptoPermission,
@@ -510,7 +510,10 @@ impl ToadStoolCryptoLock {
             .ok_or_else(|| ToadStoolError::not_found("No valid permission found"))
     }
 
-    fn calculate_permission_level(&self, permission: &BearDogCryptoPermission) -> PermissionLevel {
+    const fn calculate_permission_level(
+        &self,
+        permission: &BearDogCryptoPermission,
+    ) -> PermissionLevel {
         // Calculate permission level based on scope
         if permission.scope.feature_restrictions.is_empty() {
             PermissionLevel::Full
@@ -541,26 +544,20 @@ impl ToadStoolCryptoLock {
     fn get_access_instructions(&self, target: &ExternalTarget) -> String {
         match target {
             ExternalTarget::CloudProvider { provider, .. } => {
-                format!(
-                    "Get BearDog crypto permission for {provider:?} cloud provider"
-                )
+                format!("Get BearDog crypto permission for {provider:?} cloud provider")
             }
             ExternalTarget::ContainerPlatform { platform, .. } => {
-                format!(
-                    "Get BearDog crypto permission for {platform:?} container platform"
-                )
+                format!("Get BearDog crypto permission for {platform:?} container platform")
             }
             ExternalTarget::ExternalTool { tool_name, .. } => {
-                format!(
-                    "Get BearDog crypto permission for {tool_name} external tool"
-                )
+                format!("Get BearDog crypto permission for {tool_name} external tool")
             }
             _ => "Get appropriate BearDog crypto permission for this external integration"
                 .to_string(),
         }
     }
 
-    async fn load_permissions(&mut self) -> ToadStoolResult<()> {
+    fn load_permissions(&self) -> ToadStoolResult<()> {
         // Load permissions from storage (file, database, etc.)
         // For now, just return success
         Ok(())
@@ -584,7 +581,7 @@ impl ToadStoolCryptoLock {
 
     async fn find_delegatable_permission(
         &self,
-        holder: &PermissionHolder,
+        _holder: &PermissionHolder,
         target: &ExternalTarget,
     ) -> ToadStoolResult<BearDogCryptoPermission> {
         self.active_permissions
@@ -804,16 +801,16 @@ pub enum ServiceTier {
 impl BearDogPermissionValidator {
     pub async fn new() -> ToadStoolResult<Self> {
         Ok(Self {
-            beardog_public_keys: HashMap::new(),
-            crypto_validator: CryptoValidator::new(),
-            delegation_validator: DelegationValidator::new(),
-            revocation_list: PermissionRevocationList::new(),
+            _beardog_public_keys: HashMap::new(),
+            _crypto_validator: CryptoValidator::new(),
+            _delegation_validator: DelegationValidator::new(),
+            _revocation_list: PermissionRevocationList::new(),
         })
     }
 
     pub async fn validate_permission(
         &self,
-        permission: &BearDogCryptoPermission,
+        _permission: &BearDogCryptoPermission,
     ) -> ToadStoolResult<PermissionValidationResult> {
         // Validate crypto signature
         // Check time bounds
@@ -823,7 +820,7 @@ impl BearDogPermissionValidator {
 
     pub async fn validate_delegation_proof(
         &self,
-        proof: &BearDogCryptoProof,
+        _proof: &BearDogCryptoProof,
     ) -> ToadStoolResult<()> {
         // Validate delegation proof
         Ok(())
@@ -845,7 +842,8 @@ impl Default for PermissionCache {
 }
 
 impl PermissionCache {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
     pub async fn get(&self, _target: &ExternalTarget) -> Option<CachedResult> {
@@ -862,7 +860,8 @@ impl Default for CryptoValidator {
 }
 
 impl CryptoValidator {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -874,7 +873,8 @@ impl Default for DelegationValidator {
 }
 
 impl DelegationValidator {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -886,7 +886,8 @@ impl Default for PermissionRevocationList {
 }
 
 impl PermissionRevocationList {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -902,12 +903,14 @@ pub struct CachedResult {
 }
 
 impl CachedResult {
-    pub fn is_expired(&self) -> bool {
+    #[must_use]
+    pub const fn is_expired(&self) -> bool {
         false
     }
 }
 
 // Helper function for duration from days
-pub fn duration_from_days(days: u64) -> Duration {
+#[must_use]
+pub const fn duration_from_days(days: u64) -> Duration {
     Duration::from_secs(days * 86400)
 }

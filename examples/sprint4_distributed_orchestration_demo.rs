@@ -92,7 +92,7 @@ impl Sprint4Demo {
             ("edge-node", 4, 16, 500, 0),
         ];
 
-        for (name, cpu_cores, memory_gb, storage_gb, gpu_count) in demo_nodes {
+        for (name, cpu_cores, memory_gb, _storage_gb, gpu_count) in demo_nodes {
             info!(
                 "    🖥️ Added node: {} ({} cores, {}GB RAM, {} GPUs)",
                 name, cpu_cores, memory_gb, gpu_count
@@ -137,7 +137,7 @@ impl Sprint4Demo {
 
         info!("    📤 Submitting ML workflow with dependency chain:");
         for (name, priority, depends_on, resources) in workflow_jobs {
-            let job_id = Uuid::new_v4();
+            let _job_id = Uuid::new_v4();
             info!(
                 "        📋 {} (Priority: {}, Depends on: {}, Resources: {})",
                 name, priority, depends_on, resources

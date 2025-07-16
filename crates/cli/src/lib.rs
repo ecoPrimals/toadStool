@@ -9,31 +9,32 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use thiserror::Error;
+use toadstool_config::network::DEFAULT_CONNECTION_TIMEOUT_SECS;
 use tokio::fs;
 use uuid::Uuid;
-use thiserror::Error;
 
 /// CLI-specific error types
 #[derive(Error, Debug)]
 pub enum CliError {
     #[error("Biome not found: {0}")]
     BiomeNotFound(String),
-    
+
     #[error("Biome already exists: {0}")]
     BiomeAlreadyExists(String),
-    
+
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
+
     #[error("System error: {0}")]
     System(String),
-    
+
     #[error("Other error: {0}")]
     Other(String),
 }
@@ -248,6 +249,52 @@ pub enum Commands {
         #[command(subcommand)]
         operation: UniversalCommands,
     },
+
+    /// Zero-configuration rapid deployment
+    ZeroConfig {
+        /// Save configuration to file
+        #[arg(short, long)]
+        save_config: Option<PathBuf>,
+
+        /// Skip service discovery
+        #[arg(long)]
+        skip_discovery: bool,
+
+        /// Target deployment time in seconds
+        #[arg(long, default_value = "60")]
+        target_time: u64,
+
+        /// Dry run (don't deploy)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Configure Songbird service mesh networking
+    NetworkConfig {
+        /// Apply network configuration
+        #[arg(long)]
+        apply: bool,
+
+        /// Validate configuration
+        #[arg(long)]
+        validate: bool,
+
+        /// Show configuration summary
+        #[arg(long)]
+        summary: bool,
+
+        /// Configuration file path
+        #[arg(short = 'f', long)]
+        config_file: Option<PathBuf>,
+
+        /// Test connectivity
+        #[arg(long)]
+        test: bool,
+
+        /// Export configuration
+        #[arg(long)]
+        export: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -259,7 +306,7 @@ pub enum EcosystemCommands {
         services: Vec<String>,
 
         /// Network scan timeout
-        #[arg(long, default_value = "10")]
+        #[arg(long, default_value_t = DEFAULT_CONNECTION_TIMEOUT_SECS)]
         timeout: u64,
     },
 
@@ -630,8 +677,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
         for dep in &service.dependencies {
             if !manifest.services.contains_key(dep) && !manifest.primals.contains_key(dep) {
                 warnings.push(format!(
-                    "Service '{}' depends on undefined service '{}'",
-                    service_name, dep
+                    "Service '{service_name}' depends on undefined service '{dep}'"
                 ));
             }
         }
@@ -648,5 +694,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
 pub mod ecosystem;
 pub mod executor;
 pub mod monitoring;
+pub mod network_config;
 pub mod templates;
 pub mod universal;
+pub mod zero_config;

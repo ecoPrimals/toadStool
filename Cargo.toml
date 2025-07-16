@@ -5,7 +5,7 @@ members = [
     "crates/core/common",
     "crates/core/config", 
     "crates/core/toadstool",
-    # "crates/auto_config",  # Temporarily excluded - requires extensive refactoring for new config structure
+    "crates/auto_config",  # Re-enabled for zero-touch demo
     
     # API and interfaces
     "crates/cli",

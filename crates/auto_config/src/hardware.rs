@@ -4,25 +4,22 @@
 //! Detects CPU, memory, GPU, storage, and network capabilities to enable
 //! zero-touch optimization.
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-use crate::{ToadStoolResult, ToadStoolError};
+use crate::ToadStoolResult;
 
 /// Hardware detection and capability assessment system
 pub struct HardwareDetector {
-    system_info: Option<SystemInfo>,
+    _system_info: Option<SystemInfo>,
 }
 
 impl HardwareDetector {
     /// Create a new hardware detector
     pub fn new() -> Self {
-        Self {
-            system_info: None,
-        }
+        Self { _system_info: None }
     }
 
     /// Comprehensive system scan to detect all hardware capabilities
@@ -45,8 +42,7 @@ impl HardwareDetector {
         info!("  🎮 Scanning GPU capabilities...");
         capabilities.gpu_info = self.detect_gpus().await?;
         capabilities.gpu_count = capabilities.gpu_info.len();
-        capabilities.gpu_memory_gb = capabilities.gpu_info.first()
-            .map(|gpu| gpu.memory_gb);
+        capabilities.gpu_memory_gb = capabilities.gpu_info.first().map(|gpu| gpu.memory_gb);
 
         // Storage detection
         info!("  💾 Scanning storage configuration...");
@@ -55,14 +51,17 @@ impl HardwareDetector {
 
         // Network detection
         info!("  🌐 Scanning network interfaces...");
-        capabilities.network_info = self.detect_network().await?;
+        capabilities.network_info = self.detect_network()?;
 
         // Performance characteristics
         info!("  ⚡ Analyzing performance characteristics...");
         capabilities.performance_class = self.classify_performance(&capabilities).await?;
 
         info!("✅ Hardware scan complete:");
-        info!("   CPU: {} cores ({})", capabilities.cpu_cores, capabilities.cpu_info.model_name);
+        info!(
+            "   CPU: {} cores ({})",
+            capabilities.cpu_cores, capabilities.cpu_info.model_name
+        );
         info!("   Memory: {:.1} GB", capabilities.memory_gb);
         info!("   GPU: {} devices", capabilities.gpu_count);
         info!("   Storage: {:.1} GB", capabilities.storage_gb);
@@ -105,9 +104,12 @@ impl HardwareDetector {
         }
 
         // Detect CPU features
-        cpu_info.features = self.detect_cpu_features().await?;
+        cpu_info.features = self.detect_cpu_features()?;
 
-        debug!("Detected CPU: {} with {} cores", cpu_info.model_name, cpu_info.physical_cores);
+        debug!(
+            "Detected CPU: {} with {} cores",
+            cpu_info.model_name, cpu_info.physical_cores
+        );
         Ok(cpu_info)
     }
 
@@ -148,9 +150,8 @@ impl HardwareDetector {
                         }
                     }
                     "flags" | "Features" => {
-                        cpu_info.instruction_sets = value.split_whitespace()
-                            .map(|s| s.to_string())
-                            .collect();
+                        cpu_info.instruction_sets =
+                            value.split_whitespace().map(|s| s.to_string()).collect();
                     }
                     _ => {}
                 }
@@ -184,7 +185,10 @@ impl HardwareDetector {
             .output()
             .await
         {
-            if let Ok(cores) = String::from_utf8_lossy(&output.stdout).trim().parse::<usize>() {
+            if let Ok(cores) = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .parse::<usize>()
+            {
                 cpu_info.physical_cores = cores;
             }
         }
@@ -195,7 +199,10 @@ impl HardwareDetector {
             .output()
             .await
         {
-            if let Ok(cores) = String::from_utf8_lossy(&output.stdout).trim().parse::<usize>() {
+            if let Ok(cores) = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .parse::<usize>()
+            {
                 cpu_info.logical_cores = cores;
             }
         }
@@ -240,7 +247,7 @@ impl HardwareDetector {
     }
 
     /// Detect CPU features and instruction sets
-    async fn detect_cpu_features(&self) -> ToadStoolResult<CpuFeatures> {
+    fn detect_cpu_features(&self) -> ToadStoolResult<CpuFeatures> {
         let mut features = CpuFeatures::default();
 
         // Check for common instruction sets
@@ -257,9 +264,13 @@ impl HardwareDetector {
             features.supports_neon = is_aarch64_feature_detected!("neon");
         }
 
-        debug!("Detected CPU features: AVX={}, AVX2={}, SSE4.1={}, SSE4.2={}", 
-               features.supports_avx, features.supports_avx2, 
-               features.supports_sse4_1, features.supports_sse4_2);
+        debug!(
+            "Detected CPU features: AVX={}, AVX2={}, SSE4.1={}, SSE4.2={}",
+            features.supports_avx,
+            features.supports_avx2,
+            features.supports_sse4_1,
+            features.supports_sse4_2
+        );
 
         Ok(features)
     }
@@ -284,7 +295,10 @@ impl HardwareDetector {
                 .output()
                 .await
             {
-                if let Ok(bytes) = String::from_utf8_lossy(&output.stdout).trim().parse::<u64>() {
+                if let Ok(bytes) = String::from_utf8_lossy(&output.stdout)
+                    .trim()
+                    .parse::<u64>()
+                {
                     memory_info.total_gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
                 }
             }
@@ -333,14 +347,16 @@ impl HardwareDetector {
                     "MemTotal" => {
                         if let Some(kb_str) = value.split_whitespace().next() {
                             if let Ok(kb) = kb_str.parse::<u64>() {
-                                memory_info.total_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
+                                memory_info.total_gb =
+                                    (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
                             }
                         }
                     }
                     "MemAvailable" => {
                         if let Some(kb_str) = value.split_whitespace().next() {
                             if let Ok(kb) = kb_str.parse::<u64>() {
-                                memory_info.available_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
+                                memory_info.available_gb =
+                                    (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
                             }
                         }
                     }
@@ -392,12 +408,12 @@ impl HardwareDetector {
                     let name = parts[0].to_string();
                     let memory_mb = parts[1].parse::<f64>().unwrap_or(0.0);
                     let memory_gb = memory_mb / 1024.0;
-                    let driver_version = parts[2].to_string();
+                    let _driver_version = parts[2].to_string();
 
                     gpus.push(GpuInfo {
                         name: name.clone(),
                         vendor: "NVIDIA".to_string(),
-                        memory_gb: memory_gb,
+                        memory_gb,
                         driver_version: "unknown".to_string(),
                         compute_capability: self.get_nvidia_compute_capability(&name),
                         supports_cuda: true,
@@ -445,19 +461,17 @@ impl HardwareDetector {
 
         // Intel GPU detection is more complex and platform-dependent
         // For now, we'll do a simple check
-        if cfg!(target_os = "linux") {
-            if Path::new("/dev/dri").exists() {
-                // Assume Intel integrated graphics
-                gpus.push(GpuInfo {
-                    name: "Intel Integrated Graphics".to_string(),
-                    vendor: "Intel".to_string(),
-                    memory_gb: 2.0, // Shared system memory
-                    driver_version: "Unknown".to_string(),
-                    compute_capability: "Gen9+".to_string(),
-                    supports_cuda: false,
-                    supports_opencl: true,
-                });
-            }
+        if cfg!(target_os = "linux") && Path::new("/dev/dri").exists() {
+            // Assume Intel integrated graphics
+            gpus.push(GpuInfo {
+                name: "Intel Integrated Graphics".to_string(),
+                vendor: "Intel".to_string(),
+                memory_gb: 2.0, // Shared system memory
+                driver_version: "Unknown".to_string(),
+                compute_capability: "Gen9+".to_string(),
+                supports_cuda: false,
+                supports_opencl: true,
+            });
         }
 
         Ok(gpus)
@@ -468,13 +482,23 @@ impl HardwareDetector {
         // Simplified mapping of GPU names to compute capabilities
         if gpu_name.contains("RTX 40") || gpu_name.contains("4090") || gpu_name.contains("4080") {
             "8.9".to_string()
-        } else if gpu_name.contains("RTX 30") || gpu_name.contains("3090") || gpu_name.contains("3080") {
+        } else if gpu_name.contains("RTX 30")
+            || gpu_name.contains("3090")
+            || gpu_name.contains("3080")
+        {
             "8.6".to_string()
-        } else if gpu_name.contains("RTX 20") || gpu_name.contains("2080") || gpu_name.contains("2070") {
+        } else if gpu_name.contains("RTX 20")
+            || gpu_name.contains("2080")
+            || gpu_name.contains("2070")
+            || gpu_name.contains("GTX 16")
+            || gpu_name.contains("1660")
+            || gpu_name.contains("1650")
+        {
             "7.5".to_string()
-        } else if gpu_name.contains("GTX 16") || gpu_name.contains("1660") || gpu_name.contains("1650") {
-            "7.5".to_string()
-        } else if gpu_name.contains("GTX 10") || gpu_name.contains("1080") || gpu_name.contains("1070") {
+        } else if gpu_name.contains("GTX 10")
+            || gpu_name.contains("1080")
+            || gpu_name.contains("1070")
+        {
             "6.1".to_string()
         } else {
             "Unknown".to_string()
@@ -512,8 +536,10 @@ impl HardwareDetector {
         // Detect storage type (SSD vs HDD)
         storage_info.storage_type = self.detect_storage_type().await?;
 
-        debug!("Detected storage: {:.1} GB total, {:.1} GB available, type: {:?}", 
-               storage_info.total_gb, storage_info.available_gb, storage_info.storage_type);
+        debug!(
+            "Detected storage: {:.1} GB total, {:.1} GB available, type: {:?}",
+            storage_info.total_gb, storage_info.available_gb, storage_info.storage_type
+        );
 
         Ok(storage_info)
     }
@@ -522,7 +548,9 @@ impl HardwareDetector {
     async fn detect_storage_type(&self) -> ToadStoolResult<StorageType> {
         // Linux: check rotational attribute
         if cfg!(target_os = "linux") {
-            if let Ok(rotational) = tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await {
+            if let Ok(rotational) =
+                tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await
+            {
                 if rotational.trim() == "0" {
                     return Ok(StorageType::SSD);
                 } else {
@@ -536,25 +564,28 @@ impl HardwareDetector {
     }
 
     /// Detect network interfaces and capabilities
-    async fn detect_network(&self) -> ToadStoolResult<NetworkInfo> {
-        let mut network_info = NetworkInfo::default();
-
-        // Basic network detection - would be expanded for production
-        network_info.interfaces = vec![
-            NetworkInterface {
+    fn detect_network(&self) -> ToadStoolResult<NetworkInfo> {
+        let network_info = NetworkInfo {
+            interfaces: vec![NetworkInterface {
                 name: "default".to_string(),
                 interface_type: NetworkInterfaceType::Ethernet,
                 speed_mbps: 1000, // Default assumption
                 is_wireless: false,
-            }
-        ];
+            }],
+        };
 
-        debug!("Detected {} network interface(s)", network_info.interfaces.len());
+        debug!(
+            "Detected {} network interface(s)",
+            network_info.interfaces.len()
+        );
         Ok(network_info)
     }
 
     /// Classify system performance based on hardware capabilities
-    async fn classify_performance(&self, capabilities: &SystemCapabilities) -> ToadStoolResult<PerformanceClass> {
+    async fn classify_performance(
+        &self,
+        capabilities: &SystemCapabilities,
+    ) -> ToadStoolResult<PerformanceClass> {
         let cpu_score = self.calculate_cpu_score(&capabilities.cpu_info);
         let memory_score = self.calculate_memory_score(&capabilities.memory_info);
         let gpu_score = self.calculate_gpu_score(&capabilities.gpu_info);
@@ -572,7 +603,10 @@ impl HardwareDetector {
             PerformanceClass::LowEnd
         };
 
-        debug!("Performance classification: {:?} (score: {:.1})", performance_class, total_score);
+        debug!(
+            "Performance classification: {:?} (score: {:.1})",
+            performance_class, total_score
+        );
         Ok(performance_class)
     }
 
@@ -580,7 +614,13 @@ impl HardwareDetector {
     fn calculate_cpu_score(&self, cpu_info: &CpuInfo) -> f64 {
         let core_score = (cpu_info.physical_cores as f64 / 16.0 * 40.0).min(40.0);
         let frequency_score = (cpu_info.base_frequency_mhz / 4000.0 * 30.0).min(30.0);
-        let features_score = if cpu_info.features.supports_avx2 { 20.0 } else if cpu_info.features.supports_avx { 15.0 } else { 10.0 };
+        let features_score = if cpu_info.features.supports_avx2 {
+            20.0
+        } else if cpu_info.features.supports_avx {
+            15.0
+        } else {
+            10.0
+        };
         let cache_score = (cpu_info.cache_size_kb as f64 / 32768.0 * 10.0).min(10.0);
 
         core_score + frequency_score + features_score + cache_score
@@ -597,9 +637,14 @@ impl HardwareDetector {
             return 20.0; // Integrated graphics assumption
         }
 
-        let best_gpu = gpu_info.iter().max_by(|a, b| {
-            a.memory_gb.partial_cmp(&b.memory_gb).unwrap_or(std::cmp::Ordering::Equal)
-        }).unwrap();
+        let best_gpu = gpu_info
+            .iter()
+            .max_by(|a, b| {
+                a.memory_gb
+                    .partial_cmp(&b.memory_gb)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .unwrap();
 
         let memory_score = (best_gpu.memory_gb / 24.0 * 50.0).min(50.0);
         let vendor_score = match best_gpu.vendor.as_str() {
@@ -709,25 +754,13 @@ impl Default for CpuInfo {
 }
 
 /// CPU feature flags and capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CpuFeatures {
     pub supports_avx: bool,
     pub supports_avx2: bool,
     pub supports_sse4_1: bool,
     pub supports_sse4_2: bool,
     pub supports_neon: bool,
-}
-
-impl Default for CpuFeatures {
-    fn default() -> Self {
-        Self {
-            supports_avx: false,
-            supports_avx2: false,
-            supports_sse4_1: false,
-            supports_sse4_2: false,
-            supports_neon: false,
-        }
-    }
 }
 
 /// Memory information and configuration
@@ -790,17 +823,9 @@ pub enum StorageType {
 }
 
 /// Network information and capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkInfo {
     pub interfaces: Vec<NetworkInterface>,
-}
-
-impl Default for NetworkInfo {
-    fn default() -> Self {
-        Self {
-            interfaces: Vec::new(),
-        }
-    }
 }
 
 /// Network interface information
@@ -843,7 +868,7 @@ mod tests {
     #[tokio::test]
     async fn test_hardware_detector_creation() {
         let detector = HardwareDetector::new();
-        assert!(detector.system_info.is_none());
+        assert!(detector._system_info.is_none());
     }
 
     #[tokio::test]
@@ -851,7 +876,7 @@ mod tests {
         let mut detector = HardwareDetector::new();
         let result = detector.scan_system().await;
         assert!(result.is_ok(), "System scan should succeed");
-        
+
         let capabilities = result.unwrap();
         assert!(capabilities.cpu_cores > 0.0, "Should detect CPU cores");
         assert!(capabilities.memory_gb > 0.0, "Should detect memory");
@@ -860,7 +885,7 @@ mod tests {
     #[test]
     fn test_performance_classification() {
         let detector = HardwareDetector::new();
-        
+
         // Test CPU score calculation
         let cpu_info = CpuInfo {
             physical_cores: 8,
@@ -872,7 +897,7 @@ mod tests {
             cache_size_kb: 16384,
             ..Default::default()
         };
-        
+
         let score = detector.calculate_cpu_score(&cpu_info);
         assert!(score > 50.0, "High-end CPU should have good score");
     }
