@@ -1,0 +1,57 @@
+# ToadStool Showcase - Hello World Biome (Native)
+# This is a REAL ToadStool biome manifest
+
+metadata:
+  name: hello-native
+  version: "1.0.0"
+  description: "Simple hello world demonstrating native execution"
+  team: "showcase"
+
+services:
+  hello:
+    name: "hello-native"
+    description: "Hello from native substrate"
+    
+    # Native execution
+    runtime: "native"
+    
+    # Simple command
+    command: "/bin/bash"
+    args:
+      - "-c"
+      - |
+        echo "╔════════════════════════════════════════════════════════════╗"
+        echo "║        🍄 ToadStool Universal Hello (NATIVE)             ║"
+        echo "╚════════════════════════════════════════════════════════════╝"
+        echo ""
+        echo "Execution Context:"
+        echo "  Substrate:    NATIVE"
+        echo "  Hostname:     $(hostname)"
+        echo "  Platform:     $(uname -s) $(uname -m)"
+        echo "  Kernel:       $(uname -r)"
+        echo "  Process ID:   $$"
+        echo "  Timestamp:    $(date -Is)"
+        echo ""
+        echo "System Resources:"
+        echo "  CPU Cores:    $(nproc)"
+        echo "  Memory:       $(free -h | grep Mem | awk '{print $2}')"
+        echo ""
+        echo "✅ Hello World complete on: NATIVE substrate"
+        echo ""
+    
+    # Resource limits
+    resources:
+      cpu_limit: "0.5"
+      memory_limit: "128Mi"
+    
+    # Security
+    security:
+      isolation: "standard"
+      capabilities: []
+      read_only: false
+
+config:
+  auto_restart: false
+  health_check_interval: 10
+  log_retention: "1h"
+

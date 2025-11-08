@@ -1,0 +1,135 @@
+# ToadStool Distributed Map-Reduce Demo
+# Classic map-reduce pattern with distributed execution
+
+[metadata]
+name = "distributed-map-reduce"
+description = "Map-reduce workload demonstrating distributed data transformation"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = '''
+import time
+import random
+from collections import defaultdict
+
+print("╔════════════════════════════════════════════════════════════╗")
+print("║        🗺️  DISTRIBUTED MAP-REDUCE WORKLOAD              ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print()
+
+print("Map-Reduce Pattern: Word Count across distributed text corpus")
+print()
+
+# Sample corpus (in real scenario, this would be massive)
+corpus_size = 1000  # lines of text
+words_per_line = 10
+total_words = corpus_size * words_per_line
+
+print("Corpus Configuration:")
+print(f"  Total lines:  {corpus_size}")
+print(f"  Total words:  ~{total_words}")
+print(f"  Mappers:      10 (100 lines each)")
+print(f"  Reducers:     5")
+print()
+
+# Generate sample text
+print("Generating sample corpus...")
+word_list = ["toadstool", "distributed", "compute", "universal", "substrate", 
+             "parallel", "execution", "workload", "runtime", "platform"]
+
+# Simulate MAP phase (what one mapper subtask would do)
+print()
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("📍 MAP PHASE (Subtask perspective)")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print()
+
+mapper_id = random.randint(1, 10)
+lines_per_mapper = corpus_size // 10
+start_line = (mapper_id - 1) * lines_per_mapper + 1
+end_line = mapper_id * lines_per_mapper
+
+print(f"Mapper {mapper_id}: Processing lines {start_line}-{end_line}")
+print()
+
+# Simulate mapping
+word_counts = defaultdict(int)
+for line_num in range(start_line, end_line + 1):
+    # Generate line
+    line_words = [random.choice(word_list) for _ in range(words_per_line)]
+    
+    # Count words (MAP operation)
+    for word in line_words:
+        word_counts[word] += 1
+    
+    if line_num % 20 == 0:
+        progress = ((line_num - start_line) / lines_per_mapper) * 100
+        print(f"  Mapping progress: {progress:.0f}% (line {line_num})")
+
+print()
+print(f"✅ Mapper {mapper_id} complete!")
+print(f"   Processed: {lines_per_mapper} lines")
+print(f"   Unique words: {len(word_counts)}")
+print()
+
+# Show intermediate results
+print("Intermediate word counts (from this mapper):")
+for word, count in sorted(word_counts.items(), key=lambda x: -x[1])[:5]:
+    print(f"  {word}: {count}")
+print()
+
+# Simulate REDUCE phase
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("📍 REDUCE PHASE (Aggregation perspective)")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print()
+
+print("In distributed mode:")
+print("  1. All 10 mappers run in parallel")
+print("  2. Each produces word counts for their partition")
+print("  3. Reducers aggregate counts across all partitions")
+print("  4. Final word count is produced")
+print()
+
+# Simulate final aggregation
+print("Simulated final results (after all mappers + reducers):")
+estimated_total_counts = {word: count * 10 for word, count in word_counts.items()}
+for word, count in sorted(estimated_total_counts.items(), key=lambda x: -x[1])[:5]:
+    print(f"  {word}: {count}")
+
+print()
+print("═══════════════════════════════════════════════════════════")
+print("🎯 MAP-REDUCE PERFORMANCE:")
+print(f"   Sequential:      ~{corpus_size * 0.01:.1f}s")
+print(f"   Distributed:     ~{(corpus_size * 0.01) / 10:.1f}s")
+print(f"   Speedup:         ~10x")
+print(f"   Parallel eff:    ~100%")
+print("═══════════════════════════════════════════════════════════")
+print()
+
+print("💡 MAP-REDUCE INSIGHTS:")
+print("   • Each mapper processes data independently")
+print("   • Reducers aggregate results efficiently")
+print("   • Scales linearly with more nodes")
+print("   • Perfect for: log analysis, data transformation, aggregation")
+print()
+
+print("🚀 ToadStool orchestrates both MAP and REDUCE phases!")
+print()
+'''
+
+[resources]
+cpu_cores = 1.5
+memory_mb = 384
+disk_mb = 75
+
+[distribution]
+enabled = true
+strategy = "MapReduce"
+mappers = 10
+reducers = 5
+
+[security]
+isolation = "standard"
+

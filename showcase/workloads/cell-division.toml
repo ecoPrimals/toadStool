@@ -1,0 +1,135 @@
+# ToadStool Biological Computing - Cell Division
+# A workload that spawns child workloads (ToadStool spawning ToadStools!)
+
+[metadata]
+name = "cell-division"
+description = "Demonstrates recursive workload spawning - biology's cell division pattern"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = '''
+import subprocess
+import json
+import time
+import os
+from datetime import datetime
+
+print("╔════════════════════════════════════════════════════════════╗")
+print("║     🍄 CELL DIVISION: ToadStool Spawning ToadStools      ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print()
+print("Biological Pattern: MITOSIS")
+print("Parent cell divides into daughter cells, each capable of division")
+print()
+
+# Cell identity
+cell_generation = int(os.environ.get("CELL_GENERATION", "0"))
+cell_id = os.environ.get("CELL_ID", "MOTHER")
+max_generations = int(os.environ.get("MAX_GENERATIONS", "2"))
+
+print(f"🧬 Cell Identity: {cell_id}")
+print(f"📊 Generation: {cell_generation}")
+print(f"⏱️  Birth Time: {datetime.now().isoformat()}")
+print()
+
+# Do some "work" (simulate cellular metabolism)
+print("🔬 Performing cellular metabolism...")
+time.sleep(0.5)
+print("   ✓ Energy production complete")
+print("   ✓ Protein synthesis complete")
+print("   ✓ DNA replication complete")
+print()
+
+# Cell division - spawn daughter cells if not at max generation
+if cell_generation < max_generations:
+    print(f"🌱 Initiating MITOSIS (Generation {cell_generation} → {cell_generation + 1})")
+    print()
+    
+    daughters = ["DAUGHTER-A", "DAUGHTER-B"]
+    
+    for i, daughter_id in enumerate(daughters, 1):
+        print(f"   Spawning {i}/2: {daughter_id}...")
+        
+        # Create daughter cell workload file
+        daughter_toml = f"""
+[metadata]
+name = "cell-{daughter_id.lower()}"
+description = "Daughter cell spawned by {cell_id}"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = \'\'\'
+import os
+import time
+from datetime import datetime
+
+cell_id = "{cell_id}-{daughter_id}"
+generation = {cell_generation + 1}
+
+print(f"🧬 Daughter Cell {{cell_id}} alive at generation {{generation}}")
+print(f"   Parent: {cell_id}")
+print(f"   Birth: {{datetime.now().isoformat()}}")
+
+# Daughters do some work
+time.sleep(0.3)
+print(f"   ✓ Cellular processes complete")
+
+# Terminal generation - no more division
+print(f"   ⚠️  Terminal generation reached - no further division")
+\'\'\'
+
+[resources]
+cpu_cores = 0.25
+memory_mb = 64
+"""
+        
+        # Write daughter workload
+        daughter_file = f"/tmp/cell-{daughter_id.lower()}-gen{cell_generation+1}.toml"
+        with open(daughter_file, "w") as f:
+            f.write(daughter_toml)
+        
+        # Spawn daughter cell using ToadStool!
+        print(f"   🚀 Executing daughter cell via ToadStool...")
+        result = subprocess.run(
+            ["../../target/release/toadstool-cli", "execute", daughter_file],
+            env={**os.environ, "CELL_GENERATION": str(cell_generation + 1), "CELL_ID": f"{cell_id}-{daughter_id}"},
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print(f"   ✅ Daughter {daughter_id} completed successfully")
+        else:
+            print(f"   ❌ Daughter {daughter_id} failed")
+        
+        # Cleanup
+        os.remove(daughter_file)
+        print()
+
+else:
+    print("🛑 Terminal Generation Reached")
+    print("   No further cell division permitted (prevents infinite recursion)")
+    print()
+
+print("═══════════════════════════════════════════════════════════")
+print(f"✅ Cell {cell_id} lifecycle complete")
+print(f"   Generation: {cell_generation}")
+print(f"   Daughters spawned: {2 if cell_generation < max_generations else 0}")
+print("═══════════════════════════════════════════════════════════")
+print()
+print("🧬 BIOLOGICAL INSIGHT:")
+print("   This demonstrates ToadStool's ability to spawn child workloads")
+print("   recursively, just like biological cell division!")
+print()
+'''
+
+[resources]
+cpu_cores = 1.0
+memory_mb = 256
+disk_mb = 100
+
+[security]
+isolation = "standard"
+

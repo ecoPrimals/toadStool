@@ -1,0 +1,46 @@
+# ToadStool Workload - Hello World (Python Execution)
+# This uses ToadStool's Python runtime engine
+
+[metadata]
+name = "hello-python"
+description = "Hello World demonstrating Python execution through ToadStool's runtime"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = '''
+import os
+import platform
+import datetime
+
+print("╔════════════════════════════════════════════════════════════╗")
+print("║        🍄 ToadStool Universal Hello (PYTHON)             ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print()
+print("Execution Context:")
+print(f"  Substrate:    PYTHON")
+print(f"  Hostname:     {platform.node()}")
+print(f"  Platform:     {platform.system()} {platform.machine()}")
+print(f"  Python:       {platform.python_version()}")
+print(f"  Process ID:   {os.getpid()}")
+print(f"  Timestamp:    {datetime.datetime.now().isoformat()}")
+print()
+print("Python Environment:")
+print(f"  Implementation: {platform.python_implementation()}")
+print(f"  Compiler:       {platform.python_compiler()}")
+print()
+print("✅ This was executed by ToadStool's REAL RuntimeOrchestrator!")
+print("   • PythonRuntimeEngine selected automatically")
+print("   • No biome.yaml required")
+print("   • Direct Python workload execution")
+print()
+'''
+
+[resources]
+cpu_cores = 0.5
+memory_mb = 256
+disk_mb = 100
+
+[security]
+isolation = "standard"
+

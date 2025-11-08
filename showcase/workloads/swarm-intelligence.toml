@@ -1,0 +1,181 @@
+# ToadStool Biological Computing - Swarm Intelligence
+# Multiple ToadStools cooperating like a colony of organisms
+
+[metadata]
+name = "swarm-intelligence"
+description = "Parallel workload swarm with emergent behavior - like an ant colony"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = '''
+import subprocess
+import json
+import time
+import os
+import random
+from datetime import datetime
+from pathlib import Path
+
+print("╔════════════════════════════════════════════════════════════╗")
+print("║      🐜 SWARM INTELLIGENCE: Parallel ToadStool Colony    ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print()
+print("Biological Pattern: ANT COLONY OPTIMIZATION")
+print("Multiple simple agents cooperating to solve complex problems")
+print()
+
+# Colony parameters
+swarm_size = 5
+task_pool = ["gather-resources", "build-structure", "scout-territory", "defend-colony", "care-eggs"]
+
+print(f"🏗️  Spawning colony of {swarm_size} worker agents...")
+print(f"📋 Task pool: {len(task_pool)} different behaviors")
+print()
+
+# Shared state directory (pheromone trails!)
+state_dir = Path("/tmp/toadstool-swarm")
+state_dir.mkdir(exist_ok=True)
+
+# Initialize pheromone map
+pheromone_map = state_dir / "pheromones.json"
+pheromones = {"resource_trail": 0, "danger_signal": 0, "food_found": 0}
+
+with open(pheromone_map, "w") as f:
+    json.dump(pheromones, f)
+
+print("🧪 Pheromone communication system initialized")
+print()
+
+# Spawn worker agents
+workers = []
+start_time = time.time()
+
+for worker_id in range(swarm_size):
+    task = random.choice(task_pool)
+    
+    worker_toml = f"""
+[metadata]
+name = "worker-{worker_id}"
+description = "Swarm worker agent {worker_id}"
+version = "1.0.0"
+
+[execution]
+type = "python"
+script = \'\'\'
+import time
+import random
+import json
+from pathlib import Path
+
+worker_id = {worker_id}
+task = "{task}"
+
+print(f"🐜 Worker {{worker_id}} reporting for duty")
+print(f"   Assigned task: {{task}}")
+
+# Read pheromone signals
+state_dir = Path("/tmp/toadstool-swarm")
+pheromone_file = state_dir / "pheromones.json"
+
+with open(pheromone_file, "r") as f:
+    pheromones = json.load(f)
+
+print(f"   📡 Reading pheromones: {{pheromones}}")
+
+# Simulate work with task-specific behavior
+work_time = random.uniform(0.2, 0.8)
+print(f"   🔧 Executing {{task}} ({{work_time:.2f}}s)...")
+time.sleep(work_time)
+
+# Update pheromones based on task results
+if task == "gather-resources":
+    pheromones["resource_trail"] += 1
+    result = f"Collected {{random.randint(1, 5)}} resources"
+elif task == "scout-territory":
+    pheromones["food_found"] += random.randint(0, 2)
+    result = f"Explored {{random.randint(10, 50)}} meters"
+elif task == "defend-colony":
+    pheromones["danger_signal"] = max(0, pheromones["danger_signal"] - 1)
+    result = "Perimeter secured"
+else:
+    result = f"Task {{task}} completed"
+
+# Write updated pheromones (coordination!)
+with open(pheromone_file, "w") as f:
+    json.dump(pheromones, f)
+
+print(f"   ✅ {{result}}")
+print(f"   📡 Updated pheromones: {{pheromones}}")
+\'\'\'
+
+[resources]
+cpu_cores = 0.5
+memory_mb = 128
+"""
+    
+    worker_file = state_dir / f"worker-{worker_id}.toml"
+    with open(worker_file, "w") as f:
+        f.write(worker_toml)
+    
+    # Launch worker in background (parallel execution!)
+    print(f"   🚀 Launching worker {worker_id} (task: {task})...")
+    proc = subprocess.Popen(
+        ["../../target/release/toadstool-cli", "execute", str(worker_file)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=os.environ
+    )
+    workers.append((worker_id, task, proc, worker_file))
+
+print()
+print("⏳ Waiting for swarm to complete tasks...")
+print()
+
+# Wait for all workers
+completed = 0
+for worker_id, task, proc, worker_file in workers:
+    proc.wait()
+    completed += 1
+    print(f"   ✅ Worker {worker_id} ({task}) completed [{completed}/{swarm_size}]")
+    worker_file.unlink()  # Cleanup
+
+elapsed = time.time() - start_time
+
+print()
+print("═══════════════════════════════════════════════════════════")
+print("🎯 SWARM RESULTS:")
+
+# Read final pheromone state
+with open(pheromone_map, "r") as f:
+    final_pheromones = json.load(f)
+
+print(f"   Total workers: {swarm_size}")
+print(f"   Execution time: {elapsed:.2f}s")
+print(f"   Parallel efficiency: {(swarm_size * 0.5 / elapsed):.1f}x")
+print()
+print("   Final Pheromone State:")
+print(f"     Resource trails: {final_pheromones.get('resource_trail', 0)}")
+print(f"     Food discovered: {final_pheromones.get('food_found', 0)}")
+print(f"     Danger level: {final_pheromones.get('danger_signal', 0)}")
+print("═══════════════════════════════════════════════════════════")
+print()
+print("🧬 BIOLOGICAL INSIGHT:")
+print("   Multiple ToadStools cooperated through shared state,")
+print("   executing in parallel like a biological swarm!")
+print("   This is EMERGENT BEHAVIOR from simple agents.")
+print()
+
+# Cleanup
+pheromone_map.unlink()
+state_dir.rmdir()
+'''
+
+[resources]
+cpu_cores = 2.0
+memory_mb = 512
+disk_mb = 100
+
+[security]
+isolation = "standard"
+

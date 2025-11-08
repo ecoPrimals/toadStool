@@ -1,0 +1,100 @@
+# ToadStool Showcase - Hello World
+# Simple demonstration of multi-substrate execution
+
+[workload]
+id = "showcase-hello"
+name = "Hello Universal"
+description = "Simple hello world demonstrating substrate versatility"
+version = "1.0.0"
+
+[execution]
+type = "script"
+entry_point = "main"
+timeout_seconds = 30
+
+[execution.script]
+language = "bash"
+code = """
+#!/bin/bash
+
+# Colors for pretty output
+GREEN='\\033[0;32m'
+BLUE='\\033[0;34m'
+YELLOW='\\033[1;33m'
+NC='\\033[0m' # No Color
+
+SUBSTRATE="${TOADSTOOL_SUBSTRATE:-unknown}"
+
+echo ""
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║                🍄 ToadStool Universal Hello               ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+
+echo "${BLUE}Execution Context:${NC}"
+echo "  Substrate:    ${GREEN}${SUBSTRATE}${NC}"
+echo "  Hostname:     $(hostname)"
+echo "  Platform:     $(uname -s) $(uname -m)"
+echo "  Kernel:       $(uname -r)"
+echo "  Process ID:   $$"
+echo "  Timestamp:    $(date '+%Y-%m-%d %H:%M:%S')"
+echo ""
+
+echo "${BLUE}System Resources:${NC}"
+if command -v nproc &> /dev/null; then
+    CPU_CORES=$(nproc)
+elif command -v sysctl &> /dev/null; then
+    CPU_CORES=$(sysctl -n hw.ncpu 2>/dev/null || echo "unknown")
+else
+    CPU_CORES="unknown"
+fi
+echo "  CPU Cores:    $CPU_CORES"
+
+if command -v free &> /dev/null; then
+    MEMORY=$(free -h | grep Mem | awk '{print $2}')
+elif command -v sysctl &> /dev/null; then
+    BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo "0")
+    MEMORY="$((BYTES / 1024 / 1024 / 1024))GB"
+else
+    MEMORY="unknown"
+fi
+echo "  Total Memory: $MEMORY"
+echo ""
+
+echo "${BLUE}Substrate Capabilities:${NC}"
+case "$SUBSTRATE" in
+    native)
+        echo "  ✓ Maximum performance"
+        echo "  ✓ Direct system access"
+        echo "  ✓ Zero overhead"
+        ;;
+    docker)
+        echo "  ✓ Container isolation"
+        echo "  ✓ Resource limits"
+        echo "  ✓ Security boundaries"
+        ;;
+    python)
+        echo "  ✓ Managed runtime"
+        echo "  ✓ Package isolation"
+        echo "  ✓ Cross-platform"
+        ;;
+    *)
+        echo "  ✓ Universal compatibility"
+        ;;
+esac
+echo ""
+
+echo "${GREEN}✅ Hello World complete on: ${SUBSTRATE}${NC}"
+echo ""
+"""
+
+[resources]
+cpu_cores = 1
+memory_mb = 128
+disk_mb = 10
+
+[metadata]
+tags = ["showcase", "hello-world", "demo"]
+author = "ToadStool Team"
+license = "AGPL-3.0"
+

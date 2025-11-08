@@ -1,0 +1,175 @@
+# ToadStool Showcase - I/O Benchmark
+# Measures disk I/O performance across substrates
+
+[workload]
+id = "benchmark-io"
+name = "I/O Benchmark"
+description = "File I/O benchmark for disk performance testing"
+version = "1.0.0"
+
+[execution]
+type = "script"
+entry_point = "main"
+timeout_seconds = 120
+
+[execution.script]
+language = "python"
+code = """
+#!/usr/bin/env python3
+import time
+import os
+import sys
+import json
+from pathlib import Path
+from datetime import datetime
+
+SUBSTRATE = os.environ.get('TOADSTOOL_SUBSTRATE', 'unknown')
+TEST_DIR = Path('/tmp/toadstool-io-bench')
+
+def format_size(bytes):
+    '''Format bytes nicely'''
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes < 1024:
+            return f"{bytes:.2f}{unit}"
+        bytes /= 1024
+    return f"{bytes:.2f}TB"
+
+def format_time(seconds):
+    '''Format seconds nicely'''
+    if seconds < 0.001:
+        return f"{seconds * 1000000:.0f}μs"
+    elif seconds < 1:
+        return f"{seconds * 1000:.2f}ms"
+    else:
+        return f"{seconds:.3f}s"
+
+def main():
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║            🍄 ToadStool I/O Benchmark                     ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print()
+    print(f"Substrate: {SUBSTRATE}")
+    print(f"Test:      File I/O (Write/Read)")
+    print()
+    
+    # Setup test directory
+    TEST_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Test parameters
+    test_sizes = [1, 10, 50, 100]  # MB
+    results = []
+    
+    print("Running I/O-intensive operations...")
+    print()
+    
+    for size_mb in test_sizes:
+        size_bytes = size_mb * 1024 * 1024
+        test_file = TEST_DIR / f'test_{size_mb}mb.dat'
+        
+        print(f"  Testing {size_mb}MB file...")
+        
+        # Write test
+        print(f"    Writing... ", end='', flush=True)
+        data = os.urandom(size_bytes)
+        start = time.perf_counter()
+        with open(test_file, 'wb') as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        write_time = time.perf_counter() - start
+        write_speed = size_bytes / write_time / 1024 / 1024  # MB/s
+        print(f"{format_time(write_time)} ({write_speed:.2f} MB/s)")
+        
+        # Read test
+        print(f"    Reading... ", end='', flush=True)
+        start = time.perf_counter()
+        with open(test_file, 'rb') as f:
+            _ = f.read()
+        read_time = time.perf_counter() - start
+        read_speed = size_bytes / read_time / 1024 / 1024  # MB/s
+        print(f"{format_time(read_time)} ({read_speed:.2f} MB/s)")
+        
+        # Cleanup
+        test_file.unlink()
+        
+        results.append({
+            'size_mb': size_mb,
+            'write_time': write_time,
+            'write_speed_mbs': write_speed,
+            'read_time': read_time,
+            'read_speed_mbs': read_speed
+        })
+        print()
+    
+    # Cleanup test directory
+    TEST_DIR.rmdir()
+    
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("Results:")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    
+    avg_write = sum(r['write_speed_mbs'] for r in results) / len(results)
+    avg_read = sum(r['read_speed_mbs'] for r in results) / len(results)
+    
+    print(f"  Average Write Speed: {avg_write:.2f} MB/s")
+    print(f"  Average Read Speed:  {avg_read:.2f} MB/s")
+    print()
+    
+    # Performance rating
+    if avg_write > 500 and avg_read > 800:
+        rating = "EXCELLENT"
+        emoji = "🚀"
+    elif avg_write > 300 and avg_read > 500:
+        rating = "GOOD"
+        emoji = "✅"
+    elif avg_write > 100 and avg_read > 200:
+        rating = "ACCEPTABLE"
+        emoji = "⚠️"
+    else:
+        rating = "SLOW"
+        emoji = "🐌"
+    
+    print(f"  Performance: {emoji} {rating}")
+    print()
+    
+    # Save results
+    output = {
+        'substrate': SUBSTRATE,
+        'benchmark': 'io',
+        'test': 'file_operations',
+        'timestamp': datetime.now().isoformat(),
+        'results': results,
+        'summary': {
+            'average_write_mbs': avg_write,
+            'average_read_mbs': avg_read,
+            'rating': rating
+        }
+    }
+    
+    print("BENCHMARK_RESULT_JSON_START")
+    print(json.dumps(output, indent=2))
+    print("BENCHMARK_RESULT_JSON_END")
+    print()
+    
+    print(f"✅ I/O Benchmark complete on: {SUBSTRATE}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+"""
+
+[resources]
+cpu_cores = 1
+memory_mb = 512
+disk_mb = 500
+
+[benchmark]
+type = "io"
+metric = "throughput"
+iterations = 4
+
+[metadata]
+tags = ["benchmark", "io", "performance"]
+author = "ToadStool Team"
+license = "AGPL-3.0"
+

@@ -1,0 +1,162 @@
+# ToadStool Showcase - Stateful Counter
+# Demonstrates live migration between substrates with state preservation
+
+[workload]
+id = "showcase-counter"
+name = "Live Migration Counter"
+description = "Stateful counter demonstrating ToadStool's live migration capability"
+version = "1.0.0"
+
+[execution]
+type = "script"
+entry_point = "main"
+timeout_seconds = 600
+stateful = true
+
+[execution.script]
+language = "python"
+code = """
+#!/usr/bin/env python3
+import time
+import os
+import json
+import sys
+import signal
+from pathlib import Path
+from datetime import datetime
+
+# Colors
+GREEN = '\\033[0;32m'
+BLUE = '\\033[0;34m'
+YELLOW = '\\033[1;33m'
+NC = '\\033[0m'
+
+# State management
+STATE_DIR = Path(os.environ.get('TOADSTOOL_STATE_DIR', '/tmp/toadstool-showcase'))
+STATE_FILE = STATE_DIR / 'counter_state.json'
+SUBSTRATE = os.environ.get('TOADSTOOL_SUBSTRATE', 'unknown')
+
+def ensure_state_dir():
+    '''Create state directory if it doesn't exist'''
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_state():
+    '''Load counter state from disk'''
+    if STATE_FILE.exists():
+        try:
+            with open(STATE_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load state: {e}")
+    return {
+        'count': 0,
+        'start_time': datetime.now().isoformat(),
+        'substrates_visited': []
+    }
+
+def save_state(state):
+    '''Save counter state to disk'''
+    ensure_state_dir()
+    try:
+        with open(STATE_FILE, 'w') as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"Error saving state: {e}")
+
+def signal_handler(signum, frame):
+    '''Handle graceful shutdown'''
+    print(f"\\n{YELLOW}🛑 Received shutdown signal{NC}")
+    print(f"   Saving state at count: {state['count']}")
+    save_state(state)
+    print(f"   {GREEN}✅ State saved successfully{NC}")
+    print(f"   Substrates visited: {', '.join(state['substrates_visited'])}")
+    sys.exit(0)
+
+# Setup signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+# Load initial state
+ensure_state_dir()
+state = load_state()
+
+# Track substrate visits
+if SUBSTRATE not in state['substrates_visited']:
+    state['substrates_visited'].append(SUBSTRATE)
+    save_state(state)
+
+print()
+print("╔════════════════════════════════════════════════════════════╗")
+print("║        🍄 ToadStool Live Migration Counter               ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print()
+print(f"{BLUE}Counter Configuration:{NC}")
+print(f"  Starting from:  {state['count']}")
+print(f"  Current substrate: {GREEN}{SUBSTRATE}{NC}")
+print(f"  State directory: {STATE_DIR}")
+print(f"  State file: {STATE_FILE}")
+print(f"  Substrates visited: {', '.join(state['substrates_visited']) if state['substrates_visited'] else 'none yet'}")
+print()
+print(f"{YELLOW}💡 To test live migration:{NC}")
+print(f"   1. Let this counter run for a few seconds")
+print(f"   2. In another terminal, run:")
+print(f"      toadstool migrate showcase-counter --to <substrate>")
+print(f"   3. Watch the counter seamlessly continue on new substrate!")
+print()
+print(f"{BLUE}Starting counter...{NC}")
+print()
+
+try:
+    while True:
+        state['count'] += 1
+        state['last_update'] = datetime.now().isoformat()
+        state['current_substrate'] = SUBSTRATE
+        
+        # Save state every iteration (enables migration)
+        save_state(state)
+        
+        # Display current state
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        bar = "█" * min(50, state['count'] % 50)
+        
+        print(f"[{timestamp}] {GREEN}Count: {state['count']:05d}{NC} | "
+              f"Substrate: {BLUE}{SUBSTRATE:12s}{NC} | "
+              f"{bar}", end='\\r', flush=True)
+        
+        # Every 10 counts, print newline for readability
+        if state['count'] % 10 == 0:
+            print()
+        
+        time.sleep(1)
+        
+except KeyboardInterrupt:
+    signal_handler(signal.SIGINT, None)
+except Exception as e:
+    print(f"\\nError: {e}")
+    save_state(state)
+    sys.exit(1)
+"""
+
+[state]
+persistent = true
+checkpoint_interval_seconds = 1
+state_directory = "/tmp/toadstool-showcase"
+backup_enabled = true
+
+[resources]
+cpu_cores = 1
+memory_mb = 256
+disk_mb = 100
+
+[migration]
+enabled = true
+allow_live = true
+checkpoint_on_migrate = true
+max_migration_time_seconds = 10
+
+[metadata]
+tags = ["showcase", "stateful", "migration", "demo"]
+author = "ToadStool Team"
+license = "AGPL-3.0"
+notes = "This demonstrates ToadStool's unique live migration capability"
+

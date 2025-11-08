@@ -1,0 +1,55 @@
+# PROOF: This workload will show its own process ID and parent process
+# to prove it's actually executing as a real process
+
+[metadata]
+name = "prove-its-real"
+description = "Demonstrates this is REAL execution, not simulation"
+version = "1.0.0"
+
+[execution]
+type = "native"
+command = "/bin/bash"
+args = ["-c", '''
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║         🔬 PROOF OF REAL EXECUTION 🔬                    ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+echo "EVIDENCE THIS IS REAL:"
+echo ""
+echo "1. My Process ID (PID): $$"
+echo "   (This is a REAL Linux process)"
+echo ""
+echo "2. My Parent Process ID (PPID): $PPID"
+echo "   (My parent is the RuntimeOrchestrator)"
+echo ""
+echo "3. Process Tree:"
+ps -f --ppid $PPID | grep -v "grep" | head -5 || true
+echo ""
+echo "4. Current Working Directory:"
+pwd
+echo ""
+echo "5. Environment Variables Set by ToadStool:"
+env | grep TOADSTOOL || echo "(No TOADSTOOL vars, but we can set them)"
+echo ""
+echo "6. I can access the filesystem:"
+ls -la /tmp | head -3
+echo ""
+echo "7. I can make network calls:"
+ping -c 1 127.0.0.1 2>&1 | grep "1 packets transmitted" || true
+echo ""
+echo "8. Current timestamp from system:"
+date "+%Y-%m-%d %H:%M:%S.%N"
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "✅ This is REAL PROCESS EXECUTION, not simulation!"
+echo "════════════════════════════════════════════════════════════"
+'''
+]
+
+[resources]
+cpu_cores = 0.5
+memory_mb = 128
+
+[security]
+isolation = "standard"
+
