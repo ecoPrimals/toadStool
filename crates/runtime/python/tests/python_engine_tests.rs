@@ -205,7 +205,7 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.9".to_string(),
         virtual_env: None,
         max_memory_mb: 512,
-        execution_timeout_secs: 60); t},
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs(60); t},
         requirements: vec![],
     };
 
@@ -213,7 +213,7 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.11".to_string(),
         virtual_env: None,
         max_memory_mb: 2048,
-        execution_timeout_secs: 300); t},
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs(300); t},
         requirements: vec!["numpy".to_string()],
     };
 
