@@ -334,14 +334,23 @@ pub struct ByobExecutorConfig {
 
 impl Default for ByobExecutorConfig {
     fn default() -> Self {
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {
             max_concurrent_deployments: 50,
             default_network_subnet: "10.0.0.0/24".to_string(),
             resource_monitoring_interval: Duration::from_secs(30),
             health_check_interval: Duration::from_secs(10),
             deployment_timeout: Duration::from_secs(600), // 10 minutes
-            default_host_port: 8080,
-            web_service_ports: vec![80, 443, 8080, 8443, 3000, 8000, 9000],
+            default_host_port: config.network.songbird_port,
+            web_service_ports: vec![
+                80,
+                443,
+                config.network.songbird_port,
+                8443,
+                3000,
+                8000,
+                9000,
+            ],
         }
     }
 }
@@ -641,12 +650,12 @@ impl ByobComputeExecutor {
                     // Perform health check based on configuration
                     match self.perform_health_check(service_name, health_check) {
                         Ok(healthy) => {
-                            if !healthy {
+                            if healthy {
+                                debug!("✅ Service {} passed health check", service_name);
+                            } else {
                                 all_healthy = false;
                                 failed_services.push(service_name.clone());
                                 warn!("❌ Service {} failed health check", service_name);
-                            } else {
-                                debug!("✅ Service {} passed health check", service_name);
                             }
                         }
                         Err(e) => {
@@ -1048,7 +1057,7 @@ impl ByobExecutor for ByobComputeExecutor {
                         .stop_service_execution(service_name.clone(), *execution_id)
                         .await
                     {
-                        Ok(_) => {
+                        Ok(()) => {
                             stopped_services.push(service_name.clone());
                             deployment.service_executions.remove(&service_name);
                             info!("✅ Stopped service: {}", service_name);
@@ -1202,10 +1211,19 @@ mod tests {
         assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
         assert_eq!(config.health_check_interval, Duration::from_secs(10));
         assert_eq!(config.deployment_timeout, Duration::from_secs(600));
-        assert_eq!(config.default_host_port, 8080);
+        let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        assert_eq!(config.default_host_port, env_config.network.songbird_port);
         assert_eq!(
             config.web_service_ports,
-            vec![80, 443, 8080, 8443, 3000, 8000, 9000]
+            vec![
+                80,
+                443,
+                env_config.network.songbird_port,
+                8443,
+                3000,
+                8000,
+                9000
+            ]
         );
     }
 

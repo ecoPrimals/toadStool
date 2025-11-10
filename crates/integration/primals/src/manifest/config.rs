@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use toadstool_common::config_bases::HttpHealthCheckConfig;
 
 /// Configuration for a primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8,33 +9,52 @@ pub struct PrimalConfig {
     pub endpoint: String,
     pub capabilities: Vec<String>,
     pub settings: HashMap<String, serde_json::Value>,
-    pub health_check: Option<HealthCheckConfig>,
-}
-
-/// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    pub enabled: bool,
-    pub interval_seconds: u64,
-    pub timeout_seconds: u64,
-    pub endpoint: String,
+    
+    /// Health check configuration (using base pattern)
+    #[serde(flatten)]
+    pub health_check: Option<HttpHealthCheckConfig>,
 }
 
 /// Biome storage configuration
+///
+/// Defines storage settings for biome persistent data including capacity,
+/// persistence options, and backup policies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeStorage {
+    /// Storage backend type (e.g., "local", "s3", "distributed")
     pub storage_type: String,
+    /// Storage capacity in gigabytes
     pub capacity_gb: u64,
+    /// Enable data persistence across restarts
     pub persistence: bool,
+    /// Enable automatic backups
     pub backup_enabled: bool,
 }
 
+impl Default for BiomeStorage {
+    fn default() -> Self {
+        Self {
+            storage_type: "local".to_string(),
+            capacity_gb: 10,
+            persistence: true,
+            backup_enabled: true,
+        }
+    }
+}
+
 /// Agent configuration
+///
+/// Defines configuration for autonomous agents within a biome including
+/// capabilities and agent-specific settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentConfig {
+    /// Unique agent identifier
     pub agent_id: String,
+    /// Agent type or class (e.g., "monitor", "optimizer", "coordinator")
     pub agent_type: String,
+    /// List of agent capabilities
     pub capabilities: Vec<String>,
+    /// Agent-specific configuration parameters
     pub config: HashMap<String, serde_json::Value>,
 }
 
@@ -53,14 +73,22 @@ pub struct ServiceConfig {
     pub image: String,
     pub ports: Vec<u16>,
     pub environment: HashMap<String, String>,
-    pub resources: ServiceResources,
+    
+    /// Resource configuration (using base pattern)
+    #[serde(flatten)]
+    pub resources: ServiceResourcesConfig,
 }
 
-/// Service resources
+/// Service resources configuration
+/// 
+/// Uses base resource pattern with service-specific extensions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceResources {
+pub struct ServiceResourcesConfig {
+    /// CPU cores allocation
     pub cpu_cores: f64,
+    /// Memory in megabytes
     pub memory_mb: u64,
+    /// Storage in gigabytes
     pub storage_gb: u64,
 }
 
@@ -73,12 +101,29 @@ pub struct BiomeNetworking {
 }
 
 /// Biome resources configuration
+///
+/// Specifies resource allocation for biome instances with GPU support.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeResources {
+    /// CPU cores allocation
     pub cpu_cores: f64,
+    /// Memory in gigabytes
     pub memory_gb: u64,
+    /// Storage in gigabytes
     pub storage_gb: u64,
+    /// Number of GPUs allocated
     pub gpu_count: u32,
+}
+
+impl Default for BiomeResources {
+    fn default() -> Self {
+        Self {
+            cpu_cores: 2.0,
+            memory_gb: 4,
+            storage_gb: 20,
+            gpu_count: 0,
+        }
+    }
 }
 
 /// Federation configuration

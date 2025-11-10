@@ -6,6 +6,13 @@ authors.workspace = true
 license.workspace = true
 description = "Examples for ToadStool Universal Compute Platform"
 
+# Note: Examples currently excluded from documentation due to incomplete dependencies
+# (toadstool-api, toadstool-management-analytics not in workspace)
+# Examples compile as standalone binaries but not as documentation
+[package.metadata.docs.rs]
+# Skip this package when building workspace documentation
+build = false
+
 [[bin]]
 name = "basic_usage"
 path = "basic_usage.rs"
@@ -125,6 +132,10 @@ path = "universal_substrate_demonstration.rs"
 [[bin]]
 name = "universal_platform_test"
 path = "universal_platform_test.rs"
+
+[[bin]]
+name = "current_api_demo"
+path = "current_api_demo.rs"
 
 [dependencies]
 # Core ToadStool

@@ -4,61 +4,48 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::PrimalResult;
 
-/// Primal type enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PrimalType {
-    ToadStool,
-    Songbird,
-    BearDog,
-    NestGate,
-    Squirrel,
+/// Primal capability descriptor (replaces hardcoded enum)
+///
+/// Instead of enumerating primal names, we describe primals by their capabilities.
+/// This follows the infant discovery principle: "Each primal knows only itself."
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PrimalDescriptor {
+    /// Primal identifier (self-reported, not hardcoded)
+    pub id: String,
+    /// Capabilities this primal provides
+    pub capabilities: Vec<String>,
+    /// Optional type hint (for compatibility)
+    pub type_hint: Option<String>,
 }
 
-impl PrimalType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            PrimalType::ToadStool => "toadstool",
-            PrimalType::Songbird => "songbird",
-            PrimalType::BearDog => "beardog",
-            PrimalType::NestGate => "nestgate",
-            PrimalType::Squirrel => "squirrel",
+impl PrimalDescriptor {
+    /// Create a new primal descriptor
+    pub fn new(id: impl Into<String>, capabilities: Vec<String>) -> Self {
+        Self {
+            id: id.into(),
+            capabilities,
+            type_hint: None,
         }
+    }
+    
+    /// Check if this primal has a specific capability
+    pub fn has_capability(&self, capability: &str) -> bool {
+        self.capabilities.iter().any(|c| c == capability)
+    }
+    
+    /// Get a display name for this primal
+    pub fn display_name(&self) -> &str {
+        &self.id
     }
 }
 
-/// Primal integration trait
-#[async_trait]
-pub trait PrimalIntegration {
-    /// Initialize the primal from biome manifest configuration
-    async fn initialize_from_manifest(
-        &self,
-        config: &crate::manifest::config::PrimalConfig,
-    ) -> PrimalResult<()>;
+// Re-export the canonical PrimalIntegration trait from the parent module
+// This trait is defined in `crate::PrimalIntegration` (lib.rs) with the complete interface.
+// Keeping this re-export for backward compatibility with any code that imports from here.
+pub use crate::PrimalIntegration;
 
-    /// Register this primal with Songbird service mesh
-    async fn register_with_songbird(&self) -> PrimalResult<()>;
-
-    /// Validate dependencies against the biome manifest
-    async fn validate_dependencies(
-        &self,
-        manifest: &crate::manifest::BiomeManifest,
-    ) -> PrimalResult<()>;
-
-    /// Start primal services
-    async fn start_services(&self) -> PrimalResult<()>;
-
-    /// Stop primal services gracefully
-    async fn shutdown(&self) -> PrimalResult<()>;
-
-    /// Get current health status
-    async fn health_check(&self) -> PrimalResult<crate::types::health::PrimalHealthStatus>;
-
-    /// Get primal type identifier
-    fn primal_type(&self) -> PrimalType;
-
-    /// Get primal capabilities
-    fn capabilities(&self) -> Vec<String>;
-}
+// Note: The legacy trait definition that was here has been removed to eliminate duplication.
+// Please use `crate::PrimalIntegration` or import from the crate root instead.
 
 /// Primal capabilities structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

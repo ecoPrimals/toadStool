@@ -4,9 +4,15 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool communication protocols and service discovery"
 
+[features]
+default = []
+networking = []
+
 [dependencies]
 # Core ToadStool types
 toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
 
 # HTTP client
 reqwest = { version = "0.11", features = ["json"] }

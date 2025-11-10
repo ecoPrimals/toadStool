@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use toadstool::ToadStoolResult;
@@ -8,7 +9,10 @@ use crate::hosting::RecursiveHostingManager;
 use crate::metrics::UniversalMetricsCollector;
 use crate::network::NetworkDistributor;
 use crate::os_layer::manager::OSLayerManager;
-use crate::types::*;
+use crate::types::{
+    CompatibilityMode, ExecutionTarget, LoadBalancingStrategy, ResourceAllocationStrategy,
+    ResourceLimits, UniversalJob, UniversalJobQueue,
+};
 
 /// Universal scheduler for cross-platform job distribution
 pub struct UniversalScheduler {
@@ -76,9 +80,9 @@ pub struct RecursiveHostingConfig {
     pub current_depth: u32,
     /// Maximum depth allowed
     pub max_depth: u32,
-    /// Parent ToadStool if hosted
+    /// Parent `ToadStool` if hosted
     pub parent_toadstool: Option<String>,
-    /// Child ToadStools being hosted
+    /// Child `ToadStools` being hosted
     pub child_toadstools: Vec<String>,
     /// Resource allocation for children
     pub child_resource_allocation: ResourceAllocationStrategy,
@@ -143,7 +147,7 @@ impl UniversalScheduler {
         let network_config = crate::network::distributor::NetworkDistributorConfig {
             enabled: config.network_effects.enabled,
             max_concurrent_distributions: 10,
-            distribution_timeout_seconds: 300,
+            distribution_timeout: Duration::from_secs(300),
         };
         let network_distributor = Arc::new(NetworkDistributor::new(network_config));
 
@@ -248,9 +252,20 @@ impl Default for NetworkEffectsConfig {
 
 impl Default for SongbirdIntegrationConfig {
     fn default() -> Self {
+        // Use environment-aware configuration
+        let port: u16 = std::env::var("TOADSTOOL_SONGBIRD_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or_else(|| {
+                let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+                config.network.songbird_port
+            });
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        let host = &config.network.bind_address;
+
         Self {
             enabled: false,
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: format!("http://{host}:{port}"),
             auth_token: None,
         }
     }

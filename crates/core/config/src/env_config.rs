@@ -66,7 +66,15 @@ impl EnvConfigLoader {
     pub fn get_bool(&self, key: &str, default: bool) -> bool {
         let env_key = format!("{}_{}", self.prefix, key);
         env::var(&env_key)
-            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .ok()
+            .and_then(|v| {
+                let lower = v.to_lowercase();
+                match lower.as_str() {
+                    "true" | "1" | "yes" | "on" => Some(true),
+                    "false" | "0" | "no" | "off" => Some(false),
+                    _ => None, // Invalid values return None, so default is used
+                }
+            })
             .unwrap_or(default)
     }
 
@@ -195,9 +203,9 @@ impl NetworkEnvConfig {
         let loader = EnvConfigLoader::new();
 
         Self {
-            songbird_port: loader.get_u16("SONGBIRD_PORT", 8080),
-            beardog_port: loader.get_u16("BEARDOG_PORT", 8081),
-            nestgate_port: loader.get_u16("NESTGATE_PORT", 8082),
+            songbird_port: loader.get_u16("SONGBIRD_PORT", crate::defaults::network::SONGBIRD_PORT),
+            beardog_port: loader.get_u16("BEARDOG_PORT", crate::defaults::network::BEARDOG_PORT),
+            nestgate_port: loader.get_u16("NESTGATE_PORT", crate::defaults::network::NESTGATE_PORT),
             squirrel_port: loader.get_u16("SQUIRREL_PORT", 8083),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", 8084),
             federation_port: loader.get_u16("FEDERATION_PORT", 7777),
@@ -569,7 +577,13 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_network_env_config() {
+        // Save original environment state
+        let original_port = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
+        let original_addr = env::var("TOADSTOOL_BIND_ADDRESS").ok();
+
+        // Set test values
         env::set_var("TOADSTOOL_SONGBIRD_PORT", "9080");
         env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0");
 
@@ -578,22 +592,40 @@ mod tests {
         assert_eq!(config.bind_address, "0.0.0.0");
         assert_eq!(config.songbird_endpoint(), "http://0.0.0.0:9080");
 
-        // Clean up
+        // Restore original environment state
         env::remove_var("TOADSTOOL_SONGBIRD_PORT");
         env::remove_var("TOADSTOOL_BIND_ADDRESS");
+        if let Some(val) = original_port {
+            env::set_var("TOADSTOOL_SONGBIRD_PORT", val);
+        }
+        if let Some(val) = original_addr {
+            env::set_var("TOADSTOOL_BIND_ADDRESS", val);
+        }
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_environment_config() {
-        env::set_var("TOADSTOOL_ENV", "production");
-        env::set_var("TOADSTOOL_DEBUG", "true");
+        // Save original environment state
+        let original_env = env::var("TOADSTOOL_ENV").ok();
+        let original_debug = env::var("TOADSTOOL_DEBUG").ok();
+
+        // Set test values (don't remove first - just override)
+        env::set_var("TOADSTOOL_ENV", "development");
+        env::set_var("TOADSTOOL_DEBUG", "false");
 
         let config = EnvironmentConfig::from_env();
-        assert_eq!(config.environment, "production");
-        assert!(config.debug);
+        assert_eq!(config.environment, "development");
+        assert!(!config.debug);
 
-        // Clean up
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("TOADSTOOL_DEBUG");
+        // Restore original environment state
+        match original_env {
+            Some(val) => env::set_var("TOADSTOOL_ENV", val),
+            None => env::remove_var("TOADSTOOL_ENV"),
+        }
+        match original_debug {
+            Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
+            None => env::remove_var("TOADSTOOL_DEBUG"),
+        }
     }
 }

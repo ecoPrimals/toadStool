@@ -1,9 +1,9 @@
-//! # ToadStool Universal GPU Compute Runtime
+//! # `ToadStool` Universal GPU Compute Runtime
 //!
 //! **Philosophy**: "If it has parallel compute units, we can harness it"
 //!
 //! This module implements a truly universal GPU compute runtime that can:
-//! - Discover and utilize ANY parallel compute framework (CUDA, OpenCL, Vulkan, ROCm, Metal, WebGPU, DirectCompute)
+//! - Discover and utilize ANY parallel compute framework (CUDA, `OpenCL`, Vulkan, `ROCm`, Metal, WebGPU, `DirectCompute`)
 //! - Execute GPU workloads recursively (GPU workloads spawning GPU workloads)
 //! - Provide universal kernel compilation and optimization
 //! - Self-heal through automatic framework and device fallback
@@ -60,5 +60,156 @@ mod tests {
         let cuda = GpuFramework::Cuda;
         assert!(!cuda.is_universal());
         assert!(cuda.platform_compatibility().contains(&"Linux"));
+    }
+
+    #[test]
+    fn test_gpu_framework_variants() {
+        let frameworks = [
+            GpuFramework::Cuda,
+            GpuFramework::OpenCl,
+            GpuFramework::Vulkan,
+            GpuFramework::Metal,
+            GpuFramework::WebGpu,
+            GpuFramework::DirectCompute,
+        ];
+
+        assert_eq!(frameworks.len(), 6);
+    }
+
+    #[test]
+    fn test_device_requirements_minimal() {
+        let reqs = DeviceRequirements::minimal();
+        assert!(reqs.min_memory_bytes.is_some());
+        assert!(reqs.min_memory_bytes.unwrap() > 0);
+    }
+
+    #[test]
+    fn test_device_requirements_high_performance() {
+        let reqs = DeviceRequirements::high_performance();
+        assert!(reqs.min_memory_bytes.is_some());
+        assert!(reqs.min_compute_units.is_some());
+    }
+
+    #[test]
+    fn test_device_requirements_comparison() {
+        let minimal = DeviceRequirements::minimal();
+        let high_perf = DeviceRequirements::high_performance();
+
+        assert!(high_perf.min_memory_bytes.unwrap() > minimal.min_memory_bytes.unwrap());
+    }
+
+    #[test]
+    fn test_cuda_framework() {
+        let cuda = GpuFramework::Cuda;
+        assert!(!cuda.is_universal());
+        assert_eq!(cuda.name(), "CUDA");
+        assert!(cuda.platform_compatibility().contains(&"Linux"));
+    }
+
+    #[test]
+    fn test_opencl_framework() {
+        let opencl = GpuFramework::OpenCl;
+        assert!(opencl.is_universal());
+        assert!(opencl.platform_compatibility().len() >= 3);
+        assert_eq!(opencl.name(), "OpenCL");
+    }
+
+    #[test]
+    fn test_vulkan_framework() {
+        let vulkan = GpuFramework::Vulkan;
+        assert!(vulkan.is_universal());
+        assert!(vulkan.platform_compatibility().contains(&"Linux"));
+        assert_eq!(vulkan.name(), "Vulkan");
+    }
+
+    #[test]
+    fn test_metal_framework() {
+        let metal = GpuFramework::Metal;
+        assert!(!metal.is_universal());
+        assert!(metal.platform_compatibility().contains(&"macOS"));
+        assert_eq!(metal.name(), "Metal");
+    }
+
+    #[test]
+    fn test_webgpu_framework() {
+        let webgpu = GpuFramework::WebGpu;
+        assert!(webgpu.is_universal());
+        assert!(webgpu.platform_compatibility().contains(&"Web"));
+        assert_eq!(webgpu.name(), "WebGPU");
+    }
+
+    #[test]
+    fn test_directcompute_framework() {
+        let dc = GpuFramework::DirectCompute;
+        assert!(!dc.is_universal());
+        assert!(dc.platform_compatibility().contains(&"Windows"));
+        assert_eq!(dc.name(), "DirectCompute");
+    }
+
+    #[test]
+    fn test_gpu_framework_debug() {
+        let cuda = GpuFramework::Cuda;
+        let debug_str = format!("{:?}", cuda);
+        assert!(debug_str.contains("Cuda"));
+    }
+
+    #[test]
+    fn test_device_requirements_custom() {
+        let reqs = DeviceRequirements {
+            min_memory_bytes: Some(4_000_000_000), // 4GB
+            min_compute_units: Some(16),
+            required_data_types: vec![],
+            required_extensions: vec![],
+            preferred_device_types: vec![],
+            min_compute_capability: Some("7.0".to_string()),
+        };
+
+        assert_eq!(reqs.min_memory_bytes, Some(4_000_000_000));
+        assert_eq!(reqs.min_compute_units, Some(16));
+        assert_eq!(reqs.min_compute_capability, Some("7.0".to_string()));
+    }
+
+    #[test]
+    fn test_device_requirements_with_extensions() {
+        let reqs = DeviceRequirements {
+            min_memory_bytes: Some(1_000_000_000),
+            min_compute_units: None,
+            required_data_types: vec![],
+            required_extensions: vec!["ext_fp64".to_string(), "ext_shared_memory".to_string()],
+            preferred_device_types: vec![],
+            min_compute_capability: None,
+        };
+
+        assert_eq!(reqs.required_extensions.len(), 2);
+        assert!(reqs.required_extensions.contains(&"ext_fp64".to_string()));
+    }
+
+    #[test]
+    fn test_multiple_frameworks_compatibility() {
+        let frameworks = vec![
+            (GpuFramework::Cuda, false),
+            (GpuFramework::OpenCl, true),
+            (GpuFramework::WebGpu, true),
+        ];
+
+        for (framework, expected_universal) in frameworks {
+            assert_eq!(framework.is_universal(), expected_universal);
+        }
+    }
+
+    #[test]
+    fn test_gpu_framework_clone() {
+        let cuda1 = GpuFramework::Cuda;
+        let cuda2 = cuda1.clone();
+
+        assert_eq!(format!("{:?}", cuda1), format!("{:?}", cuda2));
+    }
+
+    #[test]
+    fn test_device_requirements_clone() {
+        let reqs1 = DeviceRequirements::minimal();
+        let reqs2 = reqs1.clone();
+
+        assert_eq!(reqs1.min_memory_bytes, reqs2.min_memory_bytes);
     }
 }

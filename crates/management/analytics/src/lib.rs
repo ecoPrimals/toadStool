@@ -1,4 +1,4 @@
-//! ToadStool Advanced Analytics Engine
+//! `ToadStool` Advanced Analytics Engine
 //!
 //! This module provides sophisticated analytics capabilities including:
 //! - Real-time metrics aggregation and analysis
@@ -313,7 +313,7 @@ impl IntelligentAnalyticsEngine {
 
         // Initialize database schema
         sqlx::query(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS analytics_data (
                 id TEXT PRIMARY KEY,
                 timestamp TEXT NOT NULL,
@@ -323,14 +323,14 @@ impl IntelligentAnalyticsEngine {
                 execution_id TEXT,
                 tags TEXT
             )
-        "#,
+        ",
         )
         .execute(&database)
         .await
         .map_err(|e| ToadStoolError::io(e.to_string()))?;
 
         sqlx::query(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS alerts (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -342,7 +342,7 @@ impl IntelligentAnalyticsEngine {
                 last_triggered TEXT,
                 status TEXT NOT NULL
             )
-        "#,
+        ",
         )
         .execute(&database)
         .await
@@ -406,10 +406,10 @@ impl IntelligentAnalyticsEngine {
             let tags_json = serde_json::to_string(&data_point.tags)
                 .map_err(|e| ToadStoolError::validation(e.to_string()))?;
 
-            sqlx::query(r#"
+            sqlx::query(r"
                 INSERT INTO analytics_data (id, timestamp, metric_name, value, runtime_type, execution_id, tags)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#)
+            ")
             .bind(data_point.id.to_string())
             .bind(data_point.timestamp.to_rfc3339())
             .bind(&data_point.metric_name)
@@ -495,7 +495,7 @@ impl IntelligentAnalyticsEngine {
         let current_time = Utc::now();
 
         for i in 1..=hours_ahead {
-            let future_x = data.len() as f64 + i as f64;
+            let future_x = data.len() as f64 + f64::from(i);
             let predicted_value = slope * future_x + intercept;
 
             // Calculate confidence interval (simplified)
@@ -512,7 +512,7 @@ impl IntelligentAnalyticsEngine {
             );
 
             predictions.push(PredictionPoint {
-                timestamp: current_time + chrono::Duration::hours(i as i64),
+                timestamp: current_time + chrono::Duration::hours(i64::from(i)),
                 predicted_value,
                 confidence_interval,
                 prediction_method: "linear_regression".to_string(),
@@ -550,15 +550,15 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
     ) -> ToadStoolResult<TrendAnalysis> {
         debug!("Analyzing trends for metric: {}", metric_name);
 
-        let cutoff_time = Utc::now() - chrono::Duration::hours(hours_back as i64);
+        let cutoff_time = Utc::now() - chrono::Duration::hours(i64::from(hours_back));
 
         // Query historical data
         let rows = sqlx::query(
-            r#"
+            r"
             SELECT timestamp, value FROM analytics_data 
             WHERE metric_name = ? AND timestamp >= ?
             ORDER BY timestamp ASC
-        "#,
+        ",
         )
         .bind(metric_name)
         .bind(cutoff_time.to_rfc3339())
@@ -617,8 +617,8 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
         Ok(TrendAnalysis {
             metric_name: metric_name.to_string(),
-            start_time: timestamps.first().cloned().unwrap_or_else(Utc::now),
-            end_time: timestamps.last().cloned().unwrap_or_else(Utc::now),
+            start_time: timestamps.first().copied().unwrap_or_else(Utc::now),
+            end_time: timestamps.last().copied().unwrap_or_else(Utc::now),
             trend,
             statistics,
             confidence,
@@ -637,11 +637,11 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         let cutoff_time = Utc::now() - chrono::Duration::hours(168); // Last week
 
         let rows = sqlx::query(
-            r#"
+            r"
             SELECT value FROM analytics_data 
             WHERE metric_name = ? AND timestamp >= ?
             ORDER BY timestamp ASC
-        "#,
+        ",
         )
         .bind(metric_name)
         .bind(cutoff_time.to_rfc3339())
@@ -673,10 +673,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         let recent_time = Utc::now() - chrono::Duration::minutes(5);
 
         let rows = sqlx::query(
-            r#"
+            r"
             SELECT metric_name, value FROM analytics_data 
             WHERE timestamp >= ?
-        "#,
+        ",
         )
         .bind(recent_time.to_rfc3339())
         .fetch_all(&self.database)
@@ -769,11 +769,11 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 
             for metric_name in &panel.metrics {
                 let rows = sqlx::query(
-                    r#"
+                    r"
                     SELECT timestamp, value FROM analytics_data 
                     WHERE metric_name = ? AND timestamp >= ? AND timestamp <= ?
                     ORDER BY timestamp ASC
-                "#,
+                ",
                 )
                 .bind(metric_name)
                 .bind(panel.time_range.from.to_rfc3339())
@@ -814,7 +814,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         // Export to configured webhooks
         for webhook in &self.config.external_integrations.webhooks {
             match self.export_to_webhook(webhook).await {
-                Ok(_) => info!("Successfully exported metrics to webhook: {}", webhook.name),
+                Ok(()) => info!("Successfully exported metrics to webhook: {}", webhook.name),
                 Err(e) => error!(
                     "Failed to export metrics to webhook {}: {:?}",
                     webhook.name, e
@@ -834,11 +834,11 @@ impl IntelligentAnalyticsEngine {
         // Get recent metrics
         let recent_time = Utc::now() - chrono::Duration::hours(1);
         let rows = sqlx::query(
-            r#"
+            r"
             SELECT metric_name, value, timestamp FROM analytics_data 
             WHERE timestamp >= ?
             ORDER BY timestamp DESC
-        "#,
+        ",
         )
         .bind(recent_time.to_rfc3339())
         .fetch_all(&self.database)
@@ -898,8 +898,8 @@ fn calculate_median(data: &[f64]) -> f64 {
         return 0.0;
     }
 
-    if len % 2 == 0 {
-        (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0
+    if len.is_multiple_of(2) {
+        f64::midpoint(sorted[len / 2 - 1], sorted[len / 2])
     } else {
         sorted[len / 2]
     }

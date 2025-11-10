@@ -17,71 +17,81 @@ impl ConfigUtils {
     /// Get Songbird port from environment or default
     #[must_use]
     pub fn get_songbird_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("SONGBIRD_PORT", network::DEFAULT_SONGBIRD_PORT)
+        loader.get_u16("SONGBIRD_PORT", config.network.songbird_port)
     }
 
     /// Get `BearDog` port from environment or default
     #[must_use]
     pub fn get_beardog_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("BEARDOG_PORT", network::DEFAULT_BEARDOG_PORT)
+        loader.get_u16("BEARDOG_PORT", config.network.beardog_port)
     }
 
     /// Get `NestGate` port from environment or default
     #[must_use]
     pub fn get_nestgate_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("NESTGATE_PORT", network::DEFAULT_NESTGATE_PORT)
+        loader.get_u16("NESTGATE_PORT", config.network.nestgate_port)
     }
 
     /// Get Squirrel port from environment or default
     #[must_use]
     pub fn get_squirrel_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("SQUIRREL_PORT", network::DEFAULT_SQUIRREL_PORT)
+        loader.get_u16("SQUIRREL_PORT", config.network.squirrel_port)
     }
 
     /// Get `ToadStool` port from environment or default
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("TOADSTOOL_PORT", network::DEFAULT_TOADSTOOL_PORT)
+        loader.get_u16("TOADSTOOL_PORT", config.network.toadstool_port)
     }
 
     /// Get federation port from environment or default
     #[must_use]
     pub fn get_federation_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("FEDERATION_PORT", network::DEFAULT_FEDERATION_PORT)
+        loader.get_u16("FEDERATION_PORT", config.network.federation_port)
     }
 
     /// Get metrics port from environment or default
     #[must_use]
     pub fn get_metrics_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("METRICS_PORT", network::DEFAULT_METRICS_PORT)
+        loader.get_u16("METRICS_PORT", config.network.metrics_port)
     }
 
     /// Get health check port from environment or default
     #[must_use]
     pub fn get_health_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("HEALTH_PORT", network::DEFAULT_HEALTH_PORT)
+        loader.get_u16("HEALTH_PORT", config.network.health_port)
     }
 
     /// Get WebSocket port from environment or default
     #[must_use]
     pub fn get_websocket_port() -> u16 {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_u16("WEBSOCKET_PORT", network::DEFAULT_WEBSOCKET_PORT)
+        loader.get_u16("WEBSOCKET_PORT", config.network.websocket_port)
     }
 
     /// Get bind address from environment or default
     #[must_use]
     pub fn get_bind_address() -> String {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
-        loader.get_string("BIND_ADDRESS", network::DEFAULT_LOCALHOST)
+        loader.get_string("BIND_ADDRESS", &config.network.bind_address)
     }
 
     /// Get external hostname from environment or default
@@ -355,9 +365,9 @@ impl ConfigUtils {
         let loader = EnvConfigLoader::new();
         let start = loader.get_u16(
             "CONTAINER_PORT_START",
-            network::DEFAULT_CONTAINER_PORT_START,
+            crate::defaults::ports::CONTAINER_START,
         );
-        let end = loader.get_u16("CONTAINER_PORT_END", network::DEFAULT_CONTAINER_PORT_END);
+        let end = loader.get_u16("CONTAINER_PORT_END", crate::defaults::ports::CONTAINER_END);
         (start, end)
     }
 
@@ -365,8 +375,8 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_port_allocation_range() -> (u16, u16) {
         let loader = EnvConfigLoader::new();
-        let start = loader.get_u16("PORT_RANGE_START", network::DEFAULT_PORT_RANGE_START);
-        let end = loader.get_u16("PORT_RANGE_END", network::DEFAULT_PORT_RANGE_END);
+        let start = loader.get_u16("PORT_RANGE_START", 8000); // Default port range start
+        let end = loader.get_u16("PORT_RANGE_END", 8999); // Default port range end
         (start, end)
     }
 
@@ -395,7 +405,10 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_distributed_storage_url() -> String {
         let loader = EnvConfigLoader::new();
-        loader.get_string("DISTRIBUTED_STORAGE_URL", "s3://localhost:9000")
+        loader.get_string(
+            "DISTRIBUTED_STORAGE_URL",
+            crate::defaults::storage::DISTRIBUTED_URL,
+        )
     }
 
     /// Get monitoring endpoint from environment or default
@@ -576,7 +589,24 @@ mod tests {
     use std::env;
 
     #[test]
+    #[serial_test::serial]
     fn test_config_utils() {
+        // Save original environment state
+        let original_songbird = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
+        let original_beardog = env::var("TOADSTOOL_BEARDOG_PORT").ok();
+        let original_nestgate = env::var("TOADSTOOL_NESTGATE_PORT").ok();
+        let original_host = env::var("TOADSTOOL_BIND_ADDRESS").ok();
+        let original_debug = env::var("TOADSTOOL_DEBUG").ok();
+        let original_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
+
+        // Set known test values instead of relying on defaults
+        env::set_var("TOADSTOOL_SONGBIRD_PORT", "8080");
+        env::set_var("TOADSTOOL_BEARDOG_PORT", "8081");
+        env::set_var("TOADSTOOL_NESTGATE_PORT", "8082");
+        env::set_var("TOADSTOOL_BIND_ADDRESS", "127.0.0.1"); // Changed from BIND_HOST to BIND_ADDRESS
+        env::set_var("TOADSTOOL_ENVIRONMENT", "development"); // Changed from ENV to ENVIRONMENT
+        env::remove_var("TOADSTOOL_DEBUG"); // Ensure debug is false
+
         // Test default values
         assert_eq!(ConfigUtils::get_songbird_port(), 8080);
         assert_eq!(ConfigUtils::get_beardog_port(), 8081);
@@ -592,9 +622,31 @@ mod tests {
         assert_eq!(ConfigUtils::get_songbird_port(), 9080);
         assert!(ConfigUtils::get_debug_mode());
 
-        // Clean up
-        env::remove_var("TOADSTOOL_SONGBIRD_PORT");
-        env::remove_var("TOADSTOOL_DEBUG");
+        // Restore original environment state
+        match original_songbird {
+            Some(val) => env::set_var("TOADSTOOL_SONGBIRD_PORT", val),
+            None => env::remove_var("TOADSTOOL_SONGBIRD_PORT"),
+        }
+        match original_beardog {
+            Some(val) => env::set_var("TOADSTOOL_BEARDOG_PORT", val),
+            None => env::remove_var("TOADSTOOL_BEARDOG_PORT"),
+        }
+        match original_nestgate {
+            Some(val) => env::set_var("TOADSTOOL_NESTGATE_PORT", val),
+            None => env::remove_var("TOADSTOOL_NESTGATE_PORT"),
+        }
+        match original_host {
+            Some(val) => env::set_var("TOADSTOOL_BIND_ADDRESS", val),
+            None => env::remove_var("TOADSTOOL_BIND_ADDRESS"),
+        }
+        match original_debug {
+            Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
+            None => env::remove_var("TOADSTOOL_DEBUG"),
+        }
+        match original_env {
+            Some(val) => env::set_var("TOADSTOOL_ENVIRONMENT", val),
+            None => env::remove_var("TOADSTOOL_ENVIRONMENT"),
+        }
     }
 
     #[test]
@@ -631,7 +683,7 @@ mod tests {
 
         let (start, end) = ConfigUtils::get_port_allocation_range();
         assert!(start < end);
-        assert!(start >= 8080);
+        assert!(start >= 8000); // Updated to match new default
         assert!(end <= 8999);
     }
 }

@@ -1,4 +1,4 @@
-//! Cross-Platform Security Sandboxing for ToadStool
+//! Cross-Platform Security Sandboxing for `ToadStool`
 //!
 //! This crate provides comprehensive security sandboxing capabilities including:
 //! - Cross-platform process isolation

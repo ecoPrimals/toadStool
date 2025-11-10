@@ -7,6 +7,8 @@ description = "ToadStool universal compute server library"
 [dependencies]
 # ToadStool core dependencies
 toadstool = { path = "../core/toadstool", features = ["networking"] }
+toadstool-config = { path = "../core/config" }
+toadstool-common = { path = "../core/common" }
 
 # HTTP server framework (optional)
 axum = { version = "0.7", features = ["ws"], optional = true }
@@ -42,3 +44,4 @@ websocket = ["axum/ws"]
 
 [dev-dependencies]
 tokio-test = "0.4"
+toadstool-testing = { path = "../testing" }

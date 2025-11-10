@@ -5,6 +5,11 @@ edition.workspace = true
 description = "ToadStool universal compute client library"
 
 [dependencies]
+# Core dependencies
+toadstool = { path = "../core/toadstool" }
+toadstool-config = { path = "../core/config" }
+toadstool-common = { path = "../core/common" }
+
 # HTTP client and networking
 reqwest = { version = "0.11", features = ["json", "stream"] }
 url = "2.4"

@@ -14,8 +14,8 @@
 //!
 //! ## Usage
 //!
-//! ```rust
-//! use toadstool_integration_nestgate::NestGateClient;
+//! ```ignore
+//! use toadstool_integration_nestgate::{NestGateClient, ArtifactType};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = NestGateClient::connect("http://nestgate:8080").await?;
@@ -66,7 +66,9 @@ mod tests {
     #[test]
     fn test_nestgate_config_default() {
         let config = NestGateConfig::default();
-        assert_eq!(config.endpoint, "http://localhost:8084");
+        // Uses environment-aware configuration (TOADSTOOL_NESTGATE_PORT defaults to 8082)
+        assert!(config.endpoint.starts_with("http://"));
+        assert!(config.endpoint.contains(":808")); // Port in 8080-8089 range
         assert!(config.cache.as_ref().map(|c| c.enabled).unwrap_or(false));
         // Future enhancement: Add storage preferences configuration
     }

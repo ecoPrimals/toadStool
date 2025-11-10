@@ -1,6 +1,6 @@
 //! # Universal Compute Platform
 //!
-//! The heart of ToadStool's universal compute capabilities. This module implements
+//! The heart of `ToadStool`'s universal compute capabilities. This module implements
 //! the core principle: "If it computes, we can run it"
 
 use std::collections::HashMap;
@@ -18,7 +18,8 @@ use tracing::{debug, info};
 use crate::error::{ToadStoolError, ToadStoolResult};
 use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType};
 use crate::resources::ResourceRequirements;
-use toadstool_config::network;
+use toadstool_config::defaults;
+use toadstool_config::env_config::EnvironmentConfig;
 
 //
 // ============================================================================
@@ -72,17 +73,17 @@ pub struct PrimalContext {
 /// Primal type categories
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PrimalType {
-    /// Compute primal (ToadStool)
+    /// Compute primal (`ToadStool`)
     Compute,
-    /// Security primal (BearDog)
+    /// Security primal (`BearDog`)
     Security,
-    /// Storage primal (NestGate)
+    /// Storage primal (`NestGate`)
     Storage,
     /// AI primal (Squirrel)
     AI,
     /// Network primal (Songbird)
     Network,
-    /// OS primal (BiomeOS)
+    /// OS primal (`BiomeOS`)
     OS,
     /// Custom primal type
     Custom(String),
@@ -289,9 +290,9 @@ pub struct UniversalPrimalRegistry {
     providers: RwLock<HashMap<String, Arc<dyn UniversalPrimalProvider>>>,
     /// Capability index: capability -> provider instance IDs
     capability_index: RwLock<HashMap<String, Vec<String>>>,
-    /// Context index: user_id -> provider instance IDs
+    /// Context index: `user_id` -> provider instance IDs
     context_index: RwLock<HashMap<String, Vec<String>>>,
-    /// Type index: primal_type -> provider instance IDs
+    /// Type index: `primal_type` -> provider instance IDs
     type_index: RwLock<HashMap<String, Vec<String>>>,
 }
 
@@ -303,6 +304,7 @@ impl Default for UniversalPrimalRegistry {
 
 impl UniversalPrimalRegistry {
     /// Create new registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             providers: RwLock::new(HashMap::new()),
@@ -423,14 +425,21 @@ impl UniversalPrimalRegistry {
 // ============================================================================
 //
 
-/// Job priority levels
+/// Job priority levels (lower number = higher priority)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum JobPriority {
-    Low = 0,
-    Normal = 1,
+    /// Emergency - highest priority (level 0)
+    Emergency = 0,
+    /// Critical - very high priority (level 1)
+    Critical = 1,
+    /// High priority (level 2)
     High = 2,
-    Critical = 3,
-    Emergency = 4,
+    /// Normal priority (level 3)
+    Normal = 3,
+    /// Low priority (level 4)
+    Low = 4,
+    /// Background - lowest priority (level 5)
+    Background = 5,
 }
 
 /// Universal job types
@@ -454,7 +463,7 @@ pub enum UniversalJobType {
         endpoint: String,
         payload: serde_json::Value,
     },
-    /// BiomeOS orchestration
+    /// `BiomeOS` orchestration
     BiomeOS {
         biome_manifest: serde_json::Value,
         team_id: String,
@@ -486,9 +495,9 @@ pub struct UniversalJob {
 // ============================================================================
 //
 
-/// System resources
+/// Universal system resources (used by universal scheduler/coordinator)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemResources {
+pub struct UniversalSystemResources {
     /// CPU cores
     pub cpu_cores: f64,
     /// Memory in bytes
@@ -519,7 +528,7 @@ pub struct ResourceAllocation {
 /// Resource coordinator
 pub struct ResourceCoordinator {
     /// Available resources
-    available_resources: Arc<RwLock<SystemResources>>,
+    available_resources: Arc<RwLock<UniversalSystemResources>>,
     /// Allocation history
     allocation_history: Arc<RwLock<Vec<ResourceAllocation>>>,
 }
@@ -527,7 +536,7 @@ pub struct ResourceCoordinator {
 impl ResourceCoordinator {
     /// Create new resource coordinator
     pub async fn new() -> ToadStoolResult<Self> {
-        let available_resources = SystemResources {
+        let available_resources = UniversalSystemResources {
             cpu_cores: 8.0,                          // Default to 8 cores
             memory_bytes: 8 * 1024 * 1024 * 1024,    // 8GB default
             storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB default
@@ -577,7 +586,7 @@ impl ResourceCoordinator {
     }
 
     /// Get available resources
-    pub async fn get_available_resources(&self) -> SystemResources {
+    pub async fn get_available_resources(&self) -> UniversalSystemResources {
         self.available_resources.read().await.clone()
     }
 }
@@ -697,7 +706,7 @@ impl UniversalScheduler {
                     device_id: "local".to_string(),
                     session_id: Uuid::new_v4().to_string(),
                     network_location: NetworkLocation {
-                        ip_address: "127.0.0.1".to_string(),
+                        ip_address: defaults::network::LOCALHOST.to_string(),
                         subnet: None,
                         network_id: None,
                         geo_location: None,
@@ -732,16 +741,16 @@ impl UniversalScheduler {
                         .payload
                         .get("stdout")
                         .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
+                        .map(std::string::ToString::to_string),
                     stderr: response
                         .payload
                         .get("stderr")
                         .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
+                        .map(std::string::ToString::to_string),
                     exit_code: response
                         .payload
                         .get("exit_code")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .map(|i| i as i32),
                     format: Some("application/json".to_string()),
                     result: HashMap::new(),
@@ -837,7 +846,7 @@ impl UniversalScheduler {
                     device_id: "local".to_string(),
                     session_id: Uuid::new_v4().to_string(),
                     network_location: NetworkLocation {
-                        ip_address: "127.0.0.1".to_string(),
+                        ip_address: defaults::network::LOCALHOST.to_string(),
                         subnet: None,
                         network_id: None,
                         geo_location: None,
@@ -872,16 +881,16 @@ impl UniversalScheduler {
                         .payload
                         .get("stdout")
                         .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
+                        .map(std::string::ToString::to_string),
                     stderr: response
                         .payload
                         .get("stderr")
                         .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
+                        .map(std::string::ToString::to_string),
                     exit_code: response
                         .payload
                         .get("exit_code")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .map(|i| i as i32),
                     format: Some("application/json".to_string()),
                     result: HashMap::new(),
@@ -1063,7 +1072,7 @@ pub struct UniversalPlatformConfig {
     pub recursive_hosting: bool,
     /// Enable ecosystem integration
     pub ecosystem_integration: bool,
-    /// Enable BiomeOS integration
+    /// Enable `BiomeOS` integration
     pub biomeos_integration: bool,
     /// Maximum concurrent jobs
     pub max_concurrent_jobs: u32,
@@ -1093,7 +1102,7 @@ pub struct UniversalComputePlatform {
     scheduler: Arc<UniversalScheduler>,
     /// Primal registry
     primal_registry: Arc<UniversalPrimalRegistry>,
-    /// ToadStool primal provider
+    /// `ToadStool` primal provider
     toadstool_provider: Option<Arc<ToadStoolPrimalProvider>>,
 }
 
@@ -1123,14 +1132,14 @@ impl UniversalComputePlatform {
         Ok(platform)
     }
 
-    /// Register ToadStool as a universal primal
+    /// Register `ToadStool` as a universal primal
     async fn register_as_universal_primal(&mut self) -> ToadStoolResult<()> {
         let context = PrimalContext {
             user_id: "system".to_string(),
-            device_id: "localhost".to_string(),
+            device_id: defaults::network::LOCALHOST.to_string(),
             session_id: Uuid::new_v4().to_string(),
             network_location: NetworkLocation {
-                ip_address: "127.0.0.1".to_string(),
+                ip_address: defaults::network::LOCALHOST.to_string(),
                 subnet: None,
                 network_id: None,
                 geo_location: None,
@@ -1204,16 +1213,19 @@ impl UniversalComputePlatform {
     }
 
     /// Get platform configuration
+    #[must_use]
     pub fn get_config(&self) -> &UniversalPlatformConfig {
         &self.config
     }
 
     /// Check if recursive hosting is enabled
+    #[must_use]
     pub fn is_recursive_hosting_enabled(&self) -> bool {
         self.config.recursive_hosting
     }
 
-    /// Check if BiomeOS integration is enabled
+    /// Check if `BiomeOS` integration is enabled
+    #[must_use]
     pub fn is_biomeos_integration_enabled(&self) -> bool {
         self.config.biomeos_integration
     }
@@ -1225,7 +1237,7 @@ impl UniversalComputePlatform {
 // ============================================================================
 //
 
-/// ToadStool primal provider implementation
+/// `ToadStool` primal provider implementation
 pub struct ToadStoolPrimalProvider {
     /// Context
     context: PrimalContext,
@@ -1234,7 +1246,8 @@ pub struct ToadStoolPrimalProvider {
 }
 
 impl ToadStoolPrimalProvider {
-    /// Create new ToadStool primal provider
+    /// Create new `ToadStool` primal provider
+    #[must_use]
     pub fn new(context: PrimalContext) -> Self {
         Self {
             context,
@@ -1245,11 +1258,11 @@ impl ToadStoolPrimalProvider {
 
 #[async_trait]
 impl UniversalPrimalProvider for ToadStoolPrimalProvider {
-    fn primal_id(&self) -> &str {
+    fn primal_id(&self) -> &'static str {
         "toadstool"
     }
 
-    fn instance_id(&self) -> &str {
+    fn instance_id(&self) -> &'static str {
         "toadstool-main"
     }
 
@@ -1295,32 +1308,16 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
+        let config = EnvironmentConfig::from_env();
+        let host = &config.network.bind_address;
+        let port = config.network.toadstool_port;
+
         PrimalEndpoints {
-            primary: format!(
-                "http://{}:{}",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
-            ),
-            health: format!(
-                "http://{}:{}/health",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
-            ),
-            metrics: Some(format!(
-                "http://{}:{}/metrics",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
-            )),
-            admin: Some(format!(
-                "http://{}:{}/admin",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
-            )),
-            websocket: Some(format!(
-                "ws://{}:{}/ws",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
-            )),
+            primary: format!("http://{host}:{port}"),
+            health: format!("http://{host}:{port}/health"),
+            metrics: Some(format!("http://{host}:{port}/metrics")),
+            admin: Some(format!("http://{host}:{port}/admin")),
+            websocket: Some(format!("ws://{host}:{port}/ws")),
             custom: HashMap::new(),
         }
     }

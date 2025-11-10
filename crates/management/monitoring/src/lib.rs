@@ -1,4 +1,4 @@
-//! ToadStool monitoring component
+//! `ToadStool` monitoring component
 //!
 //! Cross-platform resource monitoring with configurable granularity.
 
@@ -38,6 +38,7 @@ pub enum MonitoringGranularity {
 }
 
 impl MonitoringGranularity {
+    #[must_use]
     pub fn to_duration(self) -> Duration {
         match self {
             MonitoringGranularity::SubMillisecond => Duration::from_micros(100),
@@ -88,7 +89,7 @@ pub enum ThresholdAction {
     Terminate,
 }
 
-/// Concrete implementation of ResourceMonitor trait that provides
+/// Concrete implementation of `ResourceMonitor` trait that provides
 /// configurable, high-granularity resource monitoring
 #[derive(Debug)]
 pub struct SystemResourceMonitor {
@@ -200,12 +201,14 @@ impl From<ResourceMonitorError> for ToadStoolError {
 }
 
 impl SystemResourceMonitor {
-    /// Creates a new SystemResourceMonitor instance with default configuration
+    /// Creates a new `SystemResourceMonitor` instance with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(MonitoringConfig::default())
     }
 
-    /// Creates a new SystemResourceMonitor instance with custom configuration
+    /// Creates a new `SystemResourceMonitor` instance with custom configuration
+    #[must_use]
     pub fn with_config(config: MonitoringConfig) -> Self {
         SystemResourceMonitor {
             process_map: Arc::new(RwLock::new(HashMap::new())),

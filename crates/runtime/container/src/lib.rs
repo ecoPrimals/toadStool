@@ -1,14 +1,14 @@
-//! # ToadStool Container Runtime Engine
+//! # `ToadStool` Container Runtime Engine
 //!
 //! High-performance container runtime engine with Docker, Containerd, and Podman support,
 //! comprehensive security isolation, resource limits, and network policies.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -601,32 +601,34 @@ impl ContainerRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for ContainerRuntimeEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
-        debug!("Initializing container runtime engine");
+    fn initialize(&mut self, _config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
+            debug!("Initializing container runtime engine");
 
-        // Test Docker connection if available
-        #[cfg(feature = "docker")]
-        if let Some(docker) = &self.docker {
-            match docker.ping().await {
-                Ok(_) => {
-                    info!("Docker connection established successfully");
-                }
-                Err(e) => {
-                    return Err(ToadStoolError::configuration(format!(
-                        "Docker connection test failed: {e}"
-                    )));
+            // Test Docker connection if available
+            #[cfg(feature = "docker")]
+            if let Some(docker) = &self.docker {
+                match docker.ping().await {
+                    Ok(_) => {
+                        info!("Docker connection established successfully");
+                    }
+                    Err(e) => {
+                        return Err(ToadStoolError::configuration(format!(
+                            "Docker connection test failed: {e}"
+                        )));
+                    }
                 }
             }
-        }
 
-        info!("Container runtime engine initialized successfully");
-        Ok(())
+            info!("Container runtime engine initialized successfully");
+            Ok(())
+        })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        debug!("Executing container workload: {}", request.execution_id);
+    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
+            debug!("Executing container workload: {}", request.execution_id);
 
         // Validate resource requirements
         self.validate_resource_requirements(&request)?;
@@ -663,6 +665,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                 "Invalid workload type for container runtime",
             ))
         }
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -673,7 +676,8 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         matches!(workload_type, WorkloadType::Container)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
+    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async {
         // Collect system-level metrics that represent container runtime state
         // In a full implementation, this would integrate with Docker/containerd APIs
 
@@ -737,15 +741,17 @@ impl RuntimeEngine for ContainerRuntimeEngine {
             gpu: None, // Containers typically don't expose GPU metrics directly
             timing: timing_metrics,
         })
+        })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
         info!("Shutting down container runtime engine");
 
         // Stop all active containers
         let container_ids: Vec<Uuid> = {
             let containers = self.active_containers.read().await;
-            containers.keys().cloned().collect()
+            containers.keys().copied().collect()
         };
 
         #[cfg(feature = "docker")]
@@ -769,6 +775,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
 
         info!("Container runtime engine shut down successfully");
         Ok(())
+        })
     }
 }
 
@@ -799,7 +806,7 @@ impl Default for ContainerRuntimeEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool::{IsolationLevel, SecurityContext, PortProtocol, VolumeMountType};
+    use toadstool::{IsolationLevel, PortProtocol, SecurityContext, VolumeMountType};
 
     fn create_test_request(_image: &str) -> ExecutionRequest {
         ExecutionRequest {
@@ -883,8 +890,8 @@ mod tests {
         if let Ok(engine) = ContainerRuntimeEngine::new() {
             let mut request = create_test_request("hello-world");
 
-            // Set memory requirement that exceeds limits
-            request.resources.memory.max_bytes = Some(10240); // 10GB
+            // Set memory requirement that exceeds limits (default is 512MB)
+            request.resources.memory.max_bytes = Some(10 * 1024 * 1024 * 1024); // 10GB
 
             let result = engine.validate_resource_requirements(&request);
             assert!(result.is_err());

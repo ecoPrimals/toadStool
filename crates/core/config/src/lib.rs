@@ -31,52 +31,25 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 pub mod config_utils;
+pub mod defaults;
 pub mod env_config;
 pub mod runtime_defaults;
 
-/// Network configuration constants
+/// Network configuration utilities
+///
+/// **Migration Note**: For runtime configuration, use `EnvironmentConfig::from_env()`
+/// or the `ConfigUtils` helper methods. These provide environment variable support
+/// and better defaults.
+///
+/// **Recommended**:
+/// - `EnvironmentConfig::from_env()` - Full configuration with env var support
+/// - `ConfigUtils::get_songbird_port()` - Individual port getters with env var fallback
 pub mod network {
-    /// Default localhost address
-    pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
-
-    /// Default Songbird service port
-    pub const DEFAULT_SONGBIRD_PORT: u16 = 8080;
-
-    /// Default `BearDog` service port
-    pub const DEFAULT_BEARDOG_PORT: u16 = 8081;
-
-    /// Default `NestGate` service port
-    pub const DEFAULT_NESTGATE_PORT: u16 = 8082;
-
-    /// Default Squirrel MCP service port
-    pub const DEFAULT_SQUIRREL_PORT: u16 = 8083;
-
-    /// Default `ToadStool` API port
-    pub const DEFAULT_TOADSTOOL_PORT: u16 = 8084;
-
-    /// Default federation port
-    pub const DEFAULT_FEDERATION_PORT: u16 = 7777;
-
-    /// Default metrics port
-    pub const DEFAULT_METRICS_PORT: u16 = 9090;
-
-    /// Default health check port
-    pub const DEFAULT_HEALTH_PORT: u16 = 8085;
-
-    /// Default WebSocket port
-    pub const DEFAULT_WEBSOCKET_PORT: u16 = 8086;
-
-    /// Default container port range start
-    pub const DEFAULT_CONTAINER_PORT_START: u16 = 3000;
-
-    /// Default container port range end
-    pub const DEFAULT_CONTAINER_PORT_END: u16 = 3999;
-
-    /// Default port allocation range start
-    pub const DEFAULT_PORT_RANGE_START: u16 = 8080;
-
-    /// Default port allocation range end
-    pub const DEFAULT_PORT_RANGE_END: u16 = 8999;
+    // Note: Old hardcoded constants were removed in 0.6.0 to encourage use of
+    // EnvironmentConfig and ConfigUtils which provide:
+    // - Environment variable override support
+    // - Consistent defaults from toadstool_config::defaults
+    // - Better testability and configuration management
 
     /// Default request timeout in seconds
     pub const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
@@ -96,42 +69,173 @@ pub mod network {
     /// Generate default Songbird endpoint
     #[must_use]
     pub fn default_songbird_endpoint() -> String {
-        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_SONGBIRD_PORT}")
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "http://{}:{}",
+            config.network.bind_address, config.network.songbird_port
+        )
     }
 
     /// Generate default `BearDog` endpoint
     #[must_use]
     pub fn default_beardog_endpoint() -> String {
-        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_BEARDOG_PORT}")
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "http://{}:{}",
+            config.network.bind_address, config.network.beardog_port
+        )
     }
 
     /// Generate default `NestGate` endpoint
     #[must_use]
     pub fn default_nestgate_endpoint() -> String {
-        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_NESTGATE_PORT}")
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "http://{}:{}",
+            config.network.bind_address, config.network.nestgate_port
+        )
     }
 
     /// Generate default Squirrel MCP endpoint
     #[must_use]
     pub fn default_squirrel_endpoint() -> String {
-        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_SQUIRREL_PORT}")
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "http://{}:{}",
+            config.network.bind_address, config.network.squirrel_port
+        )
     }
 
     /// Generate default `ToadStool` API endpoint
     #[must_use]
     pub fn default_toadstool_endpoint() -> String {
-        format!("http://{DEFAULT_LOCALHOST}:{DEFAULT_TOADSTOOL_PORT}")
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "http://{}:{}",
+            config.network.bind_address, config.network.toadstool_port
+        )
     }
 
     /// Generate default federation address
     #[must_use]
     pub fn default_federation_address() -> std::net::SocketAddr {
-        format!("{DEFAULT_LOCALHOST}:{DEFAULT_FEDERATION_PORT}")
-            .parse()
-            .unwrap_or_else(|_| {
-                tracing::error!("Invalid default federation address configuration");
-                std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_FEDERATION_PORT))
-            })
+        let config = crate::env_config::EnvironmentConfig::from_env();
+        format!(
+            "{}:{}",
+            config.network.bind_address, config.network.federation_port
+        )
+        .parse()
+        .unwrap_or_else(|_| {
+            tracing::error!("Invalid default federation address configuration");
+            std::net::SocketAddr::from(([127, 0, 0, 1], config.network.federation_port))
+        })
+    }
+
+    // ===== NEW ENVIRONMENT-AWARE FUNCTIONS =====
+    // These functions use EnvironmentConfig for runtime configuration
+    // and replace hardcoded constants
+
+    /// Get Songbird port from environment or default
+    ///
+    /// This function respects `TOADSTOOL_SONGBIRD_PORT` environment variable.
+    #[must_use]
+    pub fn get_songbird_port() -> u16 {
+        std::env::var("TOADSTOOL_SONGBIRD_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080)
+    }
+
+    /// Get `BearDog` port from environment or default
+    ///
+    /// This function respects `TOADSTOOL_BEARDOG_PORT` environment variable.
+    #[must_use]
+    pub fn get_beardog_port() -> u16 {
+        std::env::var("TOADSTOOL_BEARDOG_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8081)
+    }
+
+    /// Get `NestGate` port from environment or default
+    ///
+    /// This function respects `TOADSTOOL_NESTGATE_PORT` environment variable.
+    #[must_use]
+    pub fn get_nestgate_port() -> u16 {
+        std::env::var("TOADSTOOL_NESTGATE_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8082)
+    }
+
+    /// Get Squirrel MCP port from environment or default
+    ///
+    /// This function respects `TOADSTOOL_SQUIRREL_PORT` environment variable.
+    #[must_use]
+    pub fn get_squirrel_port() -> u16 {
+        std::env::var("TOADSTOOL_SQUIRREL_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8083)
+    }
+
+    /// Get `ToadStool` API port from environment or default
+    ///
+    /// This function respects `TOADSTOOL_API_PORT` environment variable.
+    #[must_use]
+    pub fn get_toadstool_port() -> u16 {
+        std::env::var("TOADSTOOL_API_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8084)
+    }
+
+    /// Get bind host from environment or default
+    ///
+    /// This function respects `TOADSTOOL_BIND_HOST` environment variable.
+    #[must_use]
+    pub fn get_bind_host() -> String {
+        std::env::var("TOADSTOOL_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
+    }
+
+    /// Generate Songbird endpoint from environment configuration
+    ///
+    /// This function uses environment variables for runtime configuration.
+    #[must_use]
+    pub fn get_songbird_endpoint() -> String {
+        format!("http://{}:{}", get_bind_host(), get_songbird_port())
+    }
+
+    /// Generate `BearDog` endpoint from environment configuration
+    ///
+    /// This function uses environment variables for runtime configuration.
+    #[must_use]
+    pub fn get_beardog_endpoint() -> String {
+        format!("http://{}:{}", get_bind_host(), get_beardog_port())
+    }
+
+    /// Generate `NestGate` endpoint from environment configuration
+    ///
+    /// This function uses environment variables for runtime configuration.
+    #[must_use]
+    pub fn get_nestgate_endpoint() -> String {
+        format!("http://{}:{}", get_bind_host(), get_nestgate_port())
+    }
+
+    /// Generate Squirrel MCP endpoint from environment configuration
+    ///
+    /// This function uses environment variables for runtime configuration.
+    #[must_use]
+    pub fn get_squirrel_endpoint() -> String {
+        format!("http://{}:{}", get_bind_host(), get_squirrel_port())
+    }
+
+    /// Generate `ToadStool` API endpoint from environment configuration
+    ///
+    /// This function uses environment variables for runtime configuration.
+    #[must_use]
+    pub fn get_toadstool_endpoint() -> String {
+        format!("http://{}:{}", get_bind_host(), get_toadstool_port())
     }
 }
 
@@ -481,7 +585,7 @@ pub struct ToadStoolConfig {
     /// Database configuration
     pub database: Option<DatabaseConfig>,
     /// Cache configuration
-    pub cache: Option<CacheConfig>,
+    pub cache: Option<BackendCacheConfig>,
     /// Metrics configuration
     pub metrics: Option<MetricsConfig>,
     /// Feature flags
@@ -550,11 +654,11 @@ pub struct NetworkConfig {
 
 impl Default for NetworkConfig {
     fn default() -> Self {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         Self {
             bind_address: format!(
                 "{}:{}",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_TOADSTOOL_PORT
+                config.network.bind_address, config.network.toadstool_port
             )
             .parse()
             .expect("Invalid default bind address"),
@@ -586,6 +690,7 @@ pub struct EndpointConfig {
 
 impl Default for EndpointConfig {
     fn default() -> Self {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         Self {
             songbird: network::default_songbird_endpoint(),
             beardog: network::default_beardog_endpoint(),
@@ -593,18 +698,15 @@ impl Default for EndpointConfig {
             squirrel: network::default_squirrel_endpoint(),
             federation: format!(
                 "http://{}:{}",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_FEDERATION_PORT
+                config.network.bind_address, config.network.federation_port
             ),
             metrics: format!(
                 "http://{}:{}",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_METRICS_PORT
+                config.network.bind_address, config.network.metrics_port
             ),
             health: format!(
                 "http://{}:{}",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_HEALTH_PORT
+                config.network.bind_address, config.network.health_port
             ),
         }
     }
@@ -750,10 +852,7 @@ impl Default for ContainerConfig {
         Self {
             runtime: "docker".to_string(),
             default_registry: "docker.io".to_string(),
-            port_range: (
-                network::DEFAULT_CONTAINER_PORT_START,
-                network::DEFAULT_CONTAINER_PORT_END,
-            ),
+            port_range: crate::config_utils::ConfigUtils::get_container_port_range(),
             network_mode: "bridge".to_string(),
             security_opts: vec!["no-new-privileges".to_string()],
             volume_mounts: vec![],
@@ -1093,12 +1192,16 @@ pub struct DatabaseConfig {
     pub migration_dir: String,
 }
 
-/// Cache configuration
+/// Backend cache configuration for distributed caching systems
+///
+/// This is distinct from `toadstool::config_bases::CacheConfig` which is for
+/// simple in-memory caching. This config is for distributed cache backends
+/// like Redis, Memcached, etc. with compression and persistence support.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CacheConfig {
-    /// Cache type
+pub struct BackendCacheConfig {
+    /// Cache type (redis, memcached, memory, etc.)
     pub cache_type: String,
-    /// Cache URL
+    /// Cache backend URL (for distributed caches)
     pub url: Option<String>,
     /// Max size in bytes
     pub max_size: u64,
@@ -1106,11 +1209,11 @@ pub struct CacheConfig {
     pub ttl: Duration,
     /// Enable compression
     pub enable_compression: bool,
-    /// Compression algorithm
+    /// Compression algorithm (gzip, lz4, zstd)
     pub compression_algorithm: String,
 }
 
-impl Default for CacheConfig {
+impl Default for BackendCacheConfig {
     fn default() -> Self {
         Self {
             cache_type: "memory".to_string(),
@@ -1146,12 +1249,12 @@ pub struct MetricsConfig {
 
 impl Default for MetricsConfig {
     fn default() -> Self {
+        let config = crate::env_config::EnvironmentConfig::from_env();
         Self {
             enabled: true,
             endpoint: format!(
                 "http://{}:{}/metrics",
-                network::DEFAULT_LOCALHOST,
-                network::DEFAULT_METRICS_PORT
+                config.network.bind_address, config.network.metrics_port
             ),
             format: "prometheus".to_string(),
             collection_interval: Duration::from_secs(app::DEFAULT_METRICS_INTERVAL_SECS),
@@ -1375,15 +1478,38 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_network_constants() {
-        assert_eq!(network::DEFAULT_LOCALHOST, "127.0.0.1");
-        assert_eq!(network::DEFAULT_SONGBIRD_PORT, 8080);
-        assert_eq!(network::DEFAULT_BEARDOG_PORT, 8081);
-        assert_eq!(network::DEFAULT_NESTGATE_PORT, 8082);
+        // Save original environment state
+        let original_host = std::env::var("TOADSTOOL_BIND_HOST").ok();
+        let original_addr = std::env::var("TOADSTOOL_BIND_ADDRESS").ok();
+        let original_port = std::env::var("TOADSTOOL_SONGBIRD_PORT").ok();
+
+        // Clear env vars to test defaults (both old BIND_HOST and new BIND_ADDRESS)
+        std::env::remove_var("TOADSTOOL_BIND_HOST");
+        std::env::remove_var("TOADSTOOL_BIND_ADDRESS");
+        std::env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+
+        // Note: Deprecated constants were removed in 0.6.0
+        // Now using EnvironmentConfig and ConfigUtils for all configuration
 
         let songbird_endpoint = network::default_songbird_endpoint();
         assert!(songbird_endpoint.contains("8080"));
         assert!(songbird_endpoint.contains("127.0.0.1"));
+
+        // Restore original environment state
+        match original_host {
+            Some(val) => std::env::set_var("TOADSTOOL_BIND_HOST", val),
+            None => std::env::remove_var("TOADSTOOL_BIND_HOST"),
+        }
+        match original_addr {
+            Some(val) => std::env::set_var("TOADSTOOL_BIND_ADDRESS", val),
+            None => std::env::remove_var("TOADSTOOL_BIND_ADDRESS"),
+        }
+        match original_port {
+            Some(val) => std::env::set_var("TOADSTOOL_SONGBIRD_PORT", val),
+            None => std::env::remove_var("TOADSTOOL_SONGBIRD_PORT"),
+        }
     }
 
     #[test]

@@ -1,0 +1,26 @@
+//! Platform detection types
+
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use toadstool_distributed::substrate_detection::{PlatformType, SubstrateCapabilities};
+
+/// Information about a detected platform
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectedPlatform {
+    pub platform_type: PlatformType,
+    pub capabilities: SubstrateCapabilities,
+    pub status: PlatformStatus,
+    pub performance_score: Option<f64>,
+    pub last_tested: Option<chrono::DateTime<chrono::Utc>>,
+    pub metadata: HashMap<String, String>,
+}
+
+/// Platform availability status
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PlatformStatus {
+    Available,
+    Testing,
+    Degraded,
+    Unavailable,
+    Error(String),
+}

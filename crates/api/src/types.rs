@@ -14,6 +14,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use toadstool::RuntimeType;
+use toadstool_common::{ToadStoolError, ToadStoolErrorWithCode};
 
 /// Modern execution status enum
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
@@ -483,6 +484,53 @@ impl ApiError {
         let details = serde_json::to_value(errors).unwrap_or_default();
         Self::new("VALIDATION_ERROR", "Request validation failed").with_details(details)
     }
+    
+    /// Create from ToadStoolError (legacy support)
+    #[must_use]
+    pub fn from_toadstool_error(err: ToadStoolError) -> Self {
+        // Use generic code for legacy errors
+        let error_code = match err {
+            ToadStoolError::Execution(_) => "EXECUTION_ERROR",
+            ToadStoolError::Configuration(_) => "CONFIG_ERROR",
+            ToadStoolError::Resource(_) => "RESOURCE_ERROR",
+            ToadStoolError::Integration(_) => "INTEGRATION_ERROR",
+            ToadStoolError::Security(_) => "SECURITY_ERROR",
+            ToadStoolError::Network(_) => "NETWORK_ERROR",
+            ToadStoolError::System(_) => "SYSTEM_ERROR",
+        };
+        Self::new(error_code, &err.to_string())
+    }
+}
+
+/// Conversion from ToadStoolErrorWithCode to ApiError (with structured codes)
+impl From<ToadStoolErrorWithCode> for ApiError {
+    fn from(err: ToadStoolErrorWithCode) -> Self {
+        // If error has a structured code, use it
+        if let Some(code) = err.error_code() {
+            let mut api_err = Self::new(code.code, &err.error.to_string());
+            
+            // Add remediation as details if available
+            if let Some(remediation) = code.remediation {
+                let details = serde_json::json!({
+                    "category": code.category_str(),
+                    "remediation": remediation
+                });
+                api_err = api_err.with_details(details);
+            }
+            
+            api_err
+        } else {
+            // Fall back to legacy conversion
+            Self::from_toadstool_error(err.error)
+        }
+    }
+}
+
+/// Conversion from ToadStoolError to ApiError (for compatibility)
+impl From<ToadStoolError> for ApiError {
+    fn from(err: ToadStoolError) -> Self {
+        Self::from_toadstool_error(err)
+    }
 }
 
 impl IntoResponse for ApiError {
@@ -543,8 +591,12 @@ pub struct ApiConfig {
 
 impl Default for ApiConfig {
     fn default() -> Self {
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {
-            bind_address: "127.0.0.1:8080".to_string(),
+            bind_address: format!(
+                "{}:{}",
+                config.network.bind_address, config.network.songbird_port
+            ),
             enable_rest: true,
             enable_websocket: true,
             cors_enabled: true,

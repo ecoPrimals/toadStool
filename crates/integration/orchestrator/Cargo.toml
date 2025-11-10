@@ -1,0 +1,41 @@
+[package]
+name = "toadstool-integration-orchestrator"
+version.workspace = true
+edition.workspace = true
+description = "ToadStool generic orchestrator integration via capability discovery"
+
+[dependencies]
+# Core ToadStool types
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# UUID support
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async traits
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockall = "0.11"
+

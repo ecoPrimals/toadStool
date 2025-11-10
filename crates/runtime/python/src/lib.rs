@@ -1,16 +1,17 @@
 //! Python runtime implementation for toadStool
 //!
 //! This module provides Python execution capabilities through subprocess execution.
-//! PyO3 embedded execution is disabled due to compatibility issues.
+//! `PyO3` embedded execution is disabled due to compatibility issues.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
+use toadstool_common::config_bases::TimeoutConfig;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -30,19 +31,22 @@ pub struct PythonRuntimeConfig {
     pub virtual_env: Option<PathBuf>,
     /// Maximum memory per execution (MB)
     pub max_memory_mb: u64,
-    /// Default execution timeout (seconds)
-    pub execution_timeout_secs: u64,
+    /// Timeout configuration for execution
+    pub timeouts: TimeoutConfig,
     /// Python package requirements
     pub requirements: Vec<String>,
 }
 
 impl Default for PythonRuntimeConfig {
     fn default() -> Self {
+        let mut timeouts = TimeoutConfig::default();
+        timeouts.request_timeout = Duration::from_secs(300); // 5 minutes for Python execution
+        
         Self {
             interpreter_path: "python3".to_string(),
             virtual_env: None,
             max_memory_mb: 1024,
-            execution_timeout_secs: 300,
+            timeouts,
             requirements: vec![],
         }
     }
@@ -104,31 +108,33 @@ impl PythonRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for PythonRuntimeEngine {
-    async fn initialize(&mut self, config: ExecutionRuntimeConfig) -> ToadStoolResult<()> {
-        info!("Initializing Python runtime engine");
-        self.runtime_config = config;
+    fn initialize(&mut self, config: ExecutionRuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("Initializing Python runtime engine");
+            self.runtime_config = config;
 
-        // Verify Python interpreter is available
-        let test_result = std::process::Command::new(&self.config.interpreter_path)
-            .arg("--version")
-            .output();
+            // Verify Python interpreter is available
+            let test_result = std::process::Command::new(&self.config.interpreter_path)
+                .arg("--version")
+                .output();
 
-        match test_result {
-            Ok(output) => {
-                let version = String::from_utf8_lossy(&output.stdout);
-                info!("Python interpreter available: {}", version.trim());
+            match test_result {
+                Ok(output) => {
+                    let version = String::from_utf8_lossy(&output.stdout);
+                    info!("Python interpreter available: {}", version.trim());
+                }
+                Err(e) => {
+                    warn!("Python interpreter not available: {}", e);
+                }
             }
-            Err(e) => {
-                warn!("Python interpreter not available: {}", e);
-            }
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
+    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
         info!("Executing Python workload: {:?}", request.execution_id);
 
         // For now, return a simple success response
@@ -143,6 +149,7 @@ impl RuntimeEngine for PythonRuntimeEngine {
             runtime_used: RuntimeType::Python,
             warnings: vec!["Python runtime is in stub mode".to_string()],
         })
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -153,23 +160,27 @@ impl RuntimeEngine for PythonRuntimeEngine {
         matches!(workload_type, WorkloadType::Python)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        let _active_count = self.active_executions.read().await.len();
+    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async {
+            let _active_count = self.active_executions.read().await.len();
 
-        Ok(RuntimeMetrics {
-            cpu: CpuMetrics::default(),
-            memory: MemoryMetrics::default(),
-            storage: StorageMetrics::default(),
-            network: NetworkMetrics::default(),
-            gpu: None,
-            timing: TimingMetrics::default(),
+            Ok(RuntimeMetrics {
+                cpu: CpuMetrics::default(),
+                memory: MemoryMetrics::default(),
+                storage: StorageMetrics::default(),
+                network: NetworkMetrics::default(),
+                gpu: None,
+                timing: TimingMetrics::default(),
+            })
         })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
         info!("Shutting down Python runtime engine");
         self.active_executions.write().await.clear();
         Ok(())
+        })
     }
 }
 

@@ -1,0 +1,95 @@
+# ToadStool Showcase - Compute Intelligence Workload
+# Demonstrates automatic substrate selection based on resources
+
+[workload]
+id = "compute-demo"
+name = "Compute Intelligence Demo"
+description = "Resource-intensive workload showcasing intelligent substrate selection"
+version = "1.0.0"
+
+[execution]
+type = "script"
+entry_point = "main"
+timeout_seconds = 120
+
+[execution.script]
+language = "python"
+code = """
+#!/usr/bin/env python3
+import time
+import sys
+import os
+import platform
+
+def fibonacci(n):
+    '''Recursive fibonacci - intentionally CPU intensive'''
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+def main():
+    substrate = os.environ.get('TOADSTOOL_SUBSTRATE', 'unknown')
+    
+    print("╔══════════════════════════════════════════════════╗")
+    print("║    🍄 ToadStool Compute Intelligence Demo      ║")
+    print("╚══════════════════════════════════════════════════╝")
+    print("")
+    print(f"Selected Substrate: {substrate}")
+    print(f"Python Version:     {platform.python_version()}")
+    print(f"Platform:           {platform.system()} {platform.machine()}")
+    print("")
+    
+    # Test computation
+    n = 35  # Fibonacci(35) takes ~2-5 seconds depending on CPU
+    print(f"Computing fibonacci({n})...")
+    print("(This is CPU-intensive to demonstrate substrate selection)")
+    print("")
+    
+    start = time.time()
+    result = fibonacci(n)
+    elapsed = time.time() - start
+    
+    print(f"Result: fibonacci({n}) = {result:,}")
+    print(f"Time:   {elapsed:.2f} seconds")
+    print(f"Speed:  {n/elapsed:.2f} fib/second")
+    print("")
+    print("Substrate Performance Analysis:")
+    
+    if substrate == "native":
+        print("  ✓ Native execution - Maximum performance")
+        print("  ✓ Direct CPU access - No virtualization overhead")
+        print("  ✓ Optimal for CPU-bound workloads")
+    elif substrate == "docker":
+        print("  ✓ Container execution - Good performance")
+        print("  ✓ Slight virtualization overhead")
+        print("  ✓ Good for isolated workloads")
+    elif substrate == "python":
+        print("  ✓ Python runtime - Good performance")
+        print("  ✓ Managed environment")
+        print("  ✓ Good for Python workloads")
+    else:
+        print(f"  ✓ {substrate} execution")
+    
+    print("")
+    print(f"✅ Computation complete on: {substrate}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+"""
+
+[resources]
+cpu_cores = 2
+memory_mb = 512
+disk_mb = 50
+
+[substrate_preferences]
+# Prefer substrates in this order for CPU-intensive work
+prefer = ["native", "docker", "python"]
+avoid = ["wasm"]  # WASM is slower for recursive compute
+
+[metadata]
+tags = ["demo", "compute", "intelligence", "phase2"]
+author = "ToadStool Team"
+license = "AGPL-3.0"
+

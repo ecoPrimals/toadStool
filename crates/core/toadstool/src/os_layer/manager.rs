@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+// async_trait is no longer needed since we re-export the trait from compat module
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -76,6 +76,7 @@ pub struct PlatformInfo {
 
 impl PlatformInfo {
     /// Detect current platform information
+    #[must_use]
     pub fn detect() -> Self {
         let os = std::env::consts::OS.to_string();
         let arch = std::env::consts::ARCH.to_string();
@@ -105,20 +106,13 @@ impl PlatformInfo {
     }
 }
 
-/// Compatibility layer trait for the manager
-#[async_trait]
-pub trait CompatibilityLayer: Send + Sync {
-    /// Check if this layer can handle the given request
-    fn can_handle(&self, request: &ExecutionRequest) -> bool;
-
-    /// Execute a request with compatibility
-    async fn execute_with_compatibility(
-        &self,
-        request: ExecutionRequest,
-    ) -> ToadStoolResult<ExecutionResponse>;
-}
+// Re-export the canonical CompatibilityLayer trait from compat module
+// The complete trait definition is in `compat.rs` with 5 methods.
+// This provides backward compatibility for any code importing from here.
+pub use super::compat::CompatibilityLayer;
 
 impl OSLayerManager {
+    #[must_use]
     pub fn new(config: OSLayerConfig) -> Self {
         Self {
             config,
@@ -191,6 +185,7 @@ impl OSLayerManager {
     }
 
     /// Get platform information
+    #[must_use]
     pub fn get_platform_info(&self) -> PlatformInfo {
         PlatformInfo {
             os: std::env::consts::OS.to_string(),

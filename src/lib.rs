@@ -453,4 +453,113 @@ mod tests {
         assert_eq!(service.name, "test-svc");
         assert_eq!(service.runtime, "wasm");
     }
+    
+    // Additional comprehensive tests - Sprint 14
+    
+    #[test]
+    fn test_version_string_format() {
+        assert_eq!(VERSION.trim(), VERSION);
+        assert!(VERSION.contains('.'));
+    }
+    
+    #[test]
+    fn test_default_allocations_sanity() {
+        assert!(defaults::DEFAULT_CPU_ALLOCATION > 0.0);
+        assert!(defaults::DEFAULT_CPU_ALLOCATION <= 1.0);
+        assert!(defaults::DEFAULT_MEMORY_ALLOCATION > 0);
+        assert!(defaults::DEFAULT_DISK_ALLOCATION > defaults::DEFAULT_MEMORY_ALLOCATION);
+    }
+    
+    #[test]
+    fn test_default_timeouts_sanity() {
+        assert!(defaults::DEFAULT_TASK_TIMEOUT.as_secs() > 0);
+        assert!(defaults::DEFAULT_HEARTBEAT_INTERVAL.as_secs() > 0);
+        assert!(defaults::DEFAULT_MONITORING_INTERVAL.as_secs() > 0);
+    }
+    
+    #[test]
+    fn test_max_concurrent_tasks_valid() {
+        assert_eq!(defaults::MAX_CONCURRENT_TASKS, 100);
+        assert!(defaults::MAX_CONCURRENT_TASKS > 0);
+    }
+    
+    #[test]
+    fn test_default_federation_port_valid() {
+        assert!(defaults::DEFAULT_FEDERATION_PORT > 1024);
+    }
+    
+    #[test]
+    fn test_duration_parsing_edge_cases() {
+        assert_eq!(utils::parse_duration("0s").unwrap(), Duration::from_secs(0));
+        assert_eq!(utils::parse_duration("  30s  ").unwrap(), Duration::from_secs(30));
+        assert!(utils::parse_duration("30x").is_err());
+    }
+    
+    #[test]
+    fn test_duration_formatting_edge_cases() {
+        assert_eq!(utils::format_duration(Duration::from_secs(0)), "0s");
+        assert_eq!(utils::format_duration(Duration::from_secs(3660)), "1h1m");
+    }
+    
+    #[test]
+    fn test_service_name_boundary_conditions() {
+        let max_valid = "a".repeat(63);
+        assert!(utils::validate_service_name(&max_valid).is_ok());
+        
+        let too_long = "a".repeat(64);
+        assert!(utils::validate_service_name(&too_long).is_err());
+    }
+    
+    #[test]
+    fn test_port_validation_boundaries() {
+        assert!(utils::validate_port(1023).is_err());
+        assert!(utils::validate_port(1024).is_ok());
+        assert!(utils::validate_port(65535).is_ok());
+    }
+    
+    #[test]
+    fn test_id_generation_uniqueness() {
+        let ids: Vec<String> = (0..5).map(|_| utils::generate_id()).collect();
+        for i in 0..ids.len() {
+            for j in (i+1)..ids.len() {
+                assert_ne!(ids[i], ids[j]);
+            }
+        }
+    }
+    
+    #[test]
+    fn test_id_generation_format() {
+        let id = utils::generate_id();
+        assert!(uuid::Uuid::parse_str(&id).is_ok());
+        assert_eq!(id.len(), 36);
+    }
+    
+    #[tokio::test]
+    async fn test_biomeos_serialization_roundtrip() {
+        let original = test_utils::create_test_manifest("roundtrip");
+        let yaml = biomeos::to_biomeos_format(&original).unwrap();
+        let parsed = biomeos::from_biomeos_format(&yaml).unwrap();
+        
+        assert_eq!(parsed.metadata.name, original.metadata.name);
+        assert_eq!(parsed.api_version, original.api_version);
+    }
+    
+    #[tokio::test]
+    async fn test_biomeos_invalid_yaml() {
+        let invalid = "this is not: valid:: yaml:::";
+        assert!(biomeos::from_biomeos_format(invalid).is_err());
+    }
+    
+    #[test]
+    fn test_constants_not_empty() {
+        assert!(!VERSION.is_empty());
+        assert!(!NAME.is_empty());
+        assert!(!DESCRIPTION.is_empty());
+    }
+    
+    #[test]
+    fn test_defaults_consistency() {
+        assert!(defaults::DEFAULT_HEARTBEAT_INTERVAL <= defaults::DEFAULT_TASK_TIMEOUT);
+        assert!(defaults::DEFAULT_MONITORING_INTERVAL <= defaults::DEFAULT_TASK_TIMEOUT);
+    }
 } 

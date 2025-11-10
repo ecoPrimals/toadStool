@@ -36,6 +36,9 @@ pub async fn start_background_services(state: ServerState) {
     });
 
     info!("Background services started");
+
+    // Background tasks will continue running until they're aborted or process exits
+    // No need for an infinite loop here - the spawned tasks run independently
 }
 
 /// Resource monitoring background task

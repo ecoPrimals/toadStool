@@ -13,7 +13,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
 use toadstool_cli::{
@@ -319,6 +319,24 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             execute_network_config_command(*apply, *validate, *summary, config_file, *test, export)
                 .await?;
         }
+
+        Commands::Execute {
+            workload,
+            runtime,
+            env,
+            timeout,
+            format,
+        } => {
+            info!("🚀 Executing workload: {}", workload.display());
+            toadstool_cli::executor::workload::execute_workload(
+                workload,
+                runtime.clone(),
+                env.clone(),
+                *timeout,
+                format.clone(),
+            )
+            .await?;
+        }
     }
 
     Ok(())
@@ -366,7 +384,7 @@ async fn validate_manifest_command(
             });
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
-        "text" | _ => {
+        _ => {
             if errors.is_empty() {
                 println!("{} Manifest validation passed", "✅".green());
             } else {
@@ -398,7 +416,7 @@ async fn validate_manifest_command(
 }
 
 /// Initialize new biome manifest
-async fn init_manifest_command(path: &PathBuf, template: &str, force: bool) -> Result<()> {
+async fn init_manifest_command(path: &Path, template: &str, force: bool) -> Result<()> {
     use toadstool_cli::templates::TemplateGenerator;
 
     // Parse template type
@@ -415,7 +433,7 @@ async fn init_manifest_command(path: &PathBuf, template: &str, force: bool) -> R
     }
 
     // Create template generator
-    let generator = TemplateGenerator::new(path.clone(), force);
+    let generator = TemplateGenerator::new(path.to_path_buf(), force);
 
     // Generate manifest
     let output_path = generator.generate(biome_template).await?;
@@ -470,9 +488,9 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
 
             for service in &result.services {
                 println!(
-                    "  {} {} - {:?} ({})",
+                    "  {} {:?} - {:?} ({})",
                     "✅".green(),
-                    format!("{:?}", service.service_type),
+                    service.service_type,
                     service.trust_level,
                     service.address
                 );
@@ -480,9 +498,9 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
         }
 
         EcosystemCommands::Register { endpoint, token } => {
-            info!("🐦 Registering with Songbird");
+            info!("🎯 Registering with orchestrator");
             integrator
-                .register_with_songbird(endpoint.clone(), token.clone())
+                .register_with_orchestrator(endpoint.clone(), token.clone())
                 .await?;
         }
 

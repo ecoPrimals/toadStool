@@ -2,7 +2,8 @@
 
 use std::time::Duration;
 
-use crate::types::{AuthType, MessageFormat, TransportType};
+use crate::types::{MessageFormat, TransportType};
+use toadstool_common::auth::ServiceAuthConfig;
 
 /// Protocol client configuration
 #[derive(Debug, Clone)]
@@ -16,8 +17,8 @@ pub struct ProtocolConfig {
     /// Supported transport types
     pub supported_transports: Vec<TransportType>,
 
-    /// Authentication configuration
-    pub auth_config: Option<AuthConfig>,
+    /// Authentication configuration  
+    pub auth_config: Option<ServiceAuthConfig>,
 
     /// Request timeout
     pub request_timeout: Duration,
@@ -26,7 +27,7 @@ pub struct ProtocolConfig {
     pub connection_pool: ConnectionPoolConfig,
 
     /// Service discovery configuration
-    pub discovery_config: Option<DiscoveryConfig>,
+    pub discovery_config: Option<ServiceDiscoveryConfig>,
 
     /// Message routing configuration
     pub routing_config: RoutingConfig,
@@ -51,24 +52,17 @@ impl Default for ProtocolConfig {
     }
 }
 
-/// Authentication configuration
-#[derive(Debug, Clone)]
-pub struct AuthConfig {
-    /// Authentication type
-    pub auth_type: AuthType,
-
-    /// Token for authentication
-    pub token: Option<String>,
-
-    /// Certificate path for mTLS
-    pub cert_path: Option<String>,
-
-    /// Private key path for mTLS
-    pub key_path: Option<String>,
-
-    /// CA certificate path
-    pub ca_path: Option<String>,
-}
+// ============================================================================
+// Authentication
+// ============================================================================
+//
+// Using canonical ServiceAuthConfig from toadstool_common::auth
+// This provides unified authentication across all ToadStool services
+//
+// For backward compatibility, you can use the type alias:
+// pub type AuthConfig = ServiceAuthConfig;
+//
+// ============================================================================
 
 /// Connection pool configuration
 #[derive(Debug, Clone)]
@@ -97,9 +91,9 @@ impl Default for ConnectionPoolConfig {
     }
 }
 
-/// Service discovery configuration
+/// Service discovery configuration for protocols
 #[derive(Debug, Clone)]
-pub struct DiscoveryConfig {
+pub struct ServiceDiscoveryConfig {
     /// Discovery mechanism
     pub discovery_type: DiscoveryType,
 
@@ -204,36 +198,12 @@ impl Default for LoadBalancingConfig {
     }
 }
 
-/// Retry configuration
-#[derive(Debug, Clone)]
-pub struct RetryConfig {
-    /// Maximum retry attempts
-    pub max_attempts: u32,
+// Note: Using base RetryConfig from toadstool for consistency
+// If domain-specific retry logic is needed, use composition with base pattern
+pub use toadstool::config_bases::RetryConfig;
 
-    /// Base retry delay
-    pub base_delay: Duration,
-
-    /// Maximum retry delay
-    pub max_delay: Duration,
-
-    /// Exponential backoff multiplier
-    pub backoff_multiplier: f64,
-
-    /// Jitter enabled
-    pub jitter_enabled: bool,
-}
-
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
-            max_attempts: 3,
-            base_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(30),
-            backoff_multiplier: 2.0,
-            jitter_enabled: true,
-        }
-    }
-}
+// Base RetryConfig already has a Default implementation
+// Fields: max_retries, base_delay, max_delay, backoff_multiplier, jitter_percent
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone)]
@@ -248,7 +218,10 @@ pub struct CircuitBreakerConfig {
     pub success_threshold: u32,
 }
 
-/// Health check configuration
+/// Health check configuration for protocol clients
+///
+/// This is similar to `HttpHealthCheckConfig` but simplified for protocol-level checks.
+/// For HTTP-specific health checks, use `toadstool::config_bases::HttpHealthCheckConfig`.
 #[derive(Debug, Clone)]
 pub struct HealthConfig {
     /// Health check enabled

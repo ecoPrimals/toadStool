@@ -42,11 +42,22 @@ impl ServiceManager {
         service_id: String,
         service_type: String,
     ) -> PrimalResult<()> {
+        // Use environment-aware configuration for service endpoints
+        let port: u16 = std::env::var("TOADSTOOL_SONGBIRD_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or_else(|| {
+                let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+                config.network.songbird_port
+            });
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        let host = &config.network.bind_address;
+        
         let service_info = ServiceInfo {
             service_id: service_id.clone(),
             service_type,
             status: ServiceStatus::Running,
-            endpoint: format!("http://localhost:8080/{service_id}"),
+            endpoint: format!("http://{host}:{port}/{service_id}"),
         };
         self.services.insert(service_id, service_info);
         Ok(())

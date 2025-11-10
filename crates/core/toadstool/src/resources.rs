@@ -1,4 +1,4 @@
-//! Resource management and monitoring for ToadStool
+//! Resource management and monitoring for `ToadStool`
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -405,6 +405,7 @@ pub struct SystemResourceMonitor {
 }
 
 impl SystemResourceMonitor {
+    #[must_use]
     pub fn new() -> Self {
         let mut system = System::new_all();
         system.refresh_all();
@@ -424,7 +425,7 @@ impl SystemResourceMonitor {
     async fn get_cpu_usage(&self) -> ToadStoolResult<f64> {
         self.refresh_system().await?;
         let system = self.system.read().await;
-        let cpu_usage = system.global_cpu_usage() as f64;
+        let cpu_usage = f64::from(system.global_cpu_usage());
         Ok(cpu_usage)
     }
 
@@ -464,14 +465,17 @@ impl SystemResourceMonitor {
         let process_count = processes.len();
         let total_cpu_time = processes
             .values()
-            .map(|p| p.cpu_usage() as f64)
+            .map(|p| f64::from(p.cpu_usage()))
             .sum::<f64>();
 
         Ok(Some(ProcessInfo {
             workload_id: workload_id.to_string(),
             process_count,
             total_cpu_time,
-            memory_usage: processes.values().map(|p| p.memory()).sum::<u64>(),
+            memory_usage: processes
+                .values()
+                .map(sysinfo::Process::memory)
+                .sum::<u64>(),
             status: ProcessStatus::Running,
         }))
     }
@@ -665,22 +669,32 @@ impl ResourceMonitor for SystemResourceMonitor {
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
-            // Refresh system information
-            self.refresh_system().await?;
+            // Refresh system information ONCE (optimization: was called 4 times before!)
+            let mut system = self.system.write().await;
+            system.refresh_all();
 
-            // Get CPU info
-            let cpu_usage = self.get_cpu_usage().await?;
-            let system = self.system.read().await;
+            // Get CPU info (without additional refresh)
+            let cpu_usage = f64::from(system.global_cpu_usage());
             let cpu_cores = system.cpus().len() as f64;
             let available_cpu_cores = cpu_cores * (1.0 - cpu_usage / 100.0);
 
-            // Get memory info
-            let (used_memory, total_memory) = self.get_memory_info().await?;
+            // Get memory info (without additional refresh)
+            let total_memory = system.total_memory();
+            let used_memory = system.used_memory();
             let available_memory = total_memory - used_memory;
 
-            // Get disk info
-            let (used_disk, total_disk) = self.get_disk_info().await?;
-            let available_disk = total_disk - used_disk;
+            // Release the write lock before disk I/O
+            drop(system);
+
+            // Get disk info (this can be slow, do it last)
+            let disks = sysinfo::Disks::new_with_refreshed_list();
+            let (mut used_space, mut total_space) = (0, 0);
+
+            for disk in &disks {
+                total_space += disk.total_space();
+                used_space += disk.total_space() - disk.available_space();
+            }
+            let available_disk = total_space - used_space;
 
             // For now, we don't have a reliable way to detect GPU units without additional crates
             // This could be enhanced with nvidia-ml-py or similar
@@ -700,5 +714,135 @@ impl ResourceMonitor for SystemResourceMonitor {
 impl Default for SystemResourceMonitor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resource_requirements_default() {
+        let req = ResourceRequirements::default();
+        assert_eq!(req.cpu.min_cores, 1.0);
+        assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
+        assert_eq!(req.storage.min_bytes, 1024 * 1024 * 1024);
+        assert!(req.gpu.is_none());
+    }
+
+    #[test]
+    fn test_cpu_requirements_default() {
+        let cpu = CpuRequirements::default();
+        assert_eq!(cpu.min_cores, 1.0);
+        assert!(cpu.max_cores.is_none());
+        assert!(cpu.architecture.is_none());
+    }
+
+    #[test]
+    fn test_memory_requirements_default() {
+        let mem = MemoryRequirements::default();
+        assert_eq!(mem.min_bytes, 1024 * 1024 * 1024);
+        assert!(mem.max_bytes.is_none());
+    }
+
+    #[test]
+    fn test_storage_requirements_default() {
+        let storage = StorageRequirements::default();
+        assert_eq!(storage.min_bytes, 1024 * 1024 * 1024);
+        assert!(storage.max_bytes.is_none());
+        assert!(storage.storage_type.is_none());
+    }
+
+    #[test]
+    fn test_network_requirements_default() {
+        let network = NetworkRequirements::default();
+        assert!(network.min_bandwidth.is_none());
+        assert!(network.max_bandwidth.is_none());
+        assert!(network.max_latency_ms.is_none());
+    }
+
+    #[test]
+    fn test_gpu_requirements() {
+        let gpu = GpuRequirements {
+            min_units: 1,
+            max_units: Some(4),
+            gpu_type: Some("NVIDIA".to_string()),
+            min_memory_bytes: Some(2 * 1024 * 1024 * 1024),
+        };
+
+        assert_eq!(gpu.min_memory_bytes, Some(2 * 1024 * 1024 * 1024));
+        assert_eq!(gpu.gpu_type, Some("NVIDIA".to_string()));
+    }
+
+    #[test]
+    fn test_resource_requirements_serialization() {
+        let req = ResourceRequirements::default();
+        let json = serde_json::to_string(&req).expect("Failed to serialize");
+        let deserialized: ResourceRequirements =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+
+        assert_eq!(deserialized.cpu.min_cores, req.cpu.min_cores);
+        assert_eq!(deserialized.memory.min_bytes, req.memory.min_bytes);
+    }
+
+    #[test]
+    fn test_cpu_requirements_with_architecture() {
+        let cpu = CpuRequirements {
+            min_cores: 4.0,
+            max_cores: Some(8.0),
+            architecture: Some("x86_64".to_string()),
+        };
+
+        assert_eq!(cpu.min_cores, 4.0);
+        assert_eq!(cpu.max_cores, Some(8.0));
+        assert_eq!(cpu.architecture, Some("x86_64".to_string()));
+    }
+
+    #[test]
+    fn test_memory_requirements_with_max() {
+        let mem = MemoryRequirements {
+            min_bytes: 2 * 1024 * 1024 * 1024,
+            max_bytes: Some(4 * 1024 * 1024 * 1024),
+        };
+
+        assert_eq!(mem.min_bytes, 2 * 1024 * 1024 * 1024);
+        assert_eq!(mem.max_bytes, Some(4 * 1024 * 1024 * 1024));
+    }
+
+    #[test]
+    fn test_storage_requirements_with_type() {
+        let storage = StorageRequirements {
+            min_bytes: 10 * 1024 * 1024 * 1024,
+            max_bytes: Some(50 * 1024 * 1024 * 1024),
+            storage_type: Some("SSD".to_string()),
+        };
+
+        assert_eq!(storage.storage_type, Some("SSD".to_string()));
+    }
+
+    #[test]
+    fn test_network_requirements_with_constraints() {
+        let network = NetworkRequirements {
+            min_bandwidth: Some(1024 * 1024),
+            max_bandwidth: Some(10 * 1024 * 1024),
+            max_latency_ms: Some(100),
+        };
+
+        assert_eq!(network.min_bandwidth, Some(1024 * 1024));
+        assert_eq!(network.max_latency_ms, Some(100));
+    }
+
+    #[tokio::test]
+    async fn test_system_resource_monitor_creation() {
+        let monitor = SystemResourceMonitor::new();
+        let _guard = monitor.system.read().await;
+        // If we can read the lock, the monitor was created successfully
+    }
+
+    #[tokio::test]
+    async fn test_system_resource_monitor_default() {
+        let monitor = SystemResourceMonitor::default();
+        let _guard = monitor.system.read().await;
+        // If we can read the lock, the monitor was created successfully
     }
 }

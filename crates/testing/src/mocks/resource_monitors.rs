@@ -45,6 +45,7 @@ mock! {
 
 impl MockResourceMonitor {
     /// Create a mock resource monitor that works successfully
+    #[must_use]
     pub fn new_successful() -> Self {
         let mut mock = MockResourceMonitor::new();
 
@@ -77,6 +78,7 @@ impl MockResourceMonitor {
     }
 
     /// Create a mock resource monitor that reports limit violations
+    #[must_use]
     pub fn new_limit_violations() -> Self {
         let mut mock = MockResourceMonitor::new();
 
@@ -112,6 +114,7 @@ impl MockResourceMonitor {
     }
 
     /// Create a mock resource monitor that fails operations
+    #[must_use]
     pub fn new_monitoring_failure() -> Self {
         let mut mock = MockResourceMonitor::new();
 

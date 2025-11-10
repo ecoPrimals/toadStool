@@ -1,6 +1,6 @@
 //! # Natural Language Configuration Interface
 //!
-//! Enables configuration of ToadStool through natural language descriptions,
+//! Enables configuration of `ToadStool` through natural language descriptions,
 //! using natural language descriptions. Perfect for integration with Squirrel MCP
 //! and AI systems that need to configure compute environments through conversation.
 //!
@@ -217,6 +217,57 @@ impl NaturalLanguageConfig {
             },
         );
 
+        // Data Processing Intent
+        intent_patterns.insert(
+            "data_processing".to_string(),
+            ConfigurationIntent {
+                keywords: vec![
+                    "data".to_string(),
+                    "dataset".to_string(),
+                    "datasets".to_string(),
+                    "processing".to_string(),
+                    "process".to_string(),
+                    "etl".to_string(),
+                    "analytics".to_string(),
+                    "big data".to_string(),
+                    "batch".to_string(),
+                    "pipeline".to_string(),
+                ],
+                priority_features: vec![
+                    "high_memory".to_string(),
+                    "native_runtime".to_string(),
+                    "python_runtime".to_string(),
+                ],
+                performance_preference: PerformancePreference::HighPerformance,
+                security_preference: SecurityPreference::Balanced,
+            },
+        );
+
+        // Education Intent
+        intent_patterns.insert(
+            "education".to_string(),
+            ConfigurationIntent {
+                keywords: vec![
+                    "learning to".to_string(),
+                    "education".to_string(),
+                    "tutorial".to_string(),
+                    "course".to_string(),
+                    "teach".to_string(),
+                    "beginner".to_string(),
+                    "student".to_string(),
+                    "learn to".to_string(),
+                    "learning how".to_string(),
+                ],
+                priority_features: vec![
+                    "container_runtime".to_string(),
+                    "wasm_runtime".to_string(),
+                    "simple_setup".to_string(),
+                ],
+                performance_preference: PerformancePreference::Balanced,
+                security_preference: SecurityPreference::Balanced,
+            },
+        );
+
         intent_patterns
     }
 
@@ -427,7 +478,7 @@ impl NaturalLanguageConfig {
         templates
     }
 
-    /// Configure ToadStool from natural language description
+    /// Configure `ToadStool` from natural language description
     pub async fn configure_from_text(&mut self, text: &str) -> ToadStoolResult<ToadStoolConfig> {
         info!("🤖 Processing natural language configuration request...");
         debug!("Input text: {}", text);
@@ -498,8 +549,10 @@ impl NaturalLanguageConfig {
                     .partial_cmp(&b.1 .0)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .unwrap_or_else(|| ("development".to_string(), (0.1, vec![])));
+            .map_or_else(
+                || ("development".to_string(), (0.1, vec![])),
+                |(k, v)| (k.clone(), v.clone()),
+            );
 
         // Extract explicit preferences from text
         let preferences = self.extract_explicit_preferences(&text_lower).await?;
@@ -523,54 +576,75 @@ impl NaturalLanguageConfig {
         text: &str,
     ) -> ToadStoolResult<ExplicitPreferences> {
         let mut preferences = ExplicitPreferences::default();
+        let text_lower = text.to_lowercase();
 
         // Performance preferences
-        if text.contains("fast") || text.contains("high performance") || text.contains("speed") {
+        if text_lower.contains("fast")
+            || text_lower.contains("high performance")
+            || text_lower.contains("speed")
+        {
             preferences.performance_priority = Some("high".to_string());
         }
-        if text.contains("slow") || text.contains("power saver") || text.contains("battery") {
+        if text_lower.contains("slow")
+            || text_lower.contains("power saver")
+            || text_lower.contains("battery")
+        {
             preferences.performance_priority = Some("low".to_string());
         }
 
         // Security preferences
-        if text.contains("secure") || text.contains("security") || text.contains("safe") {
+        if text_lower.contains("secure")
+            || text_lower.contains("security")
+            || text_lower.contains("safe")
+            || text_lower.contains("maximum security")
+        {
             preferences.security_priority = Some("high".to_string());
         }
-        if text.contains("insecure") || text.contains("no security") || text.contains("open") {
+        if text_lower.contains("insecure")
+            || text_lower.contains("no security")
+            || text_lower.contains("open")
+        {
             preferences.security_priority = Some("low".to_string());
         }
 
         // Memory preferences
-        if text.contains("high memory")
-            || text.contains("lots of memory")
-            || text.contains("memory intensive")
+        if text_lower.contains("high memory")
+            || text_lower.contains("lots of memory")
+            || text_lower.contains("memory intensive")
         {
             preferences.memory_usage = Some("high".to_string());
         }
-        if text.contains("low memory")
-            || text.contains("memory efficient")
-            || text.contains("lightweight")
+        if text_lower.contains("low memory")
+            || text_lower.contains("memory efficient")
+            || text_lower.contains("lightweight")
         {
             preferences.memory_usage = Some("low".to_string());
         }
 
         // GPU preferences
-        if text.contains("gpu")
-            || text.contains("graphics")
-            || text.contains("cuda")
-            || text.contains("opencl")
+        if text_lower.contains("gpu")
+            || text_lower.contains("graphics")
+            || text_lower.contains("cuda")
+            || text_lower.contains("opencl")
+            || text_lower.contains("gpu acceleration")
         {
             preferences.use_gpu = Some(true);
         }
-        if text.contains("no gpu") || text.contains("cpu only") {
+        if text_lower.contains("no gpu") || text_lower.contains("cpu only") {
             preferences.use_gpu = Some(false);
         }
 
         // Container preferences
-        if text.contains("container") || text.contains("docker") || text.contains("isolated") {
+        if text_lower.contains("container")
+            || text_lower.contains("docker")
+            || text_lower.contains("isolated")
+        {
             preferences.use_containers = Some(true);
         }
-        if text.contains("native") || text.contains("no container") || text.contains("direct") {
+        if text_lower.contains("native")
+            || text_lower.contains("no container")
+            || text_lower.contains("direct")
+        {
             preferences.use_containers = Some(false);
         }
 
@@ -845,6 +919,7 @@ impl NaturalLanguageConfig {
     }
 
     /// Get available configuration templates
+    #[must_use]
     pub fn get_available_templates(&self) -> Vec<&ConfigurationTemplate> {
         self.templates.values().collect()
     }

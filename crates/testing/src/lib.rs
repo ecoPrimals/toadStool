@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # ToadStool Testing Infrastructure
+//! # `ToadStool` Testing Infrastructure
 //!
 //! This crate provides comprehensive testing utilities, mocks, and infrastructure
-//! for testing ToadStool components. It includes:
+//! for testing `ToadStool` components. It includes:
 //!
 //! - Mock implementations of runtime engines
 //! - Test data generators and builders

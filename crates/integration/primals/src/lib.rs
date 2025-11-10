@@ -1,15 +1,15 @@
 //! # Universal Primal Integration Framework
 //!
 //! This module provides a consistent interface for integrating with all Primals
-//! in the ecoPrimals ecosystem. It defines the PrimalIntegration trait and
+//! in the ecoPrimals ecosystem. It defines the `PrimalIntegration` trait and
 //! common types for universal orchestration from biome.yaml manifests.
 //!
 //! ## Supported Primals
 //!
-//! - **ToadStool**: Universal Compute Platform
+//! - **`ToadStool`**: Universal Compute Platform
 //! - **Songbird**: Network Coordination and Service Mesh
-//! - **BearDog**: Security and Authentication
-//! - **NestGate**: Storage and Data Management
+//! - **`BearDog`**: Security and Authentication
+//! - **`NestGate`**: Storage and Data Management
 //! - **Squirrel**: AI Agents and Model Control Protocol
 //! - **biomeOS**: Universal Operating System
 
@@ -23,13 +23,19 @@ use uuid::Uuid;
 use toadstool::{ToadStoolError, ToadStoolResult};
 
 /// Universal trait for Primal integration
+/// 
+/// This is the canonical definition of the PrimalIntegration trait.
+/// All Primals in the ecoPrimals ecosystem should implement this trait.
 #[async_trait]
-pub trait PrimalIntegration {
+pub trait PrimalIntegration: Send + Sync {
     /// Initialize the Primal from manifest configuration
     async fn initialize_from_manifest(&self, config: &PrimalConfig) -> ToadStoolResult<()>;
 
-    /// Register with Songbird service mesh
-    async fn register_with_songbird(&self) -> ToadStoolResult<ServiceRegistration>;
+    /// Register with orchestrator via capability discovery
+    async fn register_with_orchestrator(
+        &self,
+        discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,
+    ) -> ToadStoolResult<ServiceRegistration>;
 
     /// Validate dependencies before startup
     async fn validate_dependencies(&self, manifest: &BiomeManifest) -> ToadStoolResult<()>;
@@ -85,13 +91,13 @@ pub struct PrimalConfig {
 /// Types of Primals in the ecosystem
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum PrimalType {
-    /// ToadStool - Universal Compute
+    /// `ToadStool` - Universal Compute
     ToadStool,
     /// Songbird - Network Coordination
     Songbird,
-    /// BearDog - Security
+    /// `BearDog` - Security
     BearDog,
-    /// NestGate - Storage
+    /// `NestGate` - Storage
     NestGate,
     /// Squirrel - AI
     Squirrel,
@@ -344,6 +350,7 @@ impl Default for PrimalIntegrationConfig {
 
 impl PrimalIntegrationManager {
     /// Create a new Primal Integration Manager
+    #[must_use]
     pub fn new(config: PrimalIntegrationConfig) -> Self {
         Self {
             primals: HashMap::new(),
@@ -427,13 +434,11 @@ impl PrimalIntegrationManager {
         }
 
         // Phase 4: Register with Songbird
+        // Registration with orchestrator moved to separate phase
+        // Each primal will handle its own registration via capability discovery
         for primal_name in &startup_order {
-            if let Some(primal) = self.primals.get(primal_name as &str) {
-                if results.get(primal_name as &str) == Some(&PrimalBootstrapResult::Running) {
-                    if let Err(e) = primal.register_with_songbird().await {
-                        tracing::warn!("Failed to register {} with Songbird: {}", primal_name, e);
-                    }
-                }
+            if results.get(primal_name as &str) == Some(&PrimalBootstrapResult::Running) {
+                tracing::info!("Primal {} started successfully", primal_name);
             }
         }
 
@@ -595,7 +600,11 @@ mod tests {
             }
         }
 
-        async fn register_with_songbird(&self) -> ToadStoolResult<ServiceRegistration> {
+        async fn register_with_orchestrator(
+            &self,
+            _discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,
+        ) -> ToadStoolResult<ServiceRegistration> {
+            // Mock implementation - uses capability discovery to find orchestrator
             Ok(ServiceRegistration {
                 service_id: Uuid::new_v4(),
                 service_name: self.name.clone(),

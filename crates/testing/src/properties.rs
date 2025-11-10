@@ -156,6 +156,7 @@ impl Default for PropertyTestConfig {
 
 impl PropertyTestRunner {
     /// Create a new property test runner
+    #[must_use]
     pub fn new(config: PropertyTestConfig) -> Self {
         let mut rng = Box::new(DefaultRng::new());
         if let Some(seed) = config.seed {
@@ -234,7 +235,7 @@ impl PropertyTestRunner {
         let max_size = 100;
         let growth_rate = 0.1;
 
-        let size = base_size + (iteration as f64 * growth_rate) as usize;
+        let size = base_size + (f64::from(iteration) * growth_rate) as usize;
         size.min(max_size)
     }
 
@@ -287,6 +288,7 @@ impl PropertyTestRunner {
 
 // Generator implementations
 impl IntegerGenerator {
+    #[must_use]
     pub fn new(min: i64, max: i64) -> Self {
         Self { min, max }
     }
@@ -317,6 +319,7 @@ impl Generator<i64> for IntegerGenerator {
 }
 
 impl StringGenerator {
+    #[must_use]
     pub fn new(min_length: usize, max_length: usize) -> Self {
         Self {
             min_length,
@@ -327,6 +330,7 @@ impl StringGenerator {
         }
     }
 
+    #[must_use]
     pub fn with_charset(min_length: usize, max_length: usize, charset: &str) -> Self {
         Self {
             min_length,
@@ -419,9 +423,7 @@ where
             Ok(())
         } else {
             Err(anyhow::anyhow!(
-                "Round-trip property failed: {:?} != {:?}",
-                input,
-                decoded
+                "Round-trip property failed: {input:?} != {decoded:?}"
             ))
         }
     }
@@ -441,6 +443,7 @@ impl TestStatistics {
     }
 
     /// Calculate average execution time
+    #[must_use]
     pub fn average_execution_time(&self) -> Duration {
         if self.execution_times.is_empty() {
             Duration::ZERO
@@ -450,6 +453,7 @@ impl TestStatistics {
     }
 
     /// Get execution time percentiles
+    #[must_use]
     pub fn execution_time_percentiles(&self) -> HashMap<String, Duration> {
         if self.execution_times.is_empty() {
             return HashMap::new();
@@ -514,6 +518,7 @@ impl RandomNumberGenerator for DefaultRng {
 
 impl PropertyTestResult {
     /// Generate a human-readable test report
+    #[must_use]
     pub fn to_report_string(&self) -> String {
         let mut report = format!(
             "Property Test: {}\n\
@@ -569,4 +574,513 @@ macro_rules! round_trip {
     ($name:expr, $encode:expr, $decode:expr) => {
         RoundTripProperty::new($name.to_string(), $encode, $decode)
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_property_test_config_default() {
+        let config = PropertyTestConfig::default();
+        assert_eq!(config.test_name, "unnamed_property");
+        assert_eq!(config.test_cases, 100);
+        assert_eq!(config.shrink_attempts, 100);
+        assert_eq!(config.timeout, Duration::from_secs(30));
+        assert!(!config.verbose);
+        assert!(config.seed.is_none());
+    }
+
+    #[test]
+    fn test_property_test_config_clone() {
+        let config = PropertyTestConfig {
+            test_name: "test".to_string(),
+            test_cases: 50,
+            shrink_attempts: 20,
+            timeout: Duration::from_secs(60),
+            verbose: true,
+            seed: Some(42),
+        };
+        let cloned = config.clone();
+        assert_eq!(config.test_name, cloned.test_name);
+        assert_eq!(config.test_cases, cloned.test_cases);
+        assert_eq!(config.seed, cloned.seed);
+    }
+
+    #[test]
+    fn test_property_test_result_success() {
+        let result = PropertyTestResult {
+            test_name: "test_success".to_string(),
+            success: true,
+            test_cases_run: 100,
+            failures: Vec::new(),
+            duration: Duration::from_secs(5),
+            statistics: TestStatistics::new(),
+        };
+        assert!(result.success);
+        assert_eq!(result.test_cases_run, 100);
+        assert!(result.failures.is_empty());
+    }
+
+    #[test]
+    fn test_property_test_result_clone() {
+        let result = PropertyTestResult {
+            test_name: "test".to_string(),
+            success: true,
+            test_cases_run: 50,
+            failures: Vec::new(),
+            duration: Duration::from_secs(2),
+            statistics: TestStatistics::new(),
+        };
+        let cloned = result.clone();
+        assert_eq!(result.test_name, cloned.test_name);
+        assert_eq!(result.success, cloned.success);
+    }
+
+    #[test]
+    fn test_property_failure_creation() {
+        let failure = PropertyFailure {
+            original_input: "original".to_string(),
+            shrunk_input: "shrunk".to_string(),
+            error_message: "test failed".to_string(),
+            shrink_steps: 10,
+        };
+        assert_eq!(failure.original_input, "original");
+        assert_eq!(failure.shrunk_input, "shrunk");
+        assert_eq!(failure.shrink_steps, 10);
+    }
+
+    #[test]
+    fn test_property_failure_clone() {
+        let failure = PropertyFailure {
+            original_input: "test".to_string(),
+            shrunk_input: "t".to_string(),
+            error_message: "error".to_string(),
+            shrink_steps: 3,
+        };
+        let cloned = failure.clone();
+        assert_eq!(failure.original_input, cloned.original_input);
+        assert_eq!(failure.shrink_steps, cloned.shrink_steps);
+    }
+
+    #[test]
+    fn test_test_statistics_new() {
+        let stats = TestStatistics::new();
+        assert!(stats.input_distribution.is_empty());
+        assert!(stats.execution_times.is_empty());
+        assert!(stats.coverage_metrics.is_empty());
+    }
+
+    #[test]
+    fn test_test_statistics_clone() {
+        let mut stats = TestStatistics::new();
+        stats.execution_times.push(Duration::from_millis(10));
+        let cloned = stats.clone();
+        assert_eq!(stats.execution_times.len(), cloned.execution_times.len());
+    }
+
+    #[test]
+    fn test_test_statistics_average_execution_time_empty() {
+        let stats = TestStatistics::new();
+        assert_eq!(stats.average_execution_time(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_test_statistics_average_execution_time() {
+        let mut stats = TestStatistics::new();
+        stats.execution_times.push(Duration::from_millis(10));
+        stats.execution_times.push(Duration::from_millis(20));
+        stats.execution_times.push(Duration::from_millis(30));
+
+        let avg = stats.average_execution_time();
+        assert_eq!(avg, Duration::from_millis(20));
+    }
+
+    #[test]
+    fn test_test_statistics_percentiles_empty() {
+        let stats = TestStatistics::new();
+        let percentiles = stats.execution_time_percentiles();
+        assert!(percentiles.is_empty());
+    }
+
+    #[test]
+    fn test_test_statistics_percentiles() {
+        let mut stats = TestStatistics::new();
+        for i in 1..=100 {
+            stats.execution_times.push(Duration::from_millis(i));
+        }
+
+        let percentiles = stats.execution_time_percentiles();
+        assert!(percentiles.contains_key("p50"));
+        assert!(percentiles.contains_key("p90"));
+        assert!(percentiles.contains_key("p95"));
+        assert!(percentiles.contains_key("p99"));
+    }
+
+    #[test]
+    fn test_integer_generator_new() {
+        let gen = IntegerGenerator::new(0, 100);
+        assert_eq!(gen.min, 0);
+        assert_eq!(gen.max, 100);
+    }
+
+    #[test]
+    fn test_integer_generator_generate() {
+        let mut gen = IntegerGenerator::new(0, 100);
+        let value = gen.generate(10);
+        assert!((0..=100).contains(&value));
+    }
+
+    #[test]
+    fn test_integer_generator_generate_negative_range() {
+        let mut gen = IntegerGenerator::new(-50, 50);
+        let value = gen.generate(10);
+        assert!((-50..=50).contains(&value));
+    }
+
+    #[test]
+    fn test_integer_generator_shrink_positive() {
+        let gen = IntegerGenerator::new(0, 100);
+        let shrunk = gen.shrink(&50);
+        assert!(!shrunk.is_empty());
+        for value in shrunk {
+            assert!(value < 50);
+        }
+    }
+
+    #[test]
+    fn test_integer_generator_shrink_negative() {
+        let gen = IntegerGenerator::new(-100, 0);
+        let shrunk = gen.shrink(&-50);
+        assert!(!shrunk.is_empty());
+        for value in shrunk {
+            assert!(value > -50);
+        }
+    }
+
+    #[test]
+    fn test_integer_generator_shrink_zero() {
+        let gen = IntegerGenerator::new(-10, 10);
+        let shrunk = gen.shrink(&0);
+        assert!(shrunk.is_empty());
+    }
+
+    #[test]
+    fn test_string_generator_new() {
+        let gen = StringGenerator::new(5, 10);
+        assert_eq!(gen.min_length, 5);
+        assert_eq!(gen.max_length, 10);
+        assert!(!gen.charset.is_empty());
+    }
+
+    #[test]
+    fn test_string_generator_with_charset() {
+        let gen = StringGenerator::with_charset(1, 5, "abc");
+        assert_eq!(gen.charset.len(), 3);
+    }
+
+    #[test]
+    fn test_string_generator_generate() {
+        let mut gen = StringGenerator::new(5, 10);
+        let value = gen.generate(10);
+        assert!(value.len() >= 5 && value.len() <= 10);
+    }
+
+    #[test]
+    fn test_string_generator_generate_empty() {
+        let mut gen = StringGenerator::new(0, 0);
+        let value = gen.generate(10);
+        assert_eq!(value.len(), 0);
+    }
+
+    #[test]
+    fn test_string_generator_shrink() {
+        let gen = StringGenerator::new(0, 20);
+        let input = "test_string".to_string();
+        let shrunk = gen.shrink(&input);
+        assert!(!shrunk.is_empty());
+        for value in shrunk {
+            assert!(value.len() < input.len());
+        }
+    }
+
+    #[test]
+    fn test_string_generator_shrink_empty() {
+        let gen = StringGenerator::new(0, 10);
+        let input = String::new();
+        let shrunk = gen.shrink(&input);
+        assert!(shrunk.is_empty());
+    }
+
+    #[test]
+    fn test_property_test_runner_new() {
+        let config = PropertyTestConfig::default();
+        let runner = PropertyTestRunner::new(config);
+        drop(runner);
+    }
+
+    #[test]
+    fn test_property_test_runner_with_seed() {
+        let config = PropertyTestConfig {
+            test_name: "seeded".to_string(),
+            test_cases: 10,
+            shrink_attempts: 5,
+            timeout: Duration::from_secs(10),
+            verbose: false,
+            seed: Some(42),
+        };
+        let runner = PropertyTestRunner::new(config);
+        drop(runner);
+    }
+
+    #[test]
+    fn test_property_test_runner_run_test_success() {
+        let config = PropertyTestConfig {
+            test_name: "success_test".to_string(),
+            test_cases: 10,
+            shrink_attempts: 5,
+            timeout: Duration::from_secs(10),
+            verbose: false,
+            seed: Some(42),
+        };
+        let mut runner = PropertyTestRunner::new(config);
+
+        let gen = IntegerGenerator::new(0, 100);
+
+        struct AlwaysPassProperty;
+        impl Property<i64> for AlwaysPassProperty {
+            fn test(&self, _input: &i64) -> Result<()> {
+                Ok(())
+            }
+            fn name(&self) -> &str {
+                "always_pass"
+            }
+        }
+
+        let property = AlwaysPassProperty;
+        let result = runner.run_test(gen, property);
+
+        assert!(result.success);
+        assert_eq!(result.test_cases_run, 10);
+        assert!(result.failures.is_empty());
+    }
+
+    #[test]
+    fn test_property_test_runner_run_test_failure() {
+        let config = PropertyTestConfig {
+            test_name: "failure_test".to_string(),
+            test_cases: 100,
+            shrink_attempts: 5,
+            timeout: Duration::from_secs(10),
+            verbose: false,
+            seed: Some(42),
+        };
+        let mut runner = PropertyTestRunner::new(config);
+
+        let gen = IntegerGenerator::new(0, 100);
+
+        struct FailOn50Property;
+        impl Property<i64> for FailOn50Property {
+            fn test(&self, input: &i64) -> Result<()> {
+                if *input == 50 {
+                    Err(anyhow::anyhow!("Failed on 50"))
+                } else {
+                    Ok(())
+                }
+            }
+            fn name(&self) -> &str {
+                "fail_on_50"
+            }
+        }
+
+        let property = FailOn50Property;
+        let result = runner.run_test(gen, property);
+
+        // The test generates value 50 (middle of range)
+        assert!(!result.success);
+        assert!(!result.failures.is_empty());
+    }
+
+    #[test]
+    fn test_invariant_property_creation() {
+        let property = InvariantProperty::new("positive".to_string(), |x: &i64| {
+            if *x >= 0 {
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!("Negative number"))
+            }
+        });
+
+        assert_eq!(property.name(), "positive");
+        assert!(property.test(&5).is_ok());
+        assert!(property.test(&-5).is_err());
+    }
+
+    #[test]
+    fn test_round_trip_property_success() {
+        let property = RoundTripProperty::new(
+            "string_encode_decode".to_string(),
+            |s: &String| Ok(s.as_bytes().to_vec()),
+            |bytes: &[u8]| Ok(String::from_utf8(bytes.to_vec())?),
+        );
+
+        let input = "test".to_string();
+        assert!(property.test(&input).is_ok());
+    }
+
+    #[test]
+    fn test_round_trip_property_failure() {
+        let property = RoundTripProperty::new(
+            "always_fail".to_string(),
+            |s: &String| Ok(s.as_bytes().to_vec()),
+            |_bytes: &[u8]| Ok("different".to_string()),
+        );
+
+        let input = "test".to_string();
+        assert!(property.test(&input).is_err());
+    }
+
+    #[test]
+    fn test_default_rng_creation() {
+        let rng = DefaultRng::new();
+        assert!(rng.state > 0);
+    }
+
+    #[test]
+    fn test_default_rng_next_u64() {
+        let mut rng = DefaultRng::new();
+        let v1 = rng.next_u64();
+        let v2 = rng.next_u64();
+        assert_ne!(v1, v2);
+    }
+
+    #[test]
+    fn test_default_rng_next_f64() {
+        let mut rng = DefaultRng::new();
+        let value = rng.next_f64();
+        assert!((0.0..=1.0).contains(&value));
+    }
+
+    #[test]
+    fn test_default_rng_seed() {
+        let mut rng = DefaultRng::new();
+        rng.seed(12345);
+        assert_eq!(rng.state, 12345);
+
+        let v1 = rng.next_u64();
+
+        rng.seed(12345);
+        let v2 = rng.next_u64();
+
+        assert_eq!(v1, v2);
+    }
+
+    #[test]
+    fn test_property_test_result_to_report_string() {
+        let result = PropertyTestResult {
+            test_name: "test_report".to_string(),
+            success: true,
+            test_cases_run: 100,
+            failures: Vec::new(),
+            duration: Duration::from_secs(2),
+            statistics: TestStatistics::new(),
+        };
+
+        let report = result.to_report_string();
+        assert!(report.contains("test_report"));
+        assert!(report.contains("PASSED"));
+        assert!(report.contains("100"));
+    }
+
+    #[test]
+    fn test_property_test_result_to_report_string_with_failures() {
+        let failure = PropertyFailure {
+            original_input: "original".to_string(),
+            shrunk_input: "shrunk".to_string(),
+            error_message: "test error".to_string(),
+            shrink_steps: 5,
+        };
+
+        let result = PropertyTestResult {
+            test_name: "test_failure_report".to_string(),
+            success: false,
+            test_cases_run: 50,
+            failures: vec![failure],
+            duration: Duration::from_secs(1),
+            statistics: TestStatistics::new(),
+        };
+
+        let report = result.to_report_string();
+        assert!(report.contains("FAILED"));
+        assert!(report.contains("Failures"));
+        assert!(report.contains("original"));
+        assert!(report.contains("shrunk"));
+        assert!(report.contains("test error"));
+    }
+
+    #[test]
+    fn test_shrink_strategy_variants() {
+        let _none = ShrinkStrategy::None;
+        let _linear = ShrinkStrategy::Linear;
+        let _binary = ShrinkStrategy::Binary;
+        let _recursive = ShrinkStrategy::Recursive;
+
+        let custom_func = Box::new(|_: &str| vec!["a".to_string()]);
+        let _custom = ShrinkStrategy::Custom(custom_func);
+    }
+
+    #[test]
+    fn test_property_test_config_with_verbose() {
+        let config = PropertyTestConfig {
+            test_name: "verbose_test".to_string(),
+            test_cases: 50,
+            shrink_attempts: 10,
+            timeout: Duration::from_secs(30),
+            verbose: true,
+            seed: None,
+        };
+
+        assert!(config.verbose);
+    }
+
+    #[test]
+    fn test_test_statistics_with_data() {
+        let mut stats = TestStatistics::new();
+        stats.input_distribution.insert("i64".to_string(), 50);
+        stats.execution_times.push(Duration::from_millis(10));
+        stats.coverage_metrics.insert("lines".to_string(), 85.5);
+
+        assert_eq!(stats.input_distribution.get("i64"), Some(&50));
+        assert_eq!(stats.execution_times.len(), 1);
+        assert_eq!(stats.coverage_metrics.get("lines"), Some(&85.5));
+    }
+
+    #[test]
+    fn test_integer_generator_boundary_values() {
+        let mut gen_zero = IntegerGenerator::new(0, 0);
+        let value = gen_zero.generate(1);
+        assert_eq!(value, 0);
+
+        let mut gen_negative = IntegerGenerator::new(-100, -100);
+        let value_neg = gen_negative.generate(1);
+        assert_eq!(value_neg, -100);
+    }
+
+    #[test]
+    fn test_string_generator_fixed_length() {
+        let mut gen = StringGenerator::new(10, 10);
+        let value = gen.generate(5);
+        assert_eq!(value.len(), 10);
+    }
+
+    #[test]
+    fn test_string_generator_shrink_single_char() {
+        let gen = StringGenerator::new(0, 10);
+        let input = "a".to_string();
+        let shrunk = gen.shrink(&input);
+
+        // Single char should shrink to empty
+        assert!(!shrunk.is_empty());
+        assert!(shrunk.contains(&String::new()));
+    }
 }

@@ -1,8 +1,8 @@
 //! # Security Hardening Module
 //!
-//! This module provides production-ready security hardening features for ToadStool:
+//! This module provides production-ready security hardening features for `ToadStool`:
 //! - Input validation and sanitization
-//! - Rate limiting and DDoS protection
+//! - Rate limiting and `DDoS` protection
 //! - Audit logging and intrusion detection
 //! - Security context validation
 //! - Encryption and key management
@@ -121,8 +121,8 @@ pub struct IntrusionDetectionConfig {
     pub auto_ban_threshold: u32,
     /// Ban duration
     pub ban_duration: Duration,
-    /// Whitelist IPs
-    pub whitelist_ips: Vec<String>,
+    /// Allowed IPs (permit list)
+    pub allowed_ips: Vec<String>,
 }
 
 impl Default for IntrusionDetectionConfig {
@@ -132,7 +132,7 @@ impl Default for IntrusionDetectionConfig {
             activity_window: Duration::from_secs(300),
             auto_ban_threshold: 10,
             ban_duration: Duration::from_secs(3600),
-            whitelist_ips: vec!["127.0.0.1".to_string(), "::1".to_string()],
+            allowed_ips: vec!["127.0.0.1".to_string(), "::1".to_string()],
         }
     }
 }
@@ -210,6 +210,7 @@ struct ClientRateData {
 
 impl RateLimiter {
     /// Create new rate limiter
+    #[must_use]
     pub fn new(config: RateLimitingConfig) -> Self {
         Self {
             config,
@@ -313,6 +314,7 @@ pub struct InputValidator {
 
 impl InputValidator {
     /// Create new input validator
+    #[must_use]
     pub fn new(rules: ValidationRules) -> Self {
         Self { rules }
     }
@@ -376,6 +378,7 @@ impl InputValidator {
     }
 
     /// Sanitize input string
+    #[must_use]
     pub fn sanitize_input(&self, input: &str) -> String {
         let mut sanitized = input.to_string();
 
@@ -459,6 +462,7 @@ pub enum SecuritySeverity {
 
 impl SecurityAuditLogger {
     /// Create new security audit logger
+    #[must_use]
     pub fn new(config: AuditConfig) -> Self {
         Self {
             _config: config,
@@ -528,6 +532,7 @@ struct BanInfo {
 
 impl IntrusionDetectionSystem {
     /// Create new intrusion detection system
+    #[must_use]
     pub fn new(config: IntrusionDetectionConfig) -> Self {
         Self {
             config,
@@ -648,6 +653,7 @@ pub struct SecurityHardeningManager {
 
 impl SecurityHardeningManager {
     /// Create new security hardening manager
+    #[must_use]
     pub fn new(config: SecurityHardeningConfig) -> Self {
         let rate_limiter = Arc::new(RateLimiter::new(config.rate_limiting.clone()));
         let input_validator = Arc::new(InputValidator::new(config.validation_rules.clone()));
@@ -734,6 +740,7 @@ impl SecurityHardeningManager {
     }
 
     /// Sanitize input
+    #[must_use]
     pub fn sanitize_input(&self, input: &str) -> String {
         if self.config.enable_input_validation {
             self.input_validator.sanitize_input(input)

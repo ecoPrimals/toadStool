@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 
 use crate::{ExecutionResponse, ToadStoolResult, UniversalJob};
 
-/// BiomeOS integration for the OS layer
+/// `BiomeOS` integration for the OS layer
 pub struct BiomeOSIntegration {
     orchestrator: BiomeOrchestrator,
 }
@@ -25,7 +25,7 @@ impl BiomeOSIntegration {
     }
 }
 
-/// BiomeOS orchestrator for team-isolated deployments
+/// `BiomeOS` orchestrator for team-isolated deployments
 pub struct BiomeOrchestrator {
     /// biomeOS integration config
     #[allow(dead_code)]

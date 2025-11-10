@@ -7,7 +7,7 @@ use chrono::Utc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info};
 
-use crate::config::{DiscoveryConfig, ProtocolConfig, RoutingStrategy};
+use crate::config::{ServiceDiscoveryConfig, ProtocolConfig, RoutingStrategy};
 use crate::transport::{Connection, TransportManager};
 use crate::types::{
     HealthStatus, MessageHandler, MessagePriority, ProtocolError, ProtocolEvent, ProtocolMessage,
@@ -242,7 +242,7 @@ impl ProtocolClient {
     async fn start_background_tasks(&self) {
         // Health monitoring task
         if self.config.health_config.enabled {
-            let _services = Arc::clone(&self.services);
+            let services_for_health = Arc::clone(&self.services);
             let interval = self.config.health_config.interval;
             let _event_bus = self.event_bus.clone();
 
@@ -253,17 +253,45 @@ impl ProtocolClient {
                     interval_timer.tick().await;
 
                     // Check health of all registered services
-                    #[cfg(feature = "networking")]
-                    {
-                        // TODO: Implement actual health check logic
-                        debug!("Health check cycle completed");
+                    let services_snapshot = services_for_health.read().await;
+                    for (service_id, service_info) in services_snapshot.iter() {
+                        // Check each service endpoint
+                        for endpoint in &service_info.endpoints {
+                            // Simple connectivity check via HTTP HEAD request
+                            // Build URL from endpoint address (assume HTTP for health checks)
+                            let url = if endpoint.address.starts_with("http") {
+                                format!("{}/health", endpoint.address)
+                            } else {
+                                format!("http://{}/health", endpoint.address)
+                            };
+
+                            match reqwest::Client::new()
+                                .head(&url)
+                                .timeout(std::time::Duration::from_secs(5))
+                                .send()
+                                .await
+                            {
+                                Ok(response) if response.status().is_success() => {
+                                    debug!("Service {} is healthy at {}", service_id, url);
+                                }
+                                Ok(response) => {
+                                    debug!(
+                                        "Service {} returned status {} at {}",
+                                        service_id,
+                                        response.status(),
+                                        url
+                                    );
+                                }
+                                Err(e) => {
+                                    debug!("Service {} health check failed: {}", service_id, e);
+                                }
+                            }
+                        }
                     }
-                    
-                    #[cfg(not(feature = "networking"))]
-                    {
-                        // Mock implementation for testing
-                        debug!("Health check cycle completed (mock)");
-                    }
+                    debug!(
+                        "Health check cycle completed for {} services",
+                        services_snapshot.len()
+                    );
                 }
             });
         }
@@ -291,42 +319,101 @@ impl ProtocolClient {
     async fn register_with_discovery(
         &self,
         service_info: &ServiceInfo,
-        _discovery_config: &DiscoveryConfig,
+        discovery_config: &ServiceDiscoveryConfig,
     ) -> ProtocolResult<()> {
-        #[cfg(feature = "networking")]
-        {
-            // TODO: Implement actual discovery service registration
-            debug!("Registering service with discovery: {}", service_info.id);
-            Ok(())
+        // Use registry endpoint if available
+        if let Some(ref endpoint) = discovery_config.registry_endpoint {
+            let url = format!("{}/api/v1/services", endpoint);
+
+            match reqwest::Client::new()
+                .post(&url)
+                .json(&service_info)
+                .timeout(std::time::Duration::from_secs(10))
+                .send()
+                .await
+            {
+                Ok(response) if response.status().is_success() => {
+                    info!(
+                        "Successfully registered service {} with discovery at {}",
+                        service_info.id, endpoint
+                    );
+                }
+                Ok(response) => {
+                    debug!(
+                        "Service registration returned status {}: {} at {}",
+                        response.status(),
+                        service_info.id,
+                        endpoint
+                    );
+                }
+                Err(e) => {
+                    debug!(
+                        "Failed to register service {} with discovery at {}: {}",
+                        service_info.id, endpoint, e
+                    );
+                }
+            }
+        } else {
+            debug!("No registry endpoint configured, skipping registration");
         }
-        
-        #[cfg(not(feature = "networking"))]
-        {
-            // Mock implementation - would register with actual discovery service
-            debug!("Registering service with discovery (mock): {}", service_info.id);
-            Ok(())
-        }
+
+        Ok(())
     }
 
     /// Discover services from registry
     async fn discover_from_registry(
         &self,
         service_name: &str,
-        _discovery_config: &DiscoveryConfig,
+        discovery_config: &ServiceDiscoveryConfig,
     ) -> ProtocolResult<Vec<ServiceInfo>> {
-        #[cfg(feature = "networking")]
-        {
-            // TODO: Implement actual discovery service query
-            debug!("Discovering services from registry: {}", service_name);
-            Ok(Vec::new())
+        let mut discovered_services = Vec::new();
+
+        // Query registry endpoint if available
+        if let Some(ref endpoint) = discovery_config.registry_endpoint {
+            let url = format!("{}/api/v1/services/{}", endpoint, service_name);
+
+            match reqwest::Client::new()
+                .get(&url)
+                .timeout(std::time::Duration::from_secs(10))
+                .send()
+                .await
+            {
+                Ok(response) if response.status().is_success() => {
+                    match response.json::<Vec<ServiceInfo>>().await {
+                        Ok(services) => {
+                            info!(
+                                "Discovered {} instances of service {} from {}",
+                                services.len(),
+                                service_name,
+                                endpoint
+                            );
+                            discovered_services.extend(services);
+                        }
+                        Err(e) => {
+                            debug!(
+                                "Failed to parse discovery response from {}: {}",
+                                endpoint, e
+                            );
+                        }
+                    }
+                }
+                Ok(response) => {
+                    debug!(
+                        "Discovery query returned status {}: {} at {}",
+                        response.status(),
+                        service_name,
+                        endpoint
+                    );
+                }
+                Err(e) => {
+                    debug!("Failed to query discovery service at {}: {}", endpoint, e);
+                }
+            }
+        } else {
+            debug!("No registry endpoint configured, returning empty results");
         }
-        
-        #[cfg(not(feature = "networking"))]
-        {
-            // Mock implementation - would query actual discovery service
-            debug!("Discovering services from registry (mock): {}", service_name);
-            Ok(Vec::new())
-        }
+
+        Ok(discovered_services)
     }
 
     /// Select service based on routing strategy
@@ -405,5 +492,330 @@ where
         message: ProtocolMessage,
     ) -> Result<Option<ProtocolMessage>, ProtocolError> {
         (self.handler_fn)(message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toadstool_config::defaults;
+    use crate::config::ProtocolConfig;
+    use crate::types::{MessageFormat, TransportType};
+    use std::time::Duration;
+    use uuid::Uuid;
+
+    /// Helper function to create a test protocol config
+    fn create_test_config() -> ProtocolConfig {
+        ProtocolConfig::default()
+    }
+
+    /// Helper function to create a test service info
+    fn create_test_service(id: &str, name: &str, status: HealthStatus) -> ServiceInfo {
+        ServiceInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            endpoints: vec![ServiceEndpoint {
+                id: format!("{}-endpoint", id),
+                transport: TransportType::Http,
+                address: defaults::network::LOCALHOST.to_string(),
+                port: defaults::network::SONGBIRD_PORT,
+                path: Some("/".to_string()),
+                tls_enabled: false,
+                health_status: status.clone(),
+            }],
+            metadata: HashMap::new(),
+            health_status: status,
+            last_seen: Utc::now(),
+            capabilities: vec!["test".to_string()],
+        }
+    }
+
+    /// Helper function to create a test protocol message
+    fn create_test_message(source: &str, msg_type: &str) -> ProtocolMessage {
+        ProtocolMessage {
+            id: Uuid::new_v4(),
+            message_type: msg_type.to_string(),
+            source: source.to_string(),
+            destination: None,
+            payload: serde_json::json!({"test": "data"}),
+            headers: HashMap::new(),
+            timestamp: Utc::now(),
+            format: MessageFormat::Json,
+            correlation_id: None,
+            reply_to: None,
+            ttl: Some(Duration::from_secs(60)),
+            priority: MessagePriority::Normal,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_protocol_client_creation() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await;
+        assert!(client.is_ok(), "Failed to create protocol client");
+    }
+
+    #[tokio::test]
+    async fn test_register_service() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let service = create_test_service("service-1", "test-service", HealthStatus::Healthy);
+
+        let result = client.register_service(service.clone()).await;
+        assert!(result.is_ok(), "Failed to register service");
+
+        // Verify service is registered
+        let health = client.get_service_health("service-1").await.unwrap();
+        assert_eq!(health, HealthStatus::Healthy);
+    }
+
+    #[tokio::test]
+    async fn test_register_multiple_services() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let service1 = create_test_service("service-1", "test-service", HealthStatus::Healthy);
+        let service2 = create_test_service("service-2", "test-service", HealthStatus::Degraded);
+
+        assert!(client.register_service(service1).await.is_ok());
+        assert!(client.register_service(service2).await.is_ok());
+
+        // Verify both services are registered
+        assert_eq!(
+            client.get_service_health("service-1").await.unwrap(),
+            HealthStatus::Healthy
+        );
+        assert_eq!(
+            client.get_service_health("service-2").await.unwrap(),
+            HealthStatus::Degraded
+        );
+    }
+
+    #[tokio::test]
+    async fn test_discover_services_from_cache() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let service = create_test_service("service-1", "test-service", HealthStatus::Healthy);
+        client.register_service(service).await.unwrap();
+
+        // Discover should find the cached service
+        let discovered = client.discover_services("test-service").await.unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].id, "service-1");
+    }
+
+    #[tokio::test]
+    async fn test_discover_services_empty() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        // No services registered, should return empty
+        let discovered = client
+            .discover_services("nonexistent-service")
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_service_health_unknown() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        // Non-existent service should return Unknown
+        let health = client.get_service_health("nonexistent").await.unwrap();
+        assert_eq!(health, HealthStatus::Unknown);
+    }
+
+    #[tokio::test]
+    async fn test_register_handler() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let handler = SimpleMessageHandler::new(|msg| {
+            Ok(Some(ProtocolMessage {
+                id: Uuid::new_v4(),
+                message_type: "response".to_string(),
+                source: "handler".to_string(),
+                destination: Some(msg.source.clone()),
+                payload: msg.payload.clone(),
+                headers: HashMap::new(),
+                timestamp: Utc::now(),
+                format: MessageFormat::Json,
+                correlation_id: Some(msg.id),
+                reply_to: None,
+                ttl: None,
+                priority: MessagePriority::Normal,
+            }))
+        });
+
+        client
+            .register_handler("test-message", Box::new(handler))
+            .await;
+
+        // Verify handler is registered by handling a message
+        let test_msg = create_test_message("test-source", "test-message");
+        let response = client.handle_message(test_msg.clone()).await.unwrap();
+
+        assert!(response.is_some());
+        let response = response.unwrap();
+        assert_eq!(response.message_type, "response");
+        assert_eq!(response.correlation_id, Some(test_msg.id));
+    }
+
+    #[tokio::test]
+    async fn test_handle_message_no_handler() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let test_msg = create_test_message("test-source", "unknown-type");
+        let response = client.handle_message(test_msg).await.unwrap();
+
+        // No handler registered, should return None
+        assert!(response.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_select_service_healthy_preferred() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let services = vec![
+            create_test_service("service-1", "test", HealthStatus::Degraded),
+            create_test_service("service-2", "test", HealthStatus::Healthy),
+            create_test_service("service-3", "test", HealthStatus::Unhealthy),
+        ];
+
+        let selected = client.select_service(&services).unwrap();
+        assert_eq!(selected.id, "service-2", "Should select healthy service");
+    }
+
+    #[tokio::test]
+    async fn test_select_service_no_healthy() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let services = vec![
+            create_test_service("service-1", "test", HealthStatus::Degraded),
+            create_test_service("service-2", "test", HealthStatus::Unhealthy),
+        ];
+
+        let selected = client.select_service(&services).unwrap();
+        // Should fallback to first service
+        assert_eq!(selected.id, "service-1");
+    }
+
+    #[tokio::test]
+    async fn test_select_service_empty() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let services: Vec<ServiceInfo> = vec![];
+        let result = client.select_service(&services);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ProtocolError::Routing(msg) => assert!(msg.contains("No services available")),
+            _ => panic!("Expected Routing error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_event_subscription() {
+        let config = create_test_config();
+        let client = ProtocolClient::new(config).await.unwrap();
+
+        let mut event_receiver = client.subscribe_events();
+
+        let service = create_test_service("service-1", "test", HealthStatus::Healthy);
+        client.register_service(service.clone()).await.unwrap();
+
+        // Should receive ServiceRegistered event
+        let event = event_receiver.try_recv();
+        assert!(event.is_ok(), "Should receive event");
+
+        match event.unwrap() {
+            ProtocolEvent::ServiceRegistered { service: s } => {
+                assert_eq!(s.id, "service-1");
+            }
+            _ => panic!("Expected ServiceRegistered event"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_message_priority_ordering() {
+        let priorities = [
+            MessagePriority::Low,
+            MessagePriority::Normal,
+            MessagePriority::High,
+            MessagePriority::Critical,
+            MessagePriority::Emergency,
+        ];
+
+        // Verify priority ordering
+        for i in 0..priorities.len() - 1 {
+            assert!(
+                priorities[i] < priorities[i + 1],
+                "Priority ordering incorrect"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_health_status_equality() {
+        assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
+        assert_eq!(HealthStatus::Degraded, HealthStatus::Degraded);
+        assert_eq!(HealthStatus::Unhealthy, HealthStatus::Unhealthy);
+        assert_eq!(HealthStatus::Unknown, HealthStatus::Unknown);
+
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Degraded);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Unknown);
+    }
+
+    #[tokio::test]
+    async fn test_protocol_message_creation() {
+        let msg = create_test_message("test-source", "test-type");
+
+        assert_eq!(msg.source, "test-source");
+        assert_eq!(msg.message_type, "test-type");
+        assert_eq!(msg.format, MessageFormat::Json);
+        assert_eq!(msg.priority, MessagePriority::Normal);
+        assert!(msg.ttl.is_some());
+        assert_eq!(msg.ttl.unwrap(), Duration::from_secs(60));
+    }
+
+    #[tokio::test]
+    async fn test_simple_message_handler() {
+        let handler = SimpleMessageHandler::new(|msg| {
+            Ok(Some(ProtocolMessage {
+                id: Uuid::new_v4(),
+                message_type: "echo".to_string(),
+                source: "handler".to_string(),
+                destination: Some(msg.source.clone()),
+                payload: msg.payload.clone(),
+                headers: HashMap::new(),
+                timestamp: Utc::now(),
+                format: msg.format.clone(),
+                correlation_id: Some(msg.id),
+                reply_to: None,
+                ttl: None,
+                priority: msg.priority.clone(),
+            }))
+        });
+
+        let test_msg = create_test_message("test", "test-type");
+        let msg_id = test_msg.id;
+        let payload = test_msg.payload.clone();
+
+        let response = handler.handle_message(test_msg).unwrap();
+        assert!(response.is_some());
+
+        let response = response.unwrap();
+        assert_eq!(response.message_type, "echo");
+        assert_eq!(response.payload, payload);
+        assert_eq!(response.correlation_id, Some(msg_id));
     }
 }

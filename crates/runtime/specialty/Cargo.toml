@@ -1,0 +1,89 @@
+[package]
+name = "toadstool-runtime-specialty"
+version = "0.1.0"
+edition = "2021"
+description = "Specialty Hardware Runtime for ToadStool - Mainframes, embedded systems, industrial controllers, and exotic platforms"
+authors = ["ToadStool Team <team@toadstool.dev>"]
+license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+categories = ["embedded", "hardware-support", "computation"]
+keywords = ["specialty", "mainframe", "embedded", "industrial", "universal-compute"]
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"  # Required for RuntimeEngine trait object compatibility
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Legacy system communication
+serialport = "4.0"
+rexpect = "0.5"
+telnet = "0.2"
+ssh2 = "0.9"
+regex = "1.0"
+encoding = "0.2"
+bytes = "1.0"
+
+# Mainframe and enterprise systems
+# ibm-mq = { version = "0.1", optional = true }  # Not on crates.io
+# cobol-parser = { version = "0.2", optional = true }  # Not on crates.io
+# jcl-parser = { version = "0.1", optional = true }  # Not on crates.io
+ebcdic = "0.1"  # Latest available version
+# fixed-width = "0.1"  # Not on crates.io
+
+# Embedded systems
+embedded-hal = { version = "1.0", optional = true }
+# arduino-hal = { version = "0.1", optional = true }  # Temporarily disabled - not available on crates.io
+nb = "1.0"
+void = "1.0"
+cortex-m = { version = "0.7", optional = true }
+
+# Cross-compilation support
+cc = "1.0"
+bindgen = { version = "0.65", optional = true }
+cross = { version = "0.2", optional = true }
+
+# Industrial control protocols
+modbus = "1.0"
+# ethercat = { version = "0.2", optional = true }  # Not on crates.io
+# canbus = { version = "0.3", optional = true }    # Not on crates.io
+# profinet = { version = "0.1", optional = true }  # Not on crates.io
+
+# Legacy networking
+# netbios = { version = "0.1", optional = true }  # Not on crates.io
+# ipx = { version = "0.1", optional = true }  # Not on crates.io
+# decnet = { version = "0.1", optional = true }  # Not on crates.io
+
+# Real-time systems
+# real-time-for-the-masses = { version = "0.6", optional = true }  # Not on crates.io
+# vxworks-sys = { version = "0.1", optional = true }  # Not on crates.io
+# qnx-sys = { version = "0.1", optional = true }  # Not on crates.io
+
+# ToadStool core
+toadstool = { path = "../../core/toadstool" }
+toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
+
+[features]
+default = []  # Temporarily disabled due to missing dependencies
+# mainframe = ["ibm-mq", "cobol-parser", "jcl-parser"]  # Missing dependencies
+# embedded = ["cortex-m", "bindgen"]  # Missing dependencies
+industrial = []  # ["ethercat", "canbus", "profinet"] - dependencies not on crates.io
+# legacy-networking = ["netbios", "ipx", "decnet"]  # Missing dependencies
+# real-time = ["real-time-for-the-masses", "vxworks-sys", "qnx-sys"]  # Missing dependencies
+cross-compilation = ["cross", "bindgen"]
+# all = ["mainframe", "embedded", "industrial", "legacy-networking", "real-time", "cross-compilation"]
+
+[build-dependencies]
+cc = "1.0"
+bindgen = { version = "0.65", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.0" 

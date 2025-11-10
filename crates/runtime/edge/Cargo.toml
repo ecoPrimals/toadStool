@@ -27,7 +27,7 @@ serialport = "4.3"
 embedded-hal = "1.0"
 rppal = { version = "0.17", optional = true }
 esp-idf-sys = { version = "0.34", optional = true }
-arduino-hal = { version = "0.1", optional = true }
+# arduino-hal = { version = "0.1", optional = true }  # Not available on crates.io
 cross = "0.2"
 cc = "1.0"
 bindgen = "0.69"
@@ -35,9 +35,9 @@ bindgen = "0.69"
 # Network and communication
 reqwest = { version = "0.11", features = ["json"] }
 mdns = "3.0"
-zeroconf = "0.12"
-mqtt = "0.4"
-coap = "0.10"
+# zeroconf = "0.12"  # Optional - not critical for core functionality
+# mqtt = "0.1"  # Using latest available version
+# coap = "0.10"  # Optional - not critical for core functionality
 
 # Device discovery and management
 sysinfo = "0.30"
@@ -45,15 +45,15 @@ udev = "0.8"
 libudev = "0.3"
 
 # Cross-compilation support
-cargo-cross = "0.2"
-cross-toolchain = "0.1"
+# cargo-cross = "0.2"  # Not available on crates.io, use `cross` binary directly
+# cross-toolchain = "0.1"  # Not available on crates.io
 
 [features]
-default = ["raspberry-pi", "arduino", "esp32"]
+default = ["raspberry-pi", "esp32"]
 raspberry-pi = ["rppal"]
-arduino = ["arduino-hal"]
+# arduino = ["arduino-hal"]  # Temporarily disabled - not available on crates.io
 esp32 = ["esp-idf-sys"]
-all-platforms = ["raspberry-pi", "arduino", "esp32"]
+all-platforms = ["raspberry-pi", "esp32"]
 
 [build-dependencies]
 bindgen = "0.69"

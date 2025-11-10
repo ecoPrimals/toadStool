@@ -43,69 +43,66 @@ impl CooperativeNetwork {
 
     fn distribute_rewards(&mut self) {
         let network_multiplier = 1.0 + (self.total_contributions as f64 / 1000.0);
-        let node_count = self.nodes.len() as f64;
+        
+        // Calculate values before mutable iteration to avoid borrow conflict
+        let nodes_len = self.nodes.len();
         let total_contributions = self.total_contributions as f64;
-
-        for node in self.nodes.values_mut() {
+        
+        for (_, node) in &mut self.nodes {
             let base_reward = node.contributed as f64 * network_multiplier;
-            let network_bonus = total_contributions / node_count;
+            let network_bonus = total_contributions / nodes_len as f64;
             node.received = (base_reward + network_bonus * 0.5) as u64;
         }
     }
 
     fn show_status(&self) {
-        println!("\n🌐 Cooperative Network Status:");
+        println!("\n🌐 COOPERATIVE NETWORK STATUS");
         println!("Total Contributions: {}", self.total_contributions);
-        println!(
-            "Network Multiplier: {:.2}x",
-            1.0 + (self.total_contributions as f64 / 1000.0)
-        );
-
-        let mut nodes: Vec<_> = self.nodes.values().collect();
-        nodes.sort_by(|a, b| b.received.cmp(&a.received));
-
-        for node in nodes {
-            let roi = if node.contributed > 0 {
-                (node.received as f64 / node.contributed as f64) * 100.0
+        println!("Network Multiplier: {:.2}x", 1.0 + (self.total_contributions as f64 / 1000.0));
+        
+        for (name, node) in &self.nodes {
+            let multiplier = if node.contributed > 0 {
+                node.received as f64 / node.contributed as f64
             } else {
-                0.0
+                1.0
             };
-            println!(
-                "  {} - Gave: {}, Received: {}, ROI: {:.1}%",
-                node.name, node.contributed, node.received, roi
-            );
+            println!("{}: Gave {} → Got {} ({}x return)", 
+                    name, node.contributed, node.received, multiplier);
         }
     }
 }
 
 fn main() {
-    println!("🚀 Cooperative Network Revolution Demo");
-    println!("Demonstrating exponential returns through giving\n");
-
+    println!("🚀 TOADSTOOL COOPERATIVE NETWORK REVOLUTION");
+    println!("═══════════════════════════════════════════");
+    println!("✅ Cooperative Model: Give → Get Back MORE");
+    println!("🚀 Network Effects: Everyone benefits");
+    println!("♾️ No Cap: Unlimited potential");
+    
     let mut network = CooperativeNetwork::new();
-
+    
     // Add nodes
     network.add_node("Alice".to_string());
     network.add_node("Bob".to_string());
-    network.add_node("Charlie".to_string());
-    network.add_node("Diana".to_string());
-
-    println!("Phase 1: Initial contributions");
-    network.contribute("Alice", 100);
-    network.contribute("Bob", 150);
+    network.add_node("Carol".to_string());
+    
+    println!("\n🤝 COOPERATIVE CONTRIBUTIONS:");
+    
+    // Contributions create network effects
+    network.contribute("Alice", 1000);
+    println!("Alice contributes 1000 compute units");
+    
+    network.contribute("Bob", 800);
+    println!("Bob contributes 800 compute units");
+    
+    network.contribute("Carol", 1200);
+    println!("Carol contributes 1200 compute units");
+    
     network.show_status();
-
-    println!("\nPhase 2: More join the network");
-    network.contribute("Charlie", 200);
-    network.contribute("Diana", 75);
-    network.show_status();
-
-    println!("\nPhase 3: Network effects amplify");
-    network.contribute("Alice", 50);
-    network.contribute("Bob", 100);
-    network.contribute("Charlie", 25);
-    network.show_status();
-
-    println!("\n✨ Notice how everyone's returns increase as the network grows!");
-    println!("This is the power of cooperative economics - giving creates abundance for all.");
-}
+    
+    println!("\n🎯 KEY INSIGHT: Everyone gets back MORE than they gave!");
+    println!("💡 This is COOPERATIVE NETWORK EFFECTS in action!");
+    println!("🌟 Pure Rust ecosystem: Always FREE");
+    println!("🔒 BearDog crypto locks: Protect the cooperative value");
+    println!("🎉 This is the future of computing!");
+} 

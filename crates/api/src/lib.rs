@@ -33,7 +33,6 @@ use utoipa_swagger_ui::SwaggerUi;
 use uuid::Uuid;
 
 use toadstool::{ToadStoolError, ToadStoolResult};
-use toadstool_config::network;
 
 use crate::types::{
     AlertSeverity, ApiConfig, ApiEvent, ApiMetrics, AuthClaims, AuthRequest, AuthResponse,
@@ -127,7 +126,7 @@ pub use types::{ApiError, PaginatedResponse};
         )
     ),
     servers(
-        (url = "http://localhost:8080", description = "Local development server"),
+        (url = "http://localhost:8084", description = "Local development server (use TOADSTOOL_API_PORT to customize)"),
         (url = "https://api.toadstool.dev", description = "Production server")
     )
 )]
@@ -346,8 +345,8 @@ pub struct ToadStoolCli {
 pub enum CliCommand {
     /// Start the API server
     Server {
-        #[arg(short, long, default_value_t = format!("{}:{}", network::DEFAULT_LOCALHOST, network::DEFAULT_TOADSTOOL_PORT))]
-        bind: String,
+        #[arg(short, long, value_parser)]
+        bind: Option<String>,
     },
     /// Submit an execution request
     Execute {
@@ -370,7 +369,15 @@ mod tests {
     #[test]
     fn test_api_config_default() {
         let config = ApiConfig::default();
-        assert_eq!(config.bind_address, "127.0.0.1:8080");
+        // The default bind address is now environment-aware
+        let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        assert_eq!(
+            config.bind_address,
+            format!(
+                "{}:{}",
+                env_config.network.bind_address, env_config.network.songbird_port
+            )
+        );
         assert!(config.enable_rest);
         assert!(config.enable_websocket);
         assert!(config.cors_enabled);

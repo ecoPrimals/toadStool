@@ -73,11 +73,19 @@ impl RecursiveHostingManager {
     ) -> ToadStoolResult<ChildToadStoolInstance> {
         let instance_id = uuid::Uuid::new_v4().to_string();
 
+        // Use environment-aware configuration
+        let port: u16 = std::env::var("TOADSTOOL_API_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8084);
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        let host = &config.network.bind_address;
+
         let instance = ChildToadStoolInstance {
             instance_id: instance_id.clone(),
             process_handle: ProcessHandle::default(),
             resource_allocation: toadstool_config.resource_allocation.unwrap_or_default(),
-            endpoint: format!("http://localhost:8080/{instance_id}"),
+            endpoint: format!("http://{host}:{port}/{instance_id}"),
             status: InstanceStatus::Starting,
             started_at: Utc::now(),
         };

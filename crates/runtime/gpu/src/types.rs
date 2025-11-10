@@ -14,7 +14,7 @@ pub enum GpuFramework {
     WebGpu,
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
-    /// OpenCL (widely supported, vendor-agnostic)
+    /// `OpenCL` (widely supported, vendor-agnostic)
     OpenCl,
     /// NVIDIA CUDA (NVIDIA-specific, high-performance)
     Cuda,
@@ -22,7 +22,7 @@ pub enum GpuFramework {
     Metal,
     /// AMD ROCm/HIP (AMD-specific, high-performance)
     Rocm,
-    /// Microsoft DirectCompute (Windows-specific)
+    /// Microsoft `DirectCompute` (Windows-specific)
     DirectCompute,
     /// Custom/plugin framework
     Custom(String),
@@ -372,7 +372,7 @@ pub enum SessionStatus {
 /// Kernel formats supported by the compiler
 #[derive(Debug, Clone, Hash, Serialize, Deserialize)]
 pub enum KernelFormat {
-    /// OpenCL C
+    /// `OpenCL` C
     OpenClC,
     /// CUDA C
     CudaC,
@@ -388,7 +388,7 @@ pub enum KernelFormat {
     LlvmIr,
     /// WebAssembly
     Wasm,
-    /// ToadStool Universal Compute Language (custom)
+    /// `ToadStool` Universal Compute Language (custom)
     Tucl,
 }
 

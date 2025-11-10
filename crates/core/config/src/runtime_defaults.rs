@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use tracing::{info, warn};
 
-use crate::{CacheConfig, MetricsConfig, ToadStoolConfig};
+use crate::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
 
 /// Configuration error type
 #[derive(Debug, thiserror::Error)]
@@ -158,7 +158,7 @@ impl ToadStoolConfig {
 
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_CACHE") {
             self.cache = if enabled.to_lowercase() == "true" {
-                Some(CacheConfig::default())
+                Some(BackendCacheConfig::default())
             } else {
                 None
             };
@@ -857,12 +857,24 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_env_overrides() {
+        // Clean up first to ensure clean state
+        // Save original environment state
+        let original_env = env::var("TOADSTOOL_ENV").ok();
+        let original_debug = env::var("TOADSTOOL_DEBUG").ok();
+        let original_log_level = env::var("TOADSTOOL_LOG_LEVEL").ok();
+        let original_threads = env::var("TOADSTOOL_WORKER_THREADS").ok();
+        let original_endpoint = env::var("TOADSTOOL_SONGBIRD_ENDPOINT").ok();
+        let original_bind_host = env::var("TOADSTOOL_BIND_HOST").ok();
+
+        // Set test values (ensure BIND_HOST is set to valid value)
         env::set_var("TOADSTOOL_ENV", "test");
         env::set_var("TOADSTOOL_DEBUG", "true");
         env::set_var("TOADSTOOL_LOG_LEVEL", "debug");
         env::set_var("TOADSTOOL_WORKER_THREADS", "8");
-        env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://test:8080");
+        env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", "http://localhost:8080");
+        env::set_var("TOADSTOOL_BIND_HOST", "127.0.0.1");
 
         let mut config = ToadStoolConfig::default();
         config.apply_env_overrides().unwrap();
@@ -871,14 +883,33 @@ mod tests {
         assert!(config.features.enable_debug);
         assert_eq!(config.logging.level, "debug");
         assert_eq!(config.app.worker_threads, 8);
-        assert_eq!(config.network.endpoints.songbird, "http://test:8080");
+        assert_eq!(config.network.endpoints.songbird, "http://localhost:8080");
 
-        // Clean up
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("TOADSTOOL_DEBUG");
-        env::remove_var("TOADSTOOL_LOG_LEVEL");
-        env::remove_var("TOADSTOOL_WORKER_THREADS");
-        env::remove_var("TOADSTOOL_SONGBIRD_ENDPOINT");
+        // Restore original environment state
+        match original_env {
+            Some(val) => env::set_var("TOADSTOOL_ENV", val),
+            None => env::remove_var("TOADSTOOL_ENV"),
+        }
+        match original_debug {
+            Some(val) => env::set_var("TOADSTOOL_DEBUG", val),
+            None => env::remove_var("TOADSTOOL_DEBUG"),
+        }
+        match original_log_level {
+            Some(val) => env::set_var("TOADSTOOL_LOG_LEVEL", val),
+            None => env::remove_var("TOADSTOOL_LOG_LEVEL"),
+        }
+        match original_threads {
+            Some(val) => env::set_var("TOADSTOOL_WORKER_THREADS", val),
+            None => env::remove_var("TOADSTOOL_WORKER_THREADS"),
+        }
+        match original_endpoint {
+            Some(val) => env::set_var("TOADSTOOL_SONGBIRD_ENDPOINT", val),
+            None => env::remove_var("TOADSTOOL_SONGBIRD_ENDPOINT"),
+        }
+        match original_bind_host {
+            Some(val) => env::set_var("TOADSTOOL_BIND_HOST", val),
+            None => env::remove_var("TOADSTOOL_BIND_HOST"),
+        }
     }
 
     #[test]
@@ -931,15 +962,49 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_current_environment_detection() {
+        // Save original environment state
+        let original_toadstool_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
+        let original_env = env::var("ENVIRONMENT").ok();
+        let original_toadstool_env_short = env::var("TOADSTOOL_ENV").ok();
+        let original_env_short = env::var("ENV").ok();
+
+        // Set all environment variables to ensure consistent state
+        // Must set all variants to same value to prevent apply_env_overrides from changing it
         env::set_var("TOADSTOOL_ENVIRONMENT", "production");
+        env::set_var("TOADSTOOL_ENV", "production");
+        env::set_var("ENVIRONMENT", "production");
+        env::set_var("ENV", "production");
+
         let config = ToadStoolConfig::for_current_environment();
         assert_eq!(config.app.environment, "production");
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
 
+        // Test with different env var - set all to same value
+        env::set_var("TOADSTOOL_ENVIRONMENT", "staging");
+        env::set_var("TOADSTOOL_ENV", "staging");
         env::set_var("ENVIRONMENT", "staging");
+        env::set_var("ENV", "staging");
+
         let config = ToadStoolConfig::for_current_environment();
         assert_eq!(config.app.environment, "staging");
-        env::remove_var("ENVIRONMENT");
+
+        // Restore original environment state
+        match original_toadstool_env {
+            Some(val) => env::set_var("TOADSTOOL_ENVIRONMENT", val),
+            None => env::remove_var("TOADSTOOL_ENVIRONMENT"),
+        }
+        match original_env {
+            Some(val) => env::set_var("ENVIRONMENT", val),
+            None => env::remove_var("ENVIRONMENT"),
+        }
+        match original_toadstool_env_short {
+            Some(val) => env::set_var("TOADSTOOL_ENV", val),
+            None => env::remove_var("TOADSTOOL_ENV"),
+        }
+        match original_env_short {
+            Some(val) => env::set_var("ENV", val),
+            None => env::remove_var("ENV"),
+        }
     }
 }

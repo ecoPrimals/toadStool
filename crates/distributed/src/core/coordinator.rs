@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -85,14 +85,21 @@ impl DistributedCoordinator {
                         crate::songbird_integration::AuthType::None
                     },
                     credentials: {
-                        let mut creds = std::collections::HashMap::new();
+                        use toadstool_common::auth::AuthCredentials;
                         if let Some(token) = &songbird_config.auth_token {
-                            creds.insert("token".to_string(), token.clone());
+                            AuthCredentials::bearer(token.clone())
+                        } else {
+                            AuthCredentials::new()
                         }
-                        creds
                     },
                 },
-                connection_pool_size: 10,
+                pool: toadstool_common::config_bases::ConnectionPoolConfig {
+                    enabled: true,
+                    max_connections_per_host: 10,
+                    max_idle_connections: 5,
+                    idle_timeout: Duration::from_secs(300),
+                    connection_lifetime: Duration::from_secs(3600),
+                },
             };
 
             let integration = SongbirdConnection::new(connection_config).await?;

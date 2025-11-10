@@ -10,7 +10,10 @@ use uuid::Uuid;
 
 use crate::config::NestGateConfig;
 use crate::pipeline::{PipelineConfig, PipelineStatus};
-use crate::types::*;
+use crate::types::{
+    ArtifactFilters, ArtifactMetadata, ArtifactType, CompressionType, EncryptionType,
+    NestGateError, NestGateResult, StorageInfo, StorageResult, StorageStatus, StorageTier,
+};
 
 /// Main `NestGate` client for storage and pipeline operations
 #[derive(Debug, Clone)]
@@ -79,11 +82,11 @@ impl NestGateClient {
         }
     }
 
-    /// Store artifact in NestGate
+    /// Store artifact in `NestGate`
     ///
     /// # Errors
     ///
-    /// Returns an error if the artifact storage fails or the NestGate service is unavailable
+    /// Returns an error if the artifact storage fails or the `NestGate` service is unavailable
     pub fn store_artifact(
         &self,
         _name: &str,
@@ -126,11 +129,11 @@ impl NestGateClient {
         })
     }
 
-    /// Retrieve artifact from NestGate
+    /// Retrieve artifact from `NestGate`
     ///
     /// # Errors
     ///
-    /// Returns an error if the artifact ID is invalid or the NestGate service is unavailable
+    /// Returns an error if the artifact ID is invalid or the `NestGate` service is unavailable
     pub fn retrieve_artifact(
         &self,
         _id: Uuid,
@@ -275,13 +278,7 @@ impl NestGateClient {
         }
 
         // Remove from cache
-        if self
-            .config
-            .cache
-            .as_ref()
-            .map(|c| c.enabled)
-            .unwrap_or(false)
-        {
+        if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
             // Cache implementation would go here
             // For now, we'll just proceed without caching
         }
@@ -412,13 +409,7 @@ impl NestGateClient {
 
     /// Clean up expired cache entries
     pub fn cleanup_cache(&self) {
-        if !self
-            .config
-            .cache
-            .as_ref()
-            .map(|c| c.enabled)
-            .unwrap_or(false)
-        {
+        if !self.config.cache.as_ref().is_some_and(|c| c.enabled) {
             return;
         }
 

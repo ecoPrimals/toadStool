@@ -13,8 +13,16 @@ use uuid::Uuid;
 
 use crate::{types::ApiError, ApiState};
 
-// Rate limiting configuration
+// ============================================================================
+// Rate Limiting Constants
+// ============================================================================
+// Default rate limits for API requests. In production, these should be
+// overridden via configuration or environment variables.
+
+/// Maximum number of requests allowed per time window
 const RATE_LIMIT_MAX_REQUESTS: u32 = 100; // 100 requests per minute
+
+/// Time window for rate limiting in seconds  
 const RATE_LIMIT_WINDOW_SECS: u64 = 60; // 1 minute window
 
 /// Request ID middleware - adds unique request ID to all requests

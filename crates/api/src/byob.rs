@@ -177,26 +177,36 @@ impl ApiError {
 
 impl From<ToadStoolError> for ApiError {
     fn from(err: ToadStoolError) -> Self {
+        // Match on the unified error system's specialized error types
+        use toadstool::error::{ConfigError, ResourceError, SystemError};
+        
         match err {
-            ToadStoolError::NotFound { message } => Self {
+            // Resource errors -> NOT_FOUND
+            ToadStoolError::Resource(ResourceError::NotFound { .. }) => Self {
                 status: StatusCode::NOT_FOUND,
-                message,
+                message: err.to_string(),
             },
-            ToadStoolError::Validation { message } => Self {
+            // Config validation errors -> BAD_REQUEST
+            ToadStoolError::Configuration(ConfigError::ValidationError { .. }) => Self {
                 status: StatusCode::BAD_REQUEST,
-                message,
+                message: err.to_string(),
             },
-            ToadStoolError::Resource { message } => Self {
+            // Resource allocation/limit errors -> INSUFFICIENT_STORAGE
+            ToadStoolError::Resource(ResourceError::AllocationFailure { .. })
+            | ToadStoolError::Resource(ResourceError::LimitExceeded { .. })
+            | ToadStoolError::Resource(ResourceError::Insufficient { .. }) => Self {
                 status: StatusCode::INSUFFICIENT_STORAGE,
-                message,
+                message: err.to_string(),
             },
-            ToadStoolError::NotSupported { message } => Self {
+            // Not supported errors -> NOT_IMPLEMENTED
+            ToadStoolError::System(SystemError::NotSupported { .. }) => Self {
                 status: StatusCode::NOT_IMPLEMENTED,
-                message,
+                message: err.to_string(),
             },
+            // All other errors -> INTERNAL_SERVER_ERROR
             _ => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
-                message: "Internal server error".to_string(),
+                message: err.to_string(),
             },
         }
     }

@@ -310,11 +310,16 @@ impl ArduinoDevice {
             ))?;
         
         // Compile using Arduino CLI
+        let sketch_path_str = sketch_path.to_str()
+            .ok_or_else(|| ToadStoolError::execution_error(
+                format!("Invalid sketch path: {:?}", sketch_path)
+            ))?;
+        
         let output = std::process::Command::new("arduino-cli")
             .args(&[
                 "compile",
                 "--fqbn", "arduino:avr:uno", // Default to Uno
-                sketch_path.to_str().unwrap(),
+                sketch_path_str,
             ])
             .output()
             .map_err(|e| ToadStoolError::execution_error(
@@ -363,12 +368,17 @@ impl ArduinoDevice {
             ))?;
         
         // Upload using Arduino CLI
+        let hex_path_str = hex_path.to_str()
+            .ok_or_else(|| ToadStoolError::execution_error(
+                format!("Invalid hex file path: {:?}", hex_path)
+            ))?;
+        
         let output = std::process::Command::new("arduino-cli")
             .args(&[
                 "upload",
                 "--fqbn", "arduino:avr:uno",
                 "--port", &self.info.connection_info.address,
-                "--input-file", hex_path.to_str().unwrap(),
+                "--input-file", hex_path_str,
             ])
             .output()
             .map_err(|e| ToadStoolError::execution_error(

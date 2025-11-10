@@ -1,4 +1,4 @@
-//! ToadStool CLI - Universal Compute Command Center
+//! `ToadStool` CLI - Universal Compute Command Center
 //!
 //! The gateway to SOVEREIGN SCIENCE and universal compute capabilities.
 //! Commands for managing biome.yaml manifests and orchestrating distributed workloads.
@@ -39,7 +39,7 @@ pub enum CliError {
     Other(String),
 }
 
-/// ToadStool - Universal Compute Platform for Sovereign Science
+/// `ToadStool` - Universal Compute Platform for Sovereign Science
 #[derive(Parser)]
 #[command(name = "toadstool")]
 #[command(about = "🍄 Universal Compute Platform - The backbone of SOVEREIGN SCIENCE")]
@@ -295,6 +295,28 @@ pub enum Commands {
         #[arg(long)]
         export: Option<PathBuf>,
     },
+
+    /// Execute a workload directly (no biome.yaml required)
+    Execute {
+        /// Workload specification file (TOML or JSON)
+        workload: PathBuf,
+
+        /// Runtime hint (native, wasm, container, python, gpu)
+        #[arg(short, long)]
+        runtime: Option<String>,
+
+        /// Override environment variables
+        #[arg(short, long)]
+        env: Vec<String>,
+
+        /// Execution timeout in seconds
+        #[arg(short, long, default_value = "300")]
+        timeout: u64,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -320,7 +342,7 @@ pub enum EcosystemCommands {
         token: Option<String>,
     },
 
-    /// Install BearDog crypto permissions
+    /// Install `BearDog` crypto permissions
     Auth {
         /// Permission file path
         permission_file: PathBuf,
@@ -330,9 +352,9 @@ pub enum EcosystemCommands {
         validate_only: bool,
     },
 
-    /// Connect to NestGate storage
+    /// Connect to `NestGate` storage
     Storage {
-        /// NestGate endpoint
+        /// `NestGate` endpoint
         endpoint: String,
 
         /// Mount point
@@ -394,9 +416,9 @@ pub enum UniversalCommands {
         verify: bool,
     },
 
-    /// Federate with other ToadStool instances
+    /// Federate with other `ToadStool` instances
     Federate {
-        /// Remote ToadStool endpoint
+        /// Remote `ToadStool` endpoint
         endpoint: String,
 
         /// Federation mode (peer, leader, follower)

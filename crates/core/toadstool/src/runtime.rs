@@ -1,4 +1,4 @@
-//! Runtime engine orchestration for ToadStool
+//! Runtime engine orchestration for `ToadStool`
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,6 +21,7 @@ pub struct RuntimeOrchestrator {
 
 impl RuntimeOrchestrator {
     /// Create a new runtime orchestrator
+    #[must_use]
     pub fn new(selection_strategy: RuntimeSelectionStrategy) -> Self {
         Self {
             engines: Arc::new(RwLock::new(HashMap::new())),
@@ -120,14 +121,36 @@ impl RuntimeSelectionStrategy {
         let engines_guard = engines.read().await;
 
         match self {
-            RuntimeSelectionStrategy::FirstAvailable => engines_guard
-                .keys()
-                .next()
-                .cloned()
-                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
+            RuntimeSelectionStrategy::FirstAvailable => {
+                // Try engines in a deterministic order for consistency
+                // First check if the workload type suggests a preferred runtime
+                let workload_type = request.workload.workload_type();
+                
+                // Try to find an engine that supports the workload
+                for (runtime_type, engine) in engines_guard.iter() {
+                    if engine.supports_workload(&workload_type) {
+                        return Ok(runtime_type.clone());
+                    }
+                }
+                
+                // If no engine explicitly supports it, return the first available
+                engines_guard
+                    .keys()
+                    .next()
+                    .cloned()
+                    .ok_or_else(|| ToadStoolError::not_found("No runtime engines available"))
+            }
             RuntimeSelectionStrategy::LoadBalanced => {
-                // For now, just return the first available
+                // For now, just return the first available that supports the workload
                 // In a real implementation, this would check load metrics
+                let workload_type = request.workload.workload_type();
+                
+                for (runtime_type, engine) in engines_guard.iter() {
+                    if engine.supports_workload(&workload_type) {
+                        return Ok(runtime_type.clone());
+                    }
+                }
+                
                 engines_guard
                     .keys()
                     .next()

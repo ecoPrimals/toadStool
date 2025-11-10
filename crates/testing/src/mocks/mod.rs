@@ -50,6 +50,7 @@ pub mod stubs {
     }
 
     impl MockConfigLoader {
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 configs: HashMap::new(),
@@ -62,6 +63,7 @@ pub mod stubs {
         }
 
         /// Load configuration by key
+        #[must_use]
         pub fn load_config(&self, key: &str) -> Option<&serde_json::Value> {
             self.configs.get(key)
         }
@@ -101,6 +103,7 @@ pub mod stubs {
     }
 
     impl MockSecurityContext {
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 security_level: SecurityLevel::Medium,
@@ -114,6 +117,7 @@ pub mod stubs {
         }
 
         /// Create a high-security context
+        #[must_use]
         pub fn new_high_security() -> Self {
             Self {
                 security_level: SecurityLevel::High,
@@ -123,6 +127,7 @@ pub mod stubs {
         }
 
         /// Create a low-security context
+        #[must_use]
         pub fn new_low_security() -> Self {
             Self {
                 security_level: SecurityLevel::Low,
@@ -138,16 +143,19 @@ pub mod stubs {
         }
 
         /// Check if permission is granted
+        #[must_use]
         pub fn has_permission(&self, permission: &str) -> bool {
             self.permissions.contains(&permission.to_string())
         }
 
         /// Get security level
+        #[must_use]
         pub fn get_security_level(&self) -> &SecurityLevel {
             &self.security_level
         }
 
         /// Check if isolation is enabled
+        #[must_use]
         pub fn is_isolation_enabled(&self) -> bool {
             self.isolation_enabled
         }
@@ -187,6 +195,7 @@ pub mod stubs {
     }
 
     impl MockWorkloadSpec {
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 workload_type: WorkloadType::Native,
@@ -204,6 +213,7 @@ pub mod stubs {
         }
 
         /// Create a container workload spec
+        #[must_use]
         pub fn new_container(image: &str) -> Self {
             let mut spec = Self::new();
             spec.workload_type = WorkloadType::Container;
@@ -213,6 +223,7 @@ pub mod stubs {
         }
 
         /// Create a WASM workload spec
+        #[must_use]
         pub fn new_wasm(module_path: &str) -> Self {
             let mut spec = Self::new();
             spec.workload_type = WorkloadType::Wasm;
@@ -222,6 +233,7 @@ pub mod stubs {
         }
 
         /// Create a GPU workload spec
+        #[must_use]
         pub fn new_gpu(gpu_units: u32) -> Self {
             let mut spec = Self::new();
             spec.workload_type = WorkloadType::Gpu;
@@ -230,6 +242,7 @@ pub mod stubs {
         }
 
         /// Set command and arguments
+        #[must_use]
         pub fn with_command(mut self, command: &str, args: Vec<String>) -> Self {
             self.command = Some(command.to_string());
             self.args = args;
@@ -237,38 +250,45 @@ pub mod stubs {
         }
 
         /// Set resource requirements
+        #[must_use]
         pub fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
             self.resource_requirements = requirements;
             self
         }
 
         /// Add environment variable
+        #[must_use]
         pub fn with_env(mut self, key: &str, value: &str) -> Self {
             self.environment.insert(key.to_string(), value.to_string());
             self
         }
 
         /// Get workload type
+        #[must_use]
         pub fn get_workload_type(&self) -> &WorkloadType {
             &self.workload_type
         }
 
         /// Get resource requirements
+        #[must_use]
         pub fn get_resource_requirements(&self) -> &ResourceRequirements {
             &self.resource_requirements
         }
 
         /// Get environment variables
+        #[must_use]
         pub fn get_environment(&self) -> &HashMap<String, String> {
             &self.environment
         }
 
         /// Get command
+        #[must_use]
         pub fn get_command(&self) -> &Option<String> {
             &self.command
         }
 
         /// Get arguments
+        #[must_use]
         pub fn get_args(&self) -> &Vec<String> {
             &self.args
         }

@@ -165,6 +165,7 @@ impl Default for MetricsCollector {
 }
 
 impl MetricsCollector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             start_time: std::time::Instant::now(),
@@ -182,6 +183,7 @@ impl MetricsCollector {
         self.metrics.custom_metrics.insert(name.to_string(), value);
     }
 
+    #[must_use]
     pub fn finalize(self) -> TestMetrics {
         let mut metrics = self.metrics;
         metrics.custom_metrics.insert(
@@ -194,6 +196,7 @@ impl MetricsCollector {
 
 impl IntegrationTestManager {
     /// Create a new integration test manager
+    #[must_use]
     pub fn new(config: IntegrationTestConfig) -> Self {
         Self {
             _config: config,
@@ -224,7 +227,7 @@ impl IntegrationTestManager {
 
         // Test different OS compatibility layers
         match self.test_linux_compatibility(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("linux_compatibility".to_string(), "passed".to_string());
                 components_tested.push("linux_os".to_string());
             }
@@ -234,7 +237,7 @@ impl IntegrationTestManager {
         }
 
         match self.test_windows_compatibility(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("windows_compatibility".to_string(), "passed".to_string());
                 components_tested.push("windows_os".to_string());
             }
@@ -244,7 +247,7 @@ impl IntegrationTestManager {
         }
 
         match self.test_macos_compatibility(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("macos_compatibility".to_string(), "passed".to_string());
                 components_tested.push("macos_os".to_string());
             }
@@ -254,7 +257,7 @@ impl IntegrationTestManager {
         }
 
         match self.test_legacy_compatibility(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("legacy_compatibility".to_string(), "passed".to_string());
                 components_tested.push("legacy_os".to_string());
             }
@@ -311,7 +314,7 @@ impl IntegrationTestManager {
 
         // Test service registration
         match self.test_biomeos_service_registration(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("service_registration".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -321,7 +324,7 @@ impl IntegrationTestManager {
 
         // Test workload execution
         match self.test_biomeos_workload_execution(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("workload_execution".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -331,7 +334,7 @@ impl IntegrationTestManager {
 
         // Test ecosystem message handling
         match self.test_biomeos_ecosystem_messaging(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("ecosystem_messaging".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -390,7 +393,7 @@ impl IntegrationTestManager {
 
         // Test sandbox creation and lifecycle
         match self.test_sandbox_lifecycle(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("sandbox_lifecycle".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -400,7 +403,7 @@ impl IntegrationTestManager {
 
         // Test resource limits enforcement
         match self.test_sandbox_resource_limits(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("resource_limits".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -410,7 +413,7 @@ impl IntegrationTestManager {
 
         // Test security policy enforcement
         match self.test_sandbox_security_policies(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("security_policies".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -420,7 +423,7 @@ impl IntegrationTestManager {
 
         // Test isolation levels
         match self.test_sandbox_isolation_levels(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("isolation_levels".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -483,7 +486,7 @@ impl IntegrationTestManager {
 
         // Test OS-layer + biomeOS integration
         match self.test_os_layer_biomeos_integration(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("os_layer_biomeos".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -493,7 +496,7 @@ impl IntegrationTestManager {
 
         // Test biomeOS + security sandboxing
         match self.test_biomeos_security_integration(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("biomeos_security".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -503,7 +506,7 @@ impl IntegrationTestManager {
 
         // Test OS-layer + security sandboxing
         match self.test_os_layer_security_integration(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("os_layer_security".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -513,7 +516,7 @@ impl IntegrationTestManager {
 
         // Test full stack integration
         match self.test_full_stack_integration(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("full_stack".to_string(), "passed".to_string());
             }
             Err(e) => {
@@ -610,7 +613,7 @@ impl IntegrationTestManager {
 
         // Test 1: Large biome deployment performance
         match self.test_large_biome_deployment(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("large_biome_deployment".to_string(), "passed".to_string());
                 components_tested.push("biome_deployment".to_string());
             }
@@ -621,7 +624,7 @@ impl IntegrationTestManager {
 
         // Test 2: Multi-Primal resource usage under load
         match self.test_multi_primal_resource_usage(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("multi_primal_resources".to_string(), "passed".to_string());
                 components_tested.push("multi_primal_resources".to_string());
             }
@@ -632,7 +635,7 @@ impl IntegrationTestManager {
 
         // Test 3: Scalability limits testing
         match self.test_scalability_limits(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("scalability_limits".to_string(), "passed".to_string());
                 components_tested.push("scalability_limits".to_string());
             }
@@ -643,7 +646,7 @@ impl IntegrationTestManager {
 
         // Test 4: Concurrent biome operations
         match self.test_concurrent_biome_operations(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("concurrent_operations".to_string(), "passed".to_string());
                 components_tested.push("concurrent_operations".to_string());
             }
@@ -657,7 +660,7 @@ impl IntegrationTestManager {
             .test_performance_regression_detection(&mut context)
             .await
         {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("regression_detection".to_string(), "passed".to_string());
                 components_tested.push("regression_detection".to_string());
             }
@@ -668,7 +671,7 @@ impl IntegrationTestManager {
 
         // Test 6: Memory and CPU usage under high load
         match self.test_resource_usage_under_load(&mut context).await {
-            Ok(_) => {
+            Ok(()) => {
                 test_data.insert("resource_usage_load".to_string(), "passed".to_string());
                 components_tested.push("resource_usage_load".to_string());
             }
@@ -1085,13 +1088,14 @@ impl IntegrationTestManager {
         // Simulate scaling up to maximum capacity
         for scale_level in 1..=10 {
             tokio::time::sleep(Duration::from_millis(20)).await;
-            context
-                .metrics_collector
-                .record_metric(&format!("scale_level_{scale_level}"), scale_level as f64);
+            context.metrics_collector.record_metric(
+                &format!("scale_level_{scale_level}"),
+                f64::from(scale_level),
+            );
 
             // Simulate increasing resource usage
-            let cpu_usage = 10.0 + (scale_level as f64 * 8.0);
-            let memory_usage = 512.0 + (scale_level as f64 * 1024.0);
+            let cpu_usage = 10.0 + (f64::from(scale_level) * 8.0);
+            let memory_usage = 512.0 + (f64::from(scale_level) * 1024.0);
 
             context
                 .metrics_collector
@@ -1144,7 +1148,10 @@ impl IntegrationTestManager {
 
         // Wait for all operations to complete
         let results = futures::future::join_all(handles).await;
-        let successful_operations = results.into_iter().filter(|r| r.is_ok()).count();
+        let successful_operations = results
+            .into_iter()
+            .filter(std::result::Result::is_ok)
+            .count();
 
         let concurrent_duration = concurrent_start.elapsed();
         context.metrics_collector.record_metric(
@@ -1218,10 +1225,10 @@ impl IntegrationTestManager {
             tokio::time::sleep(Duration::from_millis(30)).await;
 
             // Simulate increasing resource usage
-            let cpu_usage = 20.0 + (load_level as f64 * 7.0);
-            let memory_usage = 1024.0 + (load_level as f64 * 512.0);
-            let disk_io = 100.0 + (load_level as f64 * 50.0);
-            let network_io = 50.0 + (load_level as f64 * 25.0);
+            let cpu_usage = 20.0 + (f64::from(load_level) * 7.0);
+            let memory_usage = 1024.0 + (f64::from(load_level) * 512.0);
+            let disk_io = 100.0 + (f64::from(load_level) * 50.0);
+            let network_io = 50.0 + (f64::from(load_level) * 25.0);
 
             context
                 .metrics_collector

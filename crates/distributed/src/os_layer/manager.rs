@@ -2,8 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use toadstool::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 
-use crate::compatibility::layers::{
+// Import from canonical core compat layer
+use toadstool::os_layer::compat::{
     LinuxCompatibilityLayer, MacOSCompatibilityLayer, WindowsCompatibilityLayer,
+    CompatibilityLayer,
 };
 
 /// OS layer manager for distributed execution
@@ -40,7 +42,8 @@ impl Default for OSLayerConfig {
 }
 
 /// Enum to hold different compatibility layer types
-#[derive(Debug, Clone)]
+/// Now uses the canonical CompatibilityLayer trait from core
+#[derive(Debug)]
 pub enum CompatibilityLayerEnum {
     Linux(LinuxCompatibilityLayer),
     Windows(WindowsCompatibilityLayer),
@@ -48,11 +51,11 @@ pub enum CompatibilityLayerEnum {
 }
 
 impl CompatibilityLayerEnum {
-    pub async fn initialize(&self) -> ToadStoolResult<()> {
+    pub async fn initialize(&mut self) -> ToadStoolResult<()> {
         match self {
-            Self::Linux(layer) => layer.initialize().await,
-            Self::Windows(layer) => layer.initialize().await,
-            Self::MacOS(layer) => layer.initialize().await,
+            Self::Linux(layer) => CompatibilityLayer::initialize(layer).await,
+            Self::Windows(layer) => CompatibilityLayer::initialize(layer).await,
+            Self::MacOS(layer) => CompatibilityLayer::initialize(layer).await,
         }
     }
 
@@ -61,17 +64,17 @@ impl CompatibilityLayerEnum {
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         match self {
-            Self::Linux(layer) => layer.execute_with_compatibility(request).await,
-            Self::Windows(layer) => layer.execute_with_compatibility(request).await,
-            Self::MacOS(layer) => layer.execute_with_compatibility(request).await,
+            Self::Linux(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
+            Self::Windows(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
+            Self::MacOS(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
         }
     }
 
-    pub async fn cleanup(&self) -> ToadStoolResult<()> {
+    pub async fn shutdown(&mut self) -> ToadStoolResult<()> {
         match self {
-            Self::Linux(layer) => layer.cleanup().await,
-            Self::Windows(layer) => layer.cleanup().await,
-            Self::MacOS(layer) => layer.cleanup().await,
+            Self::Linux(layer) => CompatibilityLayer::shutdown(layer).await,
+            Self::Windows(layer) => CompatibilityLayer::shutdown(layer).await,
+            Self::MacOS(layer) => CompatibilityLayer::shutdown(layer).await,
         }
     }
 }
@@ -86,9 +89,9 @@ impl OSLayerManager {
     }
 
     pub async fn initialize(&mut self) -> ToadStoolResult<()> {
-        // Initialize compatibility layers
+        // Initialize compatibility layers using canonical core implementation
         if self.config.available_layers.contains(&"linux".to_string()) {
-            let layer = CompatibilityLayerEnum::Linux(LinuxCompatibilityLayer::new());
+            let mut layer = CompatibilityLayerEnum::Linux(LinuxCompatibilityLayer::new());
             layer.initialize().await?;
             self.compatibility_layers.insert("linux".to_string(), layer);
         }
@@ -98,14 +101,14 @@ impl OSLayerManager {
             .available_layers
             .contains(&"windows".to_string())
         {
-            let layer = CompatibilityLayerEnum::Windows(WindowsCompatibilityLayer::new());
+            let mut layer = CompatibilityLayerEnum::Windows(WindowsCompatibilityLayer::new());
             layer.initialize().await?;
             self.compatibility_layers
                 .insert("windows".to_string(), layer);
         }
 
         if self.config.available_layers.contains(&"macos".to_string()) {
-            let layer = CompatibilityLayerEnum::MacOS(MacOSCompatibilityLayer::new());
+            let mut layer = CompatibilityLayerEnum::MacOS(MacOSCompatibilityLayer::new());
             layer.initialize().await?;
             self.compatibility_layers.insert("macos".to_string(), layer);
         }

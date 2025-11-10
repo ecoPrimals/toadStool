@@ -9,7 +9,10 @@ use uuid::Uuid;
 
 use toadstool::{ExecutionRequest, ToadStoolError, ToadStoolResult};
 
-use super::resources::{ResourceConstraints, ResourceRequirements, RetryConfig};
+// Re-export canonical JobPriority for convenience
+pub use toadstool::JobPriority;
+
+use super::resources::{ResourceConstraints, ResourceRequirements, DistributedRetryConfig};
 
 /// Universal job for cross-platform execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +32,7 @@ pub struct UniversalJob {
     /// Resource requirements
     pub resource_requirements: ResourceRequirements,
     /// Retry configuration
-    pub retry_config: RetryConfig,
+    pub retry_config: DistributedRetryConfig,
     /// Created timestamp
     pub created_at: DateTime<Utc>,
 }
@@ -125,22 +128,7 @@ pub enum ExecutionTarget {
     LoadBalanced { strategy: LoadBalancingStrategy },
 }
 
-/// Job priority levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum JobPriority {
-    /// Emergency - highest priority
-    Emergency = 0,
-    /// Critical - very high priority
-    Critical = 1,
-    /// High priority
-    High = 2,
-    /// Normal priority
-    Normal = 3,
-    /// Low priority
-    Low = 4,
-    /// Background - lowest priority
-    Background = 5,
-}
+// JobPriority is now imported from toadstool core (canonical definition in universal.rs)
 
 /// Universal job queue for managing multiple job types
 #[derive(Debug)]

@@ -116,7 +116,7 @@ async fn handle_websocket(socket: axum::extract::ws::WebSocket, state: ServerSta
 }
 
 /// Handle client message
-async fn handle_client_message(
+pub async fn handle_client_message(
     message: &str,
     tx: &mpsc::UnboundedSender<axum::extract::ws::Message>,
     state: &ServerState,
@@ -164,7 +164,7 @@ async fn handle_client_message(
 }
 
 /// Format server event for WebSocket transmission
-fn format_server_event(event: &ServerEvent) -> String {
+pub fn format_server_event(event: &ServerEvent) -> String {
     match event {
         ServerEvent::ExecutionStarted {
             execution_id,

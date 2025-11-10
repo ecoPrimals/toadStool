@@ -1,0 +1,467 @@
+//! System and ecosystem discovery functionality
+
+use anyhow::{Context, Result};
+use chrono::Utc;
+use std::future::Future;
+use std::time::Duration;
+use tokio::process::Command;
+use tracing::{debug, info};
+
+use super::types::*;
+
+/// Discovery extension trait
+pub trait DiscoveryExt {
+    /// Discover system hardware and software
+    fn discover_system(&mut self) -> impl Future<Output = Result<()>> + Send;
+
+    /// Discover ecosystem services
+    fn discover_ecosystem(&mut self) -> impl Future<Output = Result<()>> + Send;
+}
+
+impl DiscoveryExt for ZeroConfigDeployment {
+    async fn discover_system(&mut self) -> Result<()> {
+        info!("🖥️ Discovering system capabilities");
+
+        // Discover CPU information
+        self.system_info.cpu = self.discover_cpu().await?;
+
+        // Discover memory information
+        self.system_info.memory = self.discover_memory().await?;
+
+        // Discover storage information
+        self.system_info.storage = self.discover_storage().await?;
+
+        // Discover network information
+        self.system_info.network = self.discover_network().await?;
+
+        // Discover OS information
+        self.system_info.os = self.discover_os().await?;
+
+        // Discover container runtime
+        self.system_info.container_runtime = self.discover_container_runtime().await?;
+
+        // Discover GPU information
+        self.system_info.gpu = self.discover_gpu().await?;
+
+        info!("✅ System discovery completed");
+        Ok(())
+    }
+
+    async fn discover_ecosystem(&mut self) -> Result<()> {
+        info!("🌐 Discovering ecosystem services");
+
+        // Discover Songbird service
+        self.ecosystem_services.songbird = self.discover_songbird().await?;
+
+        // Discover BearDog service
+        self.ecosystem_services.beardog = self.discover_beardog().await?;
+
+        // Discover NestGate service
+        self.ecosystem_services.nestgate = self.discover_nestgate().await?;
+
+        // Discover Squirrel service
+        self.ecosystem_services.squirrel = self.discover_squirrel().await?;
+
+        // Discover ToadStool peers
+        self.ecosystem_services.toadstool_peers = self.discover_toadstool_peers().await?;
+
+        info!("✅ Ecosystem discovery completed");
+        Ok(())
+    }
+}
+
+impl ZeroConfigDeployment {
+    /// Discover CPU information
+    async fn discover_cpu(&self) -> Result<CpuInfo> {
+        debug!("Discovering CPU information");
+
+        // Use /proc/cpuinfo on Linux
+        let output = Command::new("nproc")
+            .output()
+            .await
+            .context("Failed to run nproc")?;
+
+        let cores = String::from_utf8(output.stdout)?
+            .trim()
+            .parse::<u32>()
+            .unwrap_or(1);
+
+        // Get CPU model from /proc/cpuinfo
+        let model = self
+            .get_cpu_model()
+            .await
+            .unwrap_or_else(|_| "Unknown".to_string());
+
+        Ok(CpuInfo {
+            cores,
+            architecture: std::env::consts::ARCH.to_string(),
+            model,
+            frequency: 2400, // Default assumption
+            vendor: "Unknown".to_string(),
+        })
+    }
+
+    /// Get CPU model information
+    async fn get_cpu_model(&self) -> Result<String> {
+        let output = Command::new("cat")
+            .arg("/proc/cpuinfo")
+            .output()
+            .await
+            .context("Failed to read /proc/cpuinfo")?;
+
+        let content = String::from_utf8(output.stdout)?;
+
+        for line in content.lines() {
+            if line.starts_with("model name") {
+                if let Some(model) = line.split(':').nth(1) {
+                    return Ok(model.trim().to_string());
+                }
+            }
+        }
+
+        Ok("Unknown".to_string())
+    }
+
+    /// Discover memory information
+    async fn discover_memory(&self) -> Result<MemoryInfo> {
+        debug!("Discovering memory information");
+
+        let output = Command::new("cat")
+            .arg("/proc/meminfo")
+            .output()
+            .await
+            .context("Failed to read /proc/meminfo")?;
+
+        let content = String::from_utf8(output.stdout)?;
+        let mut total_bytes = 0;
+        let mut available_bytes = 0;
+
+        for line in content.lines() {
+            if line.starts_with("MemTotal:") {
+                if let Some(value) = line.split_whitespace().nth(1) {
+                    total_bytes = value.parse::<u64>().unwrap_or(0) * 1024;
+                }
+            } else if line.starts_with("MemAvailable:") {
+                if let Some(value) = line.split_whitespace().nth(1) {
+                    available_bytes = value.parse::<u64>().unwrap_or(0) * 1024;
+                }
+            }
+        }
+
+        Ok(MemoryInfo {
+            total_bytes,
+            available_bytes,
+            memory_type: "DDR4".to_string(), // Default assumption
+        })
+    }
+
+    /// Discover storage information
+    async fn discover_storage(&self) -> Result<StorageInfo> {
+        debug!("Discovering storage information");
+
+        let output = Command::new("df")
+            .arg("-B1")
+            .arg("/")
+            .output()
+            .await
+            .context("Failed to run df")?;
+
+        let content = String::from_utf8(output.stdout)?;
+        let mut total_bytes = 0;
+        let mut available_bytes = 0;
+
+        for line in content.lines().skip(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                total_bytes = parts[1].parse::<u64>().unwrap_or(0);
+                available_bytes = parts[3].parse::<u64>().unwrap_or(0);
+                break;
+            }
+        }
+
+        Ok(StorageInfo {
+            total_bytes,
+            available_bytes,
+            storage_type: "SSD".to_string(), // Default assumption
+            filesystem: "ext4".to_string(),  // Default assumption
+        })
+    }
+
+    /// Discover network information
+    async fn discover_network(&self) -> Result<NetworkInfo> {
+        debug!("Discovering network information");
+
+        let output = Command::new("ip")
+            .arg("addr")
+            .arg("show")
+            .output()
+            .await
+            .context("Failed to run ip addr")?;
+
+        let content = String::from_utf8(output.stdout)?;
+        let mut interfaces = Vec::new();
+        let mut local_ips = Vec::new();
+
+        // Parse network interfaces
+        for line in content.lines() {
+            if line.contains("inet ") && !line.contains("127.0.0.1") {
+                if let Some(ip) = line.split_whitespace().nth(1) {
+                    if let Some(ip_addr) = ip.split('/').next() {
+                        local_ips.push(ip_addr.to_string());
+                    }
+                }
+            }
+        }
+
+        // Add a default interface
+        if !local_ips.is_empty() {
+            interfaces.push(NetworkInterface {
+                name: "eth0".to_string(),
+                ip: local_ips[0].clone(),
+                mac: "00:00:00:00:00:00".to_string(),
+                speed: 1000,
+            });
+        }
+
+        Ok(NetworkInfo {
+            interfaces,
+            external_ip: None,
+            local_ips,
+        })
+    }
+
+    /// Discover OS information
+    async fn discover_os(&self) -> Result<OsInfo> {
+        debug!("Discovering OS information");
+
+        let output = Command::new("uname")
+            .arg("-a")
+            .output()
+            .await
+            .context("Failed to run uname")?;
+
+        let content = String::from_utf8(output.stdout)?;
+        let parts: Vec<&str> = content.split_whitespace().collect();
+
+        Ok(OsInfo {
+            name: parts.first().unwrap_or(&"Unknown").to_string(),
+            version: parts.get(2).unwrap_or(&"Unknown").to_string(),
+            kernel: parts.get(2).unwrap_or(&"Unknown").to_string(),
+            arch: parts.get(4).unwrap_or(&"Unknown").to_string(),
+        })
+    }
+
+    /// Discover container runtime
+    async fn discover_container_runtime(&self) -> Result<ContainerRuntimeInfo> {
+        debug!("Discovering container runtime");
+
+        let docker = Command::new("docker")
+            .arg("--version")
+            .output()
+            .await
+            .is_ok();
+
+        let podman = Command::new("podman")
+            .arg("--version")
+            .output()
+            .await
+            .is_ok();
+
+        let containerd = Command::new("containerd")
+            .arg("--version")
+            .output()
+            .await
+            .is_ok();
+
+        let version = if docker {
+            self.get_docker_version().await.ok()
+        } else if podman {
+            self.get_podman_version().await.ok()
+        } else {
+            None
+        };
+
+        Ok(ContainerRuntimeInfo {
+            docker,
+            podman,
+            containerd,
+            version,
+        })
+    }
+
+    /// Get Docker version
+    async fn get_docker_version(&self) -> Result<String> {
+        let output = Command::new("docker")
+            .arg("--version")
+            .output()
+            .await
+            .context("Failed to get Docker version")?;
+
+        Ok(String::from_utf8(output.stdout)?.trim().to_string())
+    }
+
+    /// Get Podman version
+    async fn get_podman_version(&self) -> Result<String> {
+        let output = Command::new("podman")
+            .arg("--version")
+            .output()
+            .await
+            .context("Failed to get Podman version")?;
+
+        Ok(String::from_utf8(output.stdout)?.trim().to_string())
+    }
+
+    /// Discover GPU information
+    async fn discover_gpu(&self) -> Result<GpuInfo> {
+        debug!("Discovering GPU information");
+
+        // Try to detect NVIDIA GPU
+        let nvidia_output = Command::new("nvidia-smi")
+            .arg("--query-gpu=count,name,memory.total")
+            .arg("--format=csv,noheader,nounits")
+            .output()
+            .await;
+
+        if let Ok(output) = nvidia_output {
+            if output.status.success() {
+                let content = String::from_utf8(output.stdout)?;
+                if let Some(line) = content.lines().next() {
+                    let parts: Vec<&str> = line.split(',').collect();
+                    if parts.len() >= 3 {
+                        return Ok(GpuInfo {
+                            count: parts[0].trim().parse().unwrap_or(0),
+                            vendor: "NVIDIA".to_string(),
+                            model: parts[1].trim().to_string(),
+                            memory_bytes: parts[2].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024,
+                            cuda: true,
+                            opencl: true,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Default no GPU
+        Ok(GpuInfo {
+            count: 0,
+            vendor: "None".to_string(),
+            model: "None".to_string(),
+            memory_bytes: 0,
+            cuda: false,
+            opencl: false,
+        })
+    }
+
+    /// Discover Songbird service
+    async fn discover_songbird(&self) -> Result<Option<ServiceEndpoint>> {
+        debug!("Discovering Songbird service");
+
+        // Try to connect to default Songbird port
+        let endpoint = "http://localhost:7000";
+
+        match self.check_service_endpoint(endpoint, "songbird").await {
+            Ok(service) => Ok(Some(service)),
+            Err(_) => {
+                debug!("Songbird service not found");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Discover BearDog service
+    async fn discover_beardog(&self) -> Result<Option<ServiceEndpoint>> {
+        debug!("Discovering BearDog service");
+
+        // Try to connect to default BearDog port
+        let endpoint = "http://localhost:8000";
+
+        match self.check_service_endpoint(endpoint, "beardog").await {
+            Ok(service) => Ok(Some(service)),
+            Err(_) => {
+                debug!("BearDog service not found");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Discover NestGate service
+    async fn discover_nestgate(&self) -> Result<Option<ServiceEndpoint>> {
+        debug!("Discovering NestGate service");
+
+        // Try to connect to default NestGate port
+        let endpoint = "http://localhost:9000";
+
+        match self.check_service_endpoint(endpoint, "nestgate").await {
+            Ok(service) => Ok(Some(service)),
+            Err(_) => {
+                debug!("NestGate service not found");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Discover Squirrel service
+    async fn discover_squirrel(&self) -> Result<Option<ServiceEndpoint>> {
+        debug!("Discovering Squirrel service");
+
+        // Try to connect to default Squirrel port
+        let endpoint = "http://localhost:6000";
+
+        match self.check_service_endpoint(endpoint, "squirrel").await {
+            Ok(service) => Ok(Some(service)),
+            Err(_) => {
+                debug!("Squirrel service not found");
+                Ok(None)
+            }
+        }
+    }
+
+    /// Discover ToadStool peers
+    async fn discover_toadstool_peers(&self) -> Result<Vec<ServiceEndpoint>> {
+        debug!("Discovering ToadStool peers");
+
+        // Network scan for ToadStool instances
+        let mut peers = Vec::new();
+
+        // Try common ToadStool ports
+        let ports = vec![5000, 5001, 5002];
+
+        for port in ports {
+            let endpoint = format!("http://localhost:{port}");
+            if let Ok(service) = self.check_service_endpoint(&endpoint, "toadstool").await {
+                peers.push(service);
+            }
+        }
+
+        Ok(peers)
+    }
+
+    /// Check if a service endpoint is available
+    async fn check_service_endpoint(
+        &self,
+        endpoint: &str,
+        service_name: &str,
+    ) -> Result<ServiceEndpoint> {
+        // Simple HTTP check
+        let client = reqwest::Client::new();
+        let response = client
+            .get(endpoint)
+            .timeout(Duration::from_secs(2))
+            .send()
+            .await
+            .context("Failed to connect to service")?;
+
+        if response.status().is_success() {
+            Ok(ServiceEndpoint {
+                name: service_name.to_string(),
+                endpoint: endpoint.to_string(),
+                version: "1.0.0".to_string(),
+                status: "online".to_string(),
+                auth_required: false,
+                discovered_at: Utc::now(),
+            })
+        } else {
+            anyhow::bail!("Service not available")
+        }
+    }
+}

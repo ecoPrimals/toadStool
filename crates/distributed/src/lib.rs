@@ -17,6 +17,9 @@ pub mod os_layer;
 pub mod types;
 pub mod universal;
 
+// Common distributed abstractions (shared across Songbird, Cloud, etc.)
+pub mod common;
+
 // Cloud integration - universal cloud orchestration
 pub mod cloud;
 
@@ -29,8 +32,18 @@ pub mod crypto_lock;
 // Substrate detection for universal compute platforms
 pub mod substrate_detection;
 
+// Primal capability system - agnostic integration with any primal (Songbird, Squirrel, BearDog, etc.)
+pub mod primal_capabilities;
+
 // Re-export main types and functionality
-pub use compatibility::*;
+// Note: compatibility now re-exports from canonical core implementation
+pub use compatibility::{
+    CompatibilityLayer,
+    LinuxCompatibilityLayer, LinuxCompatConfig,
+    WindowsCompatibilityLayer, WindowsCompatConfig,
+    MacOSCompatibilityLayer, MacOSCompatConfig,
+    LegacyCompatibilityLayer, LegacyCompatConfig,
+};
 pub use core::*;
 pub use ecosystem::*;
 pub use metrics::*;
@@ -43,13 +56,27 @@ pub use hosting::{
 };
 pub use os_layer::{OSLayerConfig, OSLayerManager};
 pub use types::{
-    CompatibilityMode, CpuRequirements, ExecutionTarget, GpuRequirements, InstanceStatus,
-    JobPriority, LoadBalancingStrategy, MemoryRequirements, NetworkRequirements, ProcessHandle,
-    ResourceAllocation, ResourceConstraints, ResourceLimits, ResourceRequirements, RetryConfig,
-    StorageRequirements, ToadStoolHostingConfig, UniversalJob, UniversalJobQueue, UniversalJobType,
+    BackoffStrategy, CompatibilityMode, CpuRequirements, ExecutionTarget, GpuRequirements,
+    InstanceStatus, JobPriority, LoadBalancingStrategy, MemoryRequirements, NetworkRequirements,
+    ProcessHandle, ResourceAllocation, ResourceConstraints, ResourceLimits, ResourceRequirements,
+    RetryCondition, DistributedRetryConfig, StorageRequirements, ToadStoolHostingConfig,
+    UniversalExecutionResult, UniversalJob, UniversalJobQueue, UniversalJobType,
 };
 pub use universal::{
-    RecursiveHostingConfig, UniversalAdapter, UniversalScheduler, UniversalSchedulerConfig,
+    AdapterConfig, RecursiveHostingConfig, UniversalAdapter, UniversalScheduler,
+    UniversalSchedulerConfig,
+};
+
+// Export substrate module and types for examples
+pub mod substrate {
+    pub use crate::universal::substrate::*;
+}
+
+// Also re-export substrate types directly
+pub use universal::substrate::{
+    BiologicalComputingPlatform, ContainerPlatform, EdgeIoTPlatform, ExperimentalPlatform,
+    LanguageRuntime, NeuromorphicPlatform, OperatingSystemSupport, QuantumPlatform,
+    SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
 };
 
 // Re-export existing modules with specific types
@@ -64,6 +91,11 @@ pub use songbird_integration::{
     SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
 };
 pub use substrate_detection::*;
+pub use primal_capabilities::{
+    Capability, CapabilityProvider, CapabilityRegistry,
+    PrimalAdapter, SongbirdAdapter,
+    WorkloadRequest, WorkloadResponse, WorkloadExecutor,
+};
 
 // Tests module
 #[cfg(test)]

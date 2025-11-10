@@ -1,227 +1,126 @@
-//! Error types for ToadStool Universal Compute Platform
+//! Error types for `ToadStool` Universal Compute Platform
+//!
+//! This module re-exports the unified error system from `toadstool-common`.
+//!
+//! ## Migration to Unified Error System
+//!
+//! The error system has been unified in `toadstool-common::error`.
+//! All error types and convenience methods are now available from the common crate.
+//!
+//! **Usage**:
+//! ```rust,ignore
+//! use toadstool::ToadStoolError;
+//!
+//! // Convenience methods work as before
+//! let err = ToadStoolError::validation("Invalid input");
+//! let err = ToadStoolError::not_found("Resource not found");
+//! let err = ToadStoolError::security("Permission denied");
+//!
+//! // Or use specialized errors for better context
+//! use toadstool::error::{ExecutionError, ConfigError};
+//! let err = ExecutionError::RuntimeFailure {
+//!     runtime: "container".to_string(),
+//!     workload_id: "abc-123".to_string(),
+//!     reason: "Image not found".to_string(),
+//! };
+//! ```
+//!
+//! ## Backward Compatibility
+//!
+//! All legacy error construction methods are preserved as convenience methods
+//! on `ToadStoolError`. Existing code continues to work without changes.
 
-use thiserror::Error;
+// Re-export the unified error system from common
+pub use toadstool_common::error::{
+    ConfigError, ConfigResult, ExecutionError, ExecutionResult, IntegrationError,
+    IntegrationResult, NetworkError, NetworkResult, ResourceError, ResourceResult, SecurityError,
+    SecurityResult, SystemError, SystemResult, ToadStoolError, ToadStoolResult,
+};
 
-/// Main error type for ToadStool operations
-#[derive(Error, Debug)]
-pub enum ToadStoolError {
-    #[error("Configuration error: {message}")]
-    Configuration { message: String },
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    #[error("Runtime error: {message}")]
-    Runtime { message: String },
+    #[test]
+    fn test_unified_error_import() {
+        // Test that we can use the unified error types
+        let exec_err = ExecutionError::WorkloadFailure {
+            workload_id: "test-123".to_string(),
+            reason: "Test failure".to_string(),
+        };
+        let err: ToadStoolError = exec_err.into();
+        assert!(err.to_string().contains("Execution error"));
+        assert!(err.to_string().contains("test-123"));
+    }
 
-    #[error("Security error: {message}")]
-    Security { message: String },
+    #[test]
+    fn test_backward_compat_configuration() {
+        let err = ToadStoolError::configuration("invalid config");
+        assert!(err.to_string().contains("invalid config"));
+    }
 
-    #[error("Resource error: {message}")]
-    Resource { message: String },
+    #[test]
+    fn test_backward_compat_validation() {
+        let err = ToadStoolError::validation("bad value");
+        assert!(err.to_string().contains("bad value"));
+    }
 
-    #[error("Network error: {message}")]
-    Network { message: String },
+    #[test]
+    fn test_backward_compat_security() {
+        let err = ToadStoolError::security("access denied");
+        assert!(err.to_string().contains("access denied"));
+    }
 
-    #[error("IO error: {message}")]
-    Io { message: String },
+    #[test]
+    fn test_backward_compat_resource() {
+        let err = ToadStoolError::resource("out of memory");
+        assert!(err.to_string().contains("out of memory"));
+    }
 
-    #[error("Validation error: {message}")]
-    Validation { message: String },
+    #[test]
+    fn test_backward_compat_network() {
+        let err = ToadStoolError::network("connection refused");
+        assert!(err.to_string().contains("connection refused"));
+    }
 
-    #[error("Not found: {message}")]
-    NotFound { message: String },
+    #[test]
+    fn test_backward_compat_execution() {
+        let err = ToadStoolError::execution("job failed");
+        assert!(err.to_string().contains("job failed"));
+    }
 
-    #[error("Permission denied: {message}")]
-    PermissionDenied { message: String },
-
-    #[error("Not supported: {message}")]
-    NotSupported { message: String },
-
-    #[error("Timeout: {message}")]
-    Timeout { message: String },
-
-    #[error("Parsing error: {message}")]
-    Parsing { message: String },
-
-    #[error("Ecosystem error: {message}")]
-    Ecosystem { message: String },
-
-    #[error("BiomeOS error: {message}")]
-    BiomeOS { message: String },
-
-    #[error("OS Layer error: {message}")]
-    OSLayer { message: String },
-
-    #[error("Execution error: {message}")]
-    Execution { message: String },
-
-    #[error("Other error: {message}")]
-    Other { message: String },
-
-    #[error("Integration error: {message}")]
-    Integration { message: String },
-
-    #[error("Deployment error: {message}")]
-    Deployment { message: String },
-}
-
-/// Result type for ToadStool operations
-pub type ToadStoolResult<T> = Result<T, ToadStoolError>;
-
-impl ToadStoolError {
-    /// Create a configuration error
-    pub fn configuration<S: Into<String>>(message: S) -> Self {
-        Self::Configuration {
-            message: message.into(),
+    #[test]
+    fn test_result_type() {
+        fn returns_result() -> ToadStoolResult<String> {
+            Ok("success".to_string())
         }
+
+        let result = returns_result();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "success");
     }
 
-    /// Create a runtime error
-    pub fn runtime<S: Into<String>>(message: S) -> Self {
-        Self::Runtime {
-            message: message.into(),
+    #[test]
+    fn test_result_type_error() {
+        fn returns_error() -> ToadStoolResult<String> {
+            Err(ToadStoolError::runtime("failed"))
         }
+
+        let result = returns_error();
+        assert!(result.is_err());
     }
 
-    /// Create a security error
-    pub fn security<S: Into<String>>(message: S) -> Self {
-        Self::Security {
-            message: message.into(),
-        }
+    #[test]
+    fn test_error_conversion_from_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err: ToadStoolError = io_err.into();
+        assert!(err.to_string().contains("System error"));
     }
 
-    /// Create a resource error
-    pub fn resource<S: Into<String>>(message: S) -> Self {
-        Self::Resource {
-            message: message.into(),
-        }
-    }
-
-    /// Create a network error
-    pub fn network<S: Into<String>>(message: S) -> Self {
-        Self::Network {
-            message: message.into(),
-        }
-    }
-
-    /// Create an IO error
-    pub fn io<S: Into<String>>(message: S) -> Self {
-        Self::Io {
-            message: message.into(),
-        }
-    }
-
-    /// Create a validation error
-    pub fn validation<S: Into<String>>(message: S) -> Self {
-        Self::Validation {
-            message: message.into(),
-        }
-    }
-
-    /// Create a not found error
-    pub fn not_found<S: Into<String>>(message: S) -> Self {
-        Self::NotFound {
-            message: message.into(),
-        }
-    }
-
-    /// Create a permission denied error
-    pub fn permission_denied<S: Into<String>>(message: S) -> Self {
-        Self::PermissionDenied {
-            message: message.into(),
-        }
-    }
-
-    /// Create a not supported error
-    pub fn not_supported<S: Into<String>>(message: S) -> Self {
-        Self::NotSupported {
-            message: message.into(),
-        }
-    }
-
-    /// Create a timeout error
-    pub fn timeout<S: Into<String>>(message: S) -> Self {
-        Self::Timeout {
-            message: message.into(),
-        }
-    }
-
-    /// Create a parsing error
-    pub fn parsing<S: Into<String>>(message: S) -> Self {
-        Self::Parsing {
-            message: message.into(),
-        }
-    }
-
-    /// Create an ecosystem error
-    pub fn ecosystem<S: Into<String>>(message: S) -> Self {
-        Self::Ecosystem {
-            message: message.into(),
-        }
-    }
-
-    /// Create a biomeOS error
-    pub fn biomeos<S: Into<String>>(message: S) -> Self {
-        Self::BiomeOS {
-            message: message.into(),
-        }
-    }
-
-    /// Create an OS layer error
-    pub fn os_layer<S: Into<String>>(message: S) -> Self {
-        Self::OSLayer {
-            message: message.into(),
-        }
-    }
-
-    /// Create an execution error
-    pub fn execution<S: Into<String>>(message: S) -> Self {
-        Self::Execution {
-            message: message.into(),
-        }
-    }
-
-    /// Create an other error
-    pub fn other<S: Into<String>>(message: S) -> Self {
-        Self::Other {
-            message: message.into(),
-        }
-    }
-
-    /// Create an integration error
-    pub fn integration<S: Into<String>>(message: S) -> Self {
-        Self::Integration {
-            message: message.into(),
-        }
-    }
-
-    /// Create a deployment error
-    pub fn deployment<S: Into<String>>(message: S) -> Self {
-        Self::Deployment {
-            message: message.into(),
-        }
-    }
-}
-
-impl From<std::io::Error> for ToadStoolError {
-    fn from(err: std::io::Error) -> Self {
-        Self::io(err.to_string())
-    }
-}
-
-impl From<serde_json::Error> for ToadStoolError {
-    fn from(err: serde_json::Error) -> Self {
-        Self::parsing(err.to_string())
-    }
-}
-
-#[cfg(feature = "networking")]
-impl From<reqwest::Error> for ToadStoolError {
-    fn from(err: reqwest::Error) -> Self {
-        Self::network(err.to_string())
-    }
-}
-
-impl From<tokio::time::error::Elapsed> for ToadStoolError {
-    fn from(err: tokio::time::error::Elapsed) -> Self {
-        Self::timeout(err.to_string())
+    #[test]
+    fn test_error_conversion_from_json() {
+        let json_err = serde_json::from_str::<serde_json::Value>("{invalid").unwrap_err();
+        let err: ToadStoolError = json_err.into();
+        assert!(err.to_string().contains("System error"));
     }
 }

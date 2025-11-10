@@ -1,0 +1,283 @@
+//! Comprehensive tests for Protocol Configuration
+//!
+//! This test suite provides extensive coverage of protocol configuration structures
+//! including default values, validation, and configuration patterns.
+
+use std::time::Duration;
+use toadstool_integration_protocols::config::*;
+use toadstool_integration_protocols::types::{AuthType, MessageFormat, TransportType};
+
+// ============================================================================
+// ProtocolConfig Tests
+// ============================================================================
+
+#[test]
+fn test_protocol_config_default() {
+    let config = ProtocolConfig::default();
+
+    assert!(!config.service_id.is_empty());
+    assert!(config.service_id.starts_with("toadstool-"));
+    assert!(matches!(config.default_format, MessageFormat::Json));
+    assert_eq!(config.request_timeout, Duration::from_secs(30));
+}
+
+#[test]
+fn test_protocol_config_default_transports() {
+    let config = ProtocolConfig::default();
+
+    assert_eq!(config.supported_transports.len(), 2);
+    assert!(config.supported_transports.contains(&TransportType::Http));
+    assert!(config
+        .supported_transports
+        .contains(&TransportType::WebSocket));
+}
+
+#[test]
+fn test_protocol_config_no_auth_by_default() {
+    let config = ProtocolConfig::default();
+    assert!(config.auth_config.is_none());
+}
+
+#[test]
+fn test_protocol_config_no_discovery_by_default() {
+    let config = ProtocolConfig::default();
+    assert!(config.discovery_config.is_none());
+}
+
+#[test]
+fn test_protocol_config_has_connection_pool() {
+    let config = ProtocolConfig::default();
+    assert!(config.connection_pool.max_connections_per_service > 0);
+}
+
+#[test]
+fn test_protocol_config_has_routing_config() {
+    let config = ProtocolConfig::default();
+    // RoutingConfig should exist
+    let _routing = &config.routing_config;
+}
+
+#[test]
+fn test_protocol_config_has_health_config() {
+    let config = ProtocolConfig::default();
+    // HealthConfig should exist
+    let _health = &config.health_config;
+}
+
+#[test]
+fn test_protocol_config_clone() {
+    let config1 = ProtocolConfig::default();
+    let config2 = config1.clone();
+
+    assert_eq!(config1.service_id, config2.service_id);
+    assert_eq!(config1.request_timeout, config2.request_timeout);
+}
+
+// ============================================================================
+// ConnectionPoolConfig Tests
+// ============================================================================
+
+#[test]
+fn test_connection_pool_config_default() {
+    let config = ConnectionPoolConfig::default();
+
+    assert_eq!(config.max_connections_per_service, 10);
+    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert_eq!(config.keep_alive_interval, Duration::from_secs(30));
+    assert_eq!(config.max_concurrent_requests, 100);
+}
+
+#[test]
+fn test_connection_pool_config_max_connections_positive() {
+    let config = ConnectionPoolConfig::default();
+    assert!(config.max_connections_per_service > 0);
+}
+
+#[test]
+fn test_connection_pool_config_idle_timeout_reasonable() {
+    let config = ConnectionPoolConfig::default();
+    // Idle timeout should be at least 1 second
+    assert!(config.idle_timeout >= Duration::from_secs(1));
+}
+
+#[test]
+fn test_connection_pool_config_keep_alive_less_than_idle() {
+    let config = ConnectionPoolConfig::default();
+    // Keep alive should be less than idle timeout
+    assert!(config.keep_alive_interval < config.idle_timeout);
+}
+
+#[test]
+fn test_connection_pool_config_max_concurrent_reasonable() {
+    let config = ConnectionPoolConfig::default();
+    assert!(config.max_concurrent_requests >= 10);
+}
+
+#[test]
+fn test_connection_pool_config_clone() {
+    let config1 = ConnectionPoolConfig::default();
+    let config2 = config1.clone();
+
+    assert_eq!(
+        config1.max_connections_per_service,
+        config2.max_connections_per_service
+    );
+    assert_eq!(config1.idle_timeout, config2.idle_timeout);
+}
+
+// ============================================================================
+// AuthConfig Tests
+// ============================================================================
+
+#[test]
+fn test_auth_config_bearer_token() {
+    let config = AuthConfig {
+        auth_type: AuthType::Bearer,
+        token: Some("test-token".to_string()),
+        cert_path: None,
+        key_path: None,
+        ca_path: None,
+    };
+
+    assert!(matches!(config.auth_type, AuthType::Bearer));
+    assert_eq!(config.token, Some("test-token".to_string()));
+}
+
+#[test]
+fn test_auth_config_api_key() {
+    let config = AuthConfig {
+        auth_type: AuthType::ApiKey,
+        token: Some("api-key-123".to_string()),
+        cert_path: None,
+        key_path: None,
+        ca_path: None,
+    };
+
+    assert!(matches!(config.auth_type, AuthType::ApiKey));
+    assert!(config.token.is_some());
+}
+
+#[test]
+fn test_auth_config_mtls_paths() {
+    let config = AuthConfig {
+        auth_type: AuthType::MutualTls,
+        token: None,
+        cert_path: Some("/path/to/cert.pem".to_string()),
+        key_path: Some("/path/to/key.pem".to_string()),
+        ca_path: Some("/path/to/ca.pem".to_string()),
+    };
+
+    assert!(matches!(config.auth_type, AuthType::MutualTls));
+    assert!(config.cert_path.is_some());
+    assert!(config.key_path.is_some());
+    assert!(config.ca_path.is_some());
+}
+
+#[test]
+fn test_auth_config_none() {
+    let config = AuthConfig {
+        auth_type: AuthType::None,
+        token: None,
+        cert_path: None,
+        key_path: None,
+        ca_path: None,
+    };
+
+    assert!(matches!(config.auth_type, AuthType::None));
+    assert!(config.token.is_none());
+}
+
+#[test]
+fn test_auth_config_clone() {
+    let config1 = AuthConfig {
+        auth_type: AuthType::Bearer,
+        token: Some("token".to_string()),
+        cert_path: None,
+        key_path: None,
+        ca_path: None,
+    };
+
+    let config2 = config1.clone();
+    assert_eq!(config1.token, config2.token);
+}
+
+// ============================================================================
+// Configuration Pattern Tests
+// ============================================================================
+
+#[test]
+fn test_protocol_config_with_auth() {
+    let config = ProtocolConfig {
+        auth_config: Some(AuthConfig {
+            auth_type: AuthType::Bearer,
+            token: Some("test".to_string()),
+            cert_path: None,
+            key_path: None,
+            ca_path: None,
+        }),
+        ..Default::default()
+    };
+
+    assert!(config.auth_config.is_some());
+}
+
+#[test]
+fn test_protocol_config_timeout_customization() {
+    let config = ProtocolConfig {
+        request_timeout: Duration::from_secs(60),
+        ..Default::default()
+    };
+
+    assert_eq!(config.request_timeout, Duration::from_secs(60));
+}
+
+#[test]
+fn test_protocol_config_format_customization() {
+    let config = ProtocolConfig {
+        default_format: MessageFormat::MessagePack,
+        ..Default::default()
+    };
+
+    assert!(matches!(config.default_format, MessageFormat::MessagePack));
+}
+
+#[test]
+fn test_protocol_config_transport_customization() {
+    let config = ProtocolConfig {
+        supported_transports: vec![TransportType::TRpc],
+        ..Default::default()
+    };
+
+    assert_eq!(config.supported_transports.len(), 1);
+    assert!(config.supported_transports.contains(&TransportType::TRpc));
+}
+
+#[test]
+fn test_connection_pool_config_customization() {
+    let config = ConnectionPoolConfig {
+        max_connections_per_service: 20,
+        max_concurrent_requests: 200,
+        ..Default::default()
+    };
+
+    assert_eq!(config.max_connections_per_service, 20);
+    assert_eq!(config.max_concurrent_requests, 200);
+}
+
+// ============================================================================
+// Test Counter
+// ============================================================================
+
+#[test]
+fn test_config_coverage_summary() {
+    println!("============================================");
+    println!("Protocol Config Tests Summary:");
+    println!("============================================");
+    println!("ProtocolConfig:          8 tests");
+    println!("ConnectionPoolConfig:    6 tests");
+    println!("AuthConfig:              5 tests");
+    println!("Pattern Tests:           5 tests");
+    println!("============================================");
+    println!("Total Config Tests:     24 tests");
+    println!("============================================");
+}

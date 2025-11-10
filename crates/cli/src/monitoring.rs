@@ -1,6 +1,6 @@
 //! Monitoring and Observability - Real-time System Intelligence
 //!
-//! Comprehensive monitoring for ToadStool universal compute platform:
+//! Comprehensive monitoring for `ToadStool` universal compute platform:
 //! - Real-time biome metrics and health monitoring
 //! - System resource tracking and alerting
 //! - Performance analytics and trend analysis
@@ -17,7 +17,7 @@ use tokio::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
 
-/// Comprehensive monitoring system for ToadStool
+/// Comprehensive monitoring system for `ToadStool`
 pub struct MonitoringSystem {
     /// Active monitoring sessions
     sessions: Arc<RwLock<HashMap<String, MonitoringSession>>>,
@@ -61,7 +61,7 @@ pub enum SessionStatus {
 }
 
 /// Metrics collection interface
-pub trait MetricsCollector {
+pub trait MetricsCollector: Send + Sync {
     fn name(&self) -> &str;
     fn collect(&self) -> Result<MetricBatch>;
     fn capabilities(&self) -> Vec<String>;
@@ -704,7 +704,7 @@ impl SystemMetricsCollector {
 }
 
 impl MetricsCollector for SystemMetricsCollector {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "system"
     }
 
@@ -718,7 +718,7 @@ impl MetricsCollector for SystemMetricsCollector {
         let cpu_usage = system.global_cpu_info().cpu_usage();
         metrics.push(Metric {
             name: "cpu_usage_percent".to_string(),
-            value: MetricValue::Gauge(cpu_usage as f64),
+            value: MetricValue::Gauge(f64::from(cpu_usage)),
             labels: HashMap::new(),
             timestamp,
         });
@@ -782,7 +782,7 @@ impl ProcessMetricsCollector {
 }
 
 impl MetricsCollector for ProcessMetricsCollector {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "process"
     }
 
@@ -822,7 +822,7 @@ impl NetworkMetricsCollector {
 }
 
 impl MetricsCollector for NetworkMetricsCollector {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "network"
     }
 

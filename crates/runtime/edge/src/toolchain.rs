@@ -297,7 +297,11 @@ impl CrossCompilationToolchain {
         
         // Add source and output files
         cmd.arg(&source_file);
-        cmd.args(&["-o", output_file.to_str().unwrap()]);
+        let output_file_str = output_file.to_str()
+            .ok_or_else(|| ToadStoolError::compilation_error(
+                format!("Invalid output file path: {:?}", output_file)
+            ))?;
+        cmd.args(&["-o", output_file_str]);
         
         // Add sysroot if available
         if let Some(sysroot) = &toolchain.sysroot {

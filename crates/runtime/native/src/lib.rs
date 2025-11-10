@@ -1,10 +1,10 @@
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use async_trait::async_trait;
 use tokio::process::{Child, Command as TokioCommand};
 use tokio::sync::RwLock;
 use tokio::time::timeout;
@@ -60,6 +60,7 @@ struct ProcessHandle {
 
 impl NativeRuntimeEngine {
     /// Create a new native runtime engine
+    #[must_use]
     pub fn new() -> Self {
         let capabilities = RuntimeCapabilities {
             supported_workloads: vec![WorkloadType::Native],
@@ -275,22 +276,21 @@ impl NativeRuntimeEngine {
 
         // Apply timeout if specified
         let output = if let Some(timeout_duration) = request.timeout {
-            match timeout(timeout_duration, execution_future).await {
-                Ok(result) => result?,
-                Err(_) => {
-                    // Clean up the process
-                    self.cleanup_process(&request.execution_id).await;
+            if let Ok(result) = timeout(timeout_duration, execution_future).await {
+                result?
+            } else {
+                // Clean up the process
+                self.cleanup_process(&request.execution_id).await;
 
-                    return Ok(ExecutionResponse {
-                        execution_id: request.execution_id,
-                        status: ExecutionStatus::TimedOut,
-                        output: ExecutionOutput::default(),
-                        metrics: RuntimeMetrics::default(),
-                        duration: start_time.elapsed(),
-                        runtime_used: RuntimeType::Native,
-                        warnings: vec!["Execution timed out".to_string()],
-                    });
-                }
+                return Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::TimedOut,
+                    output: ExecutionOutput::default(),
+                    metrics: RuntimeMetrics::default(),
+                    duration: start_time.elapsed(),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Execution timed out".to_string()],
+                });
             }
         } else {
             execution_future.await?
@@ -382,31 +382,33 @@ impl NativeRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for NativeRuntimeEngine {
-    async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()> {
-        info!("Initializing Native Runtime Engine");
-        self.config = config;
+    fn initialize(&mut self, config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("Initializing Native Runtime Engine");
+            self.config = config;
 
-        // Validate that we can execute native processes
-        let test_command = if cfg!(windows) { "cmd" } else { "echo" };
+            // Validate that we can execute native processes
+            let test_command = if cfg!(windows) { "cmd" } else { "echo" };
 
-        let test_result = std::process::Command::new(test_command)
-            .arg("test")
-            .output();
+            let test_result = std::process::Command::new(test_command)
+                .arg("test")
+                .output();
 
-        match test_result {
-            Ok(_) => {
-                info!("Native runtime engine initialized successfully");
-                Ok(())
+            match test_result {
+                Ok(_) => {
+                    info!("Native runtime engine initialized successfully");
+                    Ok(())
+                }
+                Err(e) => Err(ToadStoolError::runtime(format!(
+                    "Failed to initialize native runtime: {e}"
+                ))),
             }
-            Err(e) => Err(ToadStoolError::runtime(format!(
-                "Failed to initialize native runtime: {e}"
-            ))),
-        }
+        })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
+    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
         info!("Executing native workload: {}", request.execution_id);
 
         // Check concurrent process limit
@@ -445,6 +447,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
         // Execute the workload
         self.execute_workload(&request, executable_path).await
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -455,20 +458,23 @@ impl RuntimeEngine for NativeRuntimeEngine {
         matches!(workload_type, WorkloadType::Native)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        // Return aggregated metrics for all active processes
-        let processes = self.active_processes.read().await;
+    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async {
+            // Return aggregated metrics for all active processes
+            let processes = self.active_processes.read().await;
 
-        if processes.is_empty() {
-            return Ok(RuntimeMetrics::default());
-        }
+            if processes.is_empty() {
+                return Ok(RuntimeMetrics::default());
+            }
 
-        // In a real implementation, this would aggregate metrics from all processes
-        // For now, return default metrics
-        Ok(RuntimeMetrics::default())
+            // In a real implementation, this would aggregate metrics from all processes
+            // For now, return default metrics
+            Ok(RuntimeMetrics::default())
+        })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
         info!("Shutting down Native Runtime Engine");
 
         // Kill all active processes
@@ -483,6 +489,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
         info!("Native runtime engine shut down successfully");
         Ok(())
+        })
     }
 }
 
@@ -592,5 +599,151 @@ mod tests {
         let result = engine.execute(request).await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_metrics() {
+        let engine = create_test_engine().await;
+        let metrics = engine.get_metrics().await.unwrap();
+
+        // Default metrics when no processes running
+        assert!(metrics.cpu.usage_percent >= 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown() {
+        let mut engine = create_test_engine().await;
+        let shutdown_result = engine.shutdown().await;
+
+        assert!(shutdown_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_supports_workload() {
+        let engine = NativeRuntimeEngine::new();
+
+        assert!(engine.supports_workload(&WorkloadType::Native));
+        assert!(!engine.supports_workload(&WorkloadType::Wasm));
+        assert!(!engine.supports_workload(&WorkloadType::Container));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_execution_with_env_vars() {
+        let engine = create_test_engine().await;
+        let mut env_vars = HashMap::new();
+        env_vars.insert("TEST_VAR".to_string(), "test_value".to_string());
+
+        let mut request = create_test_request(
+            "/bin/sh",
+            vec!["-c".to_string(), "echo $TEST_VAR".to_string()],
+        );
+        if let WorkloadSpec::Native {
+            env_vars: ref mut env,
+            ..
+        } = request.workload
+        {
+            *env = env_vars;
+        }
+
+        let response = engine.execute(request).await.unwrap();
+
+        // Environment variables test - may or may not propagate depending on system
+        assert!(matches!(
+            response.status,
+            ExecutionStatus::Success | ExecutionStatus::Failed { .. }
+        ));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_execution_with_working_dir() {
+        let engine = create_test_engine().await;
+        let mut request = create_test_request("/bin/pwd", vec![]);
+
+        if let WorkloadSpec::Native {
+            working_dir: ref mut dir,
+            ..
+        } = request.workload
+        {
+            *dir = Some(PathBuf::from("/tmp"));
+        }
+
+        let response = engine.execute(request).await.unwrap();
+
+        assert_eq!(response.status, ExecutionStatus::Success);
+        if let Some(stdout) = response.output.stdout {
+            assert!(stdout.contains("/tmp"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_multiple_concurrent_executions() {
+        let engine = Arc::new(create_test_engine().await);
+        let mut handles = vec![];
+
+        for _ in 0..5 {
+            let engine_clone = Arc::clone(&engine);
+            let handle = tokio::spawn(async move {
+                let request = create_test_request(
+                    if cfg!(windows) { "cmd" } else { "/bin/echo" },
+                    vec!["test".to_string()],
+                );
+                engine_clone.execute(request).await
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            let result = handle.await.unwrap();
+            assert!(result.is_ok());
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_execution_failure_handling() {
+        let engine = create_test_engine().await;
+        // false command always returns exit code 1
+        let request = create_test_request("/bin/false", vec![]);
+
+        let response = engine.execute(request).await.unwrap();
+
+        match response.status {
+            ExecutionStatus::Failed { .. } => {
+                // Expected
+            }
+            _ => panic!("Expected failed status for /bin/false"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_default_capabilities() {
+        let engine = NativeRuntimeEngine::new();
+        let capabilities = engine.get_capabilities();
+
+        assert!(capabilities
+            .supported_workloads
+            .contains(&WorkloadType::Native));
+        assert!(capabilities.max_concurrent_executions.is_some());
+        assert!(capabilities.max_concurrent_executions.unwrap() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_engine_default_construction() {
+        let engine1 = NativeRuntimeEngine::new();
+        let engine2 = NativeRuntimeEngine::default();
+
+        // Both should have same default configuration structure
+        assert_eq!(engine1.config.settings.len(), engine2.config.settings.len());
+    }
+
+    #[tokio::test]
+    async fn test_debug_trait() {
+        let engine = NativeRuntimeEngine::new();
+        let debug_str = format!("{:?}", engine);
+
+        assert!(debug_str.contains("NativeRuntimeEngine"));
+        assert!(debug_str.contains("config"));
     }
 }

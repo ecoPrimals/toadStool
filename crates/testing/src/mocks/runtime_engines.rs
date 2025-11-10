@@ -19,9 +19,10 @@
 //! This module provides mock implementations of runtime engines using the
 //! mockall crate for comprehensive testing scenarios.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use mockall::mock;
 
 use toadstool::{
@@ -40,14 +41,13 @@ use crate::fixtures::{create_test_execution_output, create_test_runtime_metrics}
 mock! {
     pub RuntimeEngine {}
 
-    #[async_trait]
     impl RuntimeEngine for RuntimeEngine {
-        async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()>;
-        async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
+        fn initialize(&mut self, config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send>>;
+        fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send>>;
         fn get_capabilities(&self) -> RuntimeCapabilities;
         fn supports_workload(&self, workload_type: &WorkloadType) -> bool;
-        async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics>;
-        async fn shutdown(&mut self) -> ToadStoolResult<()>;
+        fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send>>;
+        fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send>>;
     }
 }
 
@@ -60,20 +60,23 @@ impl std::fmt::Debug for MockRuntimeEngine {
 
 impl MockRuntimeEngine {
     /// Create a mock runtime engine that always succeeds
+    #[must_use]
     pub fn new_successful() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Success,
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_secs(5),
-                runtime_used: RuntimeType::Native,
-                warnings: vec![],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Success,
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(5),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec![],
+                })
             })
         });
 
@@ -98,43 +101,49 @@ impl MockRuntimeEngine {
         });
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine that always fails initialization
+    #[must_use]
     pub fn new_init_failure() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
         mock.expect_initialize().returning(|_| {
-            Err(toadstool::error::ToadStoolError::runtime(
-                "Initialization failed",
-            ))
+            Box::pin(async {
+                Err(toadstool::error::ToadStoolError::runtime(
+                    "Initialization failed",
+                ))
+            })
         });
 
         mock
     }
 
     /// Create a mock runtime engine that fails execution
+    #[must_use]
     pub fn new_execution_failure() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Failed {
-                    error: "Mock execution failure".to_string(),
-                },
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_secs(1),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Mock warning".to_string()],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Failed {
+                        error: "Mock execution failure".to_string(),
+                    },
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(1),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Mock warning".to_string()],
+                })
             })
         });
 
@@ -151,28 +160,31 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine that times out
+    #[must_use]
     pub fn new_timeout() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::TimedOut,
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_secs(30),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Execution timed out".to_string()],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::TimedOut,
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(30),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Execution timed out".to_string()],
+                })
             })
         });
 
@@ -189,30 +201,33 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine with resource limit exceeded
+    #[must_use]
     pub fn new_resource_limit_exceeded() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Failed {
-                    error: "Resource limit exceeded: memory limit 1GB, actual 2GB".to_string(),
-                },
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_secs(2),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Memory limit exceeded".to_string()],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Failed {
+                        error: "Resource limit exceeded: memory limit 1GB, actual 2GB".to_string(),
+                    },
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(2),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Memory limit exceeded".to_string()],
+                })
             })
         });
 
@@ -229,30 +244,33 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine with security violation
+    #[must_use]
     pub fn new_security_violation() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Failed {
-                    error: "Security violation: Attempted to access restricted file".to_string(),
-                },
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_millis(100),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Security policy violation detected".to_string()],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Failed {
+                        error: "Security violation: Attempted to access restricted file".to_string(),
+                    },
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_millis(100),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Security policy violation detected".to_string()],
+                })
             })
         });
 
@@ -269,28 +287,31 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine that was cancelled
+    #[must_use]
     pub fn new_cancelled() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Cancelled,
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_millis(500),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Execution was cancelled".to_string()],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Cancelled,
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_millis(500),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Execution was cancelled".to_string()],
+                })
             })
         });
 
@@ -307,28 +328,31 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Native));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
 
     /// Create a mock runtime engine with limited workload support
+    #[must_use]
     pub fn new_limited_support() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Ok(()));
+        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
-            Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Success,
-                output: create_test_execution_output(),
-                metrics: create_test_runtime_metrics(),
-                duration: Duration::from_secs(3),
-                runtime_used: RuntimeType::Wasm,
-                warnings: vec![],
+            Box::pin(async move {
+                Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Success,
+                    output: create_test_execution_output(),
+                    metrics: create_test_runtime_metrics(),
+                    duration: Duration::from_secs(3),
+                    runtime_used: RuntimeType::Wasm,
+                    warnings: vec![],
+                })
             })
         });
 
@@ -350,9 +374,9 @@ impl MockRuntimeEngine {
             .returning(|workload_type| matches!(workload_type, WorkloadType::Wasm));
 
         mock.expect_get_metrics()
-            .returning(|| Ok(create_test_runtime_metrics()));
+            .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Ok(()));
+        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }

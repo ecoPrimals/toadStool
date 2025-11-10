@@ -1,6 +1,6 @@
 //! # Performance Hardening Module
 //!
-//! This module provides performance optimization features for ToadStool:
+//! This module provides performance optimization features for `ToadStool`:
 //! - Optimized resource monitoring with configurable sampling
 //! - Memory pool management and allocation optimization
 //! - Intelligent caching and memoization
@@ -42,7 +42,7 @@ pub struct PerformanceHardeningConfig {
     /// Async optimization configuration
     pub async_config: AsyncOptimizationConfig,
     /// Connection pooling configuration
-    pub connection_pool_config: ConnectionPoolConfig,
+    pub connection_pool_config: PerformanceConnectionPoolConfig,
 }
 
 impl Default for PerformanceHardeningConfig {
@@ -57,7 +57,7 @@ impl Default for PerformanceHardeningConfig {
             memory_pool_config: MemoryPoolConfig::default(),
             caching_config: CachingConfig::default(),
             async_config: AsyncOptimizationConfig::default(),
-            connection_pool_config: ConnectionPoolConfig::default(),
+            connection_pool_config: PerformanceConnectionPoolConfig::default(),
         }
     }
 }
@@ -167,9 +167,13 @@ impl Default for AsyncOptimizationConfig {
     }
 }
 
-/// Connection pooling configuration
+/// Performance-optimized connection pooling configuration
+///
+/// This is distinct from `toadstool::config_bases::ConnectionPoolConfig` which is
+/// for HTTP client connection pooling. This config is for generic connection pool
+/// sizing and lifecycle management in performance-critical contexts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionPoolConfig {
+pub struct PerformanceConnectionPoolConfig {
     /// Initial pool size
     pub initial_size: usize,
     /// Maximum pool size
@@ -182,7 +186,7 @@ pub struct ConnectionPoolConfig {
     pub health_check_interval: Duration,
 }
 
-impl Default for ConnectionPoolConfig {
+impl Default for PerformanceConnectionPoolConfig {
     fn default() -> Self {
         Self {
             initial_size: 10,
@@ -225,6 +229,7 @@ pub struct AggregatedMetrics {
 
 impl OptimizedResourceMonitor {
     /// Create new optimized resource monitor
+    #[must_use]
     pub fn new(config: OptimizedMonitoringConfig) -> Self {
         Self {
             config: config.clone(),
@@ -513,6 +518,7 @@ where
     V: Clone + Send + Sync + 'static,
 {
     /// Create new intelligent cache
+    #[must_use]
     pub fn new(config: CachingConfig) -> Self {
         Self {
             config,
@@ -717,12 +723,11 @@ where
 
     /// Process current batch
     async fn process_batch(&self) {
-        let _permit = match self.semaphore.acquire().await {
-            Ok(permit) => permit,
-            Err(_) => {
-                tracing::error!("Failed to acquire semaphore permit for batch processing");
-                return;
-            }
+        let _permit = if let Ok(permit) = self.semaphore.acquire().await {
+            permit
+        } else {
+            tracing::error!("Failed to acquire semaphore permit for batch processing");
+            return;
         };
 
         let batch = {
@@ -762,12 +767,11 @@ where
             loop {
                 interval.tick().await;
 
-                let _permit = match semaphore.acquire().await {
-                    Ok(permit) => permit,
-                    Err(_) => {
-                        tracing::error!("Failed to acquire semaphore permit for batch timer");
-                        continue;
-                    }
+                let _permit = if let Ok(permit) = semaphore.acquire().await {
+                    permit
+                } else {
+                    tracing::error!("Failed to acquire semaphore permit for batch timer");
+                    continue;
                 };
 
                 let batch = {
@@ -810,6 +814,7 @@ pub struct PerformanceHardeningManager {
 
 impl PerformanceHardeningManager {
     /// Create new performance hardening manager
+    #[must_use]
     pub fn new(config: PerformanceHardeningConfig) -> Self {
         let resource_monitor = Arc::new(OptimizedResourceMonitor::new(
             config.monitoring_config.clone(),
@@ -863,6 +868,7 @@ impl PerformanceHardeningManager {
     }
 
     /// Get resource monitor
+    #[must_use]
     pub fn get_resource_monitor(&self) -> Arc<OptimizedResourceMonitor> {
         Arc::clone(&self.resource_monitor)
     }

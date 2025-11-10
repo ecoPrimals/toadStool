@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Test data builders for ToadStool components
+//! Test data builders for `ToadStool` components
 //!
 //! This module provides builder patterns for creating test data with
 //! fluent APIs and sensible defaults to make testing more readable.
@@ -40,7 +40,7 @@ use toadstool::{
 
 use crate::fixtures::TestConstants;
 
-/// Builder for ExecutionRequest
+/// Builder for `ExecutionRequest`
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionRequestBuilder {
     execution_id: Option<Uuid>,
@@ -55,23 +55,27 @@ pub struct ExecutionRequestBuilder {
 
 impl ExecutionRequestBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set execution ID
+    #[must_use]
     pub fn execution_id(mut self, id: Uuid) -> Self {
         self.execution_id = Some(id);
         self
     }
 
     /// Set workload specification
+    #[must_use]
     pub fn workload(mut self, workload: WorkloadSpec) -> Self {
         self.workload = Some(workload);
         self
     }
 
     /// Set native workload
+    #[must_use]
     pub fn native_workload(mut self, executable: &str, args: Vec<String>) -> Self {
         self.workload = Some(WorkloadSpec::Native {
             executable: ExecutableSource::File {
@@ -86,6 +90,7 @@ impl ExecutionRequestBuilder {
     }
 
     /// Set container workload
+    #[must_use]
     pub fn container_workload(mut self, image: &str, command: Option<Vec<String>>) -> Self {
         self.workload = Some(WorkloadSpec::Container {
             image: image.to_string(),
@@ -101,6 +106,7 @@ impl ExecutionRequestBuilder {
     }
 
     /// Set WASM workload
+    #[must_use]
     pub fn wasm_workload(mut self, module_data: Vec<u8>) -> Self {
         self.workload = Some(WorkloadSpec::Wasm {
             module: WasmModuleSource::Bytes { data: module_data },
@@ -112,48 +118,55 @@ impl ExecutionRequestBuilder {
     }
 
     /// Set runtime hint
+    #[must_use]
     pub fn runtime_hint(mut self, runtime: RuntimeType) -> Self {
         self.runtime_hint = Some(runtime);
         self
     }
 
     /// Set resource requirements
+    #[must_use]
     pub fn resources(mut self, resources: ResourceRequirements) -> Self {
         self.resources = Some(resources);
         self
     }
 
     /// Set security context
+    #[must_use]
     pub fn security_context(mut self, context: SecurityContext) -> Self {
         self.security_context = Some(context);
         self
     }
 
     /// Set timeout
+    #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
     /// Add environment variable
+    #[must_use]
     pub fn env_var(mut self, key: &str, value: &str) -> Self {
         self.environment.insert(key.to_string(), value.to_string());
         self
     }
 
     /// Set environment variables
+    #[must_use]
     pub fn environment(mut self, env: HashMap<String, String>) -> Self {
         self.environment = env;
         self
     }
 
     /// Set input data
+    #[must_use]
     pub fn input_data(mut self, input: ExecutionInput) -> Self {
         self.input_data = Some(input);
         self
     }
 
-    /// Build the ExecutionRequest
+    /// Build the `ExecutionRequest`
     pub fn build(self) -> ExecutionRequest {
         ExecutionRequest {
             execution_id: self.execution_id.unwrap_or_else(Uuid::new_v4),
@@ -185,7 +198,7 @@ impl ExecutionRequestBuilder {
     }
 }
 
-/// Builder for ExecutionResponse
+/// Builder for `ExecutionResponse`
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionResponseBuilder {
     execution_id: Option<Uuid>,
@@ -199,23 +212,27 @@ pub struct ExecutionResponseBuilder {
 
 impl ExecutionResponseBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set execution ID
+    #[must_use]
     pub fn execution_id(mut self, id: Uuid) -> Self {
         self.execution_id = Some(id);
         self
     }
 
     /// Set status to success
+    #[must_use]
     pub fn success(mut self) -> Self {
         self.status = Some(ExecutionStatus::Success);
         self
     }
 
     /// Set status to failed
+    #[must_use]
     pub fn failed(mut self, error: &str) -> Self {
         self.status = Some(ExecutionStatus::Failed {
             error: error.to_string(),
@@ -224,18 +241,21 @@ impl ExecutionResponseBuilder {
     }
 
     /// Set status to timed out
+    #[must_use]
     pub fn timed_out(mut self) -> Self {
         self.status = Some(ExecutionStatus::TimedOut);
         self
     }
 
     /// Set status to cancelled
+    #[must_use]
     pub fn cancelled(mut self) -> Self {
         self.status = Some(ExecutionStatus::Cancelled);
         self
     }
 
     /// Set status to resource limit exceeded (using failed status)
+    #[must_use]
     pub fn resource_limit_exceeded(mut self, resource: &str, limit: &str, actual: &str) -> Self {
         self.status = Some(ExecutionStatus::Failed {
             error: format!(
@@ -246,6 +266,7 @@ impl ExecutionResponseBuilder {
     }
 
     /// Set status to security violation (using failed status)
+    #[must_use]
     pub fn security_violation(mut self, violation: &str) -> Self {
         self.status = Some(ExecutionStatus::Failed {
             error: format!("Security violation: {violation}"),
@@ -254,42 +275,48 @@ impl ExecutionResponseBuilder {
     }
 
     /// Set execution output
+    #[must_use]
     pub fn output(mut self, output: ExecutionOutput) -> Self {
         self.output = Some(output);
         self
     }
 
     /// Set runtime metrics
+    #[must_use]
     pub fn metrics(mut self, metrics: RuntimeMetrics) -> Self {
         self.metrics = Some(metrics);
         self
     }
 
     /// Set execution duration
+    #[must_use]
     pub fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
 
     /// Set runtime used
+    #[must_use]
     pub fn runtime_used(mut self, runtime: RuntimeType) -> Self {
         self.runtime_used = Some(runtime);
         self
     }
 
     /// Add warning
+    #[must_use]
     pub fn warning(mut self, warning: &str) -> Self {
         self.warnings.push(warning.to_string());
         self
     }
 
     /// Set warnings
+    #[must_use]
     pub fn warnings(mut self, warnings: Vec<String>) -> Self {
         self.warnings = warnings;
         self
     }
 
-    /// Build the ExecutionResponse
+    /// Build the `ExecutionResponse`
     pub fn build(self) -> ExecutionResponse {
         ExecutionResponse {
             execution_id: self.execution_id.unwrap_or_else(Uuid::new_v4),
@@ -307,7 +334,7 @@ impl ExecutionResponseBuilder {
     }
 }
 
-/// Builder for SecurityContext
+/// Builder for `SecurityContext`
 #[derive(Debug, Clone)]
 pub struct SecurityContextBuilder {
     isolation_level: IsolationLevel,
@@ -323,6 +350,7 @@ impl Default for SecurityContextBuilder {
 }
 
 impl SecurityContextBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             isolation_level: IsolationLevel::Standard,
@@ -332,31 +360,37 @@ impl SecurityContextBuilder {
         }
     }
 
+    #[must_use]
     pub fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
         self.isolation_level = level;
         self
     }
 
+    #[must_use]
     pub fn with_capabilities(mut self, capabilities: Vec<Capability>) -> Self {
         self.capabilities.extend(capabilities);
         self
     }
 
+    #[must_use]
     pub fn with_policy(mut self, policy: String) -> Self {
         self.policies.push(policy);
         self
     }
 
+    #[must_use]
     pub fn with_resource_limit_exceeded(self, _message: String) -> Self {
         // Note: SecurityContext doesn't have status, this is for builder compatibility
         self
     }
 
+    #[must_use]
     pub fn with_security_violation(self, _message: String) -> Self {
         // Note: SecurityContext doesn't have status, this is for builder compatibility
         self
     }
 
+    #[must_use]
     pub fn build(self) -> SecurityContext {
         SecurityContext {
             isolation_level: self.isolation_level,
@@ -368,7 +402,7 @@ impl SecurityContextBuilder {
     }
 }
 
-/// Builder for RuntimeMetrics
+/// Builder for `RuntimeMetrics`
 #[derive(Debug, Clone, Default)]
 pub struct RuntimeMetricsBuilder {
     cpu: Option<CpuMetrics>,
@@ -381,47 +415,55 @@ pub struct RuntimeMetricsBuilder {
 
 impl RuntimeMetricsBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set CPU metrics
+    #[must_use]
     pub fn cpu_metrics(mut self, cpu: CpuMetrics) -> Self {
         self.cpu = Some(cpu);
         self
     }
 
     /// Set memory metrics
+    #[must_use]
     pub fn memory_metrics(mut self, memory: MemoryMetrics) -> Self {
         self.memory = Some(memory);
         self
     }
 
     /// Set storage metrics
+    #[must_use]
     pub fn storage_metrics(mut self, storage: StorageMetrics) -> Self {
         self.storage = Some(storage);
         self
     }
 
     /// Set network metrics
+    #[must_use]
     pub fn network_metrics(mut self, network: NetworkMetrics) -> Self {
         self.network = Some(network);
         self
     }
 
     /// Set timing metrics
+    #[must_use]
     pub fn timing_metrics(mut self, timing: TimingMetrics) -> Self {
         self.timing = Some(timing);
         self
     }
 
     /// Add custom metric
+    #[must_use]
     pub fn custom_metric(mut self, key: &str, value: serde_json::Value) -> Self {
         self.custom.insert(key.to_string(), value);
         self
     }
 
-    /// Build the RuntimeMetrics
+    /// Build the `RuntimeMetrics`
+    #[must_use]
     pub fn build(self) -> RuntimeMetrics {
         RuntimeMetrics {
             cpu: self.cpu.unwrap_or(CpuMetrics {

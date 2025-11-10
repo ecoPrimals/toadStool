@@ -5,29 +5,31 @@
 
 use std::time::Duration;
 use tokio::time::sleep;
-use uuid::Uuid;
 
 /// Test sandbox escape attempts
 #[tokio::test]
 async fn test_sandbox_escape_prevention() {
     println!("🔒 Testing sandbox escape prevention");
-    
+
     // Test 1: Process privilege escalation attempt
     let privilege_escalation = test_privilege_escalation_prevention().await;
-    assert!(privilege_escalation.blocked, "Privilege escalation not blocked");
-    
+    assert!(
+        privilege_escalation.blocked,
+        "Privilege escalation not blocked"
+    );
+
     // Test 2: File system escape attempt
     let filesystem_escape = test_filesystem_escape_prevention().await;
     assert!(filesystem_escape.blocked, "Filesystem escape not blocked");
-    
+
     // Test 3: Network namespace escape attempt
     let network_escape = test_network_escape_prevention().await;
     assert!(network_escape.blocked, "Network escape not blocked");
-    
+
     // Test 4: Resource limit bypass attempt
     let resource_bypass = test_resource_limit_bypass_prevention().await;
     assert!(resource_bypass.blocked, "Resource limit bypass not blocked");
-    
+
     println!("✓ Sandbox escape prevention test passed");
 }
 
@@ -35,23 +37,23 @@ async fn test_sandbox_escape_prevention() {
 #[tokio::test]
 async fn test_injection_attack_prevention() {
     println!("🔒 Testing injection attack prevention");
-    
+
     // Test 1: Command injection
     let command_injection = test_command_injection_prevention().await;
     assert!(command_injection.blocked, "Command injection not blocked");
-    
+
     // Test 2: Path traversal
     let path_traversal = test_path_traversal_prevention().await;
     assert!(path_traversal.blocked, "Path traversal not blocked");
-    
+
     // Test 3: Environment variable injection
     let env_injection = test_environment_injection_prevention().await;
     assert!(env_injection.blocked, "Environment injection not blocked");
-    
+
     // Test 4: YAML/JSON injection
     let data_injection = test_data_injection_prevention().await;
     assert!(data_injection.blocked, "Data injection not blocked");
-    
+
     println!("✓ Injection attack prevention test passed");
 }
 
@@ -59,23 +61,26 @@ async fn test_injection_attack_prevention() {
 #[tokio::test]
 async fn test_authentication_authorization() {
     println!("🔒 Testing authentication and authorization");
-    
+
     // Test 1: Unauthenticated access prevention
     let unauth_access = test_unauthenticated_access_prevention().await;
     assert!(unauth_access.blocked, "Unauthenticated access not blocked");
-    
+
     // Test 2: Token manipulation detection
     let token_manipulation = test_token_manipulation_detection().await;
-    assert!(token_manipulation.detected, "Token manipulation not detected");
-    
+    assert!(
+        token_manipulation.detected,
+        "Token manipulation not detected"
+    );
+
     // Test 3: Authorization bypass attempts
     let authz_bypass = test_authorization_bypass_prevention().await;
     assert!(authz_bypass.blocked, "Authorization bypass not blocked");
-    
+
     // Test 4: Session hijacking prevention
     let session_hijacking = test_session_hijacking_prevention().await;
     assert!(session_hijacking.blocked, "Session hijacking not blocked");
-    
+
     println!("✓ Authentication and authorization test passed");
 }
 
@@ -83,23 +88,32 @@ async fn test_authentication_authorization() {
 #[tokio::test]
 async fn test_denial_of_service_protection() {
     println!("🔒 Testing denial of service protection");
-    
+
     // Test 1: Request rate limiting
     let rate_limiting = test_request_rate_limiting().await;
     assert!(rate_limiting.effective, "Rate limiting not effective");
-    
+
     // Test 2: Resource exhaustion protection
     let resource_protection = test_resource_exhaustion_protection().await;
-    assert!(resource_protection.effective, "Resource protection not effective");
-    
+    assert!(
+        resource_protection.effective,
+        "Resource protection not effective"
+    );
+
     // Test 3: Connection flooding protection
     let connection_flooding = test_connection_flooding_protection().await;
-    assert!(connection_flooding.effective, "Connection flooding protection not effective");
-    
+    assert!(
+        connection_flooding.effective,
+        "Connection flooding protection not effective"
+    );
+
     // Test 4: Memory bomb protection
     let memory_bomb = test_memory_bomb_protection().await;
-    assert!(memory_bomb.effective, "Memory bomb protection not effective");
-    
+    assert!(
+        memory_bomb.effective,
+        "Memory bomb protection not effective"
+    );
+
     println!("✓ Denial of service protection test passed");
 }
 
@@ -107,23 +121,23 @@ async fn test_denial_of_service_protection() {
 #[tokio::test]
 async fn test_cryptographic_security() {
     println!("🔒 Testing cryptographic security");
-    
+
     // Test 1: Weak encryption detection
     let weak_encryption = test_weak_encryption_detection().await;
     assert!(weak_encryption.detected, "Weak encryption not detected");
-    
+
     // Test 2: Key management security
     let key_management = test_key_management_security().await;
     assert!(key_management.secure, "Key management not secure");
-    
+
     // Test 3: Certificate validation
     let cert_validation = test_certificate_validation().await;
-    assert!(cert_validation.valid, "Certificate validation failed");
-    
+    assert!(cert_validation.secure, "Certificate validation failed");
+
     // Test 4: Random number generation quality
     let rng_quality = test_random_number_generation_quality().await;
     assert!(rng_quality.sufficient, "RNG quality insufficient");
-    
+
     println!("✓ Cryptographic security test passed");
 }
 
@@ -131,23 +145,26 @@ async fn test_cryptographic_security() {
 #[tokio::test]
 async fn test_data_protection_privacy() {
     println!("🔒 Testing data protection and privacy");
-    
+
     // Test 1: Sensitive data exposure prevention
     let data_exposure = test_sensitive_data_exposure_prevention().await;
     assert!(data_exposure.protected, "Sensitive data not protected");
-    
+
     // Test 2: Data encryption at rest
     let encryption_at_rest = test_data_encryption_at_rest().await;
     assert!(encryption_at_rest.encrypted, "Data not encrypted at rest");
-    
+
     // Test 3: Data encryption in transit
     let encryption_in_transit = test_data_encryption_in_transit().await;
-    assert!(encryption_in_transit.encrypted, "Data not encrypted in transit");
-    
+    assert!(
+        encryption_in_transit.encrypted,
+        "Data not encrypted in transit"
+    );
+
     // Test 4: Data sanitization
     let data_sanitization = test_data_sanitization().await;
     assert!(data_sanitization.sanitized, "Data not properly sanitized");
-    
+
     println!("✓ Data protection and privacy test passed");
 }
 
@@ -155,23 +172,26 @@ async fn test_data_protection_privacy() {
 #[tokio::test]
 async fn test_network_security() {
     println!("🔒 Testing network security");
-    
+
     // Test 1: TLS/SSL configuration
     let tls_config = test_tls_ssl_configuration().await;
     assert!(tls_config.secure, "TLS/SSL configuration not secure");
-    
+
     // Test 2: Network segmentation
     let network_segmentation = test_network_segmentation().await;
-    assert!(network_segmentation.effective, "Network segmentation not effective");
-    
+    assert!(
+        network_segmentation.effective,
+        "Network segmentation not effective"
+    );
+
     // Test 3: Firewall rules
     let firewall_rules = test_firewall_rules().await;
     assert!(firewall_rules.effective, "Firewall rules not effective");
-    
+
     // Test 4: Port scanning detection
     let port_scanning = test_port_scanning_detection().await;
     assert!(port_scanning.detected, "Port scanning not detected");
-    
+
     println!("✓ Network security test passed");
 }
 
@@ -179,29 +199,39 @@ async fn test_network_security() {
 #[tokio::test]
 async fn test_compliance_audit() {
     println!("🔒 Testing compliance and audit");
-    
+
     // Test 1: Audit log integrity
     let audit_integrity = test_audit_log_integrity().await;
     assert!(audit_integrity.intact, "Audit log integrity compromised");
-    
+
     // Test 2: Compliance policy enforcement
     let compliance_enforcement = test_compliance_policy_enforcement().await;
-    assert!(compliance_enforcement.enforced, "Compliance policies not enforced");
-    
+    assert!(
+        compliance_enforcement.enforced,
+        "Compliance policies not enforced"
+    );
+
     // Test 3: Security event monitoring
     let event_monitoring = test_security_event_monitoring().await;
-    assert!(event_monitoring.active, "Security event monitoring not active");
-    
+    assert!(
+        event_monitoring.active,
+        "Security event monitoring not active"
+    );
+
     // Test 4: Incident response procedures
     let incident_response = test_incident_response_procedures().await;
-    assert!(incident_response.functional, "Incident response procedures not functional");
-    
+    assert!(
+        incident_response.functional,
+        "Incident response procedures not functional"
+    );
+
     println!("✓ Compliance and audit test passed");
 }
 
 // Helper structures and types
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SecurityTestResult {
     blocked: bool,
     detection_time: Duration,
@@ -209,6 +239,7 @@ struct SecurityTestResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct DetectionResult {
     detected: bool,
     confidence: f64,
@@ -216,6 +247,7 @@ struct DetectionResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct ProtectionResult {
     effective: bool,
     mitigation_applied: bool,
@@ -223,6 +255,7 @@ struct ProtectionResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SecurityValidationResult {
     secure: bool,
     vulnerabilities: Vec<String>,
@@ -230,6 +263,7 @@ struct SecurityValidationResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct DataProtectionResult {
     protected: bool,
     encryption_strength: String,
@@ -237,6 +271,7 @@ struct DataProtectionResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct QualityResult {
     sufficient: bool,
     entropy_score: f64,
@@ -244,6 +279,7 @@ struct QualityResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct EncryptionResult {
     encrypted: bool,
     algorithm: String,
@@ -251,6 +287,7 @@ struct EncryptionResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SanitizationResult {
     sanitized: bool,
     methods_applied: Vec<String>,
@@ -258,6 +295,7 @@ struct SanitizationResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct NetworkSecurityResult {
     secure: bool,
     protocol_version: String,
@@ -265,6 +303,7 @@ struct NetworkSecurityResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SegmentationResult {
     effective: bool,
     isolated_networks: Vec<String>,
@@ -272,6 +311,7 @@ struct SegmentationResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct FirewallResult {
     effective: bool,
     rules_count: u32,
@@ -279,6 +319,7 @@ struct FirewallResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct AuditResult {
     intact: bool,
     log_entries: u32,
@@ -286,6 +327,7 @@ struct AuditResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct ComplianceResult {
     enforced: bool,
     policy_violations: u32,
@@ -293,6 +335,7 @@ struct ComplianceResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct MonitoringResult {
     active: bool,
     events_detected: u32,
@@ -300,6 +343,7 @@ struct MonitoringResult {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct IncidentResponseResult {
     functional: bool,
     response_time: Duration,
@@ -394,7 +438,10 @@ async fn test_token_manipulation_detection() -> DetectionResult {
     DetectionResult {
         detected: true,
         confidence: 0.95,
-        evidence: vec!["Invalid signature".to_string(), "Timestamp mismatch".to_string()],
+        evidence: vec![
+            "Invalid signature".to_string(),
+            "Timestamp mismatch".to_string(),
+        ],
     }
 }
 
@@ -457,7 +504,10 @@ async fn test_weak_encryption_detection() -> DetectionResult {
     DetectionResult {
         detected: true,
         confidence: 0.98,
-        evidence: vec!["MD5 hash detected".to_string(), "Weak key length".to_string()],
+        evidence: vec![
+            "MD5 hash detected".to_string(),
+            "Weak key length".to_string(),
+        ],
     }
 }
 
@@ -556,7 +606,10 @@ async fn test_port_scanning_detection() -> DetectionResult {
     DetectionResult {
         detected: true,
         confidence: 0.92,
-        evidence: vec!["Sequential port access".to_string(), "High connection rate".to_string()],
+        evidence: vec![
+            "Sequential port access".to_string(),
+            "High connection rate".to_string(),
+        ],
     }
 }
 
@@ -594,4 +647,4 @@ async fn test_incident_response_procedures() -> IncidentResponseResult {
         response_time: Duration::from_secs(5),
         containment_successful: true,
     }
-} 
+}

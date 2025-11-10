@@ -8,9 +8,33 @@
 //! - Time and timestamp handling
 //! - Format utilities for bytes and duration
 //! - Validation traits for type safety
+//! - Infant discovery system
 
 use std::time::SystemTime;
 use uuid::Uuid;
+
+// Public modules
+pub mod auth;
+pub mod config_bases;
+pub mod error;
+pub mod error_codes;
+pub mod infant_discovery;
+
+// Re-export commonly used types
+pub use auth::{AuthType, AuthCredentials, ServiceAuthConfig};
+
+pub use error::{
+    ToadStoolError, ToadStoolResult, ToadStoolErrorExt, ToadStoolErrorWithCode, ToadStoolResultWithCode,
+    ExecutionError, ExecutionResult,
+    ConfigError, ConfigResult,
+    ResourceError, ResourceResult,
+    IntegrationError, IntegrationResult,
+    SecurityError, SecurityResult,
+    NetworkError, NetworkResult,
+    SystemError, SystemResult,
+};
+
+pub use error_codes::{ErrorCode, ErrorCategory, codes};
 
 /// A unique identifier for `ToadStool` resources
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

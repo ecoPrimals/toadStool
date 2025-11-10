@@ -95,6 +95,7 @@ impl Default for WorkloadSpec {
 
 impl WorkloadSpec {
     /// Get the workload type
+    #[must_use]
     pub fn workload_type(&self) -> WorkloadType {
         match self {
             WorkloadSpec::Native { .. } => WorkloadType::Native,
@@ -347,7 +348,7 @@ pub struct RegistryAuth {
 /// Source of a GPU program
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GpuProgramSource {
-    /// OpenCL source code
+    /// `OpenCL` source code
     OpenCL { source: String },
     /// CUDA source code
     Cuda { source: String },

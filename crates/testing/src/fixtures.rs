@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Test fixtures for ToadStool components
+//! Test fixtures for `ToadStool` components
 //!
 //! This module provides consistent test data and fixtures to eliminate
 //! hardcoded values in tests and ensure reproducible test scenarios.
@@ -70,6 +70,7 @@ impl TestConstants {
 }
 
 /// Create a basic test execution request
+#[must_use]
 pub fn create_test_execution_request() -> ExecutionRequest {
     ExecutionRequest {
         execution_id: Uuid::new_v4(),
@@ -85,6 +86,7 @@ pub fn create_test_execution_request() -> ExecutionRequest {
 }
 
 /// Create a test native workload
+#[must_use]
 pub fn create_test_native_workload() -> WorkloadSpec {
     WorkloadSpec::Native {
         executable: ExecutableSource::File {
@@ -98,6 +100,7 @@ pub fn create_test_native_workload() -> WorkloadSpec {
 }
 
 /// Create a test WASM workload
+#[must_use]
 pub fn create_test_wasm_workload() -> WorkloadSpec {
     WorkloadSpec::Wasm {
         module: WasmModuleSource::Bytes {
@@ -110,6 +113,7 @@ pub fn create_test_wasm_workload() -> WorkloadSpec {
 }
 
 /// Create a test container workload
+#[must_use]
 pub fn create_test_container_workload() -> WorkloadSpec {
     WorkloadSpec::Container {
         image: "alpine:latest".to_string(),
@@ -124,6 +128,7 @@ pub fn create_test_container_workload() -> WorkloadSpec {
 }
 
 /// Create minimal WASM module for testing
+#[must_use]
 pub fn create_minimal_wasm_module() -> Vec<u8> {
     // Minimal WASM module that exports a simple function
     vec![
@@ -136,6 +141,7 @@ pub fn create_minimal_wasm_module() -> Vec<u8> {
 }
 
 /// Create test resource requirements
+#[must_use]
 pub fn create_test_resource_requirements() -> ResourceRequirements {
     ResourceRequirements {
         cpu: CpuRequirements {
@@ -162,6 +168,7 @@ pub fn create_test_resource_requirements() -> ResourceRequirements {
 }
 
 /// Create test security context
+#[must_use]
 pub fn create_test_security_context() -> SecurityContext {
     SecurityContext {
         isolation_level: IsolationLevel::Standard,
@@ -190,6 +197,7 @@ pub fn create_test_security_context() -> SecurityContext {
 }
 
 /// Create test environment variables
+#[must_use]
 pub fn create_test_environment() -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("TEST_ENV".to_string(), "test_value".to_string());
@@ -199,6 +207,7 @@ pub fn create_test_environment() -> HashMap<String, String> {
 }
 
 /// Create test execution input
+#[must_use]
 pub fn create_test_execution_input() -> ExecutionInput {
     ExecutionInput {
         data: b"test input data".to_vec(),
@@ -212,6 +221,7 @@ pub fn create_test_execution_input() -> ExecutionInput {
 }
 
 /// Create test execution output
+#[must_use]
 pub fn create_test_execution_output() -> ExecutionOutput {
     ExecutionOutput {
         data: b"test output data".to_vec(),
@@ -229,6 +239,7 @@ pub fn create_test_execution_output() -> ExecutionOutput {
 }
 
 /// Create test runtime configuration
+#[must_use]
 pub fn create_test_runtime_config() -> RuntimeConfig {
     RuntimeConfig {
         settings: {
@@ -246,6 +257,7 @@ pub fn create_test_runtime_config() -> RuntimeConfig {
 }
 
 /// Create test runtime metrics
+#[must_use]
 pub fn create_test_runtime_metrics() -> RuntimeMetrics {
     RuntimeMetrics {
         cpu: CpuMetrics {
@@ -281,9 +293,14 @@ pub fn create_test_runtime_metrics() -> RuntimeMetrics {
 
 /// Generate random test data using the Faker library
 pub mod random {
-    use super::*;
+    use super::{
+        create_test_security_context, CpuRequirements, Duration, ExecutableSource, ExecutionInput,
+        ExecutionRequest, Fake, Faker, HashMap, MemoryRequirements, NetworkRequirements, PathBuf,
+        ResourceRequirements, StorageRequirements, Uuid, WasmModuleSource, WorkloadSpec,
+    };
 
     /// Generate a random execution request
+    #[must_use]
     pub fn execution_request() -> ExecutionRequest {
         ExecutionRequest {
             execution_id: Uuid::new_v4(),
@@ -303,6 +320,7 @@ pub mod random {
     }
 
     /// Generate random native workload
+    #[must_use]
     pub fn random_native_workload() -> WorkloadSpec {
         WorkloadSpec::Native {
             executable: ExecutableSource::File {
@@ -316,6 +334,7 @@ pub mod random {
     }
 
     /// Generate random WASM workload
+    #[must_use]
     pub fn random_wasm_workload() -> WorkloadSpec {
         WorkloadSpec::Wasm {
             module: WasmModuleSource::Bytes {
@@ -328,6 +347,7 @@ pub mod random {
     }
 
     /// Generate random container workload
+    #[must_use]
     pub fn random_container_workload() -> WorkloadSpec {
         WorkloadSpec::Container {
             image: Faker.fake::<String>(),
@@ -342,6 +362,7 @@ pub mod random {
     }
 
     /// Generate random resource requirements
+    #[must_use]
     pub fn random_resource_requirements() -> ResourceRequirements {
         ResourceRequirements {
             cpu: CpuRequirements {
@@ -370,6 +391,7 @@ pub mod random {
     }
 
     /// Generate random environment variables
+    #[must_use]
     pub fn random_environment() -> HashMap<String, String> {
         let mut env = HashMap::new();
         for _ in 0..5 {
@@ -379,6 +401,7 @@ pub mod random {
     }
 
     /// Generate random execution input
+    #[must_use]
     pub fn random_execution_input() -> ExecutionInput {
         ExecutionInput {
             data: Faker.fake::<Vec<u8>>(),

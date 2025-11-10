@@ -1,6 +1,6 @@
 //! # Production Hardening Module
 //!
-//! This module provides critical production hardening features for ToadStool:
+//! This module provides critical production hardening features for `ToadStool`:
 //! - Circuit breaker patterns for fault tolerance
 //! - Resource leak detection and automatic cleanup
 //! - Memory pressure handling and optimization
@@ -79,6 +79,7 @@ pub struct CircuitBreaker {
 
 impl CircuitBreaker {
     /// Create new circuit breaker
+    #[must_use]
     pub fn new(service_name: String, config: CircuitBreakerConfig) -> Self {
         let half_open_permits = config.half_open_max_requests as usize;
 
@@ -322,6 +323,7 @@ pub struct ResourceAllocation {
 
 impl ResourceLeakDetector {
     /// Create new resource leak detector
+    #[must_use]
     pub fn new(leak_threshold: Duration, cleanup_interval: Duration) -> Self {
         Self {
             allocations: Arc::new(RwLock::new(HashMap::new())),
@@ -451,6 +453,7 @@ pub trait MemoryPressureCallback: Send + Sync {
 
 impl MemoryPressureHandler {
     /// Create new memory pressure handler
+    #[must_use]
     pub fn new(config: MemoryPressureConfig) -> Self {
         Self {
             config,
@@ -542,6 +545,7 @@ impl Default for ProductionHardeningConfig {
 
 impl ProductionHardeningManager {
     /// Create new production hardening manager
+    #[must_use]
     pub fn new(config: ProductionHardeningConfig) -> Self {
         let leak_detector = Arc::new(ResourceLeakDetector::new(
             config.leak_detection_threshold,

@@ -366,6 +366,11 @@ impl ESP32Device {
             ))?;
         
         // Flash using esptool
+        let firmware_path_str = firmware_path.to_str()
+            .ok_or_else(|| ToadStoolError::execution_error(
+                format!("Invalid firmware path: {:?}", firmware_path)
+            ))?;
+        
         let output = std::process::Command::new("esptool.py")
             .args(&[
                 "--chip", "esp32",
@@ -374,7 +379,7 @@ impl ESP32Device {
                 "write_flash",
                 "-z",
                 "0x1000",
-                firmware_path.to_str().unwrap(),
+                firmware_path_str,
             ])
             .output()
             .map_err(|e| ToadStoolError::execution_error(

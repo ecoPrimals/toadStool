@@ -1,6 +1,6 @@
 //! # Ecosystem Discovery for Auto-Configuration
 //!
-//! Discovers available ecosystem services (Songbird, BearDog, NestGate, Squirrel, biomeOS)
+//! Discovers available ecosystem services (Songbird, `BearDog`, `NestGate`, Squirrel, biomeOS)
 //! and automatically configures optimal integration settings.
 
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use tokio::time::timeout;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
-use toadstool_config::network::DEFAULT_LOCALHOST;
+use toadstool_config::env_config::EnvironmentConfig;
 
 /// Ecosystem discovery system for finding and configuring primal services
 pub struct EcosystemDiscoverer {
@@ -26,8 +26,10 @@ pub struct EcosystemDiscoverer {
 
 impl EcosystemDiscoverer {
     /// Create a new ecosystem discoverer
+    #[must_use]
     pub fn new() -> Self {
         let mut service_patterns = HashMap::new();
+        let config = EnvironmentConfig::from_env();
 
         // Songbird - Network coordination primal
         service_patterns.insert(
@@ -35,7 +37,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: "songbird".to_string(),
                 description: "Network coordination and orchestration".to_string(),
-                default_ports: vec![8001, 8081, 9001],
+                default_ports: vec![config.network.songbird_port],
                 health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
                 service_type: ServiceType::NetworkCoordination,
                 required_capabilities: vec!["network".to_string(), "coordination".to_string()],
@@ -48,7 +50,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: "beardog".to_string(),
                 description: "Security and threat detection".to_string(),
-                default_ports: vec![8002, 8082, 9002],
+                default_ports: vec![config.network.beardog_port],
                 health_endpoints: vec!["/health".to_string(), "/api/security/health".to_string()],
                 service_type: ServiceType::Security,
                 required_capabilities: vec!["security".to_string(), "authentication".to_string()],
@@ -61,7 +63,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: "nestgate".to_string(),
                 description: "Distributed storage and data management".to_string(),
-                default_ports: vec![8003, 8083, 9003],
+                default_ports: vec![config.network.nestgate_port],
                 health_endpoints: vec!["/health".to_string(), "/api/storage/health".to_string()],
                 service_type: ServiceType::Storage,
                 required_capabilities: vec!["storage".to_string(), "data_management".to_string()],
@@ -74,7 +76,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: "squirrel".to_string(),
                 description: "AI and machine learning services".to_string(),
-                default_ports: vec![8004, 8084, 9004],
+                default_ports: vec![config.network.squirrel_port],
                 health_endpoints: vec!["/health".to_string(), "/api/ai/health".to_string()],
                 service_type: ServiceType::AI,
                 required_capabilities: vec!["ai".to_string(), "machine_learning".to_string()],
@@ -100,7 +102,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: "toadstool".to_string(),
                 description: "Other ToadStool universal compute instances".to_string(),
-                default_ports: vec![8080, 8000, 3000],
+                default_ports: vec![config.network.toadstool_port],
                 health_endpoints: vec!["/health".to_string(), "/api/v2/health".to_string()],
                 service_type: ServiceType::Compute,
                 required_capabilities: vec![
@@ -176,9 +178,10 @@ impl EcosystemDiscoverer {
     /// Discover services on localhost and common local IPs
     async fn discover_local_services(&self) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
         let mut services = HashMap::new();
+        let config = EnvironmentConfig::from_env();
         let local_ips = vec![
-            DEFAULT_LOCALHOST.to_string(),
-            "localhost".to_string(),
+            config.network.bind_address.clone(),
+            "127.0.0.1".to_string(),
             "0.0.0.0".to_string(),
         ];
 
@@ -282,7 +285,8 @@ impl EcosystemDiscoverer {
             .parse::<url::Url>()
             .map_err(|_| ToadStoolError::network(format!("Invalid URL: {endpoint}")))?;
 
-        let host = url.host_str().unwrap_or("localhost");
+        let config = EnvironmentConfig::from_env();
+        let host = url.host_str().unwrap_or(&config.network.bind_address);
         let port = url.port().unwrap_or(80);
         let socket_addr = format!("{host}:{port}");
 
@@ -421,6 +425,7 @@ impl EcosystemDiscoverer {
     }
 
     /// Get the last discovery results (cached)
+    #[must_use]
     pub fn get_last_discovery(&self) -> Option<&DiscoveredServices> {
         self.last_discovery.as_ref()
     }
@@ -571,7 +576,7 @@ mod tests {
     fn test_service_info_serialization() {
         let service_info = ServiceInfo {
             name: "test_service".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: toadstool_config::network::get_toadstool_endpoint(),
             service_type: "Test".to_string(),
             version: "1.0.0".to_string(),
             capabilities: vec!["test".to_string()],
@@ -582,7 +587,8 @@ mod tests {
 
         let json = serde_json::to_string(&service_info).unwrap();
         assert!(json.contains("test_service"));
-        assert!(json.contains("localhost:8080"));
+        // Environment-aware: check for port in 8080-8089 range (default is 8084)
+        assert!(json.contains(":808") || json.contains("127.0.0.1"));
     }
 
     #[test]

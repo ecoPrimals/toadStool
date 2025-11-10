@@ -1,0 +1,48 @@
+# ToadStool Showcase - Hello World Workload
+# Demonstrates running the same workload on multiple substrates
+
+[workload]
+id = "hello-universal"
+name = "Hello Universal"
+description = "Simple hello world for multi-substrate demonstration"
+version = "1.0.0"
+
+[execution]
+type = "script"
+entry_point = "main"
+timeout_seconds = 30
+
+[execution.script]
+language = "bash"
+code = """
+#!/bin/bash
+echo "╔══════════════════════════════════════════════════╗"
+echo "║       🍄 Hello from ToadStool Universal!       ║"
+echo "╚══════════════════════════════════════════════════╝"
+echo ""
+echo "Execution Context:"
+echo "  Hostname:     $(hostname)"
+echo "  Substrate:    ${TOADSTOOL_SUBSTRATE:-unknown}"
+echo "  Platform:     $(uname -s)"
+echo "  Architecture: $(uname -m)"
+echo "  Kernel:       $(uname -r)"
+echo "  Date/Time:    $(date)"
+echo "  Process ID:   $$"
+echo ""
+echo "System Information:"
+echo "  CPU Cores:    $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown')"
+echo "  Uptime:       $(uptime | awk -F'( |,|:)+' '{if ($7=="min") print $6"m"; else if ($7~/^day/) print $6"d "$8"h "$9"m"; else print $6"h "$7"m"}')"
+echo ""
+echo "✅ Hello World complete!"
+"""
+
+[resources]
+cpu_cores = 1
+memory_mb = 128
+disk_mb = 10
+
+[metadata]
+tags = ["demo", "hello-world", "showcase", "phase1"]
+author = "ToadStool Team"
+license = "AGPL-3.0"
+

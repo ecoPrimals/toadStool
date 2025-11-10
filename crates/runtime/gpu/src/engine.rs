@@ -1,7 +1,8 @@
 //! Universal GPU Compute Engine Implementation
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
@@ -19,10 +20,13 @@ use toadstool::{
 };
 
 use super::compiler::UniversalKernelCompiler;
-use super::config::*;
+use super::config::{CompilationConfig, ResourceConfig, UniversalGpuConfig};
 use super::coordinator::ComputeResourceCoordinator;
-use super::traits::*;
-use super::types::*;
+use super::traits::ParallelComputeFramework;
+use super::types::{
+    ComputeEngineStatistics, ComputeResult, ComputeSession, ComputeWorkload, DeviceId,
+    DeviceRequirements, GpuFramework, KernelFormat, SessionStatus, UniversalComputeDevice,
+};
 
 /// Universal GPU Compute Engine - the heart of parallel compute orchestration
 pub struct UniversalGpuEngine {
@@ -112,16 +116,13 @@ impl UniversalGpuEngine {
         &self,
         framework_type: GpuFramework,
     ) -> ToadStoolResult<Arc<dyn ParallelComputeFramework>> {
-        match framework_type {
-            GpuFramework::WebGpu => {
-                let framework = super::frameworks::WebGpuFramework::new()?;
-                Ok(Arc::new(framework))
-            }
-            _ => {
-                // For other frameworks, use fallback implementation
-                let framework = super::frameworks::FallbackFramework::new(framework_type);
-                Ok(Arc::new(framework))
-            }
+        if framework_type == GpuFramework::WebGpu {
+            let framework = super::frameworks::WebGpuFramework::new()?;
+            Ok(Arc::new(framework))
+        } else {
+            // For other frameworks, use fallback implementation
+            let framework = super::frameworks::FallbackFramework::new(framework_type);
+            Ok(Arc::new(framework))
         }
     }
 
@@ -411,14 +412,16 @@ impl UniversalGpuEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for UniversalGpuEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
-        // Already initialized in constructor
-        Ok(())
+    fn initialize(&mut self, _config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
+            // Already initialized in constructor
+            Ok(())
+        })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
+    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
         let workload = Self::convert_request_to_workload(&request)?;
         let result = self.execute_workload(workload).await?;
 
@@ -456,6 +459,7 @@ impl RuntimeEngine for UniversalGpuEngine {
                 result.primary_output.errors
             },
         })
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -483,8 +487,9 @@ impl RuntimeEngine for UniversalGpuEngine {
         matches!(workload_type, WorkloadType::Gpu)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics {
+    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async {
+            Ok(RuntimeMetrics {
             cpu: toadstool::resources::CpuMetrics {
                 usage_percent: 0.0, // GPU doesn't use CPU metrics
                 cores_used: 0.0,
@@ -519,9 +524,11 @@ impl RuntimeEngine for UniversalGpuEngine {
                 duration: chrono::Duration::zero(),
             },
         })
+        })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
         // Destroy all active sessions
         let session_ids: Vec<Uuid> = {
             let sessions = self.active_sessions.read().await;
@@ -539,6 +546,7 @@ impl RuntimeEngine for UniversalGpuEngine {
 
         info!("Universal GPU Engine shutdown complete");
         Ok(())
+        })
     }
 }
 

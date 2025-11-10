@@ -1,16 +1,34 @@
 //! Configuration structures for Universal GPU Compute Runtime
+//!
+//! This module provides configuration types for the GPU runtime engine.
+//! Key configurations use base config patterns for consistency:
+//!
+//! - **ExecutionConfig**: Uses `RetryConfig` for retry policies
+//! - **FaultToleranceConfig**: Uses `HealthCheckConfig` for device health monitoring
+//!
+//! # Example
+//!
+//! ```rust
+//! use toadstool_runtime_gpu::config::UniversalGpuConfig;
+//!
+//! let config = UniversalGpuConfig::default();
+//! // Retry configuration is now using base RetryConfig
+//! assert!(config.execution.retry_enabled);
+//! assert_eq!(config.execution.retries.max_retries, 3);
+//! ```
 
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use toadstool_common::config_bases::{HealthCheckConfig, RetryConfig};
 
 use crate::types::GpuFramework;
 
 /// Configuration for the universal GPU runtime
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UniversalGpuConfig {
-    /// Auto-discovery settings
-    pub discovery: DiscoveryConfig,
+    /// GPU hardware auto-discovery settings
+    pub discovery: GpuDiscoveryConfig,
     /// Resource management settings
     pub resources: ResourceConfig,
     /// Kernel compilation settings
@@ -23,9 +41,9 @@ pub struct UniversalGpuConfig {
     pub recursion: RecursionConfig,
 }
 
-/// Auto-discovery configuration
+/// GPU hardware auto-discovery configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryConfig {
+pub struct GpuDiscoveryConfig {
     /// Frameworks to attempt discovery for
     pub enabled_frameworks: Vec<GpuFramework>,
     /// Discovery timeout
@@ -36,7 +54,7 @@ pub struct DiscoveryConfig {
     pub min_requirements: super::types::DeviceRequirements,
 }
 
-impl Default for DiscoveryConfig {
+impl Default for GpuDiscoveryConfig {
     fn default() -> Self {
         use super::types::GpuFramework;
         Self {
@@ -112,8 +130,11 @@ impl Default for CompilationConfig {
 pub struct ExecutionConfig {
     /// Maximum execution time per kernel
     pub max_execution_time: Duration,
-    /// Automatic retry settings
-    pub retry_policy: RetryPolicy,
+    /// Enable automatic retries for transient failures
+    pub retry_enabled: bool,
+    /// Retry configuration (max attempts, backoff, jitter)
+    #[serde(flatten)]
+    pub retries: RetryConfig,
     /// Fault tolerance settings
     pub fault_tolerance: FaultToleranceConfig,
     /// Asynchronous execution settings
@@ -124,7 +145,8 @@ impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
             max_execution_time: Duration::from_secs(300), // 5 minutes
-            retry_policy: RetryPolicy::default(),
+            retry_enabled: true,
+            retries: RetryConfig::default(),
             fault_tolerance: FaultToleranceConfig::default(),
             async_execution: AsyncExecutionConfig::default(),
         }
@@ -322,32 +344,8 @@ pub enum UniversalIrFormat {
     Custom(String),
 }
 
-/// Retry policy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryPolicy {
-    /// Enable automatic retries
-    pub enabled: bool,
-    /// Maximum retry attempts
-    pub max_attempts: u32,
-    /// Base delay between retries
-    pub base_delay: Duration,
-    /// Backoff multiplier
-    pub backoff_multiplier: f32,
-    /// Maximum delay between retries
-    pub max_delay: Duration,
-}
-
-impl Default for RetryPolicy {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            max_attempts: 3,
-            base_delay: Duration::from_millis(100),
-            backoff_multiplier: 2.0,
-            max_delay: Duration::from_secs(60),
-        }
-    }
-}
+// Retry policy is now using base RetryConfig
+// See ExecutionConfig.retries field for retry configuration
 
 /// Fault tolerance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,8 +356,9 @@ pub struct FaultToleranceConfig {
     pub checkpointing_enabled: bool,
     /// Checkpoint interval
     pub checkpoint_interval: Duration,
-    /// Health check interval
-    pub health_check_interval: Duration,
+    /// Health check configuration (interval, timeout, thresholds)
+    #[serde(flatten)]
+    pub health_check: HealthCheckConfig,
 }
 
 impl Default for FaultToleranceConfig {
@@ -368,7 +367,7 @@ impl Default for FaultToleranceConfig {
             auto_failover: true,
             checkpointing_enabled: false, // Disabled by default due to overhead
             checkpoint_interval: Duration::from_secs(60),
-            health_check_interval: Duration::from_secs(30),
+            health_check: HealthCheckConfig::default(),
         }
     }
 }

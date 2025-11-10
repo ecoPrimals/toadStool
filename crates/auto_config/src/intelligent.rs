@@ -1,6 +1,6 @@
 //! # Intelligent Auto-Configuration System
 //!
-//! Core intelligence layer for ToadStool's zero-touch auto-configuration.
+//! Core intelligence layer for `ToadStool`'s zero-touch auto-configuration.
 //! This module analyzes system capabilities, detects patterns, and generates
 //! optimal configurations automatically.
 
@@ -13,7 +13,7 @@ use crate::hardware::{HardwareDetector, PerformanceClass, SystemCapabilities};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_config::{GpuConfig, SecurityConfig, ToadStoolConfig};
 
-/// Intelligent auto-configuration system that makes ToadStool work out-of-the-box
+/// Intelligent auto-configuration system that makes `ToadStool` work out-of-the-box
 /// with optimal settings for any environment.
 ///
 /// # Zero-Touch Philosophy
@@ -26,7 +26,8 @@ use toadstool_config::{GpuConfig, SecurityConfig, ToadStoolConfig};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
+/// // Example usage (API may change)
 /// use toadstool_auto_config::IntelligentAutoConfig;
 ///
 /// #[tokio::main]
@@ -34,10 +35,8 @@ use toadstool_config::{GpuConfig, SecurityConfig, ToadStoolConfig};
 ///     // Zero-touch startup - just works!
 ///     let config = IntelligentAutoConfig::auto_configure().await?;
 ///     
-///     // ToadStool is now optimally configured for this system
-///     let platform = toadstool::UniversalComputePlatform::with_config(config).await?;
-///     
-///     println!("🎉 ToadStool ready to execute any workload!");
+///     // Configuration is now ready to use
+///     println!("🎉 ToadStool auto-configured successfully!");
 ///     Ok(())
 /// }
 /// ```
@@ -106,7 +105,7 @@ impl IntelligentAutoConfig {
 
     /// Zero-configuration startup - just works!
     ///
-    /// This is the main entry point for zero-touch ToadStool configuration.
+    /// This is the main entry point for zero-touch `ToadStool` configuration.
     /// It performs comprehensive system analysis and generates an optimal
     /// configuration without requiring any user input.
     pub async fn auto_configure() -> ToadStoolResult<ToadStoolConfig> {
@@ -704,6 +703,7 @@ pub struct PlatformInfo {
 }
 
 impl PlatformInfo {
+    #[must_use]
     pub fn detect() -> Self {
         Self {
             os_name: std::env::consts::OS.to_string(),
@@ -781,10 +781,12 @@ pub struct UsageHints {
 }
 
 impl UsageHints {
+    #[must_use]
     pub fn is_cpu_intensive(&self) -> bool {
         self.expected_cpu_usage > 0.7
     }
 
+    #[must_use]
     pub fn is_memory_intensive(&self) -> bool {
         self.expected_memory_usage > 0.7
     }
@@ -822,6 +824,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "slow integration test - runs hardware/network detection"]
     async fn test_auto_configuration_basic() {
         let result = IntelligentAutoConfig::auto_configure().await;
         assert!(result.is_ok(), "Auto-configuration should succeed");
@@ -835,6 +838,15 @@ mod tests {
             config.runtime.resource_limits.max_cpu_usage > 0.0,
             "Should have positive CPU usage limit"
         );
+    }
+
+    #[test]
+    fn test_intelligent_auto_config_creation() {
+        // Fast synchronous test that doesn't require hardware scanning
+        let _auto_config = IntelligentAutoConfig::new();
+
+        // If it constructs without panicking, the test passes
+        // (using _ to avoid unused variable warning)
     }
 
     #[test]

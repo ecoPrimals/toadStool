@@ -23,8 +23,19 @@ pub struct NestGateConfig {
 
 impl Default for NestGateConfig {
     fn default() -> Self {
+        // Use environment-aware configuration
+        let port: u16 = std::env::var("TOADSTOOL_NESTGATE_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or_else(|| {
+                let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+                config.network.nestgate_port
+            });
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        let host = &config.network.bind_address;
+
         Self {
-            endpoint: "http://localhost:8084".to_string(),
+            endpoint: format!("http://{host}:{port}"),
             timeout: Duration::from_secs(30),
             max_retries: 3,
             auth: None,

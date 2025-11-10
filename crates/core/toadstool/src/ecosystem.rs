@@ -2,8 +2,8 @@
 //!
 //! This module handles integration with all primals in the ecosystem:
 //! - 🎵 Songbird (Network Coordination)
-//! - 🏠 NestGate (Storage)
-//! - 🐕 BearDog (Security)
+//! - 🏠 `NestGate` (Storage)
+//! - 🐕 `BearDog` (Security)
 //! - 🐿️ Squirrel (AI)
 //! - 🌱 biomeOS (Universal OS)
 
@@ -17,6 +17,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_config::env_config::EnvironmentConfig;
 use toadstool_config::network;
 
 /// Ecosystem coordinator for primal integration
@@ -79,15 +80,15 @@ pub struct PrimalInstance {
 pub enum PrimalType {
     /// Songbird - Network coordination
     Songbird,
-    /// NestGate - Storage
+    /// `NestGate` - Storage
     NestGate,
-    /// BearDog - Security
+    /// `BearDog` - Security
     BearDog,
     /// Squirrel - AI
     Squirrel,
     /// biomeOS - Universal OS
     BiomeOS,
-    /// ToadStool - Compute (recursive)
+    /// `ToadStool` - Compute (recursive)
     ToadStool,
     /// Custom primal
     Custom(String),
@@ -120,7 +121,7 @@ pub enum PrimalClient {
     #[cfg(feature = "networking")]
     Http(reqwest::Client),
     /// WebSocket client (for real-time communication)
-    #[cfg(feature = "networking")]
+    #[cfg(feature = "websocket")]
     WebSocket(
         Arc<
             tokio::sync::Mutex<
@@ -239,7 +240,7 @@ impl EcosystemCoordinator {
 
             // Join multicast group
             socket
-                .join_multicast_v4(Ipv4Addr::new(224, 0, 0, 251), Ipv4Addr::new(0, 0, 0, 0))
+                .join_multicast_v4(Ipv4Addr::new(224, 0, 0, 251), Ipv4Addr::UNSPECIFIED)
                 .map_err(|e| {
                     ToadStoolError::network(format!("Failed to join multicast group: {e}"))
                 })?;
@@ -330,7 +331,7 @@ impl EcosystemCoordinator {
             match self
                 .discover_primal_at_endpoint(
                     name,
-                    &format!("http://{dns_name}:{}", network::DEFAULT_SONGBIRD_PORT),
+                    &format!("http://{dns_name}:{}", network::get_songbird_port()),
                 )
                 .await
             {
@@ -351,22 +352,22 @@ impl EcosystemCoordinator {
 
         // Scan common ports for primals
         let common_ports = vec![
-            network::DEFAULT_SONGBIRD_PORT,
-            network::DEFAULT_TOADSTOOL_PORT,
-            network::DEFAULT_BEARDOG_PORT,
-            network::DEFAULT_NESTGATE_PORT,
+            network::get_songbird_port(),
+            network::get_toadstool_port(),
+            network::get_beardog_port(),
+            network::get_nestgate_port(),
             8084,
             8085,
         ];
-        let localhost = network::DEFAULT_LOCALHOST;
+        let config = EnvironmentConfig::from_env();
+        let localhost = &config.network.bind_address;
 
         for port in common_ports {
             let endpoint = format!("http://{localhost}:{port}");
-            match self.discover_primal_at_endpoint("unknown", &endpoint).await {
-                Ok(primal) => discovered.push(primal),
-                Err(_) => {
-                    // Ignore errors for local scan
-                }
+            if let Ok(primal) = self.discover_primal_at_endpoint("unknown", &endpoint).await {
+                discovered.push(primal)
+            } else {
+                // Ignore errors for local scan
             }
         }
 
@@ -416,10 +417,9 @@ impl EcosystemCoordinator {
                 .unwrap_or(name)
                 .to_string();
 
-            let primal_type = info
-                .get("type")
-                .and_then(|v| v.as_str())
-                .map(|t| match t {
+            let primal_type = info.get("type").and_then(|v| v.as_str()).map_or(
+                PrimalType::Custom("unknown".to_string()),
+                |t| match t {
                     "songbird" => PrimalType::Songbird,
                     "nestgate" => PrimalType::NestGate,
                     "beardog" => PrimalType::BearDog,
@@ -427,8 +427,8 @@ impl EcosystemCoordinator {
                     "biomeos" => PrimalType::BiomeOS,
                     "toadstool" => PrimalType::ToadStool,
                     other => PrimalType::Custom(other.to_string()),
-                })
-                .unwrap_or(PrimalType::Custom("unknown".to_string()));
+                },
+            );
 
             let version = info
                 .get("version")
@@ -442,7 +442,7 @@ impl EcosystemCoordinator {
                 .map(|arr| {
                     arr.iter()
                         .filter_map(|v| v.as_str())
-                        .map(|s| s.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect()
                 })
                 .unwrap_or_default();
@@ -486,7 +486,7 @@ impl EcosystemCoordinator {
         for primal in primals {
             let primal_name = primal.name.clone();
             match self.integrate_primal(primal).await {
-                Ok(_) => info!("✅ Integrated with {}", primal_name),
+                Ok(()) => info!("✅ Integrated with {}", primal_name),
                 Err(e) => error!("❌ Failed to integrate with {}: {}", primal_name, e),
             }
         }
@@ -504,7 +504,7 @@ impl EcosystemCoordinator {
 
         // Test connection
         match self.test_primal_connection(&channel).await {
-            Ok(_) => {
+            Ok(()) => {
                 primal.status = PrimalStatus::Connected;
                 info!("✅ Successfully connected to {}", primal.name);
             }
@@ -574,7 +574,7 @@ impl EcosystemCoordinator {
                 debug!("✅ Mock health check passed for {}", channel.primal_name);
                 Ok(())
             }
-            #[cfg(feature = "networking")]
+            #[cfg(feature = "websocket")]
             PrimalClient::WebSocket(_) => {
                 // WebSocket health check - ping/pong
                 debug!("🔍 WebSocket health check for {}", channel.primal_name);
@@ -661,7 +661,7 @@ impl EcosystemCoordinator {
                     timestamp: chrono::Utc::now(),
                 })
             }
-            #[cfg(feature = "networking")]
+            #[cfg(feature = "websocket")]
             PrimalClient::WebSocket(_) => {
                 // WebSocket message sending
                 debug!("📤 Sending message to {} via WebSocket", primal_name);
@@ -727,8 +727,7 @@ impl EcosystemCoordinator {
         let primals = self.primals.read().await;
         primals
             .get(primal_name)
-            .map(|p| p.status == PrimalStatus::Connected)
-            .unwrap_or(false)
+            .is_some_and(|p| p.status == PrimalStatus::Connected)
     }
 
     /// Get primal capabilities

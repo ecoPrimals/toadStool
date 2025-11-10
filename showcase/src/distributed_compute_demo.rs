@@ -10,7 +10,7 @@ use uuid::Uuid;
 use toadstool::{
     execution::{ExecutionRequest, RuntimeType},
     init,
-    resources::{CpuRequirements, MemoryRequirements, ResourceRequirements},
+    resources::ResourceRequirements,
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
     security::{IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},

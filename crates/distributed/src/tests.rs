@@ -8,6 +8,7 @@ use uuid::Uuid;
 use toadstool::{ExecutionInput, ExecutionRequest, RuntimeType, SecurityContext, WorkloadSpec};
 
 use crate::*;
+use crate::types::DistributedRetryConfig;
 
 #[cfg(test)]
 mod tests {
@@ -59,7 +60,7 @@ mod tests {
             priority: JobPriority::Normal,
             dependencies: Vec::new(),
             resource_requirements: ResourceRequirements::default(),
-            retry_config: RetryConfig::default(),
+            retry_config: DistributedRetryConfig::default(),
             created_at: Utc::now(),
         }
     }
@@ -110,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_retry_config_default() {
-        let config = RetryConfig::default();
+        let config = DistributedRetryConfig::default();
         assert_eq!(config.max_attempts, 3);
         assert!(matches!(
             config.backoff_strategy,

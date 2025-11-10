@@ -2,23 +2,37 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Resource management for hosting
+///
+/// Manages resource allocation, tracking, and quotas for hosted workloads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HostingResourceManager {
     /// Resource configuration
     pub config: HostingResourceConfig,
-    /// Available resources
+    /// Available resources by resource type
     pub available_resources: HashMap<String, u64>,
 }
 
 /// Configuration for hosting resources
+///
+/// Defines resource management policies including limits and quotas.
+/// Supports flexible resource types through HashMap-based configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HostingResourceConfig {
     /// Enable resource management
+    #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Resource limits
+    
+    /// Resource limits by resource type (e.g., "cpu_cores" -> 16, "memory_gb" -> 64)
+    #[serde(default)]
     pub limits: HashMap<String, u64>,
-    /// Resource quotas
+    
+    /// Resource quotas by resource type (e.g., "storage_gb" -> 1000)
+    #[serde(default)]
     pub quotas: HashMap<String, u64>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for HostingResourceConfig {

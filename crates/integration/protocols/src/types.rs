@@ -97,8 +97,7 @@ pub enum AuthType {
 }
 
 /// Message priority levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum MessagePriority {
     /// Low priority message
     Low,
@@ -112,7 +111,6 @@ pub enum MessagePriority {
     /// Emergency priority message
     Emergency,
 }
-
 
 /// Health status for services and endpoints
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

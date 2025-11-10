@@ -1,4 +1,4 @@
-//! Security context and policies for ToadStool workloads
+//! Security context and policies for `ToadStool` workloads
 
 use std::collections::HashMap;
 
@@ -36,6 +36,7 @@ impl Default for SecurityContext {
 
 impl SecurityContext {
     /// Create a security context for a specific isolation level
+    #[must_use]
     pub fn for_isolation_level(level: IsolationLevel) -> Self {
         Self {
             isolation_level: level,
@@ -47,17 +48,20 @@ impl SecurityContext {
     }
 
     /// Add a capability to the security context
+    #[must_use]
     pub fn with_capability(mut self, capability: Capability) -> Self {
         self.capabilities.push(capability);
         self
     }
 
     /// Check if a capability is granted
+    #[must_use]
     pub fn has_capability(&self, capability: &Capability) -> bool {
         self.capabilities.contains(capability)
     }
 
     /// Set user context
+    #[must_use]
     pub fn with_user_context(mut self, user_context: UserContext) -> Self {
         self.user_context = Some(user_context);
         self

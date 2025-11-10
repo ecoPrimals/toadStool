@@ -14,13 +14,14 @@ members = [
     "crates/integration/nestgate",
     "crates/integration/primals",
     "crates/integration/protocols", 
-    "crates/integration/songbird",
+    # "crates/integration/songbird",  # Temporarily commented - missing crate
     "crates/management/monitoring",
     "crates/management/performance",
     "crates/management/resources",
     "crates/management/analytics",    # Sprint 5
     "crates/runtime/container",
     "crates/runtime/gpu",
+    # "crates/runtime/specialty",  # ⚠️ async_trait fixed, but has 255 other compilation errors - needs full review session
     "crates/runtime/native",
     "crates/runtime/python",
     "crates/runtime/wasm",
@@ -30,6 +31,7 @@ members = [
     "crates/distributed",             # Sprint 5
     "crates/testing",
     "examples",
+    "showcase",                       # Production showcase demos
 ]
 
 [workspace.package]

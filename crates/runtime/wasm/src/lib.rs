@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # ToadStool WebAssembly Runtime Engine
+//! # `ToadStool` WebAssembly Runtime Engine
 //!
 //! High-performance WebAssembly runtime engine with Wasmtime integration,
 //! WASI support, module caching, and comprehensive security isolation.
@@ -24,14 +24,19 @@ pub mod component_model;
 
 use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
+use toadstool_common::config_bases::CacheConfig;
 use tracing::info;
 use wasi_common::sync::add_to_linker;
 use wasi_common::sync::WasiCtxBuilder;
 use wasi_common::WasiCtx;
-use wasmtime::*;
+use wasmtime::{
+    Config, Engine, Instance, Linker, Module, OptLevel, Store, Strategy, WasmBacktraceDetails,
+};
 
 use toadstool::{
     error::{ToadStoolError, ToadStoolResult},
@@ -44,7 +49,7 @@ use toadstool::{
 // Re-export component model types
 pub use component_model::*;
 
-/// Helper function to convert wasmtime errors to ToadStoolError
+/// Helper function to convert wasmtime errors to `ToadStoolError`
 fn wasmtime_to_toadstool_error(err: wasmtime::Error) -> ToadStoolError {
     ToadStoolError::runtime(err.to_string())
 }
@@ -52,12 +57,8 @@ fn wasmtime_to_toadstool_error(err: wasmtime::Error) -> ToadStoolError {
 /// Configuration for WebAssembly runtime engine
 #[derive(Debug, Clone)]
 pub struct WasmRuntimeConfig {
-    /// Enable module caching
-    pub cache_enabled: bool,
-    /// Maximum cache size in MB
-    pub max_cache_size_mb: u64,
-    /// Cache TTL in hours
-    pub cache_ttl_hours: u64,
+    /// Module caching configuration
+    pub cache: CacheConfig,
     /// Security isolation level
     pub security_level: SecurityLevel,
     /// Memory limits
@@ -84,10 +85,12 @@ pub enum SecurityLevel {
 
 impl Default for WasmRuntimeConfig {
     fn default() -> Self {
+        let mut cache = CacheConfig::default();
+        cache.max_entries = 512; // 512 modules
+        cache.ttl = Duration::from_secs(24 * 3600); // 24 hours
+        
         Self {
-            cache_enabled: true,
-            max_cache_size_mb: 512,
-            cache_ttl_hours: 24,
+            cache,
             security_level: SecurityLevel::Strict,
             max_memory_mb: 128,
             max_pages: 2048,
@@ -240,7 +243,7 @@ impl WasmRuntimeEngine {
         let cache_key = self.generate_cache_key(module_source);
 
         // Check cache first
-        if self.config.cache_enabled {
+        if self.config.cache.enabled {
             let cache = self.module_cache.read().await;
             if let Some(cached) = cache.get(&cache_key) {
                 // Check if cache entry is still valid
@@ -258,7 +261,7 @@ impl WasmRuntimeEngine {
         let module = self.load_module(module_source).await?;
 
         // Cache the module
-        if self.config.cache_enabled {
+        if self.config.cache.enabled {
             let mut cache = self.module_cache.write().await;
             cache.insert(
                 cache_key,
@@ -426,8 +429,9 @@ impl WasmRuntimeEngine {
         // Execute with timeout
         let timeout_ms = request
             .timeout
-            .map(|d| u64::try_from(d.as_millis()).unwrap_or(self.config.execution_timeout_ms))
-            .unwrap_or(self.config.execution_timeout_ms);
+            .map_or(self.config.execution_timeout_ms, |d| {
+                u64::try_from(d.as_millis()).unwrap_or(self.config.execution_timeout_ms)
+            });
 
         let execution_timeout = Duration::from_millis(timeout_ms);
         let execution_result = tokio::time::timeout(execution_timeout, async {
@@ -461,7 +465,7 @@ impl WasmRuntimeEngine {
 
         // Handle execution result
         let (status, _exit_code) = match execution_result {
-            Ok(_) => (ExecutionStatus::Success, Some(0)),
+            Ok(()) => (ExecutionStatus::Success, Some(0)),
             Err(e) => (
                 ExecutionStatus::Failed {
                     error: e.to_string(),
@@ -546,8 +550,8 @@ impl WasmRuntimeEngine {
         };
 
         toadstool::resources::CpuMetrics {
-            usage_percent: usage_percent as f64,
-            cores_used: usage_percent as f64 / 100.0,
+            usage_percent: f64::from(usage_percent),
+            cores_used: f64::from(usage_percent) / 100.0,
             cpu_time_seconds: duration.as_secs_f64(),
         }
     }
@@ -598,32 +602,34 @@ impl WasmRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for WasmRuntimeEngine {
-    async fn initialize(
+    fn initialize(
         &mut self,
         _config: toadstool::execution::RuntimeConfig,
-    ) -> ToadStoolResult<()> {
-        info!("Initializing WebAssembly runtime engine");
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
+            info!("Initializing WebAssembly runtime engine");
 
-        // Validate configuration
-        if self.config.max_memory_mb == 0 {
-            return Err(ToadStoolError::configuration(
-                "Memory limit cannot be zero".to_string(),
-            ));
-        }
+            // Validate configuration
+            if self.config.max_memory_mb == 0 {
+                return Err(ToadStoolError::configuration(
+                    "Memory limit cannot be zero".to_string(),
+                ));
+            }
 
-        if self.config.execution_timeout_ms == 0 {
-            return Err(ToadStoolError::configuration(
-                "Execution timeout cannot be zero".to_string(),
-            ));
-        }
+            if self.config.execution_timeout_ms == 0 {
+                return Err(ToadStoolError::configuration(
+                    "Execution timeout cannot be zero".to_string(),
+                ));
+            }
 
-        info!("WebAssembly runtime engine initialized successfully");
-        Ok(())
+            info!("WebAssembly runtime engine initialized successfully");
+            Ok(())
+        })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
+    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
         info!("Executing WebAssembly workload: {}", request.execution_id);
 
         // Extract WASM workload specification
@@ -641,6 +647,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         // Execute the module
         self.execute_module(&request, module).await
+        })
     }
 
     fn get_capabilities(&self) -> toadstool::execution::RuntimeCapabilities {
@@ -651,7 +658,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
             platform_features: {
                 let mut features = HashMap::new();
                 features.insert("wasi_support".to_string(), true);
-                features.insert("module_caching".to_string(), self.config.cache_enabled);
+                features.insert("module_caching".to_string(), self.config.cache.enabled);
                 features.insert("memory_limits".to_string(), true);
                 features.insert(
                     "fuel_tracking".to_string(),
@@ -667,7 +674,8 @@ impl RuntimeEngine for WasmRuntimeEngine {
         matches!(workload_type, toadstool::workload::WorkloadType::Wasm)
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<toadstool::resources::RuntimeMetrics> {
+    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<toadstool::resources::RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async {
         let executions = self.active_executions.read().await;
         let active_count = executions.len();
 
@@ -732,9 +740,11 @@ impl RuntimeEngine for WasmRuntimeEngine {
             gpu: None,
             timing: toadstool::resources::TimingMetrics::default(),
         })
+        })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async {
         info!("Shutting down WebAssembly runtime engine");
 
         // Wait for active executions to complete (with timeout)
@@ -756,6 +766,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
         info!("WebAssembly runtime engine shut down successfully");
         Ok(())
+        })
     }
 }
 
@@ -985,12 +996,10 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_validation() {
         // Test various configuration options
-        let config = WasmRuntimeConfig {
-            cache_enabled: true,
-            max_memory_mb: 128,
-            execution_timeout_ms: 10000,
-            ..Default::default()
-        };
+        let mut config = WasmRuntimeConfig::default();
+        config.max_memory_mb = 128;
+        config.execution_timeout_ms = 10000;
+        config.cache.enabled = true;
 
         let engine = WasmRuntimeEngine::new(config);
         assert!(engine.is_ok());
@@ -998,11 +1007,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_wasi_configuration() {
-        let config = WasmRuntimeConfig {
-            cache_enabled: true,
-            max_memory_mb: 256,
-            ..Default::default()
-        };
+        let mut config = WasmRuntimeConfig::default();
+        config.cache.enabled = true;
+        config.max_memory_mb = 256;
 
         let engine = WasmRuntimeEngine::new(config).unwrap();
         let capabilities = engine.get_capabilities();
@@ -1038,12 +1045,11 @@ mod tests {
 
     #[test]
     fn test_stress_testing() {
-        let config = WasmRuntimeConfig {
-            cache_enabled: true,
-            max_memory_mb: 32,
-            execution_timeout_ms: 2000,
-            ..Default::default()
-        };
+        let mut config = WasmRuntimeConfig::default();
+        config.cache.enabled = true;
+        config.max_memory_mb = 32;
+        config.execution_timeout_ms = 2000;
+        
         let _engine = WasmRuntimeEngine::new(config).unwrap();
 
         // Move this inside the function where it belongs
@@ -1056,10 +1062,178 @@ mod tests {
 
     #[test]
     fn test_memory_management() {
-        let _config = WasmRuntimeConfig {
-            cache_enabled: true,
+        let mut _config = WasmRuntimeConfig::default();
+        _config.cache.enabled = true;
+        _config.max_memory_mb = 256;
+    }
+
+    #[test]
+    fn test_security_level_variants() {
+        assert!(matches!(SecurityLevel::None, SecurityLevel::None));
+        assert!(matches!(SecurityLevel::Basic, SecurityLevel::Basic));
+        assert!(matches!(SecurityLevel::Strict, SecurityLevel::Strict));
+        assert!(matches!(SecurityLevel::Maximum, SecurityLevel::Maximum));
+    }
+
+    #[test]
+    fn test_wasm_runtime_config_default() {
+        let config = WasmRuntimeConfig::default();
+        assert!(config.cache.enabled);
+        assert_eq!(config.cache.max_entries, 512);
+        assert_eq!(config.cache.ttl, Duration::from_secs(24 * 3600));
+        assert_eq!(config.max_memory_mb, 128);
+        assert_eq!(config.max_pages, 2048);
+        assert_eq!(config.execution_timeout_ms, 30000);
+        assert_eq!(config.module_load_timeout_ms, 10000);
+        assert_eq!(config.fuel_limit, Some(1_000_000));
+        assert!(matches!(config.security_level, SecurityLevel::Strict));
+    }
+
+    #[test]
+    fn test_wasm_runtime_config_custom() {
+        let mut cache = CacheConfig::default();
+        cache.enabled = false;
+        cache.max_entries = 1024;
+        cache.ttl = Duration::from_secs(48 * 3600);
+        
+        let config = WasmRuntimeConfig {
+            cache,
+            security_level: SecurityLevel::Maximum,
             max_memory_mb: 256,
+            max_pages: 4096,
+            execution_timeout_ms: 60000,
+            module_load_timeout_ms: 20000,
+            fuel_limit: None,
+            component_model: ComponentModelConfig::default(),
+        };
+
+        assert!(!config.cache.enabled);
+        assert_eq!(config.cache.max_entries, 1024);
+        assert_eq!(config.cache.ttl, Duration::from_secs(48 * 3600));
+        assert_eq!(config.max_memory_mb, 256);
+        assert!(config.fuel_limit.is_none());
+    }
+
+    #[test]
+    fn test_cache_metrics_default() {
+        let metrics = CacheMetrics::default();
+        assert_eq!(metrics.total_modules, 0);
+        assert_eq!(metrics.total_size_bytes, 0);
+        assert_eq!(metrics.average_module_size, 0);
+        assert_eq!(metrics.cache_hit_rate, 0.0);
+        assert_eq!(metrics.memory_usage_bytes, 0);
+    }
+
+    #[test]
+    fn test_cache_metrics_display() {
+        let metrics = CacheMetrics {
+            total_modules: 5,
+            total_size_bytes: 1024,
+            average_module_size: 204,
+            cache_hit_rate: 0.75,
+            memory_usage_bytes: 1024,
+        };
+
+        let display = format!("{metrics}");
+        assert!(display.contains("5"));
+        assert!(display.contains("1024"));
+        assert!(display.contains("75.00"));
+    }
+
+    #[test]
+    fn test_cache_metrics_creation() {
+        let metrics = CacheMetrics {
+            total_modules: 10,
+            total_size_bytes: 10240,
+            average_module_size: 1024,
+            cache_hit_rate: 0.9,
+            memory_usage_bytes: 10240,
+        };
+
+        assert_eq!(metrics.total_modules, 10);
+        assert_eq!(metrics.average_module_size, 1024);
+        assert_eq!(metrics.cache_hit_rate, 0.9);
+    }
+
+    #[tokio::test]
+    async fn test_wasm_engine_debug_format() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let debug_str = format!("{engine:?}");
+
+        assert!(debug_str.contains("WasmRuntimeEngine"));
+        assert!(debug_str.contains("config"));
+    }
+
+    #[tokio::test]
+    async fn test_engine_with_different_security_levels() {
+        for security_level in [
+            SecurityLevel::None,
+            SecurityLevel::Basic,
+            SecurityLevel::Strict,
+            SecurityLevel::Maximum,
+        ] {
+            let config = WasmRuntimeConfig {
+                security_level,
+                ..Default::default()
+            };
+            let engine = WasmRuntimeEngine::new(config);
+            assert!(engine.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_engine_with_fuel_disabled() {
+        let config = WasmRuntimeConfig {
+            fuel_limit: None,
             ..Default::default()
         };
+        let engine = WasmRuntimeEngine::new(config);
+        assert!(engine.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_engine_with_custom_memory_limits() {
+        let config = WasmRuntimeConfig {
+            max_memory_mb: 512,
+            max_pages: 8192,
+            ..Default::default()
+        };
+        let engine = WasmRuntimeEngine::new(config);
+        assert!(engine.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_component_model_support() {
+        let config = WasmRuntimeConfig {
+            component_model: ComponentModelConfig {
+                enabled: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        assert!(engine.supports_component_model());
+    }
+
+    #[tokio::test]
+    async fn test_component_model_disabled() {
+        let config = WasmRuntimeConfig {
+            component_model: ComponentModelConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        assert!(!engine.supports_component_model());
+    }
+
+    #[tokio::test]
+    async fn test_get_component_config() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config.clone()).unwrap();
+        let component_config = engine.get_component_config();
+        assert_eq!(component_config.enabled, config.component_model.enabled);
     }
 }

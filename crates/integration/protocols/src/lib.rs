@@ -1,7 +1,7 @@
-//! # ToadStool Protocol Integration Layer
+//! # `ToadStool` Protocol Integration Layer
 //!
 //! This module provides integration with various ecosystem protocols and services,
-//! including BearDog security integration for authentication and authorization.
+//! including `BearDog` security integration for authentication and authorization.
 
 use async_trait::async_trait;
 use reqwest::Client;
@@ -18,18 +18,24 @@ use toadstool::{
     security::SecurityContext,
 };
 
-/// BearDog security integration configuration
+// Sub-modules
+pub mod client;
+pub mod config;
+pub mod transport;
+pub mod types;
+
+/// `BearDog` security integration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
-    /// BearDog authentication endpoint
+    /// `BearDog` authentication endpoint
     pub auth_endpoint: String,
-    /// BearDog authorization endpoint
+    /// `BearDog` authorization endpoint
     pub authz_endpoint: String,
-    /// BearDog policy management endpoint
+    /// `BearDog` policy management endpoint
     pub policy_endpoint: String,
-    /// BearDog audit endpoint
+    /// `BearDog` audit endpoint
     pub audit_endpoint: String,
-    /// Authentication token for BearDog API
+    /// Authentication token for `BearDog` API
     pub api_token: Option<String>,
     /// Request timeout in seconds
     pub request_timeout_secs: u64,
@@ -43,11 +49,18 @@ pub struct BearDogConfig {
 
 impl Default for BearDogConfig {
     fn default() -> Self {
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        // Use environment variable or default monitoring port
+        let port = std::env::var("TOADSTOOL_PROTOCOLS_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(toadstool_config::defaults::network::METRICS_PORT);
+        let base = format!("http://{}:{}", config.network.bind_address, port);
         Self {
-            auth_endpoint: "http://localhost:9000/auth".to_string(),
-            authz_endpoint: "http://localhost:9000/authz".to_string(),
-            policy_endpoint: "http://localhost:9000/policy".to_string(),
-            audit_endpoint: "http://localhost:9000/audit".to_string(),
+            auth_endpoint: format!("{base}/auth"),
+            authz_endpoint: format!("{base}/authz"),
+            policy_endpoint: format!("{base}/policy"),
+            audit_endpoint: format!("{base}/audit"),
             api_token: None,
             request_timeout_secs: 30,
             token_refresh_interval_secs: 300,        // 5 minutes
@@ -57,7 +70,7 @@ impl Default for BearDogConfig {
     }
 }
 
-/// Authentication request to BearDog
+/// Authentication request to `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthRequest {
     pub service_id: String,
@@ -67,7 +80,7 @@ pub struct AuthRequest {
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
-/// Authentication response from BearDog
+/// Authentication response from `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub access_token: String,
@@ -78,7 +91,7 @@ pub struct AuthResponse {
     pub policies: Vec<SecurityPolicy>,
 }
 
-/// Authorization request to BearDog
+/// Authorization request to `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthzRequest {
     pub access_token: String,
@@ -88,7 +101,7 @@ pub struct AuthzRequest {
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
-/// Authorization response from BearDog
+/// Authorization response from `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthzResponse {
     pub allowed: bool,
@@ -98,7 +111,7 @@ pub struct AuthzResponse {
     pub audit_id: String,
 }
 
-/// Security policy from BearDog
+/// Security policy from `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityPolicy {
     pub id: String,
@@ -132,7 +145,7 @@ pub struct SecurityAuditEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
-/// BearDog security integration client
+/// `BearDog` security integration client
 pub struct BearDogIntegration {
     config: BearDogConfig,
     client: Client,
@@ -144,7 +157,7 @@ pub struct BearDogIntegration {
 }
 
 impl BearDogIntegration {
-    /// Create a new BearDog integration client
+    /// Create a new `BearDog` integration client
     pub fn new(config: BearDogConfig) -> Result<Self, ToadStoolError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.request_timeout_secs))
@@ -162,7 +175,7 @@ impl BearDogIntegration {
         })
     }
 
-    /// Authenticate with BearDog and obtain access token
+    /// Authenticate with `BearDog` and obtain access token
     pub async fn authenticate(
         &self,
         service_id: &str,
@@ -519,7 +532,7 @@ impl BearDogIntegration {
     }
 }
 
-/// BearDog integration trait for dependency injection
+/// `BearDog` integration trait for dependency injection
 #[async_trait]
 pub trait BearDogIntegrationTrait: Send + Sync {
     async fn authenticate(

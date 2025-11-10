@@ -2,7 +2,10 @@
 
 use super::config::ResourceConfig;
 use super::traits::LoadBalancer;
-use super::types::*;
+use super::types::{
+    DeviceId, DeviceRequirements, DeviceUsage, ResourceAllocation, ResourcePool,
+    UniversalComputeDevice,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -22,6 +25,7 @@ pub struct ComputeResourceCoordinator {
 }
 
 impl ComputeResourceCoordinator {
+    #[must_use]
     pub fn new(config: ResourceConfig) -> Self {
         Self {
             resource_pools: Arc::new(RwLock::new(HashMap::new())),
@@ -134,8 +138,8 @@ impl ComputeResourceCoordinator {
             available_compute_units: pool.total_compute_units - pool.allocated_compute_units,
             memory_utilization_percent: (pool.allocated_memory as f64 / pool.total_memory as f64)
                 * 100.0,
-            compute_utilization_percent: (pool.allocated_compute_units as f64
-                / pool.total_compute_units as f64)
+            compute_utilization_percent: (f64::from(pool.allocated_compute_units)
+                / f64::from(pool.total_compute_units))
                 * 100.0,
         })
     }
@@ -173,6 +177,7 @@ impl Default for WeightedRoundRobinBalancer {
 }
 
 impl WeightedRoundRobinBalancer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             device_weights: HashMap::new(),
@@ -198,7 +203,7 @@ impl LoadBalancer for WeightedRoundRobinBalancer {
 
     fn update_device_load(&mut self, device_id: &DeviceId, usage: &DeviceUsage) {
         // Update device weight based on utilization (lower utilization = higher weight)
-        let weight = 1.0 - (usage.gpu_utilization_percent / 100.0) as f64;
+        let weight = 1.0 - f64::from(usage.gpu_utilization_percent / 100.0);
         self.device_weights.insert(device_id.clone(), weight);
     }
 

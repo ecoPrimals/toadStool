@@ -1,4 +1,4 @@
-//! Performance Management and Optimization for ToadStool
+//! Performance Management and Optimization for `ToadStool`
 //!
 //! This crate provides comprehensive performance management including:
 //! - Runtime selection algorithms with intelligent workload routing

@@ -1,0 +1,204 @@
+//! Storage provisioning and management via NestGate
+//!
+//! This module provides a high-level storage provisioning manager that uses
+//! pluggable storage backends via dependency injection. No feature flags!
+
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+
+use super::storage_backend::{StorageBackend, VolumeStatus};
+use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
+use crate::ToadStoolResult;
+
+/// Storage provisioning manager for NestGate integration
+///
+/// Uses dependency injection via the `StorageBackend` trait for flexibility.
+/// No conditional compilation or feature flags - the backend determines behavior.
+pub struct StorageProvisioningManager {
+    /// Configuration
+    config: StorageProvisioningConfig,
+    /// Pluggable storage backend (NestGate, in-memory, etc.)
+    backend: Arc<dyn StorageBackend>,
+}
+
+/// Configuration for storage provisioning manager
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StorageProvisioningConfig {
+    /// NestGate endpoint URL
+    pub nestgate_endpoint: String,
+    /// Storage tier preference
+    pub storage_tier: String,
+    /// Enable backup
+    pub backup_enabled: bool,
+    /// Enable replication
+    pub replication_enabled: bool,
+    /// Replication factor
+    pub replication_factor: u32,
+}
+
+impl StorageProvisioningManager {
+    /// Create a new storage provisioning manager with custom backend
+    #[must_use]
+    pub fn new(config: StorageProvisioningConfig, backend: Arc<dyn StorageBackend>) -> Self {
+        Self { config, backend }
+    }
+
+    /// Create a new manager with NestGate production backend
+    #[must_use]
+    pub fn with_nestgate(config: StorageProvisioningConfig) -> Self {
+        let backend = super::storage_backend::NestGateBackend::new(
+            config.nestgate_endpoint.clone(),
+            config.storage_tier.clone(),
+            config.replication_enabled,
+            config.replication_factor,
+        );
+        Self {
+            config,
+            backend: Arc::new(backend),
+        }
+    }
+
+    /// Create a new manager with in-memory test backend
+    #[must_use]
+    pub fn with_inmemory(config: StorageProvisioningConfig) -> Self {
+        let backend = super::storage_backend::InMemoryBackend::new(config.storage_tier.clone());
+        Self {
+            config,
+            backend: Arc::new(backend),
+        }
+    }
+
+    /// Initialize connection to storage backend
+    ///
+    /// For NestGate backend, this tests connectivity.
+    /// For in-memory backend, this is a no-op.
+    pub async fn initialize_nestgate_connection(&self) -> ToadStoolResult<()> {
+        self.backend.initialize().await
+    }
+
+    /// Provision a volume from manifest configuration
+    pub async fn provision_volume(
+        &self,
+        volume_config: &VolumeConfig,
+    ) -> ToadStoolResult<VolumeInfo> {
+        self.backend.provision_volume(volume_config).await
+    }
+
+    /// Provision a persistent volume
+    pub async fn provision_persistent_volume(
+        &self,
+        pv_config: &PersistentVolume,
+    ) -> ToadStoolResult<VolumeInfo> {
+        self.backend.provision_persistent_volume(pv_config).await
+    }
+
+    /// Mount a volume to a service
+    pub async fn mount_volume(
+        &self,
+        volume_name: &str,
+        service_name: &str,
+        mount_path: &str,
+    ) -> ToadStoolResult<()> {
+        self.backend
+            .mount_volume(volume_name, service_name, mount_path)
+            .await
+    }
+
+    /// Unmount a volume from a service
+    pub async fn unmount_volume(
+        &self,
+        volume_name: &str,
+        service_name: &str,
+    ) -> ToadStoolResult<()> {
+        self.backend.unmount_volume(volume_name, service_name).await
+    }
+
+    /// Delete a volume
+    pub async fn delete_volume(&self, volume_name: &str) -> ToadStoolResult<()> {
+        self.backend.delete_volume(volume_name).await
+    }
+
+    /// Get volume status
+    pub async fn get_volume_status(&self, volume_name: &str) -> ToadStoolResult<VolumeStatus> {
+        self.backend.get_volume_status(volume_name).await
+    }
+
+    /// List all volumes
+    pub async fn list_volumes(&self) -> ToadStoolResult<Vec<VolumeInfo>> {
+        self.backend.list_volumes().await
+    }
+
+    /// Get reference to configuration
+    #[must_use]
+    pub fn config(&self) -> &StorageProvisioningConfig {
+        &self.config
+    }
+}
+
+/// Helper function to parse size strings (e.g., "100Gi", "1TB")
+#[allow(dead_code)]
+fn parse_size_string(size_str: &str) -> Option<u64> {
+    if let Some(value) = size_str.strip_suffix("Gi") {
+        value.parse::<u64>().ok().map(|n| n * 1_073_741_824)
+    } else if let Some(value) = size_str.strip_suffix("GB") {
+        value.parse::<u64>().ok().map(|n| n * 1_000_000_000)
+    } else if let Some(value) = size_str.strip_suffix("Mi") {
+        value.parse::<u64>().ok().map(|n| n * 1_048_576)
+    } else if let Some(value) = size_str.strip_suffix("MB") {
+        value.parse::<u64>().ok().map(|n| n * 1_000_000)
+    } else if let Some(value) = size_str.strip_suffix("TB") {
+        value.parse::<u64>().ok().map(|n| n * 1_000_000_000_000)
+    } else {
+        // Assume bytes
+        size_str.parse::<u64>().ok()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_config() -> StorageProvisioningConfig {
+        StorageProvisioningConfig {
+            nestgate_endpoint: "http://localhost:9090".to_string(),
+            storage_tier: "hot".to_string(),
+            backup_enabled: true,
+            replication_enabled: true,
+            replication_factor: 3,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_manager_with_inmemory_backend() {
+        let config = test_config();
+        let manager = StorageProvisioningManager::with_inmemory(config);
+
+        let volume_config = VolumeConfig {
+            name: "test-volume".to_string(),
+            size: "100Gi".to_string(),
+            storage_class: Some("fast-ssd".to_string()),
+            access_modes: vec!["ReadWriteOnce".to_string()],
+            mount_path: Some("/mnt/data".to_string()),
+            backup_policy: Some("daily".to_string()),
+        };
+
+        let result = manager.provision_volume(&volume_config).await;
+        assert!(result.is_ok());
+
+        let volume_info = result.unwrap();
+        assert_eq!(volume_info.name, "test-volume");
+        assert!(volume_info.id.starts_with("test-"));
+        assert_eq!(volume_info.status, "Available");
+    }
+
+    #[tokio::test]
+    async fn test_parse_size_string() {
+        assert_eq!(parse_size_string("100Gi"), Some(107_374_182_400));
+        assert_eq!(parse_size_string("1TB"), Some(1_000_000_000_000));
+        assert_eq!(parse_size_string("500MB"), Some(500_000_000));
+        assert_eq!(parse_size_string("256Mi"), Some(268_435_456));
+        assert_eq!(parse_size_string("1000"), Some(1000));
+        assert_eq!(parse_size_string("invalid"), None);
+    }
+}

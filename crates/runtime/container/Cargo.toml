@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
+toadstool-config = { path = "../../core/config" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

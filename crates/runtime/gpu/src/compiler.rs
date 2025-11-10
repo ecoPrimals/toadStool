@@ -2,7 +2,9 @@
 
 use super::config::CompilationConfig;
 use super::traits::KernelOptimizer;
-use super::types::*;
+use super::types::{
+    CompiledKernel, GpuFramework, KernelFormat, ResourceAllocation, UniversalComputeDevice,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool::error::ToadStoolResult;
@@ -23,6 +25,7 @@ pub struct UniversalKernelCompiler {
 }
 
 impl UniversalKernelCompiler {
+    #[must_use]
     pub fn new(config: CompilationConfig) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
@@ -166,7 +169,7 @@ impl KernelOptimizer for BasicKernelOptimizer {
         let optimized = kernel
             .lines()
             .filter(|line| !line.trim().starts_with("//"))
-            .map(|line| line.trim())
+            .map(str::trim)
             .filter(|line| !line.is_empty())
             .collect::<Vec<_>>()
             .join("\n");

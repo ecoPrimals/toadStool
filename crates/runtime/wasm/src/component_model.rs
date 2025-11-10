@@ -150,6 +150,7 @@ pub struct ComponentRegistry {
 
 impl ComponentRegistry {
     /// Create a new component registry
+    #[must_use]
     pub fn new(config: ComponentModelConfig) -> Self {
         Self {
             instances: Arc::new(RwLock::new(HashMap::new())),
@@ -324,6 +325,7 @@ pub struct ComponentLinker {
 
 impl ComponentLinker {
     /// Create a new component linker
+    #[must_use]
     pub fn new(config: ComponentModelConfig, registry: Arc<ComponentRegistry>) -> Self {
         Self {
             _config: config,
@@ -420,7 +422,7 @@ impl ComponentLinker {
 
 /// Component model support trait
 #[async_trait]
-pub trait ComponentModelSupport {
+pub trait ComponentModelSupport: Send + Sync {
     /// Check if component model is supported
     fn supports_component_model(&self) -> bool;
 
@@ -462,6 +464,7 @@ pub enum ComponentValue {
 
 impl ComponentValue {
     /// Check if value matches the expected type
+    #[must_use]
     pub fn matches_type(&self, expected: &InterfaceType) -> bool {
         match (self, expected) {
             (ComponentValue::Bool(_), InterfaceType::Bool) => true,
@@ -569,5 +572,261 @@ mod tests {
         let result = linker.validate_composition(&[]).await;
         assert!(result.is_ok());
         assert!(result.unwrap());
+    }
+
+    #[test]
+    fn test_component_model_config_default() {
+        let config = ComponentModelConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.max_instances, 1000);
+        assert_eq!(config.linking_timeout_ms, 5000);
+        assert!(config.composition_enabled);
+        assert!(config.wit_support);
+    }
+
+    #[test]
+    fn test_component_model_config_custom() {
+        let config = ComponentModelConfig {
+            enabled: false,
+            max_instances: 500,
+            linking_timeout_ms: 10000,
+            composition_enabled: false,
+            wit_support: false,
+        };
+
+        assert!(!config.enabled);
+        assert_eq!(config.max_instances, 500);
+        assert!(!config.composition_enabled);
+    }
+
+    #[test]
+    fn test_interface_type_basic_variants() {
+        assert!(matches!(InterfaceType::Bool, InterfaceType::Bool));
+        assert!(matches!(InterfaceType::U8, InterfaceType::U8));
+        assert!(matches!(InterfaceType::U16, InterfaceType::U16));
+        assert!(matches!(InterfaceType::U32, InterfaceType::U32));
+        assert!(matches!(InterfaceType::U64, InterfaceType::U64));
+        assert!(matches!(InterfaceType::S8, InterfaceType::S8));
+        assert!(matches!(InterfaceType::S16, InterfaceType::S16));
+        assert!(matches!(InterfaceType::S32, InterfaceType::S32));
+        assert!(matches!(InterfaceType::S64, InterfaceType::S64));
+        assert!(matches!(InterfaceType::F32, InterfaceType::F32));
+        assert!(matches!(InterfaceType::F64, InterfaceType::F64));
+        assert!(matches!(InterfaceType::String, InterfaceType::String));
+    }
+
+    #[test]
+    fn test_interface_type_complex_variants() {
+        let list_type = InterfaceType::List(Box::new(InterfaceType::U32));
+        assert!(matches!(list_type, InterfaceType::List(_)));
+
+        let option_type = InterfaceType::Option(Box::new(InterfaceType::String));
+        assert!(matches!(option_type, InterfaceType::Option(_)));
+
+        let result_type = InterfaceType::Result(
+            Box::new(InterfaceType::U32),
+            Box::new(InterfaceType::String),
+        );
+        assert!(matches!(result_type, InterfaceType::Result(_, _)));
+
+        let record_type = InterfaceType::Record(vec![
+            ("id".to_string(), InterfaceType::U32),
+            ("name".to_string(), InterfaceType::String),
+        ]);
+        assert!(matches!(record_type, InterfaceType::Record(_)));
+
+        let variant_type = InterfaceType::Variant(vec![
+            ("Some".to_string(), Some(InterfaceType::U32)),
+            ("None".to_string(), None),
+        ]);
+        assert!(matches!(variant_type, InterfaceType::Variant(_)));
+
+        let custom_type = InterfaceType::Custom("MyType".to_string());
+        match custom_type {
+            InterfaceType::Custom(name) => assert_eq!(name, "MyType"),
+            _ => panic!("Expected Custom variant"),
+        }
+    }
+
+    #[test]
+    fn test_component_value_basic_variants() {
+        assert!(matches!(
+            ComponentValue::Bool(true),
+            ComponentValue::Bool(_)
+        ));
+        assert!(matches!(ComponentValue::U32(1), ComponentValue::U32(_)));
+        assert!(matches!(ComponentValue::U64(1), ComponentValue::U64(_)));
+        assert!(matches!(ComponentValue::S32(-1), ComponentValue::S32(_)));
+        assert!(matches!(ComponentValue::S64(-1), ComponentValue::S64(_)));
+        assert!(matches!(ComponentValue::F32(1.0), ComponentValue::F32(_)));
+        assert!(matches!(ComponentValue::F64(1.0), ComponentValue::F64(_)));
+        assert!(matches!(
+            ComponentValue::String("test".to_string()),
+            ComponentValue::String(_)
+        ));
+    }
+
+    #[test]
+    fn test_component_value_all_integer_variants() {
+        assert!(matches!(ComponentValue::U8(1), ComponentValue::U8(_)));
+        assert!(matches!(ComponentValue::U16(1), ComponentValue::U16(_)));
+        assert!(matches!(ComponentValue::S8(-1), ComponentValue::S8(_)));
+        assert!(matches!(ComponentValue::S16(-1), ComponentValue::S16(_)));
+    }
+
+    #[test]
+    fn test_component_value_list() {
+        let list = ComponentValue::List(vec![ComponentValue::U32(1), ComponentValue::U32(2)]);
+        match list {
+            ComponentValue::List(values) => assert_eq!(values.len(), 2),
+            _ => panic!("Expected List variant"),
+        }
+    }
+
+    #[test]
+    fn test_component_value_record() {
+        let mut fields = HashMap::new();
+        fields.insert("id".to_string(), ComponentValue::U32(1));
+        fields.insert(
+            "name".to_string(),
+            ComponentValue::String("test".to_string()),
+        );
+
+        let record = ComponentValue::Record(fields);
+        match record {
+            ComponentValue::Record(f) => assert_eq!(f.len(), 2),
+            _ => panic!("Expected Record variant"),
+        }
+    }
+
+    #[test]
+    fn test_component_interface_creation() {
+        let interface = ComponentInterface {
+            name: "test".to_string(),
+            version: "1.0.0".to_string(),
+            exports: vec![],
+            imports: vec![],
+            types: vec![],
+        };
+
+        assert_eq!(interface.name, "test");
+        assert_eq!(interface.version, "1.0.0");
+        assert!(interface.exports.is_empty());
+    }
+
+    #[test]
+    fn test_interface_function_creation() {
+        let func = InterfaceFunction {
+            name: "add".to_string(),
+            params: vec![InterfaceType::U32, InterfaceType::U32],
+            return_type: Some(InterfaceType::U32),
+            docs: Some("Adds two numbers".to_string()),
+        };
+
+        assert_eq!(func.name, "add");
+        assert_eq!(func.params.len(), 2);
+        assert!(func.return_type.is_some());
+        assert!(func.docs.is_some());
+    }
+
+    #[test]
+    fn test_component_state_variants() {
+        assert!(matches!(
+            ComponentState::Initializing,
+            ComponentState::Initializing
+        ));
+        assert!(matches!(ComponentState::Ready, ComponentState::Ready));
+        assert!(matches!(ComponentState::Running, ComponentState::Running));
+        assert!(matches!(
+            ComponentState::Terminating,
+            ComponentState::Terminating
+        ));
+
+        let error_state = ComponentState::Failed {
+            error: "test error".to_string(),
+        };
+        match error_state {
+            ComponentState::Failed { error } => assert_eq!(error, "test error"),
+            _ => panic!("Expected Failed variant"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_registry_stats() {
+        let config = ComponentModelConfig::default();
+        let registry = ComponentRegistry::new(config);
+
+        let stats = registry.get_stats().await;
+        assert_eq!(stats.total_instances, 0);
+        assert_eq!(stats.total_interfaces, 0);
+        assert_eq!(stats.ready_instances, 0);
+        assert_eq!(stats.running_instances, 0);
+        assert_eq!(stats.failed_instances, 0);
+    }
+
+    #[tokio::test]
+    async fn test_interface_with_exports() {
+        let interface = ComponentInterface {
+            name: "calculator".to_string(),
+            version: "1.0.0".to_string(),
+            exports: vec![
+                InterfaceFunction {
+                    name: "add".to_string(),
+                    params: vec![InterfaceType::U32, InterfaceType::U32],
+                    return_type: Some(InterfaceType::U32),
+                    docs: None,
+                },
+                InterfaceFunction {
+                    name: "subtract".to_string(),
+                    params: vec![InterfaceType::U32, InterfaceType::U32],
+                    return_type: Some(InterfaceType::U32),
+                    docs: None,
+                },
+            ],
+            imports: vec![],
+            types: vec![],
+        };
+
+        assert_eq!(interface.exports.len(), 2);
+        assert_eq!(interface.exports[0].name, "add");
+    }
+
+    #[test]
+    fn test_component_value_serialization() {
+        let value = ComponentValue::U32(42);
+        let json = serde_json::to_string(&value).unwrap();
+        let deserialized: ComponentValue = serde_json::from_str(&json).unwrap();
+        assert!(matches!(deserialized, ComponentValue::U32(42)));
+    }
+
+    #[test]
+    fn test_component_model_config_serialization() {
+        let config = ComponentModelConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: ComponentModelConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.enabled, deserialized.enabled);
+        assert_eq!(config.max_instances, deserialized.max_instances);
+    }
+
+    #[test]
+    fn test_interface_type_serialization() {
+        let iface_type = InterfaceType::U32;
+        let json = serde_json::to_string(&iface_type).unwrap();
+        let deserialized: InterfaceType = serde_json::from_str(&json).unwrap();
+        assert!(matches!(deserialized, InterfaceType::U32));
+    }
+
+    #[test]
+    fn test_interface_function_serialization() {
+        let func = InterfaceFunction {
+            name: "test".to_string(),
+            params: vec![InterfaceType::String],
+            return_type: Some(InterfaceType::Bool),
+            docs: None,
+        };
+
+        let json = serde_json::to_string(&func).unwrap();
+        let deserialized: InterfaceFunction = serde_json::from_str(&json).unwrap();
+        assert_eq!(func.name, deserialized.name);
     }
 }

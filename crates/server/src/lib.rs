@@ -1,6 +1,6 @@
-//! # ToadStool Server Library
+//! # `ToadStool` Server Library
 //!
-//! A comprehensive server library for building ToadStool universal compute servers
+//! A comprehensive server library for building `ToadStool` universal compute servers
 //! that can accept and execute workloads across multiple runtime engines.
 //!
 //! ## Features
@@ -11,11 +11,11 @@
 //! - **Load Balancing**: Intelligent workload distribution across available resources
 //! - **Resource Management**: CPU, memory, storage, and GPU resource tracking
 //! - **Authentication & Authorization**: Configurable security policies
-//! - **Ecosystem Integration**: Integration with Songbird, BearDog, NestGate
+//! - **Ecosystem Integration**: Integration with Songbird, `BearDog`, `NestGate`
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```ignore
 //! use toadstool_server::{ToadStoolServer, ServerConfig};
 //! use toadstool_runtime_native::NativeRuntimeEngine;
 //!
@@ -72,7 +72,7 @@ pub mod mocks;
 pub mod state;
 pub mod websocket;
 
-/// Main ToadStool server implementation
+/// Main `ToadStool` server implementation
 pub struct ToadStoolServer {
     config: ServerConfig,
     state: ServerState,
@@ -80,7 +80,7 @@ pub struct ToadStoolServer {
 }
 
 impl ToadStoolServer {
-    /// Create a new ToadStool server
+    /// Create a new `ToadStool` server
     pub async fn new(config: ServerConfig) -> ServerResult<Self> {
         info!("Initializing ToadStool server with config: {:?}", config);
 
@@ -266,7 +266,15 @@ mod tests {
     #[test]
     fn test_server_config_default() {
         let config = ServerConfig::default();
-        assert_eq!(config.bind_address, "127.0.0.1:8080");
+        // The default bind address is now environment-aware
+        let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
+        assert_eq!(
+            config.bind_address,
+            format!(
+                "{}:{}",
+                env_config.network.bind_address, env_config.network.songbird_port
+            )
+        );
         assert!(config.enable_api);
         assert!(config.enable_websocket);
         assert_eq!(config.max_concurrent_executions, 100);

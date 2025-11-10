@@ -1,0 +1,575 @@
+// SPDX-License-Identifier: AGPL-3.0
+// Copyright (C) 2025 ecoPrimals
+
+//! Endpoint sources - different ways to discover service endpoints
+//!
+//! Sources are tried in order until one succeeds. This enables graceful
+//! fallback from production service discovery to development defaults.
+//!
+//! Migrated from async_trait to native async for zero-cost abstraction.
+
+use std::env;
+use std::pin::Pin;
+use std::future::Future;
+
+use super::capabilities::*;
+
+/// Environment variable source - reads from environment variables
+pub struct EnvironmentSource {
+    prefix: String,
+}
+
+impl EnvironmentSource {
+    /// Create new environment source with custom prefix
+    pub fn new(prefix: impl Into<String>) -> Self {
+        Self {
+            prefix: prefix.into(),
+        }
+    }
+
+    /// Get environment variable name for a capability
+    fn env_var_name(&self, capability: &str) -> String {
+        // Convert capability name to env var format
+        // "ai_processing" -> "TOADSTOOL_AI_PROCESSING_ENDPOINT"
+        let capability_upper = capability.to_uppercase();
+        format!("{}{}_ENDPOINT", self.prefix, capability_upper)
+    }
+}
+
+impl Default for EnvironmentSource {
+    /// Create with default "TOADSTOOL_" prefix
+    fn default() -> Self {
+        Self::new("TOADSTOOL_")
+    }
+}
+
+impl EndpointSource for EnvironmentSource {
+    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        let env_var = self.env_var_name(service);
+        let service = service.to_string();
+        
+        Box::pin(async move {
+            match env::var(&env_var) {
+                Ok(endpoint) => {
+                    tracing::debug!(
+                        service = service,
+                        env_var = env_var,
+                        endpoint = endpoint,
+                        "Found endpoint in environment"
+                    );
+                    Ok(Some(endpoint))
+                }
+                Err(_) => {
+                    tracing::trace!(
+                        service = service,
+                        env_var = env_var,
+                        "No endpoint found in environment"
+                    );
+                    Ok(None)
+                }
+            }
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "environment"
+    }
+}
+
+/// Fallback source - provides hardcoded fallbacks for development
+pub struct FallbackSource {
+    fallbacks: std::collections::HashMap<String, String>,
+}
+
+impl FallbackSource {
+    /// Create new fallback source
+    ///
+    /// Uses environment-aware configuration where possible, falling back to defaults.
+    pub fn new() -> Self {
+        let mut fallbacks = std::collections::HashMap::new();
+
+        // Helper to get host from environment or use default
+        let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
+            .or_else(|_| std::env::var("BIND_HOST"))
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+
+        // Helper to get service endpoints from environment or defaults
+        let songbird_endpoint = std::env::var("SONGBIRD_URL")
+            .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+            .unwrap_or_else(|_| format!("http://{}:8081", bind_host));
+
+        let beardog_endpoint = std::env::var("BEARDOG_URL")
+            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
+            .unwrap_or_else(|_| format!("http://{}:8082", bind_host));
+
+        // Default development fallbacks (respecting environment variables)
+        fallbacks.insert("ai_processing".to_string(), songbird_endpoint.clone());
+        fallbacks.insert(
+            "authentication".to_string(),
+            format!("http://{}:9090", bind_host),
+        );
+        fallbacks.insert(
+            "persistent_storage".to_string(),
+            format!("http://{}:5432", bind_host),
+        );
+        fallbacks.insert(
+            "natural_language_processing".to_string(),
+            format!("http://{}:7777", bind_host),
+        );
+        fallbacks.insert("service_orchestration".to_string(), beardog_endpoint);
+
+        Self { fallbacks }
+    }
+
+    /// Add a fallback endpoint
+    pub fn add_fallback(&mut self, capability: impl Into<String>, endpoint: impl Into<String>) {
+        self.fallbacks.insert(capability.into(), endpoint.into());
+    }
+
+    /// Create with custom fallbacks
+    pub fn with_fallbacks(fallbacks: std::collections::HashMap<String, String>) -> Self {
+        Self { fallbacks }
+    }
+}
+
+impl Default for FallbackSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EndpointSource for FallbackSource {
+    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        let service = service.to_string();
+        let result = self.fallbacks.get(&service).cloned();
+        
+        Box::pin(async move {
+            match result {
+                Some(endpoint) => {
+                    tracing::debug!(
+                        service = service,
+                        endpoint = endpoint,
+                        "Using fallback endpoint"
+                    );
+                    Ok(Some(endpoint))
+                }
+                None => {
+                    tracing::trace!(service = service, "No fallback endpoint configured");
+                    Ok(None)
+                }
+            }
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "fallback"
+    }
+}
+
+/// mDNS discovery source - discovers services via multicast DNS
+pub struct MDNSSource;
+
+impl MDNSSource {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for MDNSSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EndpointSource for MDNSSource {
+    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        let service = service.to_string();
+        
+        Box::pin(async move {
+            // mDNS discovery would require platform-specific libraries (Avahi on Linux, Bonjour on macOS)
+            // For now, check common local service patterns that don't require external libraries
+
+            let common_mdns_ports: &[(&str, u16)] = &[
+                ("songbird", 9090),
+                ("nestgate", 8080),
+                ("squirrel", 7070),
+                ("beardog", 6060),
+            ];
+
+            // Check if service matches common patterns
+            for (svc, port) in common_mdns_ports {
+                if service.contains(svc) {
+                    let endpoint = format!("http://localhost:{}", port);
+
+                    // Try to verify service is actually running
+                    match reqwest::Client::new()
+                        .head(&endpoint)
+                        .timeout(std::time::Duration::from_millis(500))
+                        .send()
+                        .await
+                    {
+                        Ok(_) => {
+                            tracing::debug!(
+                                service,
+                                endpoint,
+                                "Found local service via mDNS-style lookup"
+                            );
+                            return Ok(Some(endpoint));
+                        }
+                        Err(_) => continue,
+                    }
+                }
+            }
+
+            tracing::trace!(service, "No mDNS-discoverable service found");
+            Ok(None)
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "mdns"
+    }
+}
+
+/// Service mesh source - discovers via Consul, etcd, etc.
+pub struct ServiceMeshSource {
+    mesh_type: ServiceMeshType,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ServiceMeshType {
+    /// Auto-detect mesh type
+    Auto,
+    /// Consul service mesh
+    Consul,
+    /// etcd key-value store
+    Etcd,
+    /// Kubernetes service discovery
+    Kubernetes,
+}
+
+impl ServiceMeshSource {
+    /// Create new service mesh source with auto-detection
+    pub fn new() -> Self {
+        Self {
+            mesh_type: ServiceMeshType::Auto,
+        }
+    }
+
+    /// Create with specific mesh type
+    pub fn with_type(mesh_type: ServiceMeshType) -> Self {
+        Self { mesh_type }
+    }
+}
+
+impl Default for ServiceMeshSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EndpointSource for ServiceMeshSource {
+    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        let service = service.to_string();
+        let mesh_type = self.mesh_type;
+        
+        Box::pin(async move {
+            match mesh_type {
+            ServiceMeshType::Consul => {
+                // Query Consul API for service
+                let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
+                    .unwrap_or_else(|_| "http://localhost:8500".to_string());
+
+                let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
+
+                match reqwest::Client::new()
+                    .get(&url)
+                    .timeout(std::time::Duration::from_secs(5))
+                    .send()
+                    .await
+                {
+                    Ok(response) if response.status().is_success() => {
+                        if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
+                            if let Some(first_service) = services.first() {
+                                if let (Some(addr), Some(port)) = (
+                                    first_service.get("ServiceAddress").and_then(|v| v.as_str()),
+                                    first_service.get("ServicePort").and_then(|v| v.as_u64()),
+                                ) {
+                                    let endpoint = format!("http://{}:{}", addr, port);
+                                    tracing::info!(
+                                        service,
+                                        endpoint,
+                                        "Discovered service via Consul"
+                                    );
+                                    return Ok(Some(endpoint));
+                                }
+                            }
+                        }
+                    }
+                    Ok(_) | Err(_) => {
+                        tracing::trace!(service, "Consul service lookup failed");
+                    }
+                }
+            }
+            ServiceMeshType::Etcd => {
+                // Query etcd for service key
+                let etcd_addr = std::env::var("ETCD_ENDPOINTS")
+                    .unwrap_or_else(|_| "http://localhost:2379".to_string());
+
+                let key = format!("/services/{}", service);
+                let url = format!("{}/v3/kv/range", etcd_addr);
+
+                use base64::Engine;
+                let payload = serde_json::json!({
+                    "key": base64::engine::general_purpose::STANDARD.encode(key.as_bytes()),
+                });
+
+                match reqwest::Client::new()
+                    .post(&url)
+                    .json(&payload)
+                    .timeout(std::time::Duration::from_secs(5))
+                    .send()
+                    .await
+                {
+                    Ok(response) if response.status().is_success() => {
+                        tracing::trace!(service, "Found service in etcd");
+                        // Would need to parse etcd response format
+                    }
+                    Ok(_) | Err(_) => {
+                        tracing::trace!(service, "etcd service lookup failed");
+                    }
+                }
+            }
+            ServiceMeshType::Kubernetes => {
+                // Try Kubernetes DNS (works inside cluster)
+                let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
+                return Ok(Some(format!("http://{}", k8s_dns)));
+            }
+            ServiceMeshType::Auto => {
+                // Auto-detect: try Consul first, then etcd, then k8s DNS
+                // Try Consul
+                if let Ok(consul_addr) = std::env::var("CONSUL_HTTP_ADDR") {
+                    let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
+                    if let Ok(response) = reqwest::Client::new()
+                        .get(&url)
+                        .timeout(std::time::Duration::from_secs(2))
+                        .send()
+                        .await
+                    {
+                        if response.status().is_success() {
+                            if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
+                                if let Some(first_service) = services.first() {
+                                    if let (Some(addr), Some(port)) = (
+                                        first_service
+                                            .get("ServiceAddress")
+                                            .and_then(|v| v.as_str()),
+                                        first_service.get("ServicePort").and_then(|v| v.as_u64()),
+                                    ) {
+                                        let endpoint = format!("http://{}:{}", addr, port);
+                                        tracing::info!(
+                                            service,
+                                            endpoint,
+                                            "Auto-discovered service via Consul"
+                                        );
+                                        return Ok(Some(endpoint));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Try K8s DNS as fallback
+                let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                tracing::trace!(service, "Auto-detection: trying K8s DNS");
+                return Ok(Some(format!("http://{}", k8s_dns)));
+            }
+        }
+
+            Ok(None)
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "service_mesh"
+    }
+}
+
+/// Configuration file source - reads from TOML config
+pub struct ConfigFileSource {
+    config_path: std::path::PathBuf,
+}
+
+impl ConfigFileSource {
+    /// Create new config file source
+    pub fn new(config_path: impl Into<std::path::PathBuf>) -> Self {
+        Self {
+            config_path: config_path.into(),
+        }
+    }
+
+    /// Create with default config path
+    pub fn default_path() -> Self {
+        Self::new("config/toadstool.toml")
+    }
+}
+
+impl EndpointSource for ConfigFileSource {
+    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        let service = service.to_string();
+        let config_path = self.config_path.clone();
+        
+        Box::pin(async move {
+            // Try to read and parse config file
+            match tokio::fs::read_to_string(&config_path).await {
+            Ok(contents) => {
+                // Try to parse as TOML
+                match toml::from_str::<toml::Value>(&contents) {
+                    Ok(config) => {
+                        // Look for service endpoint in config
+                        // Try several common patterns:
+                        // 1. services.{service}.endpoint
+                        // 2. {service}.endpoint
+                        // 3. endpoints.{service}
+
+                        let patterns = vec![
+                            format!("services.{}.endpoint", service),
+                            format!("{}.endpoint", service),
+                            format!("endpoints.{}", service),
+                        ];
+
+                        for pattern in patterns {
+                            let parts: Vec<&str> = pattern.split('.').collect();
+                            let mut current: &toml::Value = &config;
+
+                            let mut found = true;
+                            for part in parts {
+                                if let Some(table) = current.as_table() {
+                                    if let Some(value) = table.get(part) {
+                                        current = value;
+                                    } else {
+                                        found = false;
+                                        break;
+                                    }
+                                } else {
+                                    found = false;
+                                    break;
+                                }
+                            }
+
+                            if found {
+                                if let Some(endpoint) = current.as_str() {
+                                    tracing::info!(
+                                        service,
+                                        endpoint,
+                                        config_path = ?config_path,
+                                        "Found service endpoint in config file"
+                                    );
+                                    return Ok(Some(endpoint.to_string()));
+                                }
+                            }
+                        }
+
+                        tracing::trace!(
+                            service,
+                            config_path = ?config_path,
+                            "Service not found in config file"
+                        );
+                        Ok(None)
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            config_path = ?config_path,
+                            "Failed to parse config file as TOML"
+                        );
+                        Ok(None)
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::trace!(
+                    error = %e,
+                    config_path = ?config_path,
+                    "Could not read config file"
+                );
+                Ok(None)
+            }
+        }
+        })
+    }
+
+    fn source_name(&self) -> &str {
+        "config_file"
+    }
+}
+
+/// Create standard production source chain
+pub fn production_sources() -> Vec<Box<dyn EndpointSource>> {
+    vec![
+        Box::new(EnvironmentSource::default()),
+        Box::new(ServiceMeshSource::new()),
+        Box::new(MDNSSource::new()),
+        Box::new(FallbackSource::new()),
+    ]
+}
+
+/// Create development source chain (faster fallbacks)
+pub fn development_sources() -> Vec<Box<dyn EndpointSource>> {
+    vec![
+        Box::new(EnvironmentSource::default()),
+        Box::new(FallbackSource::new()),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_environment_source() {
+        env::set_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT", "http://test:9999");
+
+        let source = EnvironmentSource::default();
+        let result = source.resolve("test_capability").await.unwrap();
+
+        assert_eq!(result, Some("http://test:9999".to_string()));
+
+        env::remove_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn test_fallback_source() {
+        let source = FallbackSource::new();
+        let result = source.resolve("ai_processing").await.unwrap();
+
+        // Should resolve to Songbird endpoint (environment-aware or default)
+        assert!(result.is_some());
+        let endpoint = result.unwrap();
+        assert!(endpoint.starts_with("http://"));
+        assert!(endpoint.contains("8081") || endpoint.contains("8080")); // Allow both defaults
+    }
+
+    #[tokio::test]
+    async fn test_custom_fallback() {
+        let mut fallbacks = std::collections::HashMap::new();
+        fallbacks.insert(
+            "custom_service".to_string(),
+            "http://custom:1234".to_string(),
+        );
+
+        let source = FallbackSource::with_fallbacks(fallbacks);
+        let result = source.resolve("custom_service").await.unwrap();
+
+        assert_eq!(result, Some("http://custom:1234".to_string()));
+    }
+
+    #[test]
+    fn test_production_source_chain() {
+        let sources = production_sources();
+        assert_eq!(sources.len(), 4);
+        assert_eq!(sources[0].source_name(), "environment");
+        assert_eq!(sources[3].source_name(), "fallback");
+    }
+}

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-/// ToadStool server configuration
+/// `ToadStool` server configuration
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     /// Server bind address
@@ -42,8 +42,12 @@ pub struct ServerConfig {
 
 impl Default for ServerConfig {
     fn default() -> Self {
+        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {
-            bind_address: "127.0.0.1:8080".to_string(),
+            bind_address: format!(
+                "{}:{}",
+                config.network.bind_address, config.network.songbird_port
+            ),
             enable_api: true,
             enable_websocket: true,
             enable_cors: true,
@@ -66,36 +70,42 @@ impl ServerConfig {
     }
 
     /// Enable or disable API endpoints
+    #[must_use]
     pub fn enable_api(mut self, enabled: bool) -> Self {
         self.enable_api = enabled;
         self
     }
 
     /// Enable or disable WebSocket
+    #[must_use]
     pub fn enable_websocket(mut self, enabled: bool) -> Self {
         self.enable_websocket = enabled;
         self
     }
 
     /// Set maximum concurrent executions
+    #[must_use]
     pub fn max_concurrent_executions(mut self, max: u32) -> Self {
         self.max_concurrent_executions = max;
         self
     }
 
     /// Set default execution timeout
+    #[must_use]
     pub fn default_timeout(mut self, timeout: Duration) -> Self {
         self.default_timeout = timeout;
         self
     }
 
     /// Set authentication configuration
+    #[must_use]
     pub fn auth(mut self, auth: AuthenticationConfig) -> Self {
         self.auth = Some(auth);
         self
     }
 
     /// Set rate limiting configuration
+    #[must_use]
     pub fn rate_limiting(mut self, rate_limiting: RateLimitingConfig) -> Self {
         self.rate_limiting = Some(rate_limiting);
         self

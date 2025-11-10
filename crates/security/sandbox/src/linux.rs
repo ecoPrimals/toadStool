@@ -23,6 +23,7 @@ pub struct LinuxSandboxManager {
 
 impl LinuxSandboxManager {
     /// Create a new Linux sandbox manager
+    #[must_use]
     pub fn new(config: SandboxConfig) -> Self {
         Self {
             _config: config,
@@ -212,7 +213,7 @@ pub fn get_available_namespaces() -> Vec<String> {
     for ns_type in &ns_types {
         let ns_path = format!("/proc/self/ns/{ns_type}");
         if std::path::Path::new(&ns_path).exists() {
-            namespaces.push(ns_type.to_string());
+            namespaces.push((*ns_type).to_string());
         }
     }
 

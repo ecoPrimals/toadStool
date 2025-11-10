@@ -1,6 +1,6 @@
 //! # Hardware Detection and Capability Assessment
 //!
-//! Comprehensive system hardware detection for optimal ToadStool configuration.
+//! Comprehensive system hardware detection for optimal `ToadStool` configuration.
 //! Detects CPU, memory, GPU, storage, and network capabilities to enable
 //! zero-touch optimization.
 
@@ -18,6 +18,7 @@ pub struct HardwareDetector {
 
 impl HardwareDetector {
     /// Create a new hardware detector
+    #[must_use]
     pub fn new() -> Self {
         Self { _system_info: None }
     }
@@ -96,7 +97,7 @@ impl HardwareDetector {
         // Fallback: use std::thread::available_parallelism
         if cpu_info.physical_cores == 0 {
             cpu_info.physical_cores = std::thread::available_parallelism()
-                .map(|n| n.get())
+                .map(std::num::NonZero::get)
                 .unwrap_or(4);
             cpu_info.logical_cores = cpu_info.physical_cores;
             cpu_info.model_name = "Unknown CPU".to_string();
@@ -150,8 +151,10 @@ impl HardwareDetector {
                         }
                     }
                     "flags" | "Features" => {
-                        cpu_info.instruction_sets =
-                            value.split_whitespace().map(|s| s.to_string()).collect();
+                        cpu_info.instruction_sets = value
+                            .split_whitespace()
+                            .map(std::string::ToString::to_string)
+                            .collect();
                     }
                     _ => {}
                 }
@@ -403,7 +406,7 @@ impl HardwareDetector {
         {
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines() {
-                let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+                let parts: Vec<&str> = line.split(',').map(str::trim).collect();
                 if parts.len() >= 3 {
                     let name = parts[0].to_string();
                     let memory_mb = parts[1].parse::<f64>().unwrap_or(0.0);
@@ -553,9 +556,8 @@ impl HardwareDetector {
             {
                 if rotational.trim() == "0" {
                     return Ok(StorageType::SSD);
-                } else {
-                    return Ok(StorageType::HDD);
                 }
+                return Ok(StorageType::HDD);
             }
         }
 
@@ -621,7 +623,7 @@ impl HardwareDetector {
         } else {
             10.0
         };
-        let cache_score = (cpu_info.cache_size_kb as f64 / 32768.0 * 10.0).min(10.0);
+        let cache_score = (f64::from(cpu_info.cache_size_kb) / 32768.0 * 10.0).min(10.0);
 
         core_score + frequency_score + features_score + cache_score
     }
@@ -637,14 +639,14 @@ impl HardwareDetector {
             return 20.0; // Integrated graphics assumption
         }
 
-        let best_gpu = gpu_info
-            .iter()
-            .max_by(|a, b| {
-                a.memory_gb
-                    .partial_cmp(&b.memory_gb)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .unwrap();
+        let best_gpu = match gpu_info.iter().max_by(|a, b| {
+            a.memory_gb
+                .partial_cmp(&b.memory_gb)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
+            Some(gpu) => gpu,
+            None => return 20.0, // Fallback to integrated graphics score
+        };
 
         let memory_score = (best_gpu.memory_gb / 24.0 * 50.0).min(50.0);
         let vendor_score = match best_gpu.vendor.as_str() {

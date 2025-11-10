@@ -47,10 +47,9 @@ sysinfo = "0.32"
 # Encoding
 base64 = "0.22"
 
-# Networking for ecosystem integration (optional)
-reqwest = { version = "0.11", features = ["json"], optional = true }
+# Networking for ecosystem integration (now standard - ToadStool is distributed)
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 tokio-tungstenite = { version = "0.23", optional = true }
-# tonic = { version = "0.10", optional = true } # REMOVED: protobuf dependency
 
 # Regex for security hardening
 regex = "1.0"
@@ -65,8 +64,10 @@ toadstool-testing = { path = "../../testing" }
 
 [features]
 default = []
-# Enable networking features
-networking = ["reqwest", "tokio-tungstenite"]
-# grpc = ["tonic", "networking"] # REMOVED: protobuf dependency
-# full-ecosystem = ["grpc"] # REMOVED: protobuf dependency
-full-ecosystem = ["networking"] 
+# Networking is now always available (reqwest is standard dependency)
+# This feature kept for backward compatibility but does nothing
+networking = []
+# WebSocket support (optional)
+websocket = ["tokio-tungstenite"]
+# Full ecosystem features
+full-ecosystem = ["websocket"] 

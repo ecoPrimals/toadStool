@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # ToadStool Universal Compute Platform
+//! # `ToadStool` Universal Compute Platform
 //!
-//! ToadStool is a revolutionary universal compute platform that embodies the philosophy:
+//! `ToadStool` is a revolutionary universal compute platform that embodies the philosophy:
 //! **"If it computes, we can run it"**
 //!
 //! ## Core Principles
 //!
 //! - **Universal Execution**: Run anything, anywhere, on any substrate
 //! - **Pure Ecosystem**: No external dependencies, pure Rust ecosystem
-//! - **Recursive Hosting**: ToadStools can host other ToadStools infinitely
+//! - **Recursive Hosting**: `ToadStools` can host other `ToadStools` infinitely
 //! - **OS-Layer Compatibility**: Act as an OS when local environments aren't compatible
 //! - **Ecosystem Integration**: Seamless integration with biomeOS and all primals
 //!
@@ -57,7 +57,8 @@ pub mod workload;
 // No longer need hard integration - biomeOS interacts as a primal like Songbird
 
 // Re-export core types
-pub use biomeos_integration::*;
+// BiomeOS integration is now handled as a primal - only export specific types if needed
+// pub use biomeos_integration::*; // Commented out to avoid ambiguous glob with toadstool_common::auth
 pub use ecosystem::{
     EcosystemConfig, EcosystemCoordinator, EcosystemMessage as EcosystemCoreMessage,
     EcosystemMessageType as EcosystemCoreMessageType, PrimalChannel, PrimalClient, PrimalInstance,
@@ -87,7 +88,7 @@ pub use security::{
 };
 pub use universal::{
     init_with_runtime_engines, JobPriority, PlatformStatus,
-    SystemResources as UniversalSystemResources, UniversalComputePlatform, UniversalJob,
+    UniversalSystemResources, UniversalComputePlatform, UniversalJob,
     UniversalJobType, UniversalPlatformConfig, UniversalScheduler,
 };
 pub use workload::{
@@ -102,7 +103,7 @@ pub use workload::{
 pub use toadstool_common::*;
 pub use toadstool_config as config;
 
-/// ToadStool version information
+/// `ToadStool` version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Universal compute platform capabilities
@@ -119,13 +120,13 @@ pub const UNIVERSAL_CAPABILITIES: &[&str] = &[
     "infinite_nesting",
 ];
 
-/// Initialize ToadStool Universal Compute Platform
+/// Initialize `ToadStool` Universal Compute Platform
 pub fn init() -> anyhow::Result<()> {
     // Initialize tracing for universal compute
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init()
-        .map_err(|e| anyhow::anyhow!("Failed to initialize tracing: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to initialize tracing: {e}"))?;
 
     tracing::info!(
         "🍄 ToadStool Universal Compute Platform v{} initialized",
@@ -137,7 +138,7 @@ pub fn init() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Initialize ToadStool with ecosystem integration
+/// Initialize `ToadStool` with ecosystem integration
 pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
     init()?;
 
@@ -154,7 +155,7 @@ pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
     Ok(platform)
 }
 
-/// Initialize ToadStool with biomeOS as a primal (same as ecosystem init)
+/// Initialize `ToadStool` with biomeOS as a primal (same as ecosystem init)
 pub async fn init_with_biomeos() -> anyhow::Result<UniversalComputePlatform> {
     init()?;
 
