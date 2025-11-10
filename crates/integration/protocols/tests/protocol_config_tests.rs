@@ -1,6 +1,7 @@
 //! Tests for protocol configuration types
 
 use std::time::Duration;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::config::*;
 use toadstool_integration_protocols::types::*;
 
@@ -40,7 +41,7 @@ fn test_protocol_config_custom_service_id() {
 
 #[test]
 fn test_protocol_config_with_auth() {
-    let auth_config = AuthConfig {
+    let auth_config = ServiceAuthConfig {
         auth_type: AuthType::Bearer,
         token: Some("token123".to_string()),
         cert_path: None,

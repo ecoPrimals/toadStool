@@ -7,6 +7,7 @@
 //! - Endpoint validation
 //! - Transport selection logic
 
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::transport::*;
 use toadstool_integration_protocols::types::*;
 

@@ -1160,6 +1160,8 @@ pub fn create_byob_executor(runtime_engine: Arc<dyn RuntimeEngine>) -> Arc<dyn B
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::future::Future;
+    use std::pin::Pin;
     use std::sync::Arc;
     use tokio;
 
@@ -1341,27 +1343,28 @@ mod tests {
     // Simple test runtime engine for testing
     struct TestRuntimeEngine;
 
-    #[async_trait::async_trait]
     impl RuntimeEngine for TestRuntimeEngine {
-        async fn initialize(
+        fn initialize(
             &mut self,
             _config: crate::execution::RuntimeConfig,
-        ) -> ToadStoolResult<()> {
-            Ok(())
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+            Box::pin(async { Ok(()) })
         }
 
-        async fn execute(
+        fn execute(
             &self,
             request: ExecutionRequest,
-        ) -> ToadStoolResult<crate::execution::ExecutionResponse> {
-            Ok(crate::execution::ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Success,
-                output: crate::execution::ExecutionOutput::default(),
-                metrics: crate::resources::RuntimeMetrics::default(),
-                duration: Duration::from_millis(100),
-                runtime_used: crate::execution::RuntimeType::Native,
-                warnings: vec![],
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_>> {
+            Box::pin(async move {
+                Ok(crate::execution::ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Success,
+                    output: crate::execution::ExecutionOutput::default(),
+                    metrics: crate::resources::RuntimeMetrics::default(),
+                    duration: Duration::from_millis(100),
+                    runtime_used: crate::execution::RuntimeType::Native,
+                    warnings: vec![],
+                })
             })
         }
 
@@ -1379,12 +1382,12 @@ mod tests {
             true
         }
 
-        async fn get_metrics(&self) -> ToadStoolResult<crate::resources::RuntimeMetrics> {
-            Ok(crate::resources::RuntimeMetrics::default())
+        fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_>> {
+            Box::pin(async { Ok(crate::resources::RuntimeMetrics::default()) })
         }
 
-        async fn shutdown(&mut self) -> ToadStoolResult<()> {
-            Ok(())
+        fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+            Box::pin(async { Ok(()) })
         }
     }
 

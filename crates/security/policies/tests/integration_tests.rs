@@ -4,7 +4,6 @@
 
 use chrono::Utc;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use toadstool_security_policies::{
     PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule,
     SecurityPolicy, ViolationAction,

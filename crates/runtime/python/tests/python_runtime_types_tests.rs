@@ -1,6 +1,8 @@
 //! Tests for Python runtime types
 
 use std::path::PathBuf;
+use std::time::Duration;
+use toadstool_common::config_bases::TimeoutConfig;
 use toadstool_runtime_python::PythonRuntimeConfig;
 
 // ============================================================================
@@ -13,7 +15,7 @@ fn test_python_runtime_config_default() {
 
     assert_eq!(config.interpreter_path, "python3");
     assert_eq!(config.max_memory_mb, 1024);
-    assert_eq!(config.execution_timeout_secs, 300);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 300);
     assert!(config.requirements.is_empty());
 }
 
@@ -23,7 +25,7 @@ fn test_python_runtime_config_custom_interpreter() {
         interpreter_path: "/usr/bin/python3.11".to_string(),
         virtual_env: None,
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 600); t},
         requirements: vec![],
     };
 
@@ -37,7 +39,7 @@ fn test_python_runtime_config_with_venv() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/opt/venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec![],
     };
 
@@ -51,7 +53,7 @@ fn test_python_runtime_config_with_requirements() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec![
             "numpy==1.24.0".to_string(),
             "pandas==2.0.0".to_string(),
@@ -69,12 +71,12 @@ fn test_python_runtime_config_high_memory() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 8192,
-        execution_timeout_secs: 3600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 3600); t},
         requirements: vec![],
     };
 
     assert_eq!(config.max_memory_mb, 8192);
-    assert_eq!(config.execution_timeout_secs, 3600);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 3600);
 }
 
 #[test]
@@ -83,12 +85,12 @@ fn test_python_runtime_config_minimal() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 256,
-        execution_timeout_secs: 60,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 60); t},
         requirements: vec![],
     };
 
     assert_eq!(config.max_memory_mb, 256);
-    assert_eq!(config.execution_timeout_secs, 60);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 60);
 }
 
 #[test]
@@ -97,7 +99,7 @@ fn test_python_runtime_config_with_multiple_requirements() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/app/venv")),
         max_memory_mb: 4096,
-        execution_timeout_secs: 1800,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 1800); t},
         requirements: vec![
             "django==4.2.0".to_string(),
             "celery==5.3.0".to_string(),
@@ -116,7 +118,7 @@ fn test_python_runtime_config_clone() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec![],
     };
 
@@ -131,7 +133,7 @@ fn test_python_runtime_config_serialization() {
         interpreter_path: "/usr/local/bin/python3.10".to_string(),
         virtual_env: Some(PathBuf::from("/home/user/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 900,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 900); t},
         requirements: vec!["flask==2.3.0".to_string()],
     };
 
@@ -149,11 +151,11 @@ fn test_python_runtime_config_long_timeout() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 86400, // 24 hours
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 86400, // 24 hours
         requirements: vec![],
     };
 
-    assert_eq!(config.execution_timeout_secs, 86400);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 86400);
 }
 
 #[test]
@@ -162,7 +164,7 @@ fn test_python_runtime_config_with_ml_requirements() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/ml/venv")),
         max_memory_mb: 16384, // 16GB for ML workloads
-        execution_timeout_secs: 7200,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 7200); t},
         requirements: vec![
             "tensorflow==2.13.0".to_string(),
             "torch==2.0.0".to_string(),
@@ -183,7 +185,7 @@ fn test_python_runtime_config_data_science() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/data/venv")),
         max_memory_mb: 8192,
-        execution_timeout_secs: 3600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 3600); t},
         requirements: vec![
             "pandas==2.0.0".to_string(),
             "numpy==1.24.0".to_string(),
@@ -202,7 +204,7 @@ fn test_python_runtime_config_web_dev() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/web/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 600); t},
         requirements: vec![
             "django==4.2.0".to_string(),
             "djangorestframework==3.14.0".to_string(),
@@ -219,7 +221,7 @@ fn test_python_runtime_config_async_work() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/async/venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 1800,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 1800); t},
         requirements: vec![
             "celery==5.3.0".to_string(),
             "redis==4.5.0".to_string(),
@@ -236,7 +238,7 @@ fn test_python_runtime_config_testing() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/test/venv")),
         max_memory_mb: 512,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec![
             "pytest==7.4.0".to_string(),
             "pytest-cov==4.1.0".to_string(),
@@ -253,7 +255,7 @@ fn test_python_runtime_config_minimal_memory() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 128, // Minimal for simple scripts
-        execution_timeout_secs: 30,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 30); t},
         requirements: vec![],
     };
 
@@ -266,7 +268,7 @@ fn test_python_runtime_config_cloud_sdk() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/cloud/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 900,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 900); t},
         requirements: vec![
             "boto3==1.28.0".to_string(),
             "google-cloud-storage==2.10.0".to_string(),
@@ -283,7 +285,7 @@ fn test_python_runtime_config_scientific() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/sci/venv")),
         max_memory_mb: 8192,
-        execution_timeout_secs: 3600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 3600); t},
         requirements: vec![
             "scipy==1.11.0".to_string(),
             "numpy==1.24.0".to_string(),
@@ -301,7 +303,7 @@ fn test_python_runtime_config_automation() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/auto/venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 600); t},
         requirements: vec![
             "selenium==4.11.0".to_string(),
             "beautifulsoup4==4.12.0".to_string(),
@@ -318,7 +320,7 @@ fn test_python_runtime_config_database() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/db/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 1200,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 1200,
         requirements: vec![
             "psycopg2-binary==2.9.0".to_string(),
             "pymongo==4.4.0".to_string(),
@@ -336,7 +338,7 @@ fn test_python_runtime_config_api_client() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/api/venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec![
             "requests==2.31.0".to_string(),
             "httpx==0.24.0".to_string(),
@@ -353,7 +355,7 @@ fn test_python_runtime_config_crypto() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/crypto/venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 600); t},
         requirements: vec![
             "cryptography==41.0.0".to_string(),
             "pycryptodome==3.18.0".to_string(),
@@ -372,7 +374,7 @@ fn test_python_runtime_config_no_venv() {
         interpreter_path: "/usr/bin/python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 300); t},
         requirements: vec!["requests==2.31.0".to_string()],
     };
 
@@ -385,7 +387,7 @@ fn test_python_runtime_config_pypy() {
         interpreter_path: "/usr/bin/pypy3".to_string(),
         virtual_env: Some(PathBuf::from("/pypy/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 600); t},
         requirements: vec![],
     };
 
@@ -398,7 +400,7 @@ fn test_python_runtime_config_jupyter() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/jupyter/venv")),
         max_memory_mb: 4096,
-        execution_timeout_secs: 7200,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 7200); t},
         requirements: vec![
             "jupyter==1.0.0".to_string(),
             "ipykernel==6.25.0".to_string(),
@@ -415,7 +417,7 @@ fn test_python_runtime_config_nlp() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/nlp/venv")),
         max_memory_mb: 8192,
-        execution_timeout_secs: 3600,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 3600); t},
         requirements: vec![
             "transformers==4.30.0".to_string(),
             "spacy==3.6.0".to_string(),
@@ -432,7 +434,7 @@ fn test_python_runtime_config_computer_vision() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/cv/venv")),
         max_memory_mb: 16384,
-        execution_timeout_secs: 7200,
+        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs( 7200); t},
         requirements: vec![
             "opencv-python==4.8.0".to_string(),
             "pillow==10.0.0".to_string(),

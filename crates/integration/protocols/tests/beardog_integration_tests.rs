@@ -3,10 +3,15 @@
 //! These tests cover the BearDog security integration layer,
 //! including authentication, authorization, and audit functionality.
 
+use toadstool_common::auth::ServiceAuthConfig;
 use chrono::Utc;
+use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool::security::SecurityContext;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::*;
+use toadstool_common::auth::ServiceAuthConfig;
 use uuid::Uuid;
 
 // ============================================================================

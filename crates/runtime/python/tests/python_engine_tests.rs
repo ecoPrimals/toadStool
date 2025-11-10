@@ -22,11 +22,14 @@ fn test_python_engine_with_default_config() {
 
 #[test]
 fn test_python_engine_with_minimal_config() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(10);
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 128,
-        execution_timeout_secs: 10,
+        timeouts,
         requirements: vec![],
     };
 
@@ -36,11 +39,14 @@ fn test_python_engine_with_minimal_config() {
 
 #[test]
 fn test_python_engine_with_large_config() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(7200); // 2 hours
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 32768,         // 32 GB
-        execution_timeout_secs: 7200, // 2 hours
+        timeouts,
         requirements: vec!["tensorflow".to_string()],
     };
 
@@ -199,7 +205,7 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.9".to_string(),
         virtual_env: None,
         max_memory_mb: 512,
-        execution_timeout_secs: 60,
+        execution_timeout_secs: 60); t},
         requirements: vec![],
     };
 
@@ -207,7 +213,7 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.11".to_string(),
         virtual_env: None,
         max_memory_mb: 2048,
-        execution_timeout_secs: 300,
+        execution_timeout_secs: 300); t},
         requirements: vec!["numpy".to_string()],
     };
 

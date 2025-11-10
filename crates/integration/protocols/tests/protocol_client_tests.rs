@@ -1,11 +1,18 @@
 //! Comprehensive tests for ProtocolClient
 
+use toadstool_common::auth::ServiceAuthConfig;
 use chrono::Utc;
+use toadstool_common::auth::ServiceAuthConfig;
 use serde_json::json;
+use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
+use toadstool_common::auth::ServiceAuthConfig;
 use std::time::Duration;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::client::ProtocolClient;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::config::*;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::*;
 
 // ============================================================================
@@ -84,7 +91,7 @@ async fn test_protocol_client_with_multiple_transports() {
 #[tokio::test]
 async fn test_protocol_client_with_auth_config() {
     let mut config = create_test_config();
-    config.auth_config = Some(AuthConfig {
+    config.auth_config = Some(ServiceAuthConfig {
         auth_type: AuthType::Bearer,
         token: Some("test-token".to_string()),
         cert_path: None,

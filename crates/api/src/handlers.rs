@@ -987,7 +987,7 @@ pub async fn get_api_metrics(State(state): State<ApiState>) -> Result<impl IntoR
     tag = "workload"
 )]
 pub async fn execute_workload(
-    State(state): State<ApiState>,
+    State(_state): State<ApiState>,
     Json(request): Json<toadstool_distributed::WorkloadRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     use toadstool_distributed::WorkloadExecutor;

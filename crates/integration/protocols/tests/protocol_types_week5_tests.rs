@@ -1,11 +1,14 @@
 //! Integration Protocols Types Tests - Week 5
 //! Comprehensive tests for protocol types and configuration
 
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::{
     types::{MessageFormat, TransportType, AuthType, MessagePriority, ProtocolMessage},
     config::ProtocolConfig,
 };
+use toadstool_common::auth::ServiceAuthConfig;
 use std::time::Duration;
+use toadstool_common::auth::ServiceAuthConfig;
 use uuid::Uuid;
 
 // ============================================================================

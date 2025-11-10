@@ -9,7 +9,7 @@
 //! - ViolationAction
 //! - Evaluation results
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;

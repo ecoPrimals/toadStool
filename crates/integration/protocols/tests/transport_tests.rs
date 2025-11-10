@@ -2,7 +2,9 @@
 //!
 //! Tests for HTTP transport, message routing, and protocol handling.
 
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::transport::*;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::*;
 
 #[test]

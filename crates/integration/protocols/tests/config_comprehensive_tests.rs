@@ -3,8 +3,11 @@
 //! This test suite provides extensive coverage of protocol configuration structures
 //! including default values, validation, and configuration patterns.
 
+use toadstool_common::auth::ServiceAuthConfig;
 use std::time::Duration;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::config::*;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::{AuthType, MessageFormat, TransportType};
 
 // ============================================================================
@@ -126,12 +129,12 @@ fn test_connection_pool_config_clone() {
 }
 
 // ============================================================================
-// AuthConfig Tests
+// ServiceAuthConfig Tests
 // ============================================================================
 
 #[test]
 fn test_auth_config_bearer_token() {
-    let config = AuthConfig {
+    let config = ServiceAuthConfig {
         auth_type: AuthType::Bearer,
         token: Some("test-token".to_string()),
         cert_path: None,
@@ -145,7 +148,7 @@ fn test_auth_config_bearer_token() {
 
 #[test]
 fn test_auth_config_api_key() {
-    let config = AuthConfig {
+    let config = ServiceAuthConfig {
         auth_type: AuthType::ApiKey,
         token: Some("api-key-123".to_string()),
         cert_path: None,
@@ -159,7 +162,7 @@ fn test_auth_config_api_key() {
 
 #[test]
 fn test_auth_config_mtls_paths() {
-    let config = AuthConfig {
+    let config = ServiceAuthConfig {
         auth_type: AuthType::MutualTls,
         token: None,
         cert_path: Some("/path/to/cert.pem".to_string()),
@@ -175,7 +178,7 @@ fn test_auth_config_mtls_paths() {
 
 #[test]
 fn test_auth_config_none() {
-    let config = AuthConfig {
+    let config = ServiceAuthConfig {
         auth_type: AuthType::None,
         token: None,
         cert_path: None,
@@ -189,7 +192,7 @@ fn test_auth_config_none() {
 
 #[test]
 fn test_auth_config_clone() {
-    let config1 = AuthConfig {
+    let config1 = ServiceAuthConfig {
         auth_type: AuthType::Bearer,
         token: Some("token".to_string()),
         cert_path: None,
@@ -208,7 +211,7 @@ fn test_auth_config_clone() {
 #[test]
 fn test_protocol_config_with_auth() {
     let config = ProtocolConfig {
-        auth_config: Some(AuthConfig {
+        auth_config: Some(ServiceAuthConfig {
             auth_type: AuthType::Bearer,
             token: Some("test".to_string()),
             cert_path: None,
@@ -275,7 +278,7 @@ fn test_config_coverage_summary() {
     println!("============================================");
     println!("ProtocolConfig:          8 tests");
     println!("ConnectionPoolConfig:    6 tests");
-    println!("AuthConfig:              5 tests");
+    println!("ServiceAuthConfig:              5 tests");
     println!("Pattern Tests:           5 tests");
     println!("============================================");
     println!("Total Config Tests:     24 tests");

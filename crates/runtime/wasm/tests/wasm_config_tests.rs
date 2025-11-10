@@ -10,9 +10,9 @@ use toadstool_runtime_wasm::*;
 fn test_wasm_runtime_config_default() {
     let config = WasmRuntimeConfig::default();
 
-    assert!(config.cache_enabled);
-    assert_eq!(config.max_cache_size_mb, 512);
-    assert_eq!(config.cache_ttl_hours, 24);
+    assert!(config.cache.enabled);
+    assert_eq!(config.cache.max_size_mb, 512);
+    assert_eq!(config.cache.ttl_hours, 24);
     assert_eq!(config.max_memory_mb, 128);
     assert_eq!(config.max_pages, 2048);
     assert_eq!(config.execution_timeout_ms, 30000);
@@ -24,9 +24,9 @@ fn test_wasm_runtime_config_default() {
 fn test_wasm_runtime_config_cache_settings() {
     let config = WasmRuntimeConfig::default();
 
-    assert!(config.cache_enabled);
-    assert_eq!(config.max_cache_size_mb, 512);
-    assert_eq!(config.cache_ttl_hours, 24);
+    assert!(config.cache.enabled);
+    assert_eq!(config.cache.max_size_mb, 512);
+    assert_eq!(config.cache.ttl_hours, 24);
 }
 
 #[test]
@@ -64,8 +64,8 @@ fn test_wasm_runtime_config_clone() {
     let config1 = WasmRuntimeConfig::default();
     let config2 = config1.clone();
 
-    assert_eq!(config1.cache_enabled, config2.cache_enabled);
-    assert_eq!(config1.max_cache_size_mb, config2.max_cache_size_mb);
+    assert_eq!(config1.cache.enabled, config2.cache.enabled);
+    assert_eq!(config1.cache.max_size_mb, config2.cache.max_size_mb);
     assert_eq!(config1.max_memory_mb, config2.max_memory_mb);
 }
 

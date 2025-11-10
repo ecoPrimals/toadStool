@@ -1,6 +1,8 @@
 //! Comprehensive tests for Python runtime configuration
 
 use std::path::PathBuf;
+use std::time::Duration;
+use toadstool_common::config_bases::TimeoutConfig;
 use toadstool_runtime_python::*;
 
 // ============================================================================
@@ -14,7 +16,7 @@ fn test_python_runtime_config_default() {
     assert_eq!(config.interpreter_path, "python3");
     assert_eq!(config.virtual_env, None);
     assert_eq!(config.max_memory_mb, 1024);
-    assert_eq!(config.execution_timeout_secs, 300);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 300);
     assert_eq!(config.requirements.len(), 0);
 }
 
@@ -43,7 +45,7 @@ fn test_python_runtime_config_max_memory() {
 fn test_python_runtime_config_execution_timeout() {
     let config = PythonRuntimeConfig::default();
 
-    assert_eq!(config.execution_timeout_secs, 300);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 300);
 }
 
 #[test]
@@ -55,28 +57,34 @@ fn test_python_runtime_config_no_requirements() {
 
 #[test]
 fn test_python_runtime_config_custom() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(600);
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3.11".to_string(),
         virtual_env: Some(PathBuf::from("/opt/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts,
         requirements: vec!["numpy".to_string(), "pandas".to_string()],
     };
 
     assert_eq!(config.interpreter_path, "python3.11");
     assert!(config.virtual_env.is_some());
     assert_eq!(config.max_memory_mb, 2048);
-    assert_eq!(config.execution_timeout_secs, 600);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 600);
     assert_eq!(config.requirements.len(), 2);
 }
 
 #[test]
 fn test_python_runtime_config_with_virtual_env() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(120);
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/home/user/.venv")),
         max_memory_mb: 512,
-        execution_timeout_secs: 120,
+        timeouts,
         requirements: vec![],
     };
 
@@ -98,7 +106,7 @@ fn test_python_runtime_config_with_requirements() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: TimeoutConfig::default(),
         requirements: requirements.clone(),
     };
 
@@ -116,8 +124,8 @@ fn test_python_runtime_config_clone() {
     assert_eq!(config1.interpreter_path, config2.interpreter_path);
     assert_eq!(config1.max_memory_mb, config2.max_memory_mb);
     assert_eq!(
-        config1.execution_timeout_secs,
-        config2.execution_timeout_secs
+        config1.timeouts.request_timeout,
+        config2.timeouts.request_timeout
     );
 }
 
@@ -145,7 +153,11 @@ fn test_python_runtime_config_deserialization() {
         "interpreter_path": "python3",
         "virtual_env": null,
         "max_memory_mb": 1024,
-        "execution_timeout_secs": 300,
+        "timeouts": {
+            "connect_timeout": {"secs": 30, "nanos": 0},
+            "request_timeout": {"secs": 300, "nanos": 0},
+            "idle_timeout": {"secs": 60, "nanos": 0}
+        },
         "requirements": []
     }"#;
 
@@ -157,11 +169,14 @@ fn test_python_runtime_config_deserialization() {
 
 #[test]
 fn test_python_runtime_config_round_trip() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(60);
+    
     let original = PythonRuntimeConfig {
         interpreter_path: "python3.9".to_string(),
         virtual_env: Some(PathBuf::from("/tmp/venv")),
         max_memory_mb: 512,
-        execution_timeout_secs: 60,
+        timeouts,
         requirements: vec!["pytest".to_string()],
     };
 
@@ -171,8 +186,8 @@ fn test_python_runtime_config_round_trip() {
     assert_eq!(original.interpreter_path, deserialized.interpreter_path);
     assert_eq!(original.max_memory_mb, deserialized.max_memory_mb);
     assert_eq!(
-        original.execution_timeout_secs,
-        deserialized.execution_timeout_secs
+        original.timeouts.request_timeout,
+        deserialized.timeouts.request_timeout
     );
     assert_eq!(original.requirements.len(), deserialized.requirements.len());
 }
@@ -187,7 +202,7 @@ fn test_python_runtime_config_zero_memory() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 0,
-        execution_timeout_secs: 300,
+        timeouts: TimeoutConfig::default(),
         requirements: vec![],
     };
 
@@ -200,7 +215,7 @@ fn test_python_runtime_config_large_memory() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 16384, // 16GB
-        execution_timeout_secs: 300,
+        timeouts: TimeoutConfig::default(),
         requirements: vec![],
     };
 
@@ -209,28 +224,34 @@ fn test_python_runtime_config_large_memory() {
 
 #[test]
 fn test_python_runtime_config_short_timeout() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(1);
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 1,
+        timeouts,
         requirements: vec![],
     };
 
-    assert_eq!(config.execution_timeout_secs, 1);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 1);
 }
 
 #[test]
 fn test_python_runtime_config_long_timeout() {
+    let mut timeouts = TimeoutConfig::default();
+    timeouts.request_timeout = Duration::from_secs(3600);
+    
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 3600, // 1 hour
+        timeouts,
         requirements: vec![],
     };
 
-    assert_eq!(config.execution_timeout_secs, 3600);
+    assert_eq!(config.timeouts.request_timeout.as_secs(), 3600);
 }
 
 #[test]
@@ -250,7 +271,7 @@ fn test_python_runtime_config_custom_interpreter() {
             interpreter_path: interpreter.to_string(),
             virtual_env: None,
             max_memory_mb: 1024,
-            execution_timeout_secs: 300,
+            timeouts: TimeoutConfig::default(),
             requirements: vec![],
         };
 
@@ -272,7 +293,7 @@ fn test_python_runtime_config_multiple_requirements() {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts: TimeoutConfig::default(),
         requirements: requirements.clone(),
     };
 
@@ -287,7 +308,7 @@ fn test_python_runtime_config_empty_interpreter_path() {
         interpreter_path: "".to_string(),
         virtual_env: None,
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: TimeoutConfig::default(),
         requirements: vec![],
     };
 
@@ -300,7 +321,7 @@ fn test_python_runtime_config_path_separators() {
         interpreter_path: "python3".to_string(),
         virtual_env: Some(PathBuf::from("/home/user/projects/my_project/.venv")),
         max_memory_mb: 1024,
-        execution_timeout_secs: 300,
+        timeouts: TimeoutConfig::default(),
         requirements: vec![],
     };
 
@@ -316,11 +337,14 @@ fn test_python_runtime_config_path_separators() {
 #[test]
 fn test_python_runtime_config_default_vs_custom() {
     let default_config = PythonRuntimeConfig::default();
+    let mut custom_timeouts = TimeoutConfig::default();
+    custom_timeouts.request_timeout = Duration::from_secs(600);
+    
     let custom_config = PythonRuntimeConfig {
         interpreter_path: "python3.11".to_string(),
         virtual_env: Some(PathBuf::from("/opt/venv")),
         max_memory_mb: 2048,
-        execution_timeout_secs: 600,
+        timeouts: custom_timeouts,
         requirements: vec!["numpy".to_string()],
     };
 
@@ -330,8 +354,8 @@ fn test_python_runtime_config_default_vs_custom() {
     );
     assert_ne!(default_config.max_memory_mb, custom_config.max_memory_mb);
     assert_ne!(
-        default_config.execution_timeout_secs,
-        custom_config.execution_timeout_secs
+        default_config.timeouts.request_timeout,
+        custom_config.timeouts.request_timeout
     );
     assert_ne!(
         default_config.requirements.len(),

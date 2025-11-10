@@ -3,9 +3,13 @@
 //! Week 17 Sprint 5: Integration Protocol types and structures tests
 //! Target: ~20 tests
 
+use toadstool_common::auth::ServiceAuthConfig;
 use chrono::Utc;
+use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool::security::SecurityContext;
+use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::*;
 
 // ============================================================================
