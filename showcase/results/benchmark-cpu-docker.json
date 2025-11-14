@@ -1,9 +1,0 @@
-{
-  "substrate": "docker",
-  "benchmark": "cpu",
-  "test": "fibonacci_35",
-  "timestamp": "2025-10-30T09:35:59.890935",
-  "result": 9227465,
-  "duration_seconds": 1.0754025839269161,
-  "rating": "EXCELLENT"
-}

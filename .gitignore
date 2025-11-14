@@ -1,5 +1,6 @@
 # Rust/Cargo
 /target/
+tools/target/
 **/*.rs.bk
 Cargo.lock
 
@@ -44,6 +45,18 @@ Thumbs.db
 # Test artifacts
 /test-results/
 /coverage/
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+# Benchmark and showcase results
+showcase/results/*.json
+showcase/results/*.log
+showcase/results/*.out
+# Performance and profiling
+perf.data
+perf.data.old
+flamegraph.svg
 
 # Temporary files
 *.tmp
