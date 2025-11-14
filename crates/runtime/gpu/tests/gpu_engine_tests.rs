@@ -8,9 +8,13 @@
 //! - Error handling
 //! - Resource coordination
 
-use toadstool::error::ToadStoolResult;
+use std::collections::HashMap;
+use std::time::Duration;
 use toadstool::execution::{ExecutionRequest, RuntimeConfig, RuntimeEngine};
-use toadstool::{WorkloadSpec, WorkloadType, SecurityContext};
+use toadstool::{
+    ExecutionInput, GpuProgramSource, ResourceRequirements, SecurityContext, WorkloadSpec,
+    WorkloadType,
+};
 use toadstool_runtime_gpu::config::{
     CompilationConfig, GpuDiscoveryConfig, ResourceConfig, UniversalGpuConfig,
 };
@@ -20,15 +24,7 @@ use uuid::Uuid;
 
 /// Test helper to create a default config
 fn create_test_config() -> UniversalGpuConfig {
-    UniversalGpuConfig {
-        discovery: GpuDiscoveryConfig {
-            enabled_frameworks: vec![GpuFramework::WebGpu],
-            auto_fallback: true,
-            discovery_timeout_ms: 5000,
-        },
-        compilation: CompilationConfig::default(),
-        resources: ResourceConfig::default(),
-    }
+    UniversalGpuConfig::default()
 }
 
 /// Test helper to create a test execution request
@@ -36,12 +32,21 @@ fn create_test_request() -> ExecutionRequest {
     ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: "test program".to_string(),
-            language: "wgsl".to_string(),
-            entry_point: Some("main".to_string()),
+            program: GpuProgramSource::OpenCL {
+                source: "kernel void test() {}".to_string(),
+            },
+            kernel_name: "test".to_string(),
+            work_group_size: Some((8, 8, 1)),
+            global_work_size: (64, 64, 1),
+            args: vec![],
         },
         security_context: SecurityContext::default(),
         runtime_hint: None,
+        resources: ResourceRequirements::default(),
+        timeout: Some(Duration::from_secs(60)),
+        environment: HashMap::new(),
+        input_data: ExecutionInput::default(),
+        callback_config: None,
     }
 }
 
@@ -63,7 +68,7 @@ async fn test_engine_creation_default() {
 async fn test_engine_creation_with_config() {
     let config = create_test_config();
     let result = UniversalGpuEngine::with_config(config).await;
-    
+
     assert!(
         result.is_ok(),
         "Should create engine with custom config: {:?}",
@@ -79,14 +84,14 @@ async fn test_engine_capabilities() {
     // Verify basic capabilities
     assert_eq!(caps.version, "1.0.0");
     assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
-    assert!(caps.platform_features.get("parallel_compute").is_some());
+    assert!(caps.platform_features.contains_key("parallel_compute"));
 }
 
 #[tokio::test]
 async fn test_engine_initialization() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     let result = engine.initialize(RuntimeConfig::default()).await;
-    
+
     assert!(
         result.is_ok(),
         "Engine initialization should succeed: {:?}",
@@ -98,7 +103,7 @@ async fn test_engine_initialization() {
 async fn test_engine_shutdown() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
-    
+
     let result = engine.shutdown().await;
     assert!(
         result.is_ok(),
@@ -110,22 +115,25 @@ async fn test_engine_shutdown() {
 #[tokio::test]
 async fn test_engine_supports_workload() {
     let engine = UniversalGpuEngine::new().await.unwrap();
-    
+
     let supports_gpu = engine.supports_workload(&WorkloadType::Gpu);
     let supports_native = engine.supports_workload(&WorkloadType::Native);
-    
+
     assert!(supports_gpu, "Engine should support GPU workloads");
-    assert!(!supports_native, "Engine should not support Native workloads");
+    assert!(
+        !supports_native,
+        "Engine should not support Native workloads"
+    );
 }
 
 #[tokio::test]
 async fn test_engine_execute_request() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
-    
+
     let request = create_test_request();
     let result = engine.execute(request).await;
-    
+
     // May fail if no GPU available, but should return a result
     assert!(
         result.is_ok() || result.is_err(),
@@ -136,14 +144,14 @@ async fn test_engine_execute_request() {
 #[tokio::test]
 async fn test_engine_metrics() {
     let engine = UniversalGpuEngine::new().await.unwrap();
-    
+
     let metrics_result = engine.get_metrics().await;
     assert!(
         metrics_result.is_ok(),
         "Metrics query should succeed: {:?}",
         metrics_result.err()
     );
-    
+
     let metrics = metrics_result.unwrap();
     assert!(metrics.gpu.is_some(), "GPU metrics should be available");
 }
@@ -152,10 +160,10 @@ async fn test_engine_metrics() {
 async fn test_engine_with_webgpu_framework() {
     let mut config = create_test_config();
     config.discovery.enabled_frameworks = vec![GpuFramework::WebGpu];
-    
+
     let mut engine = UniversalGpuEngine::with_config(config).await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
-    
+
     let caps = engine.get_capabilities();
     assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
 }
@@ -163,11 +171,11 @@ async fn test_engine_with_webgpu_framework() {
 #[tokio::test]
 async fn test_engine_config_serialization() {
     let config = create_test_config();
-    
+
     // Test serialization
     let json = serde_json::to_string(&config);
     assert!(json.is_ok(), "Config should serialize to JSON");
-    
+
     // Test deserialization
     let json_str = json.unwrap();
     let deserialized: Result<UniversalGpuConfig, _> = serde_json::from_str(&json_str);
@@ -178,11 +186,11 @@ async fn test_engine_config_serialization() {
 async fn test_engine_lifecycle() {
     // Test full lifecycle: create -> init -> shutdown
     let mut engine = UniversalGpuEngine::new().await.unwrap();
-    
+
     // Initialize
     let init_result = engine.initialize(RuntimeConfig::default()).await;
     assert!(init_result.is_ok(), "Initialization should succeed");
-    
+
     // Shutdown
     let shutdown_result = engine.shutdown().await;
     assert!(shutdown_result.is_ok(), "Shutdown should succeed");
@@ -191,18 +199,18 @@ async fn test_engine_lifecycle() {
 #[test]
 fn test_config_defaults() {
     let config = UniversalGpuConfig::default();
-    
+
     // Verify default values
     assert!(!config.discovery.enabled_frameworks.is_empty());
     assert!(config.discovery.auto_fallback);
-    assert!(config.discovery.discovery_timeout_ms > 0);
+    assert!(config.discovery.discovery_timeout > Duration::ZERO);
 }
 
 #[test]
 fn test_config_clone() {
     let config = create_test_config();
     let cloned = config.clone();
-    
+
     // Verify clone works
     assert_eq!(
         config.discovery.enabled_frameworks,
@@ -217,11 +225,11 @@ fn test_config_clone() {
 #[tokio::test]
 async fn test_engine_multiple_init_calls() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
-    
+
     // Call initialize multiple times
     let result1 = engine.initialize(RuntimeConfig::default()).await;
     let result2 = engine.initialize(RuntimeConfig::default()).await;
-    
+
     assert!(result1.is_ok(), "First init should succeed");
     assert!(result2.is_ok(), "Second init should be idempotent");
 }
@@ -229,10 +237,10 @@ async fn test_engine_multiple_init_calls() {
 #[tokio::test]
 async fn test_engine_shutdown_before_init() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
-    
+
     // Try shutdown without init
     let result = engine.shutdown().await;
-    
+
     // Should handle gracefully
     assert!(
         result.is_ok(),
@@ -250,7 +258,7 @@ async fn test_engine_framework_fallback() {
         GpuFramework::OpenCl,
         GpuFramework::WebGpu,
     ];
-    
+
     let result = UniversalGpuEngine::with_config(config).await;
     assert!(
         result.is_ok(),
@@ -271,7 +279,7 @@ fn test_gpu_framework_variants() {
 fn test_gpu_framework_clone() {
     let framework1 = GpuFramework::WebGpu;
     let framework2 = framework1.clone();
-    
+
     assert_eq!(framework1, framework2, "Cloned framework should be equal");
 }
 
@@ -280,42 +288,52 @@ fn test_discovery_config() {
     let config = GpuDiscoveryConfig {
         enabled_frameworks: vec![GpuFramework::WebGpu, GpuFramework::Vulkan],
         auto_fallback: true,
-        discovery_timeout_ms: 10000,
+        discovery_timeout: Duration::from_millis(10000),
+        min_requirements: toadstool_runtime_gpu::types::DeviceRequirements::minimal(),
     };
-    
+
     assert_eq!(config.enabled_frameworks.len(), 2);
     assert!(config.auto_fallback);
-    assert_eq!(config.discovery_timeout_ms, 10000);
+    assert_eq!(config.discovery_timeout, Duration::from_millis(10000));
 }
 
 #[test]
 fn test_compilation_config_defaults() {
     let config = CompilationConfig::default();
-    
+
     // Should have sensible defaults
-    // (actual fields depend on CompilationConfig structure)
+    assert!(config.jit_enabled);
+    assert!(!config.target_architectures.is_empty());
 }
 
 #[test]
 fn test_resource_config_defaults() {
     let config = ResourceConfig::default();
-    
+
     // Should have sensible defaults
-    // (actual fields depend on ResourceConfig structure)
+    assert!(config.max_memory_usage_percent > 0.0);
+    assert!(config.max_memory_usage_percent <= 100.0);
 }
 
 #[test]
 fn test_workload_spec_gpu() {
     let spec = WorkloadSpec::Gpu {
-        program: "test".to_string(),
-        language: "wgsl".to_string(),
-        entry_point: Some("main".to_string()),
+        program: GpuProgramSource::OpenCL {
+            source: "kernel void test() {}".to_string(),
+        },
+        kernel_name: "test".to_string(),
+        work_group_size: Some((8, 8, 1)),
+        global_work_size: (64, 64, 1),
+        args: vec![],
     };
-    
+
     match spec {
-        WorkloadSpec::Gpu { program, .. } => {
-            assert_eq!(program, "test");
-        }
+        WorkloadSpec::Gpu { program, .. } => match program {
+            GpuProgramSource::OpenCL { source } => {
+                assert!(source.contains("test"));
+            }
+            _ => panic!("Expected OpenCL program source"),
+        },
         _ => panic!("Expected Gpu workload spec"),
     }
 }

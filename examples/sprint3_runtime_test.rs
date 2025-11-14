@@ -125,7 +125,7 @@ async fn test_container_runtime() -> ToadStoolResult<()> {
 async fn test_gpu_runtime() -> ToadStoolResult<()> {
     info!("🎮 Creating GPU Runtime Engine...");
 
-    let mut gpu_engine = GpuRuntimeEngine::new().await?;
+    let gpu_engine = GpuRuntimeEngine::new().await?;
 
     // Check capabilities
     let capabilities = gpu_engine.get_capabilities();

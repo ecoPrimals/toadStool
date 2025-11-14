@@ -166,6 +166,8 @@ fn test_env_config_get_u16_with_env() {
 
 #[test]
 fn test_env_config_get_u16_invalid_returns_default() {
+    // Clean up any existing value first to avoid test pollution
+    std::env::remove_var("TOADSTOOL_TEST_PORT");
     std::env::set_var("TOADSTOOL_TEST_PORT", "invalid");
     let loader = EnvConfigLoader::new();
     let value = loader.get_u16("TEST_PORT", 8080);
@@ -298,6 +300,8 @@ fn test_env_config_get_duration_with_env() {
 
 #[test]
 fn test_env_config_get_duration_invalid_returns_default() {
+    // Clean up any existing value first to avoid test pollution
+    std::env::remove_var("TOADSTOOL_TEST_DURATION");
     std::env::set_var("TOADSTOOL_TEST_DURATION", "invalid");
     let loader = EnvConfigLoader::new();
     let default = Duration::from_secs(30);

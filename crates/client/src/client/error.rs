@@ -48,13 +48,18 @@ impl From<ClientError> for ToadStoolError {
     fn from(error: ClientError) -> Self {
         match error {
             ClientError::Http(e) => ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: format!("HTTP request: {}", e.url().map(|u| u.as_str()).unwrap_or("unknown")),
+                endpoint: format!(
+                    "HTTP request: {}",
+                    e.url().map(|u| u.as_str()).unwrap_or("unknown")
+                ),
                 reason: e.to_string(),
             }),
-            ClientError::WebSocket(msg) => ToadStoolError::Network(NetworkError::ConnectionFailed {
-                endpoint: "websocket".to_string(),
-                reason: msg,
-            }),
+            ClientError::WebSocket(msg) => {
+                ToadStoolError::Network(NetworkError::ConnectionFailed {
+                    endpoint: "websocket".to_string(),
+                    reason: msg,
+                })
+            }
             ClientError::Authentication(msg) => {
                 ToadStoolError::Security(SecurityError::AuthenticationFailed { reason: msg })
             }
@@ -70,11 +75,9 @@ impl From<ClientError> for ToadStoolError {
                     operation: msg,
                 })
             }
-            ClientError::Serialization(e) => {
-                ToadStoolError::System(SystemError::Serialization {
-                    reason: e.to_string(),
-                })
-            }
+            ClientError::Serialization(e) => ToadStoolError::System(SystemError::Serialization {
+                reason: e.to_string(),
+            }),
             ClientError::UrlParse(e) => {
                 ToadStoolError::Configuration(ConfigError::ValidationError {
                     reason: format!("Invalid URL: {}", e),
@@ -85,7 +88,7 @@ impl From<ClientError> for ToadStoolError {
 }
 
 // ============================================================================
-// Conversions: ToadStoolError → ClientError  
+// Conversions: ToadStoolError → ClientError
 // ============================================================================
 
 impl From<ToadStoolError> for ClientError {

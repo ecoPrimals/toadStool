@@ -12,7 +12,7 @@ use toadstool::{ExecutionRequest, ToadStoolError, ToadStoolResult};
 // Re-export canonical JobPriority for convenience
 pub use toadstool::JobPriority;
 
-use super::resources::{ResourceConstraints, ResourceRequirements, DistributedRetryConfig};
+use super::resources::{DistributedRetryConfig, ResourceConstraints, ResourceRequirements};
 
 /// Universal job for cross-platform execution
 #[derive(Debug, Clone, Serialize, Deserialize)]

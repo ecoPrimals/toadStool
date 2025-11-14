@@ -195,13 +195,11 @@ fn test_job_priority_variants() {
 
 #[test]
 fn test_job_priority_ordering() {
-    assert!(JobPriority::Low < JobPriority::Normal);
-    assert!(JobPriority::Normal < JobPriority::High);
-    assert!(JobPriority::High < JobPriority::Critical);
-
-    assert!(JobPriority::Critical > JobPriority::High);
-    assert!(JobPriority::High > JobPriority::Normal);
-    assert!(JobPriority::Normal > JobPriority::Low);
+    // Lower numeric values = higher priority, so Emergency < Low
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
 }
 
 #[test]

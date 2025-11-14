@@ -7,12 +7,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements,
-    ResourceRequirements, StorageRequirements,
+    ResourceRequirements, StorageRequirements, SystemResources,
 };
 use toadstool::universal::{
     JobPriority, NetworkLocation, PrimalCapability, PrimalContext, ResourceCoordinator,
-    SecurityLevel, UniversalJob, UniversalJobType, UniversalPrimalRegistry,
-    UniversalScheduler, UniversalSystemResources,
+    SecurityLevel, UniversalJob, UniversalJobType, UniversalPrimalRegistry, UniversalScheduler,
+    UniversalSystemResources,
 };
 use uuid::Uuid;
 
@@ -156,46 +156,46 @@ async fn test_coordinator_multiple_allocations() {
 #[test]
 fn test_system_resources_creation() {
     let resources = SystemResources {
-        cpu_cores: 8.0,
-        memory_bytes: 16_000_000_000,
-        storage_bytes: 500_000_000_000,
-        network_bandwidth: 1_000_000_000,
-        gpu_units: 2,
-        special_hardware: HashMap::new(),
+        available_cpu_cores: 8.0,
+        available_memory_bytes: 16_000_000_000,
+        available_storage_bytes: 500_000_000_000,
+        available_network_bandwidth: Some(1_000_000_000),
+        available_gpu_units: 2,
     };
 
-    assert_eq!(resources.cpu_cores, 8.0);
-    assert_eq!(resources.memory_bytes, 16_000_000_000);
-    assert_eq!(resources.gpu_units, 2);
+    assert_eq!(resources.available_cpu_cores, 8.0);
+    assert_eq!(resources.available_memory_bytes, 16_000_000_000);
+    assert_eq!(resources.available_gpu_units, 2);
 }
 
 #[test]
 fn test_system_resources_clone() {
     let original = SystemResources {
-        cpu_cores: 4.0,
-        memory_bytes: 8_000_000_000,
-        storage_bytes: 250_000_000_000,
-        network_bandwidth: 500_000_000,
-        gpu_units: 1,
-        special_hardware: HashMap::new(),
+        available_cpu_cores: 4.0,
+        available_memory_bytes: 8_000_000_000,
+        available_storage_bytes: 250_000_000_000,
+        available_network_bandwidth: Some(500_000_000),
+        available_gpu_units: 1,
     };
 
     let cloned = original.clone();
 
-    assert_eq!(original.cpu_cores, cloned.cpu_cores);
-    assert_eq!(original.memory_bytes, cloned.memory_bytes);
-    assert_eq!(original.gpu_units, cloned.gpu_units);
+    assert_eq!(original.available_cpu_cores, cloned.available_cpu_cores);
+    assert_eq!(
+        original.available_memory_bytes,
+        cloned.available_memory_bytes
+    );
+    assert_eq!(original.available_gpu_units, cloned.available_gpu_units);
 }
 
 #[test]
 fn test_system_resources_debug() {
     let resources = SystemResources {
-        cpu_cores: 16.0,
-        memory_bytes: 32_000_000_000,
-        storage_bytes: 1_000_000_000_000,
-        network_bandwidth: 10_000_000_000,
-        gpu_units: 4,
-        special_hardware: HashMap::new(),
+        available_cpu_cores: 16.0,
+        available_memory_bytes: 32_000_000_000,
+        available_storage_bytes: 1_000_000_000_000,
+        available_network_bandwidth: Some(10_000_000_000),
+        available_gpu_units: 4,
     };
 
     let debug_str = format!("{:?}", resources);

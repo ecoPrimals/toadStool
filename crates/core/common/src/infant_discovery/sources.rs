@@ -9,8 +9,8 @@
 //! Migrated from async_trait to native async for zero-cost abstraction.
 
 use std::env;
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 use super::capabilities::*;
 
@@ -44,10 +44,13 @@ impl Default for EnvironmentSource {
 }
 
 impl EndpointSource for EnvironmentSource {
-    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let env_var = self.env_var_name(service);
         let service = service.to_string();
-        
+
         Box::pin(async move {
             match env::var(&env_var) {
                 Ok(endpoint) => {
@@ -139,10 +142,13 @@ impl Default for FallbackSource {
 }
 
 impl EndpointSource for FallbackSource {
-    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let service = service.to_string();
         let result = self.fallbacks.get(&service).cloned();
-        
+
         Box::pin(async move {
             match result {
                 Some(endpoint) => {
@@ -182,9 +188,12 @@ impl Default for MDNSSource {
 }
 
 impl EndpointSource for MDNSSource {
-    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let service = service.to_string();
-        
+
         Box::pin(async move {
             // mDNS discovery would require platform-specific libraries (Avahi on Linux, Bonjour on macOS)
             // For now, check common local service patterns that don't require external libraries
@@ -269,95 +278,29 @@ impl Default for ServiceMeshSource {
 }
 
 impl EndpointSource for ServiceMeshSource {
-    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let service = service.to_string();
         let mesh_type = self.mesh_type;
-        
+
         Box::pin(async move {
             match mesh_type {
-            ServiceMeshType::Consul => {
-                // Query Consul API for service
-                let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
-                    .unwrap_or_else(|_| "http://localhost:8500".to_string());
+                ServiceMeshType::Consul => {
+                    // Query Consul API for service
+                    let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
+                        .unwrap_or_else(|_| "http://localhost:8500".to_string());
 
-                let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
-
-                match reqwest::Client::new()
-                    .get(&url)
-                    .timeout(std::time::Duration::from_secs(5))
-                    .send()
-                    .await
-                {
-                    Ok(response) if response.status().is_success() => {
-                        if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
-                            if let Some(first_service) = services.first() {
-                                if let (Some(addr), Some(port)) = (
-                                    first_service.get("ServiceAddress").and_then(|v| v.as_str()),
-                                    first_service.get("ServicePort").and_then(|v| v.as_u64()),
-                                ) {
-                                    let endpoint = format!("http://{}:{}", addr, port);
-                                    tracing::info!(
-                                        service,
-                                        endpoint,
-                                        "Discovered service via Consul"
-                                    );
-                                    return Ok(Some(endpoint));
-                                }
-                            }
-                        }
-                    }
-                    Ok(_) | Err(_) => {
-                        tracing::trace!(service, "Consul service lookup failed");
-                    }
-                }
-            }
-            ServiceMeshType::Etcd => {
-                // Query etcd for service key
-                let etcd_addr = std::env::var("ETCD_ENDPOINTS")
-                    .unwrap_or_else(|_| "http://localhost:2379".to_string());
-
-                let key = format!("/services/{}", service);
-                let url = format!("{}/v3/kv/range", etcd_addr);
-
-                use base64::Engine;
-                let payload = serde_json::json!({
-                    "key": base64::engine::general_purpose::STANDARD.encode(key.as_bytes()),
-                });
-
-                match reqwest::Client::new()
-                    .post(&url)
-                    .json(&payload)
-                    .timeout(std::time::Duration::from_secs(5))
-                    .send()
-                    .await
-                {
-                    Ok(response) if response.status().is_success() => {
-                        tracing::trace!(service, "Found service in etcd");
-                        // Would need to parse etcd response format
-                    }
-                    Ok(_) | Err(_) => {
-                        tracing::trace!(service, "etcd service lookup failed");
-                    }
-                }
-            }
-            ServiceMeshType::Kubernetes => {
-                // Try Kubernetes DNS (works inside cluster)
-                let k8s_dns = format!("{}.default.svc.cluster.local", service);
-                tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
-                return Ok(Some(format!("http://{}", k8s_dns)));
-            }
-            ServiceMeshType::Auto => {
-                // Auto-detect: try Consul first, then etcd, then k8s DNS
-                // Try Consul
-                if let Ok(consul_addr) = std::env::var("CONSUL_HTTP_ADDR") {
                     let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
-                    if let Ok(response) = reqwest::Client::new()
+
+                    match reqwest::Client::new()
                         .get(&url)
-                        .timeout(std::time::Duration::from_secs(2))
+                        .timeout(std::time::Duration::from_secs(5))
                         .send()
                         .await
                     {
-                        if response.status().is_success() {
+                        Ok(response) if response.status().is_success() => {
                             if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
                                 if let Some(first_service) = services.first() {
                                     if let (Some(addr), Some(port)) = (
@@ -370,22 +313,97 @@ impl EndpointSource for ServiceMeshSource {
                                         tracing::info!(
                                             service,
                                             endpoint,
-                                            "Auto-discovered service via Consul"
+                                            "Discovered service via Consul"
                                         );
                                         return Ok(Some(endpoint));
                                     }
                                 }
                             }
                         }
+                        Ok(_) | Err(_) => {
+                            tracing::trace!(service, "Consul service lookup failed");
+                        }
                     }
                 }
+                ServiceMeshType::Etcd => {
+                    // Query etcd for service key
+                    let etcd_addr = std::env::var("ETCD_ENDPOINTS")
+                        .unwrap_or_else(|_| "http://localhost:2379".to_string());
 
-                // Try K8s DNS as fallback
-                let k8s_dns = format!("{}.default.svc.cluster.local", service);
-                tracing::trace!(service, "Auto-detection: trying K8s DNS");
-                return Ok(Some(format!("http://{}", k8s_dns)));
+                    let key = format!("/services/{}", service);
+                    let url = format!("{}/v3/kv/range", etcd_addr);
+
+                    use base64::Engine;
+                    let payload = serde_json::json!({
+                        "key": base64::engine::general_purpose::STANDARD.encode(key.as_bytes()),
+                    });
+
+                    match reqwest::Client::new()
+                        .post(&url)
+                        .json(&payload)
+                        .timeout(std::time::Duration::from_secs(5))
+                        .send()
+                        .await
+                    {
+                        Ok(response) if response.status().is_success() => {
+                            tracing::trace!(service, "Found service in etcd");
+                            // Would need to parse etcd response format
+                        }
+                        Ok(_) | Err(_) => {
+                            tracing::trace!(service, "etcd service lookup failed");
+                        }
+                    }
+                }
+                ServiceMeshType::Kubernetes => {
+                    // Try Kubernetes DNS (works inside cluster)
+                    let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                    tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
+                    return Ok(Some(format!("http://{}", k8s_dns)));
+                }
+                ServiceMeshType::Auto => {
+                    // Auto-detect: try Consul first, then etcd, then k8s DNS
+                    // Try Consul
+                    if let Ok(consul_addr) = std::env::var("CONSUL_HTTP_ADDR") {
+                        let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
+                        if let Ok(response) = reqwest::Client::new()
+                            .get(&url)
+                            .timeout(std::time::Duration::from_secs(2))
+                            .send()
+                            .await
+                        {
+                            if response.status().is_success() {
+                                if let Ok(services) =
+                                    response.json::<Vec<serde_json::Value>>().await
+                                {
+                                    if let Some(first_service) = services.first() {
+                                        if let (Some(addr), Some(port)) = (
+                                            first_service
+                                                .get("ServiceAddress")
+                                                .and_then(|v| v.as_str()),
+                                            first_service
+                                                .get("ServicePort")
+                                                .and_then(|v| v.as_u64()),
+                                        ) {
+                                            let endpoint = format!("http://{}:{}", addr, port);
+                                            tracing::info!(
+                                                service,
+                                                endpoint,
+                                                "Auto-discovered service via Consul"
+                                            );
+                                            return Ok(Some(endpoint));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Try K8s DNS as fallback
+                    let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                    tracing::trace!(service, "Auto-detection: trying K8s DNS");
+                    return Ok(Some(format!("http://{}", k8s_dns)));
+                }
             }
-        }
 
             Ok(None)
         })
@@ -416,87 +434,90 @@ impl ConfigFileSource {
 }
 
 impl EndpointSource for ConfigFileSource {
-    fn resolve(&self, service: &str) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
         let service = service.to_string();
         let config_path = self.config_path.clone();
-        
+
         Box::pin(async move {
             // Try to read and parse config file
             match tokio::fs::read_to_string(&config_path).await {
-            Ok(contents) => {
-                // Try to parse as TOML
-                match toml::from_str::<toml::Value>(&contents) {
-                    Ok(config) => {
-                        // Look for service endpoint in config
-                        // Try several common patterns:
-                        // 1. services.{service}.endpoint
-                        // 2. {service}.endpoint
-                        // 3. endpoints.{service}
+                Ok(contents) => {
+                    // Try to parse as TOML
+                    match toml::from_str::<toml::Value>(&contents) {
+                        Ok(config) => {
+                            // Look for service endpoint in config
+                            // Try several common patterns:
+                            // 1. services.{service}.endpoint
+                            // 2. {service}.endpoint
+                            // 3. endpoints.{service}
 
-                        let patterns = vec![
-                            format!("services.{}.endpoint", service),
-                            format!("{}.endpoint", service),
-                            format!("endpoints.{}", service),
-                        ];
+                            let patterns = vec![
+                                format!("services.{}.endpoint", service),
+                                format!("{}.endpoint", service),
+                                format!("endpoints.{}", service),
+                            ];
 
-                        for pattern in patterns {
-                            let parts: Vec<&str> = pattern.split('.').collect();
-                            let mut current: &toml::Value = &config;
+                            for pattern in patterns {
+                                let parts: Vec<&str> = pattern.split('.').collect();
+                                let mut current: &toml::Value = &config;
 
-                            let mut found = true;
-                            for part in parts {
-                                if let Some(table) = current.as_table() {
-                                    if let Some(value) = table.get(part) {
-                                        current = value;
+                                let mut found = true;
+                                for part in parts {
+                                    if let Some(table) = current.as_table() {
+                                        if let Some(value) = table.get(part) {
+                                            current = value;
+                                        } else {
+                                            found = false;
+                                            break;
+                                        }
                                     } else {
                                         found = false;
                                         break;
                                     }
-                                } else {
-                                    found = false;
-                                    break;
+                                }
+
+                                if found {
+                                    if let Some(endpoint) = current.as_str() {
+                                        tracing::info!(
+                                            service,
+                                            endpoint,
+                                            config_path = ?config_path,
+                                            "Found service endpoint in config file"
+                                        );
+                                        return Ok(Some(endpoint.to_string()));
+                                    }
                                 }
                             }
 
-                            if found {
-                                if let Some(endpoint) = current.as_str() {
-                                    tracing::info!(
-                                        service,
-                                        endpoint,
-                                        config_path = ?config_path,
-                                        "Found service endpoint in config file"
-                                    );
-                                    return Ok(Some(endpoint.to_string()));
-                                }
-                            }
+                            tracing::trace!(
+                                service,
+                                config_path = ?config_path,
+                                "Service not found in config file"
+                            );
+                            Ok(None)
                         }
-
-                        tracing::trace!(
-                            service,
-                            config_path = ?config_path,
-                            "Service not found in config file"
-                        );
-                        Ok(None)
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            error = %e,
-                            config_path = ?config_path,
-                            "Failed to parse config file as TOML"
-                        );
-                        Ok(None)
+                        Err(e) => {
+                            tracing::warn!(
+                                error = %e,
+                                config_path = ?config_path,
+                                "Failed to parse config file as TOML"
+                            );
+                            Ok(None)
+                        }
                     }
                 }
+                Err(e) => {
+                    tracing::trace!(
+                        error = %e,
+                        config_path = ?config_path,
+                        "Could not read config file"
+                    );
+                    Ok(None)
+                }
             }
-            Err(e) => {
-                tracing::trace!(
-                    error = %e,
-                    config_path = ?config_path,
-                    "Could not read config file"
-                );
-                Ok(None)
-            }
-        }
         })
     }
 

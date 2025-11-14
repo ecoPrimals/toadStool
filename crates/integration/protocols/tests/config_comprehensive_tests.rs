@@ -3,12 +3,10 @@
 //! This test suite provides extensive coverage of protocol configuration structures
 //! including default values, validation, and configuration patterns.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use std::time::Duration;
 use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::config::*;
-use toadstool_common::auth::ServiceAuthConfig;
-use toadstool_integration_protocols::types::{AuthType, MessageFormat, TransportType};
+use toadstool_integration_protocols::types::{MessageFormat, TransportType};
 
 // ============================================================================
 // ProtocolConfig Tests
@@ -134,74 +132,57 @@ fn test_connection_pool_config_clone() {
 
 #[test]
 fn test_auth_config_bearer_token() {
-    let config = ServiceAuthConfig {
-        auth_type: AuthType::Bearer,
-        token: Some("test-token".to_string()),
-        cert_path: None,
-        key_path: None,
-        ca_path: None,
-    };
+    let config = ServiceAuthConfig::bearer("test-token");
 
-    assert!(matches!(config.auth_type, AuthType::Bearer));
-    assert_eq!(config.token, Some("test-token".to_string()));
+    assert!(matches!(
+        config.auth_type,
+        toadstool_common::AuthType::Bearer
+    ));
+    assert_eq!(config.credentials.token, Some("test-token".to_string()));
 }
 
 #[test]
 fn test_auth_config_api_key() {
-    let config = ServiceAuthConfig {
-        auth_type: AuthType::ApiKey,
-        token: Some("api-key-123".to_string()),
-        cert_path: None,
-        key_path: None,
-        ca_path: None,
-    };
+    let config = ServiceAuthConfig::api_key("api-key-123");
 
-    assert!(matches!(config.auth_type, AuthType::ApiKey));
-    assert!(config.token.is_some());
+    assert!(matches!(
+        config.auth_type,
+        toadstool_common::AuthType::ApiKey
+    ));
+    assert!(config.credentials.api_key.is_some());
 }
 
 #[test]
 fn test_auth_config_mtls_paths() {
-    let config = ServiceAuthConfig {
-        auth_type: AuthType::MutualTls,
-        token: None,
-        cert_path: Some("/path/to/cert.pem".to_string()),
-        key_path: Some("/path/to/key.pem".to_string()),
-        ca_path: Some("/path/to/ca.pem".to_string()),
-    };
+    let config = ServiceAuthConfig::mtls(
+        "/path/to/cert.pem",
+        "/path/to/key.pem",
+        Some("/path/to/ca.pem".to_string()),
+    );
 
-    assert!(matches!(config.auth_type, AuthType::MutualTls));
-    assert!(config.cert_path.is_some());
-    assert!(config.key_path.is_some());
-    assert!(config.ca_path.is_some());
+    assert!(matches!(
+        config.auth_type,
+        toadstool_common::AuthType::MutualTLS
+    ));
+    assert!(config.credentials.cert_path.is_some());
+    assert!(config.credentials.key_path.is_some());
+    assert!(config.credentials.ca_path.is_some());
 }
 
 #[test]
 fn test_auth_config_none() {
-    let config = ServiceAuthConfig {
-        auth_type: AuthType::None,
-        token: None,
-        cert_path: None,
-        key_path: None,
-        ca_path: None,
-    };
+    let config = ServiceAuthConfig::none();
 
-    assert!(matches!(config.auth_type, AuthType::None));
-    assert!(config.token.is_none());
+    assert!(matches!(config.auth_type, toadstool_common::AuthType::None));
+    assert!(config.credentials.token.is_none());
 }
 
 #[test]
 fn test_auth_config_clone() {
-    let config1 = ServiceAuthConfig {
-        auth_type: AuthType::Bearer,
-        token: Some("token".to_string()),
-        cert_path: None,
-        key_path: None,
-        ca_path: None,
-    };
+    let config1 = ServiceAuthConfig::bearer("token");
 
     let config2 = config1.clone();
-    assert_eq!(config1.token, config2.token);
+    assert_eq!(config1.credentials.token, config2.credentials.token);
 }
 
 // ============================================================================
@@ -211,13 +192,7 @@ fn test_auth_config_clone() {
 #[test]
 fn test_protocol_config_with_auth() {
     let config = ProtocolConfig {
-        auth_config: Some(ServiceAuthConfig {
-            auth_type: AuthType::Bearer,
-            token: Some("test".to_string()),
-            cert_path: None,
-            key_path: None,
-            ca_path: None,
-        }),
+        auth_config: Some(ServiceAuthConfig::bearer("test")),
         ..Default::default()
     };
 

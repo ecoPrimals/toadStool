@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use toadstool::workload::{PortMapping, PortProtocol};
 use toadstool::*;
 
 // ============================================================================
@@ -816,13 +817,13 @@ fn test_port_mapping_well_known_ports() {
     let http = PortMapping {
         host_port: 80,
         container_port: 80,
-        protocol: "tcp".to_string(),
+        protocol: PortProtocol::Tcp,
     };
 
     let https = PortMapping {
         host_port: 443,
         container_port: 443,
-        protocol: "tcp".to_string(),
+        protocol: PortProtocol::Tcp,
     };
 
     assert_eq!(http.host_port, 80);
@@ -834,7 +835,7 @@ fn test_port_mapping_high_port_numbers() {
     let port = PortMapping {
         host_port: 65535,
         container_port: 8080,
-        protocol: "tcp".to_string(),
+        protocol: PortProtocol::Tcp,
     };
 
     assert_eq!(port.host_port, 65535);

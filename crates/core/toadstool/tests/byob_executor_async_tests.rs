@@ -5,12 +5,10 @@
 
 use chrono::Utc;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio;
-use uuid::Uuid;
-
-use async_trait::async_trait;
 use toadstool::byob::{
     create_byob_executor, ByobComputeExecutor, ByobDeploymentRequest, ByobExecutor,
     ByobExecutorConfig, HealthCheck, PortMapping, ServiceResourceRequirements, ServiceSpec,
@@ -21,6 +19,8 @@ use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
     RuntimeEngine, RuntimeMetrics, RuntimeType, ToadStoolResult, WorkloadType,
 };
+use tokio;
+use uuid::Uuid;
 
 // ============================================================================
 // Mock Runtime Engine for Async Testing
@@ -55,39 +55,51 @@ impl AsyncMockRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for AsyncMockRuntimeEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
-        tokio::time::sleep(Duration::from_millis(self.delay_ms)).await;
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let delay = self.delay_ms;
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            Ok(())
+        })
     }
 
-    async fn execute(&self, _request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        tokio::time::sleep(Duration::from_millis(self.delay_ms)).await;
+    fn execute(
+        &self,
+        _request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let delay = self.delay_ms;
+        let should_succeed = self.should_succeed;
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(delay)).await;
 
-        if self.should_succeed {
-            Ok(ExecutionResponse {
-                execution_id: Uuid::new_v4(),
-                status: ExecutionStatus::Success,
-                output: ExecutionOutput {
-                    data: Vec::new(),
-                    stdout: Some("Service started successfully".to_string()),
-                    stderr: None,
-                    exit_code: Some(0),
-                    format: Some("text/plain".to_string()),
-                    result: HashMap::new(),
-                    metadata: HashMap::new(),
-                },
-                metrics: RuntimeMetrics::default(),
-                duration: Duration::from_millis(self.delay_ms),
-                runtime_used: RuntimeType::Native,
-                warnings: Vec::new(),
-            })
-        } else {
-            Err(toadstool::ToadStoolError::execution(
-                "Service execution failed".to_string(),
-            ))
-        }
+            if should_succeed {
+                Ok(ExecutionResponse {
+                    execution_id: Uuid::new_v4(),
+                    status: ExecutionStatus::Success,
+                    output: ExecutionOutput {
+                        data: Vec::new(),
+                        stdout: Some("Service started successfully".to_string()),
+                        stderr: None,
+                        exit_code: Some(0),
+                        format: Some("text/plain".to_string()),
+                        result: HashMap::new(),
+                        metadata: HashMap::new(),
+                    },
+                    metrics: RuntimeMetrics::default(),
+                    duration: Duration::from_millis(delay),
+                    runtime_used: RuntimeType::Native,
+                    warnings: Vec::new(),
+                })
+            } else {
+                Err(toadstool::ToadStoolError::execution(
+                    "Service execution failed".to_string(),
+                ))
+            }
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -104,13 +116,18 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
         true
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics::default())
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move { Ok(RuntimeMetrics::default()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        tokio::time::sleep(Duration::from_millis(self.delay_ms)).await;
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let delay = self.delay_ms;
+        Box::pin(async move {
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            Ok(())
+        })
     }
 }
 

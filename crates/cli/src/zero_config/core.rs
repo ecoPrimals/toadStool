@@ -111,7 +111,7 @@ impl ZeroConfigDeployment {
 /// CLI command for zero-configuration deployment
 pub async fn execute_zero_config_deployment() -> Result<()> {
     use super::ZeroConfigCore;
-    
+
     let mut deployment = ZeroConfigDeployment::new();
 
     let duration = deployment.rapid_bootstrap().await?;

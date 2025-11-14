@@ -169,8 +169,8 @@ pub struct InterServiceConfig {
     pub timeouts: TimeoutConfig,
 }
 
-// NOTE: ConnectionPoolConfig, RetryConfig, and TimeoutConfig are now imported 
-// from toadstool_common::config_bases. The previous definitions here have been 
+// NOTE: ConnectionPoolConfig, RetryConfig, and TimeoutConfig are now imported
+// from toadstool_common::config_bases. The previous definitions here have been
 // removed to use the shared base types for consistency across the codebase.
 
 /// DNS service discovery configuration

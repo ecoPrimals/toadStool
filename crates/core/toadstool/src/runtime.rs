@@ -125,14 +125,14 @@ impl RuntimeSelectionStrategy {
                 // Try engines in a deterministic order for consistency
                 // First check if the workload type suggests a preferred runtime
                 let workload_type = request.workload.workload_type();
-                
+
                 // Try to find an engine that supports the workload
                 for (runtime_type, engine) in engines_guard.iter() {
                     if engine.supports_workload(&workload_type) {
                         return Ok(runtime_type.clone());
                     }
                 }
-                
+
                 // If no engine explicitly supports it, return the first available
                 engines_guard
                     .keys()
@@ -144,13 +144,13 @@ impl RuntimeSelectionStrategy {
                 // For now, just return the first available that supports the workload
                 // In a real implementation, this would check load metrics
                 let workload_type = request.workload.workload_type();
-                
+
                 for (runtime_type, engine) in engines_guard.iter() {
                     if engine.supports_workload(&workload_type) {
                         return Ok(runtime_type.clone());
                     }
                 }
-                
+
                 engines_guard
                     .keys()
                     .next()

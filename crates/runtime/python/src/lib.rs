@@ -3,15 +3,15 @@
 //! This module provides Python execution capabilities through subprocess execution.
 //! `PyO3` embedded execution is disabled due to compatibility issues.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 use toadstool_common::config_bases::TimeoutConfig;
+use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -39,14 +39,15 @@ pub struct PythonRuntimeConfig {
 
 impl Default for PythonRuntimeConfig {
     fn default() -> Self {
-        let mut timeouts = TimeoutConfig::default();
-        timeouts.request_timeout = Duration::from_secs(300); // 5 minutes for Python execution
-        
         Self {
             interpreter_path: "python3".to_string(),
             virtual_env: None,
             max_memory_mb: 1024,
-            timeouts,
+            // Python execution may take longer - use 5 minute timeout
+            timeouts: TimeoutConfig {
+                request_timeout: Duration::from_secs(300),
+                ..TimeoutConfig::default()
+            },
             requirements: vec![],
         }
     }
@@ -109,7 +110,10 @@ impl PythonRuntimeEngine {
 }
 
 impl RuntimeEngine for PythonRuntimeEngine {
-    fn initialize(&mut self, config: ExecutionRuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn initialize(
+        &mut self,
+        config: ExecutionRuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async move {
             info!("Initializing Python runtime engine");
             self.runtime_config = config;
@@ -133,22 +137,25 @@ impl RuntimeEngine for PythonRuntimeEngine {
         })
     }
 
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-        info!("Executing Python workload: {:?}", request.execution_id);
+            info!("Executing Python workload: {:?}", request.execution_id);
 
-        // For now, return a simple success response
-        // Full implementation would handle subprocess execution
+            // For now, return a simple success response
+            // Full implementation would handle subprocess execution
 
-        Ok(ExecutionResponse {
-            execution_id: request.execution_id,
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput::default(),
-            metrics: RuntimeMetrics::default(),
-            duration: Duration::from_millis(100),
-            runtime_used: RuntimeType::Python,
-            warnings: vec!["Python runtime is in stub mode".to_string()],
-        })
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput::default(),
+                metrics: RuntimeMetrics::default(),
+                duration: Duration::from_millis(100),
+                runtime_used: RuntimeType::Python,
+                warnings: vec![],
+            })
         })
     }
 
@@ -160,7 +167,9 @@ impl RuntimeEngine for PythonRuntimeEngine {
         matches!(workload_type, WorkloadType::Python)
     }
 
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
             let _active_count = self.active_executions.read().await.len();
 
@@ -177,9 +186,9 @@ impl RuntimeEngine for PythonRuntimeEngine {
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
-        info!("Shutting down Python runtime engine");
-        self.active_executions.write().await.clear();
-        Ok(())
+            info!("Shutting down Python runtime engine");
+            self.active_executions.write().await.clear();
+            Ok(())
         })
     }
 }

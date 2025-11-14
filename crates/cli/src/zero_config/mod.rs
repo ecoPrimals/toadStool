@@ -7,20 +7,20 @@
 pub use types::*;
 
 // Module declarations
-mod types;
-mod core;
-mod discovery;
 mod configuration;
+mod core;
 mod deployment;
+mod discovery;
+mod types;
 mod verification;
 
 // Re-export core trait
 pub use core::ZeroConfigCore;
 
 // Re-export extension traits
-pub use discovery::DiscoveryExt;
 pub use configuration::ConfigurationExt;
 pub use deployment::DeploymentExt;
+pub use discovery::DiscoveryExt;
 pub use verification::VerificationExt;
 
 // Re-export main struct from types

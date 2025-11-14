@@ -21,20 +21,16 @@ pub mod error_codes;
 pub mod infant_discovery;
 
 // Re-export commonly used types
-pub use auth::{AuthType, AuthCredentials, ServiceAuthConfig};
+pub use auth::{AuthCredentials, AuthType, ServiceAuthConfig};
 
 pub use error::{
-    ToadStoolError, ToadStoolResult, ToadStoolErrorExt, ToadStoolErrorWithCode, ToadStoolResultWithCode,
-    ExecutionError, ExecutionResult,
-    ConfigError, ConfigResult,
-    ResourceError, ResourceResult,
-    IntegrationError, IntegrationResult,
-    SecurityError, SecurityResult,
-    NetworkError, NetworkResult,
-    SystemError, SystemResult,
+    ConfigError, ConfigResult, ExecutionError, ExecutionResult, IntegrationError,
+    IntegrationResult, NetworkError, NetworkResult, ResourceError, ResourceResult, SecurityError,
+    SecurityResult, SystemError, SystemResult, ToadStoolError, ToadStoolErrorExt,
+    ToadStoolErrorWithCode, ToadStoolResult, ToadStoolResultWithCode,
 };
 
-pub use error_codes::{ErrorCode, ErrorCategory, codes};
+pub use error_codes::{codes, ErrorCategory, ErrorCode};
 
 /// A unique identifier for `ToadStool` resources
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

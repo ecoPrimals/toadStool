@@ -41,13 +41,7 @@ fn test_protocol_config_custom_service_id() {
 
 #[test]
 fn test_protocol_config_with_auth() {
-    let auth_config = ServiceAuthConfig {
-        auth_type: AuthType::Bearer,
-        token: Some("token123".to_string()),
-        cert_path: None,
-        key_path: None,
-        ca_path: None,
-    };
+    let auth_config = ServiceAuthConfig::bearer("token123");
 
     let config = ProtocolConfig {
         service_id: "secure-service".to_string(),

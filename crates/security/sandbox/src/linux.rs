@@ -13,7 +13,7 @@ use tracing::{debug, info};
 use toadstool::error::ToadStoolResult;
 use toadstool_security_policies::SecurityPolicy;
 
-use crate::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
+use crate::types::{FilesystemMount, ResourceUsage, SandboxConfig, SandboxSpec};
 
 /// Linux-specific sandbox manager
 pub struct LinuxSandboxManager {

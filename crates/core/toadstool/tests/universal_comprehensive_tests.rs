@@ -318,19 +318,21 @@ fn test_job_priority_variants() {
 
 #[test]
 fn test_job_priority_ordering() {
-    assert!(JobPriority::Low < JobPriority::Normal);
-    assert!(JobPriority::Normal < JobPriority::High);
-    assert!(JobPriority::High < JobPriority::Critical);
-    assert!(JobPriority::Critical < JobPriority::Emergency);
+    // Lower numeric values = higher priority, so Emergency < Low in Rust's comparison
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
 }
 
 #[test]
 fn test_job_priority_numeric_values() {
-    assert_eq!(JobPriority::Low as i32, 0);
-    assert_eq!(JobPriority::Normal as i32, 1);
+    // Emergency = 0 (highest priority), Low = 4 (lowest priority)
+    assert_eq!(JobPriority::Emergency as i32, 0);
+    assert_eq!(JobPriority::Critical as i32, 1);
     assert_eq!(JobPriority::High as i32, 2);
-    assert_eq!(JobPriority::Critical as i32, 3);
-    assert_eq!(JobPriority::Emergency as i32, 4);
+    assert_eq!(JobPriority::Normal as i32, 3);
+    assert_eq!(JobPriority::Low as i32, 4);
 }
 
 #[test]

@@ -1,0 +1,62 @@
+# ToadStool Clippy Configuration
+# Aligned with BearDog ecosystem coding standards
+# See: ../beardog/BEARDOG_CODING_STANDARDS.md
+
+# Cognitive complexity threshold (lower = stricter)
+cognitive-complexity-threshold = 30
+
+# Code quality thresholds
+too-many-lines-threshold = 1000
+type-complexity-threshold = 250
+single-char-binding-names-threshold = 4
+
+# Allow unwrap/expect in tests
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+
+# ============================================================================
+# BearDog Ecosystem Standards - Pedantic & Nursery Lints
+# ============================================================================
+# These lints are warnings in development, but should be addressed for production.
+# To enforce strictly, run: cargo clippy -- -D clippy::pedantic -D clippy::nursery
+
+# Additional configuration
+avoid-breaking-exported-api = true
+check-private-items = false  # Only check public API
+
+# Documentation
+doc-valid-idents = [
+    "ToadStool",
+    "BiomeOS",
+    "BearDog",
+    "NestGate",
+    "Songbird",
+    "Squirrel",
+    "WASM",
+    "WebAssembly",
+    "HSM",
+    "ecoPrimals",
+]
+
+# Allow certain patterns in tests
+allow-indexing-slicing-in-tests = true
+allow-useless-vec-in-tests = true
+
+# Arithmetic operations configuration
+arithmetic-side-effects-allowed = []
+
+# ============================================================================
+# Production Code Standards (BearDog Alignment)
+# ============================================================================
+# Note: The following are enforced via command-line flags rather than config:
+#   - pedantic = "warn"     # Run with: -W clippy::pedantic
+#   - nursery = "warn"      # Run with: -W clippy::nursery
+#   - unwrap_used = "deny"  # Run with: -D clippy::unwrap_used (production only)
+#   - expect_used = "warn"  # Run with: -W clippy::expect_used (production only)
+#   - panic = "deny"        # Run with: -D clippy::panic (production only)
+#   - todo = "deny"         # Run with: -D clippy::todo (production only)
+#
+# For full BearDog-compliant check:
+#   cargo clippy --lib -- -W clippy::pedantic -W clippy::nursery -D clippy::unwrap_used

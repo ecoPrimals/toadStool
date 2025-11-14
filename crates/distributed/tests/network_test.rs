@@ -2,6 +2,7 @@
 //!
 //! Day 2 of Month 1 test expansion - focusing on network types and fault tolerance
 
+use std::time::Duration;
 use toadstool_distributed::network::load_balancer::{
     CircuitBreaker, CircuitBreakerState, FaultToleranceManager, NetworkLoadBalancer, NodeHealth,
 };
@@ -323,12 +324,12 @@ fn test_network_distributor_config_disabled() {
     let config = NetworkDistributorConfig {
         enabled: false,
         max_concurrent_distributions: 5,
-        distribution_timeout_seconds: 60,
+        distribution_timeout: Duration::from_secs(60),
     };
 
     assert!(!config.enabled);
     assert_eq!(config.max_concurrent_distributions, 5);
-    assert_eq!(config.distribution_timeout_seconds, 60);
+    assert_eq!(config.distribution_timeout, Duration::from_secs(60));
 }
 
 #[test]
@@ -336,7 +337,7 @@ fn test_network_distributor_config_high_concurrency() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 100,
-        distribution_timeout_seconds: 600,
+        distribution_timeout: Duration::from_secs(600),
     };
 
     assert_eq!(config.max_concurrent_distributions, 100);
@@ -347,7 +348,7 @@ fn test_network_distributor_config_low_concurrency() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 1,
-        distribution_timeout_seconds: 30,
+        distribution_timeout: Duration::from_secs(30),
     };
 
     assert_eq!(config.max_concurrent_distributions, 1);
@@ -358,10 +359,10 @@ fn test_network_distributor_config_short_timeout() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 10,
-        distribution_timeout_seconds: 10,
+        distribution_timeout: Duration::from_secs(10),
     };
 
-    assert_eq!(config.distribution_timeout_seconds, 10);
+    assert_eq!(config.distribution_timeout, Duration::from_secs(10));
 }
 
 #[test]
@@ -369,10 +370,10 @@ fn test_network_distributor_config_long_timeout() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 10,
-        distribution_timeout_seconds: 3600,
+        distribution_timeout: Duration::from_secs(3600),
     };
 
-    assert_eq!(config.distribution_timeout_seconds, 3600);
+    assert_eq!(config.distribution_timeout, Duration::from_secs(3600));
 }
 
 #[test]
@@ -380,7 +381,7 @@ fn test_network_distributor_config_clone() {
     let config1 = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 20,
-        distribution_timeout_seconds: 120,
+        distribution_timeout: Duration::from_secs(120),
     };
 
     let config2 = config1.clone();
@@ -390,10 +391,7 @@ fn test_network_distributor_config_clone() {
         config1.max_concurrent_distributions,
         config2.max_concurrent_distributions
     );
-    assert_eq!(
-        config1.distribution_timeout_seconds,
-        config2.distribution_timeout_seconds
-    );
+    assert_eq!(config1.distribution_timeout, config2.distribution_timeout);
 }
 
 // ============================================================================
@@ -687,7 +685,7 @@ fn test_network_distributor_creation_with_custom_config() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 50,
-        distribution_timeout_seconds: 180,
+        distribution_timeout: Duration::from_secs(180),
     };
     let _distributor = NetworkDistributor::new(config);
     // Should create successfully
@@ -698,7 +696,7 @@ fn test_network_distributor_with_disabled_config() {
     let config = NetworkDistributorConfig {
         enabled: false,
         max_concurrent_distributions: 10,
-        distribution_timeout_seconds: 300,
+        distribution_timeout: Duration::from_secs(300),
     };
     let _distributor = NetworkDistributor::new(config);
     // Should create even when disabled
@@ -713,12 +711,12 @@ fn test_config_minimal_resources() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 1,
-        distribution_timeout_seconds: 30,
+        distribution_timeout: Duration::from_secs(30),
     };
 
     assert!(config.enabled);
     assert_eq!(config.max_concurrent_distributions, 1);
-    assert_eq!(config.distribution_timeout_seconds, 30);
+    assert_eq!(config.distribution_timeout, Duration::from_secs(30));
 }
 
 #[test]
@@ -726,11 +724,11 @@ fn test_config_maximum_resources() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 1000,
-        distribution_timeout_seconds: 7200,
+        distribution_timeout: Duration::from_secs(7200),
     };
 
     assert_eq!(config.max_concurrent_distributions, 1000);
-    assert_eq!(config.distribution_timeout_seconds, 7200);
+    assert_eq!(config.distribution_timeout, Duration::from_secs(7200));
 }
 
 #[test]
@@ -738,7 +736,7 @@ fn test_config_serialization_roundtrip() {
     let config = NetworkDistributorConfig {
         enabled: true,
         max_concurrent_distributions: 25,
-        distribution_timeout_seconds: 450,
+        distribution_timeout: Duration::from_secs(450),
     };
 
     let json = serde_json::to_string(&config).expect("Failed to serialize");
@@ -751,7 +749,7 @@ fn test_config_serialization_roundtrip() {
         deserialized.max_concurrent_distributions
     );
     assert_eq!(
-        config.distribution_timeout_seconds,
-        deserialized.distribution_timeout_seconds
+        config.distribution_timeout,
+        deserialized.distribution_timeout
     );
 }

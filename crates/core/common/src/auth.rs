@@ -32,8 +32,7 @@ impl Default for AuthType {
 }
 
 /// Service authentication credentials
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthCredentials {
     /// Username for basic auth
     pub username: Option<String>,
@@ -52,7 +51,6 @@ pub struct AuthCredentials {
     /// Additional key-value credentials
     pub extra: HashMap<String, String>,
 }
-
 
 impl AuthCredentials {
     /// Create empty credentials
@@ -109,7 +107,7 @@ impl AuthCredentials {
     /// Convert to HashMap (for backward compatibility)
     pub fn to_map(&self) -> HashMap<String, String> {
         let mut map = self.extra.clone();
-        
+
         if let Some(ref username) = self.username {
             map.insert("username".to_string(), username.clone());
         }
@@ -131,7 +129,7 @@ impl AuthCredentials {
         if let Some(ref ca_path) = self.ca_path {
             map.insert("ca_path".to_string(), ca_path.clone());
         }
-        
+
         map
     }
 }
@@ -167,7 +165,7 @@ impl AuthCredentials {
 pub struct ServiceAuthConfig {
     /// Authentication type
     pub auth_type: AuthType,
-    
+
     /// Authentication credentials
     pub credentials: AuthCredentials,
 }
@@ -262,12 +260,11 @@ mod tests {
     fn test_service_auth_config_constructors() {
         let config = ServiceAuthConfig::bearer("token");
         assert_eq!(config.auth_type, AuthType::Bearer);
-        
+
         let config = ServiceAuthConfig::none();
         assert_eq!(config.auth_type, AuthType::None);
-        
+
         let config = ServiceAuthConfig::api_key("key");
         assert_eq!(config.auth_type, AuthType::ApiKey);
     }
 }
-

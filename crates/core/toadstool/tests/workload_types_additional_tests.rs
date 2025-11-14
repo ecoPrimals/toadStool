@@ -533,4 +533,3 @@ fn test_registry_auth_serialization() {
 // - Serialization tests (multiple across types)
 // - Clone tests (multiple)
 // - Equality tests (multiple)
-

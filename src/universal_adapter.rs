@@ -641,6 +641,13 @@ pub enum RuntimeType {
     Custom(String),
 }
 
+/// Simplified resource requirements for universal adapter
+///
+/// This is a flattened version of the canonical `toadstool::resources::ResourceRequirements`.
+/// Bidirectional conversions are provided for interoperability.
+///
+/// Use this type in adapter contexts where a simplified interface is needed.
+/// For detailed resource specifications, use the canonical type from `toadstool::resources`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceRequirements {
     pub cpu_cores: f64,
@@ -648,6 +655,83 @@ pub struct ResourceRequirements {
     pub gpu_count: u32,
     pub storage_bytes: u64,
     pub network_bandwidth: Option<String>,
+}
+
+// Conversion from adapter type to canonical type
+impl From<ResourceRequirements> for toadstool::resources::ResourceRequirements {
+    fn from(req: ResourceRequirements) -> Self {
+        Self {
+            cpu: toadstool::resources::CpuRequirements {
+                min_cores: req.cpu_cores,
+                max_cores: None,
+                architecture: None,
+            },
+            memory: toadstool::resources::MemoryRequirements {
+                min_bytes: req.memory_bytes,
+                max_bytes: None,
+            },
+            storage: toadstool::resources::StorageRequirements {
+                min_bytes: req.storage_bytes,
+                max_bytes: None,
+                storage_type: None,
+            },
+            gpu: if req.gpu_count > 0 {
+                Some(toadstool::resources::GpuRequirements {
+                    min_units: req.gpu_count,
+                    max_units: None,
+                    gpu_type: None,
+                    min_memory_bytes: None,
+                })
+            } else {
+                None
+            },
+            network: toadstool::resources::NetworkRequirements {
+                min_bandwidth: req.network_bandwidth.as_ref()
+                    .and_then(|s| parse_bandwidth_string(s).ok()),
+                max_bandwidth: None,
+                max_latency_ms: None,
+            },
+        }
+    }
+}
+
+// Conversion from canonical type to adapter type
+impl From<toadstool::resources::ResourceRequirements> for ResourceRequirements {
+    fn from(req: toadstool::resources::ResourceRequirements) -> Self {
+        Self {
+            cpu_cores: req.cpu.min_cores,
+            memory_bytes: req.memory.min_bytes,
+            gpu_count: req.gpu.map(|g| g.min_units).unwrap_or(0),
+            storage_bytes: req.storage.min_bytes,
+            network_bandwidth: req.network.min_bandwidth
+                .map(|b| format!("{}bps", b)),
+        }
+    }
+}
+
+/// Helper function to parse bandwidth strings (e.g., "100Mbps", "1Gbps")
+fn parse_bandwidth_string(s: &str) -> Result<u64, String> {
+    let s_upper = s.to_uppercase();
+    
+    if s_upper.ends_with("GBPS") {
+        let val: f64 = s_upper[..s_upper.len()-4].parse()
+            .map_err(|e| format!("Invalid bandwidth: {}", e))?;
+        Ok((val * 1_000_000_000.0) as u64)
+    } else if s_upper.ends_with("MBPS") {
+        let val: f64 = s_upper[..s_upper.len()-4].parse()
+            .map_err(|e| format!("Invalid bandwidth: {}", e))?;
+        Ok((val * 1_000_000.0) as u64)
+    } else if s_upper.ends_with("KBPS") {
+        let val: f64 = s_upper[..s_upper.len()-4].parse()
+            .map_err(|e| format!("Invalid bandwidth: {}", e))?;
+        Ok((val * 1_000.0) as u64)
+    } else if s_upper.ends_with("BPS") {
+        s_upper[..s_upper.len()-3].parse()
+            .map_err(|e| format!("Invalid bandwidth: {}", e))
+    } else {
+        // Assume bps if no suffix
+        s.parse().map_err(|e| format!("Invalid bandwidth: {}", e))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

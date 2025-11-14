@@ -21,11 +21,11 @@ pub struct HostingResourceConfig {
     /// Enable resource management
     #[serde(default = "default_true")]
     pub enabled: bool,
-    
+
     /// Resource limits by resource type (e.g., "cpu_cores" -> 16, "memory_gb" -> 64)
     #[serde(default)]
     pub limits: HashMap<String, u64>,
-    
+
     /// Resource quotas by resource type (e.g., "storage_gb" -> 1000)
     #[serde(default)]
     pub quotas: HashMap<String, u64>,

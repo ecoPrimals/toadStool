@@ -1,0 +1,139 @@
+# Symbiotic GPU Manager Configuration
+# Priority-aware GPU sharing: Gaming first, compute second
+
+[metadata]
+name = "symbiotic-gpu-manager"
+description = "Intelligent GPU sharing with gaming priority"
+version = "1.0.0"
+
+[execution]
+type = "native"
+command = "/bin/bash"
+args = ["-c", '''
+#!/bin/bash
+set -e
+
+cat << "BANNER"
+╔═══════════════════════════════════════════════════════════════╗
+║          🎮 Symbiotic GPU Manager Starting...                ║
+╚═══════════════════════════════════════════════════════════════╝
+BANNER
+
+echo ""
+echo "🍄 ToadStool Symbiotic GPU Manager"
+echo "   Version: 1.0.0"
+echo "   Mode: Priority-Aware Resource Sharing"
+echo ""
+
+# Detect GPU
+if command -v nvidia-smi &> /dev/null; then
+    GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)
+    GPU_MEMORY=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
+    GPU_COMPUTE=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1)
+    
+    echo "📊 GPU Detected:"
+    echo "   Model: $GPU_NAME"
+    echo "   Memory: ${GPU_MEMORY}MB"
+    echo "   Compute Capability: $GPU_COMPUTE"
+else
+    echo "⚠️  No NVIDIA GPU detected (demo will run in simulation mode)"
+    GPU_NAME="Simulated GPU"
+    GPU_MEMORY="32768"
+fi
+
+echo ""
+echo "⚙️  Configuration:"
+echo "   Gaming Priority: 100 (HIGHEST)"
+echo "   Compute Priority: 50 (LOWER)"
+echo "   Gaming Reserved: ${GPU_MEMORY}MB (100%)"
+echo "   Compute Available: $((GPU_MEMORY / 2))MB (50% when idle)"
+echo ""
+
+# Start monitoring
+echo "🔍 Starting gaming activity monitor..."
+echo "   Watching for: steam, lutris, wine, proton"
+echo "   Check interval: 5 seconds"
+echo ""
+
+# Monitoring loop (simplified for demo)
+MONITORING=true
+GAMING_ACTIVE=false
+COMPUTE_JOB_ACTIVE=false
+COMPUTE_JOB_PID=""
+
+echo "✅ Symbiotic GPU Manager Active"
+echo "   Status: IDLE"
+echo "   Mode: Offering compute"
+echo ""
+
+# Simulate monitoring loop
+for i in {1..10}; do
+    TIMESTAMP=$(date +"%H:%M:%S")
+    
+    # Check for gaming processes (simulated)
+    if pgrep -x "steam" > /dev/null 2>&1 || pgrep -x "lutris" > /dev/null 2>&1; then
+        if [ "$GAMING_ACTIVE" = false ]; then
+            echo "[$TIMESTAMP] 🎮 GAMING DETECTED!"
+            echo "[$TIMESTAMP] 🚨 Activating gaming priority..."
+            
+            if [ "$COMPUTE_JOB_ACTIVE" = true ]; then
+                echo "[$TIMESTAMP]    Preempting compute job..."
+                echo "[$TIMESTAMP]    ├─ Saving checkpoint"
+                sleep 0.3
+                echo "[$TIMESTAMP]    ├─ Checkpoint saved: /tmp/checkpoint-$$.pt"
+                echo "[$TIMESTAMP]    ├─ Freeing GPU memory: $((GPU_MEMORY / 2))MB"
+                sleep 0.2
+                echo "[$TIMESTAMP]    └─ Preemption complete in 1.8s"
+                COMPUTE_JOB_ACTIVE=false
+            fi
+            
+            echo "[$TIMESTAMP] ✅ Gaming ready! (Full GPU priority)"
+            GAMING_ACTIVE=true
+        fi
+    else
+        if [ "$GAMING_ACTIVE" = true ]; then
+            echo "[$TIMESTAMP] Gaming ended"
+            echo "[$TIMESTAMP] Returning to IDLE mode"
+            GAMING_ACTIVE=false
+            
+            if [ "$COMPUTE_JOB_ACTIVE" = false ]; then
+                echo "[$TIMESTAMP] Offering compute resources..."
+            fi
+        fi
+    fi
+    
+    # Status update
+    if [ "$GAMING_ACTIVE" = true ]; then
+        echo "[$TIMESTAMP] Status: GAMING (Priority 100)"
+    elif [ "$COMPUTE_JOB_ACTIVE" = true ]; then
+        echo "[$TIMESTAMP] Status: COMPUTE ACTIVE (Priority 50)"
+    else
+        echo "[$TIMESTAMP] Status: IDLE (Offering compute)"
+    fi
+    
+    sleep 2
+done
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "📊 Session Summary:"
+echo "   Total uptime: 20 seconds (demo)"
+echo "   Gaming sessions: 0"
+echo "   Compute jobs: 0"
+echo "   Utilization: Ready for action!"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "💡 TIP: Run with ./demo.sh for full interactive demonstration"
+echo ""
+'''
+]
+
+[resources]
+cpu_cores = 1.0
+memory_mb = 512
+gpu_required = false  # Optional for demo
+
+[security]
+isolation = "standard"
+network_access = false
+

@@ -90,32 +90,17 @@ impl Default for LoadBalancerConfig {
     }
 }
 
-/// Health check configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthCheckConfig {
-    /// Enable health checks
-    pub enabled: bool,
-    /// Health check interval (seconds)
-    pub interval_secs: u64,
-    /// Health check timeout (seconds)
-    pub timeout_secs: u64,
-    /// Number of consecutive failures before marking unhealthy
-    pub unhealthy_threshold: u32,
-    /// Number of consecutive successes before marking healthy
-    pub healthy_threshold: u32,
-}
-
-impl Default for HealthCheckConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            interval_secs: 30,
-            timeout_secs: 5,
-            unhealthy_threshold: 3,
-            healthy_threshold: 2,
-        }
-    }
-}
+/// Health check configuration (re-exported from common config bases)
+///
+/// **Modernization Note**: This now uses the base `HealthCheckConfig` from
+/// `toadstool_common::config_bases`, which provides:
+/// - `enabled`: bool
+/// - `interval`: Duration (modernized from `interval_secs: u64`)
+/// - `timeout`: Duration (modernized from `timeout_secs: u64`)
+/// - `healthy_threshold`: u32
+/// - `unhealthy_threshold`: u32
+/// - `retry_count`: u32 (bonus field!)
+pub use toadstool_common::config_bases::HealthCheckConfig;
 
 /// Failover configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

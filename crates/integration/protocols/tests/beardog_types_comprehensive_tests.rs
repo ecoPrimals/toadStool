@@ -3,9 +3,8 @@
 //! This test suite provides extensive coverage of BearDog security integration types
 //! including authentication, authorization, and policy structures.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
-use toadstool_common::auth::ServiceAuthConfig;
+// Removed unused import: ServiceAuthConfig
 use toadstool_integration_protocols::*;
 
 // ============================================================================

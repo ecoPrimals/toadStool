@@ -25,7 +25,7 @@
 //!
 //! ## Usage Example
 //!
-//! ```rust
+//! ```rust,ignore
 //! use toadstool_common::error_codes::{ErrorCode, codes};
 //! use toadstool_common::error::ToadStoolError;
 //!
@@ -49,13 +49,13 @@ use serde::{Deserialize, Serialize};
 pub struct ErrorCode {
     /// Machine-readable error code (e.g., "EXEC-RUNTIME-001")
     pub code: &'static str,
-    
+
     /// Human-readable error message template
     pub message: &'static str,
-    
+
     /// Error category matching ToadStoolError variants
     pub category: ErrorCategory,
-    
+
     /// Optional remediation suggestion
     pub remediation: Option<&'static str>,
 }
@@ -66,22 +66,22 @@ pub struct ErrorCode {
 pub enum ErrorCategory {
     /// Execution errors (runtime engines, workload execution)
     Execution,
-    
+
     /// Configuration errors (parsing, validation, environment)
     Configuration,
-    
+
     /// Resource errors (allocation, limits, availability)
     Resource,
-    
+
     /// Integration errors (ecosystem services, external systems)
     Integration,
-    
+
     /// Security errors (authentication, authorization, sandboxing)
     Security,
-    
+
     /// Network errors (connectivity, protocols, timeouts)
     Network,
-    
+
     /// System errors (OS-level, I/O, permissions)
     System,
 }
@@ -96,7 +96,7 @@ impl ErrorCode {
             format!("{}: {} - {}", self.code, self.message, context)
         }
     }
-    
+
     /// Get category as string
     pub fn category_str(&self) -> &'static str {
         match self.category {
@@ -409,7 +409,7 @@ mod tests {
     fn test_all_error_codes_unique() {
         use std::collections::HashSet;
         let mut seen = HashSet::new();
-        
+
         // Add all codes (this is a sample, extend for all codes)
         let all_codes = vec![
             codes::EXEC_RUNTIME_001.code,
@@ -420,7 +420,7 @@ mod tests {
             codes::NETWORK_CONNECT_001.code,
             codes::SYSTEM_IO_001.code,
         ];
-        
+
         for code in all_codes {
             assert!(seen.insert(code), "Duplicate error code: {}", code);
         }
@@ -434,4 +434,3 @@ mod tests {
         assert!(json.contains("execution"));
     }
 }
-

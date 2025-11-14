@@ -36,7 +36,8 @@ impl CapabilityDisplayOps for crate::universal::UniversalComputeManager {
         info!("⚠️  Other: {}", total_platforms - available);
 
         // Group by category
-        let mut categories: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut categories: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
         for platform_id in self.platforms.keys() {
             let category = platform_id.split('_').next().unwrap_or("unknown");
             *categories.entry(category.to_string()).or_insert(0) += 1;
@@ -118,4 +119,3 @@ impl CapabilityDisplayOps for crate::universal::UniversalComputeManager {
         Ok(())
     }
 }
-

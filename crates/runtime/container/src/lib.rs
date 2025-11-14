@@ -3,13 +3,13 @@
 //! High-performance container runtime engine with Docker, Containerd, and Podman support,
 //! comprehensive security isolation, resource limits, and network policies.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -602,7 +602,10 @@ impl ContainerRuntimeEngine {
 }
 
 impl RuntimeEngine for ContainerRuntimeEngine {
-    fn initialize(&mut self, _config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
             debug!("Initializing container runtime engine");
 
@@ -626,45 +629,48 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         })
     }
 
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
             debug!("Executing container workload: {}", request.execution_id);
 
-        // Validate resource requirements
-        self.validate_resource_requirements(&request)?;
+            // Validate resource requirements
+            self.validate_resource_requirements(&request)?;
 
-        // Extract container workload details
-        if let WorkloadSpec::Container {
-            image,
-            command: _command,
-            args,
-            working_dir,
-            env_vars: _env_vars,
-            volumes,
-            ports,
-            registry_auth,
-        } = &request.workload
-        {
-            let test_config = ContainerExecutionConfig {
-                image: image.clone(),
-                args: args
-                    .clone()
-                    .unwrap_or_else(|| vec!["echo".to_string(), "test".to_string()]),
-                working_dir: working_dir.clone(),
-                env_vars: HashMap::new(),
-                volumes: volumes.clone(),
-                ports: ports.clone(),
-                resources: ContainerResourceLimits::default(),
-                security: ContainerSecurityConfig::default(),
-                registry_auth: registry_auth.clone(),
-            };
+            // Extract container workload details
+            if let WorkloadSpec::Container {
+                image,
+                command: _command,
+                args,
+                working_dir,
+                env_vars: _env_vars,
+                volumes,
+                ports,
+                registry_auth,
+            } = &request.workload
+            {
+                let test_config = ContainerExecutionConfig {
+                    image: image.clone(),
+                    args: args
+                        .clone()
+                        .unwrap_or_else(|| vec!["echo".to_string(), "test".to_string()]),
+                    working_dir: working_dir.clone(),
+                    env_vars: HashMap::new(),
+                    volumes: volumes.clone(),
+                    ports: ports.clone(),
+                    resources: ContainerResourceLimits::default(),
+                    security: ContainerSecurityConfig::default(),
+                    registry_auth: registry_auth.clone(),
+                };
 
-            self.execute_container(&request, &test_config).await
-        } else {
-            Err(ToadStoolError::validation(
-                "Invalid workload type for container runtime",
-            ))
-        }
+                self.execute_container(&request, &test_config).await
+            } else {
+                Err(ToadStoolError::validation(
+                    "Invalid workload type for container runtime",
+                ))
+            }
         })
     }
 
@@ -676,105 +682,107 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         matches!(workload_type, WorkloadType::Container)
     }
 
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
-        // Collect system-level metrics that represent container runtime state
-        // In a full implementation, this would integrate with Docker/containerd APIs
+            // Collect system-level metrics that represent container runtime state
+            // In a full implementation, this would integrate with Docker/containerd APIs
 
-        use std::time::SystemTime;
-        let start_time = SystemTime::now();
+            use std::time::SystemTime;
+            let start_time = SystemTime::now();
 
-        // Get basic system metrics as a proxy for container metrics
-        let mut custom_metrics = HashMap::new();
-        custom_metrics.insert(
-            "active_containers".to_string(),
-            serde_json::Value::Number(serde_json::Number::from(0)),
-        ); // Would query Docker API
-        custom_metrics.insert(
-            "available_engines".to_string(),
-            serde_json::Value::Number(serde_json::Number::from(1)),
-        );
-        custom_metrics.insert(
-            "runtime_health".to_string(),
-            serde_json::Value::Number(serde_json::Number::from(1)),
-        ); // 1 = healthy
+            // Get basic system metrics as a proxy for container metrics
+            let mut custom_metrics = HashMap::new();
+            custom_metrics.insert(
+                "active_containers".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(0)),
+            ); // Would query Docker API
+            custom_metrics.insert(
+                "available_engines".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(1)),
+            );
+            custom_metrics.insert(
+                "runtime_health".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(1)),
+            ); // 1 = healthy
 
-        // Basic CPU and memory estimates (in production, would query container stats)
-        let cpu_metrics = CpuMetrics {
-            usage_percent: 0.0, // Would aggregate from container stats
-            cores_used: 0.0,
-            cpu_time_seconds: 0.0,
-        };
+            // Basic CPU and memory estimates (in production, would query container stats)
+            let cpu_metrics = CpuMetrics {
+                usage_percent: 0.0, // Would aggregate from container stats
+                cores_used: 0.0,
+                cpu_time_seconds: 0.0,
+            };
 
-        let memory_metrics = MemoryMetrics {
-            usage_percent: 0.0,
-            used_bytes: 0, // Would sum from container memory usage
-            peak_bytes: 0,
-        };
+            let memory_metrics = MemoryMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0, // Would sum from container memory usage
+                peak_bytes: 0,
+            };
 
-        let network_metrics = NetworkMetrics {
-            bytes_sent: 0, // Would aggregate from container network stats
-            bytes_received: 0,
-            packets_sent: 0,
-            packets_received: 0,
-        };
+            let network_metrics = NetworkMetrics {
+                bytes_sent: 0, // Would aggregate from container network stats
+                bytes_received: 0,
+                packets_sent: 0,
+                packets_received: 0,
+            };
 
-        let storage_metrics = StorageMetrics {
-            usage_percent: 0.0,
-            used_bytes: 0, // Would aggregate from container I/O stats
-            bytes_read: 0,
-            bytes_written: 0,
-        };
+            let storage_metrics = StorageMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0, // Would aggregate from container I/O stats
+                bytes_read: 0,
+                bytes_written: 0,
+            };
 
-        let timing_metrics = TimingMetrics {
-            start_time: chrono::DateTime::from(start_time),
-            end_time: Some(chrono::Utc::now()),
-            duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default())
-                .unwrap_or_default(),
-        };
+            let timing_metrics = TimingMetrics {
+                start_time: chrono::DateTime::from(start_time),
+                end_time: Some(chrono::Utc::now()),
+                duration: chrono::Duration::from_std(start_time.elapsed().unwrap_or_default())
+                    .unwrap_or_default(),
+            };
 
-        Ok(RuntimeMetrics {
-            cpu: cpu_metrics,
-            memory: memory_metrics,
-            storage: storage_metrics,
-            network: network_metrics,
-            gpu: None, // Containers typically don't expose GPU metrics directly
-            timing: timing_metrics,
-        })
+            Ok(RuntimeMetrics {
+                cpu: cpu_metrics,
+                memory: memory_metrics,
+                storage: storage_metrics,
+                network: network_metrics,
+                gpu: None, // Containers typically don't expose GPU metrics directly
+                timing: timing_metrics,
+            })
         })
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
-        info!("Shutting down container runtime engine");
+            info!("Shutting down container runtime engine");
 
-        // Stop all active containers
-        let container_ids: Vec<Uuid> = {
-            let containers = self.active_containers.read().await;
-            containers.keys().copied().collect()
-        };
+            // Stop all active containers
+            let container_ids: Vec<Uuid> = {
+                let containers = self.active_containers.read().await;
+                containers.keys().copied().collect()
+            };
 
-        #[cfg(feature = "docker")]
-        if let Some(docker) = &self.docker {
-            for container_id in container_ids {
-                if let Some(handle) = {
-                    let containers = self.active_containers.read().await;
-                    containers.get(&container_id).cloned()
-                } {
-                    let _ = docker.stop_container(&handle.container_id, None).await;
-                    let _ = docker.remove_container(&handle.container_id, None).await;
+            #[cfg(feature = "docker")]
+            if let Some(docker) = &self.docker {
+                for container_id in container_ids {
+                    if let Some(handle) = {
+                        let containers = self.active_containers.read().await;
+                        containers.get(&container_id).cloned()
+                    } {
+                        let _ = docker.stop_container(&handle.container_id, None).await;
+                        let _ = docker.remove_container(&handle.container_id, None).await;
+                    }
                 }
             }
-        }
 
-        // Clear active containers
-        {
-            let mut containers = self.active_containers.write().await;
-            containers.clear();
-        }
+            // Clear active containers
+            {
+                let mut containers = self.active_containers.write().await;
+                containers.clear();
+            }
 
-        info!("Container runtime engine shut down successfully");
-        Ok(())
+            info!("Container runtime engine shut down successfully");
+            Ok(())
         })
     }
 }

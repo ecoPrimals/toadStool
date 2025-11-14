@@ -50,7 +50,7 @@ pub struct SongbirdNetworkConfigurator {
     /// HTTP client for making configuration requests
     #[allow(dead_code)]
     pub(crate) client: Client,
-    
+
     /// Network configuration
     pub config: SongbirdNetworkConfig,
 }
@@ -78,4 +78,3 @@ impl Default for SongbirdNetworkConfigurator {
         Self::new()
     }
 }
-

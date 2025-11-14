@@ -604,8 +604,8 @@ fn test_health_check_config_default() {
     let config = HealthCheckConfig::default();
 
     assert!(config.enabled);
-    assert_eq!(config.interval_secs, 30);
-    assert_eq!(config.timeout_secs, 5);
+    assert_eq!(config.interval, Duration::from_secs(30));
+    assert_eq!(config.timeout, Duration::from_secs(10)); // Default is 10 seconds
     assert_eq!(config.unhealthy_threshold, 3);
     assert_eq!(config.healthy_threshold, 2);
 }

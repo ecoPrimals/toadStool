@@ -22,8 +22,8 @@ use toadstool::{
 };
 
 use toadstool_runtime_wasm::{
-    WasmRuntimeConfig, WasmRuntimeEngine, ComponentModelSupport, ComponentInterface,
-    InterfaceFunction, InterfaceType, ComponentValue, ComponentModelConfig
+    ComponentInterface, ComponentModelConfig, ComponentModelSupport, ComponentValue,
+    InterfaceFunction, InterfaceType, WasmRuntimeConfig, WasmRuntimeEngine,
 };
 
 #[tokio::main]
@@ -35,10 +35,13 @@ async fn main() -> anyhow::Result<()> {
     println!("{}", "=".repeat(70));
 
     // Create enhanced WASM runtime configuration with component model support
-    let wasm_config = WasmRuntimeConfig {
-        cache_enabled: true,
-        max_cache_size_mb: 256,
-        cache_ttl_hours: 24,
+    let mut wasm_config = WasmRuntimeConfig {
+        cache: toadstool_common::config_bases::CacheConfig {
+            enabled: true,
+            max_entries: 256,
+            ttl: std::time::Duration::from_secs(24 * 3600),
+            ..Default::default()
+        },
         security_level: toadstool_runtime_wasm::SecurityLevel::Strict,
         max_memory_mb: 128,
         max_pages: 2048,
@@ -61,10 +64,22 @@ async fn main() -> anyhow::Result<()> {
     wasm_engine.initialize(Default::default()).await?;
 
     println!("\n🔧 Enhanced WebAssembly Runtime Engine Initialized");
-    println!("   ✅ Component model support: {}", wasm_engine.supports_component_model());
-    println!("   ✅ Maximum component instances: {}", wasm_engine.get_component_config().max_instances);
-    println!("   ✅ Component composition: {}", wasm_engine.get_component_config().composition_enabled);
-    println!("   ✅ WIT support: {}", wasm_engine.get_component_config().wit_support);
+    println!(
+        "   ✅ Component model support: {}",
+        wasm_engine.supports_component_model()
+    );
+    println!(
+        "   ✅ Maximum component instances: {}",
+        wasm_engine.get_component_config().max_instances
+    );
+    println!(
+        "   ✅ Component composition: {}",
+        wasm_engine.get_component_config().composition_enabled
+    );
+    println!(
+        "   ✅ WIT support: {}",
+        wasm_engine.get_component_config().wit_support
+    );
 
     // Demo 1: Component Interface Registration
     println!("\n{}", "=".repeat(70));
@@ -111,14 +126,12 @@ async fn main() -> anyhow::Result<()> {
                 docs: Some("Reverse a string".to_string()),
             },
         ],
-        imports: vec![
-            InterfaceFunction {
-                name: "log".to_string(),
-                params: vec![InterfaceType::String],
-                return_type: None,
-                docs: Some("Log a message".to_string()),
-            },
-        ],
+        imports: vec![InterfaceFunction {
+            name: "log".to_string(),
+            params: vec![InterfaceType::String],
+            return_type: None,
+            docs: Some("Log a message".to_string()),
+        }],
         types: vec![],
     };
 
@@ -135,8 +148,12 @@ async fn main() -> anyhow::Result<()> {
     println!("{}", "=".repeat(70));
 
     // Create component instances
-    let math_instance_id = wasm_engine.create_component_instance("math-operations").await?;
-    let string_instance_id = wasm_engine.create_component_instance("string-operations").await?;
+    let math_instance_id = wasm_engine
+        .create_component_instance("math-operations")
+        .await?;
+    let string_instance_id = wasm_engine
+        .create_component_instance("string-operations")
+        .await?;
 
     println!("✅ Created component instances:");
     println!("   🧮 Math instance: {}", math_instance_id);
@@ -149,14 +166,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Execute math operations
     println!("🧮 Executing math operations:");
-    
+
     let add_args = vec![ComponentValue::U32(15), ComponentValue::U32(25)];
-    let add_result = wasm_engine.execute_component_function(
-        &math_instance_id,
-        "add",
-        &add_args
-    ).await?;
-    
+    let add_result = wasm_engine
+        .execute_component_function(&math_instance_id, "add", &add_args)
+        .await?;
+
     match add_result {
         ComponentValue::U32(result) => {
             println!("   ➕ add(15, 25) = {}", result);
@@ -166,14 +181,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Execute string operations
     println!("\n📝 Executing string operations:");
-    
+
     let greet_args = vec![ComponentValue::String("ToadStool User".to_string())];
-    let greet_result = wasm_engine.execute_component_function(
-        &string_instance_id,
-        "greet",
-        &greet_args
-    ).await?;
-    
+    let greet_result = wasm_engine
+        .execute_component_function(&string_instance_id, "greet", &greet_args)
+        .await?;
+
     match greet_result {
         ComponentValue::String(result) => {
             println!("   👋 greet(\"ToadStool User\") = \"{}\"", result);
@@ -188,12 +201,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Test type mismatch
     let wrong_args = vec![ComponentValue::String("not_a_number".to_string())];
-    let error_result = wasm_engine.execute_component_function(
-        &math_instance_id,
-        "add",
-        &wrong_args
-    ).await?;
-    
+    let error_result = wasm_engine
+        .execute_component_function(&math_instance_id, "add", &wrong_args)
+        .await?;
+
     match error_result {
         ComponentValue::String(error) => {
             println!("   ⚠️ Type safety enforced: {}", error);
@@ -202,12 +213,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Test unknown function
-    let unknown_result = wasm_engine.execute_component_function(
-        &math_instance_id,
-        "unknown_function",
-        &[]
-    ).await?;
-    
+    let unknown_result = wasm_engine
+        .execute_component_function(&math_instance_id, "unknown_function", &[])
+        .await?;
+
     match unknown_result {
         ComponentValue::String(error) => {
             println!("   ⚠️ Function validation: {}", error);
@@ -224,12 +233,24 @@ async fn main() -> anyhow::Result<()> {
     let bool_value = ComponentValue::Bool(true);
     let u32_value = ComponentValue::U32(42);
     let string_value = ComponentValue::String("test".to_string());
-    
+
     println!("🔍 Type validation examples:");
-    println!("   ✅ Bool matches Bool: {}", bool_value.matches_type(&InterfaceType::Bool));
-    println!("   ❌ Bool matches U32: {}", bool_value.matches_type(&InterfaceType::U32));
-    println!("   ✅ U32 matches U32: {}", u32_value.matches_type(&InterfaceType::U32));
-    println!("   ✅ String matches String: {}", string_value.matches_type(&InterfaceType::String));
+    println!(
+        "   ✅ Bool matches Bool: {}",
+        bool_value.matches_type(&InterfaceType::Bool)
+    );
+    println!(
+        "   ❌ Bool matches U32: {}",
+        bool_value.matches_type(&InterfaceType::U32)
+    );
+    println!(
+        "   ✅ U32 matches U32: {}",
+        u32_value.matches_type(&InterfaceType::U32)
+    );
+    println!(
+        "   ✅ String matches String: {}",
+        string_value.matches_type(&InterfaceType::String)
+    );
 
     // Test complex types
     let list_value = ComponentValue::List(vec![
@@ -238,7 +259,10 @@ async fn main() -> anyhow::Result<()> {
         ComponentValue::U32(3),
     ]);
     let list_type = InterfaceType::List(Box::new(InterfaceType::U32));
-    println!("   ✅ List<U32> matches List<U32>: {}", list_value.matches_type(&list_type));
+    println!(
+        "   ✅ List<U32> matches List<U32>: {}",
+        list_value.matches_type(&list_type)
+    );
 
     // Demo 6: Performance Metrics
     println!("\n{}", "=".repeat(70));
@@ -277,13 +301,13 @@ async fn main() -> anyhow::Result<()> {
     println!("      ✅ Component instance management");
     println!("      ✅ Basic function execution");
     println!("      ✅ Type safety and validation");
-    
+
     println!("   📅 Phase 2 (Next): Advanced Component Features");
     println!("      🔄 Real Wasmtime component model integration");
     println!("      🔗 Component linking and composition");
     println!("      📦 WIT (WebAssembly Interface Types) support");
     println!("      🌐 Multi-component applications");
-    
+
     println!("   📅 Phase 3 (Future): Production Optimization");
     println!("      ⚡ Zero-copy data passing between components");
     println!("      🎯 Advanced resource management and quotas");
@@ -305,4 +329,4 @@ async fn main() -> anyhow::Result<()> {
     println!("   🚀 Foundation ready for advanced WebAssembly workflows");
 
     Ok(())
-} 
+}

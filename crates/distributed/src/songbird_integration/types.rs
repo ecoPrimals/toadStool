@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, RwLock};
 use toadstool_common::auth::{AuthType, ServiceAuthConfig};
 use toadstool_common::config_bases::ConnectionPoolConfig;
+use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
 use crate::{ResourceRequirements, UniversalJob};

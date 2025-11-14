@@ -397,10 +397,11 @@ fn test_job_priority_variants() {
 
 #[test]
 fn test_job_priority_ordering() {
-    assert!(JobPriority::Low < JobPriority::Normal);
-    assert!(JobPriority::Normal < JobPriority::High);
-    assert!(JobPriority::High < JobPriority::Critical);
-    assert!(JobPriority::Critical < JobPriority::Emergency);
+    // Lower numeric values = higher priority, so Emergency < Low
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
 }
 
 #[test]
@@ -411,16 +412,18 @@ fn test_job_priority_equality() {
 
 #[test]
 fn test_job_priority_max() {
+    // With Emergency=0, Low=4: Critical (1) < Low (4), so max returns Low
     assert_eq!(
-        JobPriority::Critical,
+        JobPriority::Low,
         JobPriority::Critical.max(JobPriority::Low)
     );
 }
 
 #[test]
 fn test_job_priority_min() {
+    // With Emergency=0, Low=4: Critical (1) < Low (4), so min returns Critical
     assert_eq!(
-        JobPriority::Low,
+        JobPriority::Critical,
         JobPriority::Critical.min(JobPriority::Low)
     );
 }

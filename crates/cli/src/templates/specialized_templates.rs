@@ -125,7 +125,10 @@ pub fn create_science_template() -> TemplateComponents {
                 storage_limit: Some("200GB".to_string()),
             },
             environment: vec![
-                ("POSTGRES_PASSWORD".to_string(), "${DB_PASSWORD:-}".to_string()),
+                (
+                    "POSTGRES_PASSWORD".to_string(),
+                    "${DB_PASSWORD:-}".to_string(),
+                ),
                 ("POSTGRES_DB".to_string(), "research".to_string()),
             ]
             .into_iter()
@@ -138,7 +141,11 @@ pub fn create_science_template() -> TemplateComponents {
             volumes: vec![],
             dependencies: vec!["beardog".to_string()],
             health_check: Some(HealthCheck {
-                command: vec!["pg_isready".to_string(), "-U".to_string(), "postgres".to_string()],
+                command: vec![
+                    "pg_isready".to_string(),
+                    "-U".to_string(),
+                    "postgres".to_string(),
+                ],
                 interval: 10,
                 timeout: 5,
                 retries: 5,
@@ -472,8 +479,8 @@ pub fn create_vision_template() -> TemplateComponents {
 /// Create distributed computing cluster template
 pub fn create_distributed_template() -> TemplateComponents {
     let name = "distributed-biome".to_string();
-    let description = "Multi-node distributed computing cluster with Songbird orchestration"
-        .to_string();
+    let description =
+        "Multi-node distributed computing cluster with Songbird orchestration".to_string();
 
     let (_, _, mut primals, mut services, mut resources, security, mut networking, mut storage) =
         super::basic_templates::create_basic_template();
@@ -594,8 +601,8 @@ pub fn create_distributed_template() -> TemplateComponents {
 /// Create sovereign/air-gapped template
 pub fn create_sovereign_template() -> TemplateComponents {
     let name = "sovereign-biome".to_string();
-    let description = "Maximum security sovereign computing with air-gapped configuration"
-        .to_string();
+    let description =
+        "Maximum security sovereign computing with air-gapped configuration".to_string();
 
     let (_, _, primals, services, mut resources, mut security, mut networking, storage) =
         super::basic_templates::create_basic_template();
@@ -742,4 +749,3 @@ pub fn create_custom_template(spec: &CustomTemplateSpec) -> TemplateComponents {
         storage,
     )
 }
-

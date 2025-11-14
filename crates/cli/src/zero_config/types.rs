@@ -75,8 +75,7 @@ pub struct StorageInfo {
 }
 
 /// Network information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkInfo {
     /// Network interfaces
     pub interfaces: Vec<NetworkInterface>,
@@ -343,7 +342,6 @@ impl Default for StorageInfo {
     }
 }
 
-
 impl Default for OsInfo {
     fn default() -> Self {
         Self {
@@ -433,4 +431,3 @@ impl Default for BiomeResources {
         }
     }
 }
-

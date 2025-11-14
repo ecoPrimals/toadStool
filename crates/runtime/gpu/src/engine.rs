@@ -413,52 +413,58 @@ impl UniversalGpuEngine {
 }
 
 impl RuntimeEngine for UniversalGpuEngine {
-    fn initialize(&mut self, _config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
             // Already initialized in constructor
             Ok(())
         })
     }
 
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-        let workload = Self::convert_request_to_workload(&request)?;
-        let result = self.execute_workload(workload).await?;
+            let workload = Self::convert_request_to_workload(&request)?;
+            let result = self.execute_workload(workload).await?;
 
-        Ok(ExecutionResponse {
-            execution_id: request.execution_id,
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput {
-                data: result
-                    .primary_output
-                    .buffers
-                    .values()
-                    .flatten()
-                    .copied()
-                    .collect(),
-                stdout: Some(format!(
-                    "GPU execution completed on device: {:?}",
-                    result.device_id
-                )),
-                stderr: if result.primary_output.errors.is_empty() {
-                    None
-                } else {
-                    Some(result.primary_output.errors.join("\n"))
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput {
+                    data: result
+                        .primary_output
+                        .buffers
+                        .values()
+                        .flatten()
+                        .copied()
+                        .collect(),
+                    stdout: Some(format!(
+                        "GPU execution completed on device: {:?}",
+                        result.device_id
+                    )),
+                    stderr: if result.primary_output.errors.is_empty() {
+                        None
+                    } else {
+                        Some(result.primary_output.errors.join("\n"))
+                    },
+                    exit_code: Some(0),
+                    format: Some("gpu-compute".to_string()),
+                    result: HashMap::new(),
+                    metadata: HashMap::new(),
                 },
-                exit_code: Some(0),
-                format: Some("gpu-compute".to_string()),
-                result: HashMap::new(),
-                metadata: HashMap::new(),
-            },
-            metrics: self.create_runtime_metrics(&result),
-            duration: result.total_execution_time,
-            runtime_used: RuntimeType::Gpu,
-            warnings: if result.primary_output.errors.is_empty() {
-                vec![]
-            } else {
-                result.primary_output.errors
-            },
-        })
+                metrics: self.create_runtime_metrics(&result),
+                duration: result.total_execution_time,
+                runtime_used: RuntimeType::Gpu,
+                warnings: if result.primary_output.errors.is_empty() {
+                    vec![]
+                } else {
+                    result.primary_output.errors
+                },
+            })
         })
     }
 
@@ -487,65 +493,67 @@ impl RuntimeEngine for UniversalGpuEngine {
         matches!(workload_type, WorkloadType::Gpu)
     }
 
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
             Ok(RuntimeMetrics {
-            cpu: toadstool::resources::CpuMetrics {
-                usage_percent: 0.0, // GPU doesn't use CPU metrics
-                cores_used: 0.0,
-                cpu_time_seconds: 0.0,
-            },
-            memory: toadstool::resources::MemoryMetrics {
-                usage_percent: 0.0,
-                used_bytes: 0,
-                peak_bytes: 0,
-            },
-            storage: toadstool::resources::StorageMetrics {
-                usage_percent: 0.0,
-                used_bytes: 0,
-                bytes_read: 0,
-                bytes_written: 0,
-            },
-            network: toadstool::resources::NetworkMetrics {
-                bytes_sent: 0,
-                bytes_received: 0,
-                packets_sent: 0,
-                packets_received: 0,
-            },
-            gpu: Some(toadstool::resources::GpuMetrics {
-                usage_percent: 0.0,
-                memory_usage_percent: 0.0,
-                memory_used_bytes: 0,
-                temperature_celsius: None,
-            }),
-            timing: toadstool::resources::TimingMetrics {
-                start_time: chrono::Utc::now(),
-                end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::zero(),
-            },
-        })
+                cpu: toadstool::resources::CpuMetrics {
+                    usage_percent: 0.0, // GPU doesn't use CPU metrics
+                    cores_used: 0.0,
+                    cpu_time_seconds: 0.0,
+                },
+                memory: toadstool::resources::MemoryMetrics {
+                    usage_percent: 0.0,
+                    used_bytes: 0,
+                    peak_bytes: 0,
+                },
+                storage: toadstool::resources::StorageMetrics {
+                    usage_percent: 0.0,
+                    used_bytes: 0,
+                    bytes_read: 0,
+                    bytes_written: 0,
+                },
+                network: toadstool::resources::NetworkMetrics {
+                    bytes_sent: 0,
+                    bytes_received: 0,
+                    packets_sent: 0,
+                    packets_received: 0,
+                },
+                gpu: Some(toadstool::resources::GpuMetrics {
+                    usage_percent: 0.0,
+                    memory_usage_percent: 0.0,
+                    memory_used_bytes: 0,
+                    temperature_celsius: None,
+                }),
+                timing: toadstool::resources::TimingMetrics {
+                    start_time: chrono::Utc::now(),
+                    end_time: Some(chrono::Utc::now()),
+                    duration: chrono::Duration::zero(),
+                },
+            })
         })
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
-        // Destroy all active sessions
-        let session_ids: Vec<Uuid> = {
-            let sessions = self.active_sessions.read().await;
-            sessions.keys().copied().collect()
-        };
+            // Destroy all active sessions
+            let session_ids: Vec<Uuid> = {
+                let sessions = self.active_sessions.read().await;
+                sessions.keys().copied().collect()
+            };
 
-        for session_id in session_ids {
-            if let Err(e) = self.destroy_compute_session(session_id).await {
-                warn!(
-                    "Failed to destroy session {} during shutdown: {}",
-                    session_id, e
-                );
+            for session_id in session_ids {
+                if let Err(e) = self.destroy_compute_session(session_id).await {
+                    warn!(
+                        "Failed to destroy session {} during shutdown: {}",
+                        session_id, e
+                    );
+                }
             }
-        }
 
-        info!("Universal GPU Engine shutdown complete");
-        Ok(())
+            info!("Universal GPU Engine shutdown complete");
+            Ok(())
         })
     }
 }

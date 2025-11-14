@@ -5,11 +5,10 @@
 
 use chrono::Utc;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use uuid::Uuid;
-
-use async_trait::async_trait;
 use toadstool::byob::{
     ByobComputeExecutor, ByobDeploymentRequest, ByobExecutorConfig, HealthCheck, PortMapping,
     ServiceResourceRequirements, ServiceSpec, TeamNetworkConfig, TeamResourceQuotas,
@@ -20,6 +19,7 @@ use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
     RuntimeEngine, RuntimeMetrics, RuntimeType, ToadStoolResult, WorkloadType,
 };
+use uuid::Uuid;
 
 // ============================================================================
 // Mock Runtime Engine for Testing
@@ -40,36 +40,44 @@ impl MockRuntimeEngine {
     }
 }
 
-#[async_trait]
 impl RuntimeEngine for MockRuntimeEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn execute(&self, _request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        if self.should_fail {
-            Err(toadstool::ToadStoolError::execution(
-                "Mock execution failure".to_string(),
-            ))
-        } else {
-            Ok(ExecutionResponse {
-                execution_id: Uuid::new_v4(),
-                status: ExecutionStatus::Success,
-                output: ExecutionOutput {
-                    data: Vec::new(),
-                    stdout: Some("Mock execution success".to_string()),
-                    stderr: None,
-                    exit_code: Some(0),
-                    format: Some("text/plain".to_string()),
-                    result: HashMap::new(),
-                    metadata: HashMap::new(),
-                },
-                metrics: RuntimeMetrics::default(),
-                duration: Duration::from_millis(100),
-                runtime_used: RuntimeType::Native,
-                warnings: Vec::new(),
-            })
-        }
+    fn execute(
+        &self,
+        _request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let should_fail = self.should_fail;
+        Box::pin(async move {
+            if should_fail {
+                Err(toadstool::ToadStoolError::execution(
+                    "Mock execution failure".to_string(),
+                ))
+            } else {
+                Ok(ExecutionResponse {
+                    execution_id: Uuid::new_v4(),
+                    status: ExecutionStatus::Success,
+                    output: ExecutionOutput {
+                        data: Vec::new(),
+                        stdout: Some("Mock execution success".to_string()),
+                        stderr: None,
+                        exit_code: Some(0),
+                        format: Some("text/plain".to_string()),
+                        result: HashMap::new(),
+                        metadata: HashMap::new(),
+                    },
+                    metrics: RuntimeMetrics::default(),
+                    duration: Duration::from_millis(100),
+                    runtime_used: RuntimeType::Native,
+                    warnings: Vec::new(),
+                })
+            }
+        })
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -86,12 +94,14 @@ impl RuntimeEngine for MockRuntimeEngine {
         true
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics::default())
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move { Ok(RuntimeMetrics::default()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 }
 

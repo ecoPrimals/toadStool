@@ -220,29 +220,21 @@ pub struct CircuitBreakerConfig {
 
 /// Health check configuration for protocol clients
 ///
-/// This is similar to `HttpHealthCheckConfig` but simplified for protocol-level checks.
-/// For HTTP-specific health checks, use `toadstool::config_bases::HttpHealthCheckConfig`.
+/// Extends the base health check configuration with protocol-specific endpoint.
+/// Uses composition pattern for config reuse.
 #[derive(Debug, Clone)]
 pub struct HealthConfig {
-    /// Health check enabled
-    pub enabled: bool,
+    /// Base health check configuration (enabled, interval, timeout, thresholds, retries)
+    pub base: toadstool_common::config_bases::HealthCheckConfig,
 
-    /// Health check interval
-    pub interval: Duration,
-
-    /// Health check timeout
-    pub timeout: Duration,
-
-    /// Health check endpoint
+    /// Health check endpoint path
     pub endpoint: String,
 }
 
 impl Default for HealthConfig {
     fn default() -> Self {
         Self {
-            enabled: true,
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(5),
+            base: toadstool_common::config_bases::HealthCheckConfig::default(),
             endpoint: "/health".to_string(),
         }
     }

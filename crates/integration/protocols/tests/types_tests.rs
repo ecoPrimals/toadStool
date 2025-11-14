@@ -2,15 +2,10 @@
 //!
 //! Tests for message types, health status, and service information structures.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use chrono::Utc;
-use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
-use toadstool_common::auth::ServiceAuthConfig;
 use std::time::Duration;
-use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::*;
-use toadstool_common::auth::ServiceAuthConfig;
 use uuid::Uuid;
 
 // ============================================================================

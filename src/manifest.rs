@@ -283,6 +283,18 @@ pub struct ResourceConfig {
     pub gpu_limit: Option<String>,
 }
 
+/// Health check configuration for workload manifests
+///
+/// **NOTE**: This is intentionally separate from `toadstool_common::config_bases::HealthCheckConfig`
+/// because it represents a **user-facing YAML/JSON manifest format** with specific requirements:
+///
+/// 1. **Multiple Check Types**: Supports command, HTTP, and TCP health checks
+/// 2. **Named Checks**: Includes `name` and `check_type` for manifest organization
+/// 3. **Serialization Format**: Uses u64 for durations (seconds) for user-friendly YAML
+/// 4. **Backward Compatibility**: Changing this would break existing user manifests
+///
+/// The base `HealthCheckConfig` is for internal runtime configuration, while this is for
+/// external manifest definitions. They serve different purposes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheckConfig {
     pub name: String,

@@ -26,35 +26,35 @@ impl From<&str> for DiscoverySource {
 
 /// Main discovery engine - orchestrates all discovery mechanisms
 pub struct DiscoveryEngine {
-    /// Registered endpoint sources (in priority order)
+    /// Registered endpoint sources (in priority order).
     sources: Arc<RwLock<Vec<Box<dyn EndpointSource>>>>,
 
-    /// Registered substrate detectors
+    /// Registered substrate detectors.
     detectors: Arc<RwLock<Vec<Box<dyn SubstrateDetector>>>>,
 
-    /// Cache of discovered services
+    /// Cache of discovered services.
     cache: Arc<RwLock<std::collections::HashMap<String, DiscoveredService>>>,
 
-    /// Configuration
+    /// Configuration.
     config: ServiceDiscoveryConfig,
 }
 
 /// Service discovery engine configuration
 #[derive(Debug, Clone)]
 pub struct ServiceDiscoveryConfig {
-    /// Enable caching of discovered services
+    /// Enable caching of discovered services.
     pub enable_cache: bool,
 
-    /// Cache TTL
+    /// Cache TTL.
     pub cache_ttl: Duration,
 
-    /// Default discovery timeout
+    /// Default discovery timeout.
     pub default_timeout: Duration,
 
-    /// Number of retry attempts
+    /// Number of retry attempts.
     pub retry_attempts: u32,
 
-    /// Retry delay
+    /// Retry delay.
     pub retry_delay: Duration,
 }
 
@@ -71,12 +71,12 @@ impl Default for ServiceDiscoveryConfig {
 }
 
 impl DiscoveryEngine {
-    /// Create a new discovery engine with default configuration
+    /// Create a new discovery engine with default configuration.
     pub fn new() -> Self {
         Self::with_config(ServiceDiscoveryConfig::default())
     }
 
-    /// Create a new discovery engine with custom configuration
+    /// Create a new discovery engine with custom configuration.
     pub fn with_config(config: ServiceDiscoveryConfig) -> Self {
         Self {
             sources: Arc::new(RwLock::new(Vec::new())),
@@ -86,13 +86,13 @@ impl DiscoveryEngine {
         }
     }
 
-    /// Register an endpoint source
+    /// Register an endpoint source.
     pub async fn register_source(&self, source: Box<dyn EndpointSource>) {
         let mut sources = self.sources.write().await;
         sources.push(source);
     }
 
-    /// Register a substrate detector
+    /// Register a substrate detector.
     pub async fn register_detector(&self, detector: Box<dyn SubstrateDetector>) {
         let mut detectors = self.detectors.write().await;
         detectors.push(detector);
@@ -215,9 +215,16 @@ impl Default for DiscoveryEngine {
 }
 
 impl CapabilityDiscovery for DiscoveryEngine {
-    fn discover(&self, capability: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_>> {
+    fn discover(
+        &self,
+        capability: &str,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_,
+        >,
+    > {
         let capability_str = capability.to_string();
-        
+
         Box::pin(async move {
             // Check cache first
             if let Some(cached) = self.get_from_cache(&capability_str).await {
@@ -254,17 +261,22 @@ impl CapabilityDiscovery for DiscoveryEngine {
         &self,
         capability: &str,
         preferences: DiscoveryPreferences,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_>> {
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_,
+        >,
+    > {
         let capability_str = capability.to_string();
-        
+
         Box::pin(async move {
             let timeout = preferences.timeout.unwrap_or(self.config.default_timeout);
 
             // Discover service with timeout
-            let discovered = match tokio::time::timeout(timeout, self.discover(&capability_str)).await {
-                Ok(result) => result?,
-                Err(_) => return Err(DiscoveryError::Timeout(timeout)),
-            };
+            let discovered =
+                match tokio::time::timeout(timeout, self.discover(&capability_str)).await {
+                    Ok(result) => result?,
+                    Err(_) => return Err(DiscoveryError::Timeout(timeout)),
+                };
 
             // Filter by required protocols if specified
             if !preferences.required_protocols.is_empty() {
@@ -315,9 +327,15 @@ impl CapabilityDiscovery for DiscoveryEngine {
     fn discover_all(
         &self,
         capability: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<DiscoveredService>, DiscoveryError>> + Send + '_>> {
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<Vec<DiscoveredService>, DiscoveryError>>
+                + Send
+                + '_,
+        >,
+    > {
         let capability_str = capability.to_string();
-        
+
         Box::pin(async move {
             let mut discovered_services = Vec::new();
             let sources = self.sources.read().await;
@@ -455,11 +473,18 @@ mod tests {
     }
 
     impl EndpointSource for MockSource {
-        fn resolve(&self, _service: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>> {
+        fn resolve(
+            &self,
+            _service: &str,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<Option<String>, DiscoveryError>>
+                    + Send
+                    + '_,
+            >,
+        > {
             let endpoint = self.endpoint.clone();
-            Box::pin(async move {
-                Ok(endpoint)
-            })
+            Box::pin(async move { Ok(endpoint) })
         }
 
         fn source_name(&self) -> &str {
@@ -618,11 +643,18 @@ mod tests {
     }
 
     impl super::SubstrateDetector for MockDetector {
-        fn detect(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<super::DetectedSubstrate>, super::DiscoveryError>> + Send + '_>> {
+        fn detect(
+            &self,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<
+                        Output = Result<Option<super::DetectedSubstrate>, super::DiscoveryError>,
+                    > + Send
+                    + '_,
+            >,
+        > {
             let result = self.result.clone();
-            Box::pin(async move {
-                Ok(result)
-            })
+            Box::pin(async move { Ok(result) })
         }
 
         fn name(&self) -> &str {

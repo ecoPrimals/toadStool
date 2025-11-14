@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::performance_hardening::*;
+use toadstool_common::config_bases::ConnectionPoolConfig;
 // Removed: use toadstool::resources::RuntimeMetrics;
 
 // ============================================================================
@@ -253,30 +254,34 @@ fn test_async_optimization_config_serialization() {
 #[test]
 fn test_connection_pool_config_default() {
     let config = ConnectionPoolConfig::default();
-    assert_eq!(config.initial_size, 10);
-    assert_eq!(config.max_size, 100);
-    assert_eq!(config.connection_timeout, Duration::from_secs(30));
-    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert!(config.enabled);
+    assert_eq!(config.max_connections_per_host, 100); // Default is 100
+    assert_eq!(config.max_idle_connections, 10); // Default is 10
+    assert!(config.idle_timeout > Duration::ZERO);
 }
 
 #[test]
 fn test_connection_pool_config_custom() {
     let config = ConnectionPoolConfig {
-        initial_size: 20,
-        max_size: 200,
-        connection_timeout: Duration::from_secs(60),
+        enabled: true,
+        max_connections_per_host: 20,
+        max_idle_connections: 100,
         idle_timeout: Duration::from_secs(600),
-        health_check_interval: Duration::from_secs(30),
+        connection_lifetime: Duration::from_secs(3600),
     };
-    assert_eq!(config.initial_size, 20);
-    assert_eq!(config.max_size, 200);
+    assert_eq!(config.max_connections_per_host, 20);
+    assert_eq!(config.max_idle_connections, 100);
 }
 
 #[test]
 fn test_connection_pool_config_clone() {
     let config = ConnectionPoolConfig::default();
     let cloned = config.clone();
-    assert_eq!(config.initial_size, cloned.initial_size);
+    assert_eq!(config.enabled, cloned.enabled);
+    assert_eq!(
+        config.max_connections_per_host,
+        cloned.max_connections_per_host
+    );
 }
 
 #[test]
@@ -285,7 +290,11 @@ fn test_connection_pool_config_serialization() {
     let json = serde_json::to_string(&config).expect("Should serialize");
     let deserialized: ConnectionPoolConfig =
         serde_json::from_str(&json).expect("Should deserialize");
-    assert_eq!(config.initial_size, deserialized.initial_size);
+    assert_eq!(config.enabled, deserialized.enabled);
+    assert_eq!(
+        config.max_connections_per_host,
+        deserialized.max_connections_per_host
+    );
 }
 
 // ============================================================================

@@ -14,17 +14,16 @@
 //! - **Utilities**: Helper utilities and system info
 
 // Re-export all operation traits
-pub mod detection;
 pub mod benchmarking;
-pub mod migration;
-pub mod federation;
 pub mod capabilities;
+pub mod detection;
+pub mod federation;
+pub mod migration;
 pub mod utilities;
 
-pub use detection::PlatformDetectionOps;
 pub use benchmarking::BenchmarkingOps;
-pub use migration::MigrationOps;
-pub use federation::FederationOps;
 pub use capabilities::CapabilityDisplayOps;
+pub use detection::PlatformDetectionOps;
+pub use federation::FederationOps;
+pub use migration::MigrationOps;
 pub use utilities::UtilityOps;
-

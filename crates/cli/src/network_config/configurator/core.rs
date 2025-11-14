@@ -7,7 +7,10 @@ use super::*;
 use super::{DiscoveryExt, ReliabilityExt, SecurityExt, ServiceMeshExt, TrafficExt};
 use std::collections::HashMap;
 use std::time::Duration;
-use toadstool_common::config_bases::{CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig, RetryConfig, TelemetryConfig, TimeoutConfig};
+use toadstool_common::config_bases::{
+    CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig, RetryConfig,
+    TelemetryConfig, TimeoutConfig,
+};
 use tracing::info;
 
 /// Core configurator trait
@@ -16,13 +19,13 @@ use tracing::info;
 pub(crate) trait ConfiguratorCore {
     /// Create a new configurator
     fn new() -> Self;
-    
+
     /// Get default configuration
     fn default_config() -> SongbirdNetworkConfig;
-    
+
     /// Apply all configuration
     async fn apply_configuration(&self) -> ToadStoolResult<()>;
-    
+
     /// Validate all configuration
     fn validate_configuration(&self) -> ToadStoolResult<()>;
 }
@@ -37,7 +40,11 @@ impl super::SongbirdNetworkConfigurator {
              - Inter-Service: configured\n\
              - Traffic Management: configured\n\
              - Status: active",
-            if self.config.service_mesh.enabled { "enabled" } else { "disabled" }
+            if self.config.service_mesh.enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
         )
     }
 }
@@ -49,7 +56,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             config: Self::default_config(),
         }
     }
-    
+
     fn default_config() -> SongbirdNetworkConfig {
         SongbirdNetworkConfig {
             service_mesh: ServiceMeshConfig {
@@ -475,7 +482,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             },
         }
     }
-    
+
     async fn apply_configuration(&self) -> ToadStoolResult<()> {
         info!("🔧 Applying Songbird network configuration");
 
@@ -522,7 +529,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
         info!("✅ Songbird network configuration applied successfully");
         Ok(())
     }
-    
+
     fn validate_configuration(&self) -> ToadStoolResult<()> {
         info!("🔍 Validating Songbird network configuration");
 

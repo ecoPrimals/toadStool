@@ -1,6 +1,6 @@
 //! Comprehensive test coverage for resources.rs requirements and metrics types
 //!
-//! This test suite targets requirement and metric types defined in 
+//! This test suite targets requirement and metric types defined in
 //! crates/core/toadstool/src/resources.rs to expand test coverage.
 //!
 //! Coverage Target: Add 40+ tests for resource types
@@ -86,7 +86,7 @@ fn test_memory_requirements_default() {
 #[test]
 fn test_memory_requirements_custom() {
     let mem_req = MemoryRequirements {
-        min_bytes: 512 * 1024 * 1024, // 512MB
+        min_bytes: 512 * 1024 * 1024,            // 512MB
         max_bytes: Some(2 * 1024 * 1024 * 1024), // 2GB
     };
     assert_eq!(mem_req.min_bytes, 512 * 1024 * 1024);
@@ -119,7 +119,7 @@ fn test_memory_requirements_serialization() {
 #[test]
 fn test_memory_requirements_large_values() {
     let mem_req = MemoryRequirements {
-        min_bytes: 16 * 1024 * 1024 * 1024, // 16GB
+        min_bytes: 16 * 1024 * 1024 * 1024,       // 16GB
         max_bytes: Some(64 * 1024 * 1024 * 1024), // 64GB
     };
     assert!(mem_req.min_bytes < mem_req.max_bytes.unwrap());
@@ -140,7 +140,7 @@ fn test_storage_requirements_default() {
 #[test]
 fn test_storage_requirements_with_type() {
     let storage_req = StorageRequirements {
-        min_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+        min_bytes: 10 * 1024 * 1024 * 1024,        // 10GB
         max_bytes: Some(100 * 1024 * 1024 * 1024), // 100GB
         storage_type: Some("SSD".to_string()),
     };
@@ -199,7 +199,7 @@ fn test_network_requirements_default() {
 #[test]
 fn test_network_requirements_with_bandwidth() {
     let net_req = NetworkRequirements {
-        min_bandwidth: Some(1024 * 1024), // 1 MB/s
+        min_bandwidth: Some(1024 * 1024),      // 1 MB/s
         max_bandwidth: Some(10 * 1024 * 1024), // 10 MB/s
         max_latency_ms: Some(100),
     };
@@ -550,4 +550,3 @@ fn test_gpu_metrics_serialization() {
 // - Clone tests (multiple)
 // - Default tests (multiple)
 // - Custom value tests (multiple)
-

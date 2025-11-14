@@ -16,22 +16,22 @@ pub mod load_balancing;
 pub mod types;
 
 // Re-export main types
+pub use toadstool_common::auth::AuthType; // Re-export from canonical source
 pub use types::ToadStoolSongbirdIntegration;
-pub use toadstool_common::auth::AuthType;  // Re-export from canonical source
 pub use types::{
-    AuthConfig, AuthenticationConfig, AvailableCapacity, BroadcastChannel,
-    BroadcastConfig, CapabilitySnapshot, CapabilityTracker, CapacityConfig, CapacityInfo,
-    CompletionStrategy, ComplexityLevel, ConnectionHealth, CoordinationJob, CoordinationStrategy,
-    DiscoveryClient, SongbirdDiscoveryConfig, DistributionAlgorithm, DistributionConfig, DistributionPlan,
-    ExecutionMetrics, GrpcProtocolConfig, HttpProtocolConfig, IntensityLevel, JobAnalysis,
-    JobComplexity, JobCoordinator, JobDistributionStrategy, JobReceiver, JobResult,
-    JobSplittingStrategy, LoadBalancerConfig, LoadBalancingAdvice, LoadBalancingStrategy,
-    LoadEstimator, LoadMetric, LocalCapacityManager, MassiveJobDistributor, MassiveJobResult,
-    MessageQueueProtocolConfig, MessageTypeRegistry, NetworkCapacity, NetworkHealthMonitor,
-    NetworkRequirements, NetworkStatus, NodeCapabilities, NodeCapacityTracker, NodeId,
-    NodeMetadata, NodeRegistration, NodeRegistry, NodeType, PerformanceMetrics, ProtocolConfig,
-    ReceiverConfig, RegistrationResponse, ResourceReservation, SongbirdBroadcastMessage,
-    SongbirdBroadcaster, SongbirdConnection, SongbirdConnectionConfig, SongbirdFeedbackSender,
+    AuthConfig, AuthenticationConfig, AvailableCapacity, BroadcastChannel, BroadcastConfig,
+    CapabilitySnapshot, CapabilityTracker, CapacityConfig, CapacityInfo, CompletionStrategy,
+    ComplexityLevel, ConnectionHealth, CoordinationJob, CoordinationStrategy, DiscoveryClient,
+    DistributionAlgorithm, DistributionConfig, DistributionPlan, ExecutionMetrics,
+    GrpcProtocolConfig, HttpProtocolConfig, IntensityLevel, JobAnalysis, JobComplexity,
+    JobCoordinator, JobDistributionStrategy, JobReceiver, JobResult, JobSplittingStrategy,
+    LoadBalancerConfig, LoadBalancingAdvice, LoadBalancingStrategy, LoadEstimator, LoadMetric,
+    LocalCapacityManager, MassiveJobDistributor, MassiveJobResult, MessageQueueProtocolConfig,
+    MessageTypeRegistry, NetworkCapacity, NetworkHealthMonitor, NetworkRequirements, NetworkStatus,
+    NodeCapabilities, NodeCapacityTracker, NodeId, NodeMetadata, NodeRegistration, NodeRegistry,
+    NodeType, PerformanceMetrics, ProtocolConfig, ReceiverConfig, RegistrationResponse,
+    ResourceReservation, SongbirdBroadcastMessage, SongbirdBroadcaster, SongbirdConnection,
+    SongbirdConnectionConfig, SongbirdDiscoveryConfig, SongbirdFeedbackSender,
     SongbirdIntegrationConfig, SongbirdJobMessage, SongbirdJobRequest, SongbirdJobResponse,
     SongbirdLoadBalancer, SongbirdNetworkDiscovery, SongbirdProtocol, SplittingStrategyType,
     SubTask, SubTaskHandle, SubTaskPlan, SubTaskStatus, SubscriptionManager, UniversalJobProcessor,

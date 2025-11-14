@@ -3,10 +3,10 @@
 //! Comprehensive tests for distributed job types including job specifications,
 //! scheduling, priorities, resource requirements, and status tracking.
 
-use toadstool_distributed::types::{
-    UniversalJobType, JobPriority, ExecutionTarget, LoadBalancingStrategy,
-};
 use std::str::FromStr;
+use toadstool_distributed::types::{
+    ExecutionTarget, JobPriority, LoadBalancingStrategy, UniversalJobType,
+};
 
 #[test]
 fn test_job_priority_ordering() {
@@ -60,7 +60,7 @@ fn test_universal_job_type_variants() {
         UniversalJobType::GPU,
         UniversalJobType::Custom("special".to_string()),
     ];
-    
+
     assert_eq!(types.len(), 8);
 }
 
@@ -75,7 +75,7 @@ fn test_universal_job_type_remote_toadstool() {
     let remote = UniversalJobType::RemoteToadStool {
         endpoint: "http://remote:8084".to_string(),
     };
-    
+
     match remote {
         UniversalJobType::RemoteToadStool { endpoint } => {
             assert_eq!(endpoint, "http://remote:8084");
@@ -90,9 +90,12 @@ fn test_universal_job_type_ecosystem_tool() {
         tool_name: "squirrel".to_string(),
         endpoint: "http://squirrel:8083".to_string(),
     };
-    
+
     match tool {
-        UniversalJobType::EcosystemTool { tool_name, endpoint } => {
+        UniversalJobType::EcosystemTool {
+            tool_name,
+            endpoint,
+        } => {
             assert_eq!(tool_name, "squirrel");
             assert_eq!(endpoint, "http://squirrel:8083");
         }
@@ -112,9 +115,12 @@ fn test_execution_target_toadstool() {
         instance_id: "instance-1".to_string(),
         endpoint: "http://localhost:8084".to_string(),
     };
-    
+
     match target {
-        ExecutionTarget::ToadStool { instance_id, endpoint } => {
+        ExecutionTarget::ToadStool {
+            instance_id,
+            endpoint,
+        } => {
             assert_eq!(instance_id, "instance-1");
             assert_eq!(endpoint, "http://localhost:8084");
         }
@@ -128,9 +134,12 @@ fn test_execution_target_ecosystem_service() {
         service_name: "songbird".to_string(),
         endpoint: "http://songbird:8080".to_string(),
     };
-    
+
     match target {
-        ExecutionTarget::EcosystemService { service_name, endpoint } => {
+        ExecutionTarget::EcosystemService {
+            service_name,
+            endpoint,
+        } => {
             assert_eq!(service_name, "songbird");
             assert_eq!(endpoint, "http://songbird:8080");
         }
@@ -143,7 +152,7 @@ fn test_execution_target_load_balanced() {
     let target = ExecutionTarget::LoadBalanced {
         strategy: LoadBalancingStrategy::RoundRobin,
     };
-    
+
     match target {
         ExecutionTarget::LoadBalanced { strategy } => {
             assert!(matches!(strategy, LoadBalancingStrategy::RoundRobin));
@@ -158,7 +167,7 @@ fn test_load_balancing_strategy_variants() {
         LoadBalancingStrategy::RoundRobin,
         LoadBalancingStrategy::LeastConnections,
     ];
-    
+
     assert_eq!(strategies.len(), 2);
 }
 
@@ -211,12 +220,12 @@ fn test_job_priority_all_variants() {
         JobPriority::Low,
         JobPriority::Background,
     ];
-    
+
     assert_eq!(all_priorities.len(), 6);
-    
+
     // Verify they're all different
     for i in 0..all_priorities.len() {
-        for j in (i+1)..all_priorities.len() {
+        for j in (i + 1)..all_priorities.len() {
             assert_ne!(all_priorities[i], all_priorities[j]);
         }
     }
@@ -235,7 +244,7 @@ fn test_universal_job_type_workload_variants() {
         UniversalJobType::MachineLearning,
         UniversalJobType::Simulation,
     ];
-    
+
     assert_eq!(workload_types.len(), 8);
 }
 
@@ -248,6 +257,6 @@ fn test_universal_job_type_runtime_variants() {
         UniversalJobType::WASM,
         UniversalJobType::GPU,
     ];
-    
+
     assert_eq!(runtime_types.len(), 4);
 }

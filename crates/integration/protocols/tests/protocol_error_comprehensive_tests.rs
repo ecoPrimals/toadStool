@@ -3,7 +3,6 @@
 //! This test suite provides extensive coverage of error types, error messages,
 //! and error handling in the protocol integration layer.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::*;
 
 // ============================================================================

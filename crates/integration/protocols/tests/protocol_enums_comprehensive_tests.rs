@@ -3,9 +3,7 @@
 //! This test suite provides extensive coverage of enum types used in protocol integration,
 //! including MessageFormat, TransportType, AuthType, and their serialization/deserialization.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashSet;
-use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::types::*;
 
 // ============================================================================

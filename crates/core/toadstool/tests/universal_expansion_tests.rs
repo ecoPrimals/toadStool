@@ -3,7 +3,7 @@
 //! Focus: Expanding coverage on SystemResources, JobMetrics, and integration tests
 
 use std::collections::HashMap;
-use toadstool::universal::{JobPriority, UniversalSystemResources, UniversalJobType};
+use toadstool::universal::{JobPriority, UniversalJobType, UniversalSystemResources};
 
 // ============================================================================
 // SystemResources Additional Tests (10 tests)
@@ -122,7 +122,7 @@ fn test_system_resources_deserialization() {
     };
 
     let json = serde_json::to_string(&resources).unwrap();
-    let deserialized: SystemResources = serde_json::from_str(&json).unwrap();
+    let deserialized: UniversalSystemResources = serde_json::from_str(&json).unwrap();
     assert_eq!(resources.cpu_cores, deserialized.cpu_cores);
 }
 
@@ -302,10 +302,11 @@ fn test_job_type_serialization() {
 
 #[test]
 fn test_job_priority_ordering_complete() {
-    assert!(JobPriority::Emergency > JobPriority::Critical);
-    assert!(JobPriority::Critical > JobPriority::High);
-    assert!(JobPriority::High > JobPriority::Normal);
-    assert!(JobPriority::Normal > JobPriority::Low);
+    // Lower numeric values = higher priority, so Emergency < Low
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! TemplateGenerator implementation
 
-use super::{TemplateGenerator, BiomeTemplate};
+use super::{BiomeTemplate, TemplateGenerator};
 use crate::{BiomeManifest, BiomeMetadata};
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -114,14 +114,22 @@ impl TemplateGenerator {
             match template {
                 BiomeTemplate::Basic => super::basic_templates::create_basic_template(),
                 BiomeTemplate::Science => super::specialized_templates::create_science_template(),
-                BiomeTemplate::AiResearch => super::specialized_templates::create_ai_research_template(),
+                BiomeTemplate::AiResearch => {
+                    super::specialized_templates::create_ai_research_template()
+                }
                 BiomeTemplate::Quantum => super::specialized_templates::create_quantum_template(),
                 BiomeTemplate::Genomics => super::specialized_templates::create_genomics_template(),
                 BiomeTemplate::Vision => super::specialized_templates::create_vision_template(),
-                BiomeTemplate::Distributed => super::specialized_templates::create_distributed_template(),
-                BiomeTemplate::Sovereign => super::specialized_templates::create_sovereign_template(),
+                BiomeTemplate::Distributed => {
+                    super::specialized_templates::create_distributed_template()
+                }
+                BiomeTemplate::Sovereign => {
+                    super::specialized_templates::create_sovereign_template()
+                }
                 BiomeTemplate::Development => super::basic_templates::create_development_template(),
-                BiomeTemplate::Custom(spec) => super::specialized_templates::create_custom_template(spec),
+                BiomeTemplate::Custom(spec) => {
+                    super::specialized_templates::create_custom_template(spec)
+                }
             };
 
         Ok(BiomeManifest {
@@ -143,4 +151,3 @@ impl TemplateGenerator {
         })
     }
 }
-

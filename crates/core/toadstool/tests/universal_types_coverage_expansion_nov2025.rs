@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 use toadstool::universal::*;
-use toadstool::resources::ResourceRequirements;
 
 // ============================================================================
 // SecurityLevel Tests
@@ -33,7 +32,7 @@ fn test_security_level_copy_clone() {
     let level = SecurityLevel::High;
     let copied = level;
     let cloned = level.clone();
-    
+
     assert_eq!(level, copied);
     assert_eq!(level, cloned);
 }
@@ -43,7 +42,7 @@ fn test_security_level_serialization() {
     let level = SecurityLevel::Standard;
     let json = serde_json::to_string(&level).unwrap();
     let deserialized: SecurityLevel = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(level, deserialized);
 }
 
@@ -55,9 +54,9 @@ fn test_security_level_all_variants() {
         SecurityLevel::High,
         SecurityLevel::Maximum,
     ];
-    
+
     assert_eq!(variants.len(), 4);
-    
+
     // Test each serializes successfully
     for variant in variants {
         let json = serde_json::to_string(&variant).unwrap();
@@ -77,7 +76,7 @@ fn test_network_location_creation() {
         network_id: Some("net-123".to_string()),
         geo_location: Some("us-west-2".to_string()),
     };
-    
+
     assert_eq!(location.ip_address, "192.168.1.100");
     assert!(location.subnet.is_some());
     assert!(location.network_id.is_some());
@@ -92,7 +91,7 @@ fn test_network_location_minimal() {
         network_id: None,
         geo_location: None,
     };
-    
+
     assert_eq!(location.ip_address, "10.0.0.1");
     assert!(location.subnet.is_none());
     assert!(location.network_id.is_none());
@@ -107,7 +106,7 @@ fn test_network_location_clone() {
         network_id: None,
         geo_location: None,
     };
-    
+
     let cloned = location.clone();
     assert_eq!(location.ip_address, cloned.ip_address);
     assert_eq!(location.subnet, cloned.subnet);
@@ -121,10 +120,10 @@ fn test_network_location_serialization() {
         network_id: Some("local".to_string()),
         geo_location: None,
     };
-    
+
     let json = serde_json::to_string(&location).unwrap();
     let deserialized: NetworkLocation = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(location.ip_address, deserialized.ip_address);
     assert_eq!(location.subnet, deserialized.subnet);
     assert_eq!(location.network_id, deserialized.network_id);
@@ -138,14 +137,14 @@ fn test_network_location_equality() {
         network_id: None,
         geo_location: None,
     };
-    
+
     let loc2 = NetworkLocation {
         ip_address: "192.168.1.1".to_string(),
         subnet: None,
         network_id: None,
         geo_location: None,
     };
-    
+
     assert_eq!(loc1, loc2);
 }
 
@@ -161,7 +160,7 @@ fn test_primal_context_creation() {
         network_id: Some("net-123".to_string()),
         geo_location: Some("us-west-2".to_string()),
     };
-    
+
     let context = PrimalContext {
         user_id: "user-123".to_string(),
         device_id: "device-456".to_string(),
@@ -170,7 +169,7 @@ fn test_primal_context_creation() {
         security_level: SecurityLevel::High,
         metadata: HashMap::new(),
     };
-    
+
     assert_eq!(context.user_id, "user-123");
     assert_eq!(context.device_id, "device-456");
     assert_eq!(context.session_id, "session-789");
@@ -185,11 +184,11 @@ fn test_primal_context_with_metadata() {
         network_id: None,
         geo_location: None,
     };
-    
+
     let mut metadata = HashMap::new();
     metadata.insert("app".to_string(), "myapp".to_string());
     metadata.insert("version".to_string(), "1.0".to_string());
-    
+
     let context = PrimalContext {
         user_id: "user-999".to_string(),
         device_id: "device-999".to_string(),
@@ -198,7 +197,7 @@ fn test_primal_context_with_metadata() {
         security_level: SecurityLevel::Standard,
         metadata,
     };
-    
+
     assert_eq!(context.metadata.len(), 2);
     assert_eq!(context.metadata.get("app").unwrap(), "myapp");
 }
@@ -211,7 +210,7 @@ fn test_primal_context_network_location() {
         network_id: Some("corp-net".to_string()),
         geo_location: None,
     };
-    
+
     let context = PrimalContext {
         user_id: "user-777".to_string(),
         device_id: "device-888".to_string(),
@@ -220,9 +219,12 @@ fn test_primal_context_network_location() {
         security_level: SecurityLevel::Maximum,
         metadata: HashMap::new(),
     };
-    
+
     assert_eq!(context.network_location.ip_address, "172.16.0.1");
-    assert_eq!(context.network_location.network_id, Some("corp-net".to_string()));
+    assert_eq!(
+        context.network_location.network_id,
+        Some("corp-net".to_string())
+    );
 }
 
 #[test]
@@ -233,7 +235,7 @@ fn test_primal_context_clone() {
         network_id: None,
         geo_location: None,
     };
-    
+
     let context = PrimalContext {
         user_id: "user-clone".to_string(),
         device_id: "device-clone".to_string(),
@@ -242,7 +244,7 @@ fn test_primal_context_clone() {
         security_level: SecurityLevel::Basic,
         metadata: HashMap::new(),
     };
-    
+
     let cloned = context.clone();
     assert_eq!(context.user_id, cloned.user_id);
     assert_eq!(context.device_id, cloned.device_id);
@@ -258,7 +260,7 @@ fn test_primal_context_serialization() {
         network_id: None,
         geo_location: None,
     };
-    
+
     let context = PrimalContext {
         user_id: "user-serialize".to_string(),
         device_id: "device-serialize".to_string(),
@@ -267,10 +269,10 @@ fn test_primal_context_serialization() {
         security_level: SecurityLevel::Standard,
         metadata: HashMap::new(),
     };
-    
+
     let json = serde_json::to_string(&context).unwrap();
     let deserialized: PrimalContext = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(context.user_id, deserialized.user_id);
     assert_eq!(context.device_id, deserialized.device_id);
     assert_eq!(context.security_level, deserialized.security_level);
@@ -282,19 +284,21 @@ fn test_primal_context_serialization() {
 
 #[test]
 fn test_job_priority_ordering() {
-    assert!(JobPriority::Emergency > JobPriority::Critical);
-    assert!(JobPriority::Critical > JobPriority::High);
-    assert!(JobPriority::High > JobPriority::Normal);
-    assert!(JobPriority::Normal > JobPriority::Low);
+    // Lower numeric values = higher priority, so Emergency < Low
+    assert!(JobPriority::Emergency < JobPriority::Critical);
+    assert!(JobPriority::Critical < JobPriority::High);
+    assert!(JobPriority::High < JobPriority::Normal);
+    assert!(JobPriority::Normal < JobPriority::Low);
 }
 
 #[test]
 fn test_job_priority_numeric_values() {
-    assert_eq!(JobPriority::Low as i32, 0);
-    assert_eq!(JobPriority::Normal as i32, 1);
+    // Emergency = 0 (highest priority), Low = 4 (lowest priority)
+    assert_eq!(JobPriority::Emergency as i32, 0);
+    assert_eq!(JobPriority::Critical as i32, 1);
     assert_eq!(JobPriority::High as i32, 2);
-    assert_eq!(JobPriority::Critical as i32, 3);
-    assert_eq!(JobPriority::Emergency as i32, 4);
+    assert_eq!(JobPriority::Normal as i32, 3);
+    assert_eq!(JobPriority::Low as i32, 4);
 }
 
 #[test]
@@ -309,7 +313,7 @@ fn test_job_priority_copy_clone() {
     let priority = JobPriority::Critical;
     let copied = priority;
     let cloned = priority.clone();
-    
+
     assert_eq!(priority, copied);
     assert_eq!(priority, cloned);
 }
@@ -319,25 +323,26 @@ fn test_job_priority_serialization() {
     let priority = JobPriority::High;
     let json = serde_json::to_string(&priority).unwrap();
     let deserialized: JobPriority = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(priority, deserialized);
 }
 
 #[test]
 fn test_job_priority_all_variants() {
+    // Ordered from highest priority (Emergency=0) to lowest (Low=4)
     let variants = vec![
-        JobPriority::Low,
-        JobPriority::Normal,
-        JobPriority::High,
-        JobPriority::Critical,
         JobPriority::Emergency,
+        JobPriority::Critical,
+        JobPriority::High,
+        JobPriority::Normal,
+        JobPriority::Low,
     ];
-    
+
     assert_eq!(variants.len(), 5);
-    
-    // Verify ordering
-    for i in 0..variants.len()-1 {
-        assert!(variants[i] < variants[i+1]);
+
+    // Verify ordering (each should be less than the next)
+    for i in 0..variants.len() - 1 {
+        assert!(variants[i] < variants[i + 1]);
     }
 }
 
@@ -349,15 +354,19 @@ fn test_job_priority_all_variants() {
 fn test_universal_job_type_native() {
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), "/usr/bin".to_string());
-    
+
     let job_type = UniversalJobType::Native {
         executable: "/usr/bin/echo".to_string(),
         args: vec!["hello".to_string()],
         env,
     };
-    
+
     match job_type {
-        UniversalJobType::Native { executable, args, env } => {
+        UniversalJobType::Native {
+            executable,
+            args,
+            env,
+        } => {
             assert_eq!(executable, "/usr/bin/echo");
             assert_eq!(args.len(), 1);
             assert_eq!(env.len(), 1);
@@ -374,9 +383,11 @@ fn test_universal_job_type_wasm() {
         args: vec!["arg1".to_string()],
         env: HashMap::new(),
     };
-    
+
     match job_type {
-        UniversalJobType::Wasm { module: m, args, .. } => {
+        UniversalJobType::Wasm {
+            module: m, args, ..
+        } => {
             assert_eq!(m, module);
             assert_eq!(args.len(), 1);
         }
@@ -392,9 +403,13 @@ fn test_universal_job_type_primal() {
         endpoint: "http://ai-service:8080".to_string(),
         payload,
     };
-    
+
     match job_type {
-        UniversalJobType::Primal { primal_type, endpoint, payload } => {
+        UniversalJobType::Primal {
+            primal_type,
+            endpoint,
+            payload,
+        } => {
             assert_eq!(primal_type, "ai_processing");
             assert!(endpoint.contains("ai-service"));
             assert!(payload.is_object());
@@ -410,9 +425,12 @@ fn test_universal_job_type_biomeos() {
         biome_manifest: manifest.clone(),
         team_id: "team-123".to_string(),
     };
-    
+
     match job_type {
-        UniversalJobType::BiomeOS { biome_manifest, team_id } => {
+        UniversalJobType::BiomeOS {
+            biome_manifest,
+            team_id,
+        } => {
             assert_eq!(team_id, "team-123");
             assert!(biome_manifest.is_object());
         }
@@ -427,12 +445,14 @@ fn test_universal_job_type_clone() {
         args: vec![],
         env: HashMap::new(),
     };
-    
+
     let cloned = job_type.clone();
-    
+
     match (job_type, cloned) {
-        (UniversalJobType::Native { executable: e1, .. }, 
-         UniversalJobType::Native { executable: e2, .. }) => {
+        (
+            UniversalJobType::Native { executable: e1, .. },
+            UniversalJobType::Native { executable: e2, .. },
+        ) => {
             assert_eq!(e1, e2);
         }
         _ => panic!("Clone failed"),
@@ -446,10 +466,10 @@ fn test_universal_job_type_serialization() {
         args: vec!["-la".to_string()],
         env: HashMap::new(),
     };
-    
+
     let json = serde_json::to_string(&job_type).unwrap();
     let deserialized: UniversalJobType = serde_json::from_str(&json).unwrap();
-    
+
     match deserialized {
         UniversalJobType::Native { executable, .. } => {
             assert_eq!(executable, "/usr/bin/ls");
@@ -465,7 +485,7 @@ fn test_universal_job_type_serialization() {
 #[test]
 fn test_universal_platform_config_default() {
     let config = UniversalPlatformConfig::default();
-    
+
     assert!(config.recursive_hosting);
     assert!(config.ecosystem_integration);
     assert!(config.biomeos_integration);
@@ -482,7 +502,7 @@ fn test_universal_platform_config_custom() {
         max_concurrent_jobs: 50,
         pure_ecosystem: true,
     };
-    
+
     assert!(!config.recursive_hosting);
     assert!(!config.biomeos_integration);
     assert_eq!(config.max_concurrent_jobs, 50);
@@ -493,7 +513,7 @@ fn test_universal_platform_config_custom() {
 fn test_universal_platform_config_clone() {
     let config = UniversalPlatformConfig::default();
     let cloned = config.clone();
-    
+
     assert_eq!(config.recursive_hosting, cloned.recursive_hosting);
     assert_eq!(config.max_concurrent_jobs, cloned.max_concurrent_jobs);
     assert_eq!(config.pure_ecosystem, cloned.pure_ecosystem);
@@ -514,4 +534,3 @@ fn test_universal_platform_config_clone() {
 // - Serialization tests (15 tests across types)
 // - Clone/Copy tests (multiple)
 // - Equality/ordering tests (multiple)
-

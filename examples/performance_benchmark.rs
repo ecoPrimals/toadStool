@@ -76,12 +76,7 @@ struct BenchmarkResults {
 #[tokio::main]
 async fn main() -> ToadStoolResult<()> {
     // Initialize ToadStool
-    init().map_err(|e| {
-        ToadStoolError::from(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    init().map_err(|e| ToadStoolError::from(std::io::Error::other(e.to_string())))?;
 
     println!("🚀 ToadStool Universal Architecture Performance Benchmark");
     println!("{}", "=".repeat(70));
@@ -144,12 +139,9 @@ async fn benchmark_native_execution(
         };
 
         let exec_start = Instant::now();
-        match platform.execute_universal_job(job).await {
-            Ok(_) => {
-                successful += 1;
-                total_exec_time += exec_start.elapsed();
-            }
-            Err(_) => {}
+        if let Ok(_) = platform.execute_universal_job(job).await {
+            successful += 1;
+            total_exec_time += exec_start.elapsed();
         }
 
         if i % 100 == 0 {
@@ -224,9 +216,8 @@ async fn benchmark_concurrent_jobs(
 
     let mut successful = 0;
     for handle in handles {
-        match handle.await {
-            Ok(Ok(_)) => successful += 1,
-            _ => {}
+        if let Ok(Ok(_)) = handle.await {
+            successful += 1
         }
     }
 
@@ -366,12 +357,9 @@ async fn benchmark_resource_allocation(
         };
 
         let alloc_start = Instant::now();
-        match platform.execute_universal_job(job).await {
-            Ok(_) => {
-                successful += 1;
-                total_allocation_time += alloc_start.elapsed();
-            }
-            Err(_) => {}
+        if let Ok(_) = platform.execute_universal_job(job).await {
+            successful += 1;
+            total_allocation_time += alloc_start.elapsed();
         }
 
         if i % 100 == 0 {
@@ -410,7 +398,7 @@ async fn benchmark_security_overhead(
     println!("\n🔒 Benchmarking Security Level Overhead");
     println!("{}", "-".repeat(50));
 
-    let security_levels = vec![
+    let security_levels = [
         SecurityLevel::Basic,
         SecurityLevel::Standard,
         SecurityLevel::High,
@@ -440,15 +428,12 @@ async fn benchmark_security_overhead(
         };
 
         let level_start = Instant::now();
-        match platform.execute_universal_job(job).await {
-            Ok(_) => {
-                successful += 1;
-                let level_duration = level_start.elapsed();
-                *level_times
-                    .entry(format!("{:?}", level))
-                    .or_insert(Duration::new(0, 0)) += level_duration;
-            }
-            Err(_) => {}
+        if let Ok(_) = platform.execute_universal_job(job).await {
+            successful += 1;
+            let level_duration = level_start.elapsed();
+            *level_times
+                .entry(format!("{:?}", level))
+                .or_insert(Duration::new(0, 0)) += level_duration;
         }
 
         if i % 100 == 0 {
@@ -557,12 +542,9 @@ async fn benchmark_job_types(
             UniversalJobType::BiomeOS { .. } => "BiomeOS",
         };
 
-        match platform.execute_universal_job(job).await {
-            Ok(_) => {
-                successful += 1;
-                *type_counts.entry(job_type_name.to_string()).or_insert(0) += 1;
-            }
-            Err(_) => {}
+        if let Ok(_) = platform.execute_universal_job(job).await {
+            successful += 1;
+            *type_counts.entry(job_type_name.to_string()).or_insert(0) += 1;
         }
 
         if i % 100 == 0 {
@@ -623,9 +605,8 @@ async fn benchmark_memory_usage(
             context,
         };
 
-        match platform.execute_universal_job(job).await {
-            Ok(_) => successful += 1,
-            Err(_) => {}
+        if let Ok(_) = platform.execute_universal_job(job).await {
+            successful += 1
         }
 
         if i % 100 == 0 {

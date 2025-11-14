@@ -28,8 +28,8 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
 use toadstool_common::config_bases::CacheConfig;
+use tokio::sync::RwLock;
 use tracing::info;
 use wasi_common::sync::add_to_linker;
 use wasi_common::sync::WasiCtxBuilder;
@@ -85,12 +85,13 @@ pub enum SecurityLevel {
 
 impl Default for WasmRuntimeConfig {
     fn default() -> Self {
-        let mut cache = CacheConfig::default();
-        cache.max_entries = 512; // 512 modules
-        cache.ttl = Duration::from_secs(24 * 3600); // 24 hours
-        
         Self {
-            cache,
+            // Optimize cache for WASM modules - 512 entries, 24 hour TTL
+            cache: CacheConfig {
+                max_entries: 512,
+                ttl: Duration::from_secs(24 * 3600),
+                ..CacheConfig::default()
+            },
             security_level: SecurityLevel::Strict,
             max_memory_mb: 128,
             max_pages: 2048,
@@ -628,25 +629,28 @@ impl RuntimeEngine for WasmRuntimeEngine {
         })
     }
 
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-        info!("Executing WebAssembly workload: {}", request.execution_id);
+            info!("Executing WebAssembly workload: {}", request.execution_id);
 
-        // Extract WASM workload specification
-        let module_source = match &request.workload {
-            toadstool::workload::WorkloadSpec::Wasm { module, .. } => module,
-            _ => {
-                return Err(ToadStoolError::validation(
-                    "Invalid workload type for WASM runtime".to_string(),
-                ));
-            }
-        };
+            // Extract WASM workload specification
+            let module_source = match &request.workload {
+                toadstool::workload::WorkloadSpec::Wasm { module, .. } => module,
+                _ => {
+                    return Err(ToadStoolError::validation(
+                        "Invalid workload type for WASM runtime".to_string(),
+                    ));
+                }
+            };
 
-        // Load or get cached module
-        let module = self.get_or_load_module(module_source).await?;
+            // Load or get cached module
+            let module = self.get_or_load_module(module_source).await?;
 
-        // Execute the module
-        self.execute_module(&request, module).await
+            // Execute the module
+            self.execute_module(&request, module).await
         })
     }
 
@@ -674,98 +678,102 @@ impl RuntimeEngine for WasmRuntimeEngine {
         matches!(workload_type, toadstool::workload::WorkloadType::Wasm)
     }
 
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<toadstool::resources::RuntimeMetrics>> + Send + '_>> {
+    fn get_metrics(
+        &self,
+    ) -> Pin<
+        Box<dyn Future<Output = ToadStoolResult<toadstool::resources::RuntimeMetrics>> + Send + '_>,
+    > {
         Box::pin(async {
-        let executions = self.active_executions.read().await;
-        let active_count = executions.len();
+            let executions = self.active_executions.read().await;
+            let active_count = executions.len();
 
-        let cache = self.module_cache.read().await;
-        let cached_modules = cache.len();
+            let cache = self.module_cache.read().await;
+            let cached_modules = cache.len();
 
-        // Calculate actual memory usage of cached modules
-        let cache_memory_usage: u64 = cache
-            .values()
-            .map(|cached_module| cached_module.size_bytes as u64)
-            .sum();
+            // Calculate actual memory usage of cached modules
+            let cache_memory_usage: u64 = cache
+                .values()
+                .map(|cached_module| cached_module.size_bytes as u64)
+                .sum();
 
-        #[allow(clippy::collection_is_never_read)]
-        let mut custom_metrics = HashMap::new();
-        custom_metrics.insert(
-            "active_executions".to_string(),
-            serde_json::Value::String(active_count.to_string()),
-        );
-        custom_metrics.insert(
-            "cached_modules".to_string(),
-            serde_json::Value::String(cached_modules.to_string()),
-        );
-        custom_metrics.insert(
-            "cache_memory_usage_bytes".to_string(),
-            serde_json::Value::String(cache_memory_usage.to_string()),
-        );
+            #[allow(clippy::collection_is_never_read)]
+            let mut custom_metrics = HashMap::new();
+            custom_metrics.insert(
+                "active_executions".to_string(),
+                serde_json::Value::String(active_count.to_string()),
+            );
+            custom_metrics.insert(
+                "cached_modules".to_string(),
+                serde_json::Value::String(cached_modules.to_string()),
+            );
+            custom_metrics.insert(
+                "cache_memory_usage_bytes".to_string(),
+                serde_json::Value::String(cache_memory_usage.to_string()),
+            );
 
-        let cache_hit_rate = if cached_modules > 0 {
-            // Estimate cache hit rate based on access patterns
-            let total_accesses: u64 = cache.values().map(|m| m.access_count).sum();
-            if total_accesses > 0 {
-                #[allow(clippy::cast_precision_loss)]
-                (cached_modules as f64 / total_accesses as f64 * 100.0).min(100.0)
+            let cache_hit_rate = if cached_modules > 0 {
+                // Estimate cache hit rate based on access patterns
+                let total_accesses: u64 = cache.values().map(|m| m.access_count).sum();
+                if total_accesses > 0 {
+                    #[allow(clippy::cast_precision_loss)]
+                    (cached_modules as f64 / total_accesses as f64 * 100.0).min(100.0)
+                } else {
+                    0.0
+                }
             } else {
                 0.0
-            }
-        } else {
-            0.0
-        };
+            };
 
-        custom_metrics.insert(
-            "cache_hit_rate_percent".to_string(),
-            serde_json::Value::String(format!("{cache_hit_rate:.1}")),
-        );
+            custom_metrics.insert(
+                "cache_hit_rate_percent".to_string(),
+                serde_json::Value::String(format!("{cache_hit_rate:.1}")),
+            );
 
-        Ok(toadstool::resources::RuntimeMetrics {
-            cpu: toadstool::resources::CpuMetrics {
-                #[allow(clippy::cast_precision_loss)]
-                usage_percent: active_count as f64,
-                #[allow(clippy::cast_precision_loss)]
-                cores_used: active_count as f64 / 100.0,
-                cpu_time_seconds: 0.0,
-            },
-            memory: toadstool::resources::MemoryMetrics {
-                #[allow(clippy::cast_precision_loss)]
-                usage_percent: (cache_memory_usage as f64 / (1024.0 * 1024.0 * 1024.0)) * 100.0,
-                used_bytes: cache_memory_usage,
-                peak_bytes: cache_memory_usage * 11 / 10, // Assume 10% higher peak
-            },
-            storage: toadstool::resources::StorageMetrics::default(),
-            network: toadstool::resources::NetworkMetrics::default(),
-            gpu: None,
-            timing: toadstool::resources::TimingMetrics::default(),
-        })
+            Ok(toadstool::resources::RuntimeMetrics {
+                cpu: toadstool::resources::CpuMetrics {
+                    #[allow(clippy::cast_precision_loss)]
+                    usage_percent: active_count as f64,
+                    #[allow(clippy::cast_precision_loss)]
+                    cores_used: active_count as f64 / 100.0,
+                    cpu_time_seconds: 0.0,
+                },
+                memory: toadstool::resources::MemoryMetrics {
+                    #[allow(clippy::cast_precision_loss)]
+                    usage_percent: (cache_memory_usage as f64 / (1024.0 * 1024.0 * 1024.0)) * 100.0,
+                    used_bytes: cache_memory_usage,
+                    peak_bytes: cache_memory_usage * 11 / 10, // Assume 10% higher peak
+                },
+                storage: toadstool::resources::StorageMetrics::default(),
+                network: toadstool::resources::NetworkMetrics::default(),
+                gpu: None,
+                timing: toadstool::resources::TimingMetrics::default(),
+            })
         })
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
-        info!("Shutting down WebAssembly runtime engine");
+            info!("Shutting down WebAssembly runtime engine");
 
-        // Wait for active executions to complete (with timeout)
-        let shutdown_timeout = Duration::from_secs(30);
-        let start_time = Instant::now();
+            // Wait for active executions to complete (with timeout)
+            let shutdown_timeout = Duration::from_secs(30);
+            let start_time = Instant::now();
 
-        while start_time.elapsed() < shutdown_timeout {
-            let executions = self.active_executions.read().await;
-            if executions.is_empty() {
-                break;
+            while start_time.elapsed() < shutdown_timeout {
+                let executions = self.active_executions.read().await;
+                if executions.is_empty() {
+                    break;
+                }
+                drop(executions);
+                tokio::time::sleep(Duration::from_millis(100)).await;
             }
-            drop(executions);
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
 
-        // Clear caches
-        self.module_cache.write().await.clear();
-        self.active_executions.write().await.clear();
+            // Clear caches
+            self.module_cache.write().await.clear();
+            self.active_executions.write().await.clear();
 
-        info!("WebAssembly runtime engine shut down successfully");
-        Ok(())
+            info!("WebAssembly runtime engine shut down successfully");
+            Ok(())
         })
     }
 }
@@ -996,10 +1004,15 @@ mod tests {
     #[tokio::test]
     async fn test_configuration_validation() {
         // Test various configuration options
-        let mut config = WasmRuntimeConfig::default();
-        config.max_memory_mb = 128;
-        config.execution_timeout_ms = 10000;
-        config.cache.enabled = true;
+        let config = WasmRuntimeConfig {
+            max_memory_mb: 128,
+            execution_timeout_ms: 10000,
+            cache: CacheConfig {
+                enabled: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         let engine = WasmRuntimeEngine::new(config);
         assert!(engine.is_ok());
@@ -1049,7 +1062,7 @@ mod tests {
         config.cache.enabled = true;
         config.max_memory_mb = 32;
         config.execution_timeout_ms = 2000;
-        
+
         let _engine = WasmRuntimeEngine::new(config).unwrap();
 
         // Move this inside the function where it belongs
@@ -1091,11 +1104,13 @@ mod tests {
 
     #[test]
     fn test_wasm_runtime_config_custom() {
-        let mut cache = CacheConfig::default();
-        cache.enabled = false;
-        cache.max_entries = 1024;
-        cache.ttl = Duration::from_secs(48 * 3600);
-        
+        let cache = CacheConfig {
+            enabled: false,
+            max_entries: 1024,
+            ttl: Duration::from_secs(48 * 3600),
+            ..Default::default()
+        };
+
         let config = WasmRuntimeConfig {
             cache,
             security_level: SecurityLevel::Maximum,

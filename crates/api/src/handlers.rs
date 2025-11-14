@@ -991,20 +991,14 @@ pub async fn execute_workload(
     Json(request): Json<toadstool_distributed::WorkloadRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     use toadstool_distributed::WorkloadExecutor;
-    
-    
 
     info!(
         "Received workload execution request {} from primal {}",
-        request.request_id,
-        request.from_primal
+        request.request_id, request.from_primal
     );
 
     // Log the required capability
-    debug!(
-        "Required capability: {}",
-        request.required_capability
-    );
+    debug!("Required capability: {}", request.required_capability);
 
     // Use the WorkloadExecutor from the capability system
     let executor = WorkloadExecutor::new();

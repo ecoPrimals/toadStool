@@ -350,7 +350,7 @@ pub struct LoggingConfig {
 ///
 /// # Error Handling
 ///
-/// Implementations should return specific errors using [`ToadStoolError::Execution`]:
+/// Implementations should return specific errors using `ToadStoolError::Execution`:
 ///
 /// ```ignore
 /// // Good: Specific error with context
@@ -360,7 +360,7 @@ pub struct LoggingConfig {
 /// }));
 ///
 /// // Avoid: Generic errors without context
-/// return Err(ToadStoolError::Unknown("something failed".into()));
+/// return Err(ToadStoolError::Unknown("Something failed".into()));
 /// ```
 ///
 /// # Testing
@@ -422,17 +422,23 @@ pub struct LoggingConfig {
 /// - [`ExecutionRequest`] - Input to execution
 /// - [`ExecutionResponse`] - Output from execution
 /// - [`RuntimeCapabilities`] - Capability declaration
-/// - [`RuntimeMetrics`] - Performance metrics
+/// - `RuntimeMetrics` - Performance metrics (planned)
 pub trait RuntimeEngine: Send + Sync {
     /// Initialize the runtime engine with the provided configuration.
     ///
     /// This method is called once before any workload execution.
-    fn initialize(&mut self, config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn initialize(
+        &mut self,
+        config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Execute a workload and return the result.
     ///
     /// This is the primary method for workload execution.
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>>;
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>>;
 
     /// Get the capabilities supported by this runtime.
     ///
@@ -447,7 +453,9 @@ pub trait RuntimeEngine: Send + Sync {
     /// Get current runtime metrics.
     ///
     /// Returns performance and resource usage metrics.
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>>;
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>>;
 
     /// Shutdown the runtime engine and clean up resources.
     ///

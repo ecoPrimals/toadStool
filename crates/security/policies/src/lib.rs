@@ -13,30 +13,17 @@
 //! - [`evaluator`] - Policy condition evaluation logic
 //! - [`executor`] - Policy action execution logic
 
-pub mod types;
-pub mod manager;
 pub mod evaluator;
 pub mod executor;
+pub mod manager;
+pub mod types;
 
 // Re-export public types for convenience
 pub use types::{
-    AppliedRule,
-    FilePolicyConfig,
-    LogicalOperator,
-    PolicyAction,
-    PolicyCondition,
-    PolicyEvaluationContext,
-    PolicyEvaluationResult,
-    PolicyManagerConfig,
-    PolicyResult,
-    PolicyRule,
-    PolicyWarning,
-    ResourceModification,
-    SecurityModification,
-    SecurityPolicy,
-    SystemInfo,
-    UserInfo,
-    ViolationAction,
+    AppliedRule, FilePolicyConfig, LogicalOperator, PolicyAction, PolicyCondition,
+    PolicyEvaluationContext, PolicyEvaluationResult, PolicyManagerConfig, PolicyResult, PolicyRule,
+    PolicyWarning, ResourceModification, SecurityModification, SecurityPolicy, SystemInfo,
+    UserInfo, ViolationAction,
 };
 
 // Re-export manager types and traits

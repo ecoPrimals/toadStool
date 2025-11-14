@@ -4,7 +4,11 @@ use super::traits::ParallelComputeFramework;
 use super::types::*;
 use async_trait::async_trait;
 use std::collections::HashMap;
+#[cfg(feature = "webgpu")]
+use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+#[cfg(feature = "webgpu")]
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// WebGPU adapter wrapper for conditional compilation
@@ -28,6 +32,9 @@ impl WebGpuFramework {
     }
 
     /// Initialize WebGPU instance and adapter
+    ///
+    /// Note: Only used when `webgpu` feature is enabled
+    #[allow(dead_code)]
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {
         #[cfg(feature = "webgpu")]
         {
@@ -47,10 +54,7 @@ impl WebGpuFramework {
                 .await
                 .ok_or_else(|| ToadStoolError::runtime("No WebGPU adapter available"))?;
 
-            Ok(WebGPUAdapter {
-                instance,
-                adapter,
-            })
+            Ok(WebGPUAdapter { instance, adapter })
         }
         #[cfg(not(feature = "webgpu"))]
         {
@@ -69,15 +73,19 @@ impl ParallelComputeFramework for WebGpuFramework {
         #[cfg(feature = "webgpu")]
         {
             match self.initialize_webgpu().await {
-                Ok((_instance, adapter)) => {
-                    let info = adapter.get_info();
-                    let limits = adapter.limits();
-                    
+                Ok(webgpu_adapter) => {
+                    let info = webgpu_adapter.adapter.get_info();
+                    let limits = webgpu_adapter.adapter.limits();
+
+                    let mut extensions = HashMap::new();
+                    // Note: wgpu::AdapterInfo doesn't expose features directly
+                    extensions.insert("WebGPU".to_string(), true);
+
                     let device = UniversalComputeDevice {
                         id: DeviceId {
-                            uuid: Uuid::new_v4(),
-                            name: info.name.clone(),
-                            vendor_id: info.vendor.to_string(),
+                            framework: GpuFramework::WebGpu,
+                            device_index: 0,
+                            uuid: Uuid::new_v4().to_string(),
                         },
                         info: DeviceInfo {
                             name: info.name,
@@ -90,28 +98,39 @@ impl ParallelComputeFramework for WebGpuFramework {
                                 _ => DeviceType::Other("Unknown".to_string()),
                             },
                             driver_version: info.driver_info.clone(),
-                            architecture: info.architecture.to_string(),
+                            architecture: "WebGPU".to_string(), // architecture field not in AdapterInfo
                             physical_location: None,
                         },
                         capabilities: DeviceCapabilities {
-                            compute_units: limits.max_compute_workgroups_per_dimension,
+                            compute_capability: "WebGPU".to_string(),
                             total_memory_bytes: limits.max_buffer_size,
-                            max_workgroup_size: limits.max_compute_workgroup_size_x,
-                            max_threads_per_workgroup: limits.max_compute_workgroup_size_x,
-                            supports_double_precision: info.features.contains(wgpu::Features::SHADER_F64),
-                            supports_unified_memory: matches!(info.device_type, wgpu::DeviceType::IntegratedGpu),
-                            required_extensions: vec![],
+                            memory_bandwidth_gbps: 100.0, // Placeholder
+                            compute_units: limits.max_compute_workgroups_per_dimension,
+                            max_work_group_size: (
+                                limits.max_compute_workgroup_size_x,
+                                limits.max_compute_workgroup_size_y,
+                                limits.max_compute_workgroup_size_z,
+                            ),
                             supported_data_types: vec![
                                 DataType::Float32,
                                 DataType::Int32,
-                                DataType::Uint32,
+                                DataType::UInt32,
                                 DataType::Float16,
                             ],
+                            extensions,
+                            performance: PerformanceCharacteristics {
+                                peak_gflops_fp32: 0.0, // Placeholder
+                                peak_gflops_fp64: None,
+                                peak_gflops_fp16: None,
+                                peak_memory_bandwidth_utilization: 0.0,
+                                typical_power_watts: 0.0,
+                                max_power_watts: 0.0,
+                            },
                         },
                         usage: Arc::new(RwLock::new(DeviceUsage::default())),
                         framework_handle: Some(FrameworkHandle::Placeholder("webgpu".to_string())),
                     };
-                    
+
                     Ok(vec![device])
                 }
                 Err(e) => {
@@ -131,21 +150,31 @@ impl ParallelComputeFramework for WebGpuFramework {
         #[cfg(feature = "webgpu")]
         {
             match self.initialize_webgpu().await {
-                Ok((_instance, adapter)) => {
-                    let (_device, _queue) = adapter
+                Ok(webgpu_adapter) => {
+                    let (_device, _queue) = webgpu_adapter
+                        .adapter
                         .request_device(
-                                                    &wgpu::DeviceDescriptor {
-                            label: Some(&format!("ToadStool WebGPU Session {}", _device_id.name)),
-                            required_features: wgpu::Features::empty(),
-                            required_limits: wgpu::Limits::default(),
-                        },
+                            &wgpu::DeviceDescriptor {
+                                label: Some(&format!(
+                                    "ToadStool WebGPU Session {}",
+                                    _device_id.uuid
+                                )),
+                                required_features: wgpu::Features::empty(),
+                                required_limits: wgpu::Limits::default(),
+                            },
                             None,
                         )
                         .await
-                        .map_err(|e| ToadStoolError::runtime(format!("Failed to create WebGPU device: {e}")))?;
+                        .map_err(|e| {
+                            ToadStoolError::runtime(format!("Failed to create WebGPU device: {e}"))
+                        })?;
 
                     let session_id = Uuid::new_v4();
-                    tracing::info!("Created WebGPU session {} for device {}", session_id, _device_id.name);
+                    tracing::info!(
+                        "Created WebGPU session {} for device {}",
+                        session_id,
+                        _device_id.uuid
+                    );
                     Ok(session_id)
                 }
                 Err(e) => Err(e),
@@ -167,16 +196,16 @@ impl ParallelComputeFramework for WebGpuFramework {
             KernelFormat::Glsl => {
                 // For GLSL compute shaders, we could compile to SPIR-V
                 tracing::info!("Compiling GLSL kernel for WebGPU session {}", session_id);
-                
+
                 // Basic validation
                 if kernel_source.is_empty() {
                     return Err(ToadStoolError::runtime("Empty kernel source"));
                 }
-                
+
                 if !kernel_source.contains("main") {
                     return Err(ToadStoolError::runtime("Kernel must contain main function"));
                 }
-                
+
                 Ok(CompiledKernel {
                     id: Uuid::new_v4().to_string(),
                     binary: kernel_source.as_bytes().to_vec(),
@@ -219,21 +248,27 @@ impl ParallelComputeFramework for WebGpuFramework {
         kernel: &CompiledKernel,
         inputs: &[KernelInput],
     ) -> ToadStoolResult<KernelOutput> {
-        tracing::info!("Executing kernel {} on WebGPU session {}", kernel.id, session_id);
-        
+        tracing::info!(
+            "Executing kernel {} on WebGPU session {}",
+            kernel.id,
+            session_id
+        );
+
         // Validate inputs
         if inputs.is_empty() {
-            return Err(ToadStoolError::runtime("No inputs provided for kernel execution"));
+            return Err(ToadStoolError::runtime(
+                "No inputs provided for kernel execution",
+            ));
         }
-        
+
         let start_time = std::time::Instant::now();
-        
+
         // In a real implementation, this would:
         // 1. Create compute pipeline from compiled kernel
         // 2. Create buffer bindings for inputs
         // 3. Dispatch compute workgroups
         // 4. Read back results
-        
+
         // For now, simulate execution with input processing
         let mut output_buffers = HashMap::new();
         for (i, input) in inputs.iter().enumerate() {
@@ -241,9 +276,9 @@ impl ParallelComputeFramework for WebGpuFramework {
             // Echo input data as output (placeholder behavior)
             output_buffers.insert(output_name, input.data.clone());
         }
-        
+
         let execution_time = start_time.elapsed();
-        
+
         Ok(KernelOutput {
             buffers: output_buffers,
             metrics: ExecutionMetrics {
@@ -285,7 +320,10 @@ impl ParallelComputeFramework for WebGpuFramework {
         parent_session: Uuid,
         device_id: &DeviceId,
     ) -> ToadStoolResult<Uuid> {
-        tracing::info!("Spawning recursive WebGPU session from parent {}", parent_session);
+        tracing::info!(
+            "Spawning recursive WebGPU session from parent {}",
+            parent_session
+        );
         self.create_session(device_id).await
     }
 }

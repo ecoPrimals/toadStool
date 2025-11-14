@@ -9,10 +9,10 @@ fn main() {
     println!("🧪 ToadStool Comprehensive Test Coverage Demonstration");
     println!("======================================================");
     println!();
-    
+
     println!("✅ Test Coverage Implementation Status:");
     println!();
-    
+
     // OS-Layer Test Coverage
     println!("🖥️  OS-Layer Test Coverage:");
     println!("   ✅ OS-layer manager creation and initialization");
@@ -27,8 +27,8 @@ fn main() {
     println!("   ✅ Platform-specific feature detection");
     println!("   📊 Total OS-layer tests: 15+ comprehensive test cases");
     println!();
-    
-    // biomeOS Integration Test Coverage  
+
+    // biomeOS Integration Test Coverage
     println!("🌱 biomeOS Integration Test Coverage:");
     println!("   ✅ biomeOS service registration and lifecycle");
     println!("   ✅ Workload execution request handling");
@@ -42,7 +42,7 @@ fn main() {
     println!("   ✅ JSON serialization/deserialization");
     println!("   📊 Total biomeOS tests: 20+ comprehensive test cases");
     println!();
-    
+
     // Security Sandboxing Test Coverage
     println!("🔒 Security Sandboxing Test Coverage:");
     println!("   ✅ Sandbox manager creation and lifecycle");
@@ -59,7 +59,7 @@ fn main() {
     println!("   ✅ Resource usage tracking");
     println!("   📊 Total security tests: 25+ comprehensive test cases");
     println!();
-    
+
     // Integration Test Infrastructure
     println!("🔧 Integration Test Infrastructure:");
     println!("   ✅ Comprehensive integration test manager");
@@ -72,7 +72,7 @@ fn main() {
     println!("   ✅ Automated test result aggregation");
     println!("   📊 Total integration tests: 8 major test suites");
     println!();
-    
+
     // Test Quality Metrics
     println!("📈 Test Quality Metrics:");
     println!("   🎯 Component Coverage: OS-layer, biomeOS, Security");
@@ -82,7 +82,7 @@ fn main() {
     println!("   🎯 Performance Coverage: Load testing and concurrency");
     println!("   🎯 Security Coverage: Isolation levels and policies");
     println!();
-    
+
     // Test Infrastructure Features
     println!("🏗️  Test Infrastructure Features:");
     println!("   ✅ Async test execution with tokio");
@@ -94,7 +94,7 @@ fn main() {
     println!("   ✅ Platform-specific test adaptations");
     println!("   ✅ Test result reporting and aggregation");
     println!();
-    
+
     // Technical Achievements
     println!("🏆 Technical Achievements:");
     println!("   ✅ Zero TODO comments in core functionality");
@@ -106,7 +106,7 @@ fn main() {
     println!("   ✅ Integration between all major components");
     println!("   ✅ Production-ready test infrastructure");
     println!();
-    
+
     // Test Statistics Summary
     println!("📊 Test Coverage Summary:");
     println!("   • OS-Layer Tests:        15+ test cases");
@@ -118,7 +118,7 @@ fn main() {
     println!("   • Platform Coverage:     Linux, Windows, macOS, Legacy");
     println!("   • Component Coverage:    All major ToadStool components");
     println!();
-    
+
     // Next Steps
     println!("🚀 Test Coverage Status:");
     println!("   ✅ COMPLETED: OS-layer test coverage");
@@ -136,7 +136,7 @@ fn main() {
     println!("   • Cross-component interactions and integration");
     println!("   • Performance, concurrency, and error handling");
     println!();
-    
+
     simulate_test_execution();
 }
 
@@ -144,28 +144,32 @@ fn main() {
 fn simulate_test_execution() {
     println!("🔄 Simulating Comprehensive Test Execution...");
     println!();
-    
+
     let test_suites = vec![
-        ("OS-Layer Compatibility Tests", 15, Duration::from_millis(150)),
+        (
+            "OS-Layer Compatibility Tests",
+            15,
+            Duration::from_millis(150),
+        ),
         ("biomeOS Integration Tests", 20, Duration::from_millis(200)),
         ("Security Sandboxing Tests", 25, Duration::from_millis(180)),
         ("Cross-Component Integration", 8, Duration::from_millis(300)),
         ("Performance & Concurrency", 5, Duration::from_millis(250)),
         ("Error Handling & Recovery", 6, Duration::from_millis(120)),
     ];
-    
+
     let mut total_tests = 0;
     let mut total_duration = Duration::new(0, 0);
-    
+
     for (suite_name, test_count, duration) in test_suites {
         println!("   Running {}: {} tests... ", suite_name, test_count);
         std::thread::sleep(Duration::from_millis(50)); // Simulate test execution
         println!("      ✅ Completed in {:?}", duration);
-        
+
         total_tests += test_count;
         total_duration += duration;
     }
-    
+
     println!();
     println!("📋 Test Execution Summary:");
     println!("   Total Tests Run: {}", total_tests);
@@ -174,4 +178,4 @@ fn simulate_test_execution() {
     println!("   Coverage: Comprehensive across all components");
     println!();
     println!("✨ All comprehensive tests completed successfully!");
-} 
+}

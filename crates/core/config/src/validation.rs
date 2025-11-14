@@ -19,15 +19,15 @@ pub trait Validate {
 /// Validate a port number is in valid range
 pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
-    if port < validation::MIN_PORT || port > validation::MAX_PORT {
+
+    // Note: MAX_PORT is u16::MAX (65535), so no need to check upper bound
+    if port < validation::MIN_PORT {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: port.to_string(),
             reason: format!(
-                "Port must be between {} and {} (privileged ports < 1024 should be avoided)",
-                validation::MIN_PORT,
-                validation::MAX_PORT
+                "Port must be at least {} (privileged ports < 1024 should be avoided)",
+                validation::MIN_PORT
             ),
         });
     }
@@ -37,20 +37,17 @@ pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
 /// Validate a timeout duration is in valid range
 pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
+
     let timeout_ms = timeout.as_millis() as u64;
-    
+
     if timeout_ms < validation::MIN_TIMEOUT_MS {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: format!("{}ms", timeout_ms),
-            reason: format!(
-                "Timeout must be at least {}ms",
-                validation::MIN_TIMEOUT_MS
-            ),
+            reason: format!("Timeout must be at least {}ms", validation::MIN_TIMEOUT_MS),
         });
     }
-    
+
     if timeout_ms > validation::MAX_TIMEOUT_MS {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
@@ -61,14 +58,14 @@ pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()>
             ),
         });
     }
-    
+
     Ok(())
 }
 
 /// Validate a worker thread count
 pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
+
     if count < validation::MIN_WORKER_THREADS {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
@@ -79,7 +76,7 @@ pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<(
             ),
         });
     }
-    
+
     if count > validation::MAX_WORKER_THREADS {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
@@ -90,83 +87,61 @@ pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<(
             ),
         });
     }
-    
+
     Ok(())
 }
 
 /// Validate a pool size
 pub fn validate_pool_size(size: u32, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
-    if size < validation::MIN_POOL_SIZE {
+
+    if (size as usize) < validation::MIN_POOL_SIZE {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: size.to_string(),
-            reason: format!(
-                "Pool size must be at least {}",
-                validation::MIN_POOL_SIZE
-            ),
+            reason: format!("Pool size must be at least {}", validation::MIN_POOL_SIZE),
         });
     }
-    
-    if size > validation::MAX_POOL_SIZE {
+
+    if (size as usize) > validation::MAX_POOL_SIZE {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: size.to_string(),
-            reason: format!(
-                "Pool size must not exceed {}",
-                validation::MAX_POOL_SIZE
-            ),
+            reason: format!("Pool size must not exceed {}", validation::MAX_POOL_SIZE),
         });
     }
-    
+
     Ok(())
 }
 
 /// Validate a cache size
 pub fn validate_cache_size(size: usize, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
+
     if size < validation::MIN_CACHE_SIZE {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: size.to_string(),
-            reason: format!(
-                "Cache size must be at least {}",
-                validation::MIN_CACHE_SIZE
-            ),
+            reason: format!("Cache size must be at least {}", validation::MIN_CACHE_SIZE),
         });
     }
-    
+
     if size > validation::MAX_CACHE_SIZE {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
             value: size.to_string(),
-            reason: format!(
-                "Cache size must not exceed {}",
-                validation::MAX_CACHE_SIZE
-            ),
+            reason: format!("Cache size must not exceed {}", validation::MAX_CACHE_SIZE),
         });
     }
-    
+
     Ok(())
 }
 
 /// Validate retry attempts
 pub fn validate_retry_attempts(attempts: u32, field_name: &str) -> ConfigResult<()> {
     use crate::defaults::validation;
-    
-    if attempts < validation::MIN_RETRY_ATTEMPTS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: attempts.to_string(),
-            reason: format!(
-                "Retry attempts must be at least {}",
-                validation::MIN_RETRY_ATTEMPTS
-            ),
-        });
-    }
-    
+
+    // Note: MIN_RETRY_ATTEMPTS is 0 (u32::MIN), so no need to check lower bound
     if attempts > validation::MAX_RETRY_ATTEMPTS {
         return Err(ConfigError::InvalidValue {
             field: field_name.to_string(),
@@ -177,7 +152,7 @@ pub fn validate_retry_attempts(attempts: u32, field_name: &str) -> ConfigResult<
             ),
         });
     }
-    
+
     Ok(())
 }
 
@@ -194,7 +169,7 @@ pub fn validate_non_empty(value: &str, field_name: &str) -> ConfigResult<()> {
 /// Validate a URL format
 pub fn validate_url(value: &str, field_name: &str) -> ConfigResult<()> {
     validate_non_empty(value, field_name)?;
-    
+
     // Basic URL validation - starts with http:// or https://
     if !value.starts_with("http://") && !value.starts_with("https://") {
         return Err(ConfigError::InvalidValue {
@@ -203,7 +178,7 @@ pub fn validate_url(value: &str, field_name: &str) -> ConfigResult<()> {
             reason: "URL must start with http:// or https://".to_string(),
         });
     }
-    
+
     Ok(())
 }
 
@@ -218,7 +193,7 @@ mod tests {
         assert!(validate_port(1024, "port").is_ok());
         assert!(validate_port(8080, "port").is_ok());
         assert!(validate_port(65535, "port").is_ok());
-        
+
         // Invalid ports
         assert!(validate_port(80, "port").is_err()); // Privileged
         assert!(validate_port(1023, "port").is_err());
@@ -229,10 +204,11 @@ mod tests {
         // Valid timeouts
         assert!(validate_timeout(Duration::from_millis(100), "timeout").is_ok());
         assert!(validate_timeout(Duration::from_secs(30), "timeout").is_ok());
-        
+
         // Invalid timeouts
         assert!(validate_timeout(Duration::from_millis(50), "timeout").is_err()); // Too short
-        assert!(validate_timeout(Duration::from_secs(7200), "timeout").is_err()); // Too long
+        assert!(validate_timeout(Duration::from_secs(7200), "timeout").is_err());
+        // Too long
     }
 
     #[test]
@@ -241,7 +217,7 @@ mod tests {
         assert!(validate_worker_threads(1, "workers").is_ok());
         assert!(validate_worker_threads(4, "workers").is_ok());
         assert!(validate_worker_threads(128, "workers").is_ok());
-        
+
         // Invalid counts
         assert!(validate_worker_threads(0, "workers").is_err());
         assert!(validate_worker_threads(256, "workers").is_err());
@@ -262,4 +238,3 @@ mod tests {
         assert!(validate_url("", "url").is_err());
     }
 }
-

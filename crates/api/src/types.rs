@@ -484,7 +484,7 @@ impl ApiError {
         let details = serde_json::to_value(errors).unwrap_or_default();
         Self::new("VALIDATION_ERROR", "Request validation failed").with_details(details)
     }
-    
+
     /// Create from ToadStoolError (legacy support)
     #[must_use]
     pub fn from_toadstool_error(err: ToadStoolError) -> Self {
@@ -508,7 +508,7 @@ impl From<ToadStoolErrorWithCode> for ApiError {
         // If error has a structured code, use it
         if let Some(code) = err.error_code() {
             let mut api_err = Self::new(code.code, &err.error.to_string());
-            
+
             // Add remediation as details if available
             if let Some(remediation) = code.remediation {
                 let details = serde_json::json!({
@@ -517,7 +517,7 @@ impl From<ToadStoolErrorWithCode> for ApiError {
                 });
                 api_err = api_err.with_details(details);
             }
-            
+
             api_err
         } else {
             // Fall back to legacy conversion

@@ -9,9 +9,9 @@
 //!
 //! Migrated from async_trait to native async for zero-cost abstraction.
 
+use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
-use std::future::Future;
 
 use super::capabilities::*;
 
@@ -38,9 +38,12 @@ impl Default for KubernetesDetector {
 }
 
 impl SubstrateDetector for KubernetesDetector {
-    fn detect(&self) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>> {
+    fn detect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
+    {
         let is_k8s = self.is_kubernetes();
-        
+
         Box::pin(async move {
             if !is_k8s {
                 return Ok(None);
@@ -112,9 +115,12 @@ impl Default for DockerDetector {
 }
 
 impl SubstrateDetector for DockerDetector {
-    fn detect(&self) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>> {
+    fn detect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
+    {
         let is_docker = self.is_docker();
-        
+
         Box::pin(async move {
             if !is_docker {
                 return Ok(None);
@@ -123,16 +129,16 @@ impl SubstrateDetector for DockerDetector {
             let mut metadata = std::collections::HashMap::new();
             metadata.insert("runtime".to_string(), "docker".to_string());
 
-        // Try to detect container ID
-        if let Ok(content) = std::fs::read_to_string("/proc/self/cgroup") {
-            if let Some(line) = content.lines().next() {
-                if let Some(id_part) = line.split('/').next_back() {
-                    if id_part.len() > 12 {
-                        metadata.insert("container_id".to_string(), id_part[..12].to_string());
+            // Try to detect container ID
+            if let Ok(content) = std::fs::read_to_string("/proc/self/cgroup") {
+                if let Some(line) = content.lines().next() {
+                    if let Some(id_part) = line.split('/').next_back() {
+                        if id_part.len() > 12 {
+                            metadata.insert("container_id".to_string(), id_part[..12].to_string());
+                        }
                     }
                 }
             }
-        }
 
             Ok(Some(DetectedSubstrate {
                 substrate_type: SubstrateType::ContainerRuntime,
@@ -195,7 +201,10 @@ impl Default for ConsulDetector {
 }
 
 impl SubstrateDetector for ConsulDetector {
-    fn detect(&self) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>> {
+    fn detect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
+    {
         Box::pin(async move {
             if !self.is_consul_available().await {
                 return Ok(None);
@@ -270,9 +279,12 @@ impl Default for CloudDetector {
 }
 
 impl SubstrateDetector for CloudDetector {
-    fn detect(&self) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>> {
+    fn detect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
+    {
         let provider = self.detect_cloud_provider();
-        
+
         Box::pin(async move {
             let provider = match provider {
                 Some(p) => p,
@@ -331,7 +343,10 @@ impl Default for BareMetalDetector {
 }
 
 impl SubstrateDetector for BareMetalDetector {
-    fn detect(&self) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>> {
+    fn detect(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
+    {
         Box::pin(async move {
             let mut metadata = std::collections::HashMap::new();
             metadata.insert("deployment".to_string(), "bare_metal".to_string());

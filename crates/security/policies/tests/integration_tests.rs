@@ -5,8 +5,7 @@
 use chrono::Utc;
 use std::collections::HashMap;
 use toadstool_security_policies::{
-    PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule,
-    SecurityPolicy, ViolationAction,
+    PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule, SecurityPolicy, ViolationAction,
 };
 
 // ============================================================================
@@ -17,7 +16,7 @@ use toadstool_security_policies::{
 fn test_complete_policy_workflow() {
     let config = PolicyManagerConfig::default();
     assert!(config.strict_enforcement);
-    
+
     let now = Utc::now();
     let policy = SecurityPolicy {
         id: "integration-001".to_string(),
@@ -32,7 +31,7 @@ fn test_complete_policy_workflow() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.id, "integration-001");
     assert!(config.strict_enforcement);
 }
@@ -69,7 +68,7 @@ fn test_policy_with_multiple_rules_ordering() {
             description: None,
         },
     ];
-    
+
     let policy = SecurityPolicy {
         id: "multi-rule-001".to_string(),
         name: "Multi-Rule Policy".to_string(),
@@ -83,7 +82,7 @@ fn test_policy_with_multiple_rules_ordering() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.rules.len(), 3);
     assert_eq!(policy.rules[0].priority, 1000);
     assert_eq!(policy.rules[1].priority, 500);
@@ -93,7 +92,7 @@ fn test_policy_with_multiple_rules_ordering() {
 #[test]
 fn test_policy_inheritance_chain() {
     let now = Utc::now();
-    
+
     // Base policy
     let base_policy = SecurityPolicy {
         id: "base-policy".to_string(),
@@ -108,7 +107,7 @@ fn test_policy_inheritance_chain() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     // Child policy inheriting from base
     let child_policy = SecurityPolicy {
         id: "child-policy".to_string(),
@@ -123,7 +122,7 @@ fn test_policy_inheritance_chain() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(base_policy.inherits.len(), 0);
     assert_eq!(child_policy.inherits.len(), 1);
     assert!(child_policy.inherits.contains(&"base-policy".to_string()));
@@ -131,28 +130,38 @@ fn test_policy_inheritance_chain() {
 
 #[test]
 fn test_config_with_strict_enforcement() {
-    let mut config = PolicyManagerConfig::default();
-    config.strict_enforcement = true;
-    config.default_violation_action = ViolationAction::Terminate;
-    
+    let config = PolicyManagerConfig {
+        strict_enforcement: true,
+        default_violation_action: ViolationAction::Terminate,
+        ..PolicyManagerConfig::default()
+    };
+
     assert!(config.strict_enforcement);
-    assert!(matches!(config.default_violation_action, ViolationAction::Terminate));
+    assert!(matches!(
+        config.default_violation_action,
+        ViolationAction::Terminate
+    ));
 }
 
 #[test]
 fn test_config_with_permissive_enforcement() {
-    let mut config = PolicyManagerConfig::default();
-    config.strict_enforcement = false;
-    config.default_violation_action = ViolationAction::LogAndContinue;
-    
+    let config = PolicyManagerConfig {
+        strict_enforcement: false,
+        default_violation_action: ViolationAction::LogAndContinue,
+        ..PolicyManagerConfig::default()
+    };
+
     assert!(!config.strict_enforcement);
-    assert!(matches!(config.default_violation_action, ViolationAction::LogAndContinue));
+    assert!(matches!(
+        config.default_violation_action,
+        ViolationAction::LogAndContinue
+    ));
 }
 
 #[test]
 fn test_policy_versioning() {
     let now = Utc::now();
-    
+
     let v1 = SecurityPolicy {
         id: "versioned-policy".to_string(),
         name: "Versioned Policy".to_string(),
@@ -166,7 +175,7 @@ fn test_policy_versioning() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     let v2 = SecurityPolicy {
         id: "versioned-policy".to_string(),
         name: "Versioned Policy".to_string(),
@@ -180,7 +189,7 @@ fn test_policy_versioning() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_ne!(v1.version, v2.version);
     assert_eq!(v1.id, v2.id);
 }
@@ -192,8 +201,11 @@ fn test_policy_with_extensive_metadata() {
     metadata.insert("environment".to_string(), serde_json::json!("production"));
     metadata.insert("region".to_string(), serde_json::json!("us-west-2"));
     metadata.insert("team".to_string(), serde_json::json!("security"));
-    metadata.insert("compliance".to_string(), serde_json::json!(["SOC2", "HIPAA"]));
-    
+    metadata.insert(
+        "compliance".to_string(),
+        serde_json::json!(["SOC2", "HIPAA"]),
+    );
+
     let policy = SecurityPolicy {
         id: "metadata-rich".to_string(),
         name: "Metadata Rich Policy".to_string(),
@@ -207,7 +219,7 @@ fn test_policy_with_extensive_metadata() {
         metadata,
         signature: None,
     };
-    
+
     assert_eq!(policy.metadata.len(), 4);
     assert!(policy.metadata.contains_key("environment"));
     assert!(policy.metadata.contains_key("compliance"));
@@ -216,7 +228,7 @@ fn test_policy_with_extensive_metadata() {
 #[test]
 fn test_rule_priority_conflict_resolution() {
     let now = Utc::now();
-    
+
     // Two rules with same priority
     let rules = vec![
         PolicyRule {
@@ -238,7 +250,7 @@ fn test_rule_priority_conflict_resolution() {
             description: None,
         },
     ];
-    
+
     let policy = SecurityPolicy {
         id: "priority-conflict".to_string(),
         name: "Priority Conflict Policy".to_string(),
@@ -252,7 +264,7 @@ fn test_rule_priority_conflict_resolution() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.rules[0].priority, policy.rules[1].priority);
 }
 
@@ -262,7 +274,7 @@ fn test_policy_composition_depth() {
         max_composition_depth: 5,
         ..PolicyManagerConfig::default()
     };
-    
+
     let now = Utc::now();
     let policy = SecurityPolicy {
         id: "deep-inheritance".to_string(),
@@ -281,7 +293,7 @@ fn test_policy_composition_depth() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(config.max_composition_depth, 5);
     assert_eq!(policy.inherits.len(), 3);
 }
@@ -302,7 +314,7 @@ fn test_policy_with_signed_integrity() {
         metadata: HashMap::new(),
         signature: Some("sha256:1234567890abcdef".to_string()),
     };
-    
+
     assert!(policy.signature.is_some());
     assert!(policy.signature.unwrap().starts_with("sha256:"));
 }
@@ -330,7 +342,7 @@ fn test_disabled_rules_in_policy() {
             description: None,
         },
     ];
-    
+
     let policy = SecurityPolicy {
         id: "mixed-rules".to_string(),
         name: "Mixed Enabled/Disabled Rules".to_string(),
@@ -344,10 +356,10 @@ fn test_disabled_rules_in_policy() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     let enabled_count = policy.rules.iter().filter(|r| r.enabled).count();
     let disabled_count = policy.rules.iter().filter(|r| !r.enabled).count();
-    
+
     assert_eq!(enabled_count, 1);
     assert_eq!(disabled_count, 1);
 }
@@ -359,13 +371,13 @@ fn test_cache_configuration() {
         cache_ttl_hours: 72,
         ..PolicyManagerConfig::default()
     };
-    
+
     let uncached_config = PolicyManagerConfig {
         cache_enabled: false,
         cache_ttl_hours: 0,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(cached_config.cache_enabled);
     assert!(!uncached_config.cache_enabled);
     assert!(cached_config.cache_ttl_hours > uncached_config.cache_ttl_hours);
@@ -377,12 +389,12 @@ fn test_validation_timeout_settings() {
         validation_timeout_ms: 1000,
         ..PolicyManagerConfig::default()
     };
-    
+
     let slow_config = PolicyManagerConfig {
         validation_timeout_ms: 30000,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(fast_config.validation_timeout_ms < slow_config.validation_timeout_ms);
     assert!(fast_config.validation_timeout_ms > 0);
 }
@@ -403,11 +415,10 @@ fn test_policy_serialization_round_trip() {
         metadata: HashMap::new(),
         signature: Some("test-sig".to_string()),
     };
-    
+
     let json = serde_json::to_string(&original).expect("Serialization failed");
-    let deserialized: SecurityPolicy = serde_json::from_str(&json)
-        .expect("Deserialization failed");
-    
+    let deserialized: SecurityPolicy = serde_json::from_str(&json).expect("Deserialization failed");
+
     assert_eq!(original.id, deserialized.id);
     assert_eq!(original.name, deserialized.name);
     assert_eq!(original.version, deserialized.version);
@@ -417,14 +428,16 @@ fn test_policy_serialization_round_trip() {
 #[test]
 fn test_config_serialization_round_trip() {
     let original = PolicyManagerConfig::default();
-    
+
     let json = serde_json::to_string(&original).expect("Serialization failed");
-    let deserialized: PolicyManagerConfig = serde_json::from_str(&json)
-        .expect("Deserialization failed");
-    
+    let deserialized: PolicyManagerConfig =
+        serde_json::from_str(&json).expect("Deserialization failed");
+
     assert_eq!(original.cache_enabled, deserialized.cache_enabled);
     assert_eq!(original.cache_ttl_hours, deserialized.cache_ttl_hours);
     assert_eq!(original.strict_enforcement, deserialized.strict_enforcement);
-    assert_eq!(original.max_composition_depth, deserialized.max_composition_depth);
+    assert_eq!(
+        original.max_composition_depth,
+        deserialized.max_composition_depth
+    );
 }
-

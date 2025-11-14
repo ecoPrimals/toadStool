@@ -38,11 +38,9 @@ pub mod primal_capabilities;
 // Re-export main types and functionality
 // Note: compatibility now re-exports from canonical core implementation
 pub use compatibility::{
-    CompatibilityLayer,
-    LinuxCompatibilityLayer, LinuxCompatConfig,
-    WindowsCompatibilityLayer, WindowsCompatConfig,
-    MacOSCompatibilityLayer, MacOSCompatConfig,
-    LegacyCompatibilityLayer, LegacyCompatConfig,
+    CompatibilityLayer, LegacyCompatConfig, LegacyCompatibilityLayer, LinuxCompatConfig,
+    LinuxCompatibilityLayer, MacOSCompatConfig, MacOSCompatibilityLayer, WindowsCompatConfig,
+    WindowsCompatibilityLayer,
 };
 pub use core::*;
 pub use ecosystem::*;
@@ -56,10 +54,10 @@ pub use hosting::{
 };
 pub use os_layer::{OSLayerConfig, OSLayerManager};
 pub use types::{
-    BackoffStrategy, CompatibilityMode, CpuRequirements, ExecutionTarget, GpuRequirements,
-    InstanceStatus, JobPriority, LoadBalancingStrategy, MemoryRequirements, NetworkRequirements,
-    ProcessHandle, ResourceAllocation, ResourceConstraints, ResourceLimits, ResourceRequirements,
-    RetryCondition, DistributedRetryConfig, StorageRequirements, ToadStoolHostingConfig,
+    BackoffStrategy, CompatibilityMode, CpuRequirements, DistributedRetryConfig, ExecutionTarget,
+    GpuRequirements, InstanceStatus, JobPriority, LoadBalancingStrategy, MemoryRequirements,
+    NetworkRequirements, ProcessHandle, ResourceAllocation, ResourceConstraints, ResourceLimits,
+    ResourceRequirements, RetryCondition, StorageRequirements, ToadStoolHostingConfig,
     UniversalExecutionResult, UniversalJob, UniversalJobQueue, UniversalJobType,
 };
 pub use universal::{
@@ -86,16 +84,15 @@ pub use crypto_lock::{
     DelegationValidator, ExternalTarget, PermissionHolder, PermissionRevocationList,
     ToadStoolCryptoLock,
 };
+pub use primal_capabilities::{
+    Capability, CapabilityProvider, CapabilityRegistry, PrimalAdapter, SongbirdAdapter,
+    WorkloadExecutor, WorkloadRequest, WorkloadResponse,
+};
 pub use songbird_integration::{
     JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,
     SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
 };
 pub use substrate_detection::*;
-pub use primal_capabilities::{
-    Capability, CapabilityProvider, CapabilityRegistry,
-    PrimalAdapter, SongbirdAdapter,
-    WorkloadRequest, WorkloadResponse, WorkloadExecutor,
-};
 
 // Tests module
 #[cfg(test)]

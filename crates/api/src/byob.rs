@@ -179,7 +179,7 @@ impl From<ToadStoolError> for ApiError {
     fn from(err: ToadStoolError) -> Self {
         // Match on the unified error system's specialized error types
         use toadstool::error::{ConfigError, ResourceError, SystemError};
-        
+
         match err {
             // Resource errors -> NOT_FOUND
             ToadStoolError::Resource(ResourceError::NotFound { .. }) => Self {

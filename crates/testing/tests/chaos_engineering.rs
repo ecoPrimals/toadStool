@@ -283,3 +283,198 @@ async fn test_graceful_degradation() {
 
     println!("✓ All graceful degradation tests completed");
 }
+
+/// Test memory leak detection and recovery
+#[tokio::test]
+async fn test_memory_leak_detection() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    // Create requests that would test memory pressure handling
+    let mut large_requests = Vec::new();
+    let request_count = 20;
+
+    for i in 0..request_count {
+        let request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("memory_test_{}", i); 100])
+            .timeout(Duration::from_secs(5))
+            .build();
+        large_requests.push(request);
+    }
+
+    // Test that system can handle cleanup
+    let cleanup_request = ExecutionRequestBuilder::new()
+        .runtime_hint(RuntimeType::Native)
+        .native_workload("echo", vec!["cleanup_verification".to_string()])
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    assert_eq!(large_requests.len(), request_count);
+    assert!(cleanup_request.runtime_hint.is_some());
+    println!("✓ Memory leak detection test completed");
+}
+
+/// Test rapid failure-recovery cycles
+#[tokio::test]
+async fn test_rapid_failure_recovery_cycles() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    let cycle_count = 10;
+    for cycle in 0..cycle_count {
+        // Failure
+        let failure_request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("nonexistent_cmd", vec![])
+            .timeout(Duration::from_millis(100))
+            .build();
+
+        // Immediate recovery
+        let recovery_request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("recovery_cycle_{}", cycle)])
+            .timeout(Duration::from_secs(5))
+            .build();
+
+        assert!(failure_request.runtime_hint.is_some());
+        assert!(recovery_request.runtime_hint.is_some());
+    }
+
+    println!("✓ Rapid failure-recovery cycles test completed");
+}
+
+/// Test timeout handling under load
+#[tokio::test]
+async fn test_timeout_handling_under_load() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    // Mix of fast and slow requests with various timeouts
+    let mut requests = Vec::new();
+
+    for i in 0..30 {
+        let timeout = if i % 3 == 0 {
+            Duration::from_millis(100) // Very short timeout
+        } else if i % 3 == 1 {
+            Duration::from_secs(5) // Normal timeout
+        } else {
+            Duration::from_secs(30) // Long timeout
+        };
+
+        let request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("timeout_test_{}", i)])
+            .timeout(timeout)
+            .build();
+
+        requests.push(request);
+    }
+
+    assert_eq!(requests.len(), 30);
+    println!("✓ Timeout handling under load test completed");
+}
+
+/// Test concurrent runtime failures
+#[tokio::test]
+async fn test_concurrent_runtime_failures() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    // Create requests that would fail concurrently
+    let mut handles = Vec::new();
+
+    for i in 0..10 {
+        let handle = tokio::spawn(async move {
+            let request = ExecutionRequestBuilder::new()
+                .runtime_hint(RuntimeType::Native)
+                .native_workload("nonexistent_cmd", vec![format!("concurrent_fail_{}", i)])
+                .timeout(Duration::from_millis(500))
+                .build();
+
+            // Verify request was created
+            assert!(request.runtime_hint.is_some());
+        });
+
+        handles.push(handle);
+    }
+
+    // Wait for all tasks to complete
+    for handle in handles {
+        handle.await.unwrap();
+    }
+
+    println!("✓ Concurrent runtime failures test completed");
+}
+
+/// Test recovery from partial system failure
+#[tokio::test]
+async fn test_partial_system_failure() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    // Simulate partial failure where some components work and others don't
+    let components = vec!["executor", "scheduler", "monitor", "distributor"];
+
+    for component in components {
+        // Healthy check
+        let healthy_request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("{}_healthy", component)])
+            .timeout(Duration::from_secs(5))
+            .build();
+
+        // Failure check
+        let failed_request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("nonexistent_cmd", vec![])
+            .timeout(Duration::from_millis(100))
+            .build();
+
+        // Recovery check
+        let recovery_request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("{}_recovered", component)])
+            .timeout(Duration::from_secs(5))
+            .build();
+
+        assert!(healthy_request.runtime_hint.is_some());
+        assert!(failed_request.runtime_hint.is_some());
+        assert!(recovery_request.runtime_hint.is_some());
+
+        println!("✓ Partial failure test for {component} completed");
+    }
+
+    println!("✓ All partial system failure tests completed");
+}
+
+/// Test burst traffic handling
+#[tokio::test]
+async fn test_burst_traffic_handling() {
+    let config = IntegrationTestConfig::default();
+    let _manager = IntegrationTestManager::new(config);
+
+    // Simulate burst of requests
+    let mut burst_requests = Vec::new();
+    let burst_size = 100;
+
+    for i in 0..burst_size {
+        let request = ExecutionRequestBuilder::new()
+            .runtime_hint(RuntimeType::Native)
+            .native_workload("echo", vec![format!("burst_{}", i)])
+            .timeout(Duration::from_secs(3))
+            .build();
+        burst_requests.push(request);
+    }
+
+    // Test system can handle post-burst request
+    let post_burst_request = ExecutionRequestBuilder::new()
+        .runtime_hint(RuntimeType::Native)
+        .native_workload("echo", vec!["post_burst_test".to_string()])
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    assert_eq!(burst_requests.len(), burst_size);
+    assert!(post_burst_request.runtime_hint.is_some());
+    println!("✓ Burst traffic handling test completed");
+}

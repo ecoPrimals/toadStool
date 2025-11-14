@@ -4,8 +4,7 @@ use toadstool::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 
 // Import from canonical core compat layer
 use toadstool::os_layer::compat::{
-    LinuxCompatibilityLayer, MacOSCompatibilityLayer, WindowsCompatibilityLayer,
-    CompatibilityLayer,
+    CompatibilityLayer, LinuxCompatibilityLayer, MacOSCompatibilityLayer, WindowsCompatibilityLayer,
 };
 
 /// OS layer manager for distributed execution
@@ -64,9 +63,15 @@ impl CompatibilityLayerEnum {
         request: ExecutionRequest,
     ) -> ToadStoolResult<ExecutionResponse> {
         match self {
-            Self::Linux(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
-            Self::Windows(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
-            Self::MacOS(layer) => CompatibilityLayer::execute_with_compatibility(layer, request).await,
+            Self::Linux(layer) => {
+                CompatibilityLayer::execute_with_compatibility(layer, request).await
+            }
+            Self::Windows(layer) => {
+                CompatibilityLayer::execute_with_compatibility(layer, request).await
+            }
+            Self::MacOS(layer) => {
+                CompatibilityLayer::execute_with_compatibility(layer, request).await
+            }
         }
     }
 

@@ -3,8 +3,9 @@
 //! Target: 45% → 65% coverage (~50 tests)
 //! Focus: RuntimeOrchestrator, RuntimeSelectionStrategy
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
@@ -22,25 +23,33 @@ struct MockRuntimeEngine {
     should_fail: bool,
 }
 
-#[async_trait]
 impl RuntimeEngine for MockRuntimeEngine {
-    async fn initialize(&mut self, _config: RuntimeConfig) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        if self.should_fail {
-            return Err(ToadStoolError::execution("Mock failure"));
-        }
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let should_fail = self.should_fail;
+        Box::pin(async move {
+            if should_fail {
+                return Err(ToadStoolError::execution("Mock failure"));
+            }
 
-        Ok(ExecutionResponse {
-            execution_id: request.execution_id,
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput::default(),
-            metrics: RuntimeMetrics::default(),
-            duration: Duration::from_secs(1),
-            runtime_used: RuntimeType::Container,
-            warnings: Vec::new(),
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput::default(),
+                metrics: RuntimeMetrics::default(),
+                duration: Duration::from_secs(1),
+                runtime_used: RuntimeType::Container,
+                warnings: Vec::new(),
+            })
         })
     }
 
@@ -72,12 +81,14 @@ impl RuntimeEngine for MockRuntimeEngine {
             .any(|s| workload_str.contains(&s.to_lowercase()))
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics::default())
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move { Ok(RuntimeMetrics::default()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 }
 
@@ -755,7 +766,7 @@ async fn test_mixed_successful_and_failing_engines() {
     let result = orchestrator.execute(request).await;
     // Should succeed with Container engine since it supports the workload
     assert!(result.is_ok());
-    
+
     // Verify it used the Container runtime
     if let Ok(response) = result {
         assert_eq!(response.runtime_used, RuntimeType::Container);

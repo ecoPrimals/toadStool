@@ -4,8 +4,8 @@ use chrono::Utc;
 use std::collections::HashMap;
 use std::str::FromStr;
 use toadstool::{ExecutableSource, ExecutionRequest, PythonSource, WorkloadSpec};
-use toadstool_distributed::*;
 use toadstool_distributed::types::DistributedRetryConfig;
+use toadstool_distributed::*;
 use uuid::Uuid;
 
 // ============================================================================

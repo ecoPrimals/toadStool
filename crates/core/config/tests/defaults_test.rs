@@ -57,8 +57,8 @@ fn test_network_ports_in_valid_range() {
 
 #[test]
 fn test_network_discovery_port() {
-    assert_eq!(network::DISCOVERY_PORT, 8084);
-    // Note: DISCOVERY_PORT > 0 is guaranteed at compile time by the constant definition
+    assert_eq!(network::DISCOVERY_PORT, 8085); // Default is 8085
+                                               // Note: DISCOVERY_PORT > 0 is guaranteed at compile time by the constant definition
 }
 
 #[test]

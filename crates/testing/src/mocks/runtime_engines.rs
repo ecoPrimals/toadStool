@@ -64,7 +64,8 @@ impl MockRuntimeEngine {
     pub fn new_successful() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -103,7 +104,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -129,7 +131,8 @@ impl MockRuntimeEngine {
     pub fn new_execution_failure() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -162,7 +165,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -172,7 +176,8 @@ impl MockRuntimeEngine {
     pub fn new_timeout() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -203,7 +208,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -213,7 +219,8 @@ impl MockRuntimeEngine {
     pub fn new_resource_limit_exceeded() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -246,7 +253,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -256,14 +264,16 @@ impl MockRuntimeEngine {
     pub fn new_security_violation() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
                 Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Failed {
-                        error: "Security violation: Attempted to access restricted file".to_string(),
+                        error: "Security violation: Attempted to access restricted file"
+                            .to_string(),
                     },
                     output: create_test_execution_output(),
                     metrics: create_test_runtime_metrics(),
@@ -289,7 +299,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -299,7 +310,8 @@ impl MockRuntimeEngine {
     pub fn new_cancelled() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -330,7 +342,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }
@@ -340,7 +353,8 @@ impl MockRuntimeEngine {
     pub fn new_limited_support() -> Self {
         let mut mock = MockRuntimeEngine::new();
 
-        mock.expect_initialize().returning(|_| Box::pin(async { Ok(()) }));
+        mock.expect_initialize()
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         mock.expect_execute().returning(|request| {
             Box::pin(async move {
@@ -376,7 +390,8 @@ impl MockRuntimeEngine {
         mock.expect_get_metrics()
             .returning(|| Box::pin(async { Ok(create_test_runtime_metrics()) }));
 
-        mock.expect_shutdown().returning(|| Box::pin(async { Ok(()) }));
+        mock.expect_shutdown()
+            .returning(|| Box::pin(async { Ok(()) }));
 
         mock
     }

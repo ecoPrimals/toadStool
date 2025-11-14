@@ -136,12 +136,17 @@ mod tests {
 
         let distributor = NetworkDistributor::new(config);
         assert_eq!(distributor._config.max_concurrent_distributions, 50);
-        assert_eq!(distributor._config.distribution_timeout, Duration::from_secs(120));
+        assert_eq!(
+            distributor._config.distribution_timeout,
+            Duration::from_secs(120)
+        );
     }
 
     #[test]
     fn test_distribute_job() {
-        use crate::types::{ExecutionTarget, JobPriority, ResourceRequirements, DistributedRetryConfig};
+        use crate::types::{
+            DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
+        };
         use chrono::Utc;
         use toadstool::ExecutionRequest;
 
@@ -170,7 +175,9 @@ mod tests {
 
     #[test]
     fn test_distribute_job_creates_unique_ids() {
-        use crate::types::{ExecutionTarget, JobPriority, ResourceRequirements, DistributedRetryConfig};
+        use crate::types::{
+            DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
+        };
         use chrono::Utc;
         use toadstool::ExecutionRequest;
 

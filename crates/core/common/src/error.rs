@@ -95,7 +95,10 @@ pub enum ExecutionError {
 
     /// Operation timed out
     #[error("Timeout after {duration:?} for operation '{operation}'")]
-    Timeout { duration: Duration, operation: String },
+    Timeout {
+        duration: Duration,
+        operation: String,
+    },
 
     /// Resources exhausted during execution
     #[error("Resource '{resource}' exhausted during execution")]
@@ -143,7 +146,10 @@ pub enum ConfigError {
 
     /// Configuration loading failed
     #[error("Failed to load configuration from '{config_source}': {reason}")]
-    LoadError { config_source: String, reason: String },
+    LoadError {
+        config_source: String,
+        reason: String,
+    },
 
     /// Environment variable error
     #[error("Environment variable '{name}' error: {reason}")]
@@ -259,7 +265,10 @@ pub enum NetworkError {
 
     /// Connection timeout
     #[error("Connection to '{endpoint}' timed out after {duration:?}")]
-    Timeout { endpoint: String, duration: Duration },
+    Timeout {
+        endpoint: String,
+        duration: Duration,
+    },
 
     /// Network I/O error
     #[error("Network I/O error: {reason}")]
@@ -386,7 +395,11 @@ impl From<serde_json::Error> for SystemError {
 
 impl ExecutionError {
     /// Create a runtime failure error
-    pub fn runtime_failure(runtime: impl Into<String>, workload_id: impl Into<String>, reason: impl Into<String>) -> Self {
+    pub fn runtime_failure(
+        runtime: impl Into<String>,
+        workload_id: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
         Self::RuntimeFailure {
             runtime: runtime.into(),
             workload_id: workload_id.into(),
@@ -774,17 +787,17 @@ impl ToadStoolErrorWithCode {
     pub fn error_code(&self) -> Option<&ErrorCode> {
         self.code.as_ref()
     }
-    
+
     /// Get the error code string if present
     pub fn error_code_str(&self) -> Option<&str> {
         self.code.as_ref().map(|c| c.code)
     }
-    
+
     /// Get the error category if code is present
     pub fn category_str(&self) -> Option<&str> {
         self.code.as_ref().map(|c| c.category_str())
     }
-    
+
     /// Get remediation suggestion if available
     pub fn remediation(&self) -> Option<&str> {
         self.code.as_ref().and_then(|c| c.remediation)
@@ -923,44 +936,42 @@ mod tests {
         assert!(message.contains("Execution error"));
         assert!(message.contains("CPU"));
     }
-    
+
     #[test]
     fn test_error_with_code() {
         use crate::error_codes::codes;
-        
-        let error = ToadStoolError::runtime("Test error")
-            .with_code(codes::EXEC_RUNTIME_001);
-        
+
+        let error = ToadStoolError::runtime("Test error").with_code(codes::EXEC_RUNTIME_001);
+
         assert!(error.error_code().is_some());
         assert_eq!(error.error_code_str(), Some("EXEC-RUNTIME-001"));
         assert_eq!(error.category_str(), Some("execution"));
         assert!(error.remediation().is_some());
     }
-    
+
     #[test]
     fn test_error_with_code_display() {
         use crate::error_codes::codes;
-        
-        let error = ToadStoolError::runtime("Initialization failed")
-            .with_code(codes::EXEC_RUNTIME_001);
-        
+
+        let error =
+            ToadStoolError::runtime("Initialization failed").with_code(codes::EXEC_RUNTIME_001);
+
         let display = error.to_string();
         assert!(display.contains("EXEC-RUNTIME-001"));
         assert!(display.contains("Initialization failed"));
     }
-    
+
     #[test]
     fn test_error_conversion() {
         use crate::error_codes::codes;
-        
-        let error_with_code = ToadStoolError::runtime("Test")
-            .with_code(codes::EXEC_RUNTIME_001);
-        
+
+        let error_with_code = ToadStoolError::runtime("Test").with_code(codes::EXEC_RUNTIME_001);
+
         // Convert to ToadStoolError
         let plain_error: ToadStoolError = error_with_code.into();
         assert!(plain_error.to_string().contains("Test"));
     }
-    
+
     #[test]
     fn test_error_without_code() {
         let error = ToadStoolError::runtime("Test error");
@@ -968,4 +979,3 @@ mod tests {
         assert!(error_with_code.error_code().is_none());
     }
 }
-

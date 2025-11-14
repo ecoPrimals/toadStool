@@ -13,31 +13,39 @@ use toadstool::*;
 fn test_error_not_found() {
     let error = ToadStoolError::not_found("resource missing");
     let message = format!("{}", error);
-    
-    assert!(message.contains("resource missing") || message.contains("not found") || !message.is_empty());
+
+    assert!(
+        message.contains("resource missing")
+            || message.contains("not found")
+            || !message.is_empty()
+    );
 }
 
 #[test]
 fn test_error_validation() {
     let error = ToadStoolError::validation("bad parameter");
     let message = format!("{}", error);
-    
-    assert!(message.contains("bad parameter") || message.contains("validation") || !message.is_empty());
+
+    assert!(
+        message.contains("bad parameter") || message.contains("validation") || !message.is_empty()
+    );
 }
 
 #[test]
 fn test_error_runtime() {
     let error = ToadStoolError::runtime("execution failed");
     let message = format!("{}", error);
-    
-    assert!(message.contains("execution failed") || message.contains("runtime") || !message.is_empty());
+
+    assert!(
+        message.contains("execution failed") || message.contains("runtime") || !message.is_empty()
+    );
 }
 
 #[test]
 fn test_error_io() {
     let error = ToadStoolError::io("file not found");
     let message = format!("{}", error);
-    
+
     assert!(message.contains("file not found") || message.contains("I/O") || !message.is_empty());
 }
 
@@ -45,15 +53,19 @@ fn test_error_io() {
 fn test_error_network() {
     let error = ToadStoolError::network("connection refused");
     let message = format!("{}", error);
-    
-    assert!(message.contains("connection refused") || message.contains("network") || !message.is_empty());
+
+    assert!(
+        message.contains("connection refused")
+            || message.contains("network")
+            || !message.is_empty()
+    );
 }
 
 #[test]
 fn test_error_timeout() {
     let error = ToadStoolError::timeout("operation timed out");
     let message = format!("{}", error);
-    
+
     assert!(message.contains("timed out") || message.contains("timeout") || !message.is_empty());
 }
 
@@ -61,16 +73,24 @@ fn test_error_timeout() {
 fn test_error_not_supported() {
     let error = ToadStoolError::not_supported("feature unavailable");
     let message = format!("{}", error);
-    
-    assert!(message.contains("feature unavailable") || message.contains("not supported") || !message.is_empty());
+
+    assert!(
+        message.contains("feature unavailable")
+            || message.contains("not supported")
+            || !message.is_empty()
+    );
 }
 
 #[test]
 fn test_error_configuration() {
     let error = ToadStoolError::configuration("invalid config");
     let message = format!("{}", error);
-    
-    assert!(message.contains("invalid config") || message.contains("configuration") || !message.is_empty());
+
+    assert!(
+        message.contains("invalid config")
+            || message.contains("configuration")
+            || !message.is_empty()
+    );
 }
 
 // ============================================================================
@@ -81,7 +101,7 @@ fn test_error_configuration() {
 fn test_error_debug_format() {
     let error = ToadStoolError::not_found("test");
     let debug = format!("{:?}", error);
-    
+
     assert!(!debug.is_empty());
 }
 
@@ -89,7 +109,7 @@ fn test_error_debug_format() {
 fn test_error_display_format() {
     let error = ToadStoolError::validation("test input");
     let display = format!("{}", error);
-    
+
     assert!(!display.is_empty());
 }
 
@@ -129,7 +149,7 @@ fn test_error_various_messages() {
         ToadStoolError::runtime("c"),
         ToadStoolError::network("d"),
     ];
-    
+
     for error in errors {
         let message = format!("{}", error);
         assert!(!message.is_empty());
@@ -172,7 +192,7 @@ fn test_error_deployment() {
 fn test_result_chain_map() {
     let result: ToadStoolResult<i32> = Ok(10);
     let mapped = result.map(|x| x * 2);
-    
+
     assert_eq!(mapped.unwrap(), 20);
 }
 
@@ -180,7 +200,7 @@ fn test_result_chain_map() {
 fn test_result_chain_and_then() {
     let result: ToadStoolResult<i32> = Ok(5);
     let chained = result.and_then(|x| Ok(x + 5));
-    
+
     assert_eq!(chained.unwrap(), 10);
 }
 
@@ -188,7 +208,7 @@ fn test_result_chain_and_then() {
 fn test_result_chain_or_else() {
     let result: ToadStoolResult<i32> = Err(ToadStoolError::not_found("test"));
     let recovered: ToadStoolResult<i32> = result.or_else(|_| Ok(42));
-    
+
     assert_eq!(recovered.unwrap(), 42);
 }
 
@@ -238,4 +258,3 @@ fn test_error_unicode() {
 //
 // Target: Increase error.rs coverage from 90.64% → 95%+
 // ============================================================================
-

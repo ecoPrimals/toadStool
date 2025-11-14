@@ -17,8 +17,9 @@ fn test_test_result_ok() {
 
 #[test]
 fn test_test_result_ok_with_value() {
-    let result: TestResult<i32> = Ok(42);
-    assert_eq!(result.unwrap(), 42);
+    let value = 42;
+    let result: TestResult<i32> = Ok(value);
+    assert_eq!(result.expect("Should be Ok"), value);
 }
 
 #[test]
@@ -34,7 +35,7 @@ fn test_test_result_err() {
 #[test]
 fn test_constants_timeout_values() {
     use toadstool_testing::constants::*;
-    
+
     assert_eq!(DEFAULT_TEST_TIMEOUT, Duration::from_secs(30));
     assert_eq!(UNIT_TEST_TIMEOUT, Duration::from_secs(5));
     assert_eq!(INTEGRATION_TEST_TIMEOUT, Duration::from_secs(120));
@@ -43,7 +44,7 @@ fn test_constants_timeout_values() {
 #[test]
 fn test_constants_timeout_ordering() {
     use toadstool_testing::constants::*;
-    
+
     assert!(UNIT_TEST_TIMEOUT < DEFAULT_TEST_TIMEOUT);
     assert!(DEFAULT_TEST_TIMEOUT < INTEGRATION_TEST_TIMEOUT);
 }
@@ -51,14 +52,14 @@ fn test_constants_timeout_ordering() {
 #[test]
 fn test_constants_data_size() {
     use toadstool_testing::constants::*;
-    
+
     assert_eq!(DEFAULT_TEST_DATA_SIZE, 1024);
 }
 
 #[test]
 fn test_constants_property_test_cases() {
     use toadstool_testing::constants::*;
-    
+
     assert_eq!(MAX_PROPERTY_TEST_CASES, 1000);
 }
 
@@ -88,10 +89,10 @@ fn test_init_test_env_multiple_calls() {
 fn test_reexports_available() {
     // Test that re-exported types are accessible
     let _result: TestResult = Ok(());
-    
+
     // Test fake re-export
     let _faker = fake::Faker;
-    
+
     // Test proptest re-export
     use proptest::prelude::*;
     let _strategy = Just(42);
@@ -106,12 +107,12 @@ fn test_all_modules_accessible() {
     // Verify all public modules are accessible by importing them
     // If these modules don't exist or aren't public, this won't compile
     use toadstool_testing::{
-        assertions as _, builders as _, fixtures as _, integration as _,
-        mocks as _, performance as _, properties as _,
+        assertions as _, builders as _, fixtures as _, integration as _, mocks as _,
+        performance as _, properties as _,
     };
-    
+
     // Test passed if we got here - modules are accessible
-    assert!(true);
+    // Test passes if compilation succeeds
 }
 
 // ============================================================================
@@ -128,10 +129,9 @@ fn test_test_result_conversion() {
 #[test]
 fn test_constants_usage_in_timeout() {
     use toadstool_testing::constants::*;
-    
+
     // Simulate using constants for test timeouts
     let timeout = DEFAULT_TEST_TIMEOUT;
     assert!(timeout.as_secs() > 0);
     assert!(timeout.as_secs() <= 30);
 }
-

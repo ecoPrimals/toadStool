@@ -434,4 +434,3 @@ fn test_callback_config_serialization() {
 // - Clone tests (multiple)
 // - Default tests (multiple)
 // - Equality tests (multiple)
-

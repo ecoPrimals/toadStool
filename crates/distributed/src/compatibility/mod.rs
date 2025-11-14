@@ -9,11 +9,9 @@
 
 // Re-export canonical compatibility layer from core
 pub use toadstool::os_layer::compat::{
-    CompatibilityLayer,
-    LinuxCompatibilityLayer, LinuxCompatConfig,
-    WindowsCompatibilityLayer, WindowsCompatConfig,
-    MacOSCompatibilityLayer, MacOSCompatConfig,
-    LegacyCompatibilityLayer, LegacyCompatConfig,
+    CompatibilityLayer, LegacyCompatConfig, LegacyCompatibilityLayer, LinuxCompatConfig,
+    LinuxCompatibilityLayer, MacOSCompatConfig, MacOSCompatibilityLayer, WindowsCompatConfig,
+    WindowsCompatibilityLayer,
 };
 
 // Note: The old layers.rs file is deprecated and should not be used.

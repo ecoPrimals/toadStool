@@ -7,7 +7,7 @@ use chrono::Utc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info};
 
-use crate::config::{ServiceDiscoveryConfig, ProtocolConfig, RoutingStrategy};
+use crate::config::{ProtocolConfig, RoutingStrategy, ServiceDiscoveryConfig};
 use crate::transport::{Connection, TransportManager};
 use crate::types::{
     HealthStatus, MessageHandler, MessagePriority, ProtocolError, ProtocolEvent, ProtocolMessage,
@@ -241,9 +241,9 @@ impl ProtocolClient {
     /// Start background tasks for health monitoring and discovery
     async fn start_background_tasks(&self) {
         // Health monitoring task
-        if self.config.health_config.enabled {
+        if self.config.health_config.base.enabled {
             let services_for_health = Arc::clone(&self.services);
-            let interval = self.config.health_config.interval;
+            let interval = self.config.health_config.base.interval;
             let _event_bus = self.event_bus.clone();
 
             tokio::spawn(async move {
@@ -498,10 +498,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool_config::defaults;
     use crate::config::ProtocolConfig;
     use crate::types::{MessageFormat, TransportType};
     use std::time::Duration;
+    use toadstool_config::defaults;
     use uuid::Uuid;
 
     /// Helper function to create a test protocol config

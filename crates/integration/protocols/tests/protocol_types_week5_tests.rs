@@ -1,15 +1,10 @@
 //! Integration Protocols Types Tests - Week 5
 //! Comprehensive tests for protocol types and configuration
 
-use toadstool_common::auth::ServiceAuthConfig;
-use toadstool_integration_protocols::{
-    types::{MessageFormat, TransportType, AuthType, MessagePriority, ProtocolMessage},
-    config::ProtocolConfig,
+// Removed unused imports
+use toadstool_integration_protocols::types::{
+    AuthType, MessageFormat, MessagePriority, TransportType,
 };
-use toadstool_common::auth::ServiceAuthConfig;
-use std::time::Duration;
-use toadstool_common::auth::ServiceAuthConfig;
-use uuid::Uuid;
 
 // ============================================================================
 // TransportType Tests
@@ -24,7 +19,7 @@ fn test_transport_type_variants() {
         TransportType::Tcp,
         TransportType::Custom("test".to_string()),
     ];
-    
+
     assert_eq!(types.len(), 5);
 }
 
@@ -32,7 +27,7 @@ fn test_transport_type_variants() {
 fn test_transport_type_clone() {
     let original = TransportType::Http;
     let cloned = original.clone();
-    
+
     assert!(matches!(cloned, TransportType::Http));
 }
 
@@ -40,14 +35,14 @@ fn test_transport_type_clone() {
 fn test_transport_type_debug() {
     let transport = TransportType::WebSocket;
     let debug_str = format!("{:?}", transport);
-    
+
     assert!(debug_str.contains("WebSocket"));
 }
 
 #[test]
 fn test_transport_type_custom() {
     let custom = TransportType::Custom("mqtt".to_string());
-    
+
     if let TransportType::Custom(name) = custom {
         assert_eq!(name, "mqtt");
     } else {
@@ -67,7 +62,7 @@ fn test_message_format_variants() {
         MessageFormat::Cbor,
         MessageFormat::Custom("proto".to_string()),
     ];
-    
+
     assert_eq!(formats.len(), 4);
 }
 
@@ -75,7 +70,7 @@ fn test_message_format_variants() {
 fn test_message_format_clone() {
     let format = MessageFormat::Json;
     let cloned = format.clone();
-    
+
     assert_eq!(cloned, format);
 }
 
@@ -83,14 +78,14 @@ fn test_message_format_clone() {
 fn test_message_format_debug() {
     let format = MessageFormat::MessagePack;
     let debug_str = format!("{:?}", format);
-    
+
     assert!(debug_str.contains("MessagePack"));
 }
 
 #[test]
 fn test_message_format_custom() {
     let custom = MessageFormat::Custom("avro".to_string());
-    
+
     if let MessageFormat::Custom(name) = custom {
         assert_eq!(name, "avro");
     } else {
@@ -110,7 +105,7 @@ fn test_message_priority_variants() {
         MessagePriority::High,
         MessagePriority::Critical,
     ];
-    
+
     assert_eq!(priorities.len(), 4);
 }
 
@@ -131,7 +126,7 @@ fn test_message_priority_default() {
 fn test_message_priority_clone() {
     let priority = MessagePriority::High;
     let cloned = priority.clone();
-    
+
     assert_eq!(cloned, priority);
 }
 
@@ -149,7 +144,7 @@ fn test_auth_type_variants() {
         AuthType::Jwt,
         AuthType::Custom("oauth2".to_string()),
     ];
-    
+
     assert_eq!(types.len(), 6);
 }
 
@@ -157,7 +152,7 @@ fn test_auth_type_variants() {
 fn test_auth_type_clone() {
     let auth = AuthType::Bearer;
     let cloned = auth.clone();
-    
+
     assert!(matches!(cloned, AuthType::Bearer));
 }
 
@@ -165,7 +160,7 @@ fn test_auth_type_clone() {
 fn test_auth_type_debug() {
     let auth = AuthType::MutualTls;
     let debug_str = format!("{:?}", auth);
-    
+
     assert!(debug_str.contains("MutualTls"));
 }
 
@@ -177,7 +172,7 @@ fn test_auth_type_debug() {
 fn test_transport_http_flow() {
     let transport = TransportType::Http;
     let format = MessageFormat::Json;
-    
+
     assert!(matches!(transport, TransportType::Http));
     assert_eq!(format, MessageFormat::Json);
 }
@@ -186,7 +181,7 @@ fn test_transport_http_flow() {
 fn test_transport_websocket_flow() {
     let transport = TransportType::WebSocket;
     let format = MessageFormat::MessagePack;
-    
+
     assert!(matches!(transport, TransportType::WebSocket));
     assert_eq!(format, MessageFormat::MessagePack);
 }
@@ -195,7 +190,7 @@ fn test_transport_websocket_flow() {
 fn test_transport_trpc_flow() {
     let transport = TransportType::TRpc;
     let format = MessageFormat::Json;
-    
+
     assert!(matches!(transport, TransportType::TRpc));
     assert_eq!(format, MessageFormat::Json);
 }
@@ -203,14 +198,14 @@ fn test_transport_trpc_flow() {
 #[test]
 fn test_auth_bearer_flow() {
     let auth = AuthType::Bearer;
-    
+
     assert!(matches!(auth, AuthType::Bearer));
 }
 
 #[test]
 fn test_auth_jwt_flow() {
     let auth = AuthType::Jwt;
-    
+
     assert!(matches!(auth, AuthType::Jwt));
 }
 
@@ -218,7 +213,7 @@ fn test_auth_jwt_flow() {
 fn test_priority_comparison() {
     let critical = MessagePriority::Critical;
     let low = MessagePriority::Low;
-    
+
     assert!(critical > low);
     assert!(low < critical);
 }
@@ -228,7 +223,7 @@ fn test_format_equality() {
     let json1 = MessageFormat::Json;
     let json2 = MessageFormat::Json;
     let msgpack = MessageFormat::MessagePack;
-    
+
     assert_eq!(json1, json2);
     assert_ne!(json1, msgpack);
 }
@@ -242,7 +237,7 @@ fn test_custom_transport_equality() {
     let custom1 = TransportType::Custom("amqp".to_string());
     let custom2 = TransportType::Custom("amqp".to_string());
     let custom3 = TransportType::Custom("kafka".to_string());
-    
+
     assert_eq!(custom1, custom2);
     assert_ne!(custom1, custom3);
 }
@@ -252,7 +247,7 @@ fn test_custom_format_equality() {
     let fmt1 = MessageFormat::Custom("proto".to_string());
     let fmt2 = MessageFormat::Custom("proto".to_string());
     let fmt3 = MessageFormat::Custom("thrift".to_string());
-    
+
     assert_eq!(fmt1, fmt2);
     assert_ne!(fmt1, fmt3);
 }
@@ -260,12 +255,11 @@ fn test_custom_format_equality() {
 #[test]
 fn test_transport_type_hash() {
     use std::collections::HashSet;
-    
+
     let mut set = HashSet::new();
     set.insert(TransportType::Http);
     set.insert(TransportType::WebSocket);
     set.insert(TransportType::Http); // Duplicate
-    
+
     assert_eq!(set.len(), 2);
 }
-

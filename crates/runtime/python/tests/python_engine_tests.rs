@@ -1,6 +1,8 @@
 //! Additional tests for Python runtime engine behavior
 
+use std::time::Duration;
 use toadstool::{RuntimeEngine, WorkloadType};
+use toadstool_common::config_bases::TimeoutConfig;
 use toadstool_runtime_python::*;
 
 // ============================================================================
@@ -22,9 +24,11 @@ fn test_python_engine_with_default_config() {
 
 #[test]
 fn test_python_engine_with_minimal_config() {
-    let mut timeouts = TimeoutConfig::default();
-    timeouts.request_timeout = Duration::from_secs(10);
-    
+    let timeouts = TimeoutConfig {
+        request_timeout: Duration::from_secs(10),
+        ..Default::default()
+    };
+
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
@@ -39,13 +43,15 @@ fn test_python_engine_with_minimal_config() {
 
 #[test]
 fn test_python_engine_with_large_config() {
-    let mut timeouts = TimeoutConfig::default();
-    timeouts.request_timeout = Duration::from_secs(7200); // 2 hours
-    
+    let timeouts = TimeoutConfig {
+        request_timeout: Duration::from_secs(7200),
+        ..Default::default()
+    }; // 2 hours
+
     let config = PythonRuntimeConfig {
         interpreter_path: "python3".to_string(),
         virtual_env: None,
-        max_memory_mb: 32768,         // 32 GB
+        max_memory_mb: 32768, // 32 GB
         timeouts,
         requirements: vec!["tensorflow".to_string()],
     };
@@ -205,7 +211,10 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.9".to_string(),
         virtual_env: None,
         max_memory_mb: 512,
-        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs(60); t},
+        timeouts: TimeoutConfig {
+            request_timeout: Duration::from_secs(60),
+            ..Default::default()
+        },
         requirements: vec![],
     };
 
@@ -213,7 +222,10 @@ fn test_python_engines_independent_configs() {
         interpreter_path: "python3.11".to_string(),
         virtual_env: None,
         max_memory_mb: 2048,
-        timeouts: {let mut t = TimeoutConfig::default(); t.request_timeout = Duration::from_secs(300); t},
+        timeouts: TimeoutConfig {
+            request_timeout: Duration::from_secs(300),
+            ..Default::default()
+        },
         requirements: vec!["numpy".to_string()],
     };
 

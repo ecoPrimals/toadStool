@@ -1,25 +1,19 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
-use tokio::time;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
     execution::{ExecutionInput, ExecutionRequest, RuntimeType},
-    init,
     resources::ResourceRequirements,
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
     security::{Capability, FilesystemSecurity, IsolationLevel, NetworkSecurity, SecurityContext},
-    ExecutableSource, JobPriority, ToadStoolResult, UniversalComputePlatform, UniversalJob,
-    UniversalJobType, WorkloadSpec,
+    ExecutableSource, UniversalComputePlatform, WorkloadSpec,
 };
 use toadstool_management_monitoring::{
     MonitoringConfig, MonitoringGranularity, SystemResourceMonitor,
 };
-use toadstool_runtime_native::NativeRuntimeEngine;
 
 /// Configuration for the demo execution
 #[derive(Debug, Clone)]
@@ -70,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let mut resource_monitor = SystemResourceMonitor::with_config(monitoring_config);
+    let resource_monitor = SystemResourceMonitor::with_config(monitoring_config);
     resource_monitor.start_monitoring_loop().await?;
 
     // Initialize Universal Compute Platform
@@ -404,7 +398,7 @@ mod tests {
     async fn test_demo_components() {
         // Test that we can create the basic components
         let monitor = SystemResourceMonitor::new();
-        let engine = NativeRuntimeEngine::new();
+        let engine = toadstool_runtime_native::NativeRuntimeEngine::new();
         let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
 
         // Basic smoke test

@@ -3,8 +3,8 @@
 //! Day 3 of Month 1 test expansion - focusing on resource management
 
 use toadstool_distributed::types::{
-    BackoffStrategy, CpuRequirements, DistributedRetryConfig, GpuRequirements, MemoryRequirements, NetworkRequirements,
-    ResourceAllocationStrategy, ResourceRequirements, RetryCondition,
+    BackoffStrategy, CpuRequirements, DistributedRetryConfig, GpuRequirements, MemoryRequirements,
+    NetworkRequirements, ResourceAllocationStrategy, ResourceRequirements, RetryCondition,
     StorageRequirements,
 };
 

@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 use toadstool_cli::network_config::*;
 use toadstool_common::config_bases::{
-    BackendEndpoint, CacheConfig, ConnectionPoolConfig, HealthCheckConfig, 
-    HttpHealthCheckConfig, RetryConfig, TelemetryConfig, TimeoutConfig,
+    BackendEndpoint, CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig,
+    RetryConfig, TelemetryConfig, TimeoutConfig,
 };
 
 // ============================================================================
@@ -961,13 +961,13 @@ fn create_test_cookie_config() -> CookieConfig {
 }
 
 fn create_test_backend_config() -> BackendConfig {
-        BackendConfig {
-            endpoint: BackendEndpoint {
-                name: "backend-1".to_string(),
-                address: "10.0.1.100".to_string(),
-                port: 8080,
-                enabled: true,
-            },
+    BackendConfig {
+        endpoint: BackendEndpoint {
+            name: "backend-1".to_string(),
+            address: "10.0.1.100".to_string(),
+            port: 8080,
+            enabled: true,
+        },
         weight: 100,
         health_check: None,
     }

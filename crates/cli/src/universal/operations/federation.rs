@@ -34,16 +34,29 @@ pub trait FederationOps {
     ) -> impl std::future::Future<Output = Result<FederationResponse>> + Send;
 
     /// Start peer monitoring
-    fn start_peer_monitoring(&self, addr: &SocketAddr) -> impl std::future::Future<Output = Result<()>> + Send;
+    fn start_peer_monitoring(
+        &self,
+        addr: &SocketAddr,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Send heartbeat ping
-    fn send_heartbeat_ping(addr: &SocketAddr) -> impl std::future::Future<Output = Result<std::time::Duration>> + Send;
+    fn send_heartbeat_ping(
+        addr: &SocketAddr,
+    ) -> impl std::future::Future<Output = Result<std::time::Duration>> + Send;
 
     /// Setup HTTPS federation
-    fn setup_https_federation(&self, endpoint: &url::Url, mode: &str) -> impl std::future::Future<Output = Result<()>> + Send;
+    fn setup_https_federation(
+        &self,
+        endpoint: &url::Url,
+        mode: &str,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
 
     /// Setup WebSocket federation
-    fn setup_websocket_federation(&self, endpoint: &url::Url, mode: &str) -> impl std::future::Future<Output = Result<()>> + Send;
+    fn setup_websocket_federation(
+        &self,
+        endpoint: &url::Url,
+        mode: &str,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
 }
 
 /// Implementation of federation operations
@@ -119,4 +132,3 @@ impl FederationOps for crate::universal::UniversalComputeManager {
         Ok(())
     }
 }
-

@@ -5,12 +5,10 @@ use toadstool::IsolationLevel;
 
 // Import canonical resource types for conversions
 use toadstool::resources::{
+    CpuRequirements as CoreCpuRequirements, GpuRequirements as CoreGpuRequirements,
+    MemoryRequirements as CoreMemoryRequirements, NetworkRequirements as CoreNetworkRequirements,
     ResourceRequirements as CoreResourceRequirements,
-    CpuRequirements as CoreCpuRequirements,
-    MemoryRequirements as CoreMemoryRequirements,
     StorageRequirements as CoreStorageRequirements,
-    NetworkRequirements as CoreNetworkRequirements,
-    GpuRequirements as CoreGpuRequirements,
 };
 
 /// Resource requirements for job execution
@@ -115,7 +113,10 @@ impl From<ResourceRequirements> for CoreResourceRequirements {
                 min_memory_bytes: Some((gpu.min_memory_gb * 1024.0 * 1024.0 * 1024.0) as u64),
             }),
             network: CoreNetworkRequirements {
-                min_bandwidth: distributed.network.bandwidth_mbps.map(|mbps| mbps * 1024 * 1024),
+                min_bandwidth: distributed
+                    .network
+                    .bandwidth_mbps
+                    .map(|mbps| mbps * 1024 * 1024),
                 max_bandwidth: None,
                 max_latency_ms: distributed.network.latency_ms,
             },
@@ -139,11 +140,17 @@ impl From<CoreResourceRequirements> for ResourceRequirements {
                 max_bytes: core.storage.max_bytes,
             },
             network: NetworkRequirements {
-                bandwidth_mbps: core.network.min_bandwidth.map(|bytes_per_sec| bytes_per_sec / (1024 * 1024)),
+                bandwidth_mbps: core
+                    .network
+                    .min_bandwidth
+                    .map(|bytes_per_sec| bytes_per_sec / (1024 * 1024)),
                 latency_ms: core.network.max_latency_ms,
             },
             gpu: core.gpu.map(|gpu| GpuRequirements {
-                min_memory_gb: gpu.min_memory_bytes.map(|bytes| bytes as f64 / (1024.0 * 1024.0 * 1024.0)).unwrap_or(1.0),
+                min_memory_gb: gpu
+                    .min_memory_bytes
+                    .map(|bytes| bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+                    .unwrap_or(1.0),
                 compute_capability: gpu.gpu_type,
             }),
         }

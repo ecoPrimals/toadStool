@@ -39,31 +39,19 @@ use std::time::Duration;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeoutConfig {
     /// Connection establishment timeout
-    #[serde(
-        default = "default_connection_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_connection_timeout", with = "humantime_serde")]
     pub connection_timeout: Duration,
 
     /// Request/response timeout
-    #[serde(
-        default = "default_request_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_request_timeout", with = "humantime_serde")]
     pub request_timeout: Duration,
 
     /// Socket read timeout
-    #[serde(
-        default = "default_read_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_read_timeout", with = "humantime_serde")]
     pub read_timeout: Duration,
 
     /// Socket write timeout
-    #[serde(
-        default = "default_write_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_write_timeout", with = "humantime_serde")]
     pub write_timeout: Duration,
 }
 
@@ -109,17 +97,11 @@ pub struct HealthCheckConfig {
     pub enabled: bool,
 
     /// Interval between health checks
-    #[serde(
-        default = "default_health_check_interval",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_health_check_interval", with = "humantime_serde")]
     pub interval: Duration,
 
     /// Timeout for each health check
-    #[serde(
-        default = "default_health_check_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_health_check_timeout", with = "humantime_serde")]
     pub timeout: Duration,
 
     /// Number of consecutive successful checks to mark as healthy
@@ -224,8 +206,7 @@ fn default_http_method() -> String {
 /// Resource limit specification
 ///
 /// Follows Kubernetes-style resource specification with requests and limits.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceLimit {
     /// Resource limit (maximum)
     pub limit: Option<String>,
@@ -234,13 +215,11 @@ pub struct ResourceLimit {
     pub request: Option<String>,
 }
 
-
 /// Base resource configuration
 ///
 /// Provides common CPU, memory, and storage resource specifications.
 /// Can be extended for domain-specific resource types.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BaseResourceConfig {
     /// CPU resource limits
     #[serde(default)]
@@ -254,7 +233,6 @@ pub struct BaseResourceConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<ResourceLimit>,
 }
-
 
 // ============================================================================
 // Validation Configurations
@@ -374,17 +352,11 @@ pub struct RetryConfig {
     pub max_retries: u32,
 
     /// Initial/base delay between retries
-    #[serde(
-        default = "default_base_delay",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_base_delay", with = "humantime_serde")]
     pub base_delay: Duration,
 
     /// Maximum delay between retries
-    #[serde(
-        default = "default_max_delay",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_max_delay", with = "humantime_serde")]
     pub max_delay: Duration,
 
     /// Backoff multiplier (e.g., 2.0 for exponential)
@@ -451,17 +423,11 @@ pub struct ConnectionPoolConfig {
     pub max_idle_connections: u32,
 
     /// Idle connection timeout
-    #[serde(
-        default = "default_idle_connection_timeout",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_idle_connection_timeout", with = "humantime_serde")]
     pub idle_timeout: Duration,
 
     /// Connection lifetime
-    #[serde(
-        default = "default_connection_lifetime",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_connection_lifetime", with = "humantime_serde")]
     pub connection_lifetime: Duration,
 }
 
@@ -512,10 +478,7 @@ pub struct CacheConfig {
     pub enabled: bool,
 
     /// Cache entry TTL (time-to-live)
-    #[serde(
-        default = "default_cache_ttl",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_cache_ttl", with = "humantime_serde")]
     pub ttl: Duration,
 
     /// Maximum number of cache entries
@@ -523,10 +486,7 @@ pub struct CacheConfig {
     pub max_entries: u32,
 
     /// Negative cache TTL (for failed lookups)
-    #[serde(
-        default = "default_negative_cache_ttl",
-        with = "humantime_serde"
-    )]
+    #[serde(default = "default_negative_cache_ttl", with = "humantime_serde")]
     pub negative_ttl: Duration,
 }
 
@@ -698,4 +658,3 @@ impl Default for TelemetryConfig {
 fn default_metrics_port() -> u16 {
     9090
 }
-

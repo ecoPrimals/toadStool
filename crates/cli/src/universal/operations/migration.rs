@@ -15,29 +15,51 @@ use crate::universal::types::{
 /// Migration operations trait
 pub trait MigrationOps {
     /// Create migration plan
-    fn create_migration_plan(&self, source: &str, target: &str) -> impl Future<Output = Result<MigrationPlan>> + Send;
+    fn create_migration_plan(
+        &self,
+        source: &str,
+        target: &str,
+    ) -> impl Future<Output = Result<MigrationPlan>> + Send;
 
     /// Execute live migration
-    fn execute_live_migration(&self, plan: &MigrationPlan) -> impl Future<Output = Result<()>> + Send;
+    fn execute_live_migration(
+        &self,
+        plan: &MigrationPlan,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Execute cold migration
-    fn execute_cold_migration(&self, plan: &MigrationPlan) -> impl Future<Output = Result<()>> + Send;
+    fn execute_cold_migration(
+        &self,
+        plan: &MigrationPlan,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Execute hot migration
-    fn execute_hot_migration(&self, plan: &MigrationPlan) -> impl Future<Output = Result<()>> + Send;
+    fn execute_hot_migration(
+        &self,
+        plan: &MigrationPlan,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Execute clone migration
-    fn execute_clone_migration(&self, plan: &MigrationPlan) -> impl Future<Output = Result<()>> + Send;
+    fn execute_clone_migration(
+        &self,
+        plan: &MigrationPlan,
+    ) -> impl Future<Output = Result<()>> + Send;
 
     /// Pause workload
     fn pause_workload(&self, platform: &str) -> impl Future<Output = Result<()>> + Send;
 
     /// Verify migration success
-    fn verify_migration_success(&self, plan: &MigrationPlan) -> impl Future<Output = Result<bool>> + Send;
+    fn verify_migration_success(
+        &self,
+        plan: &MigrationPlan,
+    ) -> impl Future<Output = Result<bool>> + Send;
 
     // Helper methods
     fn prepare_target_platform(&self, target: &str) -> impl Future<Output = Result<()>> + Send;
-    fn create_workload_checkpoint(&self, biome: &str) -> impl Future<Output = Result<WorkloadCheckpoint>> + Send;
+    fn create_workload_checkpoint(
+        &self,
+        biome: &str,
+    ) -> impl Future<Output = Result<WorkloadCheckpoint>> + Send;
     fn transfer_checkpoint(
         &self,
         checkpoint: &WorkloadCheckpoint,
@@ -50,19 +72,42 @@ pub trait MigrationOps {
     ) -> impl Future<Output = Result<()>> + Send;
     fn cleanup_source_workload(&self, biome: &str) -> impl Future<Output = Result<()>> + Send;
     fn stop_source_workload(&self, biome: &str) -> impl Future<Output = Result<()>> + Send;
-    fn export_workload_state(&self, biome: &str) -> impl Future<Output = Result<WorkloadExport>> + Send;
-    fn transfer_workload_data(&self, export: &WorkloadExport, target: &str) -> impl Future<Output = Result<()>> + Send;
-    fn import_and_start_workload(&self, export: &WorkloadExport, target: &str)
-        -> impl Future<Output = Result<()>> + Send;
+    fn export_workload_state(
+        &self,
+        biome: &str,
+    ) -> impl Future<Output = Result<WorkloadExport>> + Send;
+    fn transfer_workload_data(
+        &self,
+        export: &WorkloadExport,
+        target: &str,
+    ) -> impl Future<Output = Result<()>> + Send;
+    fn import_and_start_workload(
+        &self,
+        export: &WorkloadExport,
+        target: &str,
+    ) -> impl Future<Output = Result<()>> + Send;
     fn start_continuous_replication(
         &self,
         source: &str,
         target: &str,
     ) -> impl Future<Output = Result<ReplicationHandle>> + Send;
-    fn wait_for_replication_sync(&self, handle: &ReplicationHandle) -> impl Future<Output = Result<()>> + Send;
-    fn perform_quick_switchover(&self, source: &str, target: &str) -> impl Future<Output = Result<()>> + Send;
-    fn stop_replication(&self, handle: &ReplicationHandle) -> impl Future<Output = Result<()>> + Send;
-    fn create_workload_snapshot(&self, biome: &str) -> impl Future<Output = Result<WorkloadSnapshot>> + Send;
+    fn wait_for_replication_sync(
+        &self,
+        handle: &ReplicationHandle,
+    ) -> impl Future<Output = Result<()>> + Send;
+    fn perform_quick_switchover(
+        &self,
+        source: &str,
+        target: &str,
+    ) -> impl Future<Output = Result<()>> + Send;
+    fn stop_replication(
+        &self,
+        handle: &ReplicationHandle,
+    ) -> impl Future<Output = Result<()>> + Send;
+    fn create_workload_snapshot(
+        &self,
+        biome: &str,
+    ) -> impl Future<Output = Result<WorkloadSnapshot>> + Send;
     fn deploy_snapshot_to_target(
         &self,
         snapshot: &WorkloadSnapshot,
@@ -155,9 +200,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
             plan.source_platform, plan.target_platform
         );
 
-        let snapshot = self
-            .create_workload_snapshot(&plan.source_platform)
-            .await?;
+        let snapshot = self.create_workload_snapshot(&plan.source_platform).await?;
         self.deploy_snapshot_to_target(&snapshot, &plan.target_platform)
             .await?;
         self.start_cloned_workload(&plan.target_platform).await?;
@@ -172,7 +215,10 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn verify_migration_success(&self, plan: &MigrationPlan) -> Result<bool> {
-        info!("🔍 Verifying migration: {} → {}", plan.source_platform, plan.target_platform);
+        info!(
+            "🔍 Verifying migration: {} → {}",
+            plan.source_platform, plan.target_platform
+        );
         // Simplified verification - in reality would check target health
         Ok(true)
     }
@@ -188,7 +234,10 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         Ok(WorkloadCheckpoint {
             biome_name: biome.to_string(),
             timestamp: chrono::Utc::now(),
-            data_path: std::path::PathBuf::from(format!("/tmp/checkpoint_{}", uuid::Uuid::new_v4())),
+            data_path: std::path::PathBuf::from(format!(
+                "/tmp/checkpoint_{}",
+                uuid::Uuid::new_v4()
+            )),
         })
     }
 
@@ -248,7 +297,10 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         source: &str,
         target: &str,
     ) -> Result<ReplicationHandle> {
-        info!("🔄 Starting continuous replication: {} → {}", source, target);
+        info!(
+            "🔄 Starting continuous replication: {} → {}",
+            source, target
+        );
         Ok(ReplicationHandle {
             id: uuid::Uuid::new_v4(),
             source: source.to_string(),
@@ -294,4 +346,3 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         Ok(())
     }
 }
-

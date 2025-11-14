@@ -78,12 +78,10 @@ impl From<ServerError> for ToadStoolError {
             ServerError::Configuration(msg) => {
                 ToadStoolError::Configuration(ConfigError::ValidationError { reason: msg })
             }
-            ServerError::Network(msg) => {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: "unknown".to_string(),
-                    reason: msg,
-                })
-            }
+            ServerError::Network(msg) => ToadStoolError::Network(NetworkError::ConnectionFailed {
+                endpoint: "unknown".to_string(),
+                reason: msg,
+            }),
             ServerError::Execution(msg) => {
                 ToadStoolError::Execution(ExecutionError::WorkloadFailure {
                     workload_id: "unknown".to_string(),

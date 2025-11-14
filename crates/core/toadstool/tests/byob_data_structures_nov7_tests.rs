@@ -5,10 +5,10 @@
 //!
 //! Strategy: Test the untested data structure creation, serialization, and edge cases
 
-use std::collections::HashMap;
 use chrono::Utc;
-use uuid::Uuid;
+use std::collections::HashMap;
 use toadstool::byob::*;
+use uuid::Uuid;
 
 // ============================================================================
 // ByobDeploymentRequest Tests
@@ -43,7 +43,7 @@ fn test_byob_deployment_request_creation() {
         },
         created_at: Utc::now(),
     };
-    
+
     assert_eq!(request.deployment_id, deployment_id);
     assert_eq!(request.team_id, "team-alpha");
     assert_eq!(request.deployment_name, "production-api");
@@ -53,25 +53,28 @@ fn test_byob_deployment_request_creation() {
 #[test]
 fn test_byob_deployment_request_with_services() {
     let mut services = HashMap::new();
-    services.insert("web".to_string(), ServiceSpec {
-        name: "web-service".to_string(),
-        version: "1.0.0".to_string(),
-        image: Some("nginx:latest".to_string()),
-        command: None,
-        environment: HashMap::new(),
-        resources: ServiceResourceRequirements {
-            cpu_cores: Some(2.0),
-            memory_bytes: Some(4 * 1024 * 1024 * 1024), // 4GB
-            storage_bytes: Some(10 * 1024 * 1024 * 1024), // 10GB
-            gpu_count: None,
+    services.insert(
+        "web".to_string(),
+        ServiceSpec {
+            name: "web-service".to_string(),
+            version: "1.0.0".to_string(),
+            image: Some("nginx:latest".to_string()),
+            command: None,
+            environment: HashMap::new(),
+            resources: ServiceResourceRequirements {
+                cpu_cores: Some(2.0),
+                memory_bytes: Some(4 * 1024 * 1024 * 1024), // 4GB
+                storage_bytes: Some(10 * 1024 * 1024 * 1024), // 10GB
+                gpu_count: None,
+            },
+            ports: vec![],
+            volumes: vec![],
+            dependencies: vec![],
+            health_check: None,
+            replicas: 3,
         },
-        ports: vec![],
-        volumes: vec![],
-        dependencies: vec![],
-        health_check: None,
-        replicas: 3,
-    });
-    
+    );
+
     let request = ByobDeploymentRequest {
         deployment_id: Uuid::new_v4(),
         team_id: "team-beta".to_string(),
@@ -98,7 +101,7 @@ fn test_byob_deployment_request_with_services() {
         },
         created_at: Utc::now(),
     };
-    
+
     assert_eq!(request.services.len(), 1);
     assert!(request.services.contains_key("web"));
     assert_eq!(request.team_id, "team-beta");
@@ -132,7 +135,7 @@ fn test_byob_deployment_request_clone() {
         },
         created_at: Utc::now(),
     };
-    
+
     let cloned = request.clone();
     assert_eq!(cloned.deployment_id, request.deployment_id);
     assert_eq!(cloned.team_id, request.team_id);
@@ -166,10 +169,10 @@ fn test_byob_deployment_request_serialization() {
         },
         created_at: Utc::now(),
     };
-    
+
     let serialized = serde_json::to_string(&request);
     assert!(serialized.is_ok());
-    
+
     let json = serialized.unwrap();
     assert!(json.contains("team_id"));
     assert!(json.contains("deployment_name"));
@@ -178,7 +181,8 @@ fn test_byob_deployment_request_serialization() {
 
 #[test]
 fn test_byob_deployment_request_deserialization() {
-    let json = format!(r#"{{
+    let json = format!(
+        r#"{{
         "deployment_id": "{}",
         "team_id": "team-deser",
         "deployment_name": "test-app",
@@ -203,11 +207,14 @@ fn test_byob_deployment_request_deserialization() {
             "load_balancer": null
         }},
         "created_at": "{}"
-    }}"#, Uuid::new_v4(), Utc::now().to_rfc3339());
-    
+    }}"#,
+        Uuid::new_v4(),
+        Utc::now().to_rfc3339()
+    );
+
     let result: Result<ByobDeploymentRequest, _> = serde_json::from_str(&json);
     assert!(result.is_ok());
-    
+
     let request = result.unwrap();
     assert_eq!(request.team_id, "team-deser");
     assert_eq!(request.deployment_name, "test-app");
@@ -237,7 +244,7 @@ fn test_service_spec_minimal() {
         health_check: None,
         replicas: 1,
     };
-    
+
     assert_eq!(spec.name, "minimal-service");
     assert_eq!(spec.replicas, 1);
     assert!(spec.image.is_none());
@@ -249,7 +256,11 @@ fn test_service_spec_with_image() {
         name: "web-app".to_string(),
         version: "2.0.0".to_string(),
         image: Some("nginx:alpine".to_string()),
-        command: Some(vec!["nginx".to_string(), "-g".to_string(), "daemon off;".to_string()]),
+        command: Some(vec![
+            "nginx".to_string(),
+            "-g".to_string(),
+            "daemon off;".to_string(),
+        ]),
         environment: HashMap::new(),
         resources: ServiceResourceRequirements {
             cpu_cores: Some(1.0),
@@ -263,7 +274,7 @@ fn test_service_spec_with_image() {
         health_check: None,
         replicas: 2,
     };
-    
+
     assert_eq!(spec.image, Some("nginx:alpine".to_string()));
     assert_eq!(spec.replicas, 2);
     assert!(spec.command.is_some());
@@ -272,10 +283,13 @@ fn test_service_spec_with_image() {
 #[test]
 fn test_service_spec_with_environment() {
     let mut env = HashMap::new();
-    env.insert("DATABASE_URL".to_string(), "postgres://localhost/db".to_string());
+    env.insert(
+        "DATABASE_URL".to_string(),
+        "postgres://localhost/db".to_string(),
+    );
     env.insert("API_KEY".to_string(), "secret123".to_string());
     env.insert("LOG_LEVEL".to_string(), "debug".to_string());
-    
+
     let spec = ServiceSpec {
         name: "api-service".to_string(),
         version: "1.5.0".to_string(),
@@ -294,9 +308,12 @@ fn test_service_spec_with_environment() {
         health_check: None,
         replicas: 4,
     };
-    
+
     assert_eq!(spec.environment.len(), 3);
-    assert_eq!(spec.environment.get("DATABASE_URL"), Some(&"postgres://localhost/db".to_string()));
+    assert_eq!(
+        spec.environment.get("DATABASE_URL"),
+        Some(&"postgres://localhost/db".to_string())
+    );
 }
 
 #[test]
@@ -319,7 +336,7 @@ fn test_service_spec_with_dependencies() {
         health_check: None,
         replicas: 3,
     };
-    
+
     assert_eq!(spec.dependencies.len(), 2);
     assert!(spec.dependencies.contains(&"database".to_string()));
     assert!(spec.dependencies.contains(&"cache".to_string()));
@@ -345,7 +362,7 @@ fn test_service_spec_high_replicas() {
         health_check: None,
         replicas: 100,
     };
-    
+
     assert_eq!(spec.replicas, 100);
 }
 
@@ -369,7 +386,7 @@ fn test_service_spec_clone() {
         health_check: None,
         replicas: 1,
     };
-    
+
     let cloned = spec.clone();
     assert_eq!(cloned.name, spec.name);
     assert_eq!(cloned.version, spec.version);
@@ -387,7 +404,7 @@ fn test_service_resource_requirements_all_none() {
         storage_bytes: None,
         gpu_count: None,
     };
-    
+
     assert!(resources.cpu_cores.is_none());
     assert!(resources.memory_bytes.is_none());
     assert!(resources.storage_bytes.is_none());
@@ -402,7 +419,7 @@ fn test_service_resource_requirements_cpu_only() {
         storage_bytes: None,
         gpu_count: None,
     };
-    
+
     assert_eq!(resources.cpu_cores, Some(2.5));
 }
 
@@ -414,7 +431,7 @@ fn test_service_resource_requirements_memory_only() {
         storage_bytes: None,
         gpu_count: None,
     };
-    
+
     assert_eq!(resources.memory_bytes, Some(16 * 1024 * 1024 * 1024));
 }
 
@@ -426,7 +443,7 @@ fn test_service_resource_requirements_all_specified() {
         storage_bytes: Some(500 * 1024 * 1024 * 1024), // 500GB
         gpu_count: Some(4),
     };
-    
+
     assert_eq!(resources.cpu_cores, Some(8.0));
     assert_eq!(resources.memory_bytes, Some(32 * 1024 * 1024 * 1024));
     assert_eq!(resources.storage_bytes, Some(500 * 1024 * 1024 * 1024));
@@ -441,7 +458,7 @@ fn test_service_resource_requirements_fractional_cpu() {
         storage_bytes: None,
         gpu_count: None,
     };
-    
+
     assert_eq!(resources.cpu_cores, Some(0.25));
 }
 
@@ -453,7 +470,7 @@ fn test_service_resource_requirements_many_gpus() {
         storage_bytes: Some(1024 * 1024 * 1024 * 1024), // 1TB
         gpu_count: Some(8),
     };
-    
+
     assert_eq!(resources.gpu_count, Some(8));
 }
 
@@ -465,12 +482,12 @@ fn test_service_resource_requirements_many_gpus() {
 fn test_team_resource_quotas_small_team() {
     let quotas = TeamResourceQuotas {
         max_cpu_cores: 4.0,
-        max_memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB
+        max_memory_bytes: 8 * 1024 * 1024 * 1024,   // 8GB
         max_storage_bytes: 50 * 1024 * 1024 * 1024, // 50GB
         max_gpu_count: 0,
         max_concurrent_services: 3,
     };
-    
+
     assert_eq!(quotas.max_cpu_cores, 4.0);
     assert_eq!(quotas.max_gpu_count, 0);
     assert_eq!(quotas.max_concurrent_services, 3);
@@ -485,7 +502,7 @@ fn test_team_resource_quotas_enterprise() {
         max_gpu_count: 32,
         max_concurrent_services: 1000,
     };
-    
+
     assert_eq!(quotas.max_cpu_cores, 256.0);
     assert_eq!(quotas.max_gpu_count, 32);
     assert_eq!(quotas.max_concurrent_services, 1000);
@@ -500,7 +517,7 @@ fn test_team_resource_quotas_clone() {
         max_gpu_count: 2,
         max_concurrent_services: 10,
     };
-    
+
     let cloned = quotas.clone();
     assert_eq!(cloned.max_cpu_cores, quotas.max_cpu_cores);
     assert_eq!(cloned.max_memory_bytes, quotas.max_memory_bytes);
@@ -515,10 +532,10 @@ fn test_team_resource_quotas_serialization() {
         max_gpu_count: 1,
         max_concurrent_services: 5,
     };
-    
+
     let serialized = serde_json::to_string(&quotas);
     assert!(serialized.is_ok());
-    
+
     let json = serialized.unwrap();
     assert!(json.contains("max_cpu_cores"));
     assert!(json.contains("max_memory_bytes"));
@@ -536,7 +553,7 @@ fn test_team_security_config_strict() {
         volume_policies: vec!["readonly-mounts".to_string()],
         resource_policies: vec!["strict-cpu".to_string(), "strict-memory".to_string()],
     };
-    
+
     assert_eq!(config.isolation_level, "strict");
     assert_eq!(config.network_policies.len(), 2);
     assert_eq!(config.volume_policies.len(), 1);
@@ -551,7 +568,7 @@ fn test_team_security_config_permissive() {
         volume_policies: vec![],
         resource_policies: vec![],
     };
-    
+
     assert_eq!(config.isolation_level, "none");
     assert_eq!(config.network_policies.len(), 0);
     assert_eq!(config.volume_policies.len(), 0);
@@ -565,7 +582,7 @@ fn test_team_security_config_moderate() {
         volume_policies: vec!["no-exec".to_string()],
         resource_policies: vec!["limit-cpu".to_string()],
     };
-    
+
     assert_eq!(config.isolation_level, "moderate");
     assert_eq!(config.network_policies.len(), 2);
 }
@@ -578,7 +595,7 @@ fn test_team_security_config_clone() {
         volume_policies: vec!["readonly".to_string()],
         resource_policies: vec!["limit-all".to_string()],
     };
-    
+
     let cloned = config.clone();
     assert_eq!(cloned.isolation_level, config.isolation_level);
     assert_eq!(cloned.network_policies, config.network_policies);
@@ -596,7 +613,7 @@ fn test_team_network_config_basic() {
         dns_config: None,
         load_balancer: None,
     };
-    
+
     assert_eq!(config.network_name, "production-net");
     assert_eq!(config.subnet_cidr, "10.0.0.0/16");
     assert!(config.dns_config.is_none());
@@ -611,14 +628,14 @@ fn test_team_network_config_different_subnets() {
         dns_config: None,
         load_balancer: None,
     };
-    
+
     let config2 = TeamNetworkConfig {
         network_name: "subnet-b".to_string(),
         subnet_cidr: "10.2.0.0/24".to_string(),
         dns_config: None,
         load_balancer: None,
     };
-    
+
     assert_ne!(config1.subnet_cidr, config2.subnet_cidr);
 }
 
@@ -630,7 +647,7 @@ fn test_team_network_config_large_subnet() {
         dns_config: None,
         load_balancer: None,
     };
-    
+
     assert_eq!(config.subnet_cidr, "10.0.0.0/8");
 }
 
@@ -642,7 +659,7 @@ fn test_team_network_config_clone() {
         dns_config: None,
         load_balancer: None,
     };
-    
+
     let cloned = config.clone();
     assert_eq!(cloned.network_name, config.network_name);
     assert_eq!(cloned.subnet_cidr, config.subnet_cidr);
@@ -655,7 +672,7 @@ fn test_team_network_config_clone() {
 #[test]
 fn test_byob_executor_config_default() {
     let _config = ByobExecutorConfig::default();
-    
+
     // Should create with sensible defaults
     assert!(true, "ByobExecutorConfig created with defaults");
 }
@@ -664,7 +681,7 @@ fn test_byob_executor_config_default() {
 fn test_byob_executor_config_clone() {
     let config = ByobExecutorConfig::default();
     let _cloned = config.clone();
-    
+
     // Should clone successfully
     assert!(true, "ByobExecutorConfig cloned");
 }
@@ -693,7 +710,7 @@ fn test_service_spec_zero_replicas() {
         health_check: None,
         replicas: 0,
     };
-    
+
     assert_eq!(spec.replicas, 0);
 }
 
@@ -706,7 +723,7 @@ fn test_team_quotas_zero_limits() {
         max_gpu_count: 0,
         max_concurrent_services: 0,
     };
-    
+
     assert_eq!(quotas.max_cpu_cores, 0.0);
     assert_eq!(quotas.max_memory_bytes, 0);
 }
@@ -737,7 +754,7 @@ fn test_large_service_count() {
             },
         );
     }
-    
+
     assert_eq!(services.len(), 100);
 }
 
@@ -767,7 +784,7 @@ fn test_complex_dependency_chain() {
         health_check: None,
         replicas: 1,
     };
-    
+
     assert_eq!(spec.dependencies.len(), 5);
 }
 
@@ -786,4 +803,3 @@ fn test_complex_dependency_chain() {
 // - Edge cases: zero values, large counts, complex chains
 //
 // Expected impact: Push byob.rs coverage from 35.22% → 60%+
-

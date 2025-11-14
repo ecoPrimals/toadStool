@@ -209,7 +209,10 @@ pub trait StorageBackend: Send + Sync {
     /// };
     /// let info = backend.provision_volume(&config).await?;
     /// ```
-    fn provision_volume(&self, config: &VolumeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>>;
+    fn provision_volume(
+        &self,
+        config: &VolumeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>>;
 
     /// Provision a persistent volume with lifecycle guarantees.
     ///
@@ -248,7 +251,11 @@ pub trait StorageBackend: Send + Sync {
     ///
     /// - Volume not found
     /// - Volume not currently mounted to this service
-    fn unmount_volume(&self, volume_name: &str, service_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn unmount_volume(
+        &self,
+        volume_name: &str,
+        service_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Delete a volume and free its storage.
     ///
@@ -263,7 +270,10 @@ pub trait StorageBackend: Send + Sync {
     /// # Safety
     ///
     /// Ensure all data is backed up before deleting volumes.
-    fn delete_volume(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn delete_volume(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get the current status of a volume.
     ///
@@ -272,12 +282,17 @@ pub trait StorageBackend: Send + Sync {
     /// # Errors
     ///
     /// - Volume not found
-    fn get_volume_status(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>>;
+    fn get_volume_status(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>>;
 
     /// List all volumes managed by this backend.
     ///
     /// Returns information about all volumes, including their current status.
-    fn list_volumes(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>>;
+    fn list_volumes(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>>;
 }
 
 /// Production implementation using NestGate HTTP API
@@ -313,13 +328,15 @@ impl StorageBackend for NestGateBackend {
     fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let endpoint = self.endpoint.clone();
         let client = self.client.clone();
-        
+
         Box::pin(async move {
             let response = client
                 .get(format!("{}/health", endpoint))
                 .send()
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}")))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}"))
+                })?;
 
             if !response.status().is_success() {
                 return Err(ToadStoolError::runtime(format!(
@@ -332,7 +349,10 @@ impl StorageBackend for NestGateBackend {
             Ok(())
         })
     }
-    fn provision_volume(&self, config: &VolumeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_volume(
+        &self,
+        config: &VolumeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
         use super::types::{ReplicationSettings, StorageProvisioningRequest};
 
         let config_name = config.name.clone();
@@ -340,7 +360,7 @@ impl StorageBackend for NestGateBackend {
         let endpoint = self.endpoint.clone();
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
-        
+
         let request = StorageProvisioningRequest {
             volume_name: config.name.clone(),
             size: config.size.clone(),
@@ -378,10 +398,9 @@ impl StorageBackend for NestGateBackend {
                 )));
             }
 
-            let volume_info: VolumeInfo = response
-                .json()
-                .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to parse volume info: {e}")))?;
+            let volume_info: VolumeInfo = response.json().await.map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to parse volume info: {e}"))
+            })?;
 
             Ok(volume_info)
         })
@@ -398,7 +417,7 @@ impl StorageBackend for NestGateBackend {
         let endpoint = self.endpoint.clone();
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
-        
+
         let request = StorageProvisioningRequest {
             volume_name: config.name.clone(),
             size: config.capacity.clone(),
@@ -436,10 +455,9 @@ impl StorageBackend for NestGateBackend {
                 )));
             }
 
-            let volume_info: VolumeInfo = response
-                .json()
-                .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to parse volume info: {e}")))?;
+            let volume_info: VolumeInfo = response.json().await.map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to parse volume info: {e}"))
+            })?;
 
             Ok(volume_info)
         })
@@ -456,7 +474,7 @@ impl StorageBackend for NestGateBackend {
         let mount_path = mount_path.to_string();
         let client = self.client.clone();
         let endpoint = self.endpoint.clone();
-        
+
         Box::pin(async move {
             let request = serde_json::json!({
                 "volume_name": volume_name,
@@ -487,12 +505,16 @@ impl StorageBackend for NestGateBackend {
         })
     }
 
-    fn unmount_volume(&self, volume_name: &str, service_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn unmount_volume(
+        &self,
+        volume_name: &str,
+        service_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volume_name = volume_name.to_string();
         let service_name = service_name.to_string();
         let client = self.client.clone();
         let endpoint = self.endpoint.clone();
-        
+
         Box::pin(async move {
             let request = serde_json::json!({
                 "volume_name": volume_name,
@@ -522,11 +544,14 @@ impl StorageBackend for NestGateBackend {
         })
     }
 
-    fn delete_volume(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn delete_volume(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volume_name = volume_name.to_string();
         let client = self.client.clone();
         let endpoint = self.endpoint.clone();
-        
+
         Box::pin(async move {
             let response = client
                 .delete(format!("{}/volumes/{}", endpoint, volume_name))
@@ -546,17 +571,22 @@ impl StorageBackend for NestGateBackend {
         })
     }
 
-    fn get_volume_status(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
+    fn get_volume_status(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
         let volume_name = volume_name.to_string();
         let client = self.client.clone();
         let endpoint = self.endpoint.clone();
-        
+
         Box::pin(async move {
             let response = client
                 .get(format!("{}/volumes/{}/status", endpoint, volume_name))
                 .send()
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to get volume status: {e}")))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to get volume status: {e}"))
+                })?;
 
             if !response.status().is_success() {
                 return Err(ToadStoolError::runtime(format!(
@@ -565,19 +595,20 @@ impl StorageBackend for NestGateBackend {
                 )));
             }
 
-            let status: VolumeStatus = response
-                .json()
-                .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to parse volume status: {e}")))?;
+            let status: VolumeStatus = response.json().await.map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to parse volume status: {e}"))
+            })?;
 
             Ok(status)
         })
     }
 
-    fn list_volumes(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
+    fn list_volumes(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
         let client = self.client.clone();
         let endpoint = self.endpoint.clone();
-        
+
         Box::pin(async move {
             let response = client
                 .get(format!("{}/volumes", endpoint))
@@ -592,10 +623,9 @@ impl StorageBackend for NestGateBackend {
                 )));
             }
 
-            let volumes: Vec<VolumeInfo> = response
-                .json()
-                .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to parse volume list: {e}")))?;
+            let volumes: Vec<VolumeInfo> = response.json().await.map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to parse volume list: {e}"))
+            })?;
 
             Ok(volumes)
         })
@@ -623,13 +653,16 @@ impl InMemoryBackend {
 }
 
 impl StorageBackend for InMemoryBackend {
-    fn provision_volume(&self, config: &VolumeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_volume(
+        &self,
+        config: &VolumeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
         let volumes = Arc::clone(&self.volumes);
         let storage_tier = self.storage_tier.clone();
         let config_name = config.name.clone();
         let config_size = config.size.clone();
         let config_storage_class = config.storage_class.clone();
-        
+
         Box::pin(async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
@@ -656,7 +689,7 @@ impl StorageBackend for InMemoryBackend {
         let config_name = config.name.clone();
         let config_capacity = config.capacity.clone();
         let config_storage_class = config.storage_class.clone();
-        
+
         Box::pin(async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
@@ -684,7 +717,7 @@ impl StorageBackend for InMemoryBackend {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
         let service_name = service_name.to_string();
-        
+
         Box::pin(async move {
             let vols = volumes.lock().await;
             if !vols.contains_key(&volume_name) {
@@ -703,11 +736,15 @@ impl StorageBackend for InMemoryBackend {
         })
     }
 
-    fn unmount_volume(&self, volume_name: &str, service_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn unmount_volume(
+        &self,
+        volume_name: &str,
+        service_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
         let service_name = service_name.to_string();
-        
+
         Box::pin(async move {
             let vols = volumes.lock().await;
             if !vols.contains_key(&volume_name) {
@@ -726,10 +763,13 @@ impl StorageBackend for InMemoryBackend {
         })
     }
 
-    fn delete_volume(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn delete_volume(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
-        
+
         Box::pin(async move {
             let mut vols = volumes.lock().await;
             vols.remove(&volume_name).ok_or_else(|| {
@@ -741,22 +781,28 @@ impl StorageBackend for InMemoryBackend {
         })
     }
 
-    fn get_volume_status(&self, volume_name: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
+    fn get_volume_status(
+        &self,
+        volume_name: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
-        
+
         Box::pin(async move {
             let vols = volumes.lock().await;
-            vols
-                .get(&volume_name)
+            vols.get(&volume_name)
                 .map(|_| VolumeStatus::Available)
-                .ok_or_else(|| ToadStoolError::not_found(format!("Volume {} not found", volume_name)))
+                .ok_or_else(|| {
+                    ToadStoolError::not_found(format!("Volume {} not found", volume_name))
+                })
         })
     }
 
-    fn list_volumes(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
+    fn list_volumes(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
         let volumes = Arc::clone(&self.volumes);
-        
+
         Box::pin(async move {
             let vols = volumes.lock().await;
             Ok(vols.values().cloned().collect())

@@ -17,7 +17,7 @@ use toadstool_common::infant_discovery::*;
 #[test]
 fn test_discovery_config_default() {
     let config = DiscoveryConfig::default();
-    
+
     assert!(config.enable_cache);
     assert_eq!(config.cache_ttl, Duration::from_secs(300));
     assert_eq!(config.default_timeout, Duration::from_secs(30));
@@ -34,7 +34,7 @@ fn test_discovery_config_clone() {
         retry_attempts: 5,
         retry_delay: Duration::from_secs(2),
     };
-    
+
     let cloned = config.clone();
     assert_eq!(config.enable_cache, cloned.enable_cache);
     assert_eq!(config.cache_ttl, cloned.cache_ttl);
@@ -52,7 +52,7 @@ fn test_discovery_config_custom_values() {
         retry_attempts: 1,
         retry_delay: Duration::from_millis(500),
     };
-    
+
     assert!(!config.enable_cache);
     assert_eq!(config.cache_ttl.as_secs(), 60);
     assert_eq!(config.default_timeout.as_secs(), 10);
@@ -76,7 +76,7 @@ fn test_service_health_equality() {
     assert_eq!(ServiceHealth::Healthy, ServiceHealth::Healthy);
     assert_eq!(ServiceHealth::Degraded, ServiceHealth::Degraded);
     assert_eq!(ServiceHealth::Unknown, ServiceHealth::Unknown);
-    
+
     assert_ne!(ServiceHealth::Healthy, ServiceHealth::Degraded);
     assert_ne!(ServiceHealth::Degraded, ServiceHealth::Unknown);
 }
@@ -106,7 +106,7 @@ fn test_discovery_source_variants() {
     let mesh = DiscoverySource::ServiceMesh("consul".to_string());
     let config = DiscoverySource::ConfigFile;
     let fallback = DiscoverySource::Fallback;
-    
+
     // Just ensure they're all created correctly
     assert!(matches!(env, DiscoverySource::Environment));
     assert!(matches!(mdns, DiscoverySource::MDNS));
@@ -127,7 +127,7 @@ fn test_discovery_source_equality() {
     let env1 = DiscoverySource::Environment;
     let env2 = DiscoverySource::Environment;
     assert_eq!(env1, env2);
-    
+
     let mesh1 = DiscoverySource::ServiceMesh("consul".to_string());
     let mesh2 = DiscoverySource::ServiceMesh("consul".to_string());
     assert_eq!(mesh1, mesh2);
@@ -137,16 +137,16 @@ fn test_discovery_source_equality() {
 fn test_discovery_source_from_str() {
     let env: DiscoverySource = "environment".into();
     assert!(matches!(env, DiscoverySource::Environment));
-    
+
     let mdns: DiscoverySource = "mdns".into();
     assert!(matches!(mdns, DiscoverySource::MDNS));
-    
+
     let mesh: DiscoverySource = "service_mesh".into();
     assert!(matches!(mesh, DiscoverySource::ServiceMesh(_)));
-    
+
     let config: DiscoverySource = "config_file".into();
     assert!(matches!(config, DiscoverySource::ConfigFile));
-    
+
     let fallback: DiscoverySource = "unknown".into();
     assert!(matches!(fallback, DiscoverySource::Fallback));
 }
@@ -164,7 +164,7 @@ fn test_service_metadata_creation() {
         priority: 80,
         extra: HashMap::new(),
     };
-    
+
     assert_eq!(metadata.version, Some("1.0.0".to_string()));
     assert_eq!(metadata.health, ServiceHealth::Healthy);
     assert_eq!(metadata.priority, 80);
@@ -176,7 +176,7 @@ fn test_service_metadata_with_extra() {
     let mut extra = HashMap::new();
     extra.insert("region".to_string(), "us-west".to_string());
     extra.insert("datacenter".to_string(), "dc1".to_string());
-    
+
     let metadata = ServiceMetadata {
         version: Some("2.0.0".to_string()),
         health: ServiceHealth::Degraded,
@@ -184,7 +184,7 @@ fn test_service_metadata_with_extra() {
         priority: 50,
         extra,
     };
-    
+
     assert_eq!(metadata.extra.len(), 2);
     assert_eq!(metadata.extra.get("region"), Some(&"us-west".to_string()));
     assert_eq!(metadata.extra.get("datacenter"), Some(&"dc1".to_string()));
@@ -199,7 +199,7 @@ fn test_service_metadata_clone() {
         priority: 100,
         extra: HashMap::new(),
     };
-    
+
     let cloned = metadata.clone();
     assert_eq!(metadata.version, cloned.version);
     assert_eq!(metadata.health, cloned.health);
@@ -217,7 +217,7 @@ fn test_service_metadata_priority_range() {
         extra: HashMap::new(),
     };
     assert_eq!(low.priority, 0);
-    
+
     let high = ServiceMetadata {
         version: None,
         health: ServiceHealth::Healthy,
@@ -247,7 +247,7 @@ fn test_discovered_service_creation() {
         },
         source: DiscoverySource::Environment,
     };
-    
+
     assert_eq!(service.capability, "authentication");
     assert_eq!(service.endpoint, "http://localhost:8080");
     assert_eq!(service.protocols.len(), 2);
@@ -269,7 +269,7 @@ fn test_discovered_service_protocols() {
         },
         source: DiscoverySource::MDNS,
     };
-    
+
     assert_eq!(service.protocols.len(), 3);
     assert!(service.protocols.contains(&"http".to_string()));
     assert!(service.protocols.contains(&"s3".to_string()));
@@ -291,7 +291,7 @@ fn test_discovered_service_clone() {
         },
         source: DiscoverySource::ConfigFile,
     };
-    
+
     let cloned = service.clone();
     assert_eq!(service.capability, cloned.capability);
     assert_eq!(service.endpoint, cloned.endpoint);
@@ -313,7 +313,7 @@ fn test_discovered_service_multiple_services() {
         },
         source: DiscoverySource::Environment,
     };
-    
+
     let storage_service = DiscoveredService {
         capability: "storage".to_string(),
         endpoint: "http://storage:9000".to_string(),
@@ -327,7 +327,7 @@ fn test_discovered_service_multiple_services() {
         },
         source: DiscoverySource::MDNS,
     };
-    
+
     assert_ne!(auth_service.capability, storage_service.capability);
     assert_ne!(auth_service.endpoint, storage_service.endpoint);
 }
@@ -390,50 +390,47 @@ fn test_discovery_error_config_error() {
 
 #[test]
 fn test_discovery_engine_builder_default() {
-    let _builder = DiscoveryEngineBuilder::default();
-    // Builder created successfully
-    assert!(true);
+    let builder = DiscoveryEngineBuilder::default();
+    // Verify builder was created - if this compiles, test passes
+    drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_new() {
-    let _builder = DiscoveryEngineBuilder::new();
-    // Builder created successfully
-    assert!(true);
+    let builder = DiscoveryEngineBuilder::new();
+    // Verify builder was created - if this compiles, test passes
+    drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_cache_ttl() {
-    let _builder = DiscoveryEngineBuilder::new()
-        .cache_ttl(Duration::from_secs(600));
-    // Builder configured successfully
-    assert!(true);
+    let builder = DiscoveryEngineBuilder::new().cache_ttl(Duration::from_secs(600));
+    // Verify builder method returns builder - if this compiles, test passes
+    drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_timeout() {
-    let _builder = DiscoveryEngineBuilder::new()
-        .timeout(Duration::from_secs(60));
-    // Builder configured successfully
-    assert!(true);
+    let builder = DiscoveryEngineBuilder::new().timeout(Duration::from_secs(60));
+    // Verify builder method returns builder - if this compiles, test passes
+    drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_disable_cache() {
-    let _builder = DiscoveryEngineBuilder::new()
-        .disable_cache();
-    // Cache disabled successfully
-    assert!(true);
+    let builder = DiscoveryEngineBuilder::new().disable_cache();
+    // Verify builder method returns builder - if this compiles, test passes
+    drop(builder);
 }
 
 #[test]
 fn test_discovery_engine_builder_chaining() {
-    let _builder = DiscoveryEngineBuilder::new()
+    let builder = DiscoveryEngineBuilder::new()
         .cache_ttl(Duration::from_secs(600))
         .timeout(Duration::from_secs(45))
         .disable_cache();
-    // Chained configuration successful
-    assert!(true);
+    // Verify builder methods can be chained - if this compiles, test passes
+    drop(builder);
 }
 
 // ============================================================================
@@ -442,9 +439,9 @@ fn test_discovery_engine_builder_chaining() {
 
 #[test]
 fn test_discovery_engine_new() {
-    let _engine = DiscoveryEngine::new();
-    // Engine created successfully
-    assert!(true);
+    let engine = DiscoveryEngine::new();
+    // Engine created successfully - if this compiles, test passes
+    drop(engine);
 }
 
 #[test]
@@ -456,10 +453,10 @@ fn test_discovery_engine_with_config() {
         retry_attempts: 3,
         retry_delay: Duration::from_secs(1),
     };
-    
-    let _engine = DiscoveryEngine::with_config(config);
-    // Engine created with custom config
-    assert!(true);
+
+    let engine = DiscoveryEngine::with_config(config);
+    // Engine created with custom config - if this compiles, test passes
+    drop(engine);
 }
 
 // ============================================================================
@@ -486,7 +483,7 @@ fn test_service_discovery_workflow() {
         },
         source: DiscoverySource::ServiceMesh("consul".to_string()),
     };
-    
+
     // Verify complete service structure
     assert_eq!(service.capability, "orchestration");
     assert!(service.endpoint.contains("orchestrator"));
@@ -498,7 +495,7 @@ fn test_service_discovery_workflow() {
 
 #[test]
 fn test_multiple_discovery_sources() {
-    let sources = vec![
+    let sources = [
         DiscoverySource::Environment,
         DiscoverySource::MDNS,
         DiscoverySource::ServiceMesh("istio".to_string()),
@@ -506,9 +503,9 @@ fn test_multiple_discovery_sources() {
         DiscoverySource::Fallback,
         DiscoverySource::UniversalAdapter,
     ];
-    
+
     assert_eq!(sources.len(), 6);
-    
+
     // Each source is unique
     for (i, source) in sources.iter().enumerate() {
         match source {
@@ -537,13 +534,13 @@ fn test_service_health_degradation() {
         },
         source: DiscoverySource::Environment,
     };
-    
+
     // Simulate health degradation
     assert_eq!(service.metadata.health, ServiceHealth::Healthy);
-    
+
     service.metadata.health = ServiceHealth::Degraded;
     assert_eq!(service.metadata.health, ServiceHealth::Degraded);
-    
+
     service.metadata.health = ServiceHealth::Unknown;
     assert_eq!(service.metadata.health, ServiceHealth::Unknown);
 }
@@ -563,7 +560,7 @@ fn test_priority_based_service_selection() {
         },
         source: DiscoverySource::Environment,
     };
-    
+
     let service_low = DiscoveredService {
         capability: "storage".to_string(),
         endpoint: "http://storage2:9001".to_string(),
@@ -577,7 +574,7 @@ fn test_priority_based_service_selection() {
         },
         source: DiscoverySource::Fallback,
     };
-    
+
     // High priority should be preferred
     assert!(service_high.metadata.priority > service_low.metadata.priority);
 }
@@ -588,7 +585,7 @@ fn test_service_metadata_extra_data() {
     extra.insert("zone".to_string(), "us-west-1a".to_string());
     extra.insert("instance_type".to_string(), "m5.large".to_string());
     extra.insert("cost".to_string(), "0.096".to_string());
-    
+
     let metadata = ServiceMetadata {
         version: Some("2.5.0".to_string()),
         health: ServiceHealth::Healthy,
@@ -596,17 +593,20 @@ fn test_service_metadata_extra_data() {
         priority: 75,
         extra,
     };
-    
+
     assert_eq!(metadata.extra.len(), 3);
     assert_eq!(metadata.extra.get("zone"), Some(&"us-west-1a".to_string()));
-    assert_eq!(metadata.extra.get("instance_type"), Some(&"m5.large".to_string()));
+    assert_eq!(
+        metadata.extra.get("instance_type"),
+        Some(&"m5.large".to_string())
+    );
     assert_eq!(metadata.extra.get("cost"), Some(&"0.096".to_string()));
 }
 
 #[test]
 fn test_discovery_config_variations() {
     // Test various valid configurations
-    let configs = vec![
+    let configs = [
         DiscoveryConfig {
             enable_cache: true,
             cache_ttl: Duration::from_secs(60),
@@ -623,10 +623,9 @@ fn test_discovery_config_variations() {
         },
         DiscoveryConfig::default(),
     ];
-    
+
     assert_eq!(configs.len(), 3);
     assert!(configs[0].enable_cache);
     assert!(!configs[1].enable_cache);
     assert!(configs[2].enable_cache); // default is true
 }
-

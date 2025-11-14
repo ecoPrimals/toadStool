@@ -124,26 +124,44 @@ pub trait CapabilityDiscovery: Send + Sync {
     /// // ❌ BAD - primal name hardcoding
     /// // let songbird = SongbirdClient::new();  // DON'T DO THIS
     /// ```
-    fn discover(&self, capability: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_>>;
+    fn discover(
+        &self,
+        capability: &str,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_,
+        >,
+    >;
 
     /// Discover with preferences
     fn discover_with_preferences(
         &self,
         capability: &str,
         preferences: DiscoveryPreferences,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_>>;
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<DiscoveredService, DiscoveryError>> + Send + '_,
+        >,
+    >;
 
     /// Discover all services providing a capability
     fn discover_all(
         &self,
         capability: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<DiscoveredService>, DiscoveryError>> + Send + '_>>;
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<Vec<DiscoveredService>, DiscoveryError>>
+                + Send
+                + '_,
+        >,
+    >;
 
     /// Check if a capability is available
-    fn is_available<'a>(&'a self, capability: &'a str) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + 'a>> {
-        Box::pin(async move {
-            self.discover(capability).await.is_ok()
-        })
+    fn is_available<'a>(
+        &'a self,
+        capability: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + 'a>> {
+        Box::pin(async move { self.discover(capability).await.is_ok() })
     }
 }
 
@@ -293,7 +311,15 @@ impl DetectedSubstrate {
 /// Migrated from async_trait to native async for zero-cost abstraction.
 pub trait SubstrateDetector: Send + Sync {
     /// Try to detect this substrate type
-    fn detect(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>;
+    fn detect(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>>
+                + Send
+                + '_,
+        >,
+    >;
 
     /// Name of this detector (for logging)
     fn name(&self) -> &str;
@@ -339,7 +365,12 @@ impl Default for EndpointResolver {
 /// Migrated from async_trait to native async for zero-cost abstraction.
 pub trait EndpointSource: Send + Sync {
     /// Try to resolve service endpoint from this source
-    fn resolve(&self, service: &str) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>>;
+    fn resolve(
+        &self,
+        service: &str,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Option<String>, DiscoveryError>> + Send + '_>,
+    >;
 
     /// Source name (for logging/debugging)
     fn source_name(&self) -> &str;

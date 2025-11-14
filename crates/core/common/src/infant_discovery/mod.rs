@@ -23,6 +23,6 @@ pub use capabilities::{
     DiscoveryPreferences, DiscoverySource, EndpointResolver, EndpointSource, ServiceHealth,
     ServiceMetadata, SubstrateCapability, SubstrateDetector, SubstrateType,
 };
-pub use engine::{ServiceDiscoveryConfig, DiscoveryEngine, DiscoveryEngineBuilder};
+pub use engine::{DiscoveryEngine, DiscoveryEngineBuilder, ServiceDiscoveryConfig};
 // Type alias for backward compatibility
 pub use engine::ServiceDiscoveryConfig as DiscoveryConfig;

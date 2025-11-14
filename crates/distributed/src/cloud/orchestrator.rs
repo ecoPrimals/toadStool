@@ -257,12 +257,16 @@ impl UniversalCloudOrchestrator {
             federation_id: Uuid::new_v4(),
             nodes: vec![],
             // Use environment variable or default federation endpoint
-            coordination_endpoint: std::env::var("TOADSTOOL_FEDERATION_ENDPOINT")
-                .unwrap_or_else(|_| {
-                    format!("https://federation.{}:{}",
-                        std::env::var("TOADSTOOL_DOMAIN").unwrap_or_else(|_| "toadstool.local".to_string()),
-                        toadstool_config::defaults::network::FEDERATION_PORT)
-                }),
+            coordination_endpoint: std::env::var("TOADSTOOL_FEDERATION_ENDPOINT").unwrap_or_else(
+                |_| {
+                    format!(
+                        "https://federation.{}:{}",
+                        std::env::var("TOADSTOOL_DOMAIN")
+                            .unwrap_or_else(|_| "toadstool.local".to_string()),
+                        toadstool_config::defaults::network::FEDERATION_PORT
+                    )
+                },
+            ),
         };
 
         Ok(CloudDeploymentResult::Federated {

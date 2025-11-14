@@ -1,0 +1,264 @@
+# Self-Managing ToadStool
+# Demonstration of self-monitoring, auto-healing, and performance learning
+
+[metadata]
+name = "self-monitoring-demo"
+description = "ToadStool monitors and optimizes itself"
+version = "1.0.0"
+
+[execution]
+type = "native"
+command = "/bin/bash"
+args = ["-c", '''
+#!/bin/bash
+set -e
+
+cat << "BANNER"
+╔═══════════════════════════════════════════════════════════════╗
+║           🔍 Self-Managing ToadStool Active                  ║
+╚═══════════════════════════════════════════════════════════════╝
+BANNER
+
+echo ""
+echo "🔍 ToadStool Self-Management System"
+echo "   Version: 1.0.0"
+echo "   Mode: Autonomous Monitoring & Optimization"
+echo ""
+
+# System overview
+echo "📊 System Overview:"
+echo "   Monitoring: Active"
+echo "   Auto-healing: Enabled"
+echo "   Performance learning: Enabled"
+echo "   Optimization: Autonomous"
+echo ""
+
+sleep 2
+
+TIMESTAMP=$(date +"%H:%M:%S")
+
+echo "═══════════════════════════════════════════════════════════"
+echo "🔍 Self-Monitoring (Real-time):"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+echo "[$TIMESTAMP] System Health Check:"
+echo "   ✅ CPU: 34% utilization (healthy)"
+echo "   ✅ Memory: 12.4GB / 64GB (19.4%, healthy)"
+echo "   ✅ GPU: 67% utilization (optimal)"
+echo "   ✅ Disk I/O: 145 MB/s (normal)"
+echo "   ✅ Network: 2.3 Gbps (stable)"
+echo ""
+
+sleep 1
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] Active Jobs:"
+echo "   ├─ Job 1: ML training (priority 90, running 2h 14m)"
+echo "   ├─ Job 2: Video encoding (priority 80, running 47m)"
+echo "   ├─ Job 3: Data processing (priority 70, running 12m)"
+echo "   └─ Total: 3 jobs, all healthy ✅"
+echo ""
+
+sleep 2
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] 🚨 Anomaly detected!"
+echo "           Job 1 (ML training) showing unusual pattern"
+echo "           ├─ GPU utilization dropped from 98% to 23%"
+echo "           ├─ Expected: Steady 95-98%"
+echo "           ├─ Duration: 3 minutes"
+echo "           └─ Probable cause: Memory pressure"
+echo ""
+
+sleep 1
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] 🧠 Diagnosing issue..."
+sleep 0.5
+echo "           ├─ Checking GPU memory: 22.8GB / 24GB (95% full)"
+sleep 0.5
+echo "           ├─ Checking system memory: 61.2GB / 64GB (96% full)"
+sleep 0.5
+echo "           ├─ Checking swap usage: 8.2GB (high!)"
+sleep 0.5
+echo "           └─ Root cause: Job 2 memory leak (suspected)"
+echo ""
+
+sleep 1
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] 🔧 Auto-healing initiated:"
+echo "           Step 1: Profiling Job 2 memory usage..."
+sleep 0.5
+echo "           ├─ Baseline: 4GB"
+echo "           ├─ Current: 18GB (leaked 14GB!)"
+echo "           └─ Leak rate: 300MB/minute"
+echo ""
+
+sleep 1
+
+echo "           Step 2: Checkpointing Job 2..."
+sleep 0.5
+echo "           ├─ Progress saved: 74% complete"
+echo "           ├─ Checkpoint file: 2.3GB"
+echo "           └─ Checkpoint time: 1.8 seconds ✅"
+echo ""
+
+sleep 1
+
+echo "           Step 3: Restarting Job 2 (clean slate)..."
+sleep 0.5
+echo "           ├─ Terminating leaky process"
+echo "           ├─ Releasing 18GB memory"
+echo "           ├─ Restarting from checkpoint (74%)"
+echo "           └─ Restart time: 2.1 seconds ✅"
+echo ""
+
+sleep 1
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] ✅ Auto-healing complete!"
+echo "           ├─ Job 2: Restarted at 74% (no work lost)"
+echo "           ├─ Memory freed: 14GB"
+echo "           ├─ Job 1 GPU utilization: Restored to 96%"
+echo "           ├─ Total downtime: 5.7 seconds"
+echo "           └─ System health: Back to optimal ✅"
+echo ""
+
+sleep 2
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] 📚 Learning from incident:"
+echo "           ├─ Flagged Job 2 workload type: video-encode-h265"
+echo "           ├─ Memory leak pattern recorded"
+echo "           ├─ Future jobs: Will monitor more aggressively"
+echo "           └─ Knowledge base updated ✅"
+echo ""
+
+sleep 2
+
+echo "═══════════════════════════════════════════════════════════"
+echo "🧠 Performance Learning:"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] Analyzing historical performance..."
+echo ""
+
+cat << "LEARNING"
+Pattern 1: ML training jobs
+├─ Observation: 23 jobs over 14 days
+├─ Learned: GPU utilization peaks in first 30 minutes
+├─ Learned: Memory usage grows linearly (predictable)
+├─ Optimization: Pre-allocate memory, avoid fragmentation
+└─ Result: 7% faster execution, 12% less memory waste ✅
+
+Pattern 2: Video encoding jobs
+├─ Observation: 47 jobs over 14 days
+├─ Learned: Some encoders leak memory (3 types identified)
+├─ Learned: Optimal checkpoint interval: every 15 minutes
+├─ Optimization: Auto-checkpoint + proactive restart if leak detected
+└─ Result: 0 job failures (vs 8 before learning) ✅
+
+Pattern 3: Batch processing jobs
+├─ Observation: 102 jobs over 14 days
+├─ Learned: Best performance at 4 parallel tasks (not 8)
+├─ Learned: I/O bottleneck after 18GB/s sustained
+├─ Optimization: Adaptive parallelism based on I/O load
+└─ Result: 15% faster completion, 22% less CPU waste ✅
+
+Pattern 4: User gaming sessions
+├─ Observation: 18 sessions over 14 days
+├─ Learned: Gaming typically starts 18:00-22:00 on weekdays
+├─ Learned: Average session: 2.3 hours
+├─ Optimization: Pre-emptively prepare resources at 17:45
+└─ Result: Gaming priority activation time: 0.4s (vs 1.8s) ✅
+LEARNING
+
+echo ""
+
+sleep 2
+
+echo "═══════════════════════════════════════════════════════════"
+echo "📊 Self-Management Statistics (14 days):"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+cat << "STATS"
+Auto-Healing Events:
+├─ Memory leaks detected & resolved: 8
+├─ Process hangs auto-restarted: 3
+├─ Resource contention resolved: 12
+├─ Failed jobs auto-recovered: 5
+├─ Average resolution time: 6.2 seconds
+└─ Success rate: 100% (28/28) ✅
+
+Performance Improvements:
+├─ ML training: 7% faster (via learning)
+├─ Video encoding: 0 failures (vs 8 before)
+├─ Batch processing: 15% faster (adaptive parallelism)
+├─ Gaming priority: 78% faster activation
+└─ Overall efficiency gain: 11.4% ✅
+
+Resource Optimization:
+├─ Memory waste reduced: 18.3%
+├─ CPU idle time reduced: 22.1%
+├─ GPU utilization improved: 5.8%
+├─ Checkpoint overhead: 0.4% (minimal)
+└─ Total cost savings: $47/month equivalent ✅
+
+Knowledge Base:
+├─ Workload patterns learned: 47
+├─ Anomaly signatures: 23
+├─ Optimization rules: 34
+├─ Prediction models: 12
+└─ Accuracy: 94.7% ✅
+
+User Impact:
+├─ Job failures: 97% reduction (28 → 1)
+├─ Manual interventions: 89% reduction (45 → 5)
+├─ System responsiveness: 34% improvement
+├─ Gaming experience: NEVER compromised ✅
+└─ User satisfaction: 🟢 EXCELLENT
+STATS
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+sleep 1
+
+TIMESTAMP=$(date +"%H:%M:%S")
+echo "[$TIMESTAMP] Self-Management Summary:"
+echo "           ✅ System monitoring: 24/7 active"
+echo "           ✅ Auto-healing: 28 incidents resolved"
+echo "           ✅ Performance learning: 47 patterns discovered"
+echo "           ✅ Optimization: Autonomous and continuous"
+echo "           ✅ User intervention: Rarely needed"
+echo ""
+
+cat << "COMPLETE"
+╔═══════════════════════════════════════════════════════════════╗
+║    🔍 ToadStool: It manages itself, so you don''t have to     ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Auto-healing: Fixes problems before you notice them.
+Performance learning: Gets smarter with every job.
+Zero maintenance: Set it and forget it.
+
+ToadStool: Self-managing compute, for people who have better things to do.
+COMPLETE
+
+echo ""
+'''
+]
+
+[resources]
+cpu_cores = 1.0
+memory_mb = 512
+
+[security]
+isolation = "standard"
+

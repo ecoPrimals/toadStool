@@ -20,6 +20,10 @@ use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_config::env_config::EnvironmentConfig;
 use toadstool_config::network;
 
+/// Multicast discovery protocol identifier
+#[cfg(feature = "networking")]
+const DISCOVERY_PROTOCOL_ID: &[u8] = b"TOADSTOOL_DISCOVERY";
+
 /// Ecosystem coordinator for primal integration
 pub struct EcosystemCoordinator {
     /// Discovered primals
@@ -246,9 +250,8 @@ impl EcosystemCoordinator {
                 })?;
 
             // Send discovery broadcast
-            let discovery_message = b"TOADSTOOL_DISCOVERY";
             socket
-                .send_to(discovery_message, &multicast_addr)
+                .send_to(DISCOVERY_PROTOCOL_ID, &multicast_addr)
                 .await
                 .map_err(|e| {
                     ToadStoolError::network(format!("Failed to send discovery message: {e}"))
@@ -593,12 +596,12 @@ impl EcosystemCoordinator {
                     .send()
                     .await
                     .map_err(|e| {
-                        ToadStoolError::network(format!("tRPC health check failed: {e}"))
+                        ToadStoolError::network(format!("TRPC health check failed: {e}"))
                     })?;
 
                 if !response.status().is_success() {
                     return Err(ToadStoolError::network(format!(
-                        "tRPC health check returned: {}",
+                        "TRPC health check returned: {}",
                         response.status()
                     )));
                 }

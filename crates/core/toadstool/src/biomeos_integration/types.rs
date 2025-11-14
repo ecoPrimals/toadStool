@@ -8,26 +8,26 @@
 //! ### Authentication Configuration (8 configs)
 //! Token-based authentication and session management for BiomeOS integration:
 //! - [`BiomeSecurity`] - Security policies and authentication settings
-//! - [`AuthToken`] - Authentication token structure
-//! - [`TokenConfig`] - Token generation and validation
-//! - [`SessionConfig`] - Session management
-//! - [`PermissionModel`] - Role-based access control
+//! - `AuthToken` - Authentication token structure (planned)
+//! - `TokenConfig` - Token generation and validation (planned)
+//! - `SessionConfig` - Session management (planned)
+//! - `PermissionModel` - Role-based access control (planned)
 //!
 //! ### Storage Configuration (10 configs)
 //! S3-compatible object storage integration with BearDog/NestGate:
 //! - [`BiomeStorage`] - Overall storage configuration
-//! - [`StorageBucket`] - Bucket configuration and provisioning
-//! - [`ObjectPolicy`] - Object access policies
+//! - `StorageBucket` - Bucket configuration and provisioning (planned)
+//! - `ObjectPolicy` - Object access policies (planned)
 //! - [`ReplicationConfig`] - Cross-cluster replication
 //! - [`BackupConfig`] - Backup and recovery settings
 //!
 //! ### Agent Configuration (9 configs)
 //! AI agent deployment, lifecycle management, and communication:
 //! - [`AgentConfig`] - Agent deployment configuration
-//! - [`AgentLifecycle`] - Lifecycle management (start, stop, restart)
-//! - [`AgentCommunication`] - Inter-agent communication settings
-//! - [`AgentResources`] - Resource allocation for agents
-//! - [`AgentMonitoring`] - Health and performance monitoring
+//! - `AgentLifecycle` - Lifecycle management (start, stop, restart) (planned)
+//! - `AgentCommunication` - Inter-agent communication settings (planned)
+//! - `AgentResources` - Resource allocation for agents (planned)
+//! - `AgentMonitoring` - Health and performance monitoring (planned)
 //!
 //! ## Integration Patterns
 //!

@@ -2,11 +2,11 @@
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use toadstool_common::auth::AuthType;
 use super::types::{
     ConnectionHealth, ProtocolConfig, SongbirdConnection, SongbirdConnectionConfig,
     SongbirdProtocol,
 };
+use toadstool_common::auth::AuthType;
 
 impl SongbirdConnection {
     pub async fn new(config: SongbirdConnectionConfig) -> ToadStoolResult<Self> {

@@ -21,7 +21,7 @@ fn test_workload_type_variants() {
     let container = WorkloadType::Container;
     let gpu = WorkloadType::Gpu;
     let python = WorkloadType::Python;
-    
+
     assert!(matches!(native, WorkloadType::Native));
     assert!(matches!(wasm, WorkloadType::Wasm));
     assert!(matches!(container, WorkloadType::Container));
@@ -39,12 +39,12 @@ fn test_workload_type_equality() {
 #[test]
 fn test_workload_type_hash() {
     use std::collections::HashSet;
-    
+
     let mut set = HashSet::new();
     set.insert(WorkloadType::Native);
     set.insert(WorkloadType::Wasm);
     set.insert(WorkloadType::Native); // Duplicate
-    
+
     assert_eq!(set.len(), 2);
     assert!(set.contains(&WorkloadType::Native));
 }
@@ -65,7 +65,7 @@ fn test_executable_source_file() {
     let source = ExecutableSource::File {
         path: PathBuf::from("/usr/bin/echo"),
     };
-    
+
     match source {
         ExecutableSource::File { path } => {
             assert_eq!(path, PathBuf::from("/usr/bin/echo"));
@@ -79,7 +79,7 @@ fn test_executable_source_url() {
     let source = ExecutableSource::Url {
         url: "https://example.com/binary".to_string(),
     };
-    
+
     match source {
         ExecutableSource::Url { url } => {
             assert_eq!(url, "https://example.com/binary");
@@ -92,7 +92,7 @@ fn test_executable_source_url() {
 fn test_executable_source_bytes() {
     let data = vec![0x7f, 0x45, 0x4c, 0x46]; // ELF magic
     let source = ExecutableSource::Bytes { data: data.clone() };
-    
+
     match source {
         ExecutableSource::Bytes { data: d } => {
             assert_eq!(d, data);
@@ -107,7 +107,7 @@ fn test_executable_source_clone() {
         path: PathBuf::from("/bin/ls"),
     };
     let cloned = source.clone();
-    
+
     match (source, cloned) {
         (ExecutableSource::File { path: p1 }, ExecutableSource::File { path: p2 }) => {
             assert_eq!(p1, p2);
@@ -125,7 +125,7 @@ fn test_wasm_module_source_file() {
     let source = WasmModuleSource::File {
         path: PathBuf::from("module.wasm"),
     };
-    
+
     match source {
         WasmModuleSource::File { path } => {
             assert_eq!(path, PathBuf::from("module.wasm"));
@@ -140,7 +140,7 @@ fn test_wasm_module_source_bytes() {
     let source = WasmModuleSource::Bytes {
         data: wasm_bytes.clone(),
     };
-    
+
     match source {
         WasmModuleSource::Bytes { data } => {
             assert_eq!(data, wasm_bytes);
@@ -154,7 +154,7 @@ fn test_wasm_module_source_url() {
     let source = WasmModuleSource::Url {
         url: "https://cdn.example.com/module.wasm".to_string(),
     };
-    
+
     match source {
         WasmModuleSource::Url { url } => {
             assert_eq!(url, "https://cdn.example.com/module.wasm");
@@ -169,7 +169,7 @@ fn test_wasm_module_source_clone() {
         data: vec![1, 2, 3, 4],
     };
     let cloned = source.clone();
-    
+
     match (source, cloned) {
         (WasmModuleSource::Bytes { data: d1 }, WasmModuleSource::Bytes { data: d2 }) => {
             assert_eq!(d1, d2);
@@ -191,7 +191,7 @@ fn test_wasi_config_basic() {
         preopened_dirs: vec![PathBuf::from("/data")],
         args: vec!["arg1".to_string(), "arg2".to_string()],
     };
-    
+
     assert!(config.inherit_env);
     assert!(config.inherit_stdio);
     assert_eq!(config.allowed_dirs.len(), 1);
@@ -208,7 +208,7 @@ fn test_wasi_config_no_permissions() {
         preopened_dirs: vec![],
         args: vec![],
     };
-    
+
     assert!(!config.inherit_env);
     assert!(!config.inherit_stdio);
     assert!(config.allowed_dirs.is_empty());
@@ -223,7 +223,7 @@ fn test_wasi_config_clone() {
         preopened_dirs: vec![],
         args: vec!["test".to_string()],
     };
-    
+
     let cloned = config.clone();
     assert_eq!(config.inherit_env, cloned.inherit_env);
     assert_eq!(config.args.len(), cloned.args.len());
@@ -241,7 +241,7 @@ fn test_volume_mount_bind() {
         mount_type: VolumeMountType::Bind,
         read_only: false,
     };
-    
+
     assert_eq!(mount.source, PathBuf::from("/host/data"));
     assert_eq!(mount.target, PathBuf::from("/container/data"));
     assert!(!mount.read_only);
@@ -255,7 +255,7 @@ fn test_volume_mount_readonly() {
         mount_type: VolumeMountType::Bind,
         read_only: true,
     };
-    
+
     assert!(mount.read_only);
 }
 
@@ -264,7 +264,7 @@ fn test_volume_mount_types() {
     let bind = VolumeMountType::Bind;
     let volume = VolumeMountType::Volume;
     let tmpfs = VolumeMountType::Tmpfs;
-    
+
     assert!(matches!(bind, VolumeMountType::Bind));
     assert!(matches!(volume, VolumeMountType::Volume));
     assert!(matches!(tmpfs, VolumeMountType::Tmpfs));
@@ -278,7 +278,7 @@ fn test_volume_mount_clone() {
         mount_type: VolumeMountType::Volume,
         read_only: false,
     };
-    
+
     let cloned = mount.clone();
     assert_eq!(mount.source, cloned.source);
     assert_eq!(mount.target, cloned.target);
@@ -296,7 +296,7 @@ fn test_port_mapping_tcp() {
         host_port: 80,
         protocol: PortProtocol::Tcp,
     };
-    
+
     assert_eq!(mapping.container_port, 8080);
     assert_eq!(mapping.host_port, 80);
     assert!(matches!(mapping.protocol, PortProtocol::Tcp));
@@ -309,7 +309,7 @@ fn test_port_mapping_udp() {
         host_port: 5353,
         protocol: PortProtocol::Udp,
     };
-    
+
     assert_eq!(mapping.container_port, 53);
     assert_eq!(mapping.host_port, 5353);
     assert!(matches!(mapping.protocol, PortProtocol::Udp));
@@ -319,7 +319,7 @@ fn test_port_mapping_udp() {
 fn test_port_protocol_variants() {
     let tcp = PortProtocol::Tcp;
     let udp = PortProtocol::Udp;
-    
+
     assert!(matches!(tcp, PortProtocol::Tcp));
     assert!(matches!(udp, PortProtocol::Udp));
 }
@@ -331,7 +331,7 @@ fn test_port_mapping_clone() {
         host_port: 443,
         protocol: PortProtocol::Tcp,
     };
-    
+
     let cloned = mapping.clone();
     assert_eq!(mapping.container_port, cloned.container_port);
     assert_eq!(mapping.host_port, cloned.host_port);
@@ -348,7 +348,7 @@ fn test_registry_auth_basic() {
         password: "pass".to_string(),
         server_url: "https://registry.example.com".to_string(),
     };
-    
+
     assert_eq!(auth.username, "user");
     assert_eq!(auth.password, "pass");
     assert_eq!(auth.server_url, "https://registry.example.com");
@@ -361,7 +361,7 @@ fn test_registry_auth_dockerhub() {
         password: "secret".to_string(),
         server_url: "https://index.docker.io/v1/".to_string(),
     };
-    
+
     assert!(auth.server_url.contains("docker.io"));
 }
 
@@ -372,7 +372,7 @@ fn test_registry_auth_clone() {
         password: "pwd".to_string(),
         server_url: "https://reg.io".to_string(),
     };
-    
+
     let cloned = auth.clone();
     assert_eq!(auth.username, cloned.username);
     assert_eq!(auth.server_url, cloned.server_url);
@@ -387,7 +387,7 @@ fn test_gpu_program_opencl() {
     let source = GpuProgramSource::OpenCL {
         source: "kernel void hello() { }".to_string(),
     };
-    
+
     match source {
         GpuProgramSource::OpenCL { source: s } => {
             assert!(s.contains("kernel"));
@@ -401,7 +401,7 @@ fn test_gpu_program_cuda() {
     let source = GpuProgramSource::Cuda {
         source: "__global__ void kernel() { }".to_string(),
     };
-    
+
     match source {
         GpuProgramSource::Cuda { source: s } => {
             assert!(s.contains("__global__"));
@@ -416,7 +416,7 @@ fn test_gpu_program_vulkan() {
     let source = GpuProgramSource::Vulkan {
         spirv: spirv.clone(),
     };
-    
+
     match source {
         GpuProgramSource::Vulkan { spirv: s } => {
             assert_eq!(s, spirv);
@@ -431,7 +431,7 @@ fn test_gpu_program_source_clone() {
         source: "test".to_string(),
     };
     let cloned = source.clone();
-    
+
     match (source, cloned) {
         (GpuProgramSource::OpenCL { source: s1 }, GpuProgramSource::OpenCL { source: s2 }) => {
             assert_eq!(s1, s2);
@@ -449,7 +449,7 @@ fn test_gpu_argument_buffer() {
     let arg = GpuArgument::Buffer {
         data: vec![1, 2, 3, 4],
     };
-    
+
     match arg {
         GpuArgument::Buffer { data } => {
             assert_eq!(data.len(), 4);
@@ -461,7 +461,7 @@ fn test_gpu_argument_buffer() {
 #[test]
 fn test_gpu_argument_scalar() {
     let arg = GpuArgument::Scalar { value: 3.14 };
-    
+
     match arg {
         GpuArgument::Scalar { value } => {
             assert!((value - 3.14).abs() < 0.001);
@@ -473,7 +473,7 @@ fn test_gpu_argument_scalar() {
 #[test]
 fn test_gpu_argument_integer() {
     let arg = GpuArgument::Integer { value: 42 };
-    
+
     match arg {
         GpuArgument::Integer { value } => {
             assert_eq!(value, 42);
@@ -486,7 +486,7 @@ fn test_gpu_argument_integer() {
 fn test_gpu_argument_clone() {
     let arg = GpuArgument::Scalar { value: 2.71 };
     let cloned = arg.clone();
-    
+
     match (arg, cloned) {
         (GpuArgument::Scalar { value: v1 }, GpuArgument::Scalar { value: v2 }) => {
             assert_eq!(v1, v2);
@@ -504,7 +504,7 @@ fn test_python_source_code() {
     let source = PythonSource::Code {
         code: "print('Hello, World!')".to_string(),
     };
-    
+
     match source {
         PythonSource::Code { code } => {
             assert!(code.contains("print"));
@@ -518,7 +518,7 @@ fn test_python_source_file() {
     let source = PythonSource::File {
         path: PathBuf::from("script.py"),
     };
-    
+
     match source {
         PythonSource::File { path } => {
             assert_eq!(path, PathBuf::from("script.py"));
@@ -532,7 +532,7 @@ fn test_python_source_module() {
     let source = PythonSource::Module {
         name: "numpy".to_string(),
     };
-    
+
     match source {
         PythonSource::Module { name } => {
             assert_eq!(name, "numpy");
@@ -547,7 +547,7 @@ fn test_python_source_clone() {
         code: "x = 1".to_string(),
     };
     let cloned = source.clone();
-    
+
     match (source, cloned) {
         (PythonSource::Code { code: c1 }, PythonSource::Code { code: c2 }) => {
             assert_eq!(c1, c2);
@@ -577,7 +577,7 @@ fn test_workload_spec_native() {
         env_vars: HashMap::new(),
         user: None,
     };
-    
+
     assert_eq!(spec.workload_type(), WorkloadType::Native);
 }
 
@@ -591,7 +591,7 @@ fn test_workload_spec_wasm() {
         wasi_config: None,
         env_vars: HashMap::new(),
     };
-    
+
     assert_eq!(spec.workload_type(), WorkloadType::Wasm);
 }
 
@@ -607,7 +607,7 @@ fn test_workload_spec_container() {
         ports: vec![],
         registry_auth: None,
     };
-    
+
     assert_eq!(spec.workload_type(), WorkloadType::Container);
 }
 
@@ -622,7 +622,7 @@ fn test_workload_spec_gpu() {
         global_work_size: (256, 256, 1),
         args: vec![],
     };
-    
+
     assert_eq!(spec.workload_type(), WorkloadType::Gpu);
 }
 
@@ -636,7 +636,7 @@ fn test_workload_spec_python() {
         requirements: vec!["numpy".to_string()],
         env_vars: HashMap::new(),
     };
-    
+
     assert_eq!(spec.workload_type(), WorkloadType::Python);
 }
 
@@ -645,7 +645,7 @@ fn test_workload_spec_with_environment() {
     let mut env = HashMap::new();
     env.insert("KEY1".to_string(), "VALUE1".to_string());
     env.insert("KEY2".to_string(), "VALUE2".to_string());
-    
+
     let spec = WorkloadSpec::Native {
         executable: ExecutableSource::File {
             path: PathBuf::from("/bin/env"),
@@ -655,7 +655,7 @@ fn test_workload_spec_with_environment() {
         env_vars: env.clone(),
         user: None,
     };
-    
+
     match spec {
         WorkloadSpec::Native { env_vars, .. } => {
             assert_eq!(env_vars.len(), 2);
@@ -669,7 +669,7 @@ fn test_workload_spec_with_environment() {
 fn test_workload_spec_clone() {
     let spec = WorkloadSpec::default();
     let cloned = spec.clone();
-    
+
     assert_eq!(spec.workload_type(), cloned.workload_type());
 }
 
@@ -693,7 +693,7 @@ fn test_container_with_volumes_and_ports() {
             read_only: true,
         },
     ];
-    
+
     let ports = vec![
         PortMapping {
             container_port: 8080,
@@ -706,7 +706,7 @@ fn test_container_with_volumes_and_ports() {
             protocol: PortProtocol::Tcp,
         },
     ];
-    
+
     let spec = WorkloadSpec::Container {
         image: "myapp:v1".to_string(),
         command: Some(vec!["./app".to_string()]),
@@ -717,7 +717,7 @@ fn test_container_with_volumes_and_ports() {
         ports,
         registry_auth: None,
     };
-    
+
     match spec {
         WorkloadSpec::Container { volumes, ports, .. } => {
             assert_eq!(volumes.len(), 2);
@@ -737,7 +737,7 @@ fn test_wasm_with_wasi() {
         preopened_dirs: vec![PathBuf::from("/data")],
         args: vec!["input.txt".to_string()],
     };
-    
+
     let spec = WorkloadSpec::Wasm {
         module: WasmModuleSource::File {
             path: PathBuf::from("module.wasm"),
@@ -746,7 +746,7 @@ fn test_wasm_with_wasi() {
         wasi_config: Some(wasi_config),
         env_vars: HashMap::new(),
     };
-    
+
     match spec {
         WorkloadSpec::Wasm { wasi_config, .. } => {
             assert!(wasi_config.is_some());
@@ -767,7 +767,7 @@ fn test_gpu_workload_with_arguments() {
         GpuArgument::Scalar { value: 1.5 },
         GpuArgument::Integer { value: 256 },
     ];
-    
+
     let spec = WorkloadSpec::Gpu {
         program: GpuProgramSource::Cuda {
             source: "__global__ void process() { }".to_string(),
@@ -777,7 +777,7 @@ fn test_gpu_workload_with_arguments() {
         global_work_size: (1024, 1024, 1),
         args,
     };
-    
+
     match spec {
         WorkloadSpec::Gpu { args, .. } => {
             assert_eq!(args.len(), 3);
@@ -788,4 +788,3 @@ fn test_gpu_workload_with_arguments() {
         _ => panic!("Expected Gpu variant"),
     }
 }
-

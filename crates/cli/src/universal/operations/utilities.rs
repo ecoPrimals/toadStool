@@ -29,13 +29,26 @@ pub trait UtilityOps {
 impl UtilityOps for crate::universal::UniversalComputeManager {
     fn get_platform_id(&self, platform: &PlatformType) -> String {
         match platform {
-            PlatformType::Linux { distribution, architecture } => {
-                format!("linux_{}_{}", distribution.to_lowercase().replace(' ', "_"), architecture)
+            PlatformType::Linux {
+                distribution,
+                architecture,
+            } => {
+                format!(
+                    "linux_{}_{}",
+                    distribution.to_lowercase().replace(' ', "_"),
+                    architecture
+                )
             }
-            PlatformType::MacOS { version, architecture } => {
+            PlatformType::MacOS {
+                version,
+                architecture,
+            } => {
                 format!("macos_{}_{}", version.replace('.', "_"), architecture)
             }
-            PlatformType::Windows { version, architecture } => {
+            PlatformType::Windows {
+                version,
+                architecture,
+            } => {
                 format!("windows_{}_{}", version.replace('.', "_"), architecture)
             }
             PlatformType::Docker => "docker".to_string(),
@@ -47,14 +60,23 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
                 format!("gpu_{}_{}", vendor.to_lowercase(), framework.to_lowercase())
             }
             PlatformType::Other { os, architecture } => format!("other_{}_{}", os, architecture),
-            PlatformType::EdgeDevice { device_type, architecture } => {
+            PlatformType::EdgeDevice {
+                device_type,
+                architecture,
+            } => {
                 format!("edge_{}_{}", device_type, architecture)
             }
             PlatformType::MCUDevelopment { platform, tool } => format!("mcu_{}_{}", platform, tool),
-            PlatformType::BiologicalComputing { platform, simulation } => {
+            PlatformType::BiologicalComputing {
+                platform,
+                simulation,
+            } => {
                 format!("bio_{}_{}", platform, simulation)
             }
-            PlatformType::Quantum { framework, simulator } => {
+            PlatformType::Quantum {
+                framework,
+                simulator,
+            } => {
                 format!("quantum_{}_{}", framework, simulator)
             }
             PlatformType::NeuromorphicComputing { platform, hardware } => {
@@ -67,17 +89,26 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
         let mut metadata = HashMap::new();
 
         match platform {
-            PlatformType::Linux { distribution, architecture } => {
+            PlatformType::Linux {
+                distribution,
+                architecture,
+            } => {
                 metadata.insert("type".to_string(), "linux".to_string());
                 metadata.insert("distribution".to_string(), distribution.clone());
                 metadata.insert("architecture".to_string(), architecture.clone());
             }
-            PlatformType::MacOS { version, architecture } => {
+            PlatformType::MacOS {
+                version,
+                architecture,
+            } => {
                 metadata.insert("type".to_string(), "macos".to_string());
                 metadata.insert("version".to_string(), version.clone());
                 metadata.insert("architecture".to_string(), architecture.clone());
             }
-            PlatformType::Windows { version, architecture } => {
+            PlatformType::Windows {
+                version,
+                architecture,
+            } => {
                 metadata.insert("type".to_string(), "windows".to_string());
                 metadata.insert("version".to_string(), version.clone());
                 metadata.insert("architecture".to_string(), architecture.clone());
@@ -113,7 +144,10 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
                 metadata.insert("os".to_string(), os.clone());
                 metadata.insert("architecture".to_string(), architecture.clone());
             }
-            PlatformType::EdgeDevice { device_type, architecture } => {
+            PlatformType::EdgeDevice {
+                device_type,
+                architecture,
+            } => {
                 metadata.insert("type".to_string(), "edge_device".to_string());
                 metadata.insert("device_type".to_string(), device_type.clone());
                 metadata.insert("architecture".to_string(), architecture.clone());
@@ -123,12 +157,18 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
                 metadata.insert("platform".to_string(), platform.clone());
                 metadata.insert("tool".to_string(), tool.clone());
             }
-            PlatformType::BiologicalComputing { platform, simulation } => {
+            PlatformType::BiologicalComputing {
+                platform,
+                simulation,
+            } => {
                 metadata.insert("type".to_string(), "biological".to_string());
                 metadata.insert("platform".to_string(), platform.clone());
                 metadata.insert("simulation".to_string(), simulation.to_string());
             }
-            PlatformType::Quantum { framework, simulator } => {
+            PlatformType::Quantum {
+                framework,
+                simulator,
+            } => {
                 metadata.insert("type".to_string(), "quantum".to_string());
                 metadata.insert("framework".to_string(), framework.clone());
                 metadata.insert("simulator".to_string(), simulator.to_string());
@@ -152,7 +192,7 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
             .first()
             .map(|cpu| cpu.brand().to_string())
             .unwrap_or_else(|| "Unknown CPU".to_string());
-        
+
         let memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
 
         let storage_type = if std::path::Path::new("/sys/block/nvme0n1").exists() {
@@ -240,4 +280,3 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
         anyhow::bail!("No GPU detected")
     }
 }
-

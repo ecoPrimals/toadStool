@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use toadstool::workload::{PortMapping, PortProtocol};
 use toadstool::*;
 
 // ============================================================================
@@ -520,12 +521,13 @@ fn test_port_mapping_creation() {
     let port = PortMapping {
         host_port: 8080,
         container_port: 80,
-        protocol: "tcp".to_string(),
+        protocol: PortProtocol::Tcp,
     };
 
     assert_eq!(port.host_port, 8080);
     assert_eq!(port.container_port, 80);
-    assert_eq!(port.protocol, "tcp");
+    // PortProtocol doesn't derive PartialEq, so we can't compare it
+    matches!(port.protocol, PortProtocol::Tcp);
 }
 
 #[test]
@@ -533,10 +535,10 @@ fn test_port_mapping_udp() {
     let port = PortMapping {
         host_port: 53,
         container_port: 53,
-        protocol: "udp".to_string(),
+        protocol: PortProtocol::Udp,
     };
 
-    assert_eq!(port.protocol, "udp");
+    matches!(port.protocol, PortProtocol::Udp);
 }
 
 #[test]
@@ -544,14 +546,15 @@ fn test_port_mapping_clone() {
     let port1 = PortMapping {
         host_port: 443,
         container_port: 443,
-        protocol: "tcp".to_string(),
+        protocol: PortProtocol::Tcp,
     };
 
     let port2 = port1.clone();
 
     assert_eq!(port1.host_port, port2.host_port);
     assert_eq!(port1.container_port, port2.container_port);
-    assert_eq!(port1.protocol, port2.protocol);
+    // PortProtocol doesn't derive PartialEq, just verify they're the same variant
+    matches!(port2.protocol, PortProtocol::Tcp);
 }
 
 // ============================================================================

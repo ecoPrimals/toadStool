@@ -188,7 +188,11 @@ impl Capability {
                 gpu_memory_mb: None,
                 special_hardware: vec!["embedded_emulator".to_string()],
             },
-            tags: vec!["legacy".to_string(), "embedded".to_string(), "industrial".to_string()],
+            tags: vec![
+                "legacy".to_string(),
+                "embedded".to_string(),
+                "industrial".to_string(),
+            ],
             available: false, // Will be true when legacy runtime is fixed
             confidence: 0.8,
         }
@@ -207,8 +211,10 @@ impl CapabilityRegistry {
         for cap in capabilities {
             registry.insert(cap.id.clone(), cap);
         }
-        
-        Self { capabilities: registry }
+
+        Self {
+            capabilities: registry,
+        }
     }
 
     /// Get all capabilities
@@ -269,11 +275,8 @@ mod tests {
 
     #[test]
     fn test_registry() {
-        let capabilities = vec![
-            Capability::compute_gpu(),
-            Capability::compute_heavy(),
-        ];
-        
+        let capabilities = vec![Capability::compute_gpu(), Capability::compute_heavy()];
+
         let registry = CapabilityRegistry::new(capabilities);
         assert_eq!(registry.all_capabilities().len(), 2);
     }
@@ -282,13 +285,12 @@ mod tests {
     fn test_capability_update() {
         let capabilities = vec![Capability::compute_gpu()];
         let mut registry = CapabilityRegistry::new(capabilities);
-        
+
         assert!(!registry.is_available("compute_gpu"));
-        
-        let mut gpu_cap = Capability::compute_gpu();
+
+        let gpu_cap = Capability::compute_gpu();
         registry.update_capability(gpu_cap, true).unwrap();
-        
+
         assert!(registry.is_available("compute_gpu"));
     }
 }
-

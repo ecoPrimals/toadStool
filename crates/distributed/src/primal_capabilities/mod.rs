@@ -34,7 +34,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use toadstool_distributed::primal_capabilities::{CapabilityProvider, Capability};
 //!
 //! // Create provider with capabilities
@@ -59,7 +59,7 @@ pub mod workload;
 
 pub use adapters::{PrimalAdapter, SongbirdAdapter};
 pub use registry::{Capability, CapabilityRegistry};
-pub use workload::{WorkloadRequest, WorkloadResponse, WorkloadExecutor};
+pub use workload::{WorkloadExecutor, WorkloadRequest, WorkloadResponse};
 
 use anyhow::Result;
 
@@ -93,31 +93,31 @@ impl CapabilityProvider {
     pub async fn register_with_primal(&self, primal_endpoint: &str) -> Result<()> {
         // Auto-detect primal type from endpoint or use generic adapter
         let adapter = self.create_adapter_for_endpoint(primal_endpoint).await?;
-        
+
         // Get capabilities to register
         let registry = self.registry.read().await;
         let capabilities = registry.all_capabilities();
-        
+
         // Register with the primal
         adapter.register_capabilities(capabilities).await?;
-        
+
         // Store adapter for future use
         let mut adapters = self.adapters.write().await;
         adapters.insert(primal_endpoint.to_string(), adapter);
-        
+
         Ok(())
     }
 
     /// Send heartbeat to all connected primals
     pub async fn send_heartbeats(&self) -> Result<()> {
         let adapters = self.adapters.read().await;
-        
+
         for (endpoint, adapter) in adapters.iter() {
             if let Err(e) = adapter.send_heartbeat().await {
                 tracing::warn!("Failed to send heartbeat to {}: {:?}", endpoint, e);
             }
         }
-        
+
         Ok(())
     }
 
@@ -136,18 +136,21 @@ impl CapabilityProvider {
     pub async fn update_capability(&self, capability: Capability, available: bool) -> Result<()> {
         // Clone for later notification
         let cap_for_notification = capability.clone();
-        
+
         let mut registry = self.registry.write().await;
         registry.update_capability(capability, available)?;
-        
+
         // Notify all connected primals of the change
         let adapters = self.adapters.read().await;
         for adapter in adapters.values() {
-            if let Err(e) = adapter.notify_capability_change(&cap_for_notification, available).await {
+            if let Err(e) = adapter
+                .notify_capability_change(&cap_for_notification, available)
+                .await
+            {
                 tracing::warn!("Failed to notify primal of capability change: {:?}", e);
             }
         }
-        
+
         Ok(())
     }
 
@@ -177,7 +180,7 @@ impl Default for CapabilityProvider {
             // GPU capability detected at runtime
             // Legacy capabilities detected at runtime
         ];
-        
+
         Self::new(capabilities)
     }
 }
@@ -190,7 +193,7 @@ mod tests {
     async fn test_capability_provider_creation() {
         let provider = CapabilityProvider::default();
         let capabilities = provider.get_capabilities().await;
-        
+
         assert!(!capabilities.is_empty());
     }
 
@@ -198,9 +201,8 @@ mod tests {
     async fn test_capability_update() {
         let provider = CapabilityProvider::default();
         let gpu_cap = Capability::compute_gpu();
-        
+
         let result = provider.update_capability(gpu_cap, true).await;
         assert!(result.is_ok());
     }
 }
-

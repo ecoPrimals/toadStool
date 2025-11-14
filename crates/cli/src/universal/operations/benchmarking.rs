@@ -245,7 +245,7 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
             .first()
             .map(|cpu| cpu.brand().to_string())
             .unwrap_or_else(|| "Unknown CPU".to_string());
-        
+
         let memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
 
         SystemInfo {
@@ -259,4 +259,3 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         }
     }
 }
-

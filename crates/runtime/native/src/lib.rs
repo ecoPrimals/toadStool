@@ -383,7 +383,10 @@ impl NativeRuntimeEngine {
 }
 
 impl RuntimeEngine for NativeRuntimeEngine {
-    fn initialize(&mut self, config: RuntimeConfig) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn initialize(
+        &mut self,
+        config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async move {
             info!("Initializing Native Runtime Engine");
             self.config = config;
@@ -407,46 +410,51 @@ impl RuntimeEngine for NativeRuntimeEngine {
         })
     }
 
-    fn execute(&self, request: ExecutionRequest) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    fn execute(
+        &self,
+        request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-        info!("Executing native workload: {}", request.execution_id);
+            info!("Executing native workload: {}", request.execution_id);
 
-        // Check concurrent process limit
-        let processes = self.active_processes.read().await;
-        if processes.len() >= self.capabilities.max_concurrent_executions.unwrap_or(100) as usize {
-            return Ok(ExecutionResponse {
-                execution_id: request.execution_id,
-                status: ExecutionStatus::Failed {
-                    error: "Maximum concurrent processes exceeded".to_string(),
-                },
-                output: ExecutionOutput::default(),
-                metrics: RuntimeMetrics::default(),
-                duration: Duration::from_secs(0),
-                runtime_used: RuntimeType::Native,
-                warnings: vec!["Maximum concurrent processes exceeded".to_string()],
-            });
-        }
-        drop(processes);
-
-        // Validate the request
-        request.workload.validate()?;
-        self.validate_resource_requirements(&request)?;
-
-        // Extract executable source
-        let executable_source = match &request.workload {
-            WorkloadSpec::Native { executable, .. } => executable,
-            _ => {
-                return Err(ToadStoolError::validation(
-                    "Invalid workload type for native runtime",
-                ))
+            // Check concurrent process limit
+            let processes = self.active_processes.read().await;
+            if processes.len()
+                >= self.capabilities.max_concurrent_executions.unwrap_or(100) as usize
+            {
+                return Ok(ExecutionResponse {
+                    execution_id: request.execution_id,
+                    status: ExecutionStatus::Failed {
+                        error: "Maximum concurrent processes exceeded".to_string(),
+                    },
+                    output: ExecutionOutput::default(),
+                    metrics: RuntimeMetrics::default(),
+                    duration: Duration::from_secs(0),
+                    runtime_used: RuntimeType::Native,
+                    warnings: vec!["Maximum concurrent processes exceeded".to_string()],
+                });
             }
-        };
+            drop(processes);
 
-        // Resolve the executable path
-        let executable_path = self.resolve_executable(executable_source).await?;
+            // Validate the request
+            request.workload.validate()?;
+            self.validate_resource_requirements(&request)?;
 
-        // Execute the workload
-        self.execute_workload(&request, executable_path).await
+            // Extract executable source
+            let executable_source = match &request.workload {
+                WorkloadSpec::Native { executable, .. } => executable,
+                _ => {
+                    return Err(ToadStoolError::validation(
+                        "Invalid workload type for native runtime",
+                    ))
+                }
+            };
+
+            // Resolve the executable path
+            let executable_path = self.resolve_executable(executable_source).await?;
+
+            // Execute the workload
+            self.execute_workload(&request, executable_path).await
         })
     }
 
@@ -458,7 +466,9 @@ impl RuntimeEngine for NativeRuntimeEngine {
         matches!(workload_type, WorkloadType::Native)
     }
 
-    fn get_metrics(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async {
             // Return aggregated metrics for all active processes
             let processes = self.active_processes.read().await;
@@ -475,20 +485,20 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async {
-        info!("Shutting down Native Runtime Engine");
+            info!("Shutting down Native Runtime Engine");
 
-        // Kill all active processes
-        let mut processes = self.active_processes.write().await;
-        for (execution_id, mut process_handle) in processes.drain() {
-            if let Some(mut child) = process_handle.child.take() {
-                if let Err(e) = child.kill().await {
-                    warn!("Failed to kill process {}: {}", execution_id, e);
+            // Kill all active processes
+            let mut processes = self.active_processes.write().await;
+            for (execution_id, mut process_handle) in processes.drain() {
+                if let Some(mut child) = process_handle.child.take() {
+                    if let Err(e) = child.kill().await {
+                        warn!("Failed to kill process {}: {}", execution_id, e);
+                    }
                 }
             }
-        }
 
-        info!("Native runtime engine shut down successfully");
-        Ok(())
+            info!("Native runtime engine shut down successfully");
+            Ok(())
         })
     }
 }

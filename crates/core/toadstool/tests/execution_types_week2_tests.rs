@@ -26,7 +26,7 @@ fn test_execution_status_failed() {
     let status = ExecutionStatus::Failed {
         error: "Test error".to_string(),
     };
-    
+
     match status {
         ExecutionStatus::Failed { error } => assert_eq!(error, "Test error"),
         _ => panic!("Expected Failed status"),
@@ -62,7 +62,7 @@ fn test_execution_status_equality() {
     assert_eq!(ExecutionStatus::Success, ExecutionStatus::Success);
     assert_eq!(ExecutionStatus::Cancelled, ExecutionStatus::Cancelled);
     assert_ne!(ExecutionStatus::Success, ExecutionStatus::Cancelled);
-    
+
     let failed1 = ExecutionStatus::Failed {
         error: "error1".to_string(),
     };
@@ -72,7 +72,7 @@ fn test_execution_status_equality() {
     let failed3 = ExecutionStatus::Failed {
         error: "error2".to_string(),
     };
-    
+
     assert_eq!(failed1, failed2);
     assert_ne!(failed1, failed3);
 }
@@ -98,7 +98,7 @@ fn test_runtime_type_variants() {
     let gpu = RuntimeType::Gpu;
     let python = RuntimeType::Python;
     let custom = RuntimeType::Custom("tensorflow".to_string());
-    
+
     assert!(matches!(native, RuntimeType::Native));
     assert!(matches!(wasm, RuntimeType::Wasm));
     assert!(matches!(container, RuntimeType::Container));
@@ -112,11 +112,11 @@ fn test_runtime_type_equality() {
     assert_eq!(RuntimeType::Native, RuntimeType::Native);
     assert_eq!(RuntimeType::Wasm, RuntimeType::Wasm);
     assert_ne!(RuntimeType::Native, RuntimeType::Wasm);
-    
+
     let custom1 = RuntimeType::Custom("pytorch".to_string());
     let custom2 = RuntimeType::Custom("pytorch".to_string());
     let custom3 = RuntimeType::Custom("jax".to_string());
-    
+
     assert_eq!(custom1, custom2);
     assert_ne!(custom1, custom3);
 }
@@ -124,13 +124,13 @@ fn test_runtime_type_equality() {
 #[test]
 fn test_runtime_type_hash() {
     use std::collections::HashSet;
-    
+
     let mut set = HashSet::new();
     set.insert(RuntimeType::Native);
     set.insert(RuntimeType::Wasm);
     set.insert(RuntimeType::Container);
     set.insert(RuntimeType::Native); // Duplicate
-    
+
     assert_eq!(set.len(), 3); // Native counted only once
     assert!(set.contains(&RuntimeType::Native));
     assert!(set.contains(&RuntimeType::Wasm));
@@ -163,7 +163,7 @@ fn test_execution_input_with_data() {
         format: Some("text/plain".to_string()),
         metadata: HashMap::new(),
     };
-    
+
     assert_eq!(input.data, data);
     assert_eq!(input.format, Some("text/plain".to_string()));
 }
@@ -173,13 +173,13 @@ fn test_execution_input_with_metadata() {
     let mut metadata = HashMap::new();
     metadata.insert("source".to_string(), "api".to_string());
     metadata.insert("version".to_string(), "1.0".to_string());
-    
+
     let input = ExecutionInput {
         data: vec![],
         format: Some("application/json".to_string()),
         metadata,
     };
-    
+
     assert_eq!(input.metadata.len(), 2);
     assert_eq!(input.metadata.get("source"), Some(&"api".to_string()));
 }
@@ -191,7 +191,7 @@ fn test_execution_input_clone() {
         format: Some("text".to_string()),
         metadata: HashMap::new(),
     };
-    
+
     let cloned = input.clone();
     assert_eq!(input.data, cloned.data);
     assert_eq!(input.format, cloned.format);
@@ -224,7 +224,7 @@ fn test_execution_output_success() {
         result: HashMap::new(),
         metadata: HashMap::new(),
     };
-    
+
     assert_eq!(output.data, b"output data");
     assert_eq!(output.stdout, Some("Success message".to_string()));
     assert_eq!(output.exit_code, Some(0));
@@ -241,7 +241,7 @@ fn test_execution_output_failure() {
         result: HashMap::new(),
         metadata: HashMap::new(),
     };
-    
+
     assert!(output.stderr.is_some());
     assert_eq!(output.exit_code, Some(1));
 }
@@ -251,10 +251,10 @@ fn test_execution_output_with_result_metadata() {
     let mut result = HashMap::new();
     result.insert("items_processed".to_string(), "1000".to_string());
     result.insert("duration_ms".to_string(), "523".to_string());
-    
+
     let mut metadata = HashMap::new();
     metadata.insert("worker_id".to_string(), "worker-1".to_string());
-    
+
     let output = ExecutionOutput {
         data: vec![],
         stdout: None,
@@ -264,7 +264,7 @@ fn test_execution_output_with_result_metadata() {
         result,
         metadata,
     };
-    
+
     assert_eq!(output.result.len(), 2);
     assert_eq!(output.metadata.len(), 1);
     assert_eq!(
@@ -284,7 +284,7 @@ fn test_execution_output_clone() {
         result: HashMap::new(),
         metadata: HashMap::new(),
     };
-    
+
     let cloned = output.clone();
     assert_eq!(output.data, cloned.data);
     assert_eq!(output.stdout, cloned.stdout);
@@ -298,7 +298,7 @@ fn test_execution_output_clone() {
 #[test]
 fn test_execution_request_default() {
     let request = ExecutionRequest::default();
-    
+
     assert!(request.runtime_hint.is_none());
     assert_eq!(request.timeout, Some(Duration::from_secs(300)));
     assert!(request.environment.is_empty());
@@ -309,7 +309,7 @@ fn test_execution_request_default() {
 fn test_execution_request_with_timeout() {
     let mut request = ExecutionRequest::default();
     request.timeout = Some(Duration::from_secs(60));
-    
+
     assert_eq!(request.timeout, Some(Duration::from_secs(60)));
 }
 
@@ -318,19 +318,22 @@ fn test_execution_request_with_environment() {
     let mut env = HashMap::new();
     env.insert("PATH".to_string(), "/usr/bin".to_string());
     env.insert("HOME".to_string(), "/home/user".to_string());
-    
+
     let mut request = ExecutionRequest::default();
     request.environment = env.clone();
-    
+
     assert_eq!(request.environment.len(), 2);
-    assert_eq!(request.environment.get("PATH"), Some(&"/usr/bin".to_string()));
+    assert_eq!(
+        request.environment.get("PATH"),
+        Some(&"/usr/bin".to_string())
+    );
 }
 
 #[test]
 fn test_execution_request_with_runtime_hint() {
     let mut request = ExecutionRequest::default();
     request.runtime_hint = Some(RuntimeType::Wasm);
-    
+
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
 
@@ -338,7 +341,7 @@ fn test_execution_request_with_runtime_hint() {
 fn test_execution_request_clone() {
     let request = ExecutionRequest::default();
     let cloned = request.clone();
-    
+
     assert_eq!(request.execution_id, cloned.execution_id);
     assert_eq!(request.timeout, cloned.timeout);
 }
@@ -350,7 +353,7 @@ fn test_execution_request_clone() {
 #[test]
 fn test_execution_response_default() {
     let response = ExecutionResponse::default();
-    
+
     assert_eq!(response.status, ExecutionStatus::Success);
     assert_eq!(response.runtime_used, RuntimeType::Native);
     assert_eq!(response.duration, Duration::from_secs(0));
@@ -368,7 +371,7 @@ fn test_execution_response_success() {
         runtime_used: RuntimeType::Wasm,
         warnings: vec![],
     };
-    
+
     assert_eq!(response.status, ExecutionStatus::Success);
     assert_eq!(response.runtime_used, RuntimeType::Wasm);
     assert_eq!(response.duration, Duration::from_millis(123));
@@ -380,7 +383,7 @@ fn test_execution_response_with_warnings() {
         "Warning: deprecated API used".to_string(),
         "Warning: high memory usage".to_string(),
     ];
-    
+
     let response = ExecutionResponse {
         execution_id: Uuid::new_v4(),
         status: ExecutionStatus::Success,
@@ -390,7 +393,7 @@ fn test_execution_response_with_warnings() {
         runtime_used: RuntimeType::Native,
         warnings: warnings.clone(),
     };
-    
+
     assert_eq!(response.warnings.len(), 2);
     assert_eq!(response.warnings, warnings);
 }
@@ -408,7 +411,7 @@ fn test_execution_response_failed() {
         runtime_used: RuntimeType::Container,
         warnings: vec![],
     };
-    
+
     match response.status {
         ExecutionStatus::Failed { error } => assert_eq!(error, "Out of memory"),
         _ => panic!("Expected Failed status"),
@@ -419,7 +422,7 @@ fn test_execution_response_failed() {
 fn test_execution_response_clone() {
     let response = ExecutionResponse::default();
     let cloned = response.clone();
-    
+
     assert_eq!(response.execution_id, cloned.execution_id);
     assert_eq!(response.status, cloned.status);
     assert_eq!(response.runtime_used, cloned.runtime_used);
@@ -435,7 +438,7 @@ fn test_callback_event_variants() {
     let completed = CallbackEvent::Completed;
     let failed = CallbackEvent::Failed;
     let progress = CallbackEvent::Progress;
-    
+
     assert!(matches!(started, CallbackEvent::Started));
     assert!(matches!(completed, CallbackEvent::Completed));
     assert!(matches!(failed, CallbackEvent::Failed));
@@ -446,7 +449,7 @@ fn test_callback_event_variants() {
 fn test_callback_event_clone() {
     let event = CallbackEvent::Started;
     let cloned = event.clone();
-    
+
     assert!(matches!(cloned, CallbackEvent::Started));
 }
 
@@ -461,7 +464,7 @@ fn test_callback_config_basic() {
         auth_token: None,
         events: vec![CallbackEvent::Completed],
     };
-    
+
     assert_eq!(config.url, "https://api.example.com/callback");
     assert!(config.auth_token.is_none());
     assert_eq!(config.events.len(), 1);
@@ -478,7 +481,7 @@ fn test_callback_config_with_auth() {
             CallbackEvent::Failed,
         ],
     };
-    
+
     assert_eq!(config.auth_token, Some("secret-token-123".to_string()));
     assert_eq!(config.events.len(), 3);
 }
@@ -495,7 +498,7 @@ fn test_callback_config_all_events() {
             CallbackEvent::Progress,
         ],
     };
-    
+
     assert_eq!(config.events.len(), 4);
 }
 
@@ -506,7 +509,7 @@ fn test_callback_config_clone() {
         auth_token: Some("token".to_string()),
         events: vec![CallbackEvent::Started],
     };
-    
+
     let cloned = config.clone();
     assert_eq!(config.url, cloned.url);
     assert_eq!(config.auth_token, cloned.auth_token);
@@ -519,7 +522,7 @@ fn test_callback_config_clone() {
 #[test]
 fn test_runtime_config_default() {
     let config = RuntimeConfig::default();
-    
+
     assert!(config.settings.is_empty());
     assert!(config.resource_limits.is_none());
     assert!(config.security_settings.is_none());
@@ -529,24 +532,21 @@ fn test_runtime_config_default() {
 #[test]
 fn test_runtime_config_with_settings() {
     let mut settings = HashMap::new();
-    settings.insert(
-        "max_memory".to_string(),
-        serde_json::json!("4GB"),
-    );
-    settings.insert(
-        "enable_jit".to_string(),
-        serde_json::json!(true),
-    );
-    
+    settings.insert("max_memory".to_string(), serde_json::json!("4GB"));
+    settings.insert("enable_jit".to_string(), serde_json::json!(true));
+
     let config = RuntimeConfig {
         settings,
         resource_limits: None,
         security_settings: None,
         logging: None,
     };
-    
+
     assert_eq!(config.settings.len(), 2);
-    assert_eq!(config.settings.get("enable_jit"), Some(&serde_json::json!(true)));
+    assert_eq!(
+        config.settings.get("enable_jit"),
+        Some(&serde_json::json!(true))
+    );
 }
 
 #[test]
@@ -556,14 +556,14 @@ fn test_runtime_config_with_logging() {
         format: "json".to_string(),
         destination: "stdout".to_string(),
     };
-    
+
     let config = RuntimeConfig {
         settings: HashMap::new(),
         resource_limits: None,
         security_settings: None,
         logging: Some(logging),
     };
-    
+
     assert!(config.logging.is_some());
     assert_eq!(config.logging.as_ref().unwrap().level, "debug");
 }
@@ -572,7 +572,7 @@ fn test_runtime_config_with_logging() {
 fn test_runtime_config_clone() {
     let config = RuntimeConfig::default();
     let cloned = config.clone();
-    
+
     assert_eq!(config.settings.len(), cloned.settings.len());
 }
 
@@ -587,7 +587,7 @@ fn test_logging_config_basic() {
         format: "text".to_string(),
         destination: "file".to_string(),
     };
-    
+
     assert_eq!(config.level, "info");
     assert_eq!(config.format, "text");
     assert_eq!(config.destination, "file");
@@ -596,7 +596,7 @@ fn test_logging_config_basic() {
 #[test]
 fn test_logging_config_levels() {
     let levels = vec!["trace", "debug", "info", "warn", "error"];
-    
+
     for level in levels {
         let config = LoggingConfig {
             level: level.to_string(),
@@ -610,7 +610,7 @@ fn test_logging_config_levels() {
 #[test]
 fn test_logging_config_formats() {
     let formats = vec!["json", "text", "structured"];
-    
+
     for format in formats {
         let config = LoggingConfig {
             level: "info".to_string(),
@@ -628,7 +628,7 @@ fn test_logging_config_clone() {
         format: "json".to_string(),
         destination: "stderr".to_string(),
     };
-    
+
     let cloned = config.clone();
     assert_eq!(config.level, cloned.level);
     assert_eq!(config.format, cloned.format);
@@ -644,7 +644,7 @@ fn test_execution_request_to_response_workflow() {
     // Create a request
     let request = ExecutionRequest::default();
     let request_id = request.execution_id;
-    
+
     // Simulate successful execution
     let response = ExecutionResponse {
         execution_id: request_id,
@@ -663,7 +663,7 @@ fn test_execution_request_to_response_workflow() {
         runtime_used: RuntimeType::Native,
         warnings: vec![],
     };
-    
+
     assert_eq!(response.execution_id, request_id);
     assert_eq!(response.status, ExecutionStatus::Success);
     assert_eq!(response.output.exit_code, Some(0));
@@ -674,15 +674,12 @@ fn test_execution_with_callback_workflow() {
     let callback = CallbackConfig {
         url: "https://api.example.com/hooks".to_string(),
         auth_token: Some("bearer-token".to_string()),
-        events: vec![
-            CallbackEvent::Started,
-            CallbackEvent::Completed,
-        ],
+        events: vec![CallbackEvent::Started, CallbackEvent::Completed],
     };
-    
+
     let mut request = ExecutionRequest::default();
     request.callback_config = Some(callback);
-    
+
     assert!(request.callback_config.is_some());
     let config = request.callback_config.unwrap();
     assert_eq!(config.events.len(), 2);
@@ -699,9 +696,9 @@ fn test_runtime_types_collection() {
         RuntimeType::Python,
         RuntimeType::Custom("julia".to_string()),
     ];
-    
+
     assert_eq!(runtimes.len(), 6);
-    
+
     for runtime in &runtimes {
         match runtime {
             RuntimeType::Native => assert!(true),
@@ -721,11 +718,10 @@ fn test_execution_status_progression() {
         ExecutionStatus::Running,
         ExecutionStatus::Success,
     ];
-    
+
     // Verify we can track execution progression
     assert_eq!(statuses.len(), 3);
     assert_eq!(statuses[0], ExecutionStatus::Pending);
     assert_eq!(statuses[1], ExecutionStatus::Running);
     assert_eq!(statuses[2], ExecutionStatus::Success);
 }
-

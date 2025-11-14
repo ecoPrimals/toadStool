@@ -16,14 +16,14 @@ use crate::{
 
 /// Template return type for consistency
 pub type TemplateComponents = (
-    String,                             // name
-    String,                             // description
-    HashMap<String, PrimalConfig>,      // primals
-    HashMap<String, ServiceConfig>,     // services
-    BiomeResources,                     // resources
-    BiomeSecurity,                      // security
-    BiomeNetworking,                    // networking
-    BiomeStorage,                       // storage
+    String,                         // name
+    String,                         // description
+    HashMap<String, PrimalConfig>,  // primals
+    HashMap<String, ServiceConfig>, // services
+    BiomeResources,                 // resources
+    BiomeSecurity,                  // security
+    BiomeNetworking,                // networking
+    BiomeStorage,                   // storage
 );
 
 /// Create basic template with essential services
@@ -221,4 +221,3 @@ pub fn create_development_template() -> TemplateComponents {
         storage,
     )
 }
-

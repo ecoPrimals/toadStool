@@ -15,7 +15,7 @@ use toadstool::*;
 #[test]
 fn test_primal_type_custom_creation() {
     let custom = PrimalType::Custom("my-primal".to_string());
-    
+
     match custom {
         PrimalType::Custom(name) => assert_eq!(name, "my-primal"),
         _ => panic!("Expected Custom variant"),
@@ -33,7 +33,7 @@ fn test_primal_type_all_variants() {
         PrimalType::ToadStool,
         PrimalType::Custom("test".to_string()),
     ];
-    
+
     assert_eq!(types.len(), 7);
 }
 
@@ -41,7 +41,7 @@ fn test_primal_type_all_variants() {
 fn test_primal_type_clone() {
     let original = PrimalType::Songbird;
     let cloned = original.clone();
-    
+
     assert!(matches!(cloned, PrimalType::Songbird));
 }
 
@@ -49,7 +49,7 @@ fn test_primal_type_clone() {
 fn test_primal_type_debug() {
     let primal_type = PrimalType::NestGate;
     let debug = format!("{:?}", primal_type);
-    
+
     assert!(debug.contains("NestGate"));
 }
 
@@ -65,14 +65,14 @@ fn test_primal_status_all_variants() {
         PrimalStatus::Failed("error".to_string()),
         PrimalStatus::Disconnected,
     ];
-    
+
     assert_eq!(statuses.len(), 4);
 }
 
 #[test]
 fn test_primal_status_failed_with_message() {
     let status = PrimalStatus::Failed("Connection timeout".to_string());
-    
+
     match status {
         PrimalStatus::Failed(msg) => assert_eq!(msg, "Connection timeout"),
         _ => panic!("Expected Failed variant"),
@@ -84,7 +84,7 @@ fn test_primal_status_equality() {
     assert_eq!(PrimalStatus::Discovered, PrimalStatus::Discovered);
     assert_eq!(PrimalStatus::Connected, PrimalStatus::Connected);
     assert_eq!(PrimalStatus::Disconnected, PrimalStatus::Disconnected);
-    
+
     let failed1 = PrimalStatus::Failed("error".to_string());
     let failed2 = PrimalStatus::Failed("error".to_string());
     assert_eq!(failed1, failed2);
@@ -94,7 +94,7 @@ fn test_primal_status_equality() {
 fn test_primal_status_inequality() {
     assert_ne!(PrimalStatus::Discovered, PrimalStatus::Connected);
     assert_ne!(PrimalStatus::Connected, PrimalStatus::Disconnected);
-    
+
     let failed1 = PrimalStatus::Failed("error1".to_string());
     let failed2 = PrimalStatus::Failed("error2".to_string());
     assert_ne!(failed1, failed2);
@@ -104,7 +104,7 @@ fn test_primal_status_inequality() {
 fn test_primal_status_clone() {
     let status = PrimalStatus::Failed("test error".to_string());
     let cloned = status.clone();
-    
+
     assert_eq!(status, cloned);
 }
 
@@ -112,7 +112,7 @@ fn test_primal_status_clone() {
 fn test_primal_status_debug() {
     let status = PrimalStatus::Connected;
     let debug = format!("{:?}", status);
-    
+
     assert!(debug.contains("Connected"));
 }
 
@@ -131,7 +131,7 @@ fn test_primal_instance_creation() {
         status: PrimalStatus::Discovered,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     assert_eq!(instance.name, "songbird");
     assert!(matches!(instance.primal_type, PrimalType::Songbird));
 }
@@ -147,7 +147,7 @@ fn test_primal_instance_with_version() {
         status: PrimalStatus::Connected,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     assert_eq!(instance.version, "2.0.0");
     assert_eq!(instance.capabilities.len(), 1);
 }
@@ -167,9 +167,11 @@ fn test_primal_instance_multiple_capabilities() {
         status: PrimalStatus::Connected,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     assert_eq!(instance.capabilities.len(), 3);
-    assert!(instance.capabilities.contains(&"authentication".to_string()));
+    assert!(instance
+        .capabilities
+        .contains(&"authentication".to_string()));
     assert!(instance.capabilities.contains(&"authorization".to_string()));
 }
 
@@ -184,9 +186,9 @@ fn test_primal_instance_clone() {
         status: PrimalStatus::Discovered,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     let cloned = original.clone();
-    
+
     assert_eq!(cloned.name, original.name);
     assert_eq!(cloned.version, original.version);
 }
@@ -202,7 +204,7 @@ fn test_primal_instance_serialization() {
         status: PrimalStatus::Connected,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     let json = serde_json::to_string(&instance).unwrap();
     assert!(!json.is_empty());
     assert!(json.contains("biomeos"));
@@ -219,10 +221,10 @@ fn test_primal_instance_deserialization() {
         "status": "Connected",
         "discovered_at": "2025-01-01T00:00:00Z"
     }"#;
-    
+
     let result: Result<PrimalInstance, _> = serde_json::from_str(json);
     assert!(result.is_ok());
-    
+
     let instance = result.unwrap();
     assert_eq!(instance.name, "toadstool");
 }
@@ -235,7 +237,7 @@ fn test_primal_instance_deserialization() {
 fn test_ecosystem_config_custom_timeout() {
     let mut config = EcosystemConfig::default();
     config.discovery_timeout = Duration::from_secs(60);
-    
+
     assert_eq!(config.discovery_timeout, Duration::from_secs(60));
 }
 
@@ -250,7 +252,7 @@ fn test_ecosystem_config_with_endpoints() {
         "nestgate".to_string(),
         "http://nestgate.local:9000".to_string(),
     );
-    
+
     assert_eq!(config.primal_endpoints.len(), 2);
 }
 
@@ -258,7 +260,7 @@ fn test_ecosystem_config_with_endpoints() {
 fn test_ecosystem_config_required_primals() {
     let mut config = EcosystemConfig::default();
     config.required_primals = vec!["songbird".to_string(), "nestgate".to_string()];
-    
+
     assert_eq!(config.required_primals.len(), 2);
     assert!(config.required_primals.contains(&"songbird".to_string()));
 }
@@ -267,14 +269,14 @@ fn test_ecosystem_config_required_primals() {
 fn test_ecosystem_config_no_auto_discovery() {
     let mut config = EcosystemConfig::default();
     config.auto_discovery = false;
-    
+
     assert!(!config.auto_discovery);
 }
 
 #[test]
 fn test_ecosystem_config_serialization() {
     let config = EcosystemConfig::default();
-    
+
     let json = serde_json::to_string(&config).unwrap();
     assert!(!json.is_empty());
     assert!(json.contains("auto_discovery"));
@@ -289,10 +291,10 @@ fn test_ecosystem_config_deserialization() {
         "required_primals": ["songbird"],
         "optional_primals": []
     }"#;
-    
+
     let result: Result<EcosystemConfig, _> = serde_json::from_str(json);
     assert!(result.is_ok());
-    
+
     let config = result.unwrap();
     assert!(!config.auto_discovery);
     assert_eq!(config.required_primals.len(), 1);
@@ -312,7 +314,7 @@ fn test_ecosystem_message_creation() {
         payload: serde_json::json!({}),
         timestamp: chrono::Utc::now(),
     };
-    
+
     assert_eq!(message.from, "toadstool");
     assert_eq!(message.to, "songbird");
 }
@@ -329,7 +331,7 @@ fn test_ecosystem_message_all_types() {
         EcosystemMessageType::StatusUpdate,
         EcosystemMessageType::Error,
     ];
-    
+
     assert_eq!(types.len(), 8);
 }
 
@@ -340,7 +342,7 @@ fn test_ecosystem_message_with_payload() {
         "memory": 8192,
         "status": "active"
     });
-    
+
     let message = EcosystemMessage {
         id: uuid::Uuid::new_v4(),
         from: "toadstool".to_string(),
@@ -349,7 +351,7 @@ fn test_ecosystem_message_with_payload() {
         payload: payload.clone(),
         timestamp: chrono::Utc::now(),
     };
-    
+
     assert_eq!(message.payload["cpu"], 4);
     assert_eq!(message.payload["memory"], 8192);
 }
@@ -364,7 +366,7 @@ fn test_ecosystem_message_serialization() {
         payload: serde_json::json!({"status": "ok"}),
         timestamp: chrono::Utc::now(),
     };
-    
+
     let json = serde_json::to_string(&message).unwrap();
     assert!(!json.is_empty());
     assert!(json.contains("sender"));
@@ -381,9 +383,9 @@ fn test_ecosystem_message_clone() {
         payload: serde_json::json!({}),
         timestamp: chrono::Utc::now(),
     };
-    
+
     let cloned = original.clone();
-    
+
     assert_eq!(cloned.from, original.from);
     assert_eq!(cloned.to, original.to);
 }
@@ -401,7 +403,7 @@ async fn test_ecosystem_coordinator_creation() {
 #[tokio::test]
 async fn test_ecosystem_coordinator_default_config() {
     let _coordinator = EcosystemCoordinator::new().unwrap();
-    
+
     // Coordinator should be created with default config
     // We can't access config directly, but we can test behavior
     assert!(true); // Placeholder - coordinator created successfully
@@ -411,7 +413,7 @@ async fn test_ecosystem_coordinator_default_config() {
 async fn test_ecosystem_coordinator_with_custom_config() {
     let coordinator = EcosystemCoordinator::new();
     assert!(coordinator.is_ok());
-    
+
     // Test that we can create coordinator multiple times
     let coordinator2 = EcosystemCoordinator::new();
     assert!(coordinator2.is_ok());
@@ -432,7 +434,7 @@ fn test_primal_instance_empty_capabilities() {
         status: PrimalStatus::Discovered,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     assert!(instance.capabilities.is_empty());
 }
 
@@ -448,7 +450,7 @@ fn test_primal_instance_very_long_name() {
         status: PrimalStatus::Discovered,
         discovered_at: chrono::Utc::now(),
     };
-    
+
     assert_eq!(instance.name.len(), 1000);
 }
 
@@ -456,7 +458,7 @@ fn test_primal_instance_very_long_name() {
 fn test_ecosystem_config_empty_optional_primals() {
     let mut config = EcosystemConfig::default();
     config.optional_primals.clear();
-    
+
     assert!(config.optional_primals.is_empty());
 }
 
@@ -464,7 +466,7 @@ fn test_ecosystem_config_empty_optional_primals() {
 fn test_ecosystem_config_zero_timeout() {
     let mut config = EcosystemConfig::default();
     config.discovery_timeout = Duration::from_secs(0);
-    
+
     assert_eq!(config.discovery_timeout, Duration::from_secs(0));
 }
 
@@ -478,7 +480,7 @@ fn test_ecosystem_message_empty_payload() {
         payload: serde_json::json!(null),
         timestamp: chrono::Utc::now(),
     };
-    
+
     assert!(message.payload.is_null());
 }
 
@@ -497,4 +499,3 @@ fn test_ecosystem_message_empty_payload() {
 //
 // Target: Increase ecosystem.rs coverage from 26.20% → 40%+
 // ============================================================================
-

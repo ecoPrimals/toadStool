@@ -17,8 +17,8 @@ pub use types_mod::{BiomeTemplate, CustomServiceSpec, CustomTemplateSpec};
 
 // Template implementations
 mod basic_templates;
-mod specialized_templates;
 mod rendering;
+mod specialized_templates;
 
 // Core imports (minimal, only for struct definition)
 use std::path::PathBuf;

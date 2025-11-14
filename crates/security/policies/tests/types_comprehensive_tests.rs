@@ -14,8 +14,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use toadstool_security_policies::{
-    PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule,
-    SecurityPolicy, ViolationAction,
+    PolicyAction, PolicyCondition, PolicyManagerConfig, PolicyRule, SecurityPolicy, ViolationAction,
 };
 
 // ============================================================================
@@ -25,11 +24,14 @@ use toadstool_security_policies::{
 #[test]
 fn test_policy_manager_config_default() {
     let config = PolicyManagerConfig::default();
-    
+
     assert!(config.cache_enabled);
     assert_eq!(config.cache_ttl_hours, 24);
     assert!(config.strict_enforcement);
-    assert!(matches!(config.default_violation_action, ViolationAction::Terminate));
+    assert!(matches!(
+        config.default_violation_action,
+        ViolationAction::Terminate
+    ));
     assert_eq!(config.max_composition_depth, 10);
     assert_eq!(config.validation_timeout_ms, 5000);
 }
@@ -45,7 +47,7 @@ fn test_policy_manager_config_custom() {
         max_composition_depth: 20,
         validation_timeout_ms: 10000,
     };
-    
+
     assert!(!config.cache_enabled);
     assert_eq!(config.cache_ttl_hours, 48);
     assert!(!config.strict_enforcement);
@@ -56,7 +58,7 @@ fn test_policy_manager_config_custom() {
 fn test_policy_manager_config_clone() {
     let config = PolicyManagerConfig::default();
     let cloned = config.clone();
-    
+
     assert_eq!(config.cache_ttl_hours, cloned.cache_ttl_hours);
     assert_eq!(config.strict_enforcement, cloned.strict_enforcement);
 }
@@ -65,7 +67,7 @@ fn test_policy_manager_config_clone() {
 fn test_policy_manager_config_debug() {
     let config = PolicyManagerConfig::default();
     let debug_str = format!("{:?}", config);
-    
+
     assert!(debug_str.contains("PolicyManagerConfig"));
     assert!(debug_str.contains("cache_enabled"));
 }
@@ -74,7 +76,7 @@ fn test_policy_manager_config_debug() {
 fn test_policy_manager_config_serialization() {
     let config = PolicyManagerConfig::default();
     let json = serde_json::to_string(&config).expect("Failed to serialize");
-    
+
     assert!(json.contains("policy_dir"));
     assert!(json.contains("cache_enabled"));
 }
@@ -90,10 +92,9 @@ fn test_policy_manager_config_deserialization() {
         "max_composition_depth": 5,
         "validation_timeout_ms": 3000
     }"#;
-    
-    let config: PolicyManagerConfig = serde_json::from_str(json)
-        .expect("Failed to deserialize");
-    
+
+    let config: PolicyManagerConfig = serde_json::from_str(json).expect("Failed to deserialize");
+
     assert_eq!(config.cache_ttl_hours, 12);
     assert_eq!(config.max_composition_depth, 5);
     assert_eq!(config.validation_timeout_ms, 3000);
@@ -106,9 +107,12 @@ fn test_policy_manager_config_strict_enforcement() {
         default_violation_action: ViolationAction::Terminate,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(config.strict_enforcement);
-    assert!(matches!(config.default_violation_action, ViolationAction::Terminate));
+    assert!(matches!(
+        config.default_violation_action,
+        ViolationAction::Terminate
+    ));
 }
 
 #[test]
@@ -118,9 +122,12 @@ fn test_policy_manager_config_permissive() {
         default_violation_action: ViolationAction::LogAndContinue,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(!config.strict_enforcement);
-    assert!(matches!(config.default_violation_action, ViolationAction::LogAndContinue));
+    assert!(matches!(
+        config.default_violation_action,
+        ViolationAction::LogAndContinue
+    ));
 }
 
 #[test]
@@ -130,7 +137,7 @@ fn test_policy_manager_config_cache_disabled() {
         cache_ttl_hours: 0,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(!config.cache_enabled);
     assert_eq!(config.cache_ttl_hours, 0);
 }
@@ -141,7 +148,7 @@ fn test_policy_manager_config_validation_timeout() {
         validation_timeout_ms: 15000,
         ..PolicyManagerConfig::default()
     };
-    
+
     assert!(config.validation_timeout_ms > 0);
     assert_eq!(config.validation_timeout_ms, 15000);
 }
@@ -166,7 +173,7 @@ fn test_security_policy_creation() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.id, "policy-001");
     assert_eq!(policy.name, "Test Policy");
     assert_eq!(policy.version, "1.0.0");
@@ -184,7 +191,7 @@ fn test_security_policy_with_rules() {
         enabled: true,
         description: Some("Test rule".to_string()),
     };
-    
+
     let policy = SecurityPolicy {
         id: "policy-002".to_string(),
         name: "Policy with Rules".to_string(),
@@ -198,7 +205,7 @@ fn test_security_policy_with_rules() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.rules.len(), 1);
     assert_eq!(policy.rules[0].id, "rule-001");
 }
@@ -219,7 +226,7 @@ fn test_security_policy_with_inheritance() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.inherits.len(), 2);
     assert!(policy.inherits.contains(&"base-policy".to_string()));
 }
@@ -230,7 +237,7 @@ fn test_security_policy_with_metadata() {
     let mut metadata = HashMap::new();
     metadata.insert("environment".to_string(), json!("production"));
     metadata.insert("version".to_string(), json!("2.0"));
-    
+
     let policy = SecurityPolicy {
         id: "policy-004".to_string(),
         name: "Policy with Metadata".to_string(),
@@ -244,7 +251,7 @@ fn test_security_policy_with_metadata() {
         metadata,
         signature: None,
     };
-    
+
     assert_eq!(policy.metadata.len(), 2);
     assert!(policy.metadata.contains_key("environment"));
 }
@@ -265,7 +272,7 @@ fn test_security_policy_clone() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     let cloned = policy.clone();
     assert_eq!(policy.id, cloned.id);
     assert_eq!(policy.name, cloned.name);
@@ -287,7 +294,7 @@ fn test_security_policy_serialization() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     let json = serde_json::to_string(&policy).expect("Failed to serialize");
     assert!(json.contains("policy-006"));
     assert!(json.contains("Serializable Policy"));
@@ -309,7 +316,7 @@ fn test_security_policy_with_signature() {
         metadata: HashMap::new(),
         signature: Some("sha256:abcd1234".to_string()),
     };
-    
+
     assert!(policy.signature.is_some());
     assert_eq!(policy.signature.unwrap(), "sha256:abcd1234");
 }
@@ -337,7 +344,7 @@ fn test_security_policy_multiple_rules() {
             description: None,
         },
     ];
-    
+
     let policy = SecurityPolicy {
         id: "policy-008".to_string(),
         name: "Multi-Rule Policy".to_string(),
@@ -351,7 +358,7 @@ fn test_security_policy_multiple_rules() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert_eq!(policy.rules.len(), 2);
     assert_eq!(policy.rules[0].priority, 100);
     assert_eq!(policy.rules[1].priority, 50);
@@ -373,7 +380,7 @@ fn test_security_policy_version_format() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert!(policy.version.contains('.'));
     assert_eq!(policy.version, "2.1.3");
 }
@@ -382,7 +389,7 @@ fn test_security_policy_version_format() {
 fn test_security_policy_timestamp_ordering() {
     let created = Utc::now();
     let modified = Utc::now();
-    
+
     let policy = SecurityPolicy {
         id: "policy-010".to_string(),
         name: "Time Policy".to_string(),
@@ -396,7 +403,7 @@ fn test_security_policy_timestamp_ordering() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert!(policy.modified_at >= policy.created_at);
 }
 
@@ -416,7 +423,7 @@ fn test_security_policy_empty_description() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert!(policy.description.is_none());
 }
 
@@ -436,7 +443,7 @@ fn test_security_policy_with_author() {
         metadata: HashMap::new(),
         signature: None,
     };
-    
+
     assert!(policy.author.is_some());
     assert_eq!(policy.author.unwrap(), "Security Team");
 }
@@ -456,7 +463,7 @@ fn test_policy_rule_creation() {
         enabled: true,
         description: Some("A test rule".to_string()),
     };
-    
+
     assert_eq!(rule.id, "rule-test-001");
     assert_eq!(rule.priority, 100);
     assert!(rule.enabled);
@@ -473,7 +480,7 @@ fn test_policy_rule_disabled() {
         enabled: false,
         description: None,
     };
-    
+
     assert!(!rule.enabled);
 }
 
@@ -488,7 +495,7 @@ fn test_policy_rule_high_priority() {
         enabled: true,
         description: None,
     };
-    
+
     assert_eq!(rule.priority, 1000);
 }
 
@@ -503,7 +510,7 @@ fn test_policy_rule_low_priority() {
         enabled: true,
         description: None,
     };
-    
+
     assert_eq!(rule.priority, 1);
 }
 
@@ -518,7 +525,7 @@ fn test_policy_rule_clone() {
         enabled: true,
         description: None,
     };
-    
+
     let cloned = rule.clone();
     assert_eq!(rule.id, cloned.id);
     assert_eq!(rule.priority, cloned.priority);
@@ -535,7 +542,7 @@ fn test_policy_rule_serialization() {
         enabled: true,
         description: None,
     };
-    
+
     let json = serde_json::to_string(&rule).expect("Failed to serialize");
     assert!(json.contains("rule-test-006"));
     assert!(json.contains("Serializable Rule"));
@@ -552,7 +559,7 @@ fn test_policy_rule_with_description() {
         enabled: true,
         description: Some("This rule allows all access".to_string()),
     };
-    
+
     assert!(rule.description.is_some());
     assert!(rule.description.unwrap().contains("allows"));
 }
@@ -568,7 +575,7 @@ fn test_policy_rule_priority_ordering() {
         enabled: true,
         description: None,
     };
-    
+
     let rule2 = PolicyRule {
         id: "rule-low".to_string(),
         name: "Low".to_string(),
@@ -578,7 +585,7 @@ fn test_policy_rule_priority_ordering() {
         enabled: true,
         description: None,
     };
-    
+
     assert!(rule1.priority > rule2.priority);
 }
 
@@ -604,7 +611,7 @@ fn test_policy_condition_never() {
 fn test_policy_condition_clone() {
     let condition = PolicyCondition::Always;
     let cloned = condition.clone();
-    
+
     assert!(format!("{:?}", condition) == format!("{:?}", cloned));
 }
 
@@ -612,7 +619,7 @@ fn test_policy_condition_clone() {
 fn test_policy_condition_serialization() {
     let condition = PolicyCondition::Always;
     let json = serde_json::to_string(&condition).expect("Failed to serialize");
-    
+
     assert!(!json.is_empty());
 }
 
@@ -620,7 +627,7 @@ fn test_policy_condition_serialization() {
 fn test_policy_condition_debug() {
     let condition = PolicyCondition::Always;
     let debug_str = format!("{:?}", condition);
-    
+
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Always"));
 }
@@ -647,7 +654,7 @@ fn test_policy_action_deny() {
 fn test_policy_action_clone() {
     let action = PolicyAction::Allow;
     let cloned = action.clone();
-    
+
     assert!(format!("{:?}", action) == format!("{:?}", cloned));
 }
 
@@ -655,7 +662,7 @@ fn test_policy_action_clone() {
 fn test_policy_action_serialization() {
     let action = PolicyAction::Allow;
     let json = serde_json::to_string(&action).expect("Failed to serialize");
-    
+
     assert!(!json.is_empty());
 }
 
@@ -663,7 +670,7 @@ fn test_policy_action_serialization() {
 fn test_policy_action_debug() {
     let action = PolicyAction::Deny;
     let debug_str = format!("{:?}", action);
-    
+
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("Deny"));
 }
@@ -690,16 +697,14 @@ fn test_violation_action_terminate() {
 fn test_violation_action_serialization() {
     let action = ViolationAction::Alert;
     let json = serde_json::to_string(&action).expect("Failed to serialize");
-    
+
     assert!(!json.is_empty());
 }
 
 #[test]
 fn test_violation_action_deserialization() {
     let json = r#""Terminate""#;
-    let action: ViolationAction = serde_json::from_str(json)
-        .expect("Failed to deserialize");
-    
+    let action: ViolationAction = serde_json::from_str(json).expect("Failed to deserialize");
+
     assert!(matches!(action, ViolationAction::Terminate));
 }
-

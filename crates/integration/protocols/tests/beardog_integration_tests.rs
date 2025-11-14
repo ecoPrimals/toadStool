@@ -3,15 +3,10 @@
 //! These tests cover the BearDog security integration layer,
 //! including authentication, authorization, and audit functionality.
 
-use toadstool_common::auth::ServiceAuthConfig;
 use chrono::Utc;
-use toadstool_common::auth::ServiceAuthConfig;
 use std::collections::HashMap;
-use toadstool_common::auth::ServiceAuthConfig;
 use toadstool::security::SecurityContext;
-use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::*;
-use toadstool_common::auth::ServiceAuthConfig;
 use uuid::Uuid;
 
 // ============================================================================
@@ -265,7 +260,7 @@ fn test_security_policy_with_rules() {
     };
 
     let rule2 = PolicyRule {
-        condition: "ip_whitelist".to_string(),
+        condition: "ip_allowlist".to_string(),
         action: "allow".to_string(),
         parameters: HashMap::new(),
     };
@@ -281,7 +276,7 @@ fn test_security_policy_with_rules() {
 
     assert_eq!(policy.rules.len(), 2);
     assert_eq!(policy.rules[0].condition, "time_of_day");
-    assert_eq!(policy.rules[1].condition, "ip_whitelist");
+    assert_eq!(policy.rules[1].condition, "ip_allowlist");
 }
 
 // ============================================================================

@@ -156,4 +156,3 @@ pub fn print_template_info(template: &BiomeTemplate) {
     info!("  2. Deploy with: toadstool biome deploy");
     info!("  3. Monitor with: toadstool biome status");
 }
-
