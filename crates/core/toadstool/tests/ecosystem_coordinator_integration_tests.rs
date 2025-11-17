@@ -2,6 +2,8 @@
 //!
 //! Tests actual function execution to increase coverage
 
+#![allow(clippy::all)]
+
 use toadstool::ecosystem::*;
 
 #[cfg(test)]
@@ -156,7 +158,7 @@ mod ecosystem_message_tests {
         let cloned = msg_type.clone();
 
         match cloned {
-            EcosystemMessageType::Heartbeat => assert!(true),
+            EcosystemMessageType::Heartbeat => { /* Expected */ }
             _ => panic!("Clone failed"),
         }
     }

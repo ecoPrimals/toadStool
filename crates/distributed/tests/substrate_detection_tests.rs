@@ -16,7 +16,7 @@ async fn test_substrate_detector_new() {
 
 #[tokio::test]
 async fn test_substrate_detector_default() {
-    let _detector = SubstrateDetector::default();
+    let _detector = SubstrateDetector;
     // Default constructor should work
 }
 

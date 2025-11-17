@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 use toadstool_api::types::*;
-use toadstool_api::*;
+use toadstool_api::{ApiEvent, ApiMetrics, ApiState};
 use uuid::Uuid;
 
 // ============================================================================
@@ -66,50 +66,55 @@ fn test_api_config_custom_timeout() {
 // ============================================================================
 
 #[test]
-fn test_modern_api_server_creation() {
+fn test_api_config_creation() {
     let config = ApiConfig::default();
-    let server = ModernApiServer::new(config);
 
     // Test passes if construction succeeds
-    let _ = server;
+    assert!(!config.bind_address.is_empty());
 }
 
 #[test]
-fn test_modern_api_server_with_custom_config() {
+fn test_api_config_with_custom_version() {
     let config = ApiConfig {
         bind_address: "127.0.0.1:8888".to_string(),
         api_version: "3.0.0".to_string(),
         ..Default::default()
     };
 
-    let server = ModernApiServer::new(config);
-
     // Test passes if construction succeeds
-    let _ = server;
+    assert_eq!(config.bind_address, "127.0.0.1:8888");
+    assert_eq!(config.api_version, "3.0.0");
 }
 
 #[test]
-fn test_modern_api_server_multiple_instances() {
+fn test_api_config_multiple_instances() {
     let config1 = ApiConfig::default();
     let config2 = ApiConfig::default();
 
-    let _server1 = ModernApiServer::new(config1);
-    let _server2 = ModernApiServer::new(config2);
-
-    // Test passes if multiple servers can be created
+    // Test passes if multiple configs can be created
+    assert_eq!(config1.bind_address, config2.bind_address);
 }
 
 #[test]
-fn test_modern_api_server_state_initialization() {
-    let config = ApiConfig::default();
-    let server = ModernApiServer::new(config);
+fn test_api_state_initialization() {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::{broadcast, RwLock};
 
-    // Server should be created with proper state
-    let _ = server;
+    let (event_broadcaster, _) = broadcast::channel(100);
+    let state = ApiState {
+        event_broadcaster,
+        executions: Arc::new(RwLock::new(HashMap::new())),
+        metrics: Arc::new(RwLock::new(ApiMetrics::default())),
+        websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
+    };
+
+    // State should be created properly
+    let _ = state;
 }
 
 #[test]
-fn test_modern_api_server_with_all_features_enabled() {
+fn test_api_config_with_all_features_enabled() {
     let config = ApiConfig {
         enable_rest: true,
         enable_websocket: true,
@@ -118,10 +123,11 @@ fn test_modern_api_server_with_all_features_enabled() {
         ..Default::default()
     };
 
-    let server = ModernApiServer::new(config);
-
     // Test passes if construction succeeds with all features
-    let _ = server;
+    assert!(config.enable_rest);
+    assert!(config.enable_websocket);
+    assert!(config.enable_openapi);
+    assert!(config.cors_enabled);
 }
 
 // ============================================================================
@@ -133,7 +139,7 @@ fn test_api_metrics_default() {
     let metrics = ApiMetrics::default();
 
     assert_eq!(metrics.total_requests, 0);
-    assert_eq!(metrics.active_connections, 0);
+    assert_eq!(metrics.successful_requests, 0);
 }
 
 #[test]
@@ -153,13 +159,13 @@ fn test_api_metrics_increment_requests() {
 #[test]
 fn test_api_metrics_connection_tracking() {
     let metrics = ApiMetrics {
-        active_connections: 10,
-        uptime_seconds: 3600,
+        total_requests: 100,
+        successful_requests: 95,
         ..Default::default()
     };
 
-    assert_eq!(metrics.active_connections, 10);
-    assert_eq!(metrics.uptime_seconds, 3600);
+    assert_eq!(metrics.total_requests, 100);
+    assert_eq!(metrics.successful_requests, 95);
 }
 
 #[test]
@@ -178,17 +184,15 @@ fn test_api_metrics_serialization() {
         total_requests: 1000,
         successful_requests: 950,
         failed_requests: 50,
-        active_connections: 25,
         average_response_time_ms: 35.2,
-        uptime_seconds: 7200,
     };
 
     let json = serde_json::to_string(&metrics).unwrap();
     let deserialized: ApiMetrics = serde_json::from_str(&json).unwrap();
 
     assert_eq!(deserialized.total_requests, 1000);
-    assert_eq!(deserialized.active_connections, 25);
-    assert_eq!(deserialized.uptime_seconds, 7200);
+    assert_eq!(deserialized.successful_requests, 950);
+    assert_eq!(deserialized.failed_requests, 50);
 }
 
 // ============================================================================

@@ -5,7 +5,6 @@
 use chrono::Utc;
 use std::sync::Arc;
 use std::time::Duration;
-use toadstool_api::types::ApiEvent;
 use toadstool_api::websocket::{WebSocketConnection, WebSocketManager, WebSocketMessage};
 use uuid::Uuid;
 

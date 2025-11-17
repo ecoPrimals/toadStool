@@ -179,6 +179,14 @@ fn test_metrics_aggregation() {
 
     let avg_cpu = snapshots.iter().map(|s| s.cpu).sum::<f64>() / snapshots.len() as f64;
     assert!((avg_cpu - 52.5).abs() < 0.01);
+
+    let avg_memory = snapshots.iter().map(|s| s.memory).sum::<f64>() / snapshots.len() as f64;
+    assert!((avg_memory - 62.5).abs() < 0.01);
+
+    let avg_disk = snapshots.iter().map(|s| s.disk).sum::<f64>() / snapshots.len() as f64;
+    assert!((avg_disk - 71.0).abs() < 0.01);
+
+    assert!(snapshots.iter().all(|s| s.timestamp.timestamp() > 0));
 }
 
 #[test]
@@ -371,6 +379,8 @@ fn test_resource_snapshot() {
 
     assert!(snapshot.cpu_percent >= 0.0);
     assert!(snapshot.memory_mb > 0);
+    assert!(snapshot.disk_gb > 0);
+    assert!(snapshot.network_bytes > 0);
     assert!(snapshot.timestamp > 0);
 }
 
@@ -492,6 +502,7 @@ fn test_background_service_health() {
     assert!(health.is_running);
     assert_eq!(health.error_count, 0);
     assert!(!health.service_name.is_empty());
+    assert!(health.last_run.timestamp() > 0);
 }
 
 #[test]

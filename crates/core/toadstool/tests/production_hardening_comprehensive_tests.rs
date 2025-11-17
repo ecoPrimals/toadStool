@@ -203,7 +203,7 @@ fn test_memory_pressure_level_variants() {
 #[test]
 fn test_memory_pressure_level_clone() {
     let level = MemoryPressureLevel::Critical;
-    let cloned = level.clone();
+    let cloned = level;
 
     assert!(matches!(cloned, MemoryPressureLevel::Critical));
 }

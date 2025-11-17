@@ -6,7 +6,6 @@
 //! Strategy: Test the untested async monitoring paths and edge cases
 
 use toadstool::resources::*;
-use tokio;
 
 // ============================================================================
 // SystemResourceMonitor Creation & Basic Tests
@@ -15,15 +14,13 @@ use tokio;
 #[test]
 fn test_system_resource_monitor_new() {
     let _monitor = SystemResourceMonitor::new();
-    // Should create successfully
-    assert!(true, "Monitor created");
+    // Should create successfully - test passes if no panic occurs
 }
 
 #[test]
 fn test_system_resource_monitor_default() {
     let _monitor = SystemResourceMonitor::default();
-    // Should create via Default trait
-    assert!(true, "Monitor created via Default");
+    // Should create via Default trait - test passes if no panic occurs
 }
 
 #[test]
@@ -32,8 +29,7 @@ fn test_system_resource_monitor_multiple_instances() {
     let _monitor2 = SystemResourceMonitor::new();
     let _monitor3 = SystemResourceMonitor::default();
 
-    // Should be able to create multiple instances
-    assert!(true, "Multiple monitors created");
+    // Should be able to create multiple instances - test passes if no panic occurs
 }
 
 // ============================================================================
@@ -90,13 +86,15 @@ fn test_resource_requirements_deserialization() {
 
 #[test]
 fn test_resource_requirements_with_gpu() {
-    let mut requirements = ResourceRequirements::default();
-    requirements.gpu = Some(GpuRequirements {
-        min_units: 1,
-        max_units: None,
-        min_memory_bytes: Some(1024 * 1024 * 1024), // 1GB
-        gpu_type: Some("NVIDIA".to_string()),
-    });
+    let requirements = ResourceRequirements {
+        gpu: Some(GpuRequirements {
+            min_units: 1,
+            max_units: None,
+            min_memory_bytes: Some(1024 * 1024 * 1024), // 1GB
+            gpu_type: Some("NVIDIA".to_string()),
+        }),
+        ..Default::default()
+    };
 
     assert!(requirements.gpu.is_some());
     assert_eq!(requirements.gpu.as_ref().unwrap().min_units, 1);
@@ -104,11 +102,13 @@ fn test_resource_requirements_with_gpu() {
 
 #[test]
 fn test_resource_requirements_with_network_constraints() {
-    let mut requirements = ResourceRequirements::default();
-    requirements.network = NetworkRequirements {
-        min_bandwidth: Some(1_000_000),     // 1 Mbps
-        max_bandwidth: Some(1_000_000_000), // 1 Gbps
-        max_latency_ms: Some(100),
+    let requirements = ResourceRequirements {
+        network: NetworkRequirements {
+            min_bandwidth: Some(1_000_000),     // 1 Mbps
+            max_bandwidth: Some(1_000_000_000), // 1 Gbps
+            max_latency_ms: Some(100),
+        },
+        ..Default::default()
     };
 
     assert_eq!(requirements.network.min_bandwidth, Some(1_000_000));
@@ -403,8 +403,7 @@ fn test_gpu_requirements_clone() {
 fn test_resource_limits_default() {
     let _limits = ResourceLimits::default();
 
-    // Should have sensible defaults
-    assert!(true, "ResourceLimits created with defaults");
+    // Should have sensible defaults - test passes if no panic occurs
 }
 
 #[test]
@@ -412,8 +411,7 @@ fn test_resource_limits_clone() {
     let limits = ResourceLimits::default();
     let _cloned = limits.clone();
 
-    // Should clone successfully
-    assert!(true, "ResourceLimits cloned");
+    // Should clone successfully - test passes if no panic occurs
 }
 
 #[test]
@@ -432,8 +430,7 @@ fn test_resource_limits_serialization() {
 fn test_system_resources_default() {
     let _resources = SystemResources::default();
 
-    // Should create with defaults
-    assert!(true, "SystemResources created");
+    // Should create with defaults - test passes if no panic occurs
 }
 
 #[test]
@@ -441,8 +438,7 @@ fn test_system_resources_clone() {
     let resources = SystemResources::default();
     let _cloned = resources.clone();
 
-    // Should clone successfully
-    assert!(true, "SystemResources cloned");
+    // Should clone successfully - test passes if no panic occurs
 }
 
 // ============================================================================
@@ -485,7 +481,7 @@ fn test_timing_metrics_default() {
 
     // start_time is a DateTime, not an Option
     let _time = metrics.start_time;
-    assert!(true, "TimingMetrics created with start_time");
+    // Test passes if no panic occurs when accessing start_time
 }
 
 // ============================================================================
@@ -568,8 +564,7 @@ async fn test_multiple_monitoring_operations() {
     let _load = monitor.get_load_averages().await;
     let _monitoring = monitor.start_real_time_monitoring("workload-789").await;
 
-    // Should handle multiple operations
-    assert!(true);
+    // Should handle multiple operations - test passes if no panic occurs
 }
 
 // ============================================================================

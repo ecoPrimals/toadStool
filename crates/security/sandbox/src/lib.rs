@@ -7,6 +7,7 @@
 //! - Resource containment and monitoring
 //! - Security policy enforcement
 
+mod helpers;
 pub mod manager;
 pub mod traits;
 pub mod types;

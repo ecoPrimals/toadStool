@@ -28,8 +28,7 @@ fn create_test_state() -> ApiState {
     ApiState {
         event_broadcaster,
         executions: Arc::new(RwLock::new(HashMap::new())),
-        config: ApiConfig::default(),
-        metrics: Arc::new(RwLock::new(ApiMetrics::default())),
+        metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         websocket_manager: Arc::new(websocket::WebSocketManager::new()),
     }
 }
@@ -282,7 +281,10 @@ async fn test_get_cluster_status_empty() {
 async fn test_get_execution_logs_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
-    let filter = Query(HashMap::new());
+    let filter = Query(TimeRange {
+        start: Utc::now(),
+        end: Utc::now(),
+    });
 
     let result = get_execution_logs(State(state), Path(execution_id), filter).await;
 
@@ -589,7 +591,10 @@ async fn test_get_execution_logs_error_handling() {
     // Test getting logs for non-existent execution (error handling variant)
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
-    let query = Query(HashMap::new());
+    let query = Query(TimeRange {
+        start: Utc::now(),
+        end: Utc::now(),
+    });
 
     let result = get_execution_logs(State(state), Path(execution_id), query).await;
 

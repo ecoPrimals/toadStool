@@ -1,4 +1,6 @@
 //! BYOB Module Data Structures Coverage Tests - November 7, 2025
+
+#![allow(clippy::all)]
 //!
 //! Target: Push byob.rs coverage from 35.22% → 60%+
 //! Focus: Data structures, serialization, validation, edge cases

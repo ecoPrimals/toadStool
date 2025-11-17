@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::format_in_format_args)]
+#![allow(clippy::redundant_pattern_matching)]
 //! # ToadStool Runtime Engines Integration Demo
 //!
 //! Comprehensive demonstration of all three runtime engines:

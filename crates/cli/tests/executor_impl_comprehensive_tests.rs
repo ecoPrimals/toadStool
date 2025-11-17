@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 
 // Mock types for testing (since we can't import the actual types easily)
 #[derive(Clone)]
+#[allow(dead_code)]
 struct MockBiomeExecutor {
     distributed: Arc<MockDistributedCoordinator>,
     biomes: Arc<RwLock<HashMap<String, MockBiomeInfo>>>,
@@ -18,6 +19,7 @@ struct MockBiomeExecutor {
 struct MockDistributedCoordinator {}
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct MockBiomeInfo {
     id: String,
     name: String,
@@ -159,7 +161,7 @@ async fn test_run_biome_already_running() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Should fail because biome is already running
-    let result = simulate_run_biome(
+    let _result = simulate_run_biome(
         &executor,
         &ctx,
         manifest_path,
@@ -296,7 +298,7 @@ async fn test_down_biome_not_found() {
     let ctx = MockCliContext {};
 
     // Try to stop non-existent biome
-    let result =
+    let _result =
         simulate_down_biome(&executor, &ctx, "non-existent".to_string(), false, Some(30)).await;
 
     // Should handle gracefully or return error
@@ -381,7 +383,7 @@ async fn test_status_biome_not_found() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
 
-    let result = simulate_status_biome(&executor, &ctx, "non-existent".to_string()).await;
+    let _result = simulate_status_biome(&executor, &ctx, "non-existent".to_string()).await;
     // Should return appropriate status or error
 }
 
@@ -585,7 +587,7 @@ async fn test_invalid_manifest_path() {
     let ctx = MockCliContext {};
     let invalid_path = PathBuf::from("/nonexistent/path/manifest.toml");
 
-    let result = simulate_run_biome(
+    let _result = simulate_run_biome(
         &executor,
         &ctx,
         invalid_path,
@@ -609,7 +611,7 @@ async fn test_invalid_resource_limits() {
     let manifest_path = PathBuf::from("test_manifest.toml");
 
     // Test with invalid memory format
-    let result = simulate_run_biome(
+    let _result = simulate_run_biome(
         &executor,
         &ctx,
         manifest_path,
@@ -633,6 +635,7 @@ async fn create_mock_executor() -> Result<MockBiomeExecutor> {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn simulate_run_biome(
     _executor: &MockBiomeExecutor,
     _ctx: &MockCliContext,
@@ -648,6 +651,7 @@ async fn simulate_run_biome(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn simulate_up_biome(
     _executor: &MockBiomeExecutor,
     _ctx: &MockCliContext,

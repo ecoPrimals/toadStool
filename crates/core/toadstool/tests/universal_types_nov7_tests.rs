@@ -409,13 +409,13 @@ fn test_primal_types_comprehensive() {
     // Verify each type
     for primal_type in &types {
         match primal_type {
-            PrimalType::Compute => assert!(true),
-            PrimalType::Security => assert!(true),
-            PrimalType::Storage => assert!(true),
-            PrimalType::AI => assert!(true),
-            PrimalType::Network => assert!(true),
-            PrimalType::OS => assert!(true),
-            PrimalType::Custom(_) => assert!(true),
+            PrimalType::Compute => { /* Valid */ }
+            PrimalType::Security => { /* Valid */ }
+            PrimalType::Storage => { /* Valid */ }
+            PrimalType::AI => { /* Valid */ }
+            PrimalType::Network => { /* Valid */ }
+            PrimalType::OS => { /* Valid */ }
+            PrimalType::Custom(_) => { /* Valid */ }
         }
     }
 }

@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::redundant_pattern_matching)]
 //! # ToadStool Universal Architecture Performance Benchmark
 //!
 //! This benchmark demonstrates the performance characteristics of the

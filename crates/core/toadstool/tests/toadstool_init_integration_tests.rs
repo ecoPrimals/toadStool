@@ -1,8 +1,6 @@
 //! Integration tests for ToadStool initialization functions
 //! These tests verify the actual initialization logic and integration
 
-use toadstool;
-
 #[test]
 fn test_init_basic() {
     // Multiple calls should be idempotent (tracing already init is ok)

@@ -441,13 +441,14 @@ impl RuntimeEngine for NativeRuntimeEngine {
             self.validate_resource_requirements(&request)?;
 
             // Extract executable source
-            let executable_source = match &request.workload {
-                WorkloadSpec::Native { executable, .. } => executable,
-                _ => {
-                    return Err(ToadStoolError::validation(
-                        "Invalid workload type for native runtime",
-                    ))
-                }
+            let WorkloadSpec::Native {
+                executable: executable_source,
+                ..
+            } = &request.workload
+            else {
+                return Err(ToadStoolError::validation(
+                    "Invalid workload type for native runtime",
+                ));
             };
 
             // Resolve the executable path

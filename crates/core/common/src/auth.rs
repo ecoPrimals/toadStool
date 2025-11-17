@@ -17,7 +17,7 @@ pub enum AuthType {
     Bearer,
     /// API key authentication
     ApiKey,
-    /// OAuth2 authentication
+    /// `OAuth2` authentication
     OAuth2,
     /// Mutual TLS authentication
     MutualTLS,
@@ -54,6 +54,7 @@ pub struct AuthCredentials {
 
 impl AuthCredentials {
     /// Create empty credentials
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -97,14 +98,16 @@ impl AuthCredentials {
         }
     }
 
-    /// Create from a simple HashMap (for backward compatibility)
+    /// Create from a simple `HashMap` (for backward compatibility)
+    #[must_use]
     pub fn from_map(map: HashMap<String, String>) -> Self {
         let mut creds = Self::new();
         creds.extra = map;
         creds
     }
 
-    /// Convert to HashMap (for backward compatibility)
+    /// Convert to `HashMap` (for backward compatibility)
+    #[must_use]
     pub fn to_map(&self) -> HashMap<String, String> {
         let mut map = self.extra.clone();
 
@@ -181,6 +184,7 @@ impl Default for ServiceAuthConfig {
 
 impl ServiceAuthConfig {
     /// Create a new auth config with no authentication
+    #[must_use]
     pub fn none() -> Self {
         Self::default()
     }

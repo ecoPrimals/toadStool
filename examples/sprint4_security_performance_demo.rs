@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //

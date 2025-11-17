@@ -25,6 +25,7 @@
 //! and providing a unified configuration interface across the entire platform.
 
 pub mod config_utils;
+pub mod constants;
 pub mod defaults;
 pub mod env_config;
 pub mod runtime_defaults;

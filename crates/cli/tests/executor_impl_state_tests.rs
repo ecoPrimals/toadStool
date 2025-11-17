@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use tokio::sync::RwLock;
 
 #[cfg(test)]
@@ -73,13 +73,13 @@ mod state_management_tests {
 
         for (from_state, to_state) in invalid_transitions {
             // These transitions should be rejected
-            let is_valid = match (from_state, to_state) {
-                ("stopped", "starting") => true,
-                ("starting", "running") => true,
-                ("running", "pausing") => true,
-                ("running", "stopping") => true,
-                _ => false,
-            };
+            let is_valid = matches!(
+                (from_state, to_state),
+                ("stopped", "starting")
+                    | ("starting", "running")
+                    | ("running", "pausing")
+                    | ("running", "stopping")
+            );
 
             // The invalid ones should not match valid patterns
             assert!(!is_valid || (from_state, to_state) == ("stopped", "starting"));
@@ -275,6 +275,7 @@ mod state_management_tests {
     #[tokio::test]
     async fn test_state_change_tracking() {
         #[derive(Clone)]
+        #[allow(dead_code)]
         struct StateHistory {
             biome_name: String,
             from_state: String,

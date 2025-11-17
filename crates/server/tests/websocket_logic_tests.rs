@@ -84,7 +84,7 @@ fn test_malformed_json_handling() {
 #[test]
 fn test_empty_message_handling() {
     // Test empty message handling
-    let empty_msg = "";
+    let empty_msg = String::new();
     assert!(empty_msg.is_empty());
 
     let whitespace_msg = "   ";
@@ -391,6 +391,7 @@ fn test_broadcast_filter() {
 #[test]
 fn test_connection_metadata() {
     // Test connection metadata
+    #[allow(dead_code)]
     struct ConnectionMeta {
         id: uuid::Uuid,
         connected_at: chrono::DateTime<chrono::Utc>,

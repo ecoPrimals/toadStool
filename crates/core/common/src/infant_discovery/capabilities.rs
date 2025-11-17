@@ -301,6 +301,7 @@ impl DetectedSubstrate {
     }
 
     /// Get substrate-specific metadata value
+    #[must_use]
     pub fn get_metadata(&self, key: &str) -> Option<&String> {
         self.metadata.get(key)
     }
@@ -308,7 +309,7 @@ impl DetectedSubstrate {
 
 /// Substrate detection trait - implemented by specific detectors
 ///
-/// Migrated from async_trait to native async for zero-cost abstraction.
+/// Migrated from `async_trait` to native async for zero-cost abstraction.
 pub trait SubstrateDetector: Send + Sync {
     /// Try to detect this substrate type
     fn detect(
@@ -332,6 +333,7 @@ pub struct EndpointResolver {
 
 impl EndpointResolver {
     /// Create new resolver with default sources
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sources: Vec::new(),
@@ -362,7 +364,7 @@ impl Default for EndpointResolver {
 
 /// Endpoint source trait - one way to find service endpoints
 ///
-/// Migrated from async_trait to native async for zero-cost abstraction.
+/// Migrated from `async_trait` to native async for zero-cost abstraction.
 pub trait EndpointSource: Send + Sync {
     /// Try to resolve service endpoint from this source
     fn resolve(

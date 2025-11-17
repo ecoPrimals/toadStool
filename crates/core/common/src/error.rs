@@ -375,7 +375,7 @@ impl From<serde_json::Error> for ToadStoolError {
 
 impl From<std::io::Error> for SystemError {
     fn from(err: std::io::Error) -> Self {
-        SystemError::Io {
+        Self::Io {
             reason: err.to_string(),
         }
     }
@@ -383,7 +383,7 @@ impl From<std::io::Error> for SystemError {
 
 impl From<serde_json::Error> for SystemError {
     fn from(err: serde_json::Error) -> Self {
-        SystemError::Serialization {
+        Self::Serialization {
             reason: err.to_string(),
         }
     }
@@ -784,21 +784,27 @@ pub struct ToadStoolErrorWithCode {
 
 impl ToadStoolErrorWithCode {
     /// Get the error code if present
-    pub fn error_code(&self) -> Option<&ErrorCode> {
+    #[must_use]
+    pub const fn error_code(&self) -> Option<&ErrorCode> {
         self.code.as_ref()
     }
 
     /// Get the error code string if present
+    #[must_use]
     pub fn error_code_str(&self) -> Option<&str> {
         self.code.as_ref().map(|c| c.code)
     }
 
     /// Get the error category if code is present
+    #[must_use]
     pub fn category_str(&self) -> Option<&str> {
-        self.code.as_ref().map(|c| c.category_str())
+        self.code
+            .as_ref()
+            .map(super::error_codes::ErrorCode::category_str)
     }
 
     /// Get remediation suggestion if available
+    #[must_use]
     pub fn remediation(&self) -> Option<&str> {
         self.code.as_ref().and_then(|c| c.remediation)
     }

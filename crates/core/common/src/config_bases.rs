@@ -66,19 +66,19 @@ impl Default for TimeoutConfig {
     }
 }
 
-fn default_connection_timeout() -> Duration {
+const fn default_connection_timeout() -> Duration {
     Duration::from_secs(30)
 }
 
-fn default_request_timeout() -> Duration {
+const fn default_request_timeout() -> Duration {
     Duration::from_secs(60)
 }
 
-fn default_read_timeout() -> Duration {
+const fn default_read_timeout() -> Duration {
     Duration::from_secs(30)
 }
 
-fn default_write_timeout() -> Duration {
+const fn default_write_timeout() -> Duration {
     Duration::from_secs(30)
 }
 
@@ -130,27 +130,27 @@ impl Default for HealthCheckConfig {
     }
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
-fn default_health_check_interval() -> Duration {
+const fn default_health_check_interval() -> Duration {
     Duration::from_secs(30)
 }
 
-fn default_health_check_timeout() -> Duration {
+const fn default_health_check_timeout() -> Duration {
     Duration::from_secs(10)
 }
 
-fn default_healthy_threshold() -> u32 {
+const fn default_healthy_threshold() -> u32 {
     2
 }
 
-fn default_unhealthy_threshold() -> u32 {
+const fn default_unhealthy_threshold() -> u32 {
     3
 }
 
-fn default_retry_count() -> u32 {
+const fn default_retry_count() -> u32 {
     3
 }
 
@@ -191,7 +191,7 @@ fn default_health_path() -> String {
     "/health".to_string()
 }
 
-fn default_http_status() -> u16 {
+const fn default_http_status() -> u16 {
     200
 }
 
@@ -380,23 +380,23 @@ impl Default for RetryConfig {
     }
 }
 
-fn default_max_retries() -> u32 {
+const fn default_max_retries() -> u32 {
     3
 }
 
-fn default_base_delay() -> Duration {
+const fn default_base_delay() -> Duration {
     Duration::from_millis(100)
 }
 
-fn default_max_delay() -> Duration {
+const fn default_max_delay() -> Duration {
     Duration::from_secs(30)
 }
 
-fn default_backoff_multiplier() -> f64 {
+const fn default_backoff_multiplier() -> f64 {
     2.0
 }
 
-fn default_jitter_percent() -> f64 {
+const fn default_jitter_percent() -> f64 {
     10.0
 }
 
@@ -443,23 +443,23 @@ impl Default for ConnectionPoolConfig {
     }
 }
 
-fn default_pool_enabled() -> bool {
+const fn default_pool_enabled() -> bool {
     true
 }
 
-fn default_max_connections_per_host() -> u32 {
+const fn default_max_connections_per_host() -> u32 {
     100
 }
 
-fn default_max_idle_connections() -> u32 {
+const fn default_max_idle_connections() -> u32 {
     10
 }
 
-fn default_idle_connection_timeout() -> Duration {
+const fn default_idle_connection_timeout() -> Duration {
     Duration::from_secs(300)
 }
 
-fn default_connection_lifetime() -> Duration {
+const fn default_connection_lifetime() -> Duration {
     Duration::from_secs(3600)
 }
 
@@ -501,19 +501,19 @@ impl Default for CacheConfig {
     }
 }
 
-fn default_cache_enabled() -> bool {
+const fn default_cache_enabled() -> bool {
     true
 }
 
-fn default_cache_ttl() -> Duration {
+const fn default_cache_ttl() -> Duration {
     Duration::from_secs(300) // 5 minutes
 }
 
-fn default_max_cache_entries() -> u32 {
+const fn default_max_cache_entries() -> u32 {
     1000
 }
 
-fn default_negative_cache_ttl() -> Duration {
+const fn default_negative_cache_ttl() -> Duration {
     Duration::from_secs(60) // 1 minute
 }
 
@@ -655,6 +655,6 @@ impl Default for TelemetryConfig {
     }
 }
 
-fn default_metrics_port() -> u16 {
+const fn default_metrics_port() -> u16 {
     9090
 }

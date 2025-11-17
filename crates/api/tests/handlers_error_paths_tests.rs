@@ -48,7 +48,7 @@ mod request_validation_tests {
 
         // Verify the JSON is valid but incomplete
         assert!(incomplete_request.is_object());
-        assert!(!incomplete_request.get("workload_spec").is_some());
+        assert!(incomplete_request.get("workload_spec").is_none());
     }
 
     #[test]
@@ -138,7 +138,7 @@ mod request_validation_tests {
 #[cfg(test)]
 mod rate_limiting_tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
+
     use std::time::{Duration, Instant};
 
     #[test]
@@ -345,7 +345,6 @@ mod not_found_tests {
 
 #[cfg(test)]
 mod validation_error_tests {
-    use super::*;
 
     #[test]
     fn test_cpu_cores_validation() {
@@ -413,7 +412,7 @@ mod validation_error_tests {
 
 #[cfg(test)]
 mod timeout_error_tests {
-    use super::*;
+
     use std::time::Duration;
 
     #[tokio::test]
@@ -504,7 +503,7 @@ mod error_response_tests {
 
 #[cfg(test)]
 mod concurrent_error_tests {
-    use super::*;
+
     use std::sync::{Arc, Mutex};
 
     #[tokio::test]
@@ -568,7 +567,6 @@ mod concurrent_error_tests {
 
 #[cfg(test)]
 mod resource_exhaustion_tests {
-    use super::*;
 
     #[test]
     fn test_memory_exhaustion() {
@@ -667,7 +665,6 @@ mod edge_case_error_tests {
 
 #[cfg(test)]
 mod error_recovery_tests {
-    use super::*;
 
     #[test]
     fn test_retry_logic() {
@@ -706,6 +703,7 @@ mod error_recovery_tests {
     #[test]
     fn test_circuit_breaker_state() {
         #[derive(Debug, PartialEq)]
+        #[allow(dead_code)]
         enum CircuitState {
             Closed,
             Open,

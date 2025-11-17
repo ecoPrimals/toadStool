@@ -119,7 +119,7 @@ mod workload_execution_tests {
         for runtime_type in runtime_types {
             match runtime_type {
                 "native" | "wasm" | "container" | "python" | "gpu" => {
-                    assert!(true, "Valid runtime type: {runtime_type}");
+                    // Valid runtime type - no assertion needed
                 }
                 _ => {
                     panic!("Unexpected runtime type: {runtime_type}");
@@ -458,7 +458,7 @@ mod workload_execution_tests {
         for stream_type in stream_types {
             match stream_type {
                 "stdout" | "stderr" | "combined" => {
-                    assert!(true, "Valid stream type: {stream_type}");
+                    // Valid stream type - no assertion needed
                 }
                 _ => {
                     panic!("Invalid stream type: {stream_type}");
@@ -503,7 +503,9 @@ mod workload_execution_tests {
 
         let finite_timeout = Some(Duration::from_secs(300));
         assert!(finite_timeout.is_some());
-        assert_eq!(finite_timeout.unwrap().as_secs(), 300);
+        if let Some(timeout) = finite_timeout {
+            assert_eq!(timeout.as_secs(), 300);
+        }
     }
 
     // ============================================================================
@@ -534,10 +536,10 @@ mod workload_execution_tests {
 
         for strategy in strategies {
             match strategy {
-                "retry" => assert!(true, "Can retry on transient failures"),
-                "fallback" => assert!(true, "Can use fallback runtime"),
-                "skip" => assert!(true, "Can skip failed workload"),
-                "terminate" => assert!(true, "Can terminate entire biome"),
+                "retry" => { /* Can retry on transient failures */ }
+                "fallback" => { /* Can use fallback runtime */ }
+                "skip" => { /* Can skip failed workload */ }
+                "terminate" => { /* Can terminate entire biome */ }
                 _ => panic!("Unknown strategy: {strategy}"),
             }
         }
@@ -559,7 +561,7 @@ mod workload_execution_tests {
 
         for (priority_name, priority_level) in priorities {
             assert!(!priority_name.is_empty());
-            assert!(priority_level >= 1 && priority_level <= 5);
+            assert!((1..=5).contains(&priority_level));
         }
     }
 

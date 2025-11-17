@@ -372,7 +372,7 @@ fn test_cli_error_debug() {
 fn test_cli_error_as_source() {
     use std::error::Error;
 
-    let io_error = std::io::Error::new(std::io::ErrorKind::Other, "test");
+    let io_error = std::io::Error::other("test");
     let cli_error = CliError::Io(io_error);
 
     // Calls Error trait implementation

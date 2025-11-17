@@ -10,13 +10,14 @@
 //! - Concurrent state updates
 //! - State cleanup and garbage collection
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
 use toadstool::execution::*;
 use toadstool::resources::ResourceRequirements;
-use toadstool::workload::WorkloadSpec;
 use toadstool::{ExecutionInput, ExecutionOutput, RuntimeMetrics, SecurityContext};
 
 // ============================================================================
@@ -45,26 +46,28 @@ fn test_execution_status_creation() {
 #[test]
 fn test_execution_status_transitions_success_path() {
     // Simulate state transitions: Pending → Running → Success
-    let mut state = ExecutionStatus::Pending;
+    let state = ExecutionStatus::Pending;
+    assert_eq!(state, ExecutionStatus::Pending);
 
     // Transition to Running
-    state = ExecutionStatus::Running;
+    let state = ExecutionStatus::Running;
     assert_eq!(state, ExecutionStatus::Running);
 
     // Transition to Success
-    state = ExecutionStatus::Success;
+    let state = ExecutionStatus::Success;
     assert_eq!(state, ExecutionStatus::Success);
 }
 
 #[test]
 fn test_execution_status_transitions_failure_path() {
     // Simulate state transitions: Pending → Running → Failed
-    let mut state = ExecutionStatus::Pending;
+    let state = ExecutionStatus::Pending;
+    assert_eq!(state, ExecutionStatus::Pending);
 
-    state = ExecutionStatus::Running;
+    let state = ExecutionStatus::Running;
     assert_eq!(state, ExecutionStatus::Running);
 
-    state = ExecutionStatus::Failed {
+    let state = ExecutionStatus::Failed {
         error: "Execution error".to_string(),
     };
 
@@ -510,11 +513,10 @@ async fn test_concurrent_state_transitions() {
 
     for _ in 0..20 {
         let handle = tokio::spawn(async {
-            let mut state = ExecutionStatus::Pending;
-            state = ExecutionStatus::Running;
+            let _state = ExecutionStatus::Pending;
+            let _state = ExecutionStatus::Running;
             tokio::time::sleep(Duration::from_millis(1)).await;
-            state = ExecutionStatus::Success;
-            state
+            ExecutionStatus::Success
         });
         handles.push(handle);
     }

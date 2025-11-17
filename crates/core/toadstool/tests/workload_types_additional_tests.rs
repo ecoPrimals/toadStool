@@ -256,7 +256,9 @@ fn test_gpu_argument_buffer() {
 
 #[test]
 fn test_gpu_argument_scalar() {
-    let arg = GpuArgument::Scalar { value: 3.14159 };
+    let arg = GpuArgument::Scalar {
+        value: std::f64::consts::PI,
+    };
     assert!(matches!(arg, GpuArgument::Scalar { .. }));
 }
 
@@ -268,13 +270,15 @@ fn test_gpu_argument_integer() {
 
 #[test]
 fn test_gpu_argument_serialization() {
-    let arg = GpuArgument::Scalar { value: 2.71828 };
+    let arg = GpuArgument::Scalar {
+        value: std::f64::consts::E,
+    };
     let serialized = serde_json::to_string(&arg).expect("Failed to serialize");
     let deserialized: GpuArgument =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
     if let GpuArgument::Scalar { value } = deserialized {
-        assert!((value - 2.71828).abs() < 1e-5);
+        assert!((value - std::f64::consts::E).abs() < 1e-5);
     } else {
         panic!("Expected Scalar variant");
     }

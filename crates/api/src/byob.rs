@@ -106,6 +106,13 @@ async fn get_deployment_status(
 }
 
 /// Stop a deployment
+///
+/// # Errors
+///
+/// Returns `ApiError` if:
+/// - Deployment ID is not found
+/// - Deployment is already stopped
+/// - Stop operation fails due to system error
 async fn stop_deployment(
     State(executor): State<Arc<dyn ByobExecutor>>,
     Path(deployment_id): Path<Uuid>,
@@ -123,6 +130,13 @@ async fn stop_deployment(
 }
 
 /// Get resource usage for a deployment
+///
+/// # Errors
+///
+/// Returns `ApiError` if:
+/// - Deployment ID is not found
+/// - Resource metrics are unavailable
+/// - Metrics collection fails
 async fn get_resource_usage(
     State(executor): State<Arc<dyn ByobExecutor>>,
     Path(deployment_id): Path<Uuid>,
@@ -137,6 +151,11 @@ async fn get_resource_usage(
 }
 
 /// Health check endpoint
+///
+/// # Errors
+///
+/// This function is infallible and always returns Ok.
+/// The Result type is maintained for API consistency.
 async fn health_check() -> Result<Json<HealthResponse>, ApiError> {
     Ok(Json(HealthResponse {
         status: "healthy".to_string(),

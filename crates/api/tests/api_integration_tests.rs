@@ -6,13 +6,8 @@
 //! - Resource lifecycle management
 //! - State persistence and retrieval
 
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
 use serde_json::json;
 use std::collections::HashMap;
-use tower::ServiceExt;
 use uuid::Uuid;
 
 // ============================================================================
@@ -437,7 +432,7 @@ async fn test_large_output_handling() {
 #[tokio::test]
 async fn test_execution_state_persistence() {
     // Test state transitions are persistent
-    let execution_id = Uuid::new_v4();
+    let _execution_id = Uuid::new_v4();
 
     let state_changes = vec![
         ("Pending", 0),
@@ -486,7 +481,7 @@ async fn test_runtime_selection_integration() {
         ("gpu", "GpuRuntime"),
     ];
 
-    for (workload_type, expected_runtime) in workload_to_runtime {
+    for (workload_type, _expected_runtime) in workload_to_runtime {
         let request = json!({
             "workload": {"type": workload_type}
         });

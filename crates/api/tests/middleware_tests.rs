@@ -150,8 +150,8 @@ fn test_authorization_header_parsing() {
 #[test]
 fn test_token_empty_validation() {
     // Test empty token validation
-    let empty_token = "";
-    let valid_token = "eyJhbGc.eyJzdWI.SflKxw";
+    let empty_token: &str = "";
+    let valid_token: &str = "eyJhbGc.eyJzdWI.SflKxw";
 
     assert!(empty_token.is_empty());
     assert!(!valid_token.is_empty());
@@ -166,9 +166,9 @@ fn test_rate_limit_constants() {
     assert_eq!(RATE_LIMIT_MAX_REQUESTS, 100);
     assert_eq!(RATE_LIMIT_WINDOW_SECS, 60);
 
-    // Verify rate limit makes sense
-    assert!(RATE_LIMIT_MAX_REQUESTS > 0);
-    assert!(RATE_LIMIT_WINDOW_SECS > 0);
+    // Verify rate limit makes sense (compile-time checks)
+    const _: () = assert!(RATE_LIMIT_MAX_REQUESTS > 0);
+    const _: () = assert!(RATE_LIMIT_WINDOW_SECS > 0);
 }
 
 #[test]
@@ -237,15 +237,15 @@ fn test_status_code_classification() {
     let server_error_codes = vec![500, 502, 503];
 
     for code in success_codes {
-        assert!(code >= 200 && code < 300);
+        assert!((200..300).contains(&code));
     }
 
     for code in client_error_codes {
-        assert!(code >= 400 && code < 500);
+        assert!((400..500).contains(&code));
     }
 
     for code in server_error_codes {
-        assert!(code >= 500 && code < 600);
+        assert!((500..600).contains(&code));
     }
 }
 
@@ -259,7 +259,8 @@ fn test_duration_measurement() {
     let _work = (0..1000).sum::<u64>();
     let duration = start.elapsed();
 
-    assert!(duration.as_millis() >= 0);
+    // as_millis() returns u128 which is always >= 0, so just verify it exists
+    let _millis = duration.as_millis();
     assert!(duration.as_nanos() > 0);
 }
 
@@ -281,7 +282,8 @@ fn test_duration_to_milliseconds() {
 fn test_header_value_creation() {
     // Test header value creation
     let value = "test-value";
-    assert!(!value.is_empty());
+    // String literals are never empty by construction
+    assert_eq!(value.len(), 10);
 
     // Header values should be ASCII-compatible
     assert!(value.is_ascii());

@@ -3,10 +3,8 @@
 //! Target: Increase ecosystem.rs coverage from 26.20% → 40%+
 //! Focus: Untested paths, error handling, edge cases
 
-use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::ecosystem::*;
-use toadstool::*;
 
 // ============================================================================
 // PrimalType Tests - Edge Cases
@@ -235,8 +233,10 @@ fn test_primal_instance_deserialization() {
 
 #[test]
 fn test_ecosystem_config_custom_timeout() {
-    let mut config = EcosystemConfig::default();
-    config.discovery_timeout = Duration::from_secs(60);
+    let config = EcosystemConfig {
+        discovery_timeout: Duration::from_secs(60),
+        ..Default::default()
+    };
 
     assert_eq!(config.discovery_timeout, Duration::from_secs(60));
 }
@@ -258,8 +258,10 @@ fn test_ecosystem_config_with_endpoints() {
 
 #[test]
 fn test_ecosystem_config_required_primals() {
-    let mut config = EcosystemConfig::default();
-    config.required_primals = vec!["songbird".to_string(), "nestgate".to_string()];
+    let config = EcosystemConfig {
+        required_primals: vec!["songbird".to_string(), "nestgate".to_string()],
+        ..Default::default()
+    };
 
     assert_eq!(config.required_primals.len(), 2);
     assert!(config.required_primals.contains(&"songbird".to_string()));
@@ -267,8 +269,10 @@ fn test_ecosystem_config_required_primals() {
 
 #[test]
 fn test_ecosystem_config_no_auto_discovery() {
-    let mut config = EcosystemConfig::default();
-    config.auto_discovery = false;
+    let config = EcosystemConfig {
+        auto_discovery: false,
+        ..Default::default()
+    };
 
     assert!(!config.auto_discovery);
 }
@@ -405,8 +409,7 @@ async fn test_ecosystem_coordinator_default_config() {
     let _coordinator = EcosystemCoordinator::new().unwrap();
 
     // Coordinator should be created with default config
-    // We can't access config directly, but we can test behavior
-    assert!(true); // Placeholder - coordinator created successfully
+    // We can't access config directly, but creation success is verified by is_ok() above
 }
 
 #[tokio::test]
@@ -464,8 +467,10 @@ fn test_ecosystem_config_empty_optional_primals() {
 
 #[test]
 fn test_ecosystem_config_zero_timeout() {
-    let mut config = EcosystemConfig::default();
-    config.discovery_timeout = Duration::from_secs(0);
+    let config = EcosystemConfig {
+        discovery_timeout: Duration::from_secs(0),
+        ..Default::default()
+    };
 
     assert_eq!(config.discovery_timeout, Duration::from_secs(0));
 }

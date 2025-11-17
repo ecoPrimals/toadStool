@@ -411,7 +411,11 @@ fn test_config_merge_strategy() {
     let default_timeout = 60;
     let user_timeout: Option<u64> = Some(120);
 
-    let effective_timeout = user_timeout.unwrap_or(default_timeout);
+    let effective_timeout = if let Some(timeout) = user_timeout {
+        timeout
+    } else {
+        default_timeout
+    };
 
     assert_eq!(effective_timeout, 120);
 }

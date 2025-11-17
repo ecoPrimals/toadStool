@@ -2,16 +2,16 @@
 
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
-use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_security_policies::{PolicyManager, SecurityPolicy};
 
+use super::helpers;
 use super::traits::*;
 use super::types::*;
 
@@ -83,82 +83,6 @@ impl CrossPlatformSandboxManager {
         })
     }
 
-    /// Generate unique sandbox ID
-    fn generate_sandbox_id(&self) -> String {
-        format!("sandbox_{}", Uuid::new_v4().simple())
-    }
-
-    /// Validate sandbox specification
-    async fn validate_sandbox_spec(&self, spec: &SandboxSpec) -> ToadStoolResult<()> {
-        // Validate resource limits
-        if let Some(memory) = spec.resource_limits.max_memory_bytes {
-            if memory == 0 {
-                return Err(ToadStoolError::validation(
-                    "Memory limit cannot be zero".to_string(),
-                ));
-            }
-        }
-
-        if let Some(cpu) = spec.resource_limits.max_cpu_percent {
-            if cpu <= 0.0 || cpu > 100.0 {
-                return Err(ToadStoolError::validation(
-                    "CPU limit must be between 0 and 100".to_string(),
-                ));
-            }
-        }
-
-        // Validate filesystem mounts
-        for mount in &spec.filesystem_mounts {
-            if !mount.source.exists() && !matches!(mount.mount_type, MountType::TmpFs) {
-                return Err(ToadStoolError::validation(format!(
-                    "Mount source does not exist: {}",
-                    mount.source.display()
-                )));
-            }
-        }
-
-        // Validate network configuration
-        if spec.network_config.enabled {
-            for host in &spec.network_config.allowed_hosts {
-                if host.is_empty() {
-                    return Err(ToadStoolError::validation(
-                        "Empty host in allowed hosts".to_string(),
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Create sandbox directory structure
-    async fn create_sandbox_directories(&self, sandbox_id: &str) -> ToadStoolResult<PathBuf> {
-        let sandbox_dir = self.config.sandbox_root.join(sandbox_id);
-
-        tokio::fs::create_dir_all(&sandbox_dir).await.map_err(|e| {
-            ToadStoolError::configuration(format!(
-                "Failed to create sandbox directory {}: {}",
-                sandbox_dir.display(),
-                e
-            ))
-        })?;
-
-        // Create standard directories
-        let dirs = ["bin", "etc", "tmp", "var", "proc", "sys", "dev"];
-        for dir in &dirs {
-            let dir_path = sandbox_dir.join(dir);
-            tokio::fs::create_dir_all(&dir_path).await.map_err(|e| {
-                ToadStoolError::configuration(format!(
-                    "Failed to create sandbox subdirectory {}: {}",
-                    dir_path.display(),
-                    e
-                ))
-            })?;
-        }
-
-        Ok(sandbox_dir)
-    }
-
     /// Setup filesystem mounts for sandbox
     async fn setup_filesystem_mounts(
         &self,
@@ -203,16 +127,17 @@ impl SandboxManager for CrossPlatformSandboxManager {
 
         // Generate sandbox ID if not provided
         if spec.sandbox_id.is_empty() {
-            spec.sandbox_id = self.generate_sandbox_id();
+            spec.sandbox_id = helpers::generate_sandbox_id();
         }
 
         let sandbox_id = spec.sandbox_id.clone();
 
         // Validate specification
-        self.validate_sandbox_spec(&spec).await?;
+        helpers::validate_sandbox_spec(&spec).await?;
 
         // Create sandbox directories
-        let sandbox_dir = self.create_sandbox_directories(&sandbox_id).await?;
+        let sandbox_dir =
+            helpers::create_sandbox_directories(&self.config.sandbox_root, &sandbox_id).await?;
 
         // Setup filesystem mounts
         self.setup_filesystem_mounts(&sandbox_dir, &spec.filesystem_mounts)
@@ -466,6 +391,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     use std::sync::Arc;
     use std::time::Duration;
     use tempfile::TempDir;
@@ -558,48 +484,36 @@ mod tests {
 
     #[tokio::test]
     async fn test_sandbox_spec_validation() {
-        let config = create_test_config();
-        let policy_manager = create_test_policy_manager();
-
-        let manager = CrossPlatformSandboxManager::new(config, policy_manager)
-            .await
-            .unwrap();
-
         // Test valid spec
         let spec = create_test_sandbox_spec();
-        let result = manager.validate_sandbox_spec(&spec).await;
+        let result = helpers::validate_sandbox_spec(&spec).await;
         assert!(result.is_ok());
 
         // Test invalid spec - zero memory limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_memory_bytes = Some(0);
-        let result = manager.validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
         assert!(result.is_err());
 
         // Test invalid spec - invalid CPU limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_cpu_percent = Some(150.0);
-        let result = manager.validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
         assert!(result.is_err());
 
         // Test invalid spec - negative CPU limit
         let mut invalid_spec = create_test_sandbox_spec();
         invalid_spec.resource_limits.max_cpu_percent = Some(-10.0);
-        let result = manager.validate_sandbox_spec(&invalid_spec).await;
+        let result = helpers::validate_sandbox_spec(&invalid_spec).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_sandbox_directory_creation() {
         let config = create_test_config();
-        let policy_manager = create_test_policy_manager();
-
-        let manager = CrossPlatformSandboxManager::new(config, policy_manager)
-            .await
-            .unwrap();
         let sandbox_id = "test-sandbox";
 
-        let result = manager.create_sandbox_directories(sandbox_id).await;
+        let result = helpers::create_sandbox_directories(&config.sandbox_root, sandbox_id).await;
         assert!(result.is_ok());
 
         let sandbox_dir = result.unwrap();

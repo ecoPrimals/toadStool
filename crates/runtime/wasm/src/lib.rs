@@ -637,13 +637,14 @@ impl RuntimeEngine for WasmRuntimeEngine {
             info!("Executing WebAssembly workload: {}", request.execution_id);
 
             // Extract WASM workload specification
-            let module_source = match &request.workload {
-                toadstool::workload::WorkloadSpec::Wasm { module, .. } => module,
-                _ => {
-                    return Err(ToadStoolError::validation(
-                        "Invalid workload type for WASM runtime".to_string(),
-                    ));
-                }
+            let toadstool::workload::WorkloadSpec::Wasm {
+                module: module_source,
+                ..
+            } = &request.workload
+            else {
+                return Err(ToadStoolError::validation(
+                    "Invalid workload type for WASM runtime".to_string(),
+                ));
             };
 
             // Load or get cached module

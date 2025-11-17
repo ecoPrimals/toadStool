@@ -32,12 +32,7 @@ async fn test_circuit_breaker_concurrent_failures() {
         let breaker_clone = breaker.clone();
         let handle = tokio::spawn(async move {
             breaker_clone
-                .execute(async {
-                    Err::<String, _>(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "concurrent failure",
-                    ))
-                })
+                .execute(async { Err::<String, _>(std::io::Error::other("concurrent failure")) })
                 .await
         });
         handles.push(handle);
@@ -68,9 +63,7 @@ async fn test_circuit_breaker_timeout_recovery() {
     // Trigger failures to open circuit
     for _ in 0..2 {
         let _ = breaker
-            .execute(async {
-                Err::<String, _>(std::io::Error::new(std::io::ErrorKind::Other, "test"))
-            })
+            .execute(async { Err::<String, _>(std::io::Error::other("test")) })
             .await;
     }
 
@@ -101,9 +94,7 @@ async fn test_circuit_breaker_half_open_to_closed_transition() {
     // Open the circuit
     for _ in 0..2 {
         let _ = breaker
-            .execute(async {
-                Err::<String, _>(std::io::Error::new(std::io::ErrorKind::Other, "test"))
-            })
+            .execute(async { Err::<String, _>(std::io::Error::other("test")) })
             .await;
     }
 
@@ -147,9 +138,7 @@ async fn test_circuit_breaker_mixed_success_failure_pattern() {
                 .await;
         } else {
             let _ = breaker
-                .execute(async {
-                    Err::<String, _>(std::io::Error::new(std::io::ErrorKind::Other, "fail"))
-                })
+                .execute(async { Err::<String, _>(std::io::Error::other("fail")) })
                 .await;
         }
     }
@@ -175,9 +164,7 @@ async fn test_circuit_breaker_rapid_state_changes() {
     // Rapid failures to open
     for _ in 0..2 {
         let _ = breaker
-            .execute(async {
-                Err::<String, _>(std::io::Error::new(std::io::ErrorKind::Other, "fail"))
-            })
+            .execute(async { Err::<String, _>(std::io::Error::other("fail")) })
             .await;
     }
 
@@ -576,10 +563,7 @@ async fn test_full_production_hardening_workflow() {
         let result = breaker
             .execute(async move {
                 if i % 3 == 0 {
-                    Err::<String, _>(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "simulated failure",
-                    ))
+                    Err::<String, _>(std::io::Error::other("simulated failure"))
                 } else {
                     Ok::<_, std::io::Error>("success".to_string())
                 }
@@ -634,10 +618,7 @@ async fn test_circuit_breaker_high_throughput() {
             breaker_clone
                 .execute(async move {
                     if i % 10 == 0 {
-                        Err::<String, _>(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "occasional failure",
-                        ))
+                        Err::<String, _>(std::io::Error::other("occasional failure"))
                     } else {
                         Ok::<_, std::io::Error>("success".to_string())
                     }

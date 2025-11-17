@@ -182,7 +182,7 @@ mod performance_hardening_logic_tests {
     #[test]
     fn test_cache_hit_rate_threshold() {
         let threshold = 0.8f64;
-        assert!(threshold >= 0.0 && threshold <= 1.0);
+        assert!((0.0..=1.0).contains(&threshold));
     }
 
     #[test]
@@ -523,7 +523,7 @@ mod performance_hardening_logic_tests {
     #[test]
     fn test_invalid_threshold() {
         let threshold = 1.5f64;
-        let is_invalid = threshold > 1.0 || threshold < 0.0;
+        let is_invalid = !(0.0..=1.0).contains(&threshold);
 
         assert!(is_invalid);
     }

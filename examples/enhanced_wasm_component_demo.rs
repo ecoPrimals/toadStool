@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 //! # Enhanced WebAssembly Component Model Demo
 //!
 //! This example demonstrates the enhanced WebAssembly runtime capabilities including:
@@ -7,19 +9,7 @@
 //! - Component composition and linking
 //! - Advanced WASI integration
 
-use std::collections::HashMap;
-use tokio;
-use tracing::info;
-use uuid::Uuid;
-
-use toadstool::{
-    config::ToadStoolConfig,
-    execution::{ExecutionInput, ExecutionRequest, RuntimeEngine, RuntimeType},
-    init,
-    resources::ResourceRequirements,
-    security::{IsolationLevel, SecurityContext},
-    workload::{WasmModuleSource, WorkloadSpec},
-};
+use toadstool::{execution::RuntimeEngine, init};
 
 use toadstool_runtime_wasm::{
     ComponentInterface, ComponentModelConfig, ComponentModelSupport, ComponentValue,
@@ -35,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     println!("{}", "=".repeat(70));
 
     // Create enhanced WASM runtime configuration with component model support
-    let mut wasm_config = WasmRuntimeConfig {
+    let wasm_config = WasmRuntimeConfig {
         cache: toadstool_common::config_bases::CacheConfig {
             enabled: true,
             max_entries: 256,

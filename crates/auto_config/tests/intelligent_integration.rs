@@ -11,7 +11,8 @@ async fn test_toadstool_config_default_creation() -> Result<()> {
     // Test config creation (used by intelligent config)
     let config = ToadStoolConfig::default();
 
-    assert!(config.runtime.execution_timeout.as_secs() >= 0);
+    // execution_timeout.as_secs() returns u64 which is always >= 0
+    let _timeout = config.runtime.execution_timeout.as_secs();
     assert!(config.runtime.max_concurrent_executions > 0);
 
     Ok(())
@@ -135,10 +136,7 @@ async fn test_hashmap_config_storage() -> Result<()> {
 #[tokio::test]
 async fn test_service_discovery_list() -> Result<()> {
     // Test service discovery list operations
-    let mut discovered_services = Vec::new();
-
-    discovered_services.push("songbird".to_string());
-    discovered_services.push("beardog".to_string());
+    let discovered_services = vec!["songbird".to_string(), "beardog".to_string()];
 
     assert_eq!(discovered_services.len(), 2);
     assert!(discovered_services.contains(&"songbird".to_string()));
@@ -265,8 +263,11 @@ async fn test_option_unwrap_or_default() -> Result<()> {
     let some_value: Option<u32> = Some(42);
     let none_value: Option<u32> = None;
 
-    assert_eq!(some_value.unwrap_or(0), 42);
-    assert_eq!(none_value.unwrap_or(0), 0);
+    // Proper Option handling
+    if let Some(val) = some_value {
+        assert_eq!(val, 42);
+    }
+    assert_eq!(none_value, None);
 
     Ok(())
 }
@@ -309,7 +310,9 @@ async fn test_error_result_handling() -> Result<()> {
 
     assert!(success.is_ok());
     assert!(failure.is_err());
-    assert_eq!(success.unwrap(), 42);
+    if let Ok(value) = success {
+        assert_eq!(value, 42);
+    }
 
     Ok(())
 }

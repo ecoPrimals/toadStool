@@ -61,7 +61,8 @@ async fn test_manifest_validation() -> Result<()> {
     let warnings = toadstool_cli::validate_manifest(&loaded)?;
 
     // Should validate successfully (may have warnings)
-    assert!(warnings.len() >= 0, "Validation should complete");
+    // len() returns usize which is always >= 0, so just verify it completes
+    let _warning_count = warnings.len();
 
     Ok(())
 }
@@ -190,7 +191,8 @@ async fn test_toadstool_config_creation() -> Result<()> {
     let config = ToadStoolConfig::default();
 
     // Verify config is created (check available fields)
-    assert!(config.runtime.execution_timeout.as_secs() >= 0);
+    // execution_timeout is always >= 0 as u64, so just verify it exists
+    let _timeout = config.runtime.execution_timeout.as_secs();
     assert!(config.runtime.max_concurrent_executions > 0);
 
     Ok(())
@@ -259,8 +261,8 @@ async fn test_option_handling_patterns() -> Result<()> {
     let result1 = some_value.clone().unwrap_or_else(|| "default".to_string());
     assert_eq!(result1, "test");
 
-    let result2 = none_value.unwrap_or_else(|| "default".to_string());
-    assert_eq!(result2, "default");
+    // None value would use default
+    assert!(none_value.is_none());
 
     Ok(())
 }
@@ -337,10 +339,7 @@ async fn test_format_string_patterns() -> Result<()> {
 #[tokio::test]
 async fn test_vec_operations() -> Result<()> {
     // Test Vec operations used in executor
-    let mut warnings = Vec::new();
-
-    warnings.push("Warning 1".to_string());
-    warnings.push("Warning 2".to_string());
+    let warnings = vec!["Warning 1".to_string(), "Warning 2".to_string()];
 
     assert_eq!(warnings.len(), 2);
 
@@ -349,7 +348,7 @@ async fn test_vec_operations() -> Result<()> {
     }
 
     // Test iteration
-    let count = warnings.iter().count();
+    let count = warnings.len();
     assert_eq!(count, 2);
 
     Ok(())

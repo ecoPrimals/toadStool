@@ -5,3 +5,6 @@
 #[path = "chaos/fault_injection.rs"]
 mod fault_injection;
 
+#[path = "chaos/resilience_tests.rs"]
+mod resilience_tests;
+

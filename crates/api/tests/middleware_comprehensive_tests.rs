@@ -182,7 +182,7 @@ fn test_jwt_token_structure_invalid() {
 
 #[test]
 fn test_jwt_token_empty() {
-    let token = "";
+    let token: &str = "";
     assert!(token.is_empty());
 }
 
@@ -325,31 +325,31 @@ fn test_response_time_exactly_threshold() {
 #[test]
 fn test_status_code_success_200() {
     let code = 200;
-    assert!(code >= 200 && code < 300);
+    assert!((200..300).contains(&code));
 }
 
 #[test]
 fn test_status_code_success_201() {
     let code = 201;
-    assert!(code >= 200 && code < 300);
+    assert!((200..300).contains(&code));
 }
 
 #[test]
 fn test_status_code_client_error_400() {
     let code = 400;
-    assert!(code >= 400 && code < 500);
+    assert!((400..500).contains(&code));
 }
 
 #[test]
 fn test_status_code_client_error_404() {
     let code = 404;
-    assert!(code >= 400 && code < 500);
+    assert!((400..500).contains(&code));
 }
 
 #[test]
 fn test_status_code_server_error_500() {
     let code = 500;
-    assert!(code >= 500 && code < 600);
+    assert!((500..600).contains(&code));
 }
 
 // Test header value creation
@@ -368,13 +368,13 @@ fn test_header_value_fallback() {
 // Test IP extraction
 #[test]
 fn test_ip_from_x_forwarded_for() {
-    let header_value = "192.168.1.100";
+    let header_value: &str = "192.168.1.100";
     assert!(!header_value.is_empty());
 }
 
 #[test]
 fn test_ip_from_x_real_ip() {
-    let header_value = "10.0.0.1";
+    let header_value: &str = "10.0.0.1";
     assert!(!header_value.is_empty());
 }
 

@@ -174,7 +174,7 @@ fn test_load_balancing_strategy_variants() {
 #[test]
 fn test_job_priority_clone() {
     let priority = JobPriority::High;
-    let cloned = priority.clone();
+    let cloned = priority;
     assert_eq!(priority, cloned);
 }
 

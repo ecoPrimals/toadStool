@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
+
+#![allow(clippy::all)]
 // Copyright (C) 2025 ecoPrimals
 
 //! Comprehensive tests for execution.rs types
@@ -307,8 +309,10 @@ fn test_execution_request_default() {
 
 #[test]
 fn test_execution_request_with_timeout() {
-    let mut request = ExecutionRequest::default();
-    request.timeout = Some(Duration::from_secs(60));
+    let request = ExecutionRequest {
+        timeout: Some(Duration::from_secs(60)),
+        ..Default::default()
+    };
 
     assert_eq!(request.timeout, Some(Duration::from_secs(60)));
 }
@@ -319,8 +323,10 @@ fn test_execution_request_with_environment() {
     env.insert("PATH".to_string(), "/usr/bin".to_string());
     env.insert("HOME".to_string(), "/home/user".to_string());
 
-    let mut request = ExecutionRequest::default();
-    request.environment = env.clone();
+    let request = ExecutionRequest {
+        environment: env.clone(),
+        ..Default::default()
+    };
 
     assert_eq!(request.environment.len(), 2);
     assert_eq!(
@@ -331,8 +337,10 @@ fn test_execution_request_with_environment() {
 
 #[test]
 fn test_execution_request_with_runtime_hint() {
-    let mut request = ExecutionRequest::default();
-    request.runtime_hint = Some(RuntimeType::Wasm);
+    let request = ExecutionRequest {
+        runtime_hint: Some(RuntimeType::Wasm),
+        ..Default::default()
+    };
 
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
@@ -701,12 +709,12 @@ fn test_runtime_types_collection() {
 
     for runtime in &runtimes {
         match runtime {
-            RuntimeType::Native => assert!(true),
-            RuntimeType::Wasm => assert!(true),
-            RuntimeType::Container => assert!(true),
-            RuntimeType::Gpu => assert!(true),
-            RuntimeType::Python => assert!(true),
-            RuntimeType::Custom(_) => assert!(true),
+            RuntimeType::Native => { /* Valid */ }
+            RuntimeType::Wasm => { /* Valid */ }
+            RuntimeType::Container => { /* Valid */ }
+            RuntimeType::Gpu => { /* Valid */ }
+            RuntimeType::Python => { /* Valid */ }
+            RuntimeType::Custom(_) => { /* Valid */ }
         }
     }
 }

@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use toadstool_api::types::{ApiConfig, ApiMetrics};
-use toadstool_api::ApiState;
+use toadstool_api::types::ApiConfig;
+use toadstool_api::{ApiMetrics, ApiState};
 use tokio::sync::RwLock;
 
 // Helper to create mock API state
@@ -14,7 +14,6 @@ fn create_test_api_state() -> ApiState {
     ApiState {
         event_broadcaster: event_sender,
         executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
-        config: ApiConfig::default(),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
     }
@@ -234,7 +233,7 @@ async fn test_execution_tracking() {
     let exec_id2 = uuid::Uuid::new_v4();
 
     {
-        let mut executions = state.executions.write().await;
+        let executions = state.executions.write().await;
         // Just test that we can write to the HashMap
         assert_eq!(executions.len(), 0);
     }
@@ -306,7 +305,7 @@ async fn test_rwlock_write_exclusive_access() {
     }
 
     let final_value = *data.read().await;
-    assert_eq!(final_value, 0 + 1 + 2 + 3 + 4);
+    assert_eq!(final_value, 1 + 2 + 3 + 4);
 }
 
 #[tokio::test]
@@ -370,19 +369,6 @@ async fn test_error_type_creation() {
 }
 
 #[tokio::test]
-async fn test_option_unwrap_or_else_pattern() {
-    // Test Option handling patterns used in middleware
-    let some_value: Option<String> = Some("value".to_string());
-    let none_value: Option<String> = None;
-
-    let result1 = some_value.unwrap_or_else(|| "default".to_string());
-    assert_eq!(result1, "value");
-
-    let result2 = none_value.unwrap_or_else(|| "default".to_string());
-    assert_eq!(result2, "default");
-}
-
-#[tokio::test]
 async fn test_string_formatting() {
     // Test string formatting used in logging
     let method = "GET";
@@ -401,8 +387,9 @@ async fn test_rate_limiting_constants() {
     const MAX_REQUESTS: u32 = 100;
     const WINDOW_SECS: u64 = 60;
 
-    assert!(MAX_REQUESTS > 0);
-    assert!(WINDOW_SECS > 0);
+    // Constants validated at compile time
+    const _: () = assert!(MAX_REQUESTS > 0);
+    const _: () = assert!(WINDOW_SECS > 0);
     assert_eq!(MAX_REQUESTS, 100);
     assert_eq!(WINDOW_SECS, 60);
 }

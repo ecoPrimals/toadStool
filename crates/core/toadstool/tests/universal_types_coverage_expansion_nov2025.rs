@@ -31,7 +31,7 @@ fn test_security_level_equality() {
 fn test_security_level_copy_clone() {
     let level = SecurityLevel::High;
     let copied = level;
-    let cloned = level.clone();
+    let cloned = level;
 
     assert_eq!(level, copied);
     assert_eq!(level, cloned);
@@ -312,7 +312,7 @@ fn test_job_priority_equality() {
 fn test_job_priority_copy_clone() {
     let priority = JobPriority::Critical;
     let copied = priority;
-    let cloned = priority.clone();
+    let cloned = priority;
 
     assert_eq!(priority, copied);
     assert_eq!(priority, cloned);

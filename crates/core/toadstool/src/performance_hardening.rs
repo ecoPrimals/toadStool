@@ -723,9 +723,7 @@ where
 
     /// Process current batch
     async fn process_batch(&self) {
-        let _permit = if let Ok(permit) = self.semaphore.acquire().await {
-            permit
-        } else {
+        let Ok(_permit) = self.semaphore.acquire().await else {
             tracing::error!("Failed to acquire semaphore permit for batch processing");
             return;
         };
@@ -767,9 +765,7 @@ where
             loop {
                 interval.tick().await;
 
-                let _permit = if let Ok(permit) = semaphore.acquire().await {
-                    permit
-                } else {
+                let Ok(_permit) = semaphore.acquire().await else {
                     tracing::error!("Failed to acquire semaphore permit for batch timer");
                     continue;
                 };

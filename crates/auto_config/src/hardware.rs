@@ -639,13 +639,12 @@ impl HardwareDetector {
             return 20.0; // Integrated graphics assumption
         }
 
-        let best_gpu = match gpu_info.iter().max_by(|a, b| {
+        let Some(best_gpu) = gpu_info.iter().max_by(|a, b| {
             a.memory_gb
                 .partial_cmp(&b.memory_gb)
                 .unwrap_or(std::cmp::Ordering::Equal)
-        }) {
-            Some(gpu) => gpu,
-            None => return 20.0, // Fallback to integrated graphics score
+        }) else {
+            return 20.0; // Fallback to integrated graphics score
         };
 
         let memory_score = (best_gpu.memory_gb / 24.0 * 50.0).min(50.0);

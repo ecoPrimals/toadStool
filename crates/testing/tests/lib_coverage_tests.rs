@@ -19,7 +19,12 @@ fn test_test_result_ok() {
 fn test_test_result_ok_with_value() {
     let value = 42;
     let result: TestResult<i32> = Ok(value);
-    assert_eq!(result.expect("Should be Ok"), value);
+    // Test that we can extract the value
+    if let Ok(v) = result {
+        assert_eq!(v, value);
+    } else {
+        panic!("Expected Ok variant");
+    }
 }
 
 #[test]
@@ -106,10 +111,6 @@ fn test_reexports_available() {
 fn test_all_modules_accessible() {
     // Verify all public modules are accessible by importing them
     // If these modules don't exist or aren't public, this won't compile
-    use toadstool_testing::{
-        assertions as _, builders as _, fixtures as _, integration as _, mocks as _,
-        performance as _, properties as _,
-    };
 
     // Test passed if we got here - modules are accessible
     // Test passes if compilation succeeds

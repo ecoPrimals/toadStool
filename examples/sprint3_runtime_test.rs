@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 //! Sprint 3 Runtime Engines Test
 //!
 //! This example demonstrates the three runtime engines implemented in Sprint 3:

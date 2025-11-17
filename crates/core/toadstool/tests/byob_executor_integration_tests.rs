@@ -1,4 +1,6 @@
 //! Integration tests for ByobExecutor trait implementation
+
+#![allow(clippy::all)]
 //!
 //! Coverage Target: Increase byob.rs from 36% → 70%
 //! Focus: ByobExecutor trait methods and deployment lifecycle
@@ -35,6 +37,7 @@ impl MockRuntimeEngine {
         Self { should_fail: false }
     }
 
+    #[allow(dead_code)]
     fn with_failure() -> Self {
         Self { should_fail: true }
     }
@@ -558,8 +561,8 @@ fn test_service_with_multiple_volumes() {
     };
 
     assert_eq!(service.volumes.len(), 2);
-    assert_eq!(service.volumes[0].read_only, false);
-    assert_eq!(service.volumes[1].read_only, true);
+    assert!(!service.volumes[0].read_only);
+    assert!(service.volumes[1].read_only);
 }
 
 // ============================================================================

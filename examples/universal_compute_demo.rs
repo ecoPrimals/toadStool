@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Universal Compute Demonstration - ToadStool's Open-First Strategy
 //
 // This demo showcases ToadStool's approach to universal compute:

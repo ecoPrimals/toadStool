@@ -5,34 +5,29 @@
 //! - `BearDog`: Cryptographic security and permissions
 //! - `NestGate`: Distributed storage and data management
 //!
-//! ## Module Structure
+//! ## Module Structure (Refactored by Protocol)
 //!
 //! - `types`: Type definitions (EcosystemIntegrator, ServiceEndpoint, etc.)
-//! - `integrator_impl`: EcosystemIntegrator implementation
+//! - `discovery`: Service discovery and scanning logic
+//! - `connection`: Connection management
+//! - `services/`: Service-specific integrations (Songbird, BearDog, NestGate)
+//! - `integrator_impl`: Core EcosystemIntegrator implementation
 
-// Type definitions
+// Submodules
+mod connection;
+mod discovery;
+mod services;
 mod types;
+
+// Public re-exports
 pub use types::{
     BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
     EcosystemIntegrator, EcosystemService, NestGateMount, ServiceEndpoint, ServiceSignature,
     ServiceType, SignedServiceResponse, TrustLevel,
 };
-use types::{
-    ConnectionStatus, EcosystemStatus, ServiceConnection, SongbirdRegistration, SongbirdResponse,
-};
 
-// Core imports
-use anyhow::{bail, Context, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use chrono::Utc;
-use std::collections::{BTreeMap, HashMap};
-use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
-use toadstool_config::env_config::EnvironmentConfig;
-use tokio::fs;
-use tokio::time::{timeout, Duration};
-use tracing::{error, info, warn};
-use uuid::Uuid;
+// Internal types
+use types::{ConnectionStatus, EcosystemStatus, ServiceConnection, SongbirdRegistration};
 
 impl Default for EcosystemIntegrator {
     fn default() -> Self {
@@ -46,6 +41,7 @@ include!("integrator_impl.rs");
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn test_ecosystem_service_variants() {
@@ -190,28 +186,6 @@ mod tests {
     }
 
     #[test]
-    fn test_ecosystem_service_parse() {
-        assert!(matches!(
-            EcosystemService::parse("songbird"),
-            EcosystemService::Songbird
-        ));
-        assert!(matches!(
-            EcosystemService::parse("BEARDOG"),
-            EcosystemService::BearDog
-        ));
-        assert!(matches!(
-            EcosystemService::parse("NestGate"),
-            EcosystemService::NestGate
-        ));
-
-        let unknown = EcosystemService::parse("custom-service");
-        match unknown {
-            EcosystemService::Unknown(name) => assert_eq!(name, "custom-service"),
-            _ => panic!("Expected Unknown variant"),
-        }
-    }
-
-    #[test]
     fn test_service_signature_creation() {
         let signature = ServiceSignature {
             algorithm: "ed25519".to_string(),
@@ -320,8 +294,7 @@ mod tests {
 
     #[test]
     fn test_get_standard_service_ports() {
-        let integrator = EcosystemIntegrator::new();
-        let ports = integrator.get_standard_service_ports();
+        let ports = discovery::get_standard_service_ports();
 
         assert!(ports.contains_key("songbird"));
         assert!(ports.contains_key("beardog"));
@@ -335,7 +308,6 @@ mod tests {
 
     #[test]
     fn test_create_permission_message() {
-        let integrator = EcosystemIntegrator::new();
         let permission = BearDogPermission {
             permission_id: Uuid::new_v4(),
             granted_to: "test-service".to_string(),
@@ -344,7 +316,7 @@ mod tests {
             signature: "test-signature".to_string(),
         };
 
-        let result = integrator.create_permission_message(&permission);
+        let result = services::beardog::create_permission_message(&permission);
         assert!(result.is_ok());
 
         let message = result.unwrap();

@@ -97,7 +97,7 @@ fn test_priority_range_validation() {
 
     for priority in valid_priorities {
         assert!(
-            priority >= 1 && priority <= 10,
+            (1..=10).contains(&priority),
             "Priority must be between 1 and 10"
         );
     }
@@ -107,7 +107,7 @@ fn test_priority_range_validation() {
 
     for priority in invalid_priorities {
         assert!(
-            !(priority >= 1 && priority <= 10),
+            !(1..=10).contains(&priority),
             "Priority {} should be invalid",
             priority
         );
@@ -121,7 +121,7 @@ fn test_resource_requirements_validation() {
 
     for cpu in valid_cpu {
         assert!(
-            cpu >= 0.1 && cpu <= 1000.0,
+            (0.1..=1000.0).contains(&cpu),
             "CPU cores must be in valid range"
         );
     }
@@ -131,7 +131,7 @@ fn test_resource_requirements_validation() {
 
     for mem in valid_memory {
         assert!(
-            mem >= 1 && mem <= 1_048_576,
+            (1..=1_048_576).contains(&mem),
             "Memory must be in valid range"
         );
     }
@@ -384,7 +384,7 @@ fn test_progress_percentage_validation() {
 
     for progress in valid_progress {
         assert!(
-            progress >= 0.0 && progress <= 1.0,
+            (0.0..=1.0).contains(&progress),
             "Progress must be between 0 and 1"
         );
     }
@@ -395,8 +395,8 @@ fn test_metric_point_creation() {
     // Test metric data point creation
     use chrono::Utc;
 
-    let timestamp = Utc::now();
-    let metric_name = "cpu_usage";
+    let _timestamp = Utc::now();
+    let metric_name: &str = "cpu_usage";
     let value = 75.5;
 
     assert!(!metric_name.is_empty());
@@ -410,7 +410,7 @@ fn test_log_entry_ordering() {
 
     let now = Utc::now();
 
-    let mut log_times = vec![now, now + Duration::seconds(1), now + Duration::seconds(2)];
+    let log_times = vec![now, now + Duration::seconds(1), now + Duration::seconds(2)];
 
     // Verify order
     for i in 0..log_times.len() - 1 {

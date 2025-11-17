@@ -74,7 +74,7 @@ async fn test_timestamp_tracking() -> Result<()> {
 #[tokio::test]
 async fn test_agent_id_validation() -> Result<()> {
     // Test agent ID validation logic
-    let agent_id = "agent-123";
+    let agent_id = "agent-123".to_string();
 
     assert!(!agent_id.is_empty());
     assert!(agent_id.starts_with("agent"));
@@ -228,7 +228,7 @@ async fn test_request_id_uniqueness() -> Result<()> {
 #[tokio::test]
 async fn test_task_description_validation() -> Result<()> {
     // Test task description validation
-    let task = "optimize for high throughput processing";
+    let task = "optimize for high throughput processing".to_string();
 
     assert!(!task.is_empty());
     assert!(task.len() > 10);
@@ -240,7 +240,7 @@ async fn test_task_description_validation() -> Result<()> {
 #[tokio::test]
 async fn test_recommendation_generation() -> Result<()> {
     // Test recommendation string generation
-    let recommendations = "Enable zero-copy optimization, increase thread pool size";
+    let recommendations = "Enable zero-copy optimization, increase thread pool size".to_string();
 
     assert!(!recommendations.is_empty());
     assert!(recommendations.contains("optimization"));

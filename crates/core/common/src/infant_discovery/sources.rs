@@ -6,13 +6,13 @@
 //! Sources are tried in order until one succeeds. This enables graceful
 //! fallback from production service discovery to development defaults.
 //!
-//! Migrated from async_trait to native async for zero-cost abstraction.
+//! Migrated from `async_trait` to native async for zero-cost abstraction.
 
 use std::env;
 use std::future::Future;
 use std::pin::Pin;
 
-use super::capabilities::*;
+use super::capabilities::{DiscoveryError, EndpointSource};
 
 /// Environment variable source - reads from environment variables
 pub struct EnvironmentSource {
@@ -52,29 +52,26 @@ impl EndpointSource for EnvironmentSource {
         let service = service.to_string();
 
         Box::pin(async move {
-            match env::var(&env_var) {
-                Ok(endpoint) => {
-                    tracing::debug!(
-                        service = service,
-                        env_var = env_var,
-                        endpoint = endpoint,
-                        "Found endpoint in environment"
-                    );
-                    Ok(Some(endpoint))
-                }
-                Err(_) => {
-                    tracing::trace!(
-                        service = service,
-                        env_var = env_var,
-                        "No endpoint found in environment"
-                    );
-                    Ok(None)
-                }
+            if let Ok(endpoint) = env::var(&env_var) {
+                tracing::debug!(
+                    service = service,
+                    env_var = env_var,
+                    endpoint = endpoint,
+                    "Found endpoint in environment"
+                );
+                Ok(Some(endpoint))
+            } else {
+                tracing::trace!(
+                    service = service,
+                    env_var = env_var,
+                    "No endpoint found in environment"
+                );
+                Ok(None)
             }
         })
     }
 
-    fn source_name(&self) -> &str {
+    fn source_name(&self) -> &'static str {
         "environment"
     }
 }
@@ -88,6 +85,7 @@ impl FallbackSource {
     /// Create new fallback source
     ///
     /// Uses environment-aware configuration where possible, falling back to defaults.
+    #[must_use]
     pub fn new() -> Self {
         let mut fallbacks = std::collections::HashMap::new();
 
@@ -99,25 +97,25 @@ impl FallbackSource {
         // Helper to get service endpoints from environment or defaults
         let songbird_endpoint = std::env::var("SONGBIRD_URL")
             .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
-            .unwrap_or_else(|_| format!("http://{}:8081", bind_host));
+            .unwrap_or_else(|_| format!("http://{bind_host}:8081"));
 
         let beardog_endpoint = std::env::var("BEARDOG_URL")
             .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
-            .unwrap_or_else(|_| format!("http://{}:8082", bind_host));
+            .unwrap_or_else(|_| format!("http://{bind_host}:8082"));
 
         // Default development fallbacks (respecting environment variables)
-        fallbacks.insert("ai_processing".to_string(), songbird_endpoint.clone());
+        fallbacks.insert("ai_processing".to_string(), songbird_endpoint);
         fallbacks.insert(
             "authentication".to_string(),
-            format!("http://{}:9090", bind_host),
+            format!("http://{bind_host}:9090"),
         );
         fallbacks.insert(
             "persistent_storage".to_string(),
-            format!("http://{}:5432", bind_host),
+            format!("http://{bind_host}:5432"),
         );
         fallbacks.insert(
             "natural_language_processing".to_string(),
-            format!("http://{}:7777", bind_host),
+            format!("http://{bind_host}:7777"),
         );
         fallbacks.insert("service_orchestration".to_string(), beardog_endpoint);
 
@@ -130,7 +128,8 @@ impl FallbackSource {
     }
 
     /// Create with custom fallbacks
-    pub fn with_fallbacks(fallbacks: std::collections::HashMap<String, String>) -> Self {
+    #[must_use]
+    pub const fn with_fallbacks(fallbacks: std::collections::HashMap<String, String>) -> Self {
         Self { fallbacks }
     }
 }
@@ -150,24 +149,21 @@ impl EndpointSource for FallbackSource {
         let result = self.fallbacks.get(&service).cloned();
 
         Box::pin(async move {
-            match result {
-                Some(endpoint) => {
-                    tracing::debug!(
-                        service = service,
-                        endpoint = endpoint,
-                        "Using fallback endpoint"
-                    );
-                    Ok(Some(endpoint))
-                }
-                None => {
-                    tracing::trace!(service = service, "No fallback endpoint configured");
-                    Ok(None)
-                }
+            if let Some(endpoint) = result {
+                tracing::debug!(
+                    service = service,
+                    endpoint = endpoint,
+                    "Using fallback endpoint"
+                );
+                Ok(Some(endpoint))
+            } else {
+                tracing::trace!(service = service, "No fallback endpoint configured");
+                Ok(None)
             }
         })
     }
 
-    fn source_name(&self) -> &str {
+    fn source_name(&self) -> &'static str {
         "fallback"
     }
 }
@@ -176,7 +172,8 @@ impl EndpointSource for FallbackSource {
 pub struct MDNSSource;
 
 impl MDNSSource {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -208,7 +205,7 @@ impl EndpointSource for MDNSSource {
             // Check if service matches common patterns
             for (svc, port) in common_mdns_ports {
                 if service.contains(svc) {
-                    let endpoint = format!("http://localhost:{}", port);
+                    let endpoint = format!("http://localhost:{port}");
 
                     // Try to verify service is actually running
                     match reqwest::Client::new()
@@ -235,7 +232,7 @@ impl EndpointSource for MDNSSource {
         })
     }
 
-    fn source_name(&self) -> &str {
+    fn source_name(&self) -> &'static str {
         "mdns"
     }
 }
@@ -259,14 +256,16 @@ pub enum ServiceMeshType {
 
 impl ServiceMeshSource {
     /// Create new service mesh source with auto-detection
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             mesh_type: ServiceMeshType::Auto,
         }
     }
 
     /// Create with specific mesh type
-    pub fn with_type(mesh_type: ServiceMeshType) -> Self {
+    #[must_use]
+    pub const fn with_type(mesh_type: ServiceMeshType) -> Self {
         Self { mesh_type }
     }
 }
@@ -292,7 +291,7 @@ impl EndpointSource for ServiceMeshSource {
                     let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
                         .unwrap_or_else(|_| "http://localhost:8500".to_string());
 
-                    let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
+                    let url = format!("{consul_addr}/v1/catalog/service/{service}");
 
                     match reqwest::Client::new()
                         .get(&url)
@@ -307,9 +306,11 @@ impl EndpointSource for ServiceMeshSource {
                                         first_service
                                             .get("ServiceAddress")
                                             .and_then(|v| v.as_str()),
-                                        first_service.get("ServicePort").and_then(|v| v.as_u64()),
+                                        first_service
+                                            .get("ServicePort")
+                                            .and_then(serde_json::Value::as_u64),
                                     ) {
-                                        let endpoint = format!("http://{}:{}", addr, port);
+                                        let endpoint = format!("http://{addr}:{port}");
                                         tracing::info!(
                                             service,
                                             endpoint,
@@ -330,8 +331,8 @@ impl EndpointSource for ServiceMeshSource {
                     let etcd_addr = std::env::var("ETCD_ENDPOINTS")
                         .unwrap_or_else(|_| "http://localhost:2379".to_string());
 
-                    let key = format!("/services/{}", service);
-                    let url = format!("{}/v3/kv/range", etcd_addr);
+                    let key = format!("/services/{service}");
+                    let url = format!("{etcd_addr}/v3/kv/range");
 
                     use base64::Engine;
                     let payload = serde_json::json!({
@@ -356,15 +357,15 @@ impl EndpointSource for ServiceMeshSource {
                 }
                 ServiceMeshType::Kubernetes => {
                     // Try Kubernetes DNS (works inside cluster)
-                    let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                    let k8s_dns = format!("{service}.default.svc.cluster.local");
                     tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
-                    return Ok(Some(format!("http://{}", k8s_dns)));
+                    return Ok(Some(format!("http://{k8s_dns}")));
                 }
                 ServiceMeshType::Auto => {
                     // Auto-detect: try Consul first, then etcd, then k8s DNS
                     // Try Consul
                     if let Ok(consul_addr) = std::env::var("CONSUL_HTTP_ADDR") {
-                        let url = format!("{}/v1/catalog/service/{}", consul_addr, service);
+                        let url = format!("{consul_addr}/v1/catalog/service/{service}");
                         if let Ok(response) = reqwest::Client::new()
                             .get(&url)
                             .timeout(std::time::Duration::from_secs(2))
@@ -382,9 +383,9 @@ impl EndpointSource for ServiceMeshSource {
                                                 .and_then(|v| v.as_str()),
                                             first_service
                                                 .get("ServicePort")
-                                                .and_then(|v| v.as_u64()),
+                                                .and_then(serde_json::Value::as_u64),
                                         ) {
-                                            let endpoint = format!("http://{}:{}", addr, port);
+                                            let endpoint = format!("http://{addr}:{port}");
                                             tracing::info!(
                                                 service,
                                                 endpoint,
@@ -399,9 +400,9 @@ impl EndpointSource for ServiceMeshSource {
                     }
 
                     // Try K8s DNS as fallback
-                    let k8s_dns = format!("{}.default.svc.cluster.local", service);
+                    let k8s_dns = format!("{service}.default.svc.cluster.local");
                     tracing::trace!(service, "Auto-detection: trying K8s DNS");
-                    return Ok(Some(format!("http://{}", k8s_dns)));
+                    return Ok(Some(format!("http://{k8s_dns}")));
                 }
             }
 
@@ -409,7 +410,7 @@ impl EndpointSource for ServiceMeshSource {
         })
     }
 
-    fn source_name(&self) -> &str {
+    fn source_name(&self) -> &'static str {
         "service_mesh"
     }
 }
@@ -428,6 +429,7 @@ impl ConfigFileSource {
     }
 
     /// Create with default config path
+    #[must_use]
     pub fn default_path() -> Self {
         Self::new("config/toadstool.toml")
     }
@@ -521,12 +523,13 @@ impl EndpointSource for ConfigFileSource {
         })
     }
 
-    fn source_name(&self) -> &str {
+    fn source_name(&self) -> &'static str {
         "config_file"
     }
 }
 
 /// Create standard production source chain
+#[must_use]
 pub fn production_sources() -> Vec<Box<dyn EndpointSource>> {
     vec![
         Box::new(EnvironmentSource::default()),
@@ -537,6 +540,7 @@ pub fn production_sources() -> Vec<Box<dyn EndpointSource>> {
 }
 
 /// Create development source chain (faster fallbacks)
+#[must_use]
 pub fn development_sources() -> Vec<Box<dyn EndpointSource>> {
     vec![
         Box::new(EnvironmentSource::default()),

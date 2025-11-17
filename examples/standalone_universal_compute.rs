@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 // Standalone Universal Compute Demonstration
 // ToadStool's Open-First Strategy: Isolate → Abstract → Incentivize
 //

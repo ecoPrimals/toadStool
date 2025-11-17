@@ -7,6 +7,9 @@
 #[path = "e2e/full_system_tests.rs"]
 mod full_system_tests;
 
+#[path = "e2e/workload_lifecycle_e2e.rs"]
+mod workload_lifecycle_e2e;
+
 // Sprint 25: Real E2E Integration Tests
 mod real_integration_tests {
 use std::collections::HashMap;

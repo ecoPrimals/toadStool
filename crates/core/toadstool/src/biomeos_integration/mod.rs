@@ -30,6 +30,7 @@ pub mod auth_backend;
 pub mod storage;
 pub mod storage_backend;
 pub mod types;
+pub mod types_old;
 
 // Re-export everything for backward compatibility
 pub use agent_backend::{AgentBackend, InMemoryAgentBackend, SquirrelBackend};

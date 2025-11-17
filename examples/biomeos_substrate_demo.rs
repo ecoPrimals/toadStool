@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 //! # ToadStool biomeOS Substrate Demonstration
 //!
 //! This demo proves ToadStool's readiness as the universal substrate orchestrator for biomeOS.

@@ -7,7 +7,6 @@
 //! - Failure scenarios
 
 use std::collections::HashMap;
-use std::io;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -48,7 +47,7 @@ mod error_handling_tests {
 
         for (severity, level) in severity_levels {
             assert!(!severity.is_empty());
-            assert!(level >= 1 && level <= 4);
+            assert!((1..=4).contains(&level));
         }
     }
 
@@ -287,7 +286,7 @@ mod error_handling_tests {
     fn test_timeout_exceeded_detection() {
         use std::time::{Duration, SystemTime};
 
-        let start_time = SystemTime::now();
+        let _start_time = SystemTime::now();
         let timeout = Duration::from_secs(30);
 
         // Simulate elapsed time
@@ -436,6 +435,7 @@ mod error_handling_tests {
     // ============================================================================
 
     #[derive(Clone, Debug)]
+    #[allow(dead_code)]
     struct ErrorLog {
         timestamp: u64,
         error_type: String,
@@ -500,7 +500,7 @@ mod error_handling_tests {
 
         for (code, http_status) in error_codes {
             assert!(!code.is_empty());
-            assert!(http_status >= 400 && http_status < 600);
+            assert!((400..600).contains(&http_status));
         }
     }
 
@@ -559,6 +559,7 @@ mod error_handling_tests {
     // ============================================================================
 
     #[derive(Clone, Debug, PartialEq)]
+    #[allow(dead_code)]
     enum CircuitState {
         Closed,
         Open,

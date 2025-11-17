@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct Node {
     name: String,
     contributed: u64,
@@ -11,6 +12,7 @@ struct Node {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct CooperativeNetwork {
     nodes: HashMap<String, Node>,
     total_contributions: u64,

@@ -95,6 +95,13 @@ impl CircuitBreaker {
     }
 
     /// Execute function with circuit breaker protection
+    ///
+    /// # Errors
+    ///
+    /// Returns `CircuitBreakerError` if:
+    /// - Circuit breaker is in Open state (`CircuitOpen`)
+    /// - Half-open limit is exceeded (`HalfOpenLimitExceeded`)
+    /// - The operation fails (`ServiceFailure`)
     pub async fn execute<F, T, E>(&self, operation: F) -> Result<T, CircuitBreakerError>
     where
         F: std::future::Future<Output = Result<T, E>>,
@@ -565,6 +572,11 @@ impl ProductionHardeningManager {
     }
 
     /// Initialize production hardening
+    ///
+    /// # Errors
+    ///
+    /// Currently always succeeds, but returns `ToadStoolResult` for future extensibility
+    /// (e.g., initialization failures, config validation errors)
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         info!("Initializing production hardening");
 

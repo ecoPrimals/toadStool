@@ -39,14 +39,7 @@ pub enum EcosystemService {
 }
 
 impl EcosystemService {
-    pub(super) fn parse(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "songbird" => EcosystemService::Songbird,
-            "beardog" => EcosystemService::BearDog,
-            "nestgate" => EcosystemService::NestGate,
-            _ => EcosystemService::Unknown(s.to_string()),
-        }
-    }
+    // Removed parse() - unused helper. Services are constructed directly.
 
     pub(super) fn name(&self) -> &str {
         match self {
@@ -218,9 +211,7 @@ impl CryptoVerificationContext {
         response: &SignedServiceResponse,
     ) -> Result<bool> {
         // Check if we have a trusted public key for this service
-        let public_key_base64 = if let Some(key) = self.trusted_public_keys.get(service_type) {
-            key
-        } else {
+        let Some(public_key_base64) = self.trusted_public_keys.get(service_type) else {
             warn!("No trusted public key found for service: {}", service_type);
             return Ok(false);
         };

@@ -21,13 +21,15 @@ fn test_resource_requirements_default() {
 
 #[test]
 fn test_resource_requirements_with_gpu() {
-    let mut reqs = ResourceRequirements::default();
-    reqs.gpu = Some(GpuRequirements {
-        min_units: 1,
-        max_units: Some(4),
-        gpu_type: Some("nvidia-a100".to_string()),
-        min_memory_bytes: Some(16 * 1024 * 1024 * 1024), // 16GB
-    });
+    let reqs = ResourceRequirements {
+        gpu: Some(GpuRequirements {
+            min_units: 1,
+            max_units: Some(4),
+            gpu_type: Some("nvidia-a100".to_string()),
+            min_memory_bytes: Some(16 * 1024 * 1024 * 1024), // 16GB
+        }),
+        ..Default::default()
+    };
 
     assert!(reqs.gpu.is_some());
     let gpu = reqs.gpu.unwrap();

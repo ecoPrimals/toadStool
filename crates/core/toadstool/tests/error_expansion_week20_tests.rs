@@ -121,7 +121,9 @@ fn test_error_display_format() {
 fn test_result_ok() {
     let result: ToadStoolResult<i32> = Ok(42);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 42);
+    if let Ok(value) = result {
+        assert_eq!(value, 42);
+    }
 }
 
 #[test]
@@ -199,7 +201,7 @@ fn test_result_chain_map() {
 #[test]
 fn test_result_chain_and_then() {
     let result: ToadStoolResult<i32> = Ok(5);
-    let chained = result.and_then(|x| Ok(x + 5));
+    let chained = result.map(|x| x + 5);
 
     assert_eq!(chained.unwrap(), 10);
 }
@@ -207,7 +209,7 @@ fn test_result_chain_and_then() {
 #[test]
 fn test_result_chain_or_else() {
     let result: ToadStoolResult<i32> = Err(ToadStoolError::not_found("test"));
-    let recovered: ToadStoolResult<i32> = result.or_else(|_| Ok(42));
+    let recovered: ToadStoolResult<i32> = result.or(Ok(42));
 
     assert_eq!(recovered.unwrap(), 42);
 }

@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 // Mock types for testing
 #[derive(Clone)]
+#[allow(dead_code)]
 struct MockServerState {
     active_executions: Arc<RwLock<HashMap<Uuid, MockActiveExecution>>>,
     runtime_engines: Arc<RwLock<HashMap<String, String>>>,
@@ -24,6 +25,7 @@ struct MockServerConfig {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct MockActiveExecution {
     id: Uuid,
     started_at: chrono::DateTime<chrono::Utc>,
@@ -38,6 +40,7 @@ struct MockServerStats {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 enum MockServerEvent {
     ResourceUsageUpdate {
         cpu_usage_percent: f64,
@@ -100,7 +103,7 @@ async fn test_server_state_with_executions() {
     // Add some executions
     {
         let mut executions = state.active_executions.write().await;
-        for i in 0..3 {
+        for _i in 0..3 {
             let id = Uuid::new_v4();
             executions.insert(
                 id,
@@ -459,7 +462,7 @@ async fn test_concurrent_execution_access() {
     let state = Arc::new(create_mock_server_state().await);
 
     let handles: Vec<_> = (0..10)
-        .map(|i| {
+        .map(|_i| {
             let state_clone = Arc::clone(&state);
             tokio::spawn(async move {
                 let id = Uuid::new_v4();

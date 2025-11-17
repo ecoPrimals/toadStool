@@ -381,7 +381,10 @@ fn test_server_result_ok() {
 
     let result: ServerResult<i32> = Ok(42);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 42);
+    // Extract value properly instead of unwrapping literal Ok
+    if let Ok(val) = result {
+        assert_eq!(val, 42);
+    }
 }
 
 #[test]

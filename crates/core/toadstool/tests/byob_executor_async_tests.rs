@@ -10,16 +10,15 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::byob::{
-    create_byob_executor, ByobComputeExecutor, ByobDeploymentRequest, ByobExecutor,
-    ByobExecutorConfig, HealthCheck, PortMapping, ServiceResourceRequirements, ServiceSpec,
-    TeamNetworkConfig, TeamResourceQuotas, TeamSecurityConfig, VolumeMount,
+    create_byob_executor, ByobComputeExecutor, ByobDeploymentRequest, ByobExecutorConfig,
+    HealthCheck, PortMapping, ServiceResourceRequirements, ServiceSpec, TeamNetworkConfig,
+    TeamResourceQuotas, TeamSecurityConfig,
 };
 use toadstool::execution::RuntimeConfig;
 use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
     RuntimeEngine, RuntimeMetrics, RuntimeType, ToadStoolResult, WorkloadType,
 };
-use tokio;
 use uuid::Uuid;
 
 // ============================================================================
@@ -40,6 +39,7 @@ impl AsyncMockRuntimeEngine {
         }
     }
 
+    #[allow(dead_code)]
     fn with_delay(delay_ms: u64) -> Self {
         Self {
             delay_ms,
@@ -47,6 +47,7 @@ impl AsyncMockRuntimeEngine {
         }
     }
 
+    #[allow(dead_code)]
     fn with_failure() -> Self {
         Self {
             delay_ms: 10,

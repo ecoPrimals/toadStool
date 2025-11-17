@@ -143,9 +143,25 @@ pub trait AgentBackend: Send + Sync {
     }
 
     /// Deploy an AI agent from configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Agent configuration is invalid
+    /// - Backend service is unavailable
+    /// - Resource allocation fails
+    /// - Agent name conflicts with existing agent
     async fn deploy_agent(&self, config: &AgentConfig) -> ToadStoolResult<AgentInfo>;
 
     /// Load a model for agent use
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Model configuration is invalid
+    /// - Model file cannot be accessed or downloaded
+    /// - Insufficient memory for model
+    /// - Model format is unsupported
     async fn load_model(&self, config: &ModelConfig) -> ToadStoolResult<ModelInfo>;
 
     /// Scale an agent to specified replica count
@@ -158,6 +174,13 @@ pub trait AgentBackend: Send + Sync {
     async fn remove_agent(&self, agent_name: &str) -> ToadStoolResult<()>;
 
     /// Get agent status
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Agent does not exist
+    /// - Backend service is unavailable
+    /// - Network communication fails
     async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus>;
 
     /// List all deployed agents

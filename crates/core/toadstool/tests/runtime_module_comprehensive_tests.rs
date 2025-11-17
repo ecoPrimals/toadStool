@@ -52,9 +52,9 @@ fn test_runtime_selection_strategy_clone() {
     let strategy = RuntimeSelectionStrategy::FirstAvailable;
     let cloned = strategy.clone();
 
-    // Should be cloneable
-    drop(strategy);
-    drop(cloned);
+    // Should be cloneable - types are Copy/trivial, no explicit drop needed
+    let _ = strategy;
+    let _ = cloned;
 }
 
 #[test]
@@ -172,7 +172,7 @@ fn test_orchestrator_drops_cleanly() {
 #[test]
 fn test_strategy_drops_cleanly() {
     let strategy = RuntimeSelectionStrategy::OptimalMatch;
-    drop(strategy);
+    let _ = strategy; // Type is Copy/trivial, no explicit drop needed
 }
 
 #[test]

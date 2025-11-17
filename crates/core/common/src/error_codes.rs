@@ -53,7 +53,7 @@ pub struct ErrorCode {
     /// Human-readable error message template
     pub message: &'static str,
 
-    /// Error category matching ToadStoolError variants
+    /// Error category matching `ToadStoolError` variants
     pub category: ErrorCategory,
 
     /// Optional remediation suggestion
@@ -98,7 +98,8 @@ impl ErrorCode {
     }
 
     /// Get category as string
-    pub fn category_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn category_str(&self) -> &'static str {
         match self.category {
             ErrorCategory::Execution => "execution",
             ErrorCategory::Configuration => "configuration",
@@ -113,7 +114,7 @@ impl ErrorCode {
 
 /// Standard error codes organized by category
 pub mod codes {
-    use super::*;
+    use super::{ErrorCategory, ErrorCode};
 
     // ========================================================================
     // Execution Errors (EXEC)

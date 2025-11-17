@@ -26,7 +26,7 @@ mod security_tests {
     #[test]
     fn test_security_level_clone() {
         let level = SecurityLevel::High;
-        let cloned = level.clone();
+        let cloned = level;
         assert_eq!(level, cloned);
     }
 

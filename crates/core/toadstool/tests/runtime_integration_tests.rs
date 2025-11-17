@@ -6,11 +6,11 @@
 //! - Resource sharing between runtimes
 //! - Runtime interoperability
 
+#![allow(clippy::field_reassign_with_default)]
+
 use std::collections::HashMap;
 use std::time::Duration;
-use toadstool::{
-    ExecutionInput, ExecutionRequest, ExecutionStatus, RuntimeType, SecurityContext, WorkloadSpec,
-};
+use toadstool::{ExecutionInput, ExecutionRequest, ExecutionStatus, RuntimeType, SecurityContext};
 use uuid::Uuid;
 
 // ============================================================================
@@ -273,9 +273,9 @@ async fn test_runtime_resource_limits() {
 #[tokio::test]
 async fn test_runtime_security_contexts() {
     // Test runtime-specific security contexts
-    let mut native_context = SecurityContext::default();
-    let mut wasm_context = SecurityContext::default();
-    let mut container_context = SecurityContext::default();
+    let native_context = SecurityContext::default();
+    let wasm_context = SecurityContext::default();
+    let container_context = SecurityContext::default();
 
     // Different runtimes may have different security requirements
     assert!(native_context.validate().is_ok());

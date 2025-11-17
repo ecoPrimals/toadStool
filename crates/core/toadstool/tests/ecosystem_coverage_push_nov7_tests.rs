@@ -5,6 +5,8 @@
 //!
 //! Strategy: Test the untested async paths that are driving down coverage
 
+#![allow(clippy::field_reassign_with_default)]
+
 use std::time::Duration;
 use toadstool::ecosystem::*;
 

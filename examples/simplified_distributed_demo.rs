@@ -74,7 +74,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
         ("Date Command", "date"),
     ];
 
-    for (name, code) in executions {
+    for (name, _code) in executions {
         let request = ExecutionRequest {
             execution_id: Uuid::new_v4(),
             workload: WorkloadSpec::Native {

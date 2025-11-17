@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(clippy::all)]
+#![allow(unused_variables)]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;

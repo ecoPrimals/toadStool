@@ -288,7 +288,7 @@ fn test_wildcard_subscription() {
 #[test]
 fn test_message_serialization_format() {
     // Test message serialization format (tagged enum)
-    let message_type = "Subscribe";
+    let message_type: &str = "Subscribe";
 
     // Tagged enum format: {"type": "Subscribe", "data": {...}}
     assert!(!message_type.is_empty());
@@ -395,6 +395,7 @@ fn test_error_message_format() {
 fn test_connection_state_tracking() {
     // Test connection state tracking
     #[derive(Debug, PartialEq)]
+    #[allow(dead_code)]
     enum ConnectionState {
         Connecting,
         Connected,

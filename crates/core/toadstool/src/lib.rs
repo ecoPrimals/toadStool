@@ -120,6 +120,12 @@ pub const UNIVERSAL_CAPABILITIES: &[&str] = &[
 ];
 
 /// Initialize `ToadStool` Universal Compute Platform
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Tracing subscriber initialization fails
+/// - System resources cannot be accessed
 pub fn init() -> anyhow::Result<()> {
     // Initialize tracing for universal compute
     tracing_subscriber::fmt()
@@ -138,6 +144,13 @@ pub fn init() -> anyhow::Result<()> {
 }
 
 /// Initialize `ToadStool` with ecosystem integration
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Platform initialization fails
+/// - Ecosystem discovery fails
+/// - Primal integration fails
 pub async fn init_with_ecosystem() -> anyhow::Result<UniversalComputePlatform> {
     init()?;
 

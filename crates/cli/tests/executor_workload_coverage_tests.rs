@@ -2,13 +2,10 @@
 //!
 //! These tests target the 0% coverage area in crates/cli/src/executor/workload.rs
 
-use std::collections::HashMap;
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 #[cfg(test)]
 mod workload_metadata_tests {
-    use super::*;
 
     #[test]
     fn test_workload_metadata_deserialization() {
@@ -50,7 +47,6 @@ mod workload_metadata_tests {
 
 #[cfg(test)]
 mod execution_spec_tests {
-    use super::*;
 
     #[test]
     fn test_native_execution_spec_deserialization() {
@@ -163,7 +159,6 @@ mod execution_spec_tests {
 
 #[cfg(test)]
 mod resource_spec_tests {
-    use super::*;
 
     #[test]
     fn test_resource_spec_full() {
@@ -232,7 +227,6 @@ mod resource_spec_tests {
 
 #[cfg(test)]
 mod security_spec_tests {
-    use super::*;
 
     #[test]
     fn test_security_spec_with_isolation() {
@@ -258,7 +252,6 @@ mod security_spec_tests {
 
 #[cfg(test)]
 mod workload_file_tests {
-    use super::*;
 
     #[test]
     fn test_complete_workload_file_native() {
@@ -371,7 +364,6 @@ mod workload_file_tests {
 
 #[cfg(test)]
 mod env_override_tests {
-    use super::*;
 
     #[test]
     fn test_env_override_parsing() {
@@ -414,7 +406,6 @@ mod env_override_tests {
 
 #[cfg(test)]
 mod timeout_tests {
-    use super::*;
 
     #[test]
     fn test_timeout_values() {
@@ -435,7 +426,6 @@ mod timeout_tests {
 
 #[cfg(test)]
 mod output_format_tests {
-    use super::*;
 
     #[test]
     fn test_output_format_options() {
@@ -484,7 +474,6 @@ mod path_handling_tests {
 
 #[cfg(test)]
 mod error_handling_tests {
-    use super::*;
 
     #[test]
     fn test_invalid_json_structure() {
@@ -517,7 +506,6 @@ mod error_handling_tests {
 
 #[cfg(test)]
 mod integration_structure_tests {
-    use super::*;
 
     #[test]
     fn test_complete_workload_structure_validation() {

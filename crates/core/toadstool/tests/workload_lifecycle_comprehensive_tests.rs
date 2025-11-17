@@ -1,4 +1,6 @@
 //! Comprehensive Workload Lifecycle Tests - Phase 2
+
+#![allow(clippy::all)]
 //!
 //! Tests for workload submission, tracking, state transitions, and cleanup:
 //! - Workload specification validation
@@ -7,7 +9,6 @@
 //! - Workload tracking and output handling
 //! - Resource cleanup and termination
 
-use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::{
     ExecutionInput, ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus,
@@ -162,12 +163,13 @@ fn test_execution_status_pending() {
 
 #[test]
 fn test_execution_status_transitions() {
-    let mut status = ExecutionStatus::Pending;
+    let status = ExecutionStatus::Pending;
+    assert_eq!(status, ExecutionStatus::Pending);
 
-    status = ExecutionStatus::Running;
+    let status = ExecutionStatus::Running;
     assert_eq!(status, ExecutionStatus::Running);
 
-    status = ExecutionStatus::Success;
+    let status = ExecutionStatus::Success;
     assert_eq!(status, ExecutionStatus::Success);
 }
 
@@ -442,23 +444,25 @@ fn test_runtime_type_clone() {
 
 #[test]
 fn test_complete_lifecycle_success() {
-    let mut status = ExecutionStatus::Pending;
+    let status = ExecutionStatus::Pending;
+    assert_eq!(status, ExecutionStatus::Pending);
 
-    status = ExecutionStatus::Running;
+    let status = ExecutionStatus::Running;
     assert_eq!(status, ExecutionStatus::Running);
 
-    status = ExecutionStatus::Success;
+    let status = ExecutionStatus::Success;
     assert_eq!(status, ExecutionStatus::Success);
 }
 
 #[test]
 fn test_complete_lifecycle_failure() {
-    let mut status = ExecutionStatus::Pending;
+    let status = ExecutionStatus::Pending;
+    assert_eq!(status, ExecutionStatus::Pending);
 
-    status = ExecutionStatus::Running;
+    let status = ExecutionStatus::Running;
     assert_eq!(status, ExecutionStatus::Running);
 
-    status = ExecutionStatus::Failed {
+    let status = ExecutionStatus::Failed {
         error: "Test failure".to_string(),
     };
 
@@ -470,20 +474,22 @@ fn test_complete_lifecycle_failure() {
 
 #[test]
 fn test_complete_lifecycle_cancellation() {
-    let mut status = ExecutionStatus::Pending;
+    let status = ExecutionStatus::Pending;
+    assert_eq!(status, ExecutionStatus::Pending);
 
-    status = ExecutionStatus::Cancelled;
+    let status = ExecutionStatus::Cancelled;
     assert_eq!(status, ExecutionStatus::Cancelled);
 }
 
 #[test]
 fn test_complete_lifecycle_timeout() {
-    let mut status = ExecutionStatus::Pending;
+    let status = ExecutionStatus::Pending;
+    assert_eq!(status, ExecutionStatus::Pending);
 
-    status = ExecutionStatus::Running;
+    let status = ExecutionStatus::Running;
     assert_eq!(status, ExecutionStatus::Running);
 
-    status = ExecutionStatus::TimedOut;
+    let status = ExecutionStatus::TimedOut;
     assert_eq!(status, ExecutionStatus::TimedOut);
 }
 

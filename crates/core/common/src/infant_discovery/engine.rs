@@ -10,16 +10,20 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
-use super::capabilities::*;
+use super::capabilities::{
+    CapabilityDiscovery, DetectedSubstrate, DiscoveredService, DiscoveryError,
+    DiscoveryPreferences, DiscoverySource, EndpointSource, ServiceHealth, ServiceMetadata,
+    SubstrateDetector, SubstrateType,
+};
 
 impl From<&str> for DiscoverySource {
     fn from(source_name: &str) -> Self {
         match source_name {
-            "environment" => DiscoverySource::Environment,
-            "mdns" => DiscoverySource::MDNS,
-            "service_mesh" => DiscoverySource::ServiceMesh("unknown".to_string()),
-            "config_file" => DiscoverySource::ConfigFile,
-            _ => DiscoverySource::Fallback,
+            "environment" => Self::Environment,
+            "mdns" => Self::MDNS,
+            "service_mesh" => Self::ServiceMesh("unknown".to_string()),
+            "config_file" => Self::ConfigFile,
+            _ => Self::Fallback,
         }
     }
 }
@@ -72,11 +76,13 @@ impl Default for ServiceDiscoveryConfig {
 
 impl DiscoveryEngine {
     /// Create a new discovery engine with default configuration.
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(ServiceDiscoveryConfig::default())
     }
 
     /// Create a new discovery engine with custom configuration.
+    #[must_use]
     pub fn with_config(config: ServiceDiscoveryConfig) -> Self {
         Self {
             sources: Arc::new(RwLock::new(Vec::new())),
@@ -401,6 +407,7 @@ pub struct DiscoveryEngineBuilder {
 
 impl DiscoveryEngineBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: ServiceDiscoveryConfig::default(),
@@ -410,30 +417,35 @@ impl DiscoveryEngineBuilder {
     }
 
     /// Set cache TTL
-    pub fn cache_ttl(mut self, ttl: Duration) -> Self {
+    #[must_use]
+    pub const fn cache_ttl(mut self, ttl: Duration) -> Self {
         self.config.cache_ttl = ttl;
         self
     }
 
     /// Set default timeout
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
         self.config.default_timeout = timeout;
         self
     }
 
     /// Disable caching
-    pub fn disable_cache(mut self) -> Self {
+    #[must_use]
+    pub const fn disable_cache(mut self) -> Self {
         self.config.enable_cache = false;
         self
     }
 
     /// Add an endpoint source
+    #[must_use]
     pub fn with_source(mut self, source: Box<dyn EndpointSource>) -> Self {
         self.sources.push(source);
         self
     }
 
     /// Add a substrate detector
+    #[must_use]
     pub fn with_detector(mut self, detector: Box<dyn SubstrateDetector>) -> Self {
         self.detectors.push(detector);
         self
@@ -668,7 +680,9 @@ mod tests {
 
         let substrate = super::DetectedSubstrate {
             substrate_type: super::SubstrateType::ContainerOrchestrator,
-            capabilities: vec![super::SubstrateCapability::ContainerOrchestration],
+            capabilities: vec![
+                crate::infant_discovery::SubstrateCapability::ContainerOrchestration,
+            ],
             metadata: std::collections::HashMap::new(),
         };
 

@@ -7,14 +7,19 @@
 //! - ps: List all biomes
 //! - logs: View biome/service logs
 //!
-//! ## Module Structure
+//! ## Module Structure (Refactored by Concern)
 //!
 //! - `types`: Type definitions (BiomeProcess, RunningBiome, WasmModule, etc.)
-//! - `executor_impl`: BiomeExecutor implementation
+//! - `workload`: Direct workload execution
+//! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
-// Type definitions
+// Submodules
 mod types;
+
+// Internal use
 use types::{BiomeProcess, ProcessType, RunningBiome};
+
+// Public re-exports
 pub use types::{WasiExecutionConfig, WasmExecutionInfo, WasmModule};
 
 // Direct workload execution module

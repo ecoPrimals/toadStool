@@ -4,7 +4,6 @@
 //! Target: 485 lines, ~40-50 comprehensive tests
 
 use toadstool::resources::*;
-use toadstool::*;
 
 // ============================================================================
 // ResourceRequirements Tests

@@ -10,7 +10,7 @@ use axum::http::{HeaderMap, HeaderValue};
 #[test]
 fn test_empty_bearer_token() {
     // Test the empty token check at line 127-129
-    let token = "";
+    let token: &str = "";
     assert!(token.is_empty(), "Empty token should be detected");
 }
 
@@ -136,11 +136,9 @@ fn test_rate_limit_constants() {
 
     assert_eq!(RATE_LIMIT_MAX_REQUESTS, 100);
     assert_eq!(RATE_LIMIT_WINDOW_SECS, 60);
-    assert!(
-        RATE_LIMIT_MAX_REQUESTS > 0,
-        "Max requests should be positive"
-    );
-    assert!(RATE_LIMIT_WINDOW_SECS > 0, "Window should be positive");
+    // Constants are validated at compile time
+    const _: () = assert!(RATE_LIMIT_MAX_REQUESTS > 0);
+    const _: () = assert!(RATE_LIMIT_WINDOW_SECS > 0);
 }
 
 // ============================================================================

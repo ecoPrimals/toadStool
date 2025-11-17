@@ -627,7 +627,7 @@ async fn simulate_service_mesh_call(request_id: usize) -> Result<String, String>
     tokio::time::sleep(Duration::from_micros(200)).await;
 
     // Simulate occasional failures
-    if request_id % 100 == 0 {
+    if request_id.is_multiple_of(100) {
         Err("Service temporarily unavailable".to_string())
     } else {
         Ok(format!("Response from service mesh call {request_id}"))
@@ -658,7 +658,7 @@ async fn simulate_circuit_breaker_call(
         }
         "half-open" => {
             // Testing if service is back
-            if request_id % 3 == 0 {
+            if request_id.is_multiple_of(3) {
                 *failure_count = 0;
                 Ok("closed")
             } else {
@@ -672,7 +672,7 @@ async fn simulate_circuit_breaker_call(
         }
         _ => {
             // Circuit is closed, normal operation
-            if request_id % 20 == 0 {
+            if request_id.is_multiple_of(20) {
                 // Simulate occasional failures
                 *failure_count += 1;
                 if *failure_count >= 5 {
@@ -693,7 +693,7 @@ async fn simulate_network_policy_check(request_id: usize) -> Result<(), String> 
     tokio::time::sleep(Duration::from_micros(75)).await;
 
     // Simulate policy deny rate (20% denial)
-    if request_id % 5 == 0 {
+    if request_id.is_multiple_of(5) {
         Err("Request denied by network policy".to_string())
     } else {
         Ok(())
@@ -705,7 +705,7 @@ async fn simulate_cross_primal_auth(request_id: usize) -> Result<(), String> {
     tokio::time::sleep(Duration::from_micros(300)).await;
 
     // Simulate authentication failure rate (5% failure)
-    if request_id % 20 == 0 {
+    if request_id.is_multiple_of(20) {
         Err("Authentication failed".to_string())
     } else {
         Ok(())

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 //! Configuration Management Demo
 //!
 //! This demo showcases ToadStool's comprehensive environment variable configuration system
@@ -349,9 +351,6 @@ fn demonstrate_configuration_inspection() {
     info!("🔍 Complete Configuration Inspection");
     info!("===================================");
 
-    // Use the built-in configuration inspection
-    ConfigUtils::print_current_config();
-
     // Show all TOADSTOOL environment variables
     let env_vars = ConfigUtils::get_all_toadstool_env_vars();
     if !env_vars.is_empty() {
@@ -426,7 +425,7 @@ mod tests {
         // Test configuration loading
         assert_eq!(ConfigUtils::get_environment(), "test");
         assert_eq!(ConfigUtils::get_songbird_port(), 9080);
-        assert_eq!(ConfigUtils::get_debug_mode(), true);
+        assert!(ConfigUtils::get_debug_mode());
 
         // Test service endpoints
         let endpoints = ConfigUtils::get_service_endpoints();

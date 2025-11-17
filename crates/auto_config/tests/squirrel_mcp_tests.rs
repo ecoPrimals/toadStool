@@ -55,7 +55,7 @@ fn test_performance_priority_range() {
     let priorities = vec![0.0, 0.25, 0.5, 0.75, 1.0];
 
     for priority in priorities {
-        assert!(priority >= 0.0 && priority <= 1.0);
+        assert!((0.0..=1.0).contains(&priority));
 
         if priority < 0.3 {
             // Security first
@@ -177,7 +177,7 @@ fn test_cpu_intensity_range() {
     let intensities = vec![0.0, 0.25, 0.5, 0.75, 1.0];
 
     for intensity in intensities {
-        assert!(intensity >= 0.0 && intensity <= 1.0);
+        assert!((0.0..=1.0).contains(&intensity));
 
         let workload_class = if intensity < 0.3 {
             "light"
@@ -268,7 +268,8 @@ fn test_resource_hints_validation() {
 
     assert!(min_cpu_cores >= 1);
     assert!(min_memory_gb > 0.0);
-    assert!(!requires_gpu || requires_gpu);
+    // requires_gpu is a boolean flag - no assertion needed
+    let _gpu_flag = requires_gpu;
 }
 
 #[test]
@@ -443,7 +444,7 @@ fn test_preference_serialization() {
     let performance_priority = 0.6;
 
     assert!(security_level.is_some());
-    assert!(performance_priority >= 0.0 && performance_priority <= 1.0);
+    assert!((0.0..=1.0).contains(&performance_priority));
 }
 
 #[test]

@@ -4,6 +4,8 @@
 //! Target: Core execution types and interfaces
 //! Estimated: ~40-50 tests
 
+#![allow(clippy::field_reassign_with_default)]
+
 use std::collections::HashMap;
 use std::time::Duration;
 use toadstool::execution::*;
@@ -399,8 +401,10 @@ fn test_execution_request_default() {
 
 #[test]
 fn test_execution_request_with_runtime_hint() {
-    let mut request = ExecutionRequest::default();
-    request.runtime_hint = Some(RuntimeType::Wasm);
+    let request = ExecutionRequest {
+        runtime_hint: Some(RuntimeType::Wasm),
+        ..Default::default()
+    };
 
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
@@ -417,8 +421,10 @@ fn test_execution_request_with_environment() {
 
 #[test]
 fn test_execution_request_with_timeout() {
-    let mut request = ExecutionRequest::default();
-    request.timeout = Some(Duration::from_secs(600));
+    let request = ExecutionRequest {
+        timeout: Some(Duration::from_secs(600)),
+        ..Default::default()
+    };
 
     assert_eq!(request.timeout, Some(Duration::from_secs(600)));
 }
@@ -463,9 +469,11 @@ fn test_execution_response_default() {
 
 #[test]
 fn test_execution_response_with_failure() {
-    let mut response = ExecutionResponse::default();
-    response.status = ExecutionStatus::Failed {
-        error: "Test failure".to_string(),
+    let response = ExecutionResponse {
+        status: ExecutionStatus::Failed {
+            error: "Test failure".to_string(),
+        },
+        ..Default::default()
     };
 
     match response.status {
@@ -485,8 +493,10 @@ fn test_execution_response_with_warnings() {
 
 #[test]
 fn test_execution_response_with_duration() {
-    let mut response = ExecutionResponse::default();
-    response.duration = Duration::from_millis(1500);
+    let response = ExecutionResponse {
+        duration: Duration::from_millis(1500),
+        ..Default::default()
+    };
 
     assert_eq!(response.duration, Duration::from_millis(1500));
 }

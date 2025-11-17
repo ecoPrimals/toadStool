@@ -1,4 +1,6 @@
 //! Critical Path Tests for Distributed Coordinator
+
+#![allow(clippy::all, dead_code)]
 //!
 //! Tests for distributed coordinator functionality identified in audit:
 //! - Coordinator initialization and configuration
@@ -356,10 +358,9 @@ mod health_monitoring_tests {
             Critical,
         }
 
-        let mut status = Status::Healthy;
+        let mut status = Status::Warning;
 
         // Transition to warning
-        status = Status::Warning;
         assert_eq!(status, Status::Warning);
 
         // Transition to critical

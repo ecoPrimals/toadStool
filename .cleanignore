@@ -1,0 +1,34 @@
+# ToadStool Clean Ignore
+# Files/directories to keep during workspace cleanup
+
+# Essential configs
+toadstool.toml
+toadstool-*.toml
+toadstool-*.json
+Cargo.toml
+Cargo.lock
+biome.yaml
+
+# Documentation (root only)
+*.md
+*.txt
+
+# Scripts
+*.sh
+
+# Source code
+src/
+crates/
+tests/
+examples/
+demos/
+showcase/
+docs/
+specs/
+scripts/
+ui/
+tools/
+
+# Keep target in gitignore but exclude from moves
+# (managed by cargo clean)
+

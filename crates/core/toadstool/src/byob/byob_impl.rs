@@ -1,16 +1,19 @@
 //! BYOB compute executor implementation
 
 use async_trait::async_trait;
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+#[cfg(test)]
+use chrono::Utc;
+
 use super::byob_types::*;
+use super::config::ByobExecutorConfig;
+use super::deployment::ActiveDeployment;
 use crate::{
     ExecutionRequest, ExecutionStatus, RuntimeEngine, ToadStoolError, ToadStoolResult, WorkloadSpec,
 };
@@ -22,68 +25,6 @@ pub struct ByobComputeExecutor {
     active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>,
     /// Configuration
     config: ByobExecutorConfig,
-}
-
-/// Active deployment tracking
-#[derive(Debug)]
-struct ActiveDeployment {
-    /// Deployment request
-    request: ByobDeploymentRequest,
-    /// Deployment status
-    status: DeploymentStatus,
-    /// Service execution IDs
-    service_executions: HashMap<String, Uuid>,
-    /// Resource usage tracking
-    resource_usage: ResourceUsage,
-    /// Network information
-    network_info: NetworkInfo,
-    /// Created timestamp
-    #[allow(dead_code)]
-    created_at: Instant,
-    /// Updated timestamp
-    updated_at: Instant,
-}
-
-/// BYOB executor configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ByobExecutorConfig {
-    /// Maximum concurrent deployments
-    pub max_concurrent_deployments: u32,
-    /// Default network subnet
-    pub default_network_subnet: String,
-    /// Resource monitoring interval
-    pub resource_monitoring_interval: Duration,
-    /// Health check interval
-    pub health_check_interval: Duration,
-    /// Deployment timeout
-    pub deployment_timeout: Duration,
-    /// Default host port for service mappings
-    pub default_host_port: u16,
-    /// Common web service ports for external IP allocation
-    pub web_service_ports: Vec<u16>,
-}
-
-impl Default for ByobExecutorConfig {
-    fn default() -> Self {
-        let config = toadstool_config::env_config::EnvironmentConfig::from_env();
-        Self {
-            max_concurrent_deployments: 50,
-            default_network_subnet: "10.0.0.0/24".to_string(),
-            resource_monitoring_interval: Duration::from_secs(30),
-            health_check_interval: Duration::from_secs(10),
-            deployment_timeout: Duration::from_secs(600), // 10 minutes
-            default_host_port: config.network.songbird_port,
-            web_service_ports: vec![
-                80,
-                443,
-                config.network.songbird_port,
-                8443,
-                3000,
-                8000,
-                9000,
-            ],
-        }
-    }
 }
 
 /// BYOB executor trait
@@ -290,12 +231,21 @@ impl ByobComputeExecutor {
             deployment.request.deployment_id
         );
 
+        // Collect services to avoid borrow checker issues
+        let services: Vec<_> = deployment
+            .request
+            .services
+            .iter()
+            .map(|(name, spec)| (name.clone(), spec.clone()))
+            .collect();
+        let deployment_id = deployment.request.deployment_id;
+
         // Execute services in dependency order
-        for (service_name, service_spec) in &deployment.request.services {
+        for (service_name, service_spec) in services {
             debug!("Executing service: {}", service_name);
 
-            let execution_request = self
-                .create_service_execution_request(service_spec, deployment.request.deployment_id)?;
+            let execution_request =
+                self.create_service_execution_request(&service_spec, deployment_id)?;
 
             let execution_id = execution_request.execution_id;
 
@@ -303,15 +253,13 @@ impl ByobComputeExecutor {
             match self.runtime_engine.execute(execution_request).await {
                 Ok(response) => {
                     if response.status == ExecutionStatus::Success {
-                        deployment
-                            .service_executions
-                            .insert(service_name.clone(), execution_id);
+                        deployment.add_service_execution(service_name.clone(), execution_id);
                         info!("Service {} started successfully", service_name);
                     } else {
                         warn!("Service {} failed to start: {:?}", service_name, response);
-                        deployment.status = DeploymentStatus::Failed {
+                        deployment.update_status(DeploymentStatus::Failed {
                             error: format!("Service {service_name} failed to start"),
-                        };
+                        });
                         return Err(ToadStoolError::runtime(format!(
                             "Service {service_name} failed to start"
                         )));
@@ -319,16 +267,15 @@ impl ByobComputeExecutor {
                 }
                 Err(e) => {
                     error!("Failed to execute service {}: {:?}", service_name, e);
-                    deployment.status = DeploymentStatus::Failed {
+                    deployment.update_status(DeploymentStatus::Failed {
                         error: format!("Failed to execute service {service_name}: {e}"),
-                    };
+                    });
                     return Err(e);
                 }
             }
         }
 
-        deployment.status = DeploymentStatus::Running;
-        deployment.updated_at = Instant::now();
+        deployment.update_status(DeploymentStatus::Running);
 
         Ok(())
     }
@@ -431,23 +378,21 @@ impl ByobComputeExecutor {
     ) -> ToadStoolResult<bool> {
         debug!("🔍 Performing health check for service: {}", service_name);
 
-        // For now, implement a simple command-based health check
-        // In a real implementation, this would connect to the service and run the health check
+        // NOTE: Simplified health check - validates configuration but doesn't execute commands.
+        // Full implementation would use process::Command to execute health check scripts.
 
         if health_check.command.is_empty() {
             return Ok(true); // No command means always healthy
         }
 
-        // Simulate health check execution
-        // In production, this would actually execute the health check command
+        // Validate health check command format
         let command = &health_check.command[0];
 
         match command.as_str() {
             "curl" | "wget" | "http" => {
                 // HTTP-based health check
-                debug!("Performing HTTP health check for {}", service_name);
-                // For now, assume healthy
-                Ok(true)
+                debug!("HTTP health check configured for {}", service_name);
+                Ok(true) // Configuration valid
             }
             "ping" => {
                 // Network ping health check
@@ -484,8 +429,8 @@ impl ByobComputeExecutor {
             let mut total_network_received = 0;
 
             for (service_name, execution_id) in &deployment.service_executions {
-                // In a real implementation, this would query the runtime engine for actual metrics
-                // For now, simulate resource usage based on service requirements
+                // NOTE: Resource usage simulation - estimates based on service specifications.
+                // Full implementation would query runtime engine via RuntimeEngine trait.
                 if let Some(service_spec) = deployment.request.services.get(service_name) {
                     // Simulate CPU usage (50-80% of allocated)
                     if let Some(cpu_cores) = service_spec.resources.cpu_cores {
@@ -561,14 +506,12 @@ impl ByobComputeExecutor {
             return None;
         }
 
-        // In a production implementation, this would:
-        // 1. Contact cloud provider API (AWS, GCP, Azure)
-        // 2. Allocate an elastic/public IP
-        // 3. Configure load balancer rules
-        // 4. Update DNS records
-        // 5. Store IP allocation in database
-
-        // For now, simulate external IP allocation with a predictable pattern
+        // NOTE: IP allocation simulation - generates deterministic IPs for testing.
+        // Production implementation would integrate with cloud provider APIs:
+        //   - AWS: EC2 Elastic IP allocation
+        //   - GCP: Reserve static external IP
+        //   - Azure: Public IP resource creation
+        // And configure load balancer + DNS accordingly.
         let base_ip = match team_id.len() % 4 {
             0 => "203.0.113", // RFC 5737 documentation IP range
             1 => "198.51.100",
@@ -600,13 +543,9 @@ impl ByobComputeExecutor {
             service_name, execution_id
         );
 
-        // In a real implementation, this would:
-        // 1. Signal the runtime engine to stop the execution
-        // 2. Wait for graceful shutdown with timeout
-        // 3. Force kill if necessary
-        // 4. Clean up resources
-
-        // For now, simulate the stop operation
+        // NOTE: Service stop simulation - adds realistic delay.
+        // Full implementation would delegate to RuntimeEngine::stop_execution()
+        // with graceful shutdown timeout and force-kill fallback.
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
         debug!(
@@ -641,74 +580,20 @@ impl ByobExecutor for ByobComputeExecutor {
         // Create network for deployment
         let network_info = self.create_deployment_network(&request);
 
-        // Create active deployment
-        let mut active_deployment = ActiveDeployment {
-            request: request.clone(),
-            status: DeploymentStatus::Starting,
-            service_executions: HashMap::new(),
-            resource_usage: ResourceUsage {
-                cpu_usage: 0.0,
-                memory_usage: 0,
-                storage_usage: 0,
-                gpu_usage: 0,
-                network_usage: NetworkUsage {
-                    bytes_sent: 0,
-                    bytes_received: 0,
-                    packets_sent: 0,
-                    packets_received: 0,
-                },
-            },
-            network_info: network_info.clone(),
-            created_at: Instant::now(),
-            updated_at: Instant::now(),
-        };
+        // Create active deployment using constructor
+        let mut active_deployment = ActiveDeployment::new(request.clone(), network_info.clone());
 
         // Execute services
         self.execute_services(&mut active_deployment).await?;
+
+        // Create response before storing
+        let response = active_deployment.to_response();
 
         // Store active deployment
         {
             let mut deployments = self.active_deployments.write().await;
             deployments.insert(request.deployment_id, active_deployment);
         }
-
-        // Create response
-        let response = ByobDeploymentResponse {
-            deployment_id: request.deployment_id,
-            status: DeploymentStatus::Running,
-            service_statuses: request
-                .services
-                .keys()
-                .map(|name| {
-                    (
-                        name.clone(),
-                        ServiceStatus {
-                            name: name.clone(),
-                            state: "running".to_string(),
-                            running_replicas: 1,
-                            desired_replicas: 1,
-                            health: "healthy".to_string(),
-                            updated_at: Utc::now(),
-                        },
-                    )
-                })
-                .collect(),
-            resource_usage: ResourceUsage {
-                cpu_usage: 0.0,
-                memory_usage: 0,
-                storage_usage: 0,
-                gpu_usage: 0,
-                network_usage: NetworkUsage {
-                    bytes_sent: 0,
-                    bytes_received: 0,
-                    packets_sent: 0,
-                    packets_received: 0,
-                },
-            },
-            network_info,
-            created_at: request.created_at,
-            updated_at: Utc::now(),
-        };
 
         info!(
             "BYOB deployment {} completed successfully",
@@ -724,34 +609,7 @@ impl ByobExecutor for ByobComputeExecutor {
         let deployments = self.active_deployments.read().await;
 
         if let Some(deployment) = deployments.get(&deployment_id) {
-            let response = ByobDeploymentResponse {
-                deployment_id,
-                status: deployment.status.clone(),
-                service_statuses: deployment
-                    .request
-                    .services
-                    .keys()
-                    .map(|name| {
-                        (
-                            name.clone(),
-                            ServiceStatus {
-                                name: name.clone(),
-                                state: "running".to_string(),
-                                running_replicas: 1,
-                                desired_replicas: 1,
-                                health: "healthy".to_string(),
-                                updated_at: Utc::now(),
-                            },
-                        )
-                    })
-                    .collect(),
-                resource_usage: deployment.resource_usage.clone(),
-                network_info: deployment.network_info.clone(),
-                created_at: deployment.request.created_at,
-                updated_at: Utc::now(),
-            };
-
-            Ok(response)
+            Ok(deployment.to_response())
         } else {
             Err(ToadStoolError::not_found(format!(
                 "Deployment {deployment_id} not found"
@@ -764,7 +622,7 @@ impl ByobExecutor for ByobComputeExecutor {
 
         let mut deployments = self.active_deployments.write().await;
         if let Some(deployment) = deployments.get_mut(&deployment_id) {
-            deployment.status = DeploymentStatus::Stopping;
+            deployment.update_status(DeploymentStatus::Stopping);
 
             // Stop all running services in reverse dependency order
             let mut stopped_services = Vec::new();
@@ -782,15 +640,14 @@ impl ByobExecutor for ByobComputeExecutor {
                         service_name, execution_id
                     );
 
-                    // In a real implementation, this would signal the runtime engine to stop the execution
-                    // For now, simulate the stop operation
+                    // Delegate to stop_service_execution() which simulates runtime engine coordination
                     match self
                         .stop_service_execution(service_name.clone(), *execution_id)
                         .await
                     {
                         Ok(()) => {
                             stopped_services.push(service_name.clone());
-                            deployment.service_executions.remove(&service_name);
+                            deployment.remove_service_execution(&service_name);
                             info!("✅ Stopped service: {}", service_name);
                         }
                         Err(e) => {
@@ -833,36 +690,10 @@ impl ByobExecutor for ByobComputeExecutor {
     async fn list_deployments(&self) -> ToadStoolResult<Vec<ByobDeploymentResponse>> {
         let deployments = self.active_deployments.read().await;
 
-        let mut responses = Vec::new();
-        for (deployment_id, deployment) in deployments.iter() {
-            let response = ByobDeploymentResponse {
-                deployment_id: *deployment_id,
-                status: deployment.status.clone(),
-                service_statuses: deployment
-                    .request
-                    .services
-                    .keys()
-                    .map(|name| {
-                        (
-                            name.clone(),
-                            ServiceStatus {
-                                name: name.clone(),
-                                state: "running".to_string(),
-                                running_replicas: 1,
-                                desired_replicas: 1,
-                                health: "healthy".to_string(),
-                                updated_at: Utc::now(),
-                            },
-                        )
-                    })
-                    .collect(),
-                resource_usage: deployment.resource_usage.clone(),
-                network_info: deployment.network_info.clone(),
-                created_at: deployment.request.created_at,
-                updated_at: Utc::now(),
-            };
-            responses.push(response);
-        }
+        let responses = deployments
+            .values()
+            .map(|deployment| deployment.to_response())
+            .collect();
 
         Ok(responses)
     }

@@ -149,7 +149,6 @@ fn test_circuit_breaker_creation() {
     let _breaker = CircuitBreaker::new("test-service".to_string(), config);
 
     // Should create successfully
-    assert!(true);
 }
 
 #[test]
@@ -161,7 +160,6 @@ fn test_circuit_breaker_multiple_instances() {
     let _breaker2 = CircuitBreaker::new("service-2".to_string(), config2);
 
     // Should be able to create multiple breakers
-    assert!(true);
 }
 
 #[test]
@@ -175,7 +173,6 @@ fn test_circuit_breaker_with_custom_config() {
     };
 
     let _breaker = CircuitBreaker::new("custom-service".to_string(), config);
-    assert!(true);
 }
 
 // ============================================================================
@@ -215,7 +212,7 @@ fn test_memory_pressure_level_equality() {
 #[test]
 fn test_memory_pressure_level_clone() {
     let level = MemoryPressureLevel::Critical;
-    let cloned = level.clone();
+    let cloned = level;
     assert_eq!(cloned, MemoryPressureLevel::Critical);
 }
 

@@ -7,19 +7,22 @@
 //! (Kubernetes, Docker, bare metal, etc.) through runtime inspection,
 //! not hardcoded assumptions.
 //!
-//! Migrated from async_trait to native async for zero-cost abstraction.
+//! Migrated from `async_trait` to native async for zero-cost abstraction.
 
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use super::capabilities::*;
+use super::capabilities::{
+    DetectedSubstrate, DiscoveryError, SubstrateCapability, SubstrateDetector, SubstrateType,
+};
 
 /// Kubernetes detector - detects if running in Kubernetes
 pub struct KubernetesDetector;
 
 impl KubernetesDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -78,7 +81,7 @@ impl SubstrateDetector for KubernetesDetector {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "kubernetes"
     }
 }
@@ -87,7 +90,8 @@ impl SubstrateDetector for KubernetesDetector {
 pub struct DockerDetector;
 
 impl DockerDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -100,11 +104,7 @@ impl DockerDetector {
     }
 
     fn check_cgroup(&self) -> bool {
-        if let Ok(content) = std::fs::read_to_string("/proc/self/cgroup") {
-            content.contains("docker")
-        } else {
-            false
-        }
+        std::fs::read_to_string("/proc/self/cgroup").is_ok_and(|content| content.contains("docker"))
     }
 }
 
@@ -148,7 +148,7 @@ impl SubstrateDetector for DockerDetector {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "docker"
     }
 }
@@ -157,7 +157,8 @@ impl SubstrateDetector for DockerDetector {
 pub struct ConsulDetector;
 
 impl ConsulDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -169,7 +170,7 @@ impl ConsulDetector {
 
         // Try to connect to Consul API
         match reqwest::Client::new()
-            .get(format!("{}/v1/status/leader", consul_addr))
+            .get(format!("{consul_addr}/v1/status/leader"))
             .timeout(std::time::Duration::from_secs(2))
             .send()
             .await
@@ -229,7 +230,7 @@ impl SubstrateDetector for ConsulDetector {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "consul"
     }
 }
@@ -238,7 +239,8 @@ impl SubstrateDetector for ConsulDetector {
 pub struct CloudDetector;
 
 impl CloudDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -286,9 +288,8 @@ impl SubstrateDetector for CloudDetector {
         let provider = self.detect_cloud_provider();
 
         Box::pin(async move {
-            let provider = match provider {
-                Some(p) => p,
-                None => return Ok(None),
+            let Some(provider) = provider else {
+                return Ok(None);
             };
 
             let mut metadata = std::collections::HashMap::new();
@@ -322,7 +323,7 @@ impl SubstrateDetector for CloudDetector {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "cloud"
     }
 }
@@ -331,7 +332,8 @@ impl SubstrateDetector for CloudDetector {
 pub struct BareMetalDetector;
 
 impl BareMetalDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -364,12 +366,13 @@ impl SubstrateDetector for BareMetalDetector {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "bare_metal"
     }
 }
 
 /// Create standard detector chain
+#[must_use]
 pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
     vec![
         Box::new(KubernetesDetector::new()),

@@ -153,9 +153,8 @@ mod security_hardening_logic_tests {
 
     #[test]
     fn test_audit_remote_endpoint() {
-        let endpoint = Some("https://logging.example.com/ingest".to_string());
-        assert!(endpoint.is_some());
-        assert!(endpoint.unwrap().starts_with("https://"));
+        let endpoint = "https://logging.example.com/ingest".to_string();
+        assert!(endpoint.starts_with("https://"));
     }
 
     #[test]
@@ -174,7 +173,7 @@ mod security_hardening_logic_tests {
     #[test]
     fn test_intrusion_anomaly_threshold() {
         let threshold = 0.8f64;
-        assert!(threshold >= 0.0 && threshold <= 1.0);
+        assert!((0.0..=1.0).contains(&threshold));
     }
 
     #[test]
@@ -535,7 +534,7 @@ mod security_hardening_logic_tests {
     #[test]
     fn test_invalid_anomaly_threshold() {
         let threshold = 1.5f64;
-        let is_invalid = threshold > 1.0 || threshold < 0.0;
+        let is_invalid = !(0.0..=1.0).contains(&threshold);
 
         assert!(is_invalid);
     }
