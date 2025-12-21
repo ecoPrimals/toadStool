@@ -1,0 +1,87 @@
+# OpenAI Image Generation Provider Configuration
+# Registers with Songbird at runtime - NO hardcoding in Squirrel/demo!
+
+[provider]
+provider_id = "openai-dall-e-2"
+provider_name = "OpenAI DALL-E 2"
+register_with = "songbird"  # Auto-register on startup
+
+# Capabilities this provider offers
+[capabilities]
+type = "image.generation"
+
+[capabilities.supported]
+max_resolution = [1024, 1024]
+formats = ["png"]
+styles = ["any"]  # DALL-E supports any style
+quality_levels = ["standard", "hd"]
+
+# Performance characteristics
+[performance]
+avg_latency_ms = 12000
+min_latency_ms = 8000
+max_latency_ms = 30000
+throughput_per_minute = 5
+reliability = 0.99
+
+# Cost information
+[cost]
+model = "per_image"
+cost_per_unit = 0.02  # $0.02 per 512x512 image
+cost_per_hd_unit = 0.04  # $0.04 per 1024x1024 image
+currency = "USD"
+
+# Privacy information
+[privacy]
+location = "cloud"
+data_region = "us"
+retention = "none"  # OpenAI doesn't train on DALL-E images
+training_on_data = false
+geographic_restrictions = []
+
+# API endpoint configuration
+[endpoint]
+base_url = "https://api.openai.com/v1"
+path = "/images/generations"
+method = "POST"
+auth_type = "bearer"
+auth_env_var = "OPENAI_API_KEY"  # Load from environment
+timeout_ms = 60000
+
+# Request mapping
+[request_mapping]
+prompt_field = "prompt"
+size_field = "size"
+n_field = "n"
+quality_field = "quality"
+
+# Response mapping
+[response_mapping]
+image_url_path = "data[0].url"
+revised_prompt_path = "data[0].revised_prompt"
+
+# Health check
+[health]
+enabled = true
+endpoint = "https://api.openai.com/v1/models"
+interval_seconds = 60
+timeout_seconds = 10
+
+# Rate limiting
+[rate_limit]
+requests_per_minute = 50
+requests_per_day = 1000
+
+# Availability
+[availability]
+enabled = true
+auto_register = true  # Auto-register with Songbird on startup
+auto_unregister = true  # Auto-unregister on shutdown
+heartbeat_interval_seconds = 30
+
+[metadata]
+vendor = "openai"  # Internal use only, NOT exposed to Squirrel/demo
+model = "dall-e-2"
+version = "v1"
+region = "us-east-1"
+

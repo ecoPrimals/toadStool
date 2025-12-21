@@ -1,0 +1,24 @@
+[build]
+# Production linting for lib and bin targets
+[target.'cfg(not(test))']
+rustflags = ["-D", "warnings"]
+
+[alias]
+# Strict lint for production code only
+lint-prod = "clippy --lib --bins -- -D warnings"
+# Relaxed lint for tests (allow common test patterns)
+lint-all = "clippy --workspace --all-targets"
+
+
+# Added December 5, 2025 - Pedantic lint configuration (gradual enablement)
+# NOTE: Pedantic lints identified 177+ issues - enable incrementally
+# TODO: Gradually enable as we fix issues in Phase 2-3
+#
+# [target.'cfg(all())']
+# rustflags = [
+#     "-W", "clippy::pedantic",
+#     "-W", "clippy::nursery",  
+#     "-W", "clippy::cargo",
+# ]
+#
+# Current approach: Enable via Cargo.toml workspace.lints incrementally

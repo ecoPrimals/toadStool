@@ -1,0 +1,270 @@
+# ecoPrimals Integration Configuration
+# ToadStool + Songbird + Squirrel
+
+[primals]
+# Enable all three primals
+enabled = ["toadstool", "songbird", "squirrel"]
+
+# ═══════════════════════════════════════════════════════════════
+# ToadStool Configuration (Universal Compute Orchestrator)
+# ═══════════════════════════════════════════════════════════════
+
+[primals.toadstool]
+enabled = true
+orchestrator = true
+port = 7878
+
+[primals.toadstool.compute]
+# Enable GPU runtime for local AI models
+gpu_enabled = true
+gpu_device = "cuda:0"
+cpu_threads = 24
+
+[primals.toadstool.runtimes]
+# Supported runtime engines
+native = true
+container = true
+gpu = true
+cpu = true
+
+# ═══════════════════════════════════════════════════════════════
+# Songbird Configuration (Message Routing)
+# ═══════════════════════════════════════════════════════════════
+
+[primals.songbird]
+enabled = true
+port = 8080
+endpoint = "http://localhost:8080"
+
+[primals.songbird.routing]
+mode = "intelligent"
+load_balance = true
+
+[primals.songbird.agents]
+# Register agents for message routing
+toadstool = "songbird://localhost:7878/toadstool"
+squirrel = "songbird://localhost:9090/squirrel"
+
+[primals.songbird.patterns]
+# Routing patterns for AI requests
+ai_requests = { route_to = "squirrel", priority = "high" }
+compute_tasks = { route_to = "toadstool", load_balance = true }
+
+# ═══════════════════════════════════════════════════════════════
+# Squirrel Configuration (AI Gateway & Model Management)
+# ═══════════════════════════════════════════════════════════════
+
+[primals.squirrel]
+enabled = true
+port = 9090
+endpoint = "http://localhost:9090"
+
+# API keys loaded from: ../../../testing-secrets/api-keys.toml
+api_keys_file = "../../../testing-secrets/api-keys.toml"
+
+[primals.squirrel.local_models]
+# Local AI models (if GPU available)
+# NOTE: Models must be downloaded separately
+
+[primals.squirrel.local_models.llama3]
+path = "/models/llama-3-8b"
+device = "cuda:0"
+precision = "fp16"
+max_tokens = 4096
+enabled = false  # Set to true if model is downloaded
+
+[primals.squirrel.local_models.mistral]
+path = "/models/mistral-7b"
+device = "cuda:0"
+precision = "fp16"
+max_tokens = 8192
+enabled = false  # Set to true if model is downloaded
+
+[primals.squirrel.local_models.codellama]
+path = "/models/codellama-7b"
+device = "cuda:0"
+precision = "fp16"
+max_tokens = 4096
+enabled = false  # Set to true if model is downloaded
+
+[primals.squirrel.cloud_apis]
+# Cloud AI APIs (credentials from api-keys.toml)
+
+[primals.squirrel.cloud_apis.anthropic]
+enabled = true
+models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229"]
+default_model = "claude-3-sonnet-20240229"
+# API key loaded from api-keys.toml: anthropic_api_key
+
+[primals.squirrel.cloud_apis.openai]
+enabled = true
+models = ["gpt-4", "gpt-3.5-turbo"]
+default_model = "gpt-4"
+# API key loaded from api-keys.toml: openai_api_key
+
+[primals.squirrel.routing]
+# Intelligent routing rules
+strategy = "capability_match"
+
+# Route based on privacy level
+privacy_high = "local"      # Sensitive data → local models
+privacy_low = "cloud"       # Public data → cloud APIs
+
+# Route based on complexity
+complexity_simple = "local"    # Simple tasks → local
+complexity_high = "cloud"      # Complex tasks → cloud
+
+# Route based on cost sensitivity
+cost_free = "local"         # Free → local only
+cost_low = "hybrid"         # Low → prefer local, use cloud when needed
+cost_normal = "cloud"       # Normal → cloud OK
+
+[primals.squirrel.cost_management]
+# Cost tracking and limits
+track_costs = true
+monthly_budget = 50.00      # Maximum $50/month for cloud APIs
+max_per_request = 0.50      # Maximum $0.50 per request
+fallback_on_budget = "local"  # Use local if budget exceeded
+
+# ═══════════════════════════════════════════════════════════════
+# Workflow Definitions
+# ═══════════════════════════════════════════════════════════════
+
+[[workflows]]
+name = "code-review"
+description = "Analyze code for bugs and security issues"
+privacy_level = "private"
+complexity = "medium"
+
+[[workflows.stages]]
+stage = "classify"
+agent = "toadstool"
+
+[[workflows.stages]]
+stage = "route"
+agent = "songbird"
+
+[[workflows.stages]]
+stage = "analyze"
+agent = "squirrel"
+routing = "local"  # Keep code private
+
+[[workflows.stages]]
+stage = "respond"
+agent = "songbird"
+
+# ---
+
+[[workflows]]
+name = "content-generation"
+description = "Generate long-form content"
+privacy_level = "public"
+complexity = "high"
+
+[[workflows.stages]]
+stage = "classify"
+agent = "toadstool"
+
+[[workflows.stages]]
+stage = "route"
+agent = "songbird"
+
+[[workflows.stages]]
+stage = "generate"
+agent = "squirrel"
+routing = "cloud"  # Use powerful cloud models
+
+[[workflows.stages]]
+stage = "respond"
+agent = "songbird"
+
+# ---
+
+[[workflows]]
+name = "hybrid-pipeline"
+description = "Research + Analyze + Report"
+privacy_level = "mixed"
+complexity = "high"
+
+[[workflows.stages]]
+stage = "research"
+agent = "squirrel"
+routing = "cloud"  # Web research requires cloud
+model = "perplexity"
+
+[[workflows.stages]]
+stage = "analyze"
+agent = "squirrel"
+routing = "local"  # Private analysis on local GPU
+model = "llama3"
+
+[[workflows.stages]]
+stage = "report"
+agent = "squirrel"
+routing = "cloud"  # Professional formatting
+model = "claude-3-opus"
+
+# ═══════════════════════════════════════════════════════════════
+# Monitoring & Observability
+# ═══════════════════════════════════════════════════════════════
+
+[monitoring]
+enabled = true
+log_level = "info"
+
+[monitoring.metrics]
+track_latency = true
+track_costs = true
+track_privacy = true
+track_routing_decisions = true
+
+[monitoring.logging]
+log_api_calls = true
+log_routing = true
+log_costs = true
+# Never log API keys or sensitive data
+redact_sensitive = true
+
+# ═══════════════════════════════════════════════════════════════
+# Security & Privacy
+# ═══════════════════════════════════════════════════════════════
+
+[security]
+encryption_at_rest = true
+encryption_in_transit = true
+audit_logging = true
+
+[privacy]
+# Automatic data classification
+pii_detection = true
+sensitive_data_local_only = true
+
+# Data handling rules
+[privacy.rules]
+user_code = "private"           # Always local
+customer_data = "sensitive"     # Always local
+business_docs = "internal"      # Prefer local
+public_info = "public"          # Cloud OK
+
+# ═══════════════════════════════════════════════════════════════
+# Demo Configuration
+# ═══════════════════════════════════════════════════════════════
+
+[demo]
+# Demo mode settings
+enabled = true
+simulate_if_unavailable = true  # Simulate services if not running
+verbose_logging = true
+
+[demo.scenarios]
+# Which scenarios to run in demo
+code_review = true
+content_generation = true
+hybrid_pipeline = true
+
+[demo.display]
+show_architecture = true
+show_routing_decisions = true
+show_cost_tracking = true
+show_performance_metrics = true
+

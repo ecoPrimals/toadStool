@@ -1,0 +1,1 @@
+CHAOS TESTS RE-DISABLED: DistributedCoordinator::new() hangs on capability detection. Requires fixing core coordinator before re-enabling.

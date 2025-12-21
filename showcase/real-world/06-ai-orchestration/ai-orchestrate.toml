@@ -1,0 +1,306 @@
+# AI-First Orchestration Configuration
+# Designed for AI-to-AI interaction, minimal human input
+
+[meta]
+version = "1.0.0"
+description = "AI-first orchestration - AI agents interact, humans only provide secrets"
+ai_interaction = true
+human_interaction_minimal = true
+
+# ═══════════════════════════════════════════════════════════════
+# Secrets (Only Human Input Required)
+# ═══════════════════════════════════════════════════════════════
+
+[secrets]
+# All AI interactions are public, only secrets need protection
+location = "../../../testing-secrets/api-keys.toml"
+auto_load = true
+
+# Human provides once, AI uses forever
+required_secrets = [
+    "anthropic_api_key",
+    "openai_api_key",
+    "huggingface_api_key"
+]
+
+# ═══════════════════════════════════════════════════════════════
+# AI-to-AI Interface (No Human Interaction)
+# ═══════════════════════════════════════════════════════════════
+
+[ai_interface]
+# AI agents communicate directly
+protocol = "json_rpc"
+endpoint = "http://localhost:7878/ai/v1"
+
+# Natural language interface for AI
+natural_language = true
+examples = [
+    "Generate an image of a distributed network",
+    "Analyze this code for security issues",
+    "Create a business report about AI trends"
+]
+
+# AI can request capabilities, not specific services
+capability_based = true
+service_discovery = "automatic"
+
+# ═══════════════════════════════════════════════════════════════
+# Workload Definitions (AI Describes Intent)
+# ═══════════════════════════════════════════════════════════════
+
+[[workloads]]
+id = "image_generation"
+intent = "Generate image from text description"
+ai_friendly = true
+
+[workloads.input]
+# AI provides natural language
+type = "natural_language"
+example = "A futuristic distributed computing network with neon circuits"
+
+[workloads.processing]
+# System handles routing automatically
+step1 = "local_ai_enhances_prompt"  # ToadStool
+step2 = "songbird_routes"            # Songbird
+step3 = "cloud_generates_image"      # Squirrel → HuggingFace
+step4 = "save_locally"               # Output
+
+[workloads.output]
+format = "png"
+location = "generated_images/"
+metadata = true  # Include generation details
+
+# ---
+
+[[workloads]]
+id = "code_review"
+intent = "Review code for bugs and security"
+ai_friendly = true
+
+[workloads.input]
+type = "code"
+languages = ["rust", "python", "javascript", "go"]
+
+[workloads.processing]
+privacy = "high"  # Always local
+routing = "deterministic"  # Always ToadStool local AI
+
+[workloads.output]
+format = "markdown"
+sections = ["summary", "critical_issues", "recommendations"]
+
+# ---
+
+[[workloads]]
+id = "hybrid_research"
+intent = "Research topic, analyze, create report"
+ai_friendly = true
+
+[workloads.input]
+type = "natural_language"
+example = "Research quantum computing applications in finance"
+
+[workloads.processing]
+pipeline = [
+    { service = "cloud", task = "web_research", model = "perplexity" },
+    { service = "local", task = "analyze", model = "llama3.2:3b" },
+    { service = "cloud", task = "format_report", model = "gpt-4" }
+]
+
+[workloads.output]
+format = "markdown"
+cost_optimized = true
+
+# ═══════════════════════════════════════════════════════════════
+# AI Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+[agents]
+# AI agents interact with system
+
+[agents.cursor]
+type = "development_ai"
+capabilities = [
+    "code_generation",
+    "code_review",
+    "architecture_design",
+    "testing"
+]
+auth = "session_based"  # No password needed
+
+[agents.user_ai]
+type = "personal_assistant"
+capabilities = [
+    "research",
+    "writing",
+    "image_generation",
+    "data_analysis"
+]
+auth = "api_key"
+
+[agents.autonomous]
+type = "background_worker"
+capabilities = [
+    "monitoring",
+    "optimization",
+    "maintenance"
+]
+auth = "system_level"
+
+# ═══════════════════════════════════════════════════════════════
+# Routing (Fully Automatic)
+# ═══════════════════════════════════════════════════════════════
+
+[routing]
+# No human decisions required
+mode = "automatic"
+decision_maker = "ai_orchestrator"
+
+[routing.rules]
+# AI determines routing based on intent
+privacy_high = "local"
+cost_free = "local"
+quality_high = "cloud"
+speed_critical = "local"
+knowledge_recent = "cloud"
+
+[routing.optimization]
+# System learns from usage
+ml_based = true
+cost_aware = true
+latency_aware = true
+
+# ═══════════════════════════════════════════════════════════════
+# Monitoring (AI-Readable)
+# ═══════════════════════════════════════════════════════════════
+
+[monitoring]
+# Metrics in AI-friendly format
+format = "json"
+endpoint = "http://localhost:7878/metrics"
+
+[monitoring.metrics]
+track = [
+    "cost_per_request",
+    "latency_p95",
+    "privacy_compliance",
+    "routing_decisions",
+    "model_performance"
+]
+
+# AI can query metrics
+query_api = true
+natural_language_queries = true
+
+# ═══════════════════════════════════════════════════════════════
+# Human Interaction (Minimal)
+# ═══════════════════════════════════════════════════════════════
+
+[human_interaction]
+# Only for exceptions
+required_for = [
+    "providing_secrets",
+    "cost_approval_over_limit",
+    "privacy_policy_changes"
+]
+
+# Everything else is AI-to-AI
+automated = [
+    "routing",
+    "service_selection",
+    "cost_optimization",
+    "error_recovery",
+    "scaling",
+    "monitoring"
+]
+
+# ═══════════════════════════════════════════════════════════════
+# Error Handling (AI-Friendly)
+# ═══════════════════════════════════════════════════════════════
+
+[errors]
+# AI can understand and recover
+format = "json"
+include_recovery_suggestions = true
+
+[errors.automatic_recovery]
+enabled = true
+max_retries = 3
+fallback_strategies = [
+    "try_different_model",
+    "reduce_quality",
+    "use_local_instead",
+    "cache_result"
+]
+
+# ═══════════════════════════════════════════════════════════════
+# Example AI Interactions
+# ═══════════════════════════════════════════════════════════════
+
+[[examples]]
+name = "Simple Image Generation"
+ai_request = "Generate an image of a sunset over mountains"
+system_response = {
+    workload = "image_generation",
+    routing = "local_prompt + cloud_image",
+    output = "generated_images/sunset_12345.png",
+    cost = 0.00,
+    time_ms = 15000
+}
+
+[[examples]]
+name = "Code Review"
+ai_request = "Review this Rust code for security issues: [code]"
+system_response = {
+    workload = "code_review",
+    routing = "local_only",
+    privacy = "100%",
+    cost = 0.00,
+    time_ms = 500
+}
+
+[[examples]]
+name = "Research Report"
+ai_request = "Create a report on AI trends in healthcare"
+system_response = {
+    workload = "hybrid_research",
+    routing = "cloud_research + local_analysis + cloud_formatting",
+    cost = 0.15,
+    time_ms = 30000,
+    cost_savings = "80% vs all-cloud"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# API Endpoints (AI-to-AI)
+# ═══════════════════════════════════════════════════════════════
+
+[api]
+base_url = "http://localhost:7878"
+version = "v1"
+protocol = "http+json"
+
+[api.endpoints]
+# AI-friendly endpoints
+orchestrate = "/ai/v1/orchestrate"
+query_capabilities = "/ai/v1/capabilities"
+get_metrics = "/ai/v1/metrics"
+list_models = "/ai/v1/models"
+
+[api.request_format]
+# Simple JSON
+type = "json"
+fields = {
+    intent = "What you want to do (natural language)",
+    data = "Your input data",
+    constraints = "Optional: privacy, cost, quality requirements"
+}
+
+[api.response_format]
+type = "json"
+fields = {
+    result = "The output you requested",
+    metadata = "How it was processed",
+    cost = "How much it cost",
+    routing = "Where it was executed"
+}
+

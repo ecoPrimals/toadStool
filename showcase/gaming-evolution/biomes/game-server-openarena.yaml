@@ -1,0 +1,112 @@
+# OpenArena Game Server - ToadStool Orchestrated
+# Level 1: ToadStool manages game server execution
+
+name: openarena-server
+version: 1.0.0
+description: OpenArena multiplayer game server orchestrated by ToadStool
+
+# Self-identity: What this workload IS
+identity:
+  workload_type: game-server
+  game: openarena
+  capabilities:
+    - game-server
+    - multiplayer
+    - fps
+    - openarena
+
+# ToadStool orchestration
+orchestration:
+  runtime: native
+  
+  execution:
+    command: openarena
+    args:
+      - "+set"
+      - "dedicated"
+      - "1"
+      - "+set"
+      - "net_port"
+      - "27960"
+      - "+exec"
+      - "server.cfg"
+      - "+map"
+      - "dm17"
+    
+    working_directory: /tmp/openarena-server
+    
+  resources:
+    cpu_cores: 2
+    memory_mb: 512
+    disk_mb: 100
+    
+  health_check:
+    type: port
+    port: 27960
+    protocol: udp
+    interval_seconds: 30
+    timeout_seconds: 5
+    retries: 3
+    
+  restart_policy: always
+  
+  environment:
+    DISPLAY: ":0"
+
+# Primal integration (for future levels)
+primals:
+  # Level 2: Songbird discovery
+  songbird:
+    enabled: false  # Will enable in Level 2
+    discovery:
+      advertise_capabilities:
+        - game-server
+        - openarena
+        - multiplayer
+      metadata:
+        map: dm17
+        max_players: 16
+        game_type: ffa
+  
+  # Level 3: NestGate storage  
+  nestgate:
+    enabled: false  # Will enable in Level 3
+    storage:
+      configs:
+        remote_path: /games/openarena/configs
+        local_mount: ~/.openarena/baseoa
+      saves:
+        remote_path: /games/openarena/saves
+        local_mount: ~/.openarena/demos
+  
+  # Level 4: BearDog security
+  beardog:
+    enabled: false  # Will enable in Level 4
+    encryption:
+      config_files: true
+      save_files: true
+    authentication:
+      required: false
+
+# Monitoring
+monitoring:
+  metrics:
+    - cpu_usage
+    - memory_usage
+    - network_traffic
+  
+  logs:
+    stdout: true
+    stderr: true
+    level: info
+
+# Metadata
+metadata:
+  author: ecoPrimals
+  tags:
+    - gaming
+    - openarena
+    - multiplayer
+    - showcase
+  documentation: https://github.com/ecoPrimals/toadstool/showcase/gaming-evolution
+

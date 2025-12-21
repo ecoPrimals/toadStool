@@ -1,0 +1,452 @@
+# Capability-Based AI Service Registry
+# Services register with Songbird, not hardcoded in ToadStool
+
+[registry]
+# Songbird acts as service discovery
+type = "distributed"
+backend = "songbird"
+endpoint = "http://localhost:8080/registry"
+
+# ═══════════════════════════════════════════════════════════════
+# AI Service Capabilities (Not Vendors!)
+# ═══════════════════════════════════════════════════════════════
+
+# Each service advertises what it CAN do, not who it is
+# ToadStool routes based on capabilities, not brand names
+
+[[services]]
+# Service registers itself (could be OpenAI, could be anything)
+service_id = "text-generation-fast-001"
+service_type = "ai.text.generation"
+
+[services.capabilities]
+modality = "text"
+input_types = ["text"]
+output_types = ["text"]
+max_tokens = 4096
+languages = ["en", "es", "fr", "de", "pt", "it", "nl", "pl", "ru", "zh", "ja", "ko"]
+streaming = true
+function_calling = false
+vision = false
+
+[services.performance]
+avg_latency_ms = 1500
+tokens_per_second = 100
+reliability = 0.99
+
+[services.cost]
+cost_model = "token"
+input_cost_per_1k = 0.0005
+output_cost_per_1k = 0.0015
+currency = "USD"
+
+[services.privacy]
+data_retention = "none"
+training_on_data = false
+geographic_restrictions = []
+
+[services.endpoint]
+# Squirrel resolves this, not hardcoded
+protocol = "https"
+path = "/v1/chat/completions"
+auth_type = "bearer"
+# Actual URL resolved at runtime via Songbird
+
+# ---
+
+[[services]]
+service_id = "text-generation-powerful-001"
+service_type = "ai.text.generation"
+
+[services.capabilities]
+modality = "text"
+input_types = ["text"]
+output_types = ["text"]
+max_tokens = 200000  # Long context
+languages = ["en", "es", "fr", "de", "pt", "it", "nl", "pl", "ru", "zh", "ja", "ko"]
+streaming = true
+function_calling = true
+vision = false
+reasoning = "advanced"  # Can handle complex reasoning
+
+[services.performance]
+avg_latency_ms = 2500
+tokens_per_second = 80
+reliability = 0.995
+
+[services.cost]
+cost_model = "token"
+input_cost_per_1k = 0.003
+output_cost_per_1k = 0.015
+currency = "USD"
+
+[services.privacy]
+data_retention = "none"
+training_on_data = false
+geographic_restrictions = []
+
+# ---
+
+[[services]]
+service_id = "text-generation-local-001"
+service_type = "ai.text.generation"
+
+[services.capabilities]
+modality = "text"
+input_types = ["text"]
+output_types = ["text"]
+max_tokens = 8192
+languages = ["en"]
+streaming = true
+function_calling = false
+vision = false
+
+[services.performance]
+avg_latency_ms = 200
+tokens_per_second = 50
+reliability = 1.0  # Local = always available
+
+[services.cost]
+cost_model = "free"
+input_cost_per_1k = 0.0
+output_cost_per_1k = 0.0
+currency = "USD"
+
+[services.privacy]
+data_retention = "local"
+training_on_data = false
+geographic_restrictions = []
+location = "on_premise"  # Data never leaves
+
+[services.endpoint]
+protocol = "http"
+host = "localhost"
+port = 11434
+path = "/api/generate"
+auth_type = "none"
+
+# ---
+
+[[services]]
+service_id = "vision-multimodal-001"
+service_type = "ai.vision.understanding"
+
+[services.capabilities]
+modality = "multimodal"
+input_types = ["text", "image"]
+output_types = ["text"]
+max_tokens = 4096
+vision = true
+image_understanding = true
+ocr = true
+max_images = 10
+
+[services.performance]
+avg_latency_ms = 3000
+reliability = 0.99
+
+[services.cost]
+cost_model = "token_plus_image"
+input_cost_per_1k = 0.003
+output_cost_per_1k = 0.015
+image_cost_per_image = 0.01
+currency = "USD"
+
+# ---
+
+[[services]]
+service_id = "web-research-001"
+service_type = "ai.research.web"
+
+[services.capabilities]
+modality = "text"
+input_types = ["text"]
+output_types = ["text"]
+web_search = true
+real_time_data = true
+citations = true
+max_tokens = 4096
+
+[services.performance]
+avg_latency_ms = 4000
+reliability = 0.95
+
+[services.cost]
+cost_model = "request"
+cost_per_request = 0.005
+currency = "USD"
+
+[services.privacy]
+data_retention = "7_days"
+training_on_data = false
+
+# ---
+
+[[services]]
+service_id = "code-generation-001"
+service_type = "ai.code.generation"
+
+[services.capabilities]
+modality = "text"
+input_types = ["text", "code"]
+output_types = ["text", "code"]
+max_tokens = 16000
+languages = ["en"]
+programming_languages = ["python", "rust", "javascript", "typescript", "go", "java", "c", "cpp"]
+code_understanding = true
+code_generation = true
+code_review = true
+
+[services.performance]
+avg_latency_ms = 2000
+tokens_per_second = 90
+reliability = 0.99
+
+[services.cost]
+cost_model = "token"
+input_cost_per_1k = 0.002
+output_cost_per_1k = 0.006
+currency = "USD"
+
+# ═══════════════════════════════════════════════════════════════
+# Workload Requirements (What You Need)
+# ═══════════════════════════════════════════════════════════════
+
+[[workload_profiles]]
+profile_id = "code_review"
+description = "Private code review - must be local"
+
+[workload_profiles.requirements]
+service_type = "ai.text.generation"
+min_tokens = 2000
+preferred_languages = ["en"]
+
+[workload_profiles.constraints]
+# Hard constraints - must match
+privacy_level = "private"
+location = "on_premise"
+max_cost_per_request = 0.0  # Must be free
+
+[workload_profiles.preferences]
+# Soft constraints - nice to have
+preferred_latency_ms = 500
+preferred_reliability = 0.99
+
+# ---
+
+[[workload_profiles]]
+profile_id = "business_document"
+description = "Business document generation - can use cloud"
+
+[workload_profiles.requirements]
+service_type = "ai.text.generation"
+min_tokens = 4000
+preferred_languages = ["en"]
+
+[workload_profiles.constraints]
+privacy_level = "internal"
+max_cost_per_request = 0.50
+
+[workload_profiles.preferences]
+preferred_latency_ms = 3000
+quality = "high"
+reasoning = "advanced"
+
+# ---
+
+[[workload_profiles]]
+profile_id = "web_research"
+description = "Web research with citations"
+
+[workload_profiles.requirements]
+service_type = "ai.research.web"
+web_search = true
+citations = true
+
+[workload_profiles.constraints]
+privacy_level = "public"
+max_cost_per_request = 0.10
+
+[workload_profiles.preferences]
+real_time_data = true
+
+# ---
+
+[[workload_profiles]]
+profile_id = "image_analysis"
+description = "Image understanding and description"
+
+[workload_profiles.requirements]
+service_type = "ai.vision.understanding"
+vision = true
+image_understanding = true
+
+[workload_profiles.constraints]
+privacy_level = "internal"
+max_cost_per_request = 0.20
+
+# ═══════════════════════════════════════════════════════════════
+# Routing Rules (Capability-Based)
+# ═══════════════════════════════════════════════════════════════
+
+[routing]
+strategy = "capability_match"
+
+# Scoring weights for service selection
+[routing.scoring]
+capability_match = 0.40      # Does it have what we need?
+cost = 0.25                  # Is it affordable?
+performance = 0.20           # Is it fast enough?
+privacy = 0.10               # Does it meet privacy requirements?
+reliability = 0.05           # Is it dependable?
+
+# Fallback strategy
+[routing.fallback]
+enabled = true
+strategy = "relax_preferences"  # If no match, relax soft constraints
+max_fallback_attempts = 3
+
+# Load balancing
+[routing.load_balance]
+enabled = true
+strategy = "least_loaded"    # Round-robin, least-loaded, weighted
+health_check_interval_secs = 30
+
+# ═══════════════════════════════════════════════════════════════
+# Service Discovery via Songbird
+# ═══════════════════════════════════════════════════════════════
+
+[discovery]
+backend = "songbird"
+refresh_interval_secs = 60   # Re-query Songbird every minute
+
+[discovery.songbird]
+endpoint = "http://localhost:8080"
+registry_path = "/registry/services"
+query_path = "/registry/query"
+
+# Services register themselves with Songbird
+[discovery.registration]
+# ToadStool registers as orchestrator
+register_as = "orchestrator"
+heartbeat_interval_secs = 30
+
+# Squirrel registers AI capabilities
+# Each service publishes its capabilities to Songbird
+# ToadStool queries Songbird for available services
+
+# ═══════════════════════════════════════════════════════════════
+# Provider Adapters (How to Talk to Services)
+# ═══════════════════════════════════════════════════════════════
+
+# These are protocol adapters, not vendor lock-in
+# Any service implementing these protocols can be used
+
+[[adapters]]
+adapter_id = "openai_compatible"
+protocol = "openai_chat_completions"
+description = "OpenAI-compatible chat completions API"
+
+[adapters.request_format]
+type = "json"
+method = "POST"
+headers = ["Authorization: Bearer {api_key}", "Content-Type: application/json"]
+
+[adapters.response_format]
+type = "json"
+text_path = "choices[0].message.content"
+tokens_path = "usage.total_tokens"
+finish_reason_path = "choices[0].finish_reason"
+
+# ---
+
+[[adapters]]
+adapter_id = "anthropic_compatible"
+protocol = "anthropic_messages"
+description = "Anthropic-compatible messages API"
+
+[adapters.request_format]
+type = "json"
+method = "POST"
+headers = ["x-api-key: {api_key}", "anthropic-version: 2023-06-01", "Content-Type: application/json"]
+
+[adapters.response_format]
+type = "json"
+text_path = "content[0].text"
+tokens_path = "usage.input_tokens + usage.output_tokens"
+finish_reason_path = "stop_reason"
+
+# ---
+
+[[adapters]]
+adapter_id = "ollama_compatible"
+protocol = "ollama_generate"
+description = "Ollama-compatible generate API"
+
+[adapters.request_format]
+type = "json"
+method = "POST"
+headers = ["Content-Type: application/json"]
+
+[adapters.response_format]
+type = "json"
+text_path = "response"
+streaming_path = "response"
+
+# ---
+
+[[adapters]]
+adapter_id = "generic_http"
+protocol = "http_json"
+description = "Generic HTTP/JSON API"
+
+[adapters.request_format]
+type = "json"
+method = "POST"
+configurable = true
+
+[adapters.response_format]
+type = "json"
+configurable = true
+
+# ═══════════════════════════════════════════════════════════════
+# Monitoring & Observability
+# ═══════════════════════════════════════════════════════════════
+
+[monitoring]
+enabled = true
+
+[monitoring.metrics]
+track_service_latency = true
+track_service_costs = true
+track_service_errors = true
+track_routing_decisions = true
+
+[monitoring.logging]
+log_service_selection = true
+log_capability_matching = true
+log_cost_calculations = true
+
+# ═══════════════════════════════════════════════════════════════
+# Example: Adding a New Service (No Code Changes!)
+# ═══════════════════════════════════════════════════════════════
+
+# To add a new AI provider:
+# 1. Service registers with Songbird with its capabilities
+# 2. Squirrel detects it via service discovery
+# 3. ToadStool can now route to it
+# 4. No code changes needed!
+
+# Example new service:
+# [[services]]
+# service_id = "new-ai-provider-001"
+# service_type = "ai.text.generation"
+# [services.capabilities]
+# modality = "text"
+# max_tokens = 8192
+# [services.cost]
+# input_cost_per_1k = 0.001
+# ... etc
+# 
+# That's it! System automatically discovers and uses it.
+

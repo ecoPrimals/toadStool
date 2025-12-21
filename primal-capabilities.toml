@@ -1,0 +1,340 @@
+# Primal Capability Registry
+# Each primal advertises its capabilities for runtime discovery
+# 
+# Philosophy: "Each primal knows only itself. Everything else is discovered."
+#
+# Usage:
+#   let services = discovery.find_by_capability("cryptographic-operations").await?;
+#   // No hardcoded "beardog" - discovered by capability!
+
+[registry]
+version = "1.0.0"
+discovery_protocol = "capability-based"
+fallback_strategy = "best-available"
+
+# =============================================================================
+# TOADSTOOL - Universal Compute Platform
+# =============================================================================
+[primals.toadstool]
+name = "toadstool"
+description = "Universal compute platform with multi-runtime execution"
+primary_role = "compute"
+
+capabilities = [
+    # Core compute capabilities
+    "universal-compute",
+    "multi-runtime-execution",
+    "workload-scheduling",
+    "resource-management",
+    
+    # Runtime engines
+    "native-execution",
+    "wasm-execution",
+    "container-execution",
+    "python-execution",
+    "gpu-compute",
+    "edge-compute",
+    
+    # Platform features
+    "sandboxing",
+    "isolation",
+    "monitoring",
+    "metrics-collection",
+    "health-checks",
+    "audit-logging",
+]
+
+protocols = ["http", "grpc", "websocket"]
+default_port = 8080  # Discovered, not hardcoded in code!
+health_endpoint = "/health"
+metrics_endpoint = "/metrics"
+
+# =============================================================================
+# BEARDOG - Cryptographic Operations & Key Management
+# =============================================================================
+[primals.beardog]
+name = "beardog"
+description = "Cryptographic security and key management platform"
+primary_role = "security"
+
+capabilities = [
+    # Cryptographic operations
+    "cryptographic-operations",
+    "key-management",
+    "signing",
+    "verification",
+    "encryption",
+    "decryption",
+    
+    # Key operations
+    "key-generation",
+    "key-rotation",
+    "key-storage",
+    "key-recovery",
+    
+    # Security features
+    "identity-management",
+    "authentication",
+    "authorization",
+    "certificate-management",
+    "secure-vault",
+    
+    # Advanced crypto
+    "homomorphic-encryption",
+    "zero-knowledge-proofs",
+    "threshold-signatures",
+]
+
+protocols = ["http", "grpc"]
+default_port = 8081
+health_endpoint = "/health"
+
+# =============================================================================
+# SONGBIRD - Service Discovery & Orchestration
+# =============================================================================
+[primals.songbird]
+name = "songbird"
+description = "Service discovery, load balancing, and request routing"
+primary_role = "coordination"
+
+capabilities = [
+    # Discovery
+    "service-discovery",
+    "capability-discovery",
+    "health-monitoring",
+    "service-registry",
+    
+    # Routing
+    "load-balancing",
+    "request-routing",
+    "traffic-management",
+    "failover",
+    
+    # Orchestration
+    "job-routing",
+    "task-distribution",
+    "resource-allocation",
+    "capacity-planning",
+    
+    # Mesh features
+    "service-mesh",
+    "circuit-breaking",
+    "rate-limiting",
+    "retry-logic",
+]
+
+protocols = ["http", "grpc", "mdns"]
+default_port = 8082
+health_endpoint = "/health"
+discovery_endpoint = "/discover"
+
+# =============================================================================
+# NESTGATE - Distributed Storage & Data Management
+# =============================================================================
+[primals.nestgate]
+name = "nestgate"
+description = "Distributed storage and data management platform"
+primary_role = "storage"
+
+capabilities = [
+    # Storage
+    "storage",
+    "distributed-storage",
+    "object-storage",
+    "file-storage",
+    "block-storage",
+    
+    # Data management
+    "data-management",
+    "caching",
+    "replication",
+    "sharding",
+    "consistency",
+    
+    # Advanced features
+    "versioning",
+    "snapshots",
+    "backup",
+    "recovery",
+    "compression",
+    "deduplication",
+    
+    # Access
+    "data-access",
+    "query-engine",
+    "indexing",
+    "search",
+]
+
+protocols = ["http", "grpc", "s3-compatible"]
+default_port = 8083
+health_endpoint = "/health"
+
+# =============================================================================
+# SQUIRREL - AI Agents & MCP Platform
+# =============================================================================
+[primals.squirrel]
+name = "squirrel"
+description = "AI agent platform with Model Context Protocol support"
+primary_role = "intelligence"
+
+capabilities = [
+    # AI/ML
+    "ai-agents",
+    "machine-learning",
+    "inference",
+    "model-serving",
+    
+    # MCP Protocol
+    "mcp-protocol",
+    "plugin-execution",
+    "tool-calling",
+    "context-management",
+    
+    # Agent features
+    "conversation",
+    "reasoning",
+    "planning",
+    "task-execution",
+    
+    # Platform
+    "plugin-registry",
+    "plugin-discovery",
+    "plugin-isolation",
+    "plugin-management",
+]
+
+protocols = ["http", "grpc", "websocket", "mcp"]
+default_port = 8084
+health_endpoint = "/health"
+
+# =============================================================================
+# BIOMEOS - Multi-Service Orchestration
+# =============================================================================
+[primals.biomeos]
+name = "biomeos"
+description = "Multi-service orchestration and biome management"
+primary_role = "orchestration"
+
+capabilities = [
+    # Orchestration
+    "multi-service-orchestration",
+    "biome-management",
+    "service-composition",
+    "workflow-execution",
+    
+    # Team management
+    "team-coordination",
+    "resource-sharing",
+    "access-control",
+    "quota-management",
+    
+    # Integration
+    "service-integration",
+    "data-flow",
+    "event-bus",
+    "message-queue",
+]
+
+protocols = ["http", "grpc"]
+default_port = 8085
+health_endpoint = "/health"
+
+# =============================================================================
+# DISCOVERY CONFIGURATION
+# =============================================================================
+[discovery]
+# Methods to use for discovery (in priority order)
+methods = [
+    "environment",      # Environment variables
+    "mdns",            # Multicast DNS
+    "service-mesh",    # Kubernetes, Consul, etc.
+    "config-file",     # This file
+    "fallback",        # Last resort defaults
+]
+
+# Cache settings
+cache_enabled = true
+cache_ttl_seconds = 300  # 5 minutes
+
+# Retry settings
+retry_attempts = 3
+retry_delay_ms = 1000
+timeout_seconds = 30
+
+# Health check settings
+health_check_enabled = true
+health_check_interval_seconds = 30
+health_check_timeout_seconds = 5
+
+[discovery.preferences]
+# Prefer local services when available
+prefer_local = true
+
+# Prefer healthy services
+require_healthy = true
+
+# Load balancing strategy
+load_balance = "round-robin"  # or "random", "least-connections"
+
+# Fallback behavior
+fallback_to_any = true  # Use any available service if preferred not found
+
+# =============================================================================
+# MIGRATION MAPPING (for backward compatibility during transition)
+# =============================================================================
+[migration]
+# Maps old hardcoded references to capabilities
+# Used during migration period - will be removed
+
+[migration.beardog]
+capability = "cryptographic-operations"
+fallback_url = "http://localhost:8081"  # Last resort only
+
+[migration.songbird]
+capability = "service-discovery"
+fallback_url = "http://localhost:8082"
+
+[migration.nestgate]
+capability = "storage"
+fallback_url = "http://localhost:8083"
+
+[migration.squirrel]
+capability = "ai-agents"
+fallback_url = "http://localhost:8084"
+
+[migration.biomeos]
+capability = "multi-service-orchestration"
+fallback_url = "http://localhost:8085"
+
+# =============================================================================
+# EXAMPLE USAGE
+# =============================================================================
+# 
+# Instead of:
+#   let beardog = connect("http://localhost:8081").await?;
+#
+# Use:
+#   let crypto = discovery.find_by_capability("cryptographic-operations").await?;
+#   let conn = try_connect(&crypto[0]).await?;
+#
+# Or with fallback:
+#   let services = discovery.find_by_capabilities(vec![
+#       "cryptographic-operations",
+#       "key-management",
+#   ]).await?;
+#   
+#   for service in services {
+#       match try_connect(&service).await {
+#           Ok(conn) => return Ok(conn),
+#           Err(e) => warn!("Service {} failed: {}", service.endpoint, e),
+#       }
+#   }
+#
+# Benefits:
+# - No hardcoded service names in code
+# - Automatic failover to alternatives
+# - Load balancing across instances
+# - Health-aware routing
+# - Like living organisms: discover by need, not by name!
+
