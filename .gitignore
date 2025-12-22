@@ -133,5 +133,15 @@ config.local.json
 # Backup files
 *.bak
 *.backup
-*.old showcase/inter-primal/05-deep-learning-distributed/datasets/*.tar.gz
+*.old
+
+# Large datasets and archives (construction debris from testing)
 *.tar.gz
+*.zip
+*.7z
+*.rar
+showcase/**/datasets/*.tar.gz
+showcase/**/datasets/*.zip
+showcase/**/datasets/cifar-*
+showcase/**/datasets/imagenet-*
+showcase/**/datasets/mnist-*
