@@ -321,7 +321,7 @@ mod tests {
         let mut handles = vec![];
 
         for _ in 0..10 {
-            let s = Arc::clone(&state);
+            let s = state.clone();
             handles.push(tokio::spawn(async move {
                 s.write(|val| *val += 1).await;
             }));

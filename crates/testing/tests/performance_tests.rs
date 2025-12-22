@@ -1,6 +1,7 @@
 // ToadStool - Universal Compute Platform
 // Tests for performance testing utilities
 
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_testing::performance::*;
 
