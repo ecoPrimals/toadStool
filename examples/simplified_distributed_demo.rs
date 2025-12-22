@@ -93,6 +93,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
             environment: HashMap::new(),
             input_data: ExecutionInput::default(),
             callback_config: None,
+            encryption_config: None,
         };
 
         let execution_id = coordinator.submit_execution(request).await?;
@@ -173,6 +174,7 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     let execution_id = coordinator.submit_execution(ml_request).await?;

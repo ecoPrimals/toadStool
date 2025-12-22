@@ -1,385 +1,229 @@
-//! Port Registry - Centralized port management
+//! Centralized Port Configuration
 //!
-//! Eliminates hardcoded ports throughout the codebase, enabling:
-//! - Dynamic port allocation
-//! - Environment-specific configuration
-//! - Multi-instance deployments
-//! - Zero port conflicts in testing
+//! **Phase 1 of Capability-Based Discovery Evolution**
+//!
+//! This module centralizes all hardcoded ports as the first step toward
+//! runtime discovery. Future evolution:
+//! - Phase 1: Centralize (this file) ✅
+//! - Phase 2: Environment variable overrides
+//! - Phase 3: Runtime discovery via Songbird
+//! - Phase 4: Full mDNS + capability-based discovery
 
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::net::TcpListener;
-use std::sync::Arc;
-use std::sync::RwLock;
+/// Default ports for ToadStool services
+///
+/// **Self-Knowledge Principle**: ToadStool only defines its own ports.
+/// Other primal ports are discovered at runtime.
+pub mod toadstool {
+    /// Main ToadStool server port
+    pub const SERVER: u16 = 8084;
 
-/// Port registry error types
-#[derive(Debug, thiserror::Error)]
-pub enum PortError {
-    #[error("Port {0} is already in use")]
-    AlreadyInUse(u16),
+    /// GPU compute service port
+    pub const GPU_COMPUTE: u16 = 8085;
 
-    #[error("No available ports in range {0}-{1}")]
-    NoAvailablePorts(u16, u16),
+    /// Distributed scheduler port
+    pub const DISTRIBUTED: u16 = 8086;
 
-    #[error("Invalid port number: {0}")]
-    InvalidPort(String),
+    /// Health check endpoint port
+    pub const HEALTH: u16 = 8087;
 
-    #[error("Port allocation failed: {0}")]
-    AllocationFailed(String),
+    /// Metrics/monitoring port
+    pub const METRICS: u16 = 9090;
 }
 
-/// Port registry result type
-pub type PortResult<T> = Result<T, PortError>;
+/// Default ports for other primals (for fallback only)
+///
+/// **Design Philosophy**: These are FALLBACK values only.
+/// Production systems MUST use runtime discovery via Songbird.
+///
+/// **Self-Knowledge Violation**: Having these at all violates self-knowledge.
+/// They exist temporarily to support transition period.
+///
+/// ⚠️ **DEPRECATED**: Use capability-based runtime discovery instead.
+/// These will be removed in Phase 4 after mDNS/DNS-SD implementation.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use runtime capability discovery via Songbird or mDNS. \
+            These hardcoded ports violate the self-knowledge principle. \
+            See `toadstool_common::runtime_discovery` for proper usage."
+)]
+pub mod fallback {
+    /// Songbird coordination service (FALLBACK - discover at runtime!)
+    #[deprecated(note = "Use runtime discovery")]
+    pub const SONGBIRD: u16 = 8080;
 
-/// Port registry for all ToadStool services
-///
-/// Provides centralized port management with environment variable overrides,
-/// dynamic allocation, and conflict prevention.
-///
-/// # Examples
-///
-/// ```rust
-/// use toadstool_config::ports::PortRegistry;
-///
-/// let registry = PortRegistry::default();
-///
-/// // Get default API port
-/// let api_port = registry.api_server();
-/// assert_eq!(api_port, 8080);
-///
-/// // Allocate dynamic port (range 10000-20000)
-/// let dynamic = registry.allocate_dynamic().unwrap();
-/// assert!(dynamic >= 10000 && dynamic <= 20000);
-/// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Squirrel MCP platform (FALLBACK - discover at runtime!)
+    #[deprecated(note = "Use runtime discovery")]
+    pub const SQUIRREL: u16 = 8083;
+
+    /// BearDog security service (FALLBACK - discover at runtime!)
+    #[deprecated(note = "Use runtime discovery")]
+    pub const BEARDOG: u16 = 8081;
+
+    /// NestGate storage service (FALLBACK - discover at runtime!)
+    #[deprecated(note = "Use runtime discovery")]
+    pub const NESTGATE: u16 = 8082;
+
+    /// BiomeOS integration (FALLBACK - discover at runtime!)
+    #[deprecated(note = "Use runtime discovery")]
+    pub const BIOMEOS: u16 = 8088;
+}
+
+/// Port registry for runtime configuration
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PortRegistry {
-    /// Main API server port (default: 8080)
-    api_server: u16,
-
-    /// WebSocket server port (default: 8081)
-    websocket: u16,
-
-    /// Metrics/monitoring port (default: 9090)
-    metrics: u16,
-
-    /// Health check port (default: 8082)
-    health: u16,
-
-    /// Container default port (default: 8080)
-    container_default: u16,
-
-    /// Edge discovery ports (default: common service ports)
-    edge_discovery: Vec<u16>,
-
-    /// Custom service ports (dynamically allocated)
-    #[serde(skip)]
-    custom_services: Arc<RwLock<HashMap<String, u16>>>,
-
-    /// Dynamic port allocation range (default: 10000-20000)
-    dynamic_port_range: (u16, u16),
-
-    /// Next available dynamic port
-    #[serde(skip)]
-    next_dynamic_port: Arc<RwLock<u16>>,
+    /// ToadStool server port
+    pub server: u16,
+    /// GPU compute port
+    pub gpu_compute: u16,
+    /// Distributed scheduler port
+    pub distributed: u16,
+    /// Metrics port
+    pub metrics: u16,
 }
 
 impl Default for PortRegistry {
     fn default() -> Self {
         Self {
-            api_server: 8080,
-            websocket: 8081,
-            metrics: 9090,
-            health: 8082,
-            container_default: 8080,
-            edge_discovery: vec![22, 80, 443, 8080, 8443, 3000, 5000],
-            custom_services: Arc::new(RwLock::new(HashMap::new())),
-            dynamic_port_range: (10000, 20000),
-            next_dynamic_port: Arc::new(RwLock::new(10000)),
+            server: server_port(),
+            gpu_compute: gpu_compute_port(),
+            distributed: distributed_port(),
+            metrics: metrics_port(),
         }
     }
 }
 
-impl PortRegistry {
-    /// Create a new port registry with default values
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+/// Common test ports (non-conflicting)
+///
+/// Used in tests to avoid conflicts with running services
+pub mod test {
+    /// Base port for test services (increments per test)
+    pub const BASE: u16 = 50000;
 
-    /// Create port registry from environment variables
+    /// Generate unique test port
     ///
-    /// Reads ports from environment variables:
-    /// - `TOADSTOOL_API_PORT` - API server port
-    /// - `TOADSTOOL_WEBSOCKET_PORT` - WebSocket port
-    /// - `TOADSTOOL_METRICS_PORT` - Metrics port
-    /// - `TOADSTOOL_HEALTH_PORT` - Health check port
-    /// - `TOADSTOOL_CONTAINER_PORT` - Container default port
-    /// - `TOADSTOOL_EDGE_DISCOVERY_PORTS` - Comma-separated port list
-    #[must_use]
-    pub fn from_env() -> Self {
-        let mut registry = Self::default();
-
-        // API server port
-        if let Ok(port_str) = std::env::var("TOADSTOOL_API_PORT") {
-            if let Ok(port) = port_str.parse::<u16>() {
-                registry.api_server = port;
-            }
-        }
-
-        // WebSocket port
-        if let Ok(port_str) = std::env::var("TOADSTOOL_WEBSOCKET_PORT") {
-            if let Ok(port) = port_str.parse::<u16>() {
-                registry.websocket = port;
-            }
-        }
-
-        // Metrics port
-        if let Ok(port_str) = std::env::var("TOADSTOOL_METRICS_PORT") {
-            if let Ok(port) = port_str.parse::<u16>() {
-                registry.metrics = port;
-            }
-        }
-
-        // Health check port
-        if let Ok(port_str) = std::env::var("TOADSTOOL_HEALTH_PORT") {
-            if let Ok(port) = port_str.parse::<u16>() {
-                registry.health = port;
-            }
-        }
-
-        // Container default port
-        if let Ok(port_str) = std::env::var("TOADSTOOL_CONTAINER_PORT") {
-            if let Ok(port) = port_str.parse::<u16>() {
-                registry.container_default = port;
-            }
-        }
-
-        // Edge discovery ports (comma-separated)
-        if let Ok(ports_str) = std::env::var("TOADSTOOL_EDGE_DISCOVERY_PORTS") {
-            let ports: Vec<u16> = ports_str
-                .split(',')
-                .filter_map(|s| s.trim().parse().ok())
-                .collect();
-            if !ports.is_empty() {
-                registry.edge_discovery = ports;
-            }
-        }
-
-        registry
+    /// Uses process ID and test number to ensure uniqueness
+    pub fn unique_port(test_id: u16) -> u16 {
+        BASE + (std::process::id() as u16 % 1000) + test_id
     }
+}
 
-    // ============================================================================
-    // Port Getters
-    // ============================================================================
+/// Port range allocation
+pub mod ranges {
+    /// ToadStool service range: 8084-8099
+    pub const TOADSTOOL_START: u16 = 8084;
+    pub const TOADSTOOL_END: u16 = 8099;
 
-    /// Get API server port
-    #[must_use]
-    pub fn api_server(&self) -> u16 {
-        self.api_server
-    }
+    /// Test port range: 50000-65535
+    pub const TEST_START: u16 = 50000;
+    pub const TEST_END: u16 = 65535;
+}
 
-    /// Get WebSocket server port
-    #[must_use]
-    pub fn websocket(&self) -> u16 {
-        self.websocket
-    }
+/// Get port with environment variable override
+///
+/// **Phase 2 Evolution**: Environment variable support
+///
+/// Allows runtime configuration without code changes:
+/// ```bash
+/// TOADSTOOL_SERVER_PORT=9000 ./toadstool-server
+/// ```
+pub fn get_port_with_env(default: u16, env_var: &str) -> u16 {
+    std::env::var(env_var)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
+}
 
-    /// Get metrics port
-    #[must_use]
-    pub fn metrics(&self) -> u16 {
-        self.metrics
-    }
+/// Get ToadStool server port (with environment override)
+pub fn server_port() -> u16 {
+    get_port_with_env(toadstool::SERVER, "TOADSTOOL_SERVER_PORT")
+}
 
-    /// Get health check port
-    #[must_use]
-    pub fn health(&self) -> u16 {
-        self.health
-    }
+/// Get ToadStool GPU compute port (with environment override)
+pub fn gpu_compute_port() -> u16 {
+    get_port_with_env(toadstool::GPU_COMPUTE, "TOADSTOOL_GPU_PORT")
+}
 
-    /// Get container default port
-    #[must_use]
-    pub fn container_default(&self) -> u16 {
-        self.container_default
-    }
+/// Get ToadStool distributed scheduler port (with environment override)
+pub fn distributed_port() -> u16 {
+    get_port_with_env(toadstool::DISTRIBUTED, "TOADSTOOL_DISTRIBUTED_PORT")
+}
 
-    /// Get edge discovery ports
-    #[must_use]
-    pub fn edge_discovery_ports(&self) -> &[u16] {
-        &self.edge_discovery
-    }
+/// Get metrics port (with environment override)
+pub fn metrics_port() -> u16 {
+    get_port_with_env(toadstool::METRICS, "TOADSTOOL_METRICS_PORT")
+}
 
-    // ============================================================================
-    // Port Setters (Builder Pattern)
-    // ============================================================================
+/// Get ToadStool port with environment variable override
+///
+/// **Phase 2: Environment Overrides**
+///
+/// Checks `TOADSTOOL_{NAME}_PORT` environment variable first,
+/// falls back to default if not set or invalid.
+///
+/// This upholds the **self-knowledge principle**: ToadStool configures its own ports.
+///
+/// # Examples
+/// ```
+/// use toadstool_config::ports::{get_toadstool_port, toadstool};
+///
+/// // TOADSTOOL_SERVER_PORT=9000 cargo run
+/// let port = get_toadstool_port("SERVER", toadstool::SERVER);
+/// // Returns 9000 if env var set, otherwise 8084
+/// ```
+pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
+    get_port_with_env(default, &format!("TOADSTOOL_{}_PORT", name))
+}
 
-    /// Set API server port
-    pub fn with_api_port(mut self, port: u16) -> Self {
-        self.api_server = port;
-        self
-    }
+/// Get other primal port with environment override
+///
+/// **Phase 2: Environment Overrides (FALLBACK)**
+///
+/// **Note**: This is a FALLBACK mechanism. Production systems should use
+/// runtime discovery via Songbird for true capability-based architecture.
+///
+/// Checks `{PRIMAL}_PORT` environment variable first.
+///
+/// # Self-Knowledge Principle
+///
+/// Using this function represents a **temporary violation** of self-knowledge.
+/// ToadStool should NOT "know" other primals' ports - they should be discovered
+/// at runtime via Songbird (Phase 3).
+///
+/// # Examples
+/// ```
+/// use toadstool_config::ports::{get_primal_port, fallback};
+///
+/// // SONGBIRD_PORT=9080 cargo run
+/// let port = get_primal_port("SONGBIRD", fallback::SONGBIRD);
+/// // Returns 9080 if env var set, otherwise 8080
+/// ```
+pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
+    get_port_with_env(fallback_port, &format!("{}_PORT", primal))
+}
 
-    /// Set WebSocket port
-    pub fn with_websocket_port(mut self, port: u16) -> Self {
-        self.websocket = port;
-        self
-    }
-
-    /// Set metrics port
-    pub fn with_metrics_port(mut self, port: u16) -> Self {
-        self.metrics = port;
-        self
-    }
-
-    /// Set health check port
-    pub fn with_health_port(mut self, port: u16) -> Self {
-        self.health = port;
-        self
-    }
-
-    /// Set container default port
-    pub fn with_container_port(mut self, port: u16) -> Self {
-        self.container_default = port;
-        self
-    }
-
-    /// Set edge discovery ports
-    pub fn with_edge_discovery_ports(mut self, ports: Vec<u16>) -> Self {
-        self.edge_discovery = ports;
-        self
-    }
-
-    // ============================================================================
-    // Dynamic Port Allocation
-    // ============================================================================
-
-    /// Allocate a dynamic port
-    ///
-    /// Returns an available port in the dynamic range (10000-20000).
-    /// The port is tested for availability before being returned.
-    ///
-    /// # Errors
-    /// Returns `PortError::NoAvailablePorts` if no ports are available.
-    pub fn allocate_dynamic(&self) -> PortResult<u16> {
-        let (start, end) = self.dynamic_port_range;
-        let mut next_port = self.next_dynamic_port.write().unwrap_or_else(|poisoned| {
-            tracing::warn!("Lock poisoned, recovering");
-            poisoned.into_inner()
-        });
-
-        // Try up to 1000 ports
-        for _ in 0..1000 {
-            let port = *next_port;
-
-            // Increment for next allocation
-            *next_port += 1;
-            if *next_port > end {
-                *next_port = start;
-            }
-
-            // Check if port is available
-            if Self::is_port_available(port) {
-                return Ok(port);
-            }
-        }
-
-        Err(PortError::NoAvailablePorts(start, end))
-    }
-
-    /// Allocate a dynamic port for a named service
-    ///
-    /// If the service already has a port, returns the existing port.
-    /// Otherwise, allocates a new port and registers it.
-    ///
-    /// # Errors
-    /// Returns `PortError::NoAvailablePorts` if no ports are available.
-    pub fn allocate_for_service(&self, service_name: &str) -> PortResult<u16> {
-        // Check if service already has a port
-        {
-            let services = self.custom_services.read().unwrap_or_else(|poisoned| {
-                tracing::warn!("Lock poisoned, recovering");
-                poisoned.into_inner()
-            });
-            if let Some(&port) = services.get(service_name) {
-                return Ok(port);
-            }
-        }
-
-        // Allocate new port
-        let port = self.allocate_dynamic()?;
-
-        // Register service
-        {
-            let mut services = self.custom_services.write().unwrap_or_else(|poisoned| {
-                tracing::warn!("Lock poisoned, recovering");
-                poisoned.into_inner()
-            });
-            services.insert(service_name.to_string(), port);
-        }
-
-        Ok(port)
-    }
-
-    /// Get port for a registered service
-    #[must_use]
-    pub fn get_service_port(&self, service_name: &str) -> Option<u16> {
-        self.custom_services
-            .read()
-            .unwrap_or_else(|poisoned| {
-                tracing::warn!("Lock poisoned, recovering");
-                poisoned.into_inner()
-            })
-            .get(service_name)
-            .copied()
-    }
-
-    /// Check if a port is available (not in use)
-    fn is_port_available(port: u16) -> bool {
-        TcpListener::bind(("127.0.0.1", port)).is_ok()
-    }
-
-    // ============================================================================
-    // Testing Helpers
-    // ============================================================================
-
-    /// Create port registry optimized for testing
-    ///
-    /// Uses dynamic ports for all services to prevent conflicts.
-    #[must_use]
-    pub fn for_testing() -> Self {
-        Self {
-            api_server: 0,        // OS assigns
-            websocket: 0,         // OS assigns
-            metrics: 0,           // OS assigns
-            health: 0,            // OS assigns
-            container_default: 0, // OS assigns
-            edge_discovery: vec![],
-            custom_services: Arc::new(RwLock::new(HashMap::new())),
-            dynamic_port_range: (10000, 20000),
-            next_dynamic_port: Arc::new(RwLock::new(10000)),
-        }
-    }
-
-    /// Get all allocated ports (for debugging)
-    #[must_use]
-    pub fn all_allocated_ports(&self) -> Vec<(String, u16)> {
-        let mut ports = vec![
-            ("api_server".to_string(), self.api_server),
-            ("websocket".to_string(), self.websocket),
-            ("metrics".to_string(), self.metrics),
-            ("health".to_string(), self.health),
-            ("container_default".to_string(), self.container_default),
-        ];
-
-        let services = self.custom_services.read().unwrap_or_else(|poisoned| {
-            tracing::warn!("Lock poisoned, recovering");
-            poisoned.into_inner()
-        });
-        for (name, port) in services.iter() {
-            ports.push((format!("service:{}", name), *port));
-        }
-
-        ports
-    }
+/// Get primal endpoint with environment override
+///
+/// **Phase 2: Environment Overrides (RECOMMENDED)**
+///
+/// Checks `{PRIMAL}_ENDPOINT` environment variable for full endpoint URL.
+/// This allows complete override including hostname, port, and protocol.
+///
+/// **Recommended for production**: Use full endpoint URLs for flexibility.
+///
+/// # Examples
+/// ```
+/// use toadstool_config::ports::get_primal_endpoint;
+///
+/// // SONGBIRD_ENDPOINT=https://songbird.prod.example.com:8080
+/// let endpoint = get_primal_endpoint("SONGBIRD");
+/// // Returns Some("https://songbird.prod.example.com:8080")
+///
+/// // Without env var
+/// let endpoint = get_primal_endpoint("NONEXISTENT");
+/// // Returns None
+/// ```
+pub fn get_primal_endpoint(primal: &str) -> Option<String> {
+    std::env::var(format!("{}_ENDPOINT", primal)).ok()
 }
 
 #[cfg(test)]
@@ -387,93 +231,56 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_port_registry_default() {
-        let registry = PortRegistry::default();
+    fn test_default_ports() {
+        assert_eq!(toadstool::SERVER, 8084);
+        assert_eq!(toadstool::GPU_COMPUTE, 8085);
+        assert_eq!(toadstool::DISTRIBUTED, 8086);
+    }
 
-        assert_eq!(registry.api_server(), 8080);
-        assert_eq!(registry.websocket(), 8081);
-        assert_eq!(registry.metrics(), 9090);
-        assert_eq!(registry.health(), 8082);
-        assert_eq!(registry.container_default(), 8080);
-        assert_eq!(
-            registry.edge_discovery_ports(),
-            &[22_u16, 80, 443, 8080, 8443, 3000, 5000]
+    #[test]
+    fn test_unique_test_ports() {
+        let port1 = test::unique_port(1);
+        let port2 = test::unique_port(2);
+
+        assert!(port1 >= test::BASE);
+        assert!(port2 >= test::BASE);
+        assert_ne!(port1, port2);
+    }
+
+    #[test]
+    fn test_port_ranges() {
+        // Static assertions - these are checked at compile time via const evaluation
+        // If ports are outside range, this test validates the configuration
+        const _: () = assert!(
+            toadstool::SERVER >= ranges::TOADSTOOL_START,
+            "SERVER port below range"
+        );
+        const _: () = assert!(
+            toadstool::SERVER <= ranges::TOADSTOOL_END,
+            "SERVER port above range"
+        );
+        const _: () = assert!(
+            toadstool::GPU_COMPUTE >= ranges::TOADSTOOL_START,
+            "GPU_COMPUTE port below range"
+        );
+        const _: () = assert!(
+            toadstool::GPU_COMPUTE <= ranges::TOADSTOOL_END,
+            "GPU_COMPUTE port above range"
         );
     }
 
     #[test]
-    fn test_port_registry_builder() {
-        let registry = PortRegistry::default()
-            .with_api_port(9000)
-            .with_websocket_port(9001)
-            .with_metrics_port(9002);
-
-        assert_eq!(registry.api_server(), 9000);
-        assert_eq!(registry.websocket(), 9001);
-        assert_eq!(registry.metrics(), 9002);
+    fn test_environment_override() {
+        std::env::set_var("TEST_PORT", "9999");
+        let port = get_port_with_env(8080, "TEST_PORT");
+        assert_eq!(port, 9999);
+        std::env::remove_var("TEST_PORT");
     }
 
     #[test]
-    fn test_dynamic_port_allocation() {
-        let registry = PortRegistry::default();
-
-        let port1 = registry.allocate_dynamic().unwrap();
-        let port2 = registry.allocate_dynamic().unwrap();
-
-        assert!((10000..=20000).contains(&port1));
-        assert!((10000..=20000).contains(&port2));
-        // Ports should be different (usually, unless extreme port exhaustion)
-    }
-
-    #[test]
-    fn test_service_port_allocation() {
-        let registry = PortRegistry::default();
-
-        let port1 = registry.allocate_for_service("test-service").unwrap();
-        let port2 = registry.allocate_for_service("test-service").unwrap();
-
-        // Same service should get same port
-        assert_eq!(port1, port2);
-
-        // Different service should get different port
-        let port3 = registry.allocate_for_service("other-service").unwrap();
-        assert_ne!(port1, port3);
-    }
-
-    #[test]
-    fn test_get_service_port() {
-        let registry = PortRegistry::default();
-
-        // Service not registered yet
-        assert_eq!(registry.get_service_port("unknown"), None);
-
-        // Allocate port for service
-        let port = registry.allocate_for_service("test-service").unwrap();
-
-        // Should be able to retrieve it
-        assert_eq!(registry.get_service_port("test-service"), Some(port));
-    }
-
-    #[test]
-    fn test_for_testing() {
-        let registry = PortRegistry::for_testing();
-
-        // Testing registry uses OS-assigned ports (0)
-        assert_eq!(registry.api_server(), 0);
-        assert_eq!(registry.websocket(), 0);
-        assert_eq!(registry.metrics(), 0);
-    }
-
-    #[test]
-    fn test_all_allocated_ports() {
-        let registry = PortRegistry::default();
-
-        registry.allocate_for_service("service1").unwrap();
-        registry.allocate_for_service("service2").unwrap();
-
-        let ports = registry.all_allocated_ports();
-
-        // Should have default ports + custom services
-        assert!(ports.len() >= 7); // 5 default + 2 custom
+    fn test_default_when_no_env() {
+        std::env::remove_var("NONEXISTENT_PORT");
+        let port = get_port_with_env(8080, "NONEXISTENT_PORT");
+        assert_eq!(port, 8080);
     }
 }

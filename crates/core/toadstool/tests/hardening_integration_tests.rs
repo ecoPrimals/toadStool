@@ -17,7 +17,7 @@ use uuid::Uuid;
 // Combined Manager Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_production_and_performance_managers_together() {
     let prod_config = ProductionHardeningConfig::default();
     let perf_config = PerformanceHardeningConfig::default();
@@ -38,7 +38,7 @@ async fn test_production_and_performance_managers_together() {
     // Both should be operational
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_with_resource_monitoring() {
     let prod_config = ProductionHardeningConfig::default();
     let perf_config = PerformanceHardeningConfig::default();
@@ -60,7 +60,7 @@ async fn test_circuit_breaker_with_resource_monitoring() {
     assert!(interval.as_millis() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_with_leak_detection() {
     let prod_config = ProductionHardeningConfig::default();
     let perf_config = PerformanceHardeningConfig::default();
@@ -101,7 +101,7 @@ async fn test_memory_pool_with_leak_detection() {
     prod_manager.remove_resource(resource_id).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cache_with_memory_pressure() {
     let prod_config = ProductionHardeningConfig::default();
     let perf_config = PerformanceHardeningConfig::default();
@@ -135,7 +135,7 @@ async fn test_cache_with_memory_pressure() {
 // Circuit Breaker Async Execution Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_successful_async_operation() {
     let config = CircuitBreakerConfig::default();
     let breaker = CircuitBreaker::new("async-test-service".to_string(), config);
@@ -149,7 +149,7 @@ async fn test_circuit_breaker_successful_async_operation() {
     assert_eq!(result.unwrap(), 42);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_failed_async_operation() {
     let config = CircuitBreakerConfig::default();
     let breaker = CircuitBreaker::new("failing-service".to_string(), config);
@@ -162,7 +162,7 @@ async fn test_circuit_breaker_failed_async_operation() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_opens_after_threshold() {
     let config = CircuitBreakerConfig {
         failure_threshold: 3,
@@ -185,7 +185,7 @@ async fn test_circuit_breaker_opens_after_threshold() {
     assert_eq!(state, CircuitState::Open);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_concurrent_executions() {
     let config = CircuitBreakerConfig::default();
     let breaker = Arc::new(CircuitBreaker::new("concurrent-test".to_string(), config));
@@ -197,7 +197,7 @@ async fn test_circuit_breaker_concurrent_executions() {
         let handle = tokio::spawn(async move {
             breaker_clone
                 .execute(async move {
-                    tokio::time::sleep(Duration::from_millis(10)).await;
+                    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
                     Ok::<i32, std::io::Error>(i)
                 })
                 .await
@@ -218,7 +218,7 @@ async fn test_circuit_breaker_concurrent_executions() {
     assert_eq!(success_count, 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_recovery_scenario() {
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
@@ -238,7 +238,7 @@ async fn test_circuit_breaker_recovery_scenario() {
 
     assert_eq!(breaker.get_state().await, CircuitState::Open);
 
-    // Wait for timeout
+    // ✅ INTENTIONAL DELAY: Wait for circuit breaker timeout (necessary for state transition)
     tokio::time::sleep(Duration::from_millis(150)).await;
 
     // Should transition to half-open and allow requests
@@ -261,7 +261,7 @@ async fn test_circuit_breaker_recovery_scenario() {
 // Resource Monitoring with Circuit Breakers
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitoring_during_circuit_breaker_operation() {
     let perf_config = PerformanceHardeningConfig::default();
     let perf_manager = PerformanceHardeningManager::new(perf_config);
@@ -318,7 +318,7 @@ async fn test_resource_monitoring_during_circuit_breaker_operation() {
 // Memory Pool with Resource Tracking
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_allocation_tracking() {
     let perf_config = PerformanceHardeningConfig::default();
     let perf_manager = PerformanceHardeningManager::new(perf_config);
@@ -370,7 +370,7 @@ async fn test_memory_pool_allocation_tracking() {
 // Cache with Circuit Breaker Protection
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cache_operations_with_circuit_breaker() {
     let perf_config = PerformanceHardeningConfig::default();
     let perf_manager = PerformanceHardeningManager::new(perf_config);
@@ -419,7 +419,7 @@ async fn test_cache_operations_with_circuit_breaker() {
 // Full Integration Scenario
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_hardening_integration_scenario() {
     // Setup both managers
     let prod_config = ProductionHardeningConfig::default();
@@ -468,7 +468,7 @@ async fn test_full_hardening_integration_scenario() {
             let result = breaker_clone
                 .execute(async move {
                     // Simulate processing
-                    tokio::time::sleep(Duration::from_millis(5)).await;
+                    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
 
                     // Store in cache
                     cache_clone

@@ -50,6 +50,18 @@ pub struct ServiceMetadata {
     pub extra: std::collections::HashMap<String, String>,
 }
 
+impl Default for ServiceMetadata {
+    fn default() -> Self {
+        Self {
+            version: None,
+            health: ServiceHealth::Unknown,
+            last_seen: std::time::SystemTime::now(),
+            priority: 50,
+            extra: std::collections::HashMap::new(),
+        }
+    }
+}
+
 /// Service health status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ServiceHealth {
@@ -296,8 +308,8 @@ pub enum SubstrateType {
 impl DetectedSubstrate {
     /// Check if substrate has a capability
     #[must_use]
-    pub fn has_capability(&self, capability: SubstrateCapability) -> bool {
-        self.capabilities.contains(&capability)
+    pub fn has_capability(&self, capability: &SubstrateCapability) -> bool {
+        self.capabilities.contains(capability)
     }
 
     /// Get substrate-specific metadata value
@@ -346,6 +358,10 @@ impl EndpointResolver {
     }
 
     /// Resolve an endpoint by trying each source in order
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError::CapabilityNotFound` if no source can resolve the service.
     pub async fn resolve(&self, service: &str) -> Result<String, DiscoveryError> {
         for source in &self.sources {
             if let Some(endpoint) = source.resolve(service).await? {
@@ -383,7 +399,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capability_names() {
         // Ensure capability names are stable
         assert_eq!(capabilities::AI_PROCESSING, "ai_processing");
@@ -402,9 +418,9 @@ mod tests {
             metadata: std::collections::HashMap::new(),
         };
 
-        assert!(substrate.has_capability(SubstrateCapability::ContainerOrchestration));
-        assert!(substrate.has_capability(SubstrateCapability::ServiceDiscovery));
-        assert!(!substrate.has_capability(SubstrateCapability::CloudCompute));
+        assert!(substrate.has_capability(&SubstrateCapability::ContainerOrchestration));
+        assert!(substrate.has_capability(&SubstrateCapability::ServiceDiscovery));
+        assert!(!substrate.has_capability(&SubstrateCapability::CloudCompute));
     }
 
     #[test]

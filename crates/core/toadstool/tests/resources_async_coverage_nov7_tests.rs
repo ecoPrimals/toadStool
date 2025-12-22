@@ -488,7 +488,7 @@ fn test_timing_metrics_default() {
 // Async Function Tests - Real System Monitoring
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_process_info_async() {
     let monitor = SystemResourceMonitor::new();
 
@@ -501,7 +501,7 @@ async fn test_get_process_info_async() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_process_info_nonexistent() {
     let monitor = SystemResourceMonitor::new();
 
@@ -512,7 +512,7 @@ async fn test_get_process_info_nonexistent() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_network_stats_async() {
     let monitor = SystemResourceMonitor::new();
 
@@ -522,7 +522,7 @@ async fn test_get_network_stats_async() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_load_averages_async() {
     let monitor = SystemResourceMonitor::new();
 
@@ -532,7 +532,7 @@ async fn test_get_load_averages_async() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_real_time_monitoring() {
     let monitor = SystemResourceMonitor::new();
 
@@ -544,7 +544,7 @@ async fn test_start_real_time_monitoring() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_workload_metrics() {
     let monitor = SystemResourceMonitor::new();
 
@@ -555,7 +555,7 @@ async fn test_update_workload_metrics() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_monitoring_operations() {
     let monitor = SystemResourceMonitor::new();
 

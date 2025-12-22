@@ -545,9 +545,8 @@ pub struct SongbirdDiscoveryConfig {
     pub node_timeout: Duration,
 }
 
-// Type alias for backward compatibility
-#[deprecated(since = "0.2.0", note = "Use SongbirdDiscoveryConfig instead")]
-pub type DiscoveryConfig = SongbirdDiscoveryConfig;
+// ✅ REMOVED: DiscoveryConfig type alias - deprecated since 0.2.0
+// Use SongbirdDiscoveryConfig instead
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadBalancerConfig {

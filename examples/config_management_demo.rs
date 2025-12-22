@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(deprecated)] // This example demonstrates legacy configuration APIs
 //! Configuration Management Demo
 //!
 //! This demo showcases ToadStool's comprehensive environment variable configuration system

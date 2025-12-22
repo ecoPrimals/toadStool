@@ -219,16 +219,16 @@ impl Default for PythonRuntimeEngine {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_engine_initialization() {
-        let mut engine = PythonRuntimeEngine::new().unwrap();
+        let mut engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
         let result = engine.initialize(ExecutionRuntimeConfig::default()).await;
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capabilities() {
-        let engine = PythonRuntimeEngine::new().unwrap();
+        let engine = PythonRuntimeEngine::new().expect("Python engine creation should succeed");
         let caps = engine.get_capabilities();
         assert!(caps.supported_workloads.contains(&WorkloadType::Python));
     }

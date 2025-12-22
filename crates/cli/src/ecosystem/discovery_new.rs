@@ -135,11 +135,13 @@ impl EcosystemIntegrator {
     }
 
     /// Install security permissions using capability discovery
-    pub async fn install_security_permissions(&self, permissions_file: String) -> Result<()> {
+    /// 
+    /// Zero-Copy Optimization: Takes `&str` instead of `String` to avoid allocation.
+    pub async fn install_security_permissions(&self, permissions_file: &str) -> Result<()> {
         info!("Installing security permissions from: {}", permissions_file);
 
         // Read permissions file
-        let permissions_content = std::fs::read_to_string(&permissions_file)
+        let permissions_content = std::fs::read_to_string(permissions_file)
             .with_context(|| format!("Failed to read permissions file: {}", permissions_file))?;
 
         // Parse permissions (assuming JSON format)

@@ -10,7 +10,7 @@ use toadstool_distributed::types::UniversalJobQueue;
 // Day 1 Tests: Coordinator Basics (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation() {
     // Test basic coordinator creation with default config
     let config = DistributedConfig::default();
@@ -22,7 +22,7 @@ async fn test_coordinator_creation() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_custom_config() {
     // Test coordinator creation with custom configuration
     let mut config = DistributedConfig::default();
@@ -39,7 +39,7 @@ async fn test_coordinator_with_custom_config() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_songbird_config() {
     // Test coordinator with Songbird integration config
     let config = DistributedConfig {
@@ -61,7 +61,7 @@ async fn test_coordinator_with_songbird_config() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_initialization_completes() {
     // Test that coordinator completes initialization successfully
     let config = DistributedConfig::default();
@@ -73,7 +73,7 @@ async fn test_coordinator_initialization_completes() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_universal_job_queue_initialization() {
     // Test job queue initialization and basic operations
     let queue = UniversalJobQueue::new();
@@ -191,7 +191,7 @@ fn test_songbird_config_serialization() {
 // Day 3 Tests: Resource Management (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_resource_detection() {
     // Test that coordinator detects system capabilities
     let config = DistributedConfig::default();
@@ -227,7 +227,7 @@ fn test_standalone_config_custom_limits() {
     assert_eq!(config.max_queue_size, 2000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_limited_resources() {
     // Test coordinator with very limited resources
     let mut config = DistributedConfig::default();
@@ -242,7 +242,7 @@ async fn test_coordinator_with_limited_resources() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_high_capacity() {
     // Test coordinator with high capacity settings
     let mut config = DistributedConfig::default();
@@ -332,7 +332,7 @@ fn test_distributed_config_clone() {
 // Day 5 Tests: Integration Scenarios (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_coordinators_creation() {
     // Test creating multiple coordinators (simulating distributed setup)
     let config1 = DistributedConfig::default();
@@ -345,7 +345,7 @@ async fn test_multiple_coordinators_creation() {
     assert!(coordinator2.is_ok(), "Second coordinator should be created");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_various_configs() {
     // Test coordinator accepts various configuration combinations
     let configs = vec![
@@ -391,7 +391,7 @@ fn test_job_queue_stats_tracking() {
     assert_eq!(queue.total_jobs(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_custom_standalone_config() {
     // Test coordinator with custom standalone configuration
     let config = DistributedConfig {
@@ -413,7 +413,7 @@ async fn test_coordinator_with_custom_standalone_config() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_performance() {
     // Test that coordinator creation is reasonably fast
     use std::time::Instant;

@@ -75,11 +75,23 @@ pub struct UniversalComputePlatform {
 
 impl UniversalComputePlatform {
     /// Create new platform
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if platform initialization fails or primal
+    /// registration encounters errors.
+    #[must_use = "Platform creation should be checked"]
     pub async fn new() -> ToadStoolResult<Self> {
         Self::new_with_config(UniversalPlatformConfig::default()).await
     }
 
     /// Create new platform with config
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if:
+    /// - Scheduler initialization fails.
+    /// - Primal registry setup fails.
+    /// - ToadStool provider registration fails.
+    #[must_use = "Platform creation should be checked"]
     pub async fn new_with_config(config: UniversalPlatformConfig) -> ToadStoolResult<Self> {
         let primal_registry = Arc::new(UniversalPrimalRegistry::new());
         let scheduler = Arc::new(UniversalScheduler::new(primal_registry.clone()).await?);
@@ -168,6 +180,11 @@ impl UniversalComputePlatform {
     }
 
     /// Discover ecosystem (legacy compatibility)
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// if ecosystem discovery or service registration fails.
+    #[must_use = "Ecosystem discovery result should be checked"]
     pub async fn discover_ecosystem(&self) -> ToadStoolResult<()> {
         if !self.config.ecosystem_integration {
             debug!("Ecosystem integration disabled in configuration");

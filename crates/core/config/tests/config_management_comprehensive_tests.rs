@@ -1,3 +1,7 @@
+//! Tests for backward compatibility with deprecated endpoint configuration
+//! These tests validate that legacy hardcoded endpoints still work
+#![allow(deprecated)]
+
 //! Comprehensive Configuration Management Tests - Phase 2
 //!
 //! Tests for configuration loading, validation, updates, and composition:

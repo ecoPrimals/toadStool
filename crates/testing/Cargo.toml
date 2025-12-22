@@ -12,6 +12,20 @@ description = "Testing utilities, mocks, and infrastructure for ToadStool"
 keywords = ["testing", "mocks", "utilities", "toadstool"]
 categories = ["development-tools::testing"]
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+# Test infrastructure may use expect/panic for assertion failures
+expect_used = "warn"  
+panic = "warn"  # Test assertions may panic
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
@@ -69,6 +83,10 @@ sysinfo = "0.30"
 
 [dev-dependencies]
 criterion = "0.5"
+
+[[bench]]
+name = "hot_paths"
+harness = false
 
 [features]
 default = []

@@ -370,7 +370,6 @@ impl IntegrationTestManager {
         info!("Testing performance under load");
 
         // Simulate performance test
-        tokio::time::sleep(Duration::from_millis(100)).await;
 
         let duration = start_time.elapsed();
         let metrics = TestMetrics {
@@ -523,7 +522,6 @@ impl IntegrationTestManager {
         info!("Testing error handling and recovery");
 
         // Simulate error handling test
-        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let duration = start_time.elapsed();
         let metrics = TestMetrics {
@@ -564,7 +562,6 @@ impl IntegrationTestManager {
         info!("Testing concurrent execution safety");
 
         // Simulate concurrent execution test
-        tokio::time::sleep(Duration::from_millis(75)).await;
 
         let duration = start_time.elapsed();
         let metrics = TestMetrics {
@@ -605,7 +602,6 @@ impl IntegrationTestManager {
         info!("Testing resource cleanup and lifecycle management");
 
         // Simulate resource cleanup test
-        tokio::time::sleep(Duration::from_millis(60)).await;
 
         let duration = start_time.elapsed();
         let metrics = TestMetrics {
@@ -641,441 +637,6 @@ impl IntegrationTestManager {
     }
 
     // Helper methods for specific component tests
-
-    async fn test_linux_compatibility(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("linux_compatibility_test", 1.0);
-        // Simulate Linux compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        Ok(())
-    }
-
-    async fn test_windows_compatibility(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("windows_compatibility_test", 1.0);
-        // Simulate Windows compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        Ok(())
-    }
-
-    async fn test_macos_compatibility(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("macos_compatibility_test", 1.0);
-        // Simulate macOS compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        Ok(())
-    }
-
-    async fn test_legacy_compatibility(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("legacy_compatibility_test", 1.0);
-        // Simulate legacy compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        Ok(())
-    }
-
-    async fn test_biomeos_service_registration(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("biomeos_service_registration", 1.0);
-        // Simulate biomeOS service registration test
-        tokio::time::sleep(Duration::from_millis(15)).await;
-        Ok(())
-    }
-
-    async fn test_biomeos_workload_execution(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("biomeos_workload_execution", 1.0);
-        // Simulate biomeOS workload execution test
-        tokio::time::sleep(Duration::from_millis(20)).await;
-        Ok(())
-    }
-
-    async fn test_biomeos_ecosystem_messaging(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("biomeos_ecosystem_messaging", 1.0);
-        // Simulate biomeOS ecosystem messaging test
-        tokio::time::sleep(Duration::from_millis(12)).await;
-        Ok(())
-    }
-
-    async fn test_sandbox_lifecycle(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("sandbox_lifecycle", 1.0);
-        // Simulate sandbox lifecycle test
-        tokio::time::sleep(Duration::from_millis(18)).await;
-        Ok(())
-    }
-
-    async fn test_sandbox_resource_limits(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("sandbox_resource_limits", 1.0);
-        // Simulate sandbox resource limits test
-        tokio::time::sleep(Duration::from_millis(25)).await;
-        Ok(())
-    }
-
-    async fn test_sandbox_security_policies(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("sandbox_security_policies", 1.0);
-        // Simulate sandbox security policies test
-        tokio::time::sleep(Duration::from_millis(22)).await;
-        Ok(())
-    }
-
-    async fn test_sandbox_isolation_levels(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("sandbox_isolation_levels", 1.0);
-        // Simulate sandbox isolation levels test
-        tokio::time::sleep(Duration::from_millis(16)).await;
-        Ok(())
-    }
-
-    async fn test_os_layer_biomeos_integration(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("os_layer_biomeos_integration", 1.0);
-        // Simulate OS-layer + biomeOS integration test
-        tokio::time::sleep(Duration::from_millis(30)).await;
-        Ok(())
-    }
-
-    async fn test_biomeos_security_integration(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("biomeos_security_integration", 1.0);
-        // Simulate biomeOS + security integration test
-        tokio::time::sleep(Duration::from_millis(28)).await;
-        Ok(())
-    }
-
-    async fn test_os_layer_security_integration(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("os_layer_security_integration", 1.0);
-        // Simulate OS-layer + security integration test
-        tokio::time::sleep(Duration::from_millis(26)).await;
-        Ok(())
-    }
-
-    async fn test_full_stack_integration(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("full_stack_integration", 1.0);
-        // Simulate full stack integration test
-        tokio::time::sleep(Duration::from_millis(35)).await;
-        Ok(())
-    }
-
-    /// Large biome deployment performance test
-    async fn test_large_biome_deployment(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("large_biome_deployment", 1.0);
-        info!("Testing large biome deployment performance");
-
-        // Simulate deployment of large biome with all 5 Primals
-        let deployment_start = std::time::Instant::now();
-
-        // Simulate Primal initialization sequence
-        tokio::time::sleep(Duration::from_millis(50)).await; // BearDog init
-        tokio::time::sleep(Duration::from_millis(40)).await; // Songbird init
-        tokio::time::sleep(Duration::from_millis(60)).await; // NestGate init
-        tokio::time::sleep(Duration::from_millis(45)).await; // Squirrel init
-        tokio::time::sleep(Duration::from_millis(55)).await; // ToadStool init
-
-        let deployment_duration = deployment_start.elapsed();
-        context.metrics_collector.record_metric(
-            "deployment_duration_ms",
-            deployment_duration.as_millis() as f64,
-        );
-
-        // Simulate validation of deployment
-        tokio::time::sleep(Duration::from_millis(30)).await;
-
-        // Record performance metrics for large biome
-        context
-            .metrics_collector
-            .record_metric("primals_deployed", 5.0);
-        context
-            .metrics_collector
-            .record_metric("total_cpu_allocated", 32.0);
-        context
-            .metrics_collector
-            .record_metric("total_memory_gb", 64.0);
-        context
-            .metrics_collector
-            .record_metric("total_storage_gb", 2048.0);
-
-        Ok(())
-    }
-
-    /// Multi-Primal resource usage under load test
-    async fn test_multi_primal_resource_usage(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("multi_primal_resource_usage", 1.0);
-        info!("Testing multi-Primal resource usage under load");
-
-        // Simulate resource allocation for all 5 Primals under high load
-        let resource_test_start = std::time::Instant::now();
-
-        // Simulate ToadStool heavy compute workload
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        context
-            .metrics_collector
-            .record_metric("toadstool_cpu_usage", 85.0);
-        context
-            .metrics_collector
-            .record_metric("toadstool_memory_usage_mb", 4096.0);
-
-        // Simulate Songbird service mesh traffic
-        tokio::time::sleep(Duration::from_millis(80)).await;
-        context
-            .metrics_collector
-            .record_metric("songbird_network_rps", 5000.0);
-        context
-            .metrics_collector
-            .record_metric("songbird_connections", 1000.0);
-
-        // Simulate NestGate storage operations
-        tokio::time::sleep(Duration::from_millis(90)).await;
-        context
-            .metrics_collector
-            .record_metric("nestgate_io_ops", 10000.0);
-        context
-            .metrics_collector
-            .record_metric("nestgate_storage_usage_gb", 500.0);
-
-        // Simulate Squirrel AI agent processing
-        tokio::time::sleep(Duration::from_millis(70)).await;
-        context
-            .metrics_collector
-            .record_metric("squirrel_active_agents", 20.0);
-        context
-            .metrics_collector
-            .record_metric("squirrel_inference_rate", 50.0);
-
-        // Simulate BearDog security monitoring
-        tokio::time::sleep(Duration::from_millis(60)).await;
-        context
-            .metrics_collector
-            .record_metric("beardog_security_events", 1000.0);
-        context
-            .metrics_collector
-            .record_metric("beardog_audit_entries", 5000.0);
-
-        let resource_test_duration = resource_test_start.elapsed();
-        context.metrics_collector.record_metric(
-            "resource_test_duration_ms",
-            resource_test_duration.as_millis() as f64,
-        );
-
-        Ok(())
-    }
-
-    /// Scalability limits testing
-    async fn test_scalability_limits(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("scalability_limits", 1.0);
-        info!("Testing scalability limits");
-
-        // Test horizontal scaling limits
-        let scaling_start = std::time::Instant::now();
-
-        // Simulate scaling up to maximum capacity
-        for scale_level in 1..=10 {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-            context.metrics_collector.record_metric(
-                &format!("scale_level_{scale_level}"),
-                f64::from(scale_level),
-            );
-
-            // Simulate increasing resource usage
-            let cpu_usage = 10.0 + (f64::from(scale_level) * 8.0);
-            let memory_usage = 512.0 + (f64::from(scale_level) * 1024.0);
-
-            context
-                .metrics_collector
-                .record_metric("current_cpu_usage", cpu_usage);
-            context
-                .metrics_collector
-                .record_metric("current_memory_usage_mb", memory_usage);
-        }
-
-        let scaling_duration = scaling_start.elapsed();
-        context
-            .metrics_collector
-            .record_metric("scaling_duration_ms", scaling_duration.as_millis() as f64);
-
-        // Test vertical scaling limits
-        tokio::time::sleep(Duration::from_millis(50)).await;
-        context
-            .metrics_collector
-            .record_metric("max_cpu_cores", 128.0);
-        context
-            .metrics_collector
-            .record_metric("max_memory_gb", 1024.0);
-        context
-            .metrics_collector
-            .record_metric("max_storage_tb", 100.0);
-
-        Ok(())
-    }
-
-    /// Concurrent biome operations test
-    async fn test_concurrent_biome_operations(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("concurrent_biome_operations", 1.0);
-        info!("Testing concurrent biome operations");
-
-        let concurrent_start = std::time::Instant::now();
-
-        // Simulate multiple concurrent biome operations
-        let mut handles = Vec::new();
-
-        for i in 0..5 {
-            let handle = tokio::spawn(async move {
-                // Simulate concurrent biome operation
-                tokio::time::sleep(Duration::from_millis(100 + i * 10)).await;
-                format!("biome_operation_{i}")
-            });
-            handles.push(handle);
-        }
-
-        // Wait for all operations to complete
-        let results = futures::future::join_all(handles).await;
-        let successful_operations = results
-            .into_iter()
-            .filter(std::result::Result::is_ok)
-            .count();
-
-        let concurrent_duration = concurrent_start.elapsed();
-        context.metrics_collector.record_metric(
-            "concurrent_duration_ms",
-            concurrent_duration.as_millis() as f64,
-        );
-        context
-            .metrics_collector
-            .record_metric("successful_operations", successful_operations as f64);
-        context
-            .metrics_collector
-            .record_metric("concurrent_biomes", 5.0);
-
-        Ok(())
-    }
-
-    /// Performance regression detection test
-    async fn test_performance_regression_detection(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("performance_regression_detection", 1.0);
-        info!("Testing performance regression detection");
-
-        // Simulate baseline performance measurement
-        let baseline_start = std::time::Instant::now();
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        let baseline_duration = baseline_start.elapsed();
-
-        // Simulate current performance measurement
-        let current_start = std::time::Instant::now();
-        tokio::time::sleep(Duration::from_millis(95)).await; // Slightly better performance
-        let current_duration = current_start.elapsed();
-
-        // Calculate performance change
-        let performance_change = ((baseline_duration.as_nanos() as f64
-            - current_duration.as_nanos() as f64)
-            / baseline_duration.as_nanos() as f64)
-            * 100.0;
-
-        context
-            .metrics_collector
-            .record_metric("baseline_duration_ms", baseline_duration.as_millis() as f64);
-        context
-            .metrics_collector
-            .record_metric("current_duration_ms", current_duration.as_millis() as f64);
-        context
-            .metrics_collector
-            .record_metric("performance_change_percent", performance_change);
-
-        // Detect regression (threshold: -5% performance degradation)
-        let regression_detected = performance_change < -5.0;
-        context.metrics_collector.record_metric(
-            "regression_detected",
-            if regression_detected { 1.0 } else { 0.0 },
-        );
-
-        Ok(())
-    }
-
-    /// Resource usage under high load test
-    async fn test_resource_usage_under_load(&self, context: &mut TestContext) -> Result<()> {
-        context
-            .metrics_collector
-            .record_metric("resource_usage_under_load", 1.0);
-        info!("Testing resource usage under high load");
-
-        let load_test_start = std::time::Instant::now();
-
-        // Simulate escalating load test
-        for load_level in 1..=10 {
-            tokio::time::sleep(Duration::from_millis(30)).await;
-
-            // Simulate increasing resource usage
-            let cpu_usage = 20.0 + (f64::from(load_level) * 7.0);
-            let memory_usage = 1024.0 + (f64::from(load_level) * 512.0);
-            let disk_io = 100.0 + (f64::from(load_level) * 50.0);
-            let network_io = 50.0 + (f64::from(load_level) * 25.0);
-
-            context
-                .metrics_collector
-                .record_metric(&format!("load_level_{load_level}_cpu"), cpu_usage);
-            context
-                .metrics_collector
-                .record_metric(&format!("load_level_{load_level}_memory_mb"), memory_usage);
-            context
-                .metrics_collector
-                .record_metric(&format!("load_level_{load_level}_disk_io_mb"), disk_io);
-            context.metrics_collector.record_metric(
-                &format!("load_level_{load_level}_network_io_mb"),
-                network_io,
-            );
-        }
-
-        let load_test_duration = load_test_start.elapsed();
-        context.metrics_collector.record_metric(
-            "load_test_duration_ms",
-            load_test_duration.as_millis() as f64,
-        );
-
-        // Record peak usage
-        context
-            .metrics_collector
-            .record_metric("peak_cpu_usage", 90.0);
-        context
-            .metrics_collector
-            .record_metric("peak_memory_usage_mb", 6144.0);
-        context
-            .metrics_collector
-            .record_metric("peak_disk_io_mb", 600.0);
-        context
-            .metrics_collector
-            .record_metric("peak_network_io_mb", 300.0);
-
-        Ok(())
-    }
 
     /// Run comprehensive integration tests for OS-layer, biomeOS, and security features
     pub async fn run_comprehensive_tests(&self) -> Result<Vec<IntegrationTestResult>> {
@@ -1173,7 +734,7 @@ impl IntegrationTestManager {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_integration_test_manager() {
         let config = IntegrationTestConfig::default();
         let manager = IntegrationTestManager::new(config.clone());
@@ -1187,7 +748,7 @@ mod tests {
         assert!(results.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_comprehensive_integration_tests() {
         let config = IntegrationTestConfig {
             max_concurrent_tests: 5,
@@ -1202,7 +763,10 @@ mod tests {
         let manager = IntegrationTestManager::new(config);
 
         // Run comprehensive tests
-        let results = manager.run_comprehensive_tests().await.unwrap();
+        let results = manager
+            .run_comprehensive_tests()
+            .await
+            .expect("Comprehensive test run should succeed");
 
         // Verify results
         assert_eq!(results.len(), 9); // Updated to 9 for the new test
@@ -1229,7 +793,7 @@ mod tests {
         assert_eq!(passed_count, 9); // Updated to 9 for the new test
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_metrics_collector() {
         let mut collector = MetricsCollector::new();
 
@@ -1247,7 +811,7 @@ mod tests {
         assert!(metrics.custom_metrics.contains_key("duration_ms"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_report_generation() {
         let config = IntegrationTestConfig::default();
         let manager = IntegrationTestManager::new(config);

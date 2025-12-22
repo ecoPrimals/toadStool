@@ -135,6 +135,7 @@ async fn run_scenario_1_simple_echo(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     match orchestrator.execute(execution_request).await {
@@ -191,6 +192,7 @@ async fn run_scenario_2_cpu_intensive(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     let start_time = std::time::Instant::now();
@@ -250,6 +252,7 @@ async fn run_scenario_3_file_operations(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     match orchestrator.execute(execution_request).await {
@@ -304,6 +307,7 @@ async fn run_scenario_4_enhanced_security(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     match orchestrator.execute(execution_request).await {
@@ -358,6 +362,7 @@ async fn run_scenario_5_resource_limits(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     match orchestrator.execute(execution_request).await {

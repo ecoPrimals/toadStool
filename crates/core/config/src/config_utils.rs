@@ -15,7 +15,28 @@ pub struct ConfigUtils;
 
 impl ConfigUtils {
     /// Get Songbird port from environment or default
+    ///
+    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
+    ///
+    /// **Modern Pattern**:
+    /// ```ignore
+    /// // Self-knowledge: ToadStool knows only its own config
+    /// let my_port = config.network.toadstool_port;
+    ///
+    /// // Runtime discovery: Find coordination services by capability
+    /// let discovery = RuntimeDiscovery::new();
+    /// let coord_services = discovery
+    ///     .discover_capability(&Capability::Coordination)
+    ///     .await?;
+    /// ```
+    ///
+    /// This method remains for backwards compatibility and fallback scenarios only.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_songbird_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
@@ -23,7 +44,17 @@ impl ConfigUtils {
     }
 
     /// Get `BearDog` port from environment or default
+    ///
+    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
+    ///
+    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::Crypto)`
+    /// instead of hardcoded BearDog endpoints. Each primal has self-knowledge only.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_beardog_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
@@ -31,7 +62,17 @@ impl ConfigUtils {
     }
 
     /// Get `NestGate` port from environment or default
+    ///
+    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
+    ///
+    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
+    /// instead of hardcoded NestGate endpoints.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_nestgate_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
@@ -39,7 +80,17 @@ impl ConfigUtils {
     }
 
     /// Get Squirrel port from environment or default
+    ///
+    /// # ⚠️ Legacy Pattern - Prefer Capability-Based Discovery
+    ///
+    /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::AI)`
+    /// instead of hardcoded Squirrel endpoints.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery for AI services instead of hardcoded endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_squirrel_port() -> u16 {
         let config = crate::env_config::EnvironmentConfig::from_env();
         let loader = EnvConfigLoader::new();
@@ -102,28 +153,69 @@ impl ConfigUtils {
     }
 
     /// Get Songbird endpoint from environment or default
+    ///
+    /// # ⚠️ Deprecated - Use Capability-Based Discovery
+    ///
+    /// **Legacy fallback only**. Modern code should use runtime discovery:
+    /// ```ignore
+    /// let discovery = RuntimeDiscovery::new();
+    /// let services = discovery.discover_capability(&Capability::Coordination).await?;
+    /// let endpoint = services.first().map(|s| &s.endpoint);
+    /// ```
+    #[deprecated(
+        since = "0.2.0",
+        note = "Hardcoded endpoints violate self-knowledge principle. Use RuntimeDiscovery for capability-based service location."
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_songbird_endpoint() -> String {
         let net_config = NetworkEnvConfig::from_env();
         net_config.songbird_endpoint()
     }
 
     /// Get `BearDog` endpoint from environment or default
+    ///
+    /// # ⚠️ Deprecated - Use Capability-Based Discovery
+    ///
+    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::Crypto)` for dynamic service location.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery instead of hardcoded crypto service endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_beardog_endpoint() -> String {
         let net_config = NetworkEnvConfig::from_env();
         net_config.beardog_endpoint()
     }
 
     /// Get `NestGate` endpoint from environment or default
+    ///
+    /// # ⚠️ Deprecated - Use Capability-Based Discovery
+    ///
+    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::Storage)` for dynamic service location.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery instead of hardcoded storage service endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_nestgate_endpoint() -> String {
         let net_config = NetworkEnvConfig::from_env();
         net_config.nestgate_endpoint()
     }
 
     /// Get Squirrel endpoint from environment or default
+    ///
+    /// # ⚠️ Deprecated - Use Capability-Based Discovery
+    ///
+    /// Prefer `RuntimeDiscovery::discover_capability(&Capability::AI)` for dynamic service location.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use capability-based discovery instead of hardcoded AI service endpoints"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_squirrel_endpoint() -> String {
         let net_config = NetworkEnvConfig::from_env();
         net_config.squirrel_endpoint()
@@ -332,6 +424,11 @@ impl ConfigUtils {
     }
 
     /// Get all service ports as a map
+    ///
+    /// # ⚠️ Legacy API - Partially Deprecated
+    ///
+    /// This method includes both self-knowledge ports and deprecated hardcoded primal ports.
+    #[allow(deprecated)] // Uses deprecated port getters for backwards compatibility
     #[must_use]
     pub fn get_service_ports() -> HashMap<String, u16> {
         let mut ports = HashMap::new();
@@ -348,6 +445,15 @@ impl ConfigUtils {
     }
 
     /// Get all service endpoints as a map
+    ///
+    /// # ⚠️ Legacy API - Use Capability-Based Discovery
+    ///
+    /// This method aggregates deprecated endpoint getters for backwards compatibility.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use RuntimeDiscovery::discover_all() for dynamic service discovery"
+    )]
+    #[allow(deprecated)] // This function uses deprecated methods for backwards compatibility
     #[must_use]
     pub fn get_service_endpoints() -> HashMap<String, String> {
         let mut endpoints = HashMap::new();
@@ -507,6 +613,9 @@ impl ConfigUtils {
     }
 
     /// Print all current configuration values (for debugging)
+    ///
+    /// Note: Uses legacy APIs for comprehensive debugging output.
+    #[allow(deprecated)] // Debug function uses all APIs including deprecated ones
     #[cfg(debug_assertions)]
     pub fn print_current_config() {
         println!("=== ToadStool Configuration ===");
@@ -584,28 +693,34 @@ impl ConfigUtils {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Tests for legacy APIs
 mod tests {
     use super::*;
     use std::env;
 
+    // ✅ MODERN: Use shared lock from env_config to prevent test races
+    use crate::env_config::tests::get_env_lock;
+
     #[test]
-    #[serial_test::serial]
     fn test_config_utils() {
+        // ✅ MODERN: Recover from poisoned lock (robust concurrent testing)
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+
         // Save original environment state
         let original_songbird = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
         let original_beardog = env::var("TOADSTOOL_BEARDOG_PORT").ok();
         let original_nestgate = env::var("TOADSTOOL_NESTGATE_PORT").ok();
         let original_host = env::var("TOADSTOOL_BIND_ADDRESS").ok();
         let original_debug = env::var("TOADSTOOL_DEBUG").ok();
-        let original_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
+        let original_env = env::var("TOADSTOOL_ENV").ok(); // Fixed: use ENV not ENVIRONMENT
 
-        // Set known test values instead of relying on defaults
+        // ✅ MODERN: Set known test values explicitly
         env::set_var("TOADSTOOL_SONGBIRD_PORT", "8080");
         env::set_var("TOADSTOOL_BEARDOG_PORT", "8081");
         env::set_var("TOADSTOOL_NESTGATE_PORT", "8082");
-        env::set_var("TOADSTOOL_BIND_ADDRESS", "127.0.0.1"); // Changed from BIND_HOST to BIND_ADDRESS
-        env::set_var("TOADSTOOL_ENVIRONMENT", "development"); // Changed from ENV to ENVIRONMENT
-        env::remove_var("TOADSTOOL_DEBUG"); // Ensure debug is false
+        env::set_var("TOADSTOOL_BIND_ADDRESS", "127.0.0.1");
+        env::set_var("TOADSTOOL_ENV", "development"); // Fixed: use ENV not ENVIRONMENT
+        env::set_var("TOADSTOOL_DEBUG", "false"); // Explicitly set to false
 
         // Test default values
         assert_eq!(ConfigUtils::get_songbird_port(), 8080);
@@ -622,7 +737,7 @@ mod tests {
         assert_eq!(ConfigUtils::get_songbird_port(), 9080);
         assert!(ConfigUtils::get_debug_mode());
 
-        // Restore original environment state
+        // ✅ MODERN: Restore original environment state
         match original_songbird {
             Some(val) => env::set_var("TOADSTOOL_SONGBIRD_PORT", val),
             None => env::remove_var("TOADSTOOL_SONGBIRD_PORT"),
@@ -644,8 +759,8 @@ mod tests {
             None => env::remove_var("TOADSTOOL_DEBUG"),
         }
         match original_env {
-            Some(val) => env::set_var("TOADSTOOL_ENVIRONMENT", val),
-            None => env::remove_var("TOADSTOOL_ENVIRONMENT"),
+            Some(val) => env::set_var("TOADSTOOL_ENV", val), // Fixed: use ENV not ENVIRONMENT
+            None => env::remove_var("TOADSTOOL_ENV"),
         }
     }
 

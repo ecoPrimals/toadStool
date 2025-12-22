@@ -102,6 +102,8 @@ impl ConditionEvaluator {
                     WorkloadSpec::Container { .. } => "container",
                     WorkloadSpec::Gpu { .. } => "gpu",
                     WorkloadSpec::Python { .. } => "python",
+                    WorkloadSpec::AiMl { .. } => "aiml",
+                    WorkloadSpec::Cuda { .. } => "cuda",
                 };
                 Ok(workload_types.contains(&workload_type.to_string()))
             }

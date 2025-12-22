@@ -2,16 +2,16 @@
 //!
 //! These tests provide actual coverage for the policy executor module
 
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_executor_initialization() {
     // Test that we can initialize a policy executor
     let result = initialize_policy_executor();
     assert!(result.is_ok(), "Should initialize successfully");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_allowed() {
     // Test executing an allowed policy action
     let action = PolicyAction {
@@ -24,7 +24,7 @@ async fn test_policy_execution_allowed() {
     assert!(result.is_allowed(), "Read should be allowed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_denied() {
     // Test executing a denied policy action
     let action = PolicyAction {
@@ -37,7 +37,7 @@ async fn test_policy_execution_denied() {
     assert!(result.is_denied(), "Delete should be denied for guest");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_with_conditions() {
     // Test policy with conditions
     let action = PolicyAction {
@@ -60,7 +60,7 @@ async fn test_policy_execution_with_conditions() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_priority() {
     // Test that policies are executed in priority order
     let policies = vec![
@@ -83,7 +83,7 @@ async fn test_policy_execution_priority() {
     assert_eq!(ordered[2].name, "low");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_async() {
     // Test async policy execution
     let action = PolicyAction {
@@ -96,7 +96,7 @@ async fn test_policy_execution_async() {
     assert!(result.is_ok(), "Async execution should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_timeout() {
     // Test policy execution with timeout
     let action = PolicyAction {
@@ -112,7 +112,7 @@ async fn test_policy_execution_timeout() {
     assert!(result.completed_in_time, "Should complete quickly");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_caching() {
     // Test policy result caching
     let action = PolicyAction {
@@ -130,7 +130,7 @@ async fn test_policy_execution_caching() {
     assert!(result2.was_cached, "Second call should use cache");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_batch() {
     // Test batch policy execution
     let actions = vec![
@@ -155,7 +155,7 @@ async fn test_policy_execution_batch() {
     assert_eq!(results.len(), 3, "Should have 3 results");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_error_handling() {
     // Test error handling in policy execution
     let invalid_action = PolicyAction {
@@ -168,7 +168,7 @@ async fn test_policy_execution_error_handling() {
     assert!(result.has_error(), "Should detect invalid action");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_audit_log() {
     // Test that policy executions are audited
     let action = PolicyAction {
@@ -182,7 +182,7 @@ async fn test_policy_execution_audit_log() {
     assert!(result.audit_log.is_some(), "Should have audit log entry");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_policy_execution_resource_limits() {
     // Test policy execution respects resource limits
     let action = PolicyAction {
@@ -304,12 +304,12 @@ fn order_policies_by_priority(mut policies: Vec<Policy>) -> Vec<Policy> {
 }
 
 async fn execute_policy_async(action: &PolicyAction) -> Result<PolicyResult, String> {
-    sleep(Duration::from_millis(1)).await;
+    // ✅ MODERNIZED: No sleep needed - async execution is immediate
     Ok(execute_policy_check(action))
 }
 
 async fn execute_policy_with_timeout(action: &PolicyAction, _timeout: Duration) -> PolicyResult {
-    sleep(Duration::from_millis(10)).await;
+    // ✅ MODERNIZED: No sleep needed - policy execution is synchronous
     let mut result = execute_policy_check(action);
     result.completed_in_time = true;
     result
@@ -325,6 +325,7 @@ lazy_static::lazy_static! {
 fn execute_policy_with_cache(action: &PolicyAction) -> PolicyResult {
     let cache_key = format!("{}:{}:{}", action.operation, action.resource, action.user);
 
+    #[allow(clippy::unwrap_used)] // Test helper: mutex poisoning is test failure
     let mut cache = POLICY_CACHE.lock().unwrap();
 
     if let Some(cached_result) = cache.get(&cache_key) {

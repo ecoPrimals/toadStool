@@ -116,3 +116,51 @@ pub struct VolumeMountSpec {
     /// Read-only mount
     pub read_only: bool,
 }
+
+/// Mount status for volume mounts
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum MountStatus {
+    /// Mount is being created
+    Mounting,
+    /// Mount is active
+    Mounted,
+    /// Mount is being removed
+    Unmounting,
+    /// Mount failed
+    Failed(String),
+}
+
+/// Volume provisioning status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VolumeProvisioningStatus {
+    /// Provisioning successful
+    Success(VolumeInfo),
+    /// Provisioning failed
+    Failed(String),
+    /// Provisioning in progress
+    InProgress,
+    /// Provisioning skipped
+    Skipped(String),
+}
+
+/// Volume mount status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VolumeMountStatus {
+    /// Mount successful
+    Success(VolumeMountInfo),
+    /// Mount failed
+    Failed(String),
+    /// Mount in progress
+    InProgress,
+}
+
+/// Volume cleanup status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VolumeCleanupStatus {
+    /// Cleanup successful
+    Success,
+    /// Cleanup failed
+    Failed(String),
+    /// Cleanup in progress
+    InProgress,
+}

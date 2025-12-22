@@ -50,8 +50,8 @@ async fn test_resource_monitor() -> Result<(), Box<dyn std::error::Error>> {
     monitor.start_monitoring(workload_id)?;
     info!("✓ Started monitoring for {}", workload_id);
 
-    // Get metrics (should return default since no actual process)
-    let metrics = monitor.get_metrics(workload_id)?;
+    // Get metrics (now properly async)
+    let metrics = monitor.get_metrics(workload_id).await?;
     info!(
         "✓ Retrieved metrics: CPU {}%, Memory {} bytes",
         metrics.cpu.usage_percent, metrics.memory.used_bytes
@@ -180,6 +180,7 @@ fn create_echo_request(message: &str) -> ExecutionRequest {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     }
 }
 
@@ -209,5 +210,6 @@ fn create_windows_echo_request(message: &str) -> ExecutionRequest {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     }
 }

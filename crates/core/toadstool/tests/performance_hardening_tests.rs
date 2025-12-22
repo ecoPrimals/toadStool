@@ -322,7 +322,7 @@ fn test_optimized_resource_monitor_with_custom_config() {
     // Should create without panicking
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_optimized_resource_monitor_get_sampling_interval() {
     let config = OptimizedMonitoringConfig::default();
     let monitor = OptimizedResourceMonitor::new(config.clone());
@@ -335,7 +335,7 @@ async fn test_optimized_resource_monitor_get_sampling_interval() {
 // MemoryPool Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_new() {
     let config = MemoryPoolConfig::default();
     let pool: MemoryPool<Vec<u8>> = MemoryPool::new(config, || Vec::with_capacity(1024));
@@ -344,7 +344,7 @@ async fn test_memory_pool_new() {
     assert_eq!(stats.current_size, 100); // initial_size
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_get_object() {
     let config = MemoryPoolConfig {
         initial_size: 5,
@@ -359,7 +359,7 @@ async fn test_memory_pool_get_object() {
     assert!(obj.get().is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_get_multiple_objects() {
     let config = MemoryPoolConfig {
         initial_size: 3,
@@ -380,7 +380,7 @@ async fn test_memory_pool_get_multiple_objects() {
     assert!(obj3.get().is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_stats() {
     let config = MemoryPoolConfig {
         initial_size: 10,
@@ -396,7 +396,7 @@ async fn test_memory_pool_stats() {
     assert_eq!(stats.total_allocations, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_pooled_object_get() {
     let config = MemoryPoolConfig::default();
     let pool: MemoryPool<Vec<u8>> = MemoryPool::new(config, || Vec::with_capacity(1024));
@@ -406,7 +406,7 @@ async fn test_pooled_object_get() {
     assert!(vec_ref.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_pooled_object_get_mut() {
     let config = MemoryPoolConfig::default();
     let pool: MemoryPool<Vec<u8>> = MemoryPool::new(config, || Vec::with_capacity(1024));
@@ -441,7 +441,7 @@ fn test_intelligent_cache_with_custom_config() {
     // Should create without panicking
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_put_and_get() {
     let config = CachingConfig::default();
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
@@ -454,7 +454,7 @@ async fn test_intelligent_cache_put_and_get() {
     assert_eq!(retrieved, Some(value));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_get_nonexistent() {
     let config = CachingConfig::default();
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
@@ -463,7 +463,7 @@ async fn test_intelligent_cache_get_nonexistent() {
     assert_eq!(result, None);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_put_multiple() {
     let config = CachingConfig::default();
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
@@ -477,7 +477,7 @@ async fn test_intelligent_cache_put_multiple() {
     assert_eq!(value, Some(5));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_put_with_ttl() {
     let config = CachingConfig::default();
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
@@ -494,7 +494,7 @@ async fn test_intelligent_cache_put_with_ttl() {
     assert_eq!(retrieved, Some(value));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_get_stats() {
     let config = CachingConfig::default();
     let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
@@ -523,7 +523,7 @@ async fn test_intelligent_cache_get_stats() {
     assert_eq!(stats.misses, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_intelligent_cache_lru_eviction() {
     let config = CachingConfig {
         max_size: 3,
@@ -587,7 +587,7 @@ fn test_performance_hardening_manager_with_custom_config() {
     // Should create without panicking
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_initialize() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -596,7 +596,7 @@ async fn test_performance_hardening_manager_initialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_get_resource_monitor() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -607,7 +607,7 @@ async fn test_performance_hardening_manager_get_resource_monitor() {
     assert!(interval.as_millis() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_create_memory_pool() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -618,7 +618,7 @@ async fn test_performance_hardening_manager_create_memory_pool() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_create_memory_pool_disabled() {
     let config = PerformanceHardeningConfig {
         enable_optimized_monitoring: true,
@@ -640,7 +640,7 @@ async fn test_performance_hardening_manager_create_memory_pool_disabled() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_create_cache() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -649,7 +649,7 @@ async fn test_performance_hardening_manager_create_cache() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_create_cache_disabled() {
     let config = PerformanceHardeningConfig {
         enable_optimized_monitoring: true,
@@ -669,7 +669,7 @@ async fn test_performance_hardening_manager_create_cache_disabled() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_use_created_cache() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);
@@ -688,7 +688,7 @@ async fn test_performance_hardening_manager_use_created_cache() {
     assert_eq!(value, Some(42));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_manager_use_created_pool() {
     let config = PerformanceHardeningConfig::default();
     let manager = PerformanceHardeningManager::new(config);

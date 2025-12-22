@@ -8,6 +8,7 @@
 //! When massive jobs drop, ToadStool breaks them up and sends them via Songbird to hundreds of nodes.
 
 pub mod broadcasting;
+pub mod capability_client; // ✅ Production-ready capability-based discovery client
 pub mod connection;
 pub mod discovery;
 pub mod distribution;
@@ -16,6 +17,7 @@ pub mod load_balancing;
 pub mod types;
 
 // Re-export main types
+pub use capability_client::{CapabilityClient, ClientStats};
 pub use toadstool_common::auth::AuthType; // Re-export from canonical source
 pub use types::ToadStoolSongbirdIntegration;
 pub use types::{

@@ -2,6 +2,7 @@
 
 use chrono::Utc;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_cli::universal::*;
 use uuid::Uuid;
@@ -229,15 +230,15 @@ fn test_federation_peer_creation() {
     let peer = FederationPeer {
         peer_id: Uuid::new_v4(),
         endpoint: "127.0.0.1:8080".parse().unwrap(),
-        capabilities: vec!["compute".to_string(), "storage".to_string()],
-        shared_resources: vec!["cpu".to_string()],
+        capabilities: vec![Arc::from("compute"), Arc::from("storage")],
+        shared_resources: vec![Arc::from("cpu")],
         status: FederationStatus::Connected,
         last_heartbeat: Utc::now(),
         trust_level: TrustLevel::Verified,
     };
 
     assert_eq!(peer.capabilities.len(), 2);
-    assert!(peer.capabilities.contains(&"compute".to_string()));
+    assert!(peer.capabilities.contains(&Arc::from("compute")));
 }
 
 #[test]
@@ -245,8 +246,8 @@ fn test_federation_peer_with_multiple_resources() {
     let peer = FederationPeer {
         peer_id: Uuid::new_v4(),
         endpoint: "10.0.0.1:9000".parse().unwrap(),
-        capabilities: vec!["gpu".to_string()],
-        shared_resources: vec!["nvidia-3090".to_string(), "amd-mi100".to_string()],
+        capabilities: vec![Arc::from("gpu")],
+        shared_resources: vec![Arc::from("nvidia-3090"), Arc::from("amd-mi100")],
         status: FederationStatus::Ready,
         last_heartbeat: Utc::now(),
         trust_level: TrustLevel::Sovereign,
@@ -400,8 +401,8 @@ fn test_federation_peer_with_sovereign_trust() {
     let peer = FederationPeer {
         peer_id: Uuid::new_v4(),
         endpoint: "192.168.1.100:8080".parse().unwrap(),
-        capabilities: vec!["full-trust".to_string()],
-        shared_resources: vec!["all".to_string()],
+        capabilities: vec![Arc::from("full-trust")],
+        shared_resources: vec![Arc::from("all")],
         status: FederationStatus::Ready,
         last_heartbeat: Utc::now(),
         trust_level: TrustLevel::Sovereign,

@@ -34,6 +34,7 @@ fn create_test_server_state(config: ServerConfig) -> ServerState {
         config,
         resource_monitor,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     }
 }
 
@@ -41,7 +42,7 @@ fn create_test_server_state(config: ServerConfig) -> ServerState {
 // Health Check Configuration Tests
 // =============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_with_all_checks_disabled() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -62,7 +63,7 @@ async fn test_health_check_with_all_checks_disabled() {
     assert!(!state.config.health_check.check_resources);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_config_thresholds() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -86,7 +87,7 @@ async fn test_health_check_config_thresholds() {
 // Resource Health Check Tests
 // =============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitor_healthy_state() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -110,7 +111,7 @@ async fn test_resource_monitor_healthy_state() {
     assert!(res.available_memory_bytes > 0); // Verify we have memory resources
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitor_configuration() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -128,7 +129,7 @@ async fn test_resource_monitor_configuration() {
     assert!(!state.config.health_check.check_runtime_engines);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_high_cpu_detection() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -150,7 +151,7 @@ async fn test_high_cpu_detection() {
     assert_eq!(state.config.health_check.cpu_threshold_percent, 95.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_high_memory_detection() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -176,7 +177,7 @@ async fn test_high_memory_detection() {
 // Runtime Engine Health Check Tests
 // =============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_engine_registration() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -201,7 +202,7 @@ async fn test_runtime_engine_registration() {
     assert!(engines.contains_key(&RuntimeType::Native));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_no_runtime_engines_available() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -219,7 +220,7 @@ async fn test_no_runtime_engines_available() {
     assert_eq!(engines.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_engine_health_check_success() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -248,7 +249,7 @@ async fn test_runtime_engine_health_check_success() {
     assert!(metrics.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_engine_health_check_failure() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -276,7 +277,7 @@ async fn test_runtime_engine_health_check_failure() {
     assert!(engines.contains_key(&RuntimeType::Native));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_runtime_engines() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -318,7 +319,7 @@ async fn test_multiple_runtime_engines() {
 // Active Executions Tests
 // =============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_active_executions_tracking() {
     let config = ServerConfig {
         max_concurrent_executions: 100,
@@ -356,7 +357,7 @@ async fn test_active_executions_tracking() {
     assert_eq!(active.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_too_many_active_executions() {
     let config = ServerConfig {
         max_concurrent_executions: 5,
@@ -394,7 +395,7 @@ async fn test_too_many_active_executions() {
     assert!(active.len() > state.config.max_concurrent_executions as usize);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_active_executions_within_limit() {
     let config = ServerConfig {
         max_concurrent_executions: 100,
@@ -436,7 +437,7 @@ async fn test_active_executions_within_limit() {
 // Integration Tests
 // =============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_health_check_scenario_healthy() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {
@@ -496,7 +497,7 @@ async fn test_complete_health_check_scenario_healthy() {
     assert!(active.len() <= state.config.max_concurrent_executions as usize);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_health_check_scenario_unhealthy() {
     let config = ServerConfig {
         health_check: HealthCheckConfig {

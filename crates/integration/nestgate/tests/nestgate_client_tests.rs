@@ -17,7 +17,7 @@ use toadstool_integration_nestgate::{types::*, *};
 // Client Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_nestgate_client_creation_with_default_config() {
     // Test that we can create a NestGate client config
     let config = NestGateConfig {

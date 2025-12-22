@@ -14,7 +14,7 @@ use toadstool_distributed::core::coordinator::DistributedCoordinator;
 // Configuration Error Handling Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_zero_concurrency_works() {
     // Edge case: coordinator with zero concurrency (should still initialize)
     let mut config = DistributedConfig::default();
@@ -29,7 +29,7 @@ async fn test_coordinator_with_zero_concurrency_works() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_disabled_queue_and_small_concurrency() {
     // Edge case: disabled queue with minimal concurrency
     let mut config = DistributedConfig::default();
@@ -41,7 +41,7 @@ async fn test_coordinator_with_disabled_queue_and_small_concurrency() {
     assert!(coordinator.is_ok(), "Coordinator should work without queue");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_extremely_large_values() {
     // Edge case: very large configuration values
     let mut config = DistributedConfig::default();
@@ -57,7 +57,7 @@ async fn test_coordinator_with_extremely_large_values() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_initialization_timeout_handling() {
     // Test that coordinator initialization respects timeout
     let config = DistributedConfig::default();
@@ -74,7 +74,7 @@ async fn test_coordinator_initialization_timeout_handling() {
 // Concurrency Error Scenarios
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rapid_coordinator_creation_stress() {
     // Stress test: create many coordinators rapidly
     let mut handles = vec![];
@@ -94,7 +94,7 @@ async fn test_rapid_coordinator_creation_stress() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_under_memory_pressure() {
     // Test coordinator creation with multiple instances (simulating memory pressure)
     let mut coordinators = vec![];
@@ -120,7 +120,7 @@ async fn test_coordinator_creation_under_memory_pressure() {
 // Configuration Edge Cases
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_mismatched_queue_config() {
     // Edge case: queue enabled but size is 0
     let mut config = DistributedConfig::default();
@@ -135,7 +135,7 @@ async fn test_coordinator_with_mismatched_queue_config() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_large_queue_small_concurrency() {
     // Edge case: large queue but minimal concurrency
     let mut config = DistributedConfig::default();
@@ -150,7 +150,7 @@ async fn test_coordinator_with_large_queue_small_concurrency() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_tiny_timeout() {
     // Edge case: very small timeout (1 second)
     let mut config = DistributedConfig::default();
@@ -164,7 +164,7 @@ async fn test_coordinator_with_tiny_timeout() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_huge_timeout() {
     // Edge case: very large timeout (1 year in seconds)
     let mut config = DistributedConfig::default();
@@ -182,7 +182,7 @@ async fn test_coordinator_with_huge_timeout() {
 // Async Error Scenarios
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_cancellation_safety() {
     // Test that coordinator creation can be safely cancelled
     let config = DistributedConfig::default();
@@ -198,7 +198,7 @@ async fn test_coordinator_creation_cancellation_safety() {
     let _ = result;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_coordinators_with_tokio_select() {
     // Test coordinators can be created with tokio::select!
     let config1 = DistributedConfig::default();
@@ -218,7 +218,7 @@ async fn test_multiple_coordinators_with_tokio_select() {
 // Recovery and Resilience Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_after_failures() {
     // Simulate previous failures, then create successfully
     // (This tests that failed creation doesn't corrupt global state)
@@ -239,7 +239,7 @@ async fn test_coordinator_creation_after_failures() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_alternating_configs() {
     // Test creating coordinators with alternating configurations
     for i in 0..10 {
@@ -263,7 +263,7 @@ async fn test_coordinator_with_alternating_configs() {
 // Instance ID Error Scenarios
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_empty_instance_id() {
     // Edge case: empty instance ID
     let config = DistributedConfig {
@@ -280,7 +280,7 @@ async fn test_coordinator_with_empty_instance_id() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_very_long_instance_id() {
     // Edge case: very long instance ID
     let config = DistributedConfig {
@@ -297,7 +297,7 @@ async fn test_coordinator_with_very_long_instance_id() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_special_chars_in_instance_id() {
     // Edge case: special characters in instance ID
     let config = DistributedConfig {
@@ -317,7 +317,7 @@ async fn test_coordinator_with_special_chars_in_instance_id() {
 // Stress and Load Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_sequential_creation_stress() {
     // Create many coordinators sequentially without cleanup
     for i in 0..50 {
@@ -332,7 +332,7 @@ async fn test_coordinator_sequential_creation_stress() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_varied_timeouts() {
     // Test coordinators with varying timeout configurations
     let timeouts = vec![1, 10, 60, 300, 3600, 86400];
@@ -346,7 +346,7 @@ async fn test_coordinator_with_varied_timeouts() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_varied_concurrency_levels() {
     // Test coordinators with varying concurrency configurations
     let concurrency_levels = vec![0, 1, 5, 10, 50, 100, 500, 1000];
@@ -364,7 +364,7 @@ async fn test_coordinator_with_varied_concurrency_levels() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_varied_queue_sizes() {
     // Test coordinators with varying queue size configurations
     let queue_sizes = vec![0, 1, 10, 100, 1000, 10000, 100000];
@@ -383,7 +383,7 @@ async fn test_coordinator_with_varied_queue_sizes() {
 // Advanced Async & Concurrency Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_parallel_creation_with_join() {
     // Test parallel coordinator creation using tokio::join!
     let config1 = DistributedConfig::default();
@@ -401,7 +401,7 @@ async fn test_coordinator_parallel_creation_with_join() {
     assert!(result3.is_ok(), "Parallel creation 3 should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_tokio_try_join() {
     // Test coordinator creation with tokio::try_join!
     let config1 = DistributedConfig::default();
@@ -415,7 +415,7 @@ async fn test_coordinator_with_tokio_try_join() {
     assert!(result.is_ok(), "try_join should succeed for valid configs");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_with_spawn_blocking() {
     // Test that coordinator creation doesn't block async runtime
     let handle = tokio::task::spawn(async {
@@ -427,7 +427,7 @@ async fn test_coordinator_creation_with_spawn_blocking() {
     assert!(result.is_ok(), "Spawn should not interfere with creation");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_timeout_success() {
     // Test successful coordinator creation within timeout
     let config = DistributedConfig::default();
@@ -444,7 +444,7 @@ async fn test_coordinator_with_timeout_success() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_varied_timeout_durations() {
     // Test coordinator creation with different timeout durations
     let timeouts = vec![
@@ -471,7 +471,7 @@ async fn test_coordinator_with_varied_timeout_durations() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_concurrent_with_different_configs() {
     // Test concurrent creation with different configurations
     let mut handles = vec![];
@@ -496,7 +496,7 @@ async fn test_coordinator_concurrent_with_different_configs() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_nested_async_blocks() {
     // Test coordinator creation in nested async context
     async fn create_nested() -> Result<(), Box<dyn std::error::Error>> {
@@ -518,7 +518,7 @@ async fn test_coordinator_with_nested_async_blocks() {
 // Race Condition & Concurrency Edge Cases
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_rapid_sequential_creation_no_gap() {
     // Test rapid sequential creation with no delay
     for i in 0..30 {
@@ -531,7 +531,7 @@ async fn test_coordinator_rapid_sequential_creation_no_gap() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_interleaved_creation_and_drop() {
     // Test creating and dropping coordinators in interleaved pattern
     let mut coordinators = vec![];
@@ -554,7 +554,7 @@ async fn test_coordinator_interleaved_creation_and_drop() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_high_parallelism() {
     // Test with high degree of parallelism (100 concurrent)
     let mut handles = vec![];
@@ -582,7 +582,7 @@ async fn test_coordinator_with_high_parallelism() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_alternating_parallel_sequential() {
     // Test alternating between parallel and sequential creation
     for round in 0..3 {
@@ -622,7 +622,7 @@ async fn test_coordinator_alternating_parallel_sequential() {
 // Resource Contention & Pressure Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_memory_intensive_configs() {
     // Test with configurations that might cause memory pressure
     let mut coordinators = vec![];
@@ -646,7 +646,7 @@ async fn test_coordinator_with_memory_intensive_configs() {
     assert_eq!(coordinators.len(), 20);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_timing_consistency() {
     // Test that creation time is consistent across multiple attempts
     let mut times = vec![];
@@ -670,7 +670,7 @@ async fn test_coordinator_creation_timing_consistency() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_extreme_config_combinations() {
     // Test extreme combinations of configuration values
     let extreme_configs = vec![
@@ -701,7 +701,7 @@ async fn test_coordinator_with_extreme_config_combinations() {
 // Error Recovery & Resilience
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_recovery_after_timeout() {
     // Simulate timeout, then verify recovery
     let config1 = DistributedConfig::default();
@@ -720,7 +720,7 @@ async fn test_coordinator_recovery_after_timeout() {
     assert!(coordinator.is_ok(), "Should recover after previous timeout");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_state_independence() {
     // Test that each coordinator is independent (no shared mutable state)
     let mut coordinators = vec![];
@@ -745,7 +745,7 @@ async fn test_coordinator_state_independence() {
     assert_eq!(coordinators.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_unicode_instance_ids() {
     // Test instance IDs with unicode characters
     let unicode_ids = vec![
@@ -768,7 +768,7 @@ async fn test_coordinator_with_unicode_instance_ids() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation_under_task_spawn_pressure() {
     // Test coordinator creation while spawning many other tasks
     let mut background_tasks = vec![];
@@ -776,7 +776,7 @@ async fn test_coordinator_creation_under_task_spawn_pressure() {
     // Spawn background tasks
     for _ in 0..50 {
         let task = tokio::spawn(async {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
         });
         background_tasks.push(task);
     }
@@ -803,7 +803,7 @@ async fn test_coordinator_creation_under_task_spawn_pressure() {
 // Boundary Value Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_boundary_concurrency_values() {
     // Test boundary values for concurrency
     let boundary_values = vec![0, 1, u32::MAX / 2, u32::MAX - 1, u32::MAX];
@@ -821,7 +821,7 @@ async fn test_coordinator_with_boundary_concurrency_values() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_boundary_timeout_values() {
     // Test boundary values for timeout
     let boundary_values = vec![0, 1, 60, 3600, u64::MAX / 2, u64::MAX - 1];
@@ -839,7 +839,7 @@ async fn test_coordinator_with_boundary_timeout_values() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_with_boundary_queue_sizes() {
     // Test boundary values for queue size
     let boundary_values = vec![0, 1, 100, 10000, usize::MAX / 1000, usize::MAX / 100];

@@ -41,7 +41,9 @@
 
 pub mod biomeos_integration;
 pub mod byob;
+pub mod discovery;
 pub mod ecosystem;
+pub mod encryption;
 pub mod error;
 pub mod execution;
 pub mod os_layer;
@@ -49,8 +51,10 @@ pub mod performance_hardening;
 pub mod production_hardening;
 pub mod resources;
 pub mod runtime;
+pub mod runtime_discovery;
 pub mod security;
 pub mod security_hardening;
+pub mod self_identity;
 pub mod universal;
 pub mod workload;
 // biomeOS integration is now handled as a primal through the ecosystem module
@@ -63,6 +67,11 @@ pub use ecosystem::{
     EcosystemConfig, EcosystemCoordinator, EcosystemMessage as EcosystemCoreMessage,
     EcosystemMessageType as EcosystemCoreMessageType, PrimalChannel, PrimalClient, PrimalInstance,
     PrimalStatus, PrimalType,
+};
+pub use encryption::{
+    CryptoCapability, CryptoProvider, CryptoProviderRegistry, EncryptedInput, EncryptedOutput,
+    EncryptedPayload, EncryptionConfig, EncryptionContext, EncryptionContextBuilder, EncryptionKey,
+    EncryptionMetadata, SecurityLevel as EncryptionSecurityLevel,
 };
 pub use error::*;
 pub use execution::{

@@ -638,7 +638,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_agent_backend_deploy() {
         let backend = InMemoryAgentBackend::new();
         let config = AgentConfig {
@@ -658,7 +658,7 @@ mod tests {
         assert_eq!(info.status, AgentStatus::Running);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_agent_backend_lifecycle() {
         let backend = InMemoryAgentBackend::new();
         let config = AgentConfig {
@@ -693,7 +693,7 @@ mod tests {
         assert!(status_result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_agent_backend_list() {
         let backend = InMemoryAgentBackend::new();
 

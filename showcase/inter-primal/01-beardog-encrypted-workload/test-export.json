@@ -1,0 +1,19 @@
+{
+  "key_id": "tower-a-1766142733",
+  "algorithm": "genetic-hkdf",
+  "parent": "master-1766142732",
+  "generation": 1,
+  "created_at": "2025-12-19T11:12:13.015864601+00:00",
+  "context": "tower-a-eastgate-rtx2070",
+  "expires_at": null,
+  "usage": null,
+  "purpose": "tower-a-eastgate-rtx2070",
+  "metadata": {
+    "hsm_name": "BearDog Native Software HSM",
+    "exported_at": "2025-12-19T11:12:29.869030529+00:00",
+    "exported_by": "beardog-cli"
+  },
+  "key_material": "Txfs5I8FrQUwXhT692KNSZPczyfnrEMGxOt5AX10naE=",
+  "encrypted": false,
+  "version": "1.0"
+}

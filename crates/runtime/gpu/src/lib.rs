@@ -10,13 +10,24 @@
 //! - Scale from embedded GPUs to supercomputer clusters
 
 // Module declarations
+pub mod aggregation;
 pub mod compiler;
 pub mod config;
 pub mod coordinator;
+pub mod cpu_resource;
+pub mod distributed; // Refactored from distributed_scheduler
 pub mod engine;
 pub mod frameworks;
+pub mod memory_pool;
+pub mod scheduler;
+pub mod strategy;
 pub mod traits;
 pub mod types;
+pub mod universal;
+
+// Real GPU backends (no mocks)
+#[cfg(feature = "opencl")]
+pub mod backends;
 
 // Re-export main types and traits for convenience
 pub use compiler::UniversalKernelCompiler;
@@ -24,6 +35,7 @@ pub use config::*;
 pub use coordinator::ComputeResourceCoordinator;
 pub use engine::UniversalGpuEngine;
 pub use frameworks::*;
+pub use strategy::{BackendSelectionStrategy, EvolutionMetrics};
 pub use traits::*;
 pub use types::*;
 
@@ -34,7 +46,7 @@ pub use engine::UniversalGpuEngine as GpuRuntime;
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_gpu_engine_creation() {
         let result = UniversalGpuEngine::new().await;
         // For now, this might fail due to no actual GPU frameworks available

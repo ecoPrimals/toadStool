@@ -36,6 +36,14 @@ struct ExecutionSession {
 
 impl DistributedCoordinator {
     /// Create a new distributed coordinator
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Capability detection fails
+    /// - Songbird connection cannot be established (if enabled)
+    /// - Configuration validation fails
+    #[must_use = "DistributedCoordinator creation should be checked"]
     pub async fn new(config: DistributedConfig) -> ToadStoolResult<Self> {
         info!(
             "Initializing distributed coordinator with config: {:?}",
@@ -117,6 +125,14 @@ impl DistributedCoordinator {
     }
 
     /// Start the coordinator
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Songbird integration fails to start
+    /// - Health reporting setup fails
+    /// - Background tasks cannot be spawned
+    #[must_use = "Coordinator start result should be checked"]
     pub async fn start(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("Starting distributed coordinator");
 
@@ -134,6 +150,14 @@ impl DistributedCoordinator {
     }
 
     /// Submit an execution request
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Standalone executor rejects the request
+    /// - Request validation fails
+    /// - Execution session cannot be created
+    #[must_use = "Execution submission result should be checked"]
     pub async fn submit_execution(&self, request: ExecutionRequest) -> ToadStoolResult<Uuid> {
         info!("Submitting execution request");
 
@@ -204,7 +228,7 @@ impl Clone for StandaloneExecutor {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
-            active_executions: self.active_executions.clone(),
+            active_executions: Arc::clone(&self.active_executions),
         }
     }
 }

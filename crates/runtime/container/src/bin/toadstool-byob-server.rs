@@ -232,7 +232,7 @@ async fn byob_health_check_handler() -> Result<Json<HealthResponse>, ApiError> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_default_config() {
         let config = load_config(None)
             .await

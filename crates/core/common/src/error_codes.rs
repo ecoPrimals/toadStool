@@ -43,6 +43,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 /// Structured error code with metadata
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,6 +89,9 @@ pub enum ErrorCategory {
 
 impl ErrorCode {
     /// Create a detailed error message with context
+    ///
+    /// Uses zero-copy optimization: if no context is provided, returns a static string.
+    /// Only allocates when context is provided.
     pub fn into_error_with_context(self, context: impl Into<String>) -> String {
         let context = context.into();
         if context.is_empty() {
@@ -95,6 +99,36 @@ impl ErrorCode {
         } else {
             format!("{}: {} - {}", self.code, self.message, context)
         }
+    }
+
+    /// Create an error message as Cow (zero-copy when possible)
+    ///
+    /// Returns `Cow::Borrowed` when no context, `Cow::Owned` when context is provided.
+    /// This is the preferred method for performance-critical paths.
+    #[must_use]
+    pub fn to_error_message(&self) -> Cow<'static, str> {
+        // Static formatting without allocation
+        Cow::Borrowed(self.message)
+    }
+
+    /// Create an error message with context as Cow (zero-copy when possible)
+    ///
+    /// Returns `Cow::Owned` only when context is non-empty.
+    #[must_use]
+    pub fn to_error_message_with_context<'a>(&self, context: &'a str) -> Cow<'a, str> {
+        if context.is_empty() {
+            // No allocation - just borrow the static message
+            Cow::Borrowed(self.message)
+        } else {
+            // Allocate only when we have context
+            Cow::Owned(format!("{}: {} - {}", self.code, self.message, context))
+        }
+    }
+
+    /// Get the full error code with message (static, no allocation)
+    #[must_use]
+    pub fn full_message(&self) -> String {
+        format!("{}: {}", self.code, self.message)
     }
 
     /// Get category as string
@@ -423,7 +457,7 @@ mod tests {
         ];
 
         for code in all_codes {
-            assert!(seen.insert(code), "Duplicate error code: {}", code);
+            assert!(seen.insert(code), "Duplicate error code: {code}");
         }
     }
 
@@ -433,5 +467,46 @@ mod tests {
         let json = serde_json::to_string(&code).unwrap();
         assert!(json.contains("EXEC-RUNTIME-001"));
         assert!(json.contains("execution"));
+    }
+
+    #[test]
+    fn test_zero_copy_error_message() {
+        let code = codes::CONFIG_PARSE_001;
+        let msg = code.to_error_message();
+
+        // Should be borrowed (zero-copy)
+        assert!(matches!(msg, std::borrow::Cow::Borrowed(_)));
+        assert_eq!(msg.as_ref(), "Failed to parse configuration file");
+    }
+
+    #[test]
+    fn test_zero_copy_error_message_with_context_empty() {
+        let code = codes::CONFIG_PARSE_001;
+        let msg = code.to_error_message_with_context("");
+
+        // Should be borrowed when context is empty (zero-copy)
+        assert!(matches!(msg, std::borrow::Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn test_zero_copy_error_message_with_context_present() {
+        let code = codes::CONFIG_PARSE_001;
+        let msg = code.to_error_message_with_context("line 42");
+
+        // Should be owned when context is present (allocation)
+        assert!(matches!(msg, std::borrow::Cow::Owned(_)));
+        assert!(msg.contains("line 42"));
+        assert!(msg.contains("CONFIG-PARSE-001"));
+    }
+
+    #[test]
+    fn test_full_message_format() {
+        let code = codes::EXEC_RUNTIME_001;
+        let msg = code.full_message();
+
+        assert_eq!(
+            msg,
+            "EXEC-RUNTIME-001: Runtime engine initialization failed"
+        );
     }
 }

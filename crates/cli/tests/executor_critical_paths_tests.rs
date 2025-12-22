@@ -226,7 +226,7 @@ mod process_lifecycle_tests {
         assert_eq!(processes.get("proc2"), Some(&false));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_process_management() {
         let processes: Arc<RwLock<HashMap<String, u32>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -253,12 +253,13 @@ mod process_lifecycle_tests {
 mod timeout_handling_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_operation_timeout() {
         let timeout_duration = Duration::from_millis(100);
 
         let result = tokio::time::timeout(timeout_duration, async {
-            tokio::time::sleep(Duration::from_secs(10)).await;
+            // ✅ INTENTIONAL DELAY: Testing timeout behavior requires exceeding the limit
+            tokio::time::sleep(Duration::from_millis(200)).await;
             Ok::<(), ()>(())
         })
         .await;
@@ -266,12 +267,12 @@ mod timeout_handling_tests {
         assert!(result.is_err()); // Should timeout
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_operation_completes_before_timeout() {
         let timeout_duration = Duration::from_secs(5);
 
         let result = tokio::time::timeout(timeout_duration, async {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             Ok::<(), ()>(())
         })
         .await;
@@ -364,7 +365,7 @@ mod signal_handling_tests {
 mod concurrent_execution_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_biome_tracking() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -383,7 +384,7 @@ mod concurrent_execution_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_status_updates() {
         let statuses: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -397,7 +398,7 @@ mod concurrent_execution_tests {
 
         let statuses_clone2 = Arc::clone(&statuses);
         let handle2 = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             let mut s = statuses_clone2.write().await;
             s.insert("app2".to_string(), "running".to_string());
         });
@@ -639,7 +640,7 @@ mod integration_scenario_tests {
         assert!(recovery_steps.contains(&"attempt_restart"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_loop() {
         let _health_interval = Duration::from_secs(30);
         let mut checks_performed = 0;
@@ -647,7 +648,7 @@ mod integration_scenario_tests {
 
         while checks_performed < max_checks {
             // Simulate health check
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             checks_performed += 1;
         }
 
@@ -663,7 +664,7 @@ mod integration_scenario_tests {
 mod performance_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_many_biomes_tracking() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 

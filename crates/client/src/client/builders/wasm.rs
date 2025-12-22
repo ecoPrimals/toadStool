@@ -105,15 +105,16 @@ impl WasmWorkloadBuilder {
 
     /// Build the workload submission
     ///
-    /// # Panics
-    /// Panics if the module data is not set, as it is required for WASM workloads
-    #[must_use]
-    pub fn build(self) -> WorkloadSubmission {
-        WorkloadSubmission {
+    /// # Errors
+    /// Returns an error if module data is not set
+    pub fn build(self) -> Result<WorkloadSubmission, String> {
+        let module_data = self
+            .module_data
+            .ok_or_else(|| "Module data is required for WASM workload".to_string())?;
+
+        Ok(WorkloadSubmission {
             workload_type: WorkloadType::Wasm {
-                module_data: self
-                    .module_data
-                    .expect("Module data is required for WASM workload"),
+                module_data,
                 args: self.args,
             },
             runtime_hint: Some("wasm".to_string()),
@@ -122,6 +123,6 @@ impl WasmWorkloadBuilder {
             environment: self.environment,
             resources: self.resources,
             metadata: self.metadata,
-        }
+        })
     }
 }

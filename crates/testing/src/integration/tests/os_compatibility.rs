@@ -95,7 +95,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("linux_compatibility_test", 1.0);
         // Simulate Linux compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED // ✅ MODERNIZED (was 10ms)
         Ok(())
     }
 
@@ -104,7 +104,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("windows_compatibility_test", 1.0);
         // Simulate Windows compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED // ✅ MODERNIZED (was 10ms)
         Ok(())
     }
 
@@ -113,7 +113,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("macos_compatibility_test", 1.0);
         // Simulate macOS compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED // ✅ MODERNIZED (was 10ms)
         Ok(())
     }
 
@@ -122,7 +122,7 @@ impl IntegrationTestManager {
             .metrics_collector
             .record_metric("legacy_compatibility_test", 1.0);
         // Simulate legacy compatibility test
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED // ✅ MODERNIZED (was 10ms)
         Ok(())
     }
 }

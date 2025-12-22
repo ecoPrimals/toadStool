@@ -205,6 +205,7 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     info!("✓ Successfully created execution request for WASM workload");
@@ -231,6 +232,7 @@ async fn test_runtime_orchestrator() -> ToadStoolResult<()> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     info!("✓ Successfully created execution request for Container workload");

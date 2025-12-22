@@ -184,7 +184,7 @@ fn create_test_service_spec(name: &str) -> ServiceSpec {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_success() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -205,7 +205,7 @@ async fn test_deploy_biome_success() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_with_service_failure() {
     let mock_engine = Arc::new(TestRuntimeEngine::new_failing());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -220,7 +220,7 @@ async fn test_deploy_biome_with_service_failure() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_resource_quota_exceeded() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -242,7 +242,7 @@ async fn test_deploy_biome_resource_quota_exceeded() {
     assert!(err.to_string().contains("CPU"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_memory_quota_exceeded() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -264,7 +264,7 @@ async fn test_deploy_biome_memory_quota_exceeded() {
     assert!(err.to_string().contains("Memory"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_storage_quota_exceeded() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -286,7 +286,7 @@ async fn test_deploy_biome_storage_quota_exceeded() {
     assert!(err.to_string().contains("Storage"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_gpu_quota_exceeded() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -308,7 +308,7 @@ async fn test_deploy_biome_gpu_quota_exceeded() {
     assert!(err.to_string().contains("GPU"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_too_many_services() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -340,7 +340,7 @@ async fn test_deploy_biome_too_many_services() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_biome_max_concurrent_deployments() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let config = ByobExecutorConfig {
@@ -367,7 +367,7 @@ async fn test_deploy_biome_max_concurrent_deployments() {
     assert!(err.to_string().contains("Maximum concurrent deployments"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_deployment_status_success() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -389,7 +389,7 @@ async fn test_get_deployment_status_success() {
     assert!(matches!(response.status, DeploymentStatus::Running));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_deployment_status_not_found() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -405,7 +405,7 @@ async fn test_get_deployment_status_not_found() {
     assert!(err.to_string().contains("not found"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_stop_deployment_success() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -427,7 +427,7 @@ async fn test_stop_deployment_success() {
     assert!(matches!(status.status, DeploymentStatus::Stopped));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_stop_deployment_not_found() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -443,7 +443,7 @@ async fn test_stop_deployment_not_found() {
     assert!(err.to_string().contains("not found"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_deployments_empty() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -453,7 +453,7 @@ async fn test_list_deployments_empty() {
     assert_eq!(deployments.unwrap().len(), 0, "Should have no deployments");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_deployments_multiple() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -485,7 +485,7 @@ async fn test_list_deployments_multiple() {
     assert!(ids.contains(&id2), "Should contain second deployment");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_resource_usage_success() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -507,7 +507,7 @@ async fn test_get_resource_usage_success() {
     assert!(resource_usage.cpu_usage >= 0.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_resource_usage_not_found() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -523,7 +523,7 @@ async fn test_get_resource_usage_not_found() {
     assert!(err.to_string().contains("not found"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_native_workload() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -544,7 +544,7 @@ async fn test_deployment_with_native_workload() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_volumes() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -575,7 +575,7 @@ async fn test_deployment_with_volumes() {
     assert!(response.is_ok(), "Volume deployment should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_custom_ports() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -604,7 +604,7 @@ async fn test_deployment_with_custom_ports() {
     assert!(response.is_ok(), "Custom port deployment should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_gpu_resources() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -620,7 +620,7 @@ async fn test_deployment_with_gpu_resources() {
     assert!(response.is_ok(), "GPU deployment should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_network_creation() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -638,7 +638,7 @@ async fn test_deployment_network_creation() {
     assert!(!response.network_info.service_endpoints.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_service_endpoints() {
     let mock_engine = Arc::new(TestRuntimeEngine::new());
     let executor = ByobComputeExecutor::new(mock_engine, ByobExecutorConfig::default());
@@ -660,7 +660,7 @@ async fn test_deployment_service_endpoints() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_defaults() {
     let config = ByobExecutorConfig::default();
 

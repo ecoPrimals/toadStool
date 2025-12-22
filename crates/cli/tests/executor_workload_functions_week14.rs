@@ -15,7 +15,7 @@ use tempfile::NamedTempFile;
 // Test: Load Workload File (TOML Format)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_workload_file_toml_basic() {
     let content = r#"
 [metadata]
@@ -70,7 +70,7 @@ memory_mb = 512
 // Test: Load Workload File (JSON Format)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_workload_file_json_basic() {
     let content = r#"
 {
@@ -339,6 +339,8 @@ fn test_infer_runtime_type_native() {
         WorkloadSpec::Wasm { .. } => RuntimeType::Wasm,
         WorkloadSpec::Container { .. } => RuntimeType::Container,
         WorkloadSpec::Gpu { .. } => RuntimeType::Gpu,
+        WorkloadSpec::AiMl { .. } => RuntimeType::Gpu,
+        WorkloadSpec::Cuda { .. } => RuntimeType::Gpu,
     };
 
     assert!(matches!(inferred, RuntimeType::Native));
@@ -364,6 +366,8 @@ fn test_infer_runtime_type_python() {
         WorkloadSpec::Wasm { .. } => RuntimeType::Wasm,
         WorkloadSpec::Container { .. } => RuntimeType::Container,
         WorkloadSpec::Gpu { .. } => RuntimeType::Gpu,
+        WorkloadSpec::AiMl { .. } => RuntimeType::Gpu,
+        WorkloadSpec::Cuda { .. } => RuntimeType::Gpu,
     };
 
     assert!(matches!(inferred, RuntimeType::Python));

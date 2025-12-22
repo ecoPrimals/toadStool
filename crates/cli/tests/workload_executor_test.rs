@@ -159,7 +159,7 @@ fn test_security_spec_no_isolation() {
 // Workload File Parsing Tests (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parse_toml_workload_native() {
     let temp_dir = TempDir::new().unwrap();
     let workload_path = temp_dir.path().join("workload.toml");
@@ -186,7 +186,7 @@ args = ["Hello", "World"]
     assert!(content.contains("echo-test"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parse_toml_workload_python() {
     let temp_dir = TempDir::new().unwrap();
     let workload_path = temp_dir.path().join("python_workload.toml");
@@ -207,7 +207,7 @@ script = "print('Hello from Python')"
     assert!(content.contains("Hello from Python"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parse_json_workload() {
     let temp_dir = TempDir::new().unwrap();
     let workload_path = temp_dir.path().join("workload.json");
@@ -230,7 +230,7 @@ async fn test_parse_json_workload() {
     assert_eq!(parsed["metadata"]["name"], "json-test");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parse_workload_with_resources() {
     let temp_dir = TempDir::new().unwrap();
     let workload_path = temp_dir.path().join("resource_workload.toml");
@@ -256,7 +256,7 @@ gpu = true
     assert!(content.contains("1024"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parse_workload_with_security() {
     let temp_dir = TempDir::new().unwrap();
     let workload_path = temp_dir.path().join("security_workload.toml");

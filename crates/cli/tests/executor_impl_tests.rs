@@ -11,7 +11,7 @@ use tokio::fs;
 // Note: BiomeExecutor is not directly exported, testing through CLI module structure
 // These tests focus on helper functions and types that can be tested
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_temp_dir_creation_and_cleanup() {
     // Test temporary directory creation for test biomes
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -32,7 +32,7 @@ async fn test_temp_dir_creation_and_cleanup() {
     drop(temp_dir);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_manifest_path_handling() {
     // Test path handling for biome manifests
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -70,7 +70,7 @@ image = "alpine:latest"
     assert!(content.contains("test-service"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing() {
     // Test environment variable format parsing
     let env_vars = vec![
@@ -98,7 +98,7 @@ async fn test_environment_variable_parsing() {
     assert_eq!(parsed.get("PATH"), Some(&"/usr/bin:/bin".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_limit_parsing() {
     // Test resource limit parsing
 
@@ -119,7 +119,7 @@ async fn test_resource_limit_parsing() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_name_validation() {
     // Test biome name validation logic
     let valid_names = vec!["test-biome", "my_biome", "biome123", "test-biome-v2"];
@@ -151,7 +151,7 @@ async fn test_biome_name_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_level_validation() {
     // Test security level validation
     let valid_levels = vec!["low", "medium", "high", "paranoid"];
@@ -165,7 +165,7 @@ async fn test_security_level_validation() {
     assert!(!["low", "medium", "high", "paranoid"].contains(&invalid_level));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_status_tracking() {
     // Test biome status tracking logic
     use std::sync::Arc;
@@ -200,7 +200,7 @@ async fn test_biome_status_tracking() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_id_generation() {
     // Test unique biome ID generation
     use uuid::Uuid;
@@ -213,7 +213,7 @@ async fn test_biome_id_generation() {
     assert!(!id2.is_nil());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_biome_access() {
     // Test concurrent access to biome registry
     use std::sync::Arc;
@@ -243,7 +243,7 @@ async fn test_concurrent_biome_access() {
     assert_eq!(b.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_override_application() {
     // Test resource override logic
     struct TestResources {
@@ -271,7 +271,7 @@ async fn test_resource_override_application() {
     assert_eq!(resources.memory_limit, Some("1G".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_debug_flag_handling() {
     // Test debug flag handling
     let debug_enabled = true;
@@ -287,7 +287,7 @@ async fn test_debug_flag_handling() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detached_mode_flag() {
     // Test detached mode flag
     let detached = true;
@@ -303,7 +303,7 @@ async fn test_detached_mode_flag() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_restart_policy_flag() {
     // Test restart policy flag
     let restart_enabled = true;
@@ -318,7 +318,7 @@ async fn test_restart_policy_flag() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_name_from_manifest() {
     // Test deriving biome name validates fallback logic
     let provided_name: Option<String> = None;
@@ -332,7 +332,7 @@ async fn test_biome_name_from_manifest() {
     assert_eq!(provided_name, Some("custom-name".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timeout_duration_handling() {
     // Test timeout duration handling
     use std::time::Duration;
@@ -350,7 +350,7 @@ async fn test_timeout_duration_handling() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_signal_name_validation() {
     // Test signal name validation
     let valid_signals = vec!["TERM", "KILL", "INT", "HUP", "USR1", "USR2"];
@@ -361,7 +361,7 @@ async fn test_signal_name_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_process_id_validation() {
     // Test process ID validation
     let valid_pids = vec![1u32, 100, 1000, 12345];
@@ -375,7 +375,7 @@ async fn test_process_id_validation() {
     assert_eq!(invalid_pid, 0); // PID 0 is invalid for user processes
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_line_filtering() {
     // Test log line filtering logic
     let log_lines = vec![
@@ -401,7 +401,7 @@ async fn test_log_line_filtering() {
     assert_eq!(warnings.len(), 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_line_count_limiting() {
     // Test log line count limiting (--tail option)
     let log_lines: Vec<String> = (0..100).map(|i| format!("Log line {}", i)).collect();
@@ -420,7 +420,7 @@ async fn test_log_line_count_limiting() {
     assert!(limited_logs[9].contains("99"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_follow_mode() {
     // Test log follow mode flag
     let follow = true;
@@ -435,7 +435,7 @@ async fn test_log_follow_mode() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_name_filtering() {
     // Test filtering logs by service name
     let services = vec!["web-server", "api-server", "database", "cache"];
@@ -451,7 +451,7 @@ async fn test_service_name_filtering() {
     assert_eq!(filtered[0], "api-server");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_interval_validation() {
     // Test health check interval validation
     let intervals = vec![5u64, 10, 30, 60];
@@ -462,7 +462,7 @@ async fn test_health_interval_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_checksum_validation_logic() {
     // Test checksum validation logic
     use sha2::{Digest, Sha256};
@@ -482,7 +482,7 @@ async fn test_checksum_validation_logic() {
     assert_eq!(checksum, checksum2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_module_path_validation() {
     // Test WASM module path validation
     let wasm_paths = vec![
@@ -498,7 +498,7 @@ async fn test_wasm_module_path_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasi_config_handling() {
     // Test WASI configuration handling
     let wasi_config: HashMap<String, String> = vec![
@@ -513,7 +513,7 @@ async fn test_wasi_config_handling() {
     assert!(wasi_config.contains_key("WASI_ENV"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_biome_tracking() {
     // Test tracking multiple biomes simultaneously
     use std::sync::Arc;
@@ -539,7 +539,7 @@ async fn test_multiple_biome_tracking() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_force_stop_flag() {
     // Test force stop flag
     let force = true;
@@ -566,12 +566,12 @@ fn test_executor_types_exist() {
     let _wasm_info: Option<WasmExecutionInfo> = None;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_runtime_context() {
     // Test async runtime context handling
     let result = tokio::spawn(async {
         // Simulate async work
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
         "success"
     })
     .await;
@@ -580,7 +580,7 @@ async fn test_async_runtime_context() {
     assert_eq!(result.unwrap(), "success");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_context_propagation() {
     // Test error context propagation
     use anyhow::{Context, Result};
@@ -592,7 +592,7 @@ async fn test_error_context_propagation() {
     assert!(error_msg.contains("Additional context"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_path_buf_handling() {
     // Test PathBuf handling for various path operations
     let path = PathBuf::from("/tmp/test");

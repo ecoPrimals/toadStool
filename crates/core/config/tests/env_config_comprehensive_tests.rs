@@ -1,6 +1,10 @@
+//! Backward compatibility tests for deprecated network configuration functions
+#![allow(deprecated)]
+
 //! Comprehensive tests for environment configuration
 
-use serial_test::serial;
+mod test_env_fixture;
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -48,7 +52,6 @@ fn test_env_config_get_string_empty_default() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_string_with_env() {
     std::env::set_var("TOADSTOOL_TEST_STRING", "test_value");
     let loader = EnvConfigLoader::new();
@@ -76,60 +79,55 @@ fn test_env_config_get_bool_default_true() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_bool_true_lowercase() {
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "true");
+    std::env::set_var("TOADSTOOL_TEST_BOOL_TRUE_LOWERCASE", "true");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_bool("TEST_BOOL", false);
+    let value = loader.get_bool("TEST_BOOL_TRUE_LOWERCASE", false);
     assert!(value);
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_TRUE_LOWERCASE");
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_bool_true_uppercase() {
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "TRUE");
+    std::env::set_var("TOADSTOOL_TEST_BOOL_TRUE_UPPERCASE", "TRUE");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_bool("TEST_BOOL", false);
+    let value = loader.get_bool("TEST_BOOL_TRUE_UPPERCASE", false);
     assert!(value);
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_TRUE_UPPERCASE");
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_bool_numeric_one() {
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "1");
+    std::env::set_var("TOADSTOOL_TEST_BOOL_NUMERIC_ONE", "1");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_bool("TEST_BOOL", false);
+    let value = loader.get_bool("TEST_BOOL_NUMERIC_ONE", false);
     assert!(value);
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_NUMERIC_ONE");
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_bool_false() {
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "false");
+    std::env::set_var("TOADSTOOL_TEST_BOOL_FALSE", "false");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_bool("TEST_BOOL", true);
+    let value = loader.get_bool("TEST_BOOL_FALSE", true);
     assert!(!value);
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_FALSE");
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_bool_invalid_returns_default() {
     // Invalid string values return the default parameter
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "invalid");
+    std::env::set_var("TOADSTOOL_TEST_BOOL_INVALID_FALSE", "invalid");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_bool("TEST_BOOL", false); // Test with false default
+    let value = loader.get_bool("TEST_BOOL_INVALID_FALSE", false); // Test with false default
     assert!(!value); // Invalid values return the default (false in this case)
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_INVALID_FALSE");
 
     // Also test with true default
-    std::env::set_var("TOADSTOOL_TEST_BOOL", "invalid");
-    let value_true = loader.get_bool("TEST_BOOL", true);
+    std::env::set_var("TOADSTOOL_TEST_BOOL_INVALID_TRUE", "invalid");
+    let value_true = loader.get_bool("TEST_BOOL_INVALID_TRUE", true);
     assert!(value_true); // Invalid values return the default (true in this case)
-    std::env::remove_var("TOADSTOOL_TEST_BOOL");
+    std::env::remove_var("TOADSTOOL_TEST_BOOL_INVALID_TRUE");
 }
 
 // ============================================================================
@@ -158,8 +156,9 @@ fn test_env_config_get_u16_max() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_u16_with_env() {
+    // Clean up first to avoid test pollution
+    std::env::remove_var("TOADSTOOL_TEST_PORT");
     std::env::set_var("TOADSTOOL_TEST_PORT", "9000");
     let loader = EnvConfigLoader::new();
     let value = loader.get_u16("TEST_PORT", 8080);
@@ -168,7 +167,6 @@ fn test_env_config_get_u16_with_env() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_u16_invalid_returns_default() {
     // Clean up any existing value first to avoid test pollution
     std::env::remove_var("TOADSTOOL_TEST_PORT");
@@ -205,7 +203,6 @@ fn test_env_config_get_u32_large() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_u32_with_env() {
     std::env::set_var("TOADSTOOL_TEST_U32", "42000");
     let loader = EnvConfigLoader::new();
@@ -233,7 +230,6 @@ fn test_env_config_get_u64_large() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_u64_with_env() {
     std::env::set_var("TOADSTOOL_TEST_U64", "9999999999");
     let loader = EnvConfigLoader::new();
@@ -268,7 +264,6 @@ fn test_env_config_get_f64_negative() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_f64_with_env() {
     std::env::set_var("TOADSTOOL_TEST_F64", "2.71828");
     let loader = EnvConfigLoader::new();
@@ -297,26 +292,24 @@ fn test_env_config_get_duration_zero() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_duration_with_env() {
-    std::env::set_var("TOADSTOOL_TEST_DURATION", "60");
+    std::env::set_var("TOADSTOOL_TEST_DURATION_WITH_ENV", "60");
     let loader = EnvConfigLoader::new();
-    let value = loader.get_duration("TEST_DURATION", Duration::from_secs(30));
+    let value = loader.get_duration("TEST_DURATION_WITH_ENV", Duration::from_secs(30));
     assert_eq!(value, Duration::from_secs(60));
-    std::env::remove_var("TOADSTOOL_TEST_DURATION");
+    std::env::remove_var("TOADSTOOL_TEST_DURATION_WITH_ENV");
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_duration_invalid_returns_default() {
     // Clean up any existing value first to avoid test pollution
-    std::env::remove_var("TOADSTOOL_TEST_DURATION");
-    std::env::set_var("TOADSTOOL_TEST_DURATION", "invalid");
+    std::env::remove_var("TOADSTOOL_TEST_DURATION_INVALID");
+    std::env::set_var("TOADSTOOL_TEST_DURATION_INVALID", "invalid");
     let loader = EnvConfigLoader::new();
     let default = Duration::from_secs(30);
-    let value = loader.get_duration("TEST_DURATION", default);
+    let value = loader.get_duration("TEST_DURATION_INVALID", default);
     assert_eq!(value, default);
-    std::env::remove_var("TOADSTOOL_TEST_DURATION");
+    std::env::remove_var("TOADSTOOL_TEST_DURATION_INVALID");
 }
 
 // ============================================================================
@@ -341,7 +334,6 @@ fn test_env_config_get_socket_addr_localhost() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_socket_addr_with_env() {
     std::env::set_var("TOADSTOOL_TEST_ADDR", "0.0.0.0:9000");
     let loader = EnvConfigLoader::new();
@@ -371,7 +363,6 @@ fn test_env_config_get_path_empty_default() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_path_with_env() {
     std::env::set_var("TOADSTOOL_TEST_PATH", "/custom/path");
     let loader = EnvConfigLoader::new();
@@ -393,7 +384,6 @@ fn test_env_config_get_prefixed_empty() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_get_prefixed_with_vars() {
     std::env::set_var("TOADSTOOL_PREFIX_VAR1", "value1");
     std::env::set_var("TOADSTOOL_PREFIX_VAR2", "value2");
@@ -422,7 +412,6 @@ fn test_env_config_load_cache() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_load_cache_with_vars() {
     std::env::set_var("TOADSTOOL_CACHE_TEST", "value");
     let mut loader = EnvConfigLoader::new();
@@ -436,7 +425,6 @@ fn test_env_config_load_cache_with_vars() {
 // ============================================================================
 
 #[test]
-#[serial]
 fn test_env_config_custom_prefix_string() {
     let loader = EnvConfigLoader::with_prefix("CUSTOM");
     std::env::set_var("CUSTOM_TEST", "custom_value");
@@ -446,7 +434,6 @@ fn test_env_config_custom_prefix_string() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_custom_prefix_bool() {
     let loader = EnvConfigLoader::with_prefix("APP");
     std::env::set_var("APP_ENABLED", "true");
@@ -456,7 +443,6 @@ fn test_env_config_custom_prefix_bool() {
 }
 
 #[test]
-#[serial]
 fn test_env_config_custom_prefix_u16() {
     let loader = EnvConfigLoader::with_prefix("SERVICE");
     std::env::set_var("SERVICE_PORT", "3000");

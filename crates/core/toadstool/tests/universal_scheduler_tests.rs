@@ -20,7 +20,7 @@ use uuid::Uuid;
 // ResourceCoordinator Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_creation() {
     let result = ResourceCoordinator::new().await;
     assert!(
@@ -29,7 +29,7 @@ async fn test_coordinator_creation() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_get_available_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -49,7 +49,7 @@ async fn test_coordinator_get_available_resources() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_allocate_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -75,7 +75,7 @@ async fn test_coordinator_allocate_resources() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_allocate_resources_with_gpu() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -96,7 +96,7 @@ async fn test_coordinator_allocate_resources_with_gpu() {
     assert!(result.is_ok(), "GPU allocation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_release_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -120,7 +120,7 @@ async fn test_coordinator_release_resources() {
     assert!(result.is_ok(), "Resource release should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_multiple_allocations() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -324,14 +324,14 @@ fn test_resource_requirements_debug() {
 // UniversalScheduler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_creation() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let result = UniversalScheduler::new(registry).await;
     assert!(result.is_ok(), "Scheduler creation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_get_active_job_count() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
@@ -340,7 +340,7 @@ async fn test_scheduler_get_active_job_count() {
     assert_eq!(count, 0, "New scheduler should have 0 active jobs");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_native_job() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
@@ -351,7 +351,7 @@ async fn test_scheduler_schedule_native_job() {
     assert!(result.is_ok(), "Scheduling a native job should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_wasm_job() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
@@ -375,7 +375,7 @@ async fn test_scheduler_schedule_wasm_job() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_primals_by_capability() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
@@ -389,7 +389,7 @@ async fn test_scheduler_find_primals_by_capability() {
     let _ = primals.len(); // Consume to verify API works
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_wasm_capability() {
     let registry = Arc::new(UniversalPrimalRegistry::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();

@@ -115,7 +115,7 @@ fn test_cli_context_verbose_flag() {
 // load_biome_manifest Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_valid() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("biome.yaml");
@@ -164,7 +164,7 @@ storage:
     assert_eq!(manifest.metadata.version, "1.0.0");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_with_primals() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("biome.yaml");
@@ -221,7 +221,7 @@ storage:
     assert!(manifest.security.beardog_required);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_nonexistent_file() {
     let result = load_biome_manifest(&PathBuf::from("/nonexistent/manifest.yaml")).await;
 
@@ -232,7 +232,7 @@ async fn test_load_biome_manifest_nonexistent_file() {
         .contains("Failed to read manifest file"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_invalid_yaml() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("invalid.yaml");
@@ -250,7 +250,7 @@ async fn test_load_biome_manifest_invalid_yaml() {
         .contains("Failed to parse manifest file"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_missing_required_fields() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("incomplete.yaml");
@@ -269,7 +269,7 @@ metadata:
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_biome_manifest_with_services() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("services.yaml");
@@ -369,7 +369,7 @@ fn create_test_manifest() -> BiomeManifest {
             network_policies: vec![],
         },
         storage: BiomeStorage {
-            nestgate_integration: false,
+            nestgate_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,
@@ -654,7 +654,7 @@ fn test_validate_manifest_empty_services_and_primals() {
 // Edge Cases & Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_and_validate_manifest_roundtrip() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("roundtrip.yaml");
@@ -701,7 +701,7 @@ storage:
     let warnings = validate_manifest(&manifest).unwrap();
 
     assert_eq!(manifest.metadata.name, "roundtrip-biome");
-    assert!(manifest.storage.nestgate_integration);
+    assert!(manifest.storage.nestgate_integration.is_some());
     // Warnings may or may not be present depending on manifest content
     // warnings.len() is always >= 0 (usize), so just verify it's accessible
     let _ = warnings.len();

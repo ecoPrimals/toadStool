@@ -1,18 +1,27 @@
 //! Mock implementations for testing
+//!
+//! ⚠️ **TEST-ONLY MODULE**
+//! These mocks are for testing infrastructure only and should never be used in production.
 
+#[cfg(test)]
 use std::future::Future;
+#[cfg(test)]
 use std::pin::Pin;
+#[cfg(test)]
 use toadstool::{ResourceMonitor, RuntimeMetrics, SystemResources, ToadStoolResult};
 
 /// Mock resource monitor for testing
+#[cfg(test)]
 pub struct MockResourceMonitor;
 
+#[cfg(test)]
 impl Default for MockResourceMonitor {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(test)]
 impl MockResourceMonitor {
     /// Create a new mock resource monitor
     pub fn new() -> Self {
@@ -20,6 +29,7 @@ impl MockResourceMonitor {
     }
 }
 
+#[cfg(test)]
 impl ResourceMonitor for MockResourceMonitor {
     fn start_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
         Ok(())
@@ -29,8 +39,11 @@ impl ResourceMonitor for MockResourceMonitor {
         Ok(())
     }
 
-    fn get_metrics(&self, _workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics::default())
+    fn get_metrics(
+        &self,
+        _workload_id: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move { Ok(RuntimeMetrics::default()) })
     }
 
     fn get_system_resources(
@@ -49,6 +62,7 @@ impl ResourceMonitor for MockResourceMonitor {
 }
 
 /// Mock system resources for testing (with usage metrics)
+#[cfg(test)]
 pub struct MockSystemResourcesWithUsage {
     pub cpu_usage_percent: f64,
     pub memory_usage_percent: f64,
@@ -61,6 +75,7 @@ pub struct MockSystemResourcesWithUsage {
     pub uptime_seconds: u64,
 }
 
+#[cfg(test)]
 impl Default for MockSystemResourcesWithUsage {
     fn default() -> Self {
         Self {

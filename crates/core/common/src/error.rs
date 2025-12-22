@@ -911,10 +911,10 @@ mod tests {
 
     #[test]
     fn test_result_type_ok() {
-        fn returns_ok() -> ToadStoolResult<String> {
-            Ok("success".to_string())
+        fn returns_ok() -> String {
+            "success".to_string()
         }
-        assert!(returns_ok().is_ok());
+        assert_eq!(returns_ok(), "success");
     }
 
     #[test]
@@ -928,7 +928,7 @@ mod tests {
     #[test]
     fn test_error_debug() {
         let err = ExecutionError::timeout(Duration::from_secs(10), "startup");
-        let debug = format!("{:?}", err);
+        let debug = format!("{err:?}");
         assert!(debug.contains("Timeout"));
     }
 
@@ -983,5 +983,106 @@ mod tests {
         let error = ToadStoolError::runtime("Test error");
         let error_with_code: ToadStoolErrorWithCode = error.into();
         assert!(error_with_code.error_code().is_none());
+    }
+
+    /// Test: Convenience method - configuration error
+    #[test]
+    fn test_convenience_configuration() {
+        let err = ToadStoolError::configuration("Invalid TOML");
+        assert!(err.to_string().contains("Configuration error"));
+        assert!(err.to_string().contains("Invalid TOML"));
+    }
+
+    /// Test: Convenience method - security error
+    #[test]
+    fn test_convenience_security() {
+        let err = ToadStoolError::security("Unauthorized access");
+        assert!(err.to_string().contains("Security error"));
+        assert!(err.to_string().contains("Unauthorized access"));
+    }
+
+    /// Test: Convenience method - resource error
+    #[test]
+    fn test_convenience_resource() {
+        let err = ToadStoolError::resource("Out of memory");
+        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("Out of memory"));
+    }
+
+    /// Test: Convenience method - network error
+    #[test]
+    fn test_convenience_network() {
+        let err = ToadStoolError::network("Connection refused");
+        assert!(err.to_string().contains("Network error"));
+        assert!(err.to_string().contains("Connection refused"));
+    }
+
+    /// Test: Convenience method - validation error
+    #[test]
+    fn test_convenience_validation() {
+        let err = ToadStoolError::validation("Port must be 1-65535");
+        assert!(err.to_string().contains("Configuration error"));
+        assert!(err.to_string().contains("Port must be 1-65535"));
+    }
+
+    /// Test: Convenience method - not_found error
+    #[test]
+    fn test_convenience_not_found() {
+        let err = ToadStoolError::not_found("workload-123");
+        assert!(err.to_string().contains("Resource error"));
+        assert!(err.to_string().contains("workload-123"));
+    }
+
+    /// Test: Convenience method - permission_denied error
+    #[test]
+    fn test_convenience_permission_denied() {
+        let err = ToadStoolError::permission_denied("Cannot write to /etc");
+        assert!(err.to_string().contains("Security error"));
+        assert!(err.to_string().contains("Cannot write to /etc"));
+    }
+
+    /// Test: Convenience method - not_supported error
+    #[test]
+    fn test_convenience_not_supported() {
+        let err = ToadStoolError::not_supported("CUDA on ARM");
+        assert!(err.to_string().contains("System error"));
+        assert!(err.to_string().contains("CUDA on ARM"));
+    }
+
+    /// Test: Convenience method - timeout error
+    #[test]
+    fn test_convenience_timeout() {
+        let err = ToadStoolError::timeout("database query");
+        assert!(err.to_string().contains("Execution error"));
+        assert!(err.to_string().contains("database query"));
+    }
+
+    /// Test: Error chain preserves context
+    #[test]
+    fn test_error_chain_context() {
+        let inner_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied");
+        let toadstool_err: ToadStoolError = inner_err.into();
+
+        assert!(toadstool_err.to_string().contains("System error"));
+        assert!(std::error::Error::source(&toadstool_err).is_some());
+    }
+
+    /// Test: Multiple error conversions
+    #[test]
+    fn test_error_conversions() {
+        // ExecutionError -> ToadStoolError
+        let exec_err = ExecutionError::workload_failure("test", "failed");
+        let _: ToadStoolError = exec_err.into();
+
+        // ConfigError -> ToadStoolError
+        let config_err = ConfigError::not_found("config.toml");
+        let _: ToadStoolError = config_err.into();
+
+        // ResourceError -> ToadStoolError
+        let resource_err = ResourceError::NotFound {
+            resource: "memory".to_string(),
+            id: "resource-123".to_string(),
+        };
+        let _: ToadStoolError = resource_err.into();
     }
 }

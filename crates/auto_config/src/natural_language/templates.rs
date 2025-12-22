@@ -184,12 +184,44 @@ pub fn create_templates() -> HashMap<String, ConfigurationTemplate> {
 }
 
 /// Get a template by name, returning general purpose if not found
+/// ✅ FIXED: Safe fallback chain - no unwrap() that could panic
 pub fn get_template(
     templates: &HashMap<String, ConfigurationTemplate>,
     name: &str,
 ) -> ConfigurationTemplate {
     templates
         .get(name)
+        .or_else(|| templates.get("general_purpose"))
         .cloned()
-        .unwrap_or_else(|| templates.get("general_purpose").unwrap().clone())
+        .unwrap_or_else(|| {
+            // Ultimate fallback if templates HashMap is somehow empty
+            use crate::natural_language::types::{SecurityPreference, UsagePattern};
+            use std::collections::HashSet;
+            ConfigurationTemplate {
+                name: "default".to_string(),
+                description: "Default fallback template".to_string(),
+                use_case: UsagePattern::GeneralPurpose,
+                security_preference: SecurityPreference::Balanced,
+                runtime_preferences: RuntimePreferences {
+                    enabled_runtimes: HashSet::new(),
+                    gpu_memory_fraction: 0.7,
+                    python_memory_limit_gb: 4.0,
+                },
+                resource_preferences: ResourcePreferences {
+                    cpu_intensive: false,
+                    memory_intensive: false,
+                    requires_gpu: false,
+                    memory_allocation_strategy: "balanced".to_string(),
+                    cpu_priority: "normal".to_string(),
+                    storage_optimization: "balanced".to_string(),
+                },
+                explicit_preferences: ExplicitPreferences {
+                    performance_priority: None,
+                    security_priority: None,
+                    memory_usage: None,
+                    use_gpu: None,
+                    use_containers: None,
+                },
+            }
+        })
 }

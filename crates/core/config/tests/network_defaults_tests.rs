@@ -1,3 +1,6 @@
+//! Backward compatibility tests for deprecated network configuration functions
+#![allow(deprecated)]
+
 //! Tests for network configuration defaults
 //!
 //! Verifies that network defaults are valid and follow best practices.

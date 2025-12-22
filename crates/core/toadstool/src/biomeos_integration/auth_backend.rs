@@ -249,7 +249,7 @@ impl AuthBackend for InMemoryAuthBackend {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_auth_backend_request() {
         let backend = InMemoryAuthBackend::new();
         let request = TokenRequest {
@@ -267,7 +267,7 @@ mod tests {
         assert!(token.expires_at > chrono::Utc::now());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_auth_backend_refresh() {
         let backend = InMemoryAuthBackend::new();
         let request = TokenRefreshRequest {
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(token.issuer, "beardog");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_token_validation() {
         let backend = InMemoryAuthBackend::new();
         let request = TokenRequest {
@@ -298,7 +298,7 @@ mod tests {
         assert!(validation_result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_expired_token_validation() {
         let backend = InMemoryAuthBackend::new();
         let mut token = AuthenticationToken {

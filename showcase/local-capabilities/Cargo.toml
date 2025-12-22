@@ -1,0 +1,25 @@
+[package]
+name = "toadstool-showcase-local"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "demo-native-execution"
+path = "01-basic-execution/demo_native.rs"
+
+[[bin]]
+name = "demo-wasm-execution"
+path = "01-basic-execution/demo_wasm.rs"
+
+[dependencies]
+tokio = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wat = "1.0"  # WebAssembly Text format parser
+
+# ToadStool dependencies
+toadstool = { path = "../../crates/core/toadstool" }
+toadstool-server = { path = "../../crates/server" }
+

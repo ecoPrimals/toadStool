@@ -64,7 +64,7 @@ impl QNXAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for VxWorksAdapter {
     fn name(&self) -> &str {
         "VxWorks Adapter"
@@ -169,7 +169,7 @@ impl LegacyAdapter for VxWorksAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for QNXAdapter {
     fn name(&self) -> &str {
         "QNX Adapter"

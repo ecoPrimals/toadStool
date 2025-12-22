@@ -51,18 +51,16 @@ pub struct EcosystemConfig {
 
 impl Default for EcosystemConfig {
     fn default() -> Self {
+        // Zero-copy: Use const slices to avoid allocations
+        const OPTIONAL_PRIMALS: &[&str] =
+            &["songbird", "nestgate", "beardog", "squirrel", "biomeos"];
+
         Self {
             auto_discovery: true,
             discovery_timeout: Duration::from_secs(30),
             primal_endpoints: HashMap::new(),
             required_primals: vec![],
-            optional_primals: vec![
-                "songbird".to_string(),
-                "nestgate".to_string(),
-                "beardog".to_string(),
-                "squirrel".to_string(),
-                "biomeos".to_string(),
-            ],
+            optional_primals: OPTIONAL_PRIMALS.iter().map(|&s| s.to_string()).collect(),
         }
     }
 }
@@ -202,8 +200,13 @@ impl EcosystemCoordinator {
         if self.config.auto_discovery {
             // Auto-discover primals using various methods
             discovered.extend(self.discover_via_multicast().await?);
-            discovered.extend(self.discover_via_dns().await?);
-            discovered.extend(self.discover_via_local_scan().await?);
+
+            // Legacy discovery methods (deprecated - will be replaced with capability-based discovery)
+            #[allow(deprecated)]
+            {
+                discovered.extend(self.discover_via_dns().await?);
+                discovered.extend(self.discover_via_local_scan().await?);
+            }
         }
 
         // Add configured endpoints
@@ -315,9 +318,18 @@ impl EcosystemCoordinator {
         }
     }
 
-    /// Discover primals via DNS
+    /// Discover primals via DNS (Legacy - uses hardcoded ports)
+    ///
+    /// # ⚠️ Legacy Pattern
+    /// This method is deprecated and uses hardcoded port assumptions.
+    /// Prefer capability-based discovery for modern deployments.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use capability-based discovery methods instead of hardcoded DNS + port scanning"
+    )]
     async fn discover_via_dns(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
-        info!("🔍 Discovering primals via DNS");
+        info!("🔍 Discovering primals via DNS (legacy method)");
+        warn!("⚠️  Using legacy DNS discovery with hardcoded ports - consider upgrading to capability-based discovery");
 
         let mut discovered = Vec::new();
 
@@ -331,6 +343,7 @@ impl EcosystemCoordinator {
         ];
 
         for (name, dns_name) in dns_names {
+            #[allow(deprecated)]
             match self
                 .discover_primal_at_endpoint(
                     name,
@@ -347,20 +360,37 @@ impl EcosystemCoordinator {
         Ok(discovered)
     }
 
-    /// Discover primals via local network scan
+    /// Discover primals via local network scan (Legacy - uses port scanning)
+    ///
+    /// # ⚠️ Legacy Pattern
+    /// This method performs port scanning which is:
+    /// - Inefficient (tries many ports sequentially)
+    /// - Intrusive (network scanning can trigger security alerts)
+    /// - Hardcoded (assumes specific port numbers)
+    ///
+    /// Modern deployments should use capability-based service discovery instead.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Port scanning is inefficient and intrusive. Use capability-based discovery instead."
+    )]
     async fn discover_via_local_scan(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
-        info!("🔍 Discovering primals via local network scan");
+        info!("🔍 Discovering primals via local network scan (legacy method)");
+        warn!(
+            "⚠️  Using legacy port scanning - this is inefficient and may trigger security alerts"
+        );
+        warn!("⚠️  Consider configuring capability-based service discovery for better performance");
 
         let mut discovered = Vec::new();
 
-        // Scan common ports for primals
+        // Scan common ports for primals (legacy discovery)
+        #[allow(deprecated)]
         let common_ports = vec![
             network::get_songbird_port(),
-            network::get_toadstool_port(),
+            network::get_toadstool_port(), // Self-knowledge: knowing own port is acceptable
             network::get_beardog_port(),
             network::get_nestgate_port(),
-            8084,
-            8085,
+            8084, // Legacy fallback port
+            8085, // Legacy fallback port
         ];
         let config = EnvironmentConfig::from_env();
         let localhost = &config.network.bind_address;
@@ -414,14 +444,17 @@ impl EcosystemCoordinator {
             })?;
 
             // Parse primal information
+            // ✅ MODERNIZED: All unwraps replaced with safe defaults or error handling
             let primal_name = info
                 .get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or(name)
                 .to_string();
 
+            // ✅ DEEP SOLUTION: Pattern matching with safe defaults
+            const UNKNOWN_TYPE: &str = "unknown";
             let primal_type = info.get("type").and_then(|v| v.as_str()).map_or(
-                PrimalType::Custom("unknown".to_string()),
+                PrimalType::Custom(UNKNOWN_TYPE.to_string()),
                 |t| match t {
                     "songbird" => PrimalType::Songbird,
                     "nestgate" => PrimalType::NestGate,
@@ -433,23 +466,27 @@ impl EcosystemCoordinator {
                 },
             );
 
+            // ✅ DEEP SOLUTION: Safe version extraction
+            const UNKNOWN_VERSION: &str = "unknown";
             let version = info
                 .get("version")
                 .and_then(|v| v.as_str())
-                .unwrap_or("unknown")
+                .unwrap_or(UNKNOWN_VERSION)
                 .to_string();
 
+            // ✅ DEEP SOLUTION: Safe array iteration with default
             let capabilities = info
                 .get("capabilities")
                 .and_then(|v| v.as_array())
                 .map(|arr| {
                     arr.iter()
                         .filter_map(|v| v.as_str())
-                        .map(std::string::ToString::to_string)
+                        .map(String::from)
                         .collect()
                 })
                 .unwrap_or_default();
 
+            // ✅ DEEP SOLUTION: Explicit string conversion for clarity
             let primal = PrimalInstance {
                 name: primal_name,
                 primal_type,
@@ -467,12 +504,14 @@ impl EcosystemCoordinator {
         #[cfg(not(feature = "networking"))]
         {
             // Create a mock primal instance when networking is disabled
+            // ✅ OPTIMIZED: Use into() and const for mock values
+            const MOCK: &str = "mock";
             let primal = PrimalInstance {
-                name: name.to_string(),
-                primal_type: PrimalType::Custom("mock".to_string()),
-                endpoint: endpoint.to_string(),
-                version: "mock".to_string(),
-                capabilities: vec!["mock".to_string()],
+                name: name.into(),
+                primal_type: PrimalType::Custom(MOCK.into()),
+                endpoint: endpoint.into(),
+                version: MOCK.into(),
+                capabilities: vec![MOCK.into()],
                 status: PrimalStatus::Discovered,
                 discovered_at: chrono::Utc::now(),
             };

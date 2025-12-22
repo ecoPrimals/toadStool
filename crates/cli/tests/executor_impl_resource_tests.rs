@@ -445,7 +445,7 @@ mod resource_management_tests {
     // Resource Cleanup Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_resource_cleanup_on_stop() {
         let allocated_resources: Arc<RwLock<HashMap<String, ResourceLimits>>> =
             Arc::new(RwLock::new(HashMap::new()));

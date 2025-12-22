@@ -9,20 +9,20 @@ use toadstool::*;
 // RuntimeOrchestrator Tests (15 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_new_first_available() {
     let _orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
     // Just verify it creates successfully
     assert!(format!("{:?}", RuntimeSelectionStrategy::FirstAvailable).contains("FirstAvailable"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_new_load_balanced() {
     let _orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::LoadBalanced);
     assert!(format!("{:?}", RuntimeSelectionStrategy::LoadBalanced).contains("LoadBalanced"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_new_optimal_match() {
     let _orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::OptimalMatch);
     assert!(format!("{:?}", RuntimeSelectionStrategy::OptimalMatch).contains("OptimalMatch"));

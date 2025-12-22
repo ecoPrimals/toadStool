@@ -105,6 +105,10 @@ impl DiscoveryEngine {
     }
 
     /// Discover endpoint by trying each source in order
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError::CapabilityNotFound` if no source can resolve the capability.
     pub async fn discover_endpoint(&self, capability: &str) -> Result<String, DiscoveryError> {
         // Try each source in order
         let sources = self.sources.read().await;
@@ -142,6 +146,10 @@ impl DiscoveryEngine {
     }
 
     /// Detect the runtime substrate
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError` if substrate detection fails or no detectors are available.
     pub async fn detect_substrate(&self) -> Result<DetectedSubstrate, DiscoveryError> {
         let detectors = self.detectors.read().await;
 
@@ -308,17 +316,24 @@ impl CapabilityDiscovery for DiscoveryEngine {
             // Prefer local if requested
             if preferences.prefer_local {
                 // Check if endpoint is localhost/127.0.0.1
-                let is_local = discovered.endpoint.contains("localhost")
-                    || discovered.endpoint.contains("127.0.0.1")
-                    || discovered.endpoint.contains("::1");
+                let is_local = discovered
+                    .endpoint
+                    .contains(crate::constants::DEFAULT_HOSTNAME)
+                    || discovered
+                        .endpoint
+                        .contains(crate::constants::LOCALHOST_IPV4)
+                    || discovered
+                        .endpoint
+                        .contains(crate::constants::LOCALHOST_IPV6);
 
                 if !is_local {
                     // Try to find a local alternative from cache
                     let cache = self.cache.read().await;
                     if let Some(cached) = cache.get(&capability_str) {
-                        let is_cached_local = cached.endpoint.contains("localhost")
-                            || cached.endpoint.contains("127.0.0.1")
-                            || cached.endpoint.contains("::1");
+                        let is_cached_local =
+                            cached.endpoint.contains(crate::constants::DEFAULT_HOSTNAME)
+                                || cached.endpoint.contains(crate::constants::LOCALHOST_IPV4)
+                                || cached.endpoint.contains(crate::constants::LOCALHOST_IPV6);
                         if is_cached_local {
                             return Ok(cached.clone());
                         }
@@ -504,13 +519,13 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_engine_creation() {
         let engine = DiscoveryEngine::new();
         assert!(engine.config.enable_cache);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_with_mock_source() {
         let engine = DiscoveryEngine::new();
 
@@ -528,7 +543,7 @@ mod tests {
         assert_eq!(result.unwrap(), "http://localhost:8080");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_fallback() {
         let engine = DiscoveryEngine::new();
 
@@ -553,7 +568,7 @@ mod tests {
         assert_eq!(result.unwrap(), "http://fallback:9090");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_builder_pattern() {
         let engine = DiscoveryEngineBuilder::new()
             .timeout(Duration::from_secs(10))
@@ -580,13 +595,13 @@ mod tests {
         assert_eq!(config.retry_delay, Duration::from_secs(1));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_engine_default() {
         let engine = DiscoveryEngine::default();
         assert!(engine.config.enable_cache);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_engine_with_config() {
         let config = ServiceDiscoveryConfig {
             enable_cache: false,
@@ -604,7 +619,7 @@ mod tests {
         assert_eq!(engine.config.retry_attempts, 5);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_clear_cache() {
         let engine = DiscoveryEngine::new();
 
@@ -612,7 +627,7 @@ mod tests {
         engine.clear_cache().await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_detect_substrate_no_detectors() {
         let engine = DiscoveryEngine::new();
 
@@ -625,7 +640,7 @@ mod tests {
         assert!(substrate.capabilities.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discovery_endpoint_not_found() {
         let engine = DiscoveryEngine::new();
 
@@ -634,14 +649,14 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_builder_disable_cache() {
         let engine = DiscoveryEngineBuilder::new().disable_cache().build().await;
 
         assert!(!engine.config.enable_cache);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_builder_default() {
         let builder = DiscoveryEngineBuilder::default();
         let engine = builder.build().await;
@@ -674,7 +689,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_detect_substrate_with_detector() {
         let engine = DiscoveryEngine::new();
 
@@ -700,7 +715,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capability_discovery_trait() {
         use super::CapabilityDiscovery;
 
@@ -727,7 +742,7 @@ mod tests {
         assert!(available);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_with_preferences() {
         use super::CapabilityDiscovery;
 
@@ -755,7 +770,7 @@ mod tests {
         assert_eq!(service.endpoint, "http://localhost:7777");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_all() {
         use super::CapabilityDiscovery;
 
@@ -773,7 +788,7 @@ mod tests {
         assert_eq!(services[0].endpoint, "http://localhost:6666");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_builder_fluent_api() {
         let engine = DiscoveryEngineBuilder::new()
             .cache_ttl(Duration::from_secs(120))

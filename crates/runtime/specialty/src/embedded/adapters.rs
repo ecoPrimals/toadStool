@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::{
     EmbeddedConfig, JobOutput, JobStatus, LegacyAdapter, LegacyJob, LegacySystemType,
     SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
+    LegacyArchitecture,
 };
 
 use super::types::*;
@@ -128,7 +129,7 @@ impl Microcontroller8BitAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for Microcontroller8BitAdapter {
     fn name(&self) -> &str {
         "8-bit Microcontroller Adapter"
@@ -338,7 +339,7 @@ impl System16BitAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for System16BitAdapter {
     fn name(&self) -> &str {
         "16-bit System Adapter"

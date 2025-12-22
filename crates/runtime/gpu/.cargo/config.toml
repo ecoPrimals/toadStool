@@ -1,0 +1,16 @@
+# GPU Test Configuration
+# Use this to run GPU tests in isolation to avoid wgpu duplicate symbol issues
+
+# Run GPU tests individually
+[profile.test]
+# Ensure single test execution to avoid symbol conflicts
+# opt-level = 0 # Default for tests
+
+[profile.dev]
+# Development builds work fine
+opt-level = 0
+
+[profile.release]
+# Release builds work fine
+opt-level = 3
+

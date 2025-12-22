@@ -27,7 +27,7 @@ impl KubernetesDetector {
     }
 
     /// Check if we're in a Kubernetes environment
-    fn is_kubernetes(&self) -> bool {
+    fn is_kubernetes() -> bool {
         // Check for Kubernetes service account
         Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists()
             || std::env::var("KUBERNETES_SERVICE_HOST").is_ok()
@@ -45,7 +45,7 @@ impl SubstrateDetector for KubernetesDetector {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
     {
-        let is_k8s = self.is_kubernetes();
+        let is_k8s = Self::is_kubernetes();
 
         Box::pin(async move {
             if !is_k8s {
@@ -96,14 +96,14 @@ impl DockerDetector {
     }
 
     /// Check if we're in a Docker container
-    fn is_docker(&self) -> bool {
+    fn is_docker() -> bool {
         // Check for /.dockerenv file
         Path::new("/.dockerenv").exists()
             // Or check cgroup
-            || self.check_cgroup()
+            || Self::check_cgroup()
     }
 
-    fn check_cgroup(&self) -> bool {
+    fn check_cgroup() -> bool {
         std::fs::read_to_string("/proc/self/cgroup").is_ok_and(|content| content.contains("docker"))
     }
 }
@@ -119,7 +119,7 @@ impl SubstrateDetector for DockerDetector {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
     {
-        let is_docker = self.is_docker();
+        let is_docker = Self::is_docker();
 
         Box::pin(async move {
             if !is_docker {
@@ -166,7 +166,7 @@ impl ConsulDetector {
     async fn is_consul_available(&self) -> bool {
         // Check environment variable
         let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
-            .unwrap_or_else(|_| "http://localhost:8500".to_string());
+            .unwrap_or_else(|_| format!("http://{}:8500", crate::constants::DEFAULT_HOSTNAME));
 
         // Try to connect to Consul API
         match reqwest::Client::new()
@@ -245,7 +245,7 @@ impl CloudDetector {
     }
 
     /// Detect which cloud provider (if any)
-    fn detect_cloud_provider(&self) -> Option<String> {
+    fn detect_cloud_provider() -> Option<String> {
         // Check for AWS
         if Path::new("/sys/hypervisor/uuid").exists() {
             if let Ok(content) = std::fs::read_to_string("/sys/hypervisor/uuid") {
@@ -285,7 +285,7 @@ impl SubstrateDetector for CloudDetector {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Option<DetectedSubstrate>, DiscoveryError>> + Send + '_>>
     {
-        let provider = self.detect_cloud_provider();
+        let provider = Self::detect_cloud_provider();
 
         Box::pin(async move {
             let Some(provider) = provider else {
@@ -387,7 +387,7 @@ pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_bare_metal_detector_always_succeeds() {
         let detector = BareMetalDetector::new();
         let result = detector.detect().await.unwrap();

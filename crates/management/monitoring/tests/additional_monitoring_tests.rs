@@ -83,7 +83,7 @@ fn test_system_resource_monitor_with_custom_granularity() {
 // Process Registration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_process_succeeds() {
     let monitor = SystemResourceMonitor::new();
     let result = monitor
@@ -92,7 +92,7 @@ async fn test_register_process_succeeds() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_multiple_processes() {
     let monitor = SystemResourceMonitor::new();
 
@@ -111,7 +111,7 @@ async fn test_register_multiple_processes() {
     assert!(r3.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_process_with_long_path() {
     let monitor = SystemResourceMonitor::new();
     let long_path = "/very/long/path/to/some/executable/in/deep/directory/structure/binary";
@@ -122,7 +122,7 @@ async fn test_register_process_with_long_path() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_process_with_various_pids() {
     let monitor = SystemResourceMonitor::new();
 
@@ -140,7 +140,7 @@ async fn test_register_process_with_various_pids() {
 // Process Unregistration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unregister_registered_process() {
     let monitor = SystemResourceMonitor::new();
 
@@ -155,7 +155,7 @@ async fn test_unregister_registered_process() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unregister_nonexistent_process_fails() {
     let monitor = SystemResourceMonitor::new();
 
@@ -163,7 +163,7 @@ async fn test_unregister_nonexistent_process_fails() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unregister_multiple_processes() {
     let monitor = SystemResourceMonitor::new();
 
@@ -187,7 +187,7 @@ async fn test_unregister_multiple_processes() {
     assert!(monitor.unregister_process("w3").await.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_unregister_reregister_cycle() {
     let monitor = SystemResourceMonitor::new();
     let wl_id = "cycling-workload";
@@ -212,7 +212,7 @@ async fn test_register_unregister_reregister_cycle() {
 // Configuration Update Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_config_succeeds() {
     let mut monitor = SystemResourceMonitor::new();
 
@@ -228,7 +228,7 @@ async fn test_update_config_succeeds() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_config_changes_granularity() {
     let mut monitor = SystemResourceMonitor::with_config(MonitoringConfig {
         granularity: MonitoringGranularity::Standard,
@@ -249,7 +249,7 @@ async fn test_update_config_changes_granularity() {
     assert!(monitor.update_config(new_config).await.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_config_toggles_network_monitoring() {
     let mut monitor = SystemResourceMonitor::new();
 
@@ -264,7 +264,7 @@ async fn test_update_config_toggles_network_monitoring() {
     assert!(monitor.update_config(config_disabled).await.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_config_changes_threshold_action() {
     let mut monitor = SystemResourceMonitor::new();
 
@@ -285,7 +285,7 @@ async fn test_update_config_changes_threshold_action() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_config_changes_retention_period() {
     let mut monitor = SystemResourceMonitor::new();
 
@@ -322,7 +322,7 @@ fn test_resource_monitor_start_monitoring_multiple_workloads() {
     assert!(monitor.start_monitoring("workload-3").is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitor_stop_monitoring_succeeds() {
     let monitor = SystemResourceMonitor::new();
 
@@ -332,29 +332,29 @@ async fn test_resource_monitor_stop_monitoring_succeeds() {
     assert!(result.is_ok());
 
     // Give tokio time to process the spawn
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitor_start_stop_cycle() {
     let monitor = SystemResourceMonitor::new();
     let wl_id = "cycling-wl";
 
     assert!(monitor.start_monitoring(wl_id).is_ok());
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     assert!(monitor.stop_monitoring(wl_id).is_ok());
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     assert!(monitor.start_monitoring(wl_id).is_ok());
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     assert!(monitor.stop_monitoring(wl_id).is_ok());
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
 }
 
 // ============================================================================
 // Monitoring Lifecycle Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_monitoring_loop_succeeds() {
     let monitor = SystemResourceMonitor::new();
     let result = monitor.start_monitoring_loop().await;
@@ -364,7 +364,7 @@ async fn test_start_monitoring_loop_succeeds() {
     let _ = monitor.stop_monitoring_loop().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_stop_monitoring_loop_succeeds() {
     let monitor = SystemResourceMonitor::new();
 
@@ -376,7 +376,7 @@ async fn test_stop_monitoring_loop_succeeds() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_loop_start_stop_cycle() {
     let monitor = SystemResourceMonitor::new();
 
@@ -387,7 +387,7 @@ async fn test_monitoring_loop_start_stop_cycle() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_stop_monitoring_loop_without_start() {
     let monitor = SystemResourceMonitor::new();
 
@@ -397,7 +397,7 @@ async fn test_stop_monitoring_loop_without_start() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_monitoring_loop_twice() {
     let monitor = SystemResourceMonitor::new();
 

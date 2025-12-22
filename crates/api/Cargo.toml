@@ -5,6 +5,19 @@ edition = "2021"
 description = "Modern API and interface layer for ToadStool"
 license = "MIT OR Apache-2.0"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
@@ -90,7 +103,9 @@ askama = "0.12"
 askama_axum = "0.4"
 
 [dev-dependencies]
+toadstool-testing = { path = "../testing" }
 tokio-test = "0.4"
 axum-test = "14.0"
 wiremock = "0.5"
-tempfile = "3.8" 
+tempfile = "3.8"
+proptest = "1.4" 

@@ -121,8 +121,8 @@ pub async fn handle_websocket(socket: WebSocket, state: ApiState) {
 
     // Handle incoming messages
     let sender_clone = Arc::new(tokio::sync::Mutex::new(sender));
-    let sender_for_events = sender_clone.clone();
-    let sender_for_keepalive = sender_clone.clone();
+    let sender_for_events = Arc::clone(&sender_clone);
+    let sender_for_keepalive = Arc::clone(&sender_clone);
 
     // Task to handle incoming messages from client
     let incoming_task = tokio::spawn(async move {

@@ -41,7 +41,18 @@ impl Default for NetworkConfig {
         .parse()
         .unwrap_or_else(|e| {
             tracing::error!("Invalid default bind address, using fallback: {}", e);
-            "0.0.0.0:3000".parse().unwrap() // This is guaranteed to parse
+            // Fallback to 0.0.0.0:3000, which should always parse
+            match "0.0.0.0:3000".parse() {
+                Ok(addr) => addr,
+                Err(_) => {
+                    // Last resort: 127.0.0.1:3000 is guaranteed valid by IP spec
+                    // This expect is justified: it's a compile-time constant that must be valid
+                    #[allow(clippy::expect_used)]
+                    "127.0.0.1:3000".parse().expect(
+                        "Hardcoded '127.0.0.1:3000' must parse - this is a language guarantee",
+                    )
+                }
+            }
         });
 
         Self {

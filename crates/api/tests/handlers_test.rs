@@ -30,6 +30,7 @@ fn create_test_state() -> ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         websocket_manager: Arc::new(websocket::WebSocketManager::new()),
+        capability_provider: None,
     }
 }
 
@@ -50,7 +51,7 @@ fn create_valid_request() -> ExecutionRequest {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_success() {
     let state = create_test_state();
     let request = create_valid_request();
@@ -65,7 +66,7 @@ async fn test_submit_execution_success() {
     assert_eq!(executions.len(), 1, "Should have one execution stored");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_generates_unique_ids() {
     let state = create_test_state();
     let headers = HeaderMap::new();
@@ -89,7 +90,7 @@ async fn test_submit_execution_generates_unique_ids() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_initial_status() {
     let state = create_test_state();
     let request = create_valid_request();
@@ -116,7 +117,7 @@ async fn test_submit_execution_initial_status() {
     assert_eq!(execution.progress, Some(0.0), "Progress should be 0%");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_status_existing() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -147,7 +148,7 @@ async fn test_get_execution_status_existing() {
     assert!(result.is_ok(), "Should find existing execution");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_status_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -160,7 +161,7 @@ async fn test_get_execution_status_not_found() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_executions_empty() {
     let state = create_test_state();
     let filter = Query(ExecutionFilter::default());
@@ -170,7 +171,7 @@ async fn test_list_executions_empty() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_executions_with_data() {
     let state = create_test_state();
 
@@ -207,7 +208,7 @@ async fn test_list_executions_with_data() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_execution_running() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -246,7 +247,7 @@ async fn test_cancel_execution_running() {
     assert_eq!(execution.status, ExecutionStatus::Cancelled);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_execution_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -256,7 +257,7 @@ async fn test_cancel_execution_not_found() {
     assert!(result.is_err(), "Should error on non-existent execution");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_success() {
     let state = create_test_state();
 
@@ -265,7 +266,7 @@ async fn test_health_check_success() {
     assert!(result.is_ok(), "Health check should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_cluster_status_empty() {
     let state = create_test_state();
 
@@ -277,7 +278,7 @@ async fn test_get_cluster_status_empty() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_logs_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -293,7 +294,7 @@ async fn test_get_execution_logs_not_found() {
     let _ = result;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_metrics_not_found() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -305,7 +306,7 @@ async fn test_get_execution_metrics_not_found() {
     let _ = result;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_concurrent_submissions() {
     let state = create_test_state();
 
@@ -331,7 +332,7 @@ async fn test_multiple_concurrent_submissions() {
     assert_eq!(executions.len(), 10, "Should have 10 executions");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_lifecycle() {
     let state = create_test_state();
     let execution_id = Uuid::new_v4();
@@ -389,7 +390,7 @@ async fn test_execution_lifecycle() {
 // Day 5: API Integration Tests - Error Handling & Edge Cases
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_all_runtime_types() {
     // Test submission with all supported runtime types
     let state = create_test_state();
@@ -415,7 +416,7 @@ async fn test_submit_execution_with_all_runtime_types() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_various_priorities() {
     // Test execution submission with different priority levels
     let state = create_test_state();
@@ -432,7 +433,7 @@ async fn test_submit_execution_with_various_priorities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_timeout_values() {
     // Test various timeout configurations
     let state = create_test_state();
@@ -449,7 +450,7 @@ async fn test_submit_execution_with_timeout_values() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_metadata() {
     // Test submission with metadata
     let state = create_test_state();
@@ -474,7 +475,7 @@ async fn test_submit_execution_with_metadata() {
     assert_eq!(execution.metadata.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_environment_variables() {
     // Test submission with environment variables
     let state = create_test_state();
@@ -492,7 +493,7 @@ async fn test_submit_execution_with_environment_variables() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_with_callback_url() {
     // Test submission with callback URL
     let state = create_test_state();
@@ -505,7 +506,7 @@ async fn test_submit_execution_with_callback_url() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_execution_submissions() {
     // Test concurrent submission of multiple executions
     let state = create_test_state();
@@ -530,7 +531,7 @@ async fn test_concurrent_execution_submissions() {
     assert_eq!(executions.len(), 10, "Should have 10 executions");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_executions_with_status_filter() {
     // Test listing executions with status filter
     let state = create_test_state();
@@ -571,7 +572,7 @@ async fn test_list_executions_with_status_filter() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_metrics_error_handling() {
     // Test getting metrics for non-existent execution (error handling variant)
     let state = create_test_state();
@@ -586,7 +587,7 @@ async fn test_get_execution_metrics_error_handling() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_logs_error_handling() {
     // Test getting logs for non-existent execution (error handling variant)
     let state = create_test_state();
@@ -604,7 +605,7 @@ async fn test_get_execution_logs_error_handling() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_execution_error_handling() {
     // Test cancelling non-existent execution (error handling variant)
     let state = create_test_state();
@@ -618,7 +619,7 @@ async fn test_cancel_execution_error_handling() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_always_responds() {
     // Test health check always returns a response
     let state = create_test_state();
@@ -628,7 +629,7 @@ async fn test_health_check_always_responds() {
     assert!(result.is_ok(), "Health check should always respond");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_cluster_status_responds() {
     // Test cluster status endpoint responds
     let state = create_test_state();
@@ -638,7 +639,7 @@ async fn test_get_cluster_status_responds() {
     assert!(result.is_ok(), "Cluster status should be retrievable");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_state_transitions() {
     // Test valid execution state transitions
     let state = create_test_state();
@@ -689,7 +690,7 @@ async fn test_execution_state_transitions() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_progress_updates() {
     // Test progress updates during execution
     let state = create_test_state();
@@ -724,7 +725,7 @@ async fn test_execution_progress_updates() {
     assert_eq!(executions.get(&execution_id).unwrap().progress, Some(100.0));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_with_error_message() {
     // Test execution that fails with error message
     let state = create_test_state();
@@ -755,7 +756,7 @@ async fn test_execution_with_error_message() {
     assert!(execution.error_message.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_api_state_initialization() {
     // Test API state is properly initialized
     let state = create_test_state();
@@ -764,7 +765,7 @@ async fn test_api_state_initialization() {
     // Config is properly initialized with default values
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_status_queries() {
     // Test concurrent queries for execution status
     let state = create_test_state();
@@ -804,7 +805,7 @@ async fn test_concurrent_status_queries() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_executions_different_runtime_types() {
     // Test multiple executions with different runtime types coexisting
     let state = create_test_state();

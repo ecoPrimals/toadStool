@@ -55,6 +55,9 @@ impl SecurityContext {
     }
 
     /// Check if a capability is granted
+    ///
+    /// Called frequently during execution - inlined for performance
+    #[inline]
     #[must_use]
     pub fn has_capability(&self, capability: &Capability) -> bool {
         self.capabilities.contains(capability)

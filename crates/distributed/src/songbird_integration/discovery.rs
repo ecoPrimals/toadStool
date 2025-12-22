@@ -20,7 +20,7 @@ impl SongbirdNetworkDiscovery {
         config: SongbirdDiscoveryConfig,
         connection: Arc<SongbirdConnection>,
     ) -> ToadStoolResult<Self> {
-        let discovery_client = DiscoveryClient::new(connection.clone()).await?;
+        let discovery_client = DiscoveryClient::new(Arc::clone(&connection)).await?;
         let node_registry = RwLock::new(NodeRegistry::new());
         let capability_tracker = CapabilityTracker::new();
         let health_monitor = NetworkHealthMonitor::new(config.node_timeout);
@@ -284,7 +284,7 @@ impl Clone for SongbirdNetworkDiscovery {
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
         Self {
-            connection: self.connection.clone(),
+            connection: Arc::clone(&self.connection),
             http_client: self.http_client.clone(),
         }
     }

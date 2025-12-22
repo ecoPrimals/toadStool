@@ -1,6 +1,14 @@
-//! BiomeOS integration test module
+//! BiomeOS Integration Tests Module
+//!
+//! This module organizes comprehensive integration tests for BiomeOS components.
+//! Tests are split into logical groups for better maintainability.
 
-mod storage_tests;
+// Storage-related tests
+mod storage_types;
+mod storage_manager;
+
+// Authentication tests
 mod auth_tests;
-mod agent_tests;
 
+// Agent tests  
+mod agent_tests;

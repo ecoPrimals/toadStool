@@ -250,6 +250,7 @@ pub enum OutputFileType {
 
 /// Embedded toolchain trait
 #[async_trait::async_trait]
+#[async_trait::async_trait]
 pub trait EmbeddedToolchain: Send + Sync {
     /// Get toolchain name
     fn name(&self) -> &str;
@@ -371,6 +372,16 @@ pub struct MemoryUsage {
     pub eeprom_usage: Option<RegionUsage>,
 }
 
+impl Default for MemoryUsage {
+    fn default() -> Self {
+        Self {
+            rom_usage: RegionUsage::default(),
+            ram_usage: RegionUsage::default(),
+            eeprom_usage: None,
+        }
+    }
+}
+
 /// Memory region usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegionUsage {
@@ -380,6 +391,16 @@ pub struct RegionUsage {
     pub total: u32,
     /// Usage percentage
     pub percentage: f32,
+}
+
+impl Default for RegionUsage {
+    fn default() -> Self {
+        Self {
+            used: 0,
+            total: 0,
+            percentage: 0.0,
+        }
+    }
 }
 
 /// Memory map

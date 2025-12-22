@@ -133,15 +133,16 @@ impl ContainerWorkloadBuilder {
 
     /// Build the workload submission
     ///
-    /// # Panics
-    /// Panics if the image is not set, as it is required for container workloads
-    #[must_use]
-    pub fn build(self) -> WorkloadSubmission {
-        WorkloadSubmission {
+    /// # Errors
+    /// Returns an error if image is not set
+    pub fn build(self) -> Result<WorkloadSubmission, String> {
+        let image = self
+            .image
+            .ok_or_else(|| "Image is required for container workload".to_string())?;
+
+        Ok(WorkloadSubmission {
             workload_type: WorkloadType::Container {
-                image: self
-                    .image
-                    .expect("Image is required for container workload"),
+                image,
                 command: self.command,
                 args: self.args,
                 working_dir: self.working_dir,
@@ -152,6 +153,6 @@ impl ContainerWorkloadBuilder {
             environment: self.environment,
             resources: self.resources,
             metadata: self.metadata,
-        }
+        })
     }
 }

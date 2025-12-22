@@ -4,6 +4,7 @@
 //! Focus: Request handling, response formatting, error handling
 
 use std::env;
+use std::sync::Arc;
 
 // ============================================================================
 // Health Handler Tests
@@ -71,7 +72,7 @@ async fn test_metrics_handler_concurrent_requests() {
 
     let mut handles = vec![];
     for _ in 0..10 {
-        let h = handler.clone();
+        let h = Arc::clone(&handler);
         let handle = tokio::spawn(async move { h.handle_metrics().await });
         handles.push(handle);
     }

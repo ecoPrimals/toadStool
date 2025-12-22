@@ -326,7 +326,7 @@ mod performance_hardening_logic_tests {
     // Concurrent Operations Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_cache_access() {
         let cache: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -341,7 +341,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(c.get("key1"), Some(&"value1".to_string()));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_pool_access() {
         let pool: Arc<RwLock<Vec<String>>> = Arc::new(RwLock::new(Vec::new()));
 
@@ -356,7 +356,7 @@ mod performance_hardening_logic_tests {
         assert_eq!(p.len(), 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_metric_collection() {
         let metrics: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 

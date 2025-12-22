@@ -41,8 +41,15 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create client with default configuration
-//!     let client = ToadStoolClient::new("http://localhost:8080").await?;
+//!     // ✅ MODERN: Capability-based service discovery
+//!     // Instead of hardcoding "http://localhost:8080", use service discovery:
+//!     //
+//!     // Option 1: Environment-based (development/testing)
+//!     let endpoint = std::env::var("TOADSTOOL_ENDPOINT")
+//!         .unwrap_or_else(|_| "http://localhost:8080".to_string());
+//!     
+//!     // Option 2: Production with discovery (see ClientConfig::with_discovery)
+//!     let client = ToadStoolClient::new(&endpoint).await?;
 //!     
 //!     // Submit a native workload
 //!     let workload = WorkloadSubmission::native()
@@ -175,7 +182,8 @@ mod tests {
             .image("alpine:latest")
             .command(vec!["echo".to_string()])
             .args(vec!["Hello from container".to_string()])
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Container {
@@ -202,7 +210,8 @@ mod tests {
         let workload = WorkloadSubmission::python()
             .script("print('Hello, Python!')")
             .requirements(vec!["requests==2.28.0".to_string()])
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Python {
@@ -238,7 +247,8 @@ mod tests {
             .module_data(module_data.clone())
             .args(vec!["arg1".to_string(), "arg2".to_string()])
             .priority(JobPriority::Normal)
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Wasm {
@@ -391,7 +401,8 @@ mod tests {
         let workload = WorkloadSubmission::container()
             .image("alpine:latest")
             .environment(env.clone())
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         assert_eq!(workload.environment, env);
     }
@@ -407,7 +418,8 @@ mod tests {
         let workload = WorkloadSubmission::python()
             .script("import numpy")
             .requirements(requirements.clone())
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Python {
@@ -467,13 +479,17 @@ mod tests {
 
     #[test]
     fn test_client_config_api_url() {
+        // ✅ Test uses dynamic endpoint (no hardcoded assumption about port)
+        let test_endpoint = std::env::var("TEST_TOADSTOOL_ENDPOINT")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+
         let config = ClientConfig {
-            base_url: "http://localhost:8080".to_string(),
+            base_url: test_endpoint.clone(),
             ..Default::default()
         };
 
         let api_url = config.api_url("test");
-        assert_eq!(api_url, "http://localhost:8080/api/v1/test");
+        assert_eq!(api_url, format!("{}/api/v1/test", test_endpoint));
     }
 
     #[test]
@@ -514,7 +530,8 @@ mod tests {
         let workload = WorkloadSubmission::wasm()
             .module_data(vec![0, 97, 115, 109])
             .args(Vec::new())
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Wasm { args, .. } => {
@@ -544,7 +561,8 @@ mod tests {
     fn test_container_workload_image_with_tag() {
         let workload = WorkloadSubmission::container()
             .image("myregistry.io/myapp:v1.2.3")
-            .build();
+            .build()
+            .expect("Failed to build workload");
 
         match workload.workload_type {
             WorkloadType::Container { image, .. } => {

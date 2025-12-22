@@ -7,6 +7,9 @@ pub mod error;
 pub mod types;
 pub mod workload;
 
+#[cfg(test)]
+mod core_tests;
+
 // Re-export main types for convenience
 pub use config::{AuthConfig, ClientConfig};
 pub use core::ToadStoolClient;

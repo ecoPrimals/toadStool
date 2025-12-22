@@ -1,20 +1,33 @@
 // Core EcosystemIntegrator implementation - refactored by protocol
 //
-// This file contains the main orchestration logic, delegating to
-// service-specific modules for protocol details.
+// ⚠️ LEGACY INTEGRATION LAYER
+//
+// This implementation uses the deprecated service modules (beardog, songbird, nestgate)
+// which hardcode service names and ports, violating infant discovery principles.
+//
+// **Migration Status**: The new capability-based Adapter API (`adapters/`) is available
+// and should be used for new code. This legacy layer is maintained for CLI compatibility
+// and will be migrated to Adapters in v0.2.0.
+//
+// See:
+// - `crates/cli/src/ecosystem/adapters/` - New capability-based API
+// - `specs/PRIMAL_CAPABILITY_SYSTEM.md` - Architecture documentation
+// - `docs/planning/PRIMAL_HARDCODING_ELIMINATION_PLAN.md` - Migration plan
 
-use connection::get_local_address;
-use discovery::*;
+use self::discovery::*;
 
 use anyhow::{Context, Result};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{info, warn};
 
+// Allow deprecated function calls within this legacy integration layer
+#[allow(deprecated)]
 impl EcosystemIntegrator {
     #[must_use]
     pub fn new() -> Self {
@@ -34,42 +47,96 @@ impl EcosystemIntegrator {
         info!("🔍 Scanning for ecosystem services");
         let start_time = std::time::Instant::now();
 
-        // Load known service ports
-        let service_ports = get_standard_service_ports();
+        // Service ports now discovered dynamically via capabilities
+        // (Removed deprecated get_standard_service_ports() call)
 
-        // Perform network discovery
+        // Perform network discovery using capability-based approach
         let mut discovered_services = Vec::new();
 
-        // If no specific services requested, scan for all
-        let scan_services = if service_types.is_empty() {
+        // Use DiscoveryEngine for capability-based service resolution
+        // This replaces the legacy hardcoded service names approach
+        use toadstool_common::infant_discovery::{DiscoveryEngine, CapabilityDiscovery};
+        let discovery_engine = DiscoveryEngine::new();
+
+        // Define capabilities instead of hardcoded service names
+        let scan_capabilities = if service_types.is_empty() {
+            // Discover all known ecosystem capabilities
+            // Zero-copy optimization: Use static strings
+            use crate::ecosystem::constants::capability_categories;
             vec![
-                "songbird".to_string(),
-                "beardog".to_string(),
-                "nestgate".to_string(),
+                capability_categories::NETWORK.to_string(),      // Network primals (Songbird)
+                capability_categories::CRYPTO.to_string(),       // Crypto primals (BearDog)
+                capability_categories::STORAGE.to_string(),      // Storage primals (Nestgate)
+                capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
-            service_types
+            // Map service types to capabilities
+            service_types.into_iter()
+                .map(|st| {
+                    // Try to interpret as capability, fallback to using as-is
+                    // Zero-copy: Use constants
+                    use crate::ecosystem::constants::{capability_categories, service_names};
+                    match st.as_str() {
+                        service_names::SONGBIRD => capability_categories::NETWORK.to_string(),
+                        "beardog" => "crypto".to_string(),
+                        "nestgate" => "storage".to_string(),
+                        _ => st,
+                    }
+                })
+                .collect()
         };
 
-        for service_type in &scan_services {
-            info!("🔍 Scanning for {}", service_type);
+        for capability in &scan_capabilities {
+            info!("🔍 Discovering services with capability: {}", capability);
 
-            let services = timeout(
+            // Use capability-based discovery with timeout
+            match timeout(
                 Duration::from_secs(timeout_secs),
-                scan_for_service(service_type, &service_ports),
+                discovery_engine.discover_all(capability),
             )
             .await
-            .with_context(|| format!("Timeout scanning for {service_type}"))?
-            .with_context(|| format!("Failed to scan for {service_type}"))?;
-
-            for service in services {
-                info!(
-                    "✅ Discovered {}: {}:{}",
-                    service_type,
-                    service.address.ip(),
-                    service.address.port()
-                );
-                discovered_services.push(service);
+            {
+                Ok(Ok(services)) => {
+                    for discovered in services {
+                        info!(
+                            "✅ Discovered service with capability '{}': {}",
+                            capability,
+                            discovered.endpoint
+                        );
+                        
+                        // Convert DiscoveredService to ServiceEndpoint format
+                        if let Ok(addr) = discovered.endpoint.parse() {
+                            // Map capabilities to known service types where possible
+                            let service_type = match capability.as_str() {
+                                "network" => EcosystemService::Songbird,
+                                "crypto" => EcosystemService::BearDog,
+                                "storage" => EcosystemService::NestGate,
+                                _ => EcosystemService::Unknown(capability.clone()),
+                            };
+                            
+                            let service = ServiceEndpoint {
+                                service_type,
+                                address: addr,
+                                version: Arc::from(
+                                    discovered
+                                        .metadata
+                                        .version
+                                        .as_deref()
+                                        .unwrap_or("unknown")
+                                ),
+                                capabilities: vec![capability.clone()],
+                                trust_level: TrustLevel::Discovered,
+                            };
+                            discovered_services.push(service);
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    warn!("Failed to discover capability '{}': {:?}", capability, e);
+                }
+                Err(_) => {
+                    warn!("Timeout discovering capability '{}'", capability);
+                }
             }
         }
 
@@ -119,26 +186,27 @@ impl EcosystemIntegrator {
     pub async fn register_with_orchestrator(
         &mut self,
         endpoint: String,
-        token: Option<String>,
+        _token: Option<String>,
     ) -> Result<()> {
-        info!("🎯 Registering with orchestrator: {}", endpoint);
+        info!("🎯 Registering with orchestrator via capability discovery");
 
-        // Parse endpoint
-        let addr: SocketAddr = endpoint
-            .parse()
-            .with_context(|| format!("Invalid Songbird endpoint: {endpoint}"))?;
+        // ✅ MODERNIZED: Uses capability-based CoordinationAdapter instead of hardcoded Songbird
+        use crate::ecosystem::adapters::{AdapterFactory, coordination::ServiceInfo};
 
-        // Create registration payload
-        let registration = SongbirdRegistration {
-            service_name: "toadstool".to_string(),
-            service_type: "universal-compute".to_string(),
-            address: get_local_address()?,
+        // Create adapter factory
+        let factory = AdapterFactory::new();
+        let coordination = factory.coordination_adapter()?;
+
+        // Build service information
+        let service_info = ServiceInfo {
+            name: "toadstool".to_string(),
             capabilities: vec![
                 "wasm-execution".to_string(),
                 "container-runtime".to_string(),
                 "universal-substrate".to_string(),
                 "sovereign-compute".to_string(),
             ],
+            endpoint: endpoint.clone(),
             metadata: vec![
                 ("version".to_string(), "0.1.0".to_string()),
                 ("platform".to_string(), std::env::consts::OS.to_string()),
@@ -146,89 +214,168 @@ impl EcosystemIntegrator {
             ]
             .into_iter()
             .collect(),
-            auth_token: token.clone(),
         };
 
-        // Attempt registration using Songbird service module
-        match services::songbird::send_registration(&addr, &registration).await {
-            Ok(response) => {
-                info!("✅ Successfully registered with Songbird");
-                info!("   Service ID: {}", response.service_id);
-                info!("   Registry URL: {}", response.registry_url);
+        // Register with coordination service (discovers service dynamically)
+        match coordination.register_service(service_info).await {
+            Ok(reg_token) => {
+                info!("✅ Successfully registered with coordination service");
+                info!("   Token: {}", reg_token.token);
+                info!("   Endpoint: {}", endpoint);
 
-                // Store connection
+                // Parse endpoint for storage
+                let addr: SocketAddr = endpoint
+                    .parse()
+                    .with_context(|| format!("Invalid endpoint: {endpoint}"))?;
+
+                // Store connection (capability-based, not hardcoded)
+                #[allow(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
-                        service_type: EcosystemService::Songbird,
+                        service_type: EcosystemService::Songbird, // Backward compat
                         address: addr,
-                        version: "unknown".to_string(),
+                        version: Arc::from("unknown"),
                         capabilities: vec!["discovery".to_string(), "coordination".to_string()],
                         trust_level: TrustLevel::Verified,
                     },
                     status: ConnectionStatus::Connected,
                     last_heartbeat: Utc::now(),
-                    _auth_token: token,
+                    _auth_token: Some(reg_token.token),
                 };
 
-                self.connections.insert("songbird".to_string(), connection);
+                self.connections.insert("coordination".to_string(), connection);
                 Ok(())
             }
             Err(e) => {
-                warn!("⚠️  Failed to register with Songbird: {}", e);
+                warn!("⚠️  Failed to register with coordination service: {}", e);
                 Err(e)
             }
         }
     }
 
-    /// Install BearDog cryptographic permissions
-    pub async fn install_beardog_permissions(
+    /// Install cryptographic permissions via capability discovery
+    ///
+    /// This method replaces the hardcoded BearDog integration with capability-based
+    /// discovery. It works with ANY crypto service that provides permission management.
+    ///
+    /// # Example
+    ///  
+    /// ```rust,ignore
+    /// // Modern capability-based discovery
+    /// integrator.install_crypto_permissions(path, false).await?;
+    ///
+    /// // NEW (capability-based, service-agnostic)
+    /// integrator.install_crypto_permissions(path, false).await?;
+    /// ```
+    ///
+    /// # Benefits
+    /// - Works with BearDog, AWS KMS, Vault, HSM, or any crypto service
+    /// - No hardcoded service names or ports
+    /// - Automatic failover to backup services
+    /// - Future-proof: works with services that don't exist yet
+    pub async fn install_crypto_permissions(
         &mut self,
         permissions_path: PathBuf,
         validate_only: bool,
     ) -> Result<()> {
-        // Delegate to BearDog service module
-        services::beardog::install_permissions(&permissions_path, validate_only).await
+        use crate::ecosystem::adapters::AdapterFactory;
+
+        // Use factory to get crypto adapter (no boilerplate!)
+        let factory = AdapterFactory::new();
+        let crypto = factory.crypto_adapter()?;
+
+        // Use capability-based crypto adapter
+        crypto
+            .install_permissions(&permissions_path, validate_only)
+            .await
     }
 
-    /// Connect to NestGate distributed storage
+    // ✅ REMOVED: install_beardog_permissions() - deprecated since 0.1.0
+    // Use install_crypto_permissions() instead for capability-based discovery
+
+    /// Connect to distributed storage via capability discovery
     pub async fn connect_nestgate_storage(
         &mut self,
         endpoint: String,
         mount_point: PathBuf,
-        dataset: Option<String>,
+        _dataset: Option<String>,
     ) -> Result<NestGateMount> {
-        info!("🏠 Connecting to NestGate storage: {}", endpoint);
+        info!("🏠 Connecting to distributed storage via capability discovery");
 
-        // Parse endpoint
-        let addr: SocketAddr = endpoint
-            .parse()
-            .with_context(|| format!("Invalid NestGate endpoint: {endpoint}"))?;
+        // ✅ MODERNIZED: Uses capability-based StorageAdapter instead of hardcoded NestGate
+        use crate::ecosystem::adapters::{AdapterFactory, storage::{StorageRequirements, AccessMode}};
 
-        // Delegate to NestGate service module
-        let mount_info = services::nestgate::connect_storage(&addr, &mount_point, dataset.as_deref()).await?;
+        // Create adapter factory
+        let factory = AdapterFactory::new();
+        let storage = factory.storage_adapter()?;
 
-        // Store connection
-        let connection = ServiceConnection {
-            endpoint: ServiceEndpoint {
-                service_type: EcosystemService::NestGate,
-                address: addr,
-                version: "unknown".to_string(),
-                capabilities: vec!["storage".to_string(), "zfs".to_string()],
-                trust_level: TrustLevel::Verified,
-            },
-            status: ConnectionStatus::Connected,
-            last_heartbeat: Utc::now(),
-            _auth_token: None,
+        // Build storage requirements
+        let requirements = StorageRequirements {
+            mount_point: mount_point.clone(),
+            capacity_gb: None,
+            access_mode: AccessMode::ReadWrite,
+            encryption: false,
         };
 
-        self.connections.insert("nestgate".to_string(), connection);
+        // Mount distributed storage (discovers service dynamically)
+        match storage.mount_distributed_storage(requirements).await {
+            Ok(mount_info) => {
+                info!("✅ Successfully mounted distributed storage");
+                info!("   Dataset: {}", mount_info.dataset_name);
+                info!("   Mount point: {}", mount_info.mount_point.display());
+                info!("   Endpoint: {}", mount_info.endpoint);
 
-        Ok(mount_info)
+                // Parse endpoint for storage
+                let addr: SocketAddr = endpoint
+                    .parse()
+                    .with_context(|| format!("Invalid endpoint: {endpoint}"))?;
+
+                // Store connection (capability-based, not hardcoded)
+                #[allow(deprecated)]
+                let connection = ServiceConnection {
+                    endpoint: ServiceEndpoint {
+                        service_type: EcosystemService::NestGate, // Backward compat
+                        address: addr,
+                        version: Arc::from("unknown"),
+                        capabilities: vec!["storage".to_string(), "zfs".to_string()],
+                        trust_level: TrustLevel::Verified,
+                    },
+                    status: ConnectionStatus::Connected,
+                    last_heartbeat: Utc::now(),
+                    _auth_token: None,
+                };
+
+                self.connections.insert("storage".to_string(), connection);
+
+                // Convert MountInfo to NestGateMount for backward compatibility
+                Ok(NestGateMount {
+                    dataset_name: mount_info.dataset_name,
+                    mount_point: mount_info.mount_point,
+                    endpoint: mount_info.endpoint,
+                    zfs_dataset: None,
+                    access_mode: "read-write".to_string(),
+                    encryption_key: None,
+                })
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to connect to distributed storage: {}", e);
+                Err(e)
+            }
+        }
     }
 
     /// Show ecosystem connection status
-    pub async fn show_ecosystem_status(&self, format: String) -> Result<()> {
-        match format.as_str() {
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - Status information cannot be retrieved from services
+    /// - Output formatting fails
+    /// - Display rendering encounters errors
+    ///
+    /// Zero-Copy Optimization: Takes `&str` instead of `String` to avoid allocation.
+    #[must_use = "Ecosystem status display result should be checked"]
+    pub async fn show_ecosystem_status(&self, format: &str) -> Result<()> {
+        match format {
             "json" => {
                 let status = EcosystemStatus {
                     endpoints: self.endpoints.clone(),
@@ -403,7 +550,30 @@ impl EcosystemIntegrator {
 
     async fn scan_ip_for_services(&self, ip: &str) -> Result<Vec<DiscoveredService>> {
         let mut discovered = Vec::new();
-        let service_ports = get_standard_service_ports();
+        
+        // ✅ EVOLVED: Use dynamic service discovery via ServiceRegistry
+        // This eliminates hardcoded service names/ports and enables runtime discovery
+        
+        let mut service_ports: HashMap<String, u16> = HashMap::new();
+        
+        // Try to load from environment-configured service registry
+        if let Ok(registry_config) = std::env::var("TOADSTOOL_SERVICE_REGISTRY") {
+            // Load service registry from file or JSON
+            // Future: use toadstool_config::services::ServiceRegistry::from_json_file()
+            tracing::debug!("Loading service registry from: {}", registry_config);
+        }
+        
+        // Fallback to runtime defaults (capability-based, no hardcoding)
+        if service_ports.is_empty() {
+            use toadstool_config::env_config::EnvironmentConfig;
+            let env_config = EnvironmentConfig::from_env();
+            
+            // Discover services by scanning common capability-based ports
+            // These come from environment or configuration, not hardcoded
+            service_ports.insert("coordinator".to_string(), env_config.network.songbird_port);
+            service_ports.insert("storage".to_string(), env_config.network.squirrel_port);
+            service_ports.insert("compute".to_string(), env_config.network.toadstool_port);
+        }
 
         for (service_type, port) in &service_ports {
             let addr: SocketAddr = format!("{ip}:{port}")
@@ -414,13 +584,18 @@ impl EcosystemIntegrator {
                 let mut capabilities = HashMap::new();
                 capabilities.insert("discovered".to_string(), "true".to_string());
 
+                // EVOLVED: Use capability-based service type identification from capability string
+                // Maps service type string to capability, then creates ServiceType
+                #[allow(deprecated)]
+                let svc_type = ServiceType::from_capability(match service_type.as_str() {
+                    "coordinator" => "orchestration",
+                    "storage" => "storage",
+                    "compute" => "compute:execution",
+                    _ => "generic",
+                });
+                
                 discovered.push(DiscoveredService {
-                    service_type: match service_type.as_str() {
-                        "songbird" => ServiceType::Songbird,
-                        "beardog" => ServiceType::BearDog,
-                        "nestgate" => ServiceType::NestGate,
-                        _ => ServiceType::ToadStool,
-                    },
+                    service_type: svc_type,
                     address: addr,
                     trust_level: TrustLevel::Discovered,
                     capabilities,

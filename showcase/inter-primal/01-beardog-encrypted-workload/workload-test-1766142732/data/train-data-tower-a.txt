@@ -1,0 +1,7 @@
+# CIFAR-10 Training Batch A (Tower A - Eastgate)
+# Samples: 25000
+# Classes: airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck
+Image 0001: airplane [0.123, 0.456, 0.789, ...]
+Image 0002: automobile [0.234, 0.567, 0.890, ...]
+Image 0003: bird [0.345, 0.678, 0.901, ...]
+# ... 24997 more images

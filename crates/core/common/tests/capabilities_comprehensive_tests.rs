@@ -414,8 +414,8 @@ fn test_detected_substrate_has_capability_true() {
         metadata: HashMap::new(),
     };
 
-    assert!(substrate.has_capability(SubstrateCapability::ContainerOrchestration));
-    assert!(substrate.has_capability(SubstrateCapability::ServiceDiscovery));
+    assert!(substrate.has_capability(&SubstrateCapability::ContainerOrchestration));
+    assert!(substrate.has_capability(&SubstrateCapability::ServiceDiscovery));
 }
 
 #[test]
@@ -426,8 +426,8 @@ fn test_detected_substrate_has_capability_false() {
         metadata: HashMap::new(),
     };
 
-    assert!(!substrate.has_capability(SubstrateCapability::ContainerOrchestration));
-    assert!(!substrate.has_capability(SubstrateCapability::CloudCompute));
+    assert!(!substrate.has_capability(&SubstrateCapability::ContainerOrchestration));
+    assert!(!substrate.has_capability(&SubstrateCapability::CloudCompute));
 }
 
 #[test]
@@ -472,7 +472,7 @@ fn test_detected_substrate_empty_capabilities() {
     };
 
     assert_eq!(substrate.capabilities.len(), 0);
-    assert!(!substrate.has_capability(SubstrateCapability::BareMetal));
+    assert!(!substrate.has_capability(&SubstrateCapability::BareMetal));
 }
 
 #[test]
@@ -489,8 +489,8 @@ fn test_detected_substrate_multiple_capabilities() {
     };
 
     assert_eq!(substrate.capabilities.len(), 4);
-    assert!(substrate.has_capability(SubstrateCapability::CloudCompute));
-    assert!(substrate.has_capability(SubstrateCapability::ContainerOrchestration));
+    assert!(substrate.has_capability(&SubstrateCapability::CloudCompute));
+    assert!(substrate.has_capability(&SubstrateCapability::ContainerOrchestration));
 }
 
 // ============================================================================

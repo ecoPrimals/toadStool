@@ -251,6 +251,7 @@ impl Default for NetworkEffectsConfig {
 }
 
 impl Default for SongbirdIntegrationConfig {
+    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
         // Use environment-aware configuration
         let port: u16 = std::env::var("TOADSTOOL_SONGBIRD_PORT")

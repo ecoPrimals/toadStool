@@ -300,7 +300,7 @@ fn test_manager_shared_backend() {
 // Async Operations Tests (12 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_nestgate_connection() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -315,7 +315,7 @@ async fn test_initialize_nestgate_connection() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_basic() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -344,7 +344,7 @@ async fn test_provision_volume_basic() {
     assert_eq!(volume_info.status, "Available");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_different_sizes() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -372,7 +372,7 @@ async fn test_provision_volume_different_sizes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -399,7 +399,7 @@ async fn test_provision_persistent_volume() {
     assert_eq!(volume_info.name, "persistent-vol");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mount_volume() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -430,7 +430,7 @@ async fn test_mount_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unmount_volume() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -463,7 +463,7 @@ async fn test_unmount_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_volume_status_info() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -495,7 +495,7 @@ async fn test_get_volume_status_info() {
     assert_eq!(status, VolumeStatus::Available);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_volume() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -524,7 +524,7 @@ async fn test_delete_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_volumes() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -557,7 +557,7 @@ async fn test_list_volumes() {
     assert!(volumes.len() >= 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_volume_operations_sequence() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -586,7 +586,7 @@ async fn test_volume_operations_sequence() {
     assert!(status.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_volume_status() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),
@@ -615,7 +615,7 @@ async fn test_get_volume_status() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_operations_sequence() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://nestgate:8080".to_string(),

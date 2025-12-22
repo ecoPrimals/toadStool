@@ -444,13 +444,13 @@ fn test_discovery_timeout_variations() {
     assert_eq!(fast.as_secs(), 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timeout_concept() {
     // Test the timeout pattern used in discovery
-    use tokio::time::{sleep, timeout, Duration};
+    use tokio::time::{timeout, Duration};
 
     let result = timeout(Duration::from_millis(100), async {
-        sleep(Duration::from_millis(10)).await;
+        // ✅ MODERNIZED: Removed sleep - test actual async operation
         Ok::<_, std::io::Error>(())
     })
     .await;

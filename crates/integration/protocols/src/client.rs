@@ -510,6 +510,7 @@ mod tests {
     }
 
     /// Helper function to create a test service info
+    #[allow(deprecated)] // Using deprecated constants during migration to capability-based discovery
     fn create_test_service(id: &str, name: &str, status: HealthStatus) -> ServiceInfo {
         ServiceInfo {
             id: id.to_string(),
@@ -549,14 +550,14 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_protocol_client_creation() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await;
         assert!(client.is_ok(), "Failed to create protocol client");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_service() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -571,7 +572,7 @@ mod tests {
         assert_eq!(health, HealthStatus::Healthy);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_multiple_services() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -593,7 +594,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_services_from_cache() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -607,7 +608,7 @@ mod tests {
         assert_eq!(discovered[0].id, "service-1");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_services_empty() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -620,7 +621,7 @@ mod tests {
         assert_eq!(discovered.len(), 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_service_health_unknown() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -630,7 +631,7 @@ mod tests {
         assert_eq!(health, HealthStatus::Unknown);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_handler() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -666,7 +667,7 @@ mod tests {
         assert_eq!(response.correlation_id, Some(test_msg.id));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_handle_message_no_handler() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -678,7 +679,7 @@ mod tests {
         assert!(response.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_healthy_preferred() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -693,7 +694,7 @@ mod tests {
         assert_eq!(selected.id, "service-2", "Should select healthy service");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_no_healthy() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -708,7 +709,7 @@ mod tests {
         assert_eq!(selected.id, "service-1");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_select_service_empty() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -723,7 +724,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_subscription() {
         let config = create_test_config();
         let client = ProtocolClient::new(config).await.unwrap();
@@ -745,7 +746,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_message_priority_ordering() {
         let priorities = [
             MessagePriority::Low,
@@ -764,7 +765,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_status_equality() {
         assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
         assert_eq!(HealthStatus::Degraded, HealthStatus::Degraded);
@@ -775,7 +776,7 @@ mod tests {
         assert_ne!(HealthStatus::Healthy, HealthStatus::Unknown);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_protocol_message_creation() {
         let msg = create_test_message("test-source", "test-type");
 
@@ -787,7 +788,7 @@ mod tests {
         assert_eq!(msg.ttl.unwrap(), Duration::from_secs(60));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_simple_message_handler() {
         let handler = SimpleMessageHandler::new(|msg| {
             Ok(Some(ProtocolMessage {

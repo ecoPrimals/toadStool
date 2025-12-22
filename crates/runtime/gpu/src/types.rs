@@ -388,6 +388,8 @@ pub enum KernelFormat {
     LlvmIr,
     /// WebAssembly
     Wasm,
+    /// WebGPU Shading Language (WGSL)
+    Wgsl,
     /// `ToadStool` Universal Compute Language (custom)
     Tucl,
 }

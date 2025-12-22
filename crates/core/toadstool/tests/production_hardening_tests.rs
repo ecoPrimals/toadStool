@@ -13,7 +13,7 @@ use toadstool::resources::ResourceRequirements;
 // Circuit Breaker Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_creation() {
     let config = CircuitBreakerConfig::default();
     let breaker = CircuitBreaker::new("test-service".to_string(), config);
@@ -29,7 +29,7 @@ async fn test_circuit_breaker_creation() {
     assert_eq!(count, 0, "Initial failure count should be 0");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_config_default() {
     let config = CircuitBreakerConfig::default();
 
@@ -40,7 +40,7 @@ async fn test_circuit_breaker_config_default() {
     assert_eq!(config.half_open_max_requests, 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_successful_execution() {
     let config = CircuitBreakerConfig::default();
     let breaker = CircuitBreaker::new("test-service".to_string(), config);
@@ -56,7 +56,7 @@ async fn test_circuit_breaker_successful_execution() {
     assert_eq!(state, CircuitState::Closed);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_opens_after_failures() {
     let config = CircuitBreakerConfig {
         failure_threshold: 3,
@@ -79,7 +79,7 @@ async fn test_circuit_breaker_opens_after_failures() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_rejects_when_open() {
     let config = CircuitBreakerConfig {
         failure_threshold: 2,
@@ -108,7 +108,7 @@ async fn test_circuit_breaker_rejects_when_open() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_failure_count() {
     let config = CircuitBreakerConfig {
         failure_threshold: 10,
@@ -127,7 +127,7 @@ async fn test_circuit_breaker_failure_count() {
     assert_eq!(count, 3, "Failure count should be 3");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_state_enum_equality() {
     assert_eq!(CircuitState::Closed, CircuitState::Closed);
     assert_eq!(CircuitState::Open, CircuitState::Open);
@@ -136,7 +136,7 @@ async fn test_circuit_state_enum_equality() {
     assert_ne!(CircuitState::Open, CircuitState::HalfOpen);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_state_clone() {
     let state = CircuitState::Open;
     let cloned = state.clone();
@@ -147,7 +147,7 @@ async fn test_circuit_state_clone() {
 // Resource Leak Detector Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_leak_detector_creation() {
     let _detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
 
@@ -155,7 +155,7 @@ async fn test_resource_leak_detector_creation() {
     // (no way to directly inspect internal state, but creation shouldn't panic)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_allocation_tracking() {
     let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
 
@@ -172,7 +172,7 @@ async fn test_resource_allocation_tracking() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_access_update() {
     let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
 
@@ -191,7 +191,7 @@ async fn test_resource_access_update() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_removal() {
     let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
 
@@ -210,7 +210,7 @@ async fn test_resource_removal() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_no_leaks_detected_for_fresh_resources() {
     let detector = ResourceLeakDetector::new(Duration::from_secs(60), Duration::from_secs(10));
 
@@ -233,7 +233,7 @@ async fn test_no_leaks_detected_for_fresh_resources() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_allocation_clone() {
     let allocation = ResourceAllocation {
         id: Uuid::new_v4(),
@@ -254,14 +254,14 @@ async fn test_resource_allocation_clone() {
 // Memory Pressure Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_handler_creation() {
     let config = MemoryPressureConfig::default();
     let _handler = MemoryPressureHandler::new(config);
     // Creation should not panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_config_default() {
     let config = MemoryPressureConfig::default();
 
@@ -271,7 +271,7 @@ async fn test_memory_pressure_config_default() {
     assert_eq!(config.check_interval, Duration::from_secs(10));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_config_clone() {
     let config = MemoryPressureConfig::default();
     let cloned = config.clone();
@@ -281,7 +281,7 @@ async fn test_memory_pressure_config_clone() {
     assert_eq!(config.emergency_threshold, cloned.emergency_threshold);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_levels() {
     assert_eq!(MemoryPressureLevel::Normal, MemoryPressureLevel::Normal);
     assert_eq!(MemoryPressureLevel::Warning, MemoryPressureLevel::Warning);
@@ -293,7 +293,7 @@ async fn test_memory_pressure_levels() {
     assert_ne!(MemoryPressureLevel::Normal, MemoryPressureLevel::Warning);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_update_normal() {
     let config = MemoryPressureConfig::default();
     let handler = MemoryPressureHandler::new(config);
@@ -305,14 +305,14 @@ async fn test_memory_pressure_update_normal() {
     assert_eq!(level, MemoryPressureLevel::Normal);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_level_clone() {
     let level = MemoryPressureLevel::Warning;
     let cloned = level;
     assert_eq!(level, cloned);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_default_memory_pressure_callback() {
     let callback = DefaultMemoryPressureCallback;
 
@@ -335,7 +335,7 @@ async fn test_default_memory_pressure_callback() {
 // Production Hardening Manager Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_production_hardening_config_default() {
     let config = ProductionHardeningConfig::default();
 
@@ -345,7 +345,7 @@ async fn test_production_hardening_config_default() {
     assert_eq!(config.leak_detection_threshold, Duration::from_secs(300));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_production_hardening_config_clone() {
     let config = ProductionHardeningConfig::default();
     let cloned = config.clone();
@@ -358,14 +358,14 @@ async fn test_production_hardening_config_clone() {
     assert_eq!(config.enable_memory_pressure, cloned.enable_memory_pressure);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_production_hardening_manager_creation() {
     let config = ProductionHardeningConfig::default();
     let _manager = ProductionHardeningManager::new(config);
     // Creation should not panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_production_hardening_manager_initialization() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -374,7 +374,7 @@ async fn test_production_hardening_manager_initialization() {
     assert!(result.is_ok(), "Initialization should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_circuit_breaker() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -384,7 +384,7 @@ async fn test_get_circuit_breaker() {
     assert_eq!(state, CircuitState::Closed);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_same_circuit_breaker_twice() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -398,7 +398,7 @@ async fn test_get_same_circuit_breaker_twice() {
     assert_eq!(state1, state2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_track_resource_with_manager() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -416,7 +416,7 @@ async fn test_track_resource_with_manager() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_resource_access_with_manager() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -436,7 +436,7 @@ async fn test_update_resource_access_with_manager() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_remove_resource_with_manager() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -456,7 +456,7 @@ async fn test_remove_resource_with_manager() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_memory_usage_with_manager() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -465,7 +465,7 @@ async fn test_update_memory_usage_with_manager() {
     // No panic means success
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_error_display() {
     let error = CircuitBreakerError::CircuitOpen {
         service: "test-service".to_string(),
@@ -487,7 +487,7 @@ async fn test_circuit_breaker_error_display() {
     assert!(error_string3.contains("Service failure for test-service: connection failed"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_circuit_breaker_config() {
     let config = CircuitBreakerConfig {
         failure_threshold: 10,
@@ -504,7 +504,7 @@ async fn test_custom_circuit_breaker_config() {
     assert_eq!(config.half_open_max_requests, 2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_memory_pressure_config() {
     let config = MemoryPressureConfig {
         warning_threshold: 60.0,
@@ -519,7 +519,7 @@ async fn test_custom_memory_pressure_config() {
     assert_eq!(config.check_interval, Duration::from_secs(5));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_requirements_in_allocation() {
     let requirements = ResourceRequirements::default();
 
@@ -541,7 +541,7 @@ async fn test_resource_requirements_in_allocation() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_disabled_features_config() {
     let config = ProductionHardeningConfig {
         enable_circuit_breakers: false,
@@ -559,7 +559,7 @@ async fn test_disabled_features_config() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_circuit_breakers() {
     let config = ProductionHardeningConfig::default();
     let manager = ProductionHardeningManager::new(config);
@@ -574,7 +574,7 @@ async fn test_multiple_circuit_breakers() {
     assert_eq!(breaker3.get_state().await, CircuitState::Closed);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_circuit_breaker_with_zero_threshold() {
     let config = CircuitBreakerConfig {
         failure_threshold: 0,
@@ -593,7 +593,7 @@ async fn test_circuit_breaker_with_zero_threshold() {
     // Just ensure it doesn't panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_uuid_generation_for_resources() {
     let id1 = Uuid::new_v4();
     let id2 = Uuid::new_v4();

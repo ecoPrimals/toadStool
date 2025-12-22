@@ -14,7 +14,7 @@ use uuid::Uuid;
 // Full Stack Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_integration() {
     // Test complete flow: API request -> validation -> response
     let request_body = json!({
@@ -41,7 +41,7 @@ async fn test_submit_execution_integration() {
     assert_eq!(parsed["workload"]["type"], "native");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_executions_integration() {
     // Test listing with various filters
     let execution_ids = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
@@ -56,7 +56,7 @@ async fn test_list_executions_integration() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_status_integration() {
     // Test status retrieval flow
     let execution_id = Uuid::new_v4();
@@ -67,7 +67,7 @@ async fn test_get_execution_status_integration() {
     assert!(id_str.contains('-'));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_execution_integration() {
     // Test cancellation flow
     let execution_id = Uuid::new_v4();
@@ -86,7 +86,7 @@ async fn test_cancel_execution_integration() {
 // Error Handling Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_invalid_workload_rejection() {
     // Test that invalid workloads are rejected early
     let invalid_request = json!({
@@ -101,7 +101,7 @@ async fn test_invalid_workload_rejection() {
     assert!(body_str.contains("invalid_type"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_missing_required_fields() {
     // Test missing workload field
     let incomplete_request = json!({
@@ -114,7 +114,7 @@ async fn test_missing_required_fields() {
     assert!(incomplete_request.get("workload").is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_invalid_resource_limits() {
     // Test invalid resource specifications
     let invalid_resources = json!({
@@ -132,7 +132,7 @@ async fn test_invalid_resource_limits() {
     assert_eq!(invalid_resources["resources"]["memory_mb"], -1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_malformed_json_handling() {
     // Test malformed JSON handling
     let malformed_json = "{ invalid json }";
@@ -141,7 +141,7 @@ async fn test_malformed_json_handling() {
     assert!(parse_result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_nonexistent_execution_id() {
     // Test querying non-existent execution
     let nonexistent_id = Uuid::new_v4();
@@ -154,7 +154,7 @@ async fn test_nonexistent_execution_id() {
 // Resource Lifecycle Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_lifecycle_states() {
     // Test state transitions
     let states = vec![
@@ -172,7 +172,7 @@ async fn test_execution_lifecycle_states() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_execution_submission() {
     // Test multiple concurrent submissions
     let mut execution_ids = Vec::new();
@@ -189,7 +189,7 @@ async fn test_concurrent_execution_submission() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_timeout_handling() {
     // Test timeout configuration
     let timeout_request = json!({
@@ -202,7 +202,7 @@ async fn test_execution_timeout_handling() {
     assert_eq!(timeout_request["timeout_seconds"], 30);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_cleanup_on_completion() {
     // Test resource cleanup markers
     let completion_status = json!({
@@ -219,7 +219,7 @@ async fn test_resource_cleanup_on_completion() {
 // Request Validation Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_validation() {
     // Test various workload types
     let types = vec!["native", "wasm", "container", "python", "gpu"];
@@ -235,7 +235,7 @@ async fn test_workload_type_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_requirements_validation() {
     // Test resource requirement bounds
     let valid_resources = json!({
@@ -249,7 +249,7 @@ async fn test_resource_requirements_validation() {
     assert!(valid_resources["memory_mb"].as_u64().unwrap() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variables_validation() {
     // Test environment variable handling
     let mut env_vars = HashMap::new();
@@ -260,7 +260,7 @@ async fn test_environment_variables_validation() {
     assert_eq!(env_vars.get("KEY1"), Some(&"value1".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_context_validation() {
     // Test security context requirements
     let security_context = json!({
@@ -277,7 +277,7 @@ async fn test_security_context_validation() {
 // Response Format Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_response_format() {
     // Test response structure
     let response = json!({
@@ -291,7 +291,7 @@ async fn test_execution_response_format() {
     assert!(response["submitted_at"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_response_pagination() {
     // Test pagination structure
     let list_response = json!({
@@ -305,7 +305,7 @@ async fn test_list_response_pagination() {
     assert_eq!(list_response["page"], 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_response_format() {
     // Test error response structure
     let error_response = json!({
@@ -320,7 +320,7 @@ async fn test_error_response_format() {
     assert!(error_response["error"]["code"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_status_response_with_metrics() {
     // Test status response with metrics
     let status_response = json!({
@@ -341,7 +341,7 @@ async fn test_status_response_with_metrics() {
 // Concurrent Request Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_status_queries() {
     // Test multiple concurrent status queries
     let mut execution_ids = Vec::new();
@@ -357,7 +357,7 @@ async fn test_concurrent_status_queries() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_cancellation_requests() {
     // Test multiple cancellations
     let cancellation_count = 3;
@@ -377,7 +377,7 @@ async fn test_concurrent_cancellation_requests() {
 // Data Flow Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_input_data_flow() {
     // Test input data handling
     let request_with_input = json!({
@@ -394,7 +394,7 @@ async fn test_input_data_flow() {
     assert!(request_with_input["input"]["data"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_output_data_retrieval() {
     // Test output data structure
     let output_response = json!({
@@ -410,7 +410,7 @@ async fn test_output_data_retrieval() {
     assert!(output_response["output"]["stdout"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_large_output_handling() {
     // Test large output handling
     let large_output = "x".repeat(1024 * 100); // 100KB
@@ -429,7 +429,7 @@ async fn test_large_output_handling() {
 // State Persistence Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_state_persistence() {
     // Test state transitions are persistent
     let _execution_id = Uuid::new_v4();
@@ -453,7 +453,7 @@ async fn test_execution_state_persistence() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_history_retrieval() {
     // Test execution history
     let history = vec![
@@ -470,7 +470,7 @@ async fn test_execution_history_retrieval() {
 // Integration with Runtime Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_selection_integration() {
     // Test runtime selection based on workload
     let workload_to_runtime = vec![
@@ -491,7 +491,7 @@ async fn test_runtime_selection_integration() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_error_propagation() {
     // Test that runtime errors propagate correctly
     let runtime_error = json!({
@@ -509,7 +509,7 @@ async fn test_runtime_error_propagation() {
 // Metrics and Monitoring Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_metrics_collection() {
     // Test metrics are collected during execution
     let metrics = json!({
@@ -527,7 +527,7 @@ async fn test_execution_metrics_collection() {
     assert!(metrics["metrics"]["memory_peak_mb"].as_u64().unwrap() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_integration() {
     // Test health check endpoint
     let health_response = json!({

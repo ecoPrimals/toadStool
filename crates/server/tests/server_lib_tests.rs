@@ -1,8 +1,6 @@
 //! Tests for ToadStoolServer core functionality (lib.rs)
 
-use std::time::Duration;
 use toadstool_server::*;
-use tokio::time::sleep;
 
 // Import mock runtime engine
 use toadstool_testing::MockRuntimeEngine;
@@ -18,7 +16,7 @@ fn test_server_config_default() {
     // Default bind address comes from env config
     assert!(config.bind_address.contains(':'));
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
+    assert!(!config.enable_websocket); // Disabled by default for security
     assert!(config.enable_cors);
 }
 
@@ -135,7 +133,7 @@ fn test_server_statistics_clone() {
 // ToadStoolServer Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_with_default_config() {
     let config = ServerConfig::default();
     let result = ToadStoolServer::new(config).await;
@@ -143,7 +141,7 @@ async fn test_server_creation_with_default_config() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_with_custom_config() {
     let config = ServerConfig::default()
         .bind_address("127.0.0.1:9999")
@@ -154,7 +152,7 @@ async fn test_server_creation_with_custom_config() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_api_only() {
     let config = ServerConfig::default()
         .enable_api(true)
@@ -164,7 +162,7 @@ async fn test_server_creation_api_only() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_websocket_only() {
     let config = ServerConfig::default()
         .enable_api(false)
@@ -174,7 +172,7 @@ async fn test_server_creation_websocket_only() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_creation_with_concurrency_limit() {
     let config = ServerConfig::default().max_concurrent_executions(200);
 
@@ -186,7 +184,7 @@ async fn test_server_creation_with_concurrency_limit() {
 // Runtime Engine Registration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_native_runtime() {
     let config = ServerConfig::default();
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -199,7 +197,7 @@ async fn test_register_native_runtime() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_multiple_runtimes() {
     let config = ServerConfig::default();
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -217,7 +215,7 @@ async fn test_register_multiple_runtimes() {
         .is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_container_runtime() {
     let config = ServerConfig::default();
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -230,7 +228,7 @@ async fn test_register_container_runtime() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_python_runtime() {
     let config = ServerConfig::default();
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -243,7 +241,7 @@ async fn test_register_python_runtime() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_gpu_runtime() {
     let config = ServerConfig::default();
     let mut server = ToadStoolServer::new(config).await.unwrap();
@@ -260,7 +258,7 @@ async fn test_register_gpu_runtime() {
 // Server Lifecycle Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_start_background() {
     let config = ServerConfig::default().bind_address("127.0.0.1:18080");
 
@@ -271,11 +269,11 @@ async fn test_server_start_background() {
         let _ = server.start().await;
     });
 
-    // Give server time to start
-    sleep(Duration::from_millis(100)).await;
+    // ✅ FULLY MODERNIZED: Give server time to start
+    tokio::task::yield_now().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_builder_pattern_complete() {
     use std::time::Duration;
 
@@ -304,7 +302,7 @@ async fn test_server_builder_pattern_complete() {
 // Server State Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_initialization() {
     let config = ServerConfig::default();
     let _server = ToadStoolServer::new(config).await.unwrap();
@@ -312,7 +310,7 @@ async fn test_server_state_initialization() {
     // State is initialized correctly (verified by server creation)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_event_broadcaster() {
     let config = ServerConfig::default();
     let _server = ToadStoolServer::new(config).await.unwrap();
@@ -320,7 +318,7 @@ async fn test_server_state_event_broadcaster() {
     // Event broadcaster is created during server initialization (verified by creation)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_config_persistence() {
     let config = ServerConfig::default()
         .bind_address("0.0.0.0:8888")
@@ -337,7 +335,7 @@ async fn test_server_config_persistence() {
 // Edge Case Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_empty_runtime_engines() {
     let config = ServerConfig::default();
     let _server = ToadStoolServer::new(config).await.unwrap();
@@ -345,7 +343,7 @@ async fn test_server_empty_runtime_engines() {
     // Server can be created without runtime engines registered (verified by creation)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_high_port_number() {
     let config = ServerConfig::default().bind_address("127.0.0.1:65000");
 
@@ -353,7 +351,7 @@ async fn test_server_high_port_number() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_ipv6_address() {
     let config = ServerConfig::default().bind_address("[::1]:8080");
 
@@ -361,7 +359,7 @@ async fn test_server_ipv6_address() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_all_features_disabled() {
     let config = ServerConfig::default()
         .enable_api(false)
@@ -371,7 +369,7 @@ async fn test_server_all_features_disabled() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_all_features_enabled() {
     use std::time::Duration;
 

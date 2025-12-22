@@ -1,71 +1,274 @@
 //! Service discovery functionality for ecosystem integration
 //!
-//! This module handles discovering services on the network, verifying them,
-//! and maintaining a registry of discovered services.
+//! This module handles discovering services on the network using:
+//! - Environment variables (TOADSTOOL_*_SERVICE_URL)
+//! - mDNS/Bonjour discovery
+//! - Service mesh queries (Consul, etcd, K8s)
+//! - Configuration files
+//!
+//! **NO HARDCODED PORTS OR SERVICE NAMES** - Pure infant discovery.
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use super::types::*;
 
-/// Get standard service ports for well-known ecosystem services
-pub fn get_standard_service_ports() -> HashMap<String, u16> {
-    let mut ports = HashMap::new();
-    ports.insert("songbird".to_string(), 8080);
-    ports.insert("beardog".to_string(), 8081);
-    ports.insert("nestgate".to_string(), 8082);
-    ports.insert("squirrel".to_string(), 8083);
-    ports
+/// Discover service by capability using environment variables
+///
+/// Checks for environment variables in the format:
+/// - `TOADSTOOL_CRYPTO_SERVICE_URL` for crypto capabilities
+/// - `TOADSTOOL_STORAGE_SERVICE_URL` for storage capabilities
+/// - `TOADSTOOL_COORDINATION_SERVICE_URL` for coordination capabilities
+///
+/// # Example
+/// ```bash
+/// export TOADSTOOL_CRYPTO_SERVICE_URL="http://10.0.0.5:9876"
+/// export TOADSTOOL_STORAGE_SERVICE_URL="http://nestgate.local:8082"
+/// ```
+pub fn discover_from_environment(capability_category: &str) -> Option<String> {
+    let env_var = format!(
+        "TOADSTOOL_{}_SERVICE_URL",
+        capability_category.to_uppercase()
+    );
+
+    std::env::var(&env_var).ok().and_then(|url| {
+        if url.is_empty() {
+            None
+        } else {
+            debug!(
+                "Discovered {} service from environment: {}",
+                capability_category, url
+            );
+            Some(url)
+        }
+    })
 }
 
-/// Scan for a specific service type on the network
-pub async fn scan_for_service(
-    service_type: &str,
-    service_ports: &HashMap<String, u16>,
+/// Discover service from configuration file
+///
+/// Looks for configuration in:
+/// 1. `~/.toadstool/services.toml`
+/// 2. `./.toadstool/config.toml`
+/// 3. `/etc/toadstool/services.toml`
+///
+/// # Example config format (TOML)
+/// ```toml
+/// [services.crypto]
+/// url = "http://beardog.local:9876"
+/// priority = 90
+///
+/// [services.storage]
+/// url = "http://nestgate.local:8082"
+/// priority = 80
+/// ```
+pub fn discover_from_config(capability_category: &str) -> Option<String> {
+    // Try multiple config locations
+    let config_paths = vec![
+        dirs::home_dir().map(|h| h.join(".toadstool/services.toml")),
+        Some(std::path::PathBuf::from(".toadstool/config.toml")),
+        Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
+    ];
+
+    for path in config_paths.into_iter().flatten() {
+        if let Ok(contents) = std::fs::read_to_string(&path) {
+            if let Ok(config) =
+                toml::from_str::<HashMap<String, HashMap<String, toml::Value>>>(&contents)
+            {
+                if let Some(services) = config.get("services") {
+                    if let Some(service) = services.get(capability_category) {
+                        if let Some(toml::Value::String(url)) = service.get("url") {
+                            debug!(
+                                "Discovered {} service from config {}: {}",
+                                capability_category,
+                                path.display(),
+                                url
+                            );
+                            return Some(url.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Discover service by capability (no hardcoded ports!)
+///
+/// Discovery order:
+/// 1. Environment variables (TOADSTOOL_*_SERVICE_URL)
+/// 2. Configuration files (~/.toadstool/services.toml)
+/// 3. mDNS discovery (_capability._tcp.local)
+/// 4. Service mesh query (if available)
+///
+/// # Example
+/// ```ignore
+/// // Forward-looking example - API under development
+/// # async fn example() -> anyhow::Result<()> {
+/// // Discovers crypto service from any source
+/// let endpoints = discover_service_by_capability("crypto").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// **Status**: Currently unused but part of capability-based architecture.
+/// Will be used when full capability routing is implemented.
+#[allow(dead_code)]
+#[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compat
+pub async fn discover_service_by_capability(
+    capability_category: &str,
 ) -> Result<Vec<ServiceEndpoint>> {
     let mut services = Vec::new();
 
-    // Get the standard port for this service
-    let port = service_ports.get(service_type).copied().unwrap_or(8080);
-
-    // Scan localhost first (development/local deployment)
-    let local_addr: SocketAddr = format!("127.0.0.1:{}", port)
-        .parse()
-        .with_context(|| "Failed to parse local address")?;
-
-    // Try to connect to the service
-    if is_service_reachable(&local_addr).await {
-        services.push(ServiceEndpoint {
-            service_type: parse_service_type(service_type),
-            address: local_addr,
-            version: "unknown".to_string(),
-            capabilities: Vec::new(),
-            trust_level: TrustLevel::Discovered,
-        });
+    // Try environment variables first
+    if let Some(url) = discover_from_environment(capability_category) {
+        if let Ok(addr) = parse_service_url(&url) {
+            services.push(ServiceEndpoint {
+                service_type: EcosystemService::Unknown(capability_category.to_string()),
+                address: addr,
+                version: Arc::from(crate::ecosystem::constants::common::UNKNOWN_VERSION),
+                capabilities: vec![capability_category.to_string()],
+                trust_level: TrustLevel::Configured,
+            });
+            return Ok(services);
+        }
     }
 
+    // Try configuration files
+    if let Some(url) = discover_from_config(capability_category) {
+        if let Ok(addr) = parse_service_url(&url) {
+            services.push(ServiceEndpoint {
+                service_type: EcosystemService::Unknown(capability_category.to_string()),
+                address: addr,
+                version: Arc::from(crate::ecosystem::constants::common::UNKNOWN_VERSION),
+                capabilities: vec![capability_category.to_string()],
+                trust_level: TrustLevel::Configured,
+            });
+            return Ok(services);
+        }
+    }
+
+    // Try mDNS discovery
+    if let Ok(discovered) = discover_via_mdns(capability_category).await {
+        services.extend(discovered);
+        if !services.is_empty() {
+            return Ok(services);
+        }
+    }
+
+    // FUTURE: Service mesh integration (Consul, etcd, K8s) planned for v0.3.0
+    // This requires deploying to a service mesh environment first.
+    // See: docs/planning/SERVICE_MESH_INTEGRATION.md (to be created)
+
+    // No service found
+    warn!("No service found for capability: {}", capability_category);
     Ok(services)
 }
 
-/// Check if a service is reachable at the given address
-async fn is_service_reachable(addr: &SocketAddr) -> bool {
-    // Simple TCP connection check with short timeout
-    matches!(
-        timeout(
-            Duration::from_millis(500),
-            tokio::net::TcpStream::connect(addr),
-        )
-        .await,
-        Ok(Ok(_))
-    )
+/// Parse service URL into SocketAddr
+///
+/// Used by capability-based service discovery when converting discovered
+/// service URLs into socket addresses for connection.
+#[allow(dead_code)]
+fn parse_service_url(url: &str) -> Result<SocketAddr> {
+    // Handle various URL formats
+    let url = url.trim();
+
+    // Remove protocol prefix if present
+    let without_protocol = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))
+        .unwrap_or(url);
+
+    // Parse as SocketAddr
+    without_protocol
+        .parse()
+        .with_context(|| format!("Failed to parse service URL: {}", url))
 }
 
+/// Discover service via mDNS/Bonjour
+///
+/// Searches for services advertising the capability via mDNS.
+/// Service names follow the pattern: `_<capability>-service._tcp.local`
+///
+/// # Example
+/// ```text
+/// _crypto-service._tcp.local     -> crypto capability
+/// _storage-service._tcp.local    -> storage capability
+/// _coord-service._tcp.local      -> coordination capability
+/// ```
+///
+/// # Returns
+/// A list of discovered service endpoints with `TrustLevel::Advertised`.
+///
+/// # Timeout
+/// Discover services via mDNS for local network service discovery.
+///
+/// Discovery runs for 2 seconds to allow time for mDNS responses.
+///
+/// **Status**: Stub implementation - full mDNS planned for v0.3.0
+#[allow(dead_code)]
+async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpoint>> {
+    // FUTURE: Complete mDNS implementation (planned for v0.3.0)
+    //
+    // BLOCKED: The mdns crate (v3.0) uses async-std runtime which has compatibility
+    // issues with tokio. Waiting for mdns-sd crate maturity or tokio-compatible fork.
+    // Options for implementation:
+    //
+    // 1. Use mdns-sd crate instead (pure tokio)
+    // 2. Run mdns in separate thread pool with async-std
+    // 3. Use libmdns FFI bindings
+    // 4. Implement custom mDNS using tokio UDP sockets
+    //
+    // Service name pattern: _<capability>-service._tcp.local
+    // Example: _crypto-service._tcp.local for crypto capability
+    //
+    // See MDNS_DISCOVERY_GUIDE.md for full implementation plan.
+
+    let service_name = format!("_{}-service._tcp.local", capability_category);
+    debug!("mDNS discovery not yet implemented for {}", service_name);
+    debug!("Skipping mDNS discovery - use environment variables or config files instead");
+
+    // Return empty for now - other discovery methods will be tried
+    Ok(Vec::new())
+}
+
+// ============================================================================
+// ⚠️ DEPRECATED LEGACY DISCOVERY (Hardcoded Ports)
+// ============================================================================
+// The functions below are DEPRECATED and use hardcoded service ports.
+// They violate the infant discovery principle.
+//
+// **DO NOT USE** in new code. Use `discover_service_by_capability()` instead.
+//
+// These will be removed after `integrator_impl.rs` is migrated to the new
+// capability-based discovery system.
+// ============================================================================
+
+// ✅ REMOVED: get_standard_service_ports() function (December 2, 2025)
+// This function violated infant discovery principles with hardcoded ports.
+// Use toadstool_config::ports::PortRegistry for dynamic port configuration.
+// Use toadstool_config::services::ServiceRegistry for service discovery.
+
+// ✅ REMOVED: scan_for_service() - deprecated since 0.1.0
+// Use discover_service_by_capability() instead for capability-based discovery
+
+// ✅ REMOVED: is_service_reachable() - was only used by deprecated scan_for_service()
+
 /// Verify a discovered service by checking its health endpoint
+///
+/// # Errors
+/// Returns an error if the service verification encounters network issues
+/// or connection failures. Note: Verification timeout or unreachable service
+/// returns `Ok(false)` rather than an error.
+#[must_use = "Service verification result should be checked"]
 pub async fn verify_service(service: &ServiceEndpoint) -> Result<bool> {
     // Try to connect with a longer timeout for verification
     match timeout(
@@ -89,15 +292,9 @@ pub async fn verify_service(service: &ServiceEndpoint) -> Result<bool> {
     }
 }
 
-/// Parse service type from string
-fn parse_service_type(service_type: &str) -> EcosystemService {
-    match service_type.to_lowercase().as_str() {
-        "songbird" => EcosystemService::Songbird,
-        "beardog" => EcosystemService::BearDog,
-        "nestgate" => EcosystemService::NestGate,
-        _ => EcosystemService::Unknown(service_type.to_string()),
-    }
-}
+// ⚠️ DEPRECATED: Service name parsing removed
+// Services are now discovered by CAPABILITY, not by name.
+// See: crates/cli/src/ecosystem/capabilities/ for the new system.
 
 // health_check() removed - was unused. Service health is checked via
 // is_service_reachable() and verify_service() which are actively used.

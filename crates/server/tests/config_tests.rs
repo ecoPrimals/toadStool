@@ -16,7 +16,7 @@ fn test_server_config_default() {
     let config = ServerConfig::default();
 
     assert!(config.enable_api);
-    assert!(config.enable_websocket);
+    assert!(!config.enable_websocket); // Disabled by default for security
     assert!(config.enable_cors);
     assert_eq!(config.max_concurrent_executions, 100);
     assert_eq!(config.default_timeout, Duration::from_secs(300));

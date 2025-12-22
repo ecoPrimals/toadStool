@@ -10,7 +10,7 @@ use uuid::Uuid;
 // Test 1-15: Constructor and Initialization
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_new_succeeds() {
     // Test: UniversalCloudOrchestrator::new() creates instance
     let config = create_test_config();
@@ -19,7 +19,7 @@ async fn test_orchestrator_new_succeeds() {
     assert!(result.is_ok(), "Orchestrator creation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initializes_scheduler() {
     // Test: Hybrid scheduler is initialized
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -29,7 +29,7 @@ async fn test_orchestrator_initializes_scheduler() {
     assert!(orchestrator.has_scheduler(), "Should have scheduler");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initializes_cost_optimizer() {
     // Test: Cost optimizer is initialized
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -42,7 +42,7 @@ async fn test_orchestrator_initializes_cost_optimizer() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initializes_compliance_enforcer() {
     // Test: Compliance enforcer is initialized
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -55,7 +55,7 @@ async fn test_orchestrator_initializes_compliance_enforcer() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initializes_load_balancer() {
     // Test: Load balancer is initialized
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -68,7 +68,7 @@ async fn test_orchestrator_initializes_load_balancer() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initializes_federation_manager() {
     // Test: Federation manager is initialized
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -81,7 +81,7 @@ async fn test_orchestrator_initializes_federation_manager() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_starts_with_no_providers() {
     // Test: Initial state has zero providers
     let orchestrator = create_mock_orchestrator(create_test_config())
@@ -92,7 +92,7 @@ async fn test_orchestrator_starts_with_no_providers() {
     assert_eq!(count, 0, "Should start with zero providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_config_validation() {
     // Test: Configuration is validated
     let config = create_test_config();
@@ -100,7 +100,7 @@ async fn test_orchestrator_config_validation() {
     assert!(config.is_valid(), "Config should be valid");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_scheduling_strategy() {
     // Test: Scheduling strategy is set correctly
     let config = create_test_config_with_strategy("cost-optimized");
@@ -108,7 +108,7 @@ async fn test_orchestrator_scheduling_strategy() {
     assert_eq!(config.strategy, "cost-optimized");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_cost_config() {
     // Test: Cost configuration is applied
     let config = create_test_config();
@@ -120,7 +120,7 @@ async fn test_orchestrator_cost_config() {
 // Test 16-30: Provider Registration
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_success() {
     // Test: Provider registration succeeds
     let mut orchestrator = create_mock_orchestrator(create_test_config())
@@ -133,7 +133,7 @@ async fn test_register_provider_success() {
     assert!(result.is_ok(), "Provider registration should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_validates_capabilities() {
     // Test: Provider capabilities are validated
     let provider = create_mock_provider();
@@ -143,7 +143,7 @@ async fn test_register_provider_validates_capabilities() {
     // Just verify it exists - field access verifies retrievability
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_validates_metadata() {
     // Test: Provider metadata is validated
     let provider = create_mock_provider();
@@ -152,7 +152,7 @@ async fn test_register_provider_validates_metadata() {
     assert!(!metadata.name.is_empty(), "Provider should have name");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_updates_cost_models() {
     // Test: Cost models are updated
     let mut orchestrator = create_mock_orchestrator(create_test_config())
@@ -170,7 +170,7 @@ async fn test_register_provider_updates_cost_models() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_updates_compliance() {
     // Test: Compliance rules are updated
     let mut orchestrator = create_mock_orchestrator(create_test_config())
@@ -188,7 +188,7 @@ async fn test_register_provider_updates_compliance() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_multiple_providers() {
     // Test: Multiple providers can be registered
     let mut orchestrator = create_mock_orchestrator(create_test_config())
@@ -212,7 +212,7 @@ async fn test_register_multiple_providers() {
     assert_eq!(count, 3, "Should have 3 providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_duplicate_name() {
     // Test: Duplicate provider names are handled
     let mut orchestrator = create_mock_orchestrator(create_test_config())
@@ -237,7 +237,7 @@ async fn test_register_provider_duplicate_name() {
 // Test 31-45: Job Deployment - Single Cloud
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_job_single_cloud() {
     // Test: Deploy job to single cloud
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -247,7 +247,7 @@ async fn test_deploy_job_single_cloud() {
     assert!(result.is_ok(), "Single cloud deployment should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_analyzes_requirements() {
     // Test: Job requirements are analyzed
     let job = create_test_job();
@@ -259,7 +259,7 @@ async fn test_deploy_analyzes_requirements() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_selects_optimal_provider() {
     // Test: Optimal provider is selected
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -269,7 +269,7 @@ async fn test_deploy_selects_optimal_provider() {
     assert!(provider.is_ok(), "Should select optimal provider");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_checks_compliance() {
     // Test: Compliance is checked before deployment
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -279,7 +279,7 @@ async fn test_deploy_checks_compliance() {
     assert!(compliant, "Deployment should be compliant");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_estimates_cost() {
     // Test: Cost is estimated before deployment
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -289,7 +289,7 @@ async fn test_deploy_estimates_cost() {
     assert!(cost > 0.0, "Should have cost estimate");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_validates_provider_exists() {
     // Test: Validates provider exists
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -301,7 +301,7 @@ async fn test_deploy_validates_provider_exists() {
     assert!(!missing, "Nonexistent provider should not exist");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_handles_provider_failure() {
     // Test: Handles provider failure gracefully
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -316,7 +316,7 @@ async fn test_deploy_handles_provider_failure() {
 // Test 46-60: Multi-Cloud Deployment
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_multi_cloud_distribution() {
     // Test: Multi-cloud distribution works
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -326,7 +326,7 @@ async fn test_deploy_multi_cloud_distribution() {
     assert!(result.is_ok(), "Multi-cloud deployment should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_split_workload() {
     // Test: Workload is split across clouds
     let distribution = vec![("aws", 50), ("gcp", 30), ("azure", 20)];
@@ -335,7 +335,7 @@ async fn test_deploy_split_workload() {
     assert_eq!(total, 100, "Distribution should sum to 100%");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_burst_distribution() {
     // Test: Burst distribution strategy
     let _primary = "aws";
@@ -344,7 +344,7 @@ async fn test_deploy_burst_distribution() {
     assert_eq!(burst_providers.len(), 2, "Should have burst providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_federated_strategy() {
     // Test: Federated deployment strategy
     let providers = vec!["aws", "gcp", "azure"];
@@ -352,7 +352,7 @@ async fn test_deploy_federated_strategy() {
     assert!(providers.len() >= 2, "Federated needs multiple providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_load_balancing() {
     // Test: Load balancing across providers
     let _orchestrator = create_configured_orchestrator().await.unwrap();
@@ -363,7 +363,7 @@ async fn test_deploy_load_balancing() {
     assert!((total - 100.0).abs() < 0.01, "Loads should balance to 100%");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deploy_failover_handling() {
     // Test: Failover to backup provider
     let _orchestrator = create_configured_orchestrator().await.unwrap();
@@ -379,7 +379,7 @@ async fn test_deploy_failover_handling() {
 // Test 61-75: Cost Optimization
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cost_optimization_spot_instances() {
     // Test: Spot instance optimization
     let orchestrator = create_configured_orchestrator().await.unwrap();
@@ -391,7 +391,7 @@ async fn test_cost_optimization_spot_instances() {
     assert!(spot_cost < on_demand_cost, "Spot should be cheaper");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cost_optimization_reserved_instances() {
     // Test: Reserved instance optimization
     let reserved_discount = 0.3; // 30% discount
@@ -402,7 +402,7 @@ async fn test_cost_optimization_reserved_instances() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cost_optimization_region_selection() {
     // Test: Cheapest region selection
     let regions = vec![("us-east-1", 1.0), ("us-west-2", 1.2), ("eu-west-1", 1.5)];
@@ -415,7 +415,7 @@ async fn test_cost_optimization_region_selection() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cost_optimization_resource_rightsizing() {
     // Test: Resource rightsizing recommendations
     let requested = ResourceSize { cpu: 8, memory: 16 };
@@ -424,7 +424,7 @@ async fn test_cost_optimization_resource_rightsizing() {
     assert!(actual.cpu < requested.cpu, "Should recommend smaller size");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cost_tracking_per_job() {
     // Test: Cost tracking per job
     let job_id = Uuid::new_v4();
@@ -443,7 +443,7 @@ async fn test_cost_tracking_per_job() {
 // Test 76-85: Helper Functions and Mocks
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_result_success() {
     // Test: Successful deployment result
     let result = create_success_result();
@@ -452,7 +452,7 @@ async fn test_deployment_result_success() {
     assert!(!result.deployment_id.is_nil(), "Should have deployment ID");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_result_failure() {
     // Test: Failed deployment result
     let result = create_failure_result("Provider unavailable");
@@ -461,7 +461,7 @@ async fn test_deployment_result_failure() {
     assert!(result.has_error(), "Should have error message");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cloud_provider_capabilities() {
     // Test: Provider capabilities structure
     let provider = create_mock_provider();
@@ -471,7 +471,7 @@ async fn test_cloud_provider_capabilities() {
     assert!(caps.supports_storage, "Should support storage");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_requirements_validation() {
     // Test: Resource requirements validation
     let requirements = ResourceRequirements {
@@ -485,7 +485,7 @@ async fn test_resource_requirements_validation() {
     assert!(requirements.memory_gb > 0, "Memory should be positive");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_strategy_selection() {
     // Test: Deployment strategy selection logic
     let small_job = create_test_job();

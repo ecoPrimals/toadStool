@@ -153,7 +153,7 @@ fn test_performance_characteristics() {
     assert_eq!(perf.typical_power_watts, 150.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_default() {
     let device = create_test_device();
     let usage = device.usage.read().await;
@@ -233,7 +233,7 @@ fn test_performance_optional_precision() {
     assert!(perf.peak_gflops_fp16.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_temperature() {
     let device = create_test_device();
     let usage = device.usage.read().await;
@@ -241,7 +241,7 @@ async fn test_device_usage_temperature() {
     assert!(usage.temperature_celsius.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_device_usage_power() {
     let device = create_test_device();
     let usage = device.usage.read().await;

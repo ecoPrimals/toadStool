@@ -189,7 +189,7 @@ mod workload_execution_tests {
     // Workload Lifecycle Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_workload_registry_operations() {
         let workloads: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -230,7 +230,7 @@ mod workload_execution_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_workload_execution() {
         let workloads: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -252,7 +252,7 @@ mod workload_execution_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_workload_state_transitions() {
         let workload_states = vec![
             "pending",

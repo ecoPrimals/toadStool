@@ -153,16 +153,11 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                 search_domains: vec![
                     "toadstool.local".to_string(),
                     "ecosystem.local".to_string(),
-                    "primal.local".to_string(),
+                    std::env::var("TOADSTOOL_BASE_DOMAIN")
+                        .unwrap_or_else(|_| "primal.local".to_string()),
                 ],
-                service_domains: ServiceDomainsConfig {
-                    toadstool: "toadstool.primal.local".to_string(),
-                    songbird: "songbird.primal.local".to_string(),
-                    beardog: "beardog.primal.local".to_string(),
-                    nestgate: "nestgate.primal.local".to_string(),
-                    squirrel: "squirrel.primal.local".to_string(),
-                    biomeos: "biomeos.primal.local".to_string(),
-                },
+                // Use environment-aware service domains instead of hardcoded values
+                service_domains: ServiceDomainsConfig::from_env(),
                 resolution_timeout: Duration::from_secs(5),
                 cache: DnsCacheConfig {
                     base: CacheConfig {
@@ -192,7 +187,16 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     },
                     beardog_integration: BearDogIntegrationConfig {
                         enabled: true,
-                        endpoint: "http://beardog.primal.local:8000".to_string(),
+                        // Use environment-configured endpoint or discover via PKI capability
+                        endpoint: std::env::var("BEARDOG_ENDPOINT")
+                            .or_else(|_| {
+                                // Fallback: construct from domain config
+                                let domains = ServiceDomainsConfig::from_env();
+                                Ok(format!("http://{}:8000", domains.beardog))
+                            })
+                            .unwrap_or_else(|_: std::env::VarError| {
+                                "http://localhost:8000".to_string()
+                            }),
                         auth_token: None,
                         signature_verification: true,
                         crypto_lock: true,
@@ -382,76 +386,80 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
             health_monitoring: HealthMonitoringConfig {
                 enabled: true,
                 interval: Duration::from_secs(30),
-                endpoints: vec![
-                    HealthEndpoint {
-                        name: "songbird".to_string(),
-                        url: "http://songbird.primal.local:7000/health".to_string(),
-                        health_check: HttpHealthCheckConfig {
-                            base: HealthCheckConfig {
-                                enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
-                                healthy_threshold: 2,
-                                unhealthy_threshold: 3,
-                                retry_count: 3,
+                // Health endpoints now constructed dynamically from service domains
+                endpoints: {
+                    let domains = ServiceDomainsConfig::from_env();
+                    vec![
+                        HealthEndpoint {
+                            name: "orchestration".to_string(), // Capability-based name
+                            url: format!("http://{}:7000/health", domains.songbird),
+                            health_check: HttpHealthCheckConfig {
+                                base: HealthCheckConfig {
+                                    enabled: true,
+                                    interval: Duration::from_secs(30),
+                                    timeout: Duration::from_secs(5),
+                                    healthy_threshold: 2,
+                                    unhealthy_threshold: 3,
+                                    retry_count: 3,
+                                },
+                                path: "/health".to_string(),
+                                expected_status: 200,
+                                method: "GET".to_string(),
                             },
-                            path: "/health".to_string(),
-                            expected_status: 200,
-                            method: "GET".to_string(),
                         },
-                    },
-                    HealthEndpoint {
-                        name: "beardog".to_string(),
-                        url: "http://beardog.primal.local:8000/health".to_string(),
-                        health_check: HttpHealthCheckConfig {
-                            base: HealthCheckConfig {
-                                enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
-                                healthy_threshold: 2,
-                                unhealthy_threshold: 3,
-                                retry_count: 3,
+                        HealthEndpoint {
+                            name: "pki".to_string(), // Capability-based name
+                            url: format!("http://{}:8000/health", domains.beardog),
+                            health_check: HttpHealthCheckConfig {
+                                base: HealthCheckConfig {
+                                    enabled: true,
+                                    interval: Duration::from_secs(30),
+                                    timeout: Duration::from_secs(5),
+                                    healthy_threshold: 2,
+                                    unhealthy_threshold: 3,
+                                    retry_count: 3,
+                                },
+                                path: "/health".to_string(),
+                                expected_status: 200,
+                                method: "GET".to_string(),
                             },
-                            path: "/health".to_string(),
-                            expected_status: 200,
-                            method: "GET".to_string(),
                         },
-                    },
-                    HealthEndpoint {
-                        name: "nestgate".to_string(),
-                        url: "http://nestgate.primal.local:9000/health".to_string(),
-                        health_check: HttpHealthCheckConfig {
-                            base: HealthCheckConfig {
-                                enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
-                                healthy_threshold: 2,
-                                unhealthy_threshold: 3,
-                                retry_count: 3,
+                        HealthEndpoint {
+                            name: "storage".to_string(), // Capability-based name
+                            url: format!("http://{}:9000/health", domains.nestgate),
+                            health_check: HttpHealthCheckConfig {
+                                base: HealthCheckConfig {
+                                    enabled: true,
+                                    interval: Duration::from_secs(30),
+                                    timeout: Duration::from_secs(5),
+                                    healthy_threshold: 2,
+                                    unhealthy_threshold: 3,
+                                    retry_count: 3,
+                                },
+                                path: "/health".to_string(),
+                                expected_status: 200,
+                                method: "GET".to_string(),
                             },
-                            path: "/health".to_string(),
-                            expected_status: 200,
-                            method: "GET".to_string(),
                         },
-                    },
-                    HealthEndpoint {
-                        name: "squirrel".to_string(),
-                        url: "http://squirrel.primal.local:6000/health".to_string(),
-                        health_check: HttpHealthCheckConfig {
-                            base: HealthCheckConfig {
-                                enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
-                                healthy_threshold: 2,
-                                unhealthy_threshold: 3,
-                                retry_count: 3,
+                        HealthEndpoint {
+                            name: "ai".to_string(), // Capability-based name
+                            url: format!("http://{}:6000/health", domains.squirrel),
+                            health_check: HttpHealthCheckConfig {
+                                base: HealthCheckConfig {
+                                    enabled: true,
+                                    interval: Duration::from_secs(30),
+                                    timeout: Duration::from_secs(5),
+                                    healthy_threshold: 2,
+                                    unhealthy_threshold: 3,
+                                    retry_count: 3,
+                                },
+                                path: "/health".to_string(),
+                                expected_status: 200,
+                                method: "GET".to_string(),
                             },
-                            path: "/health".to_string(),
-                            expected_status: 200,
-                            method: "GET".to_string(),
                         },
-                    },
-                ],
+                    ]
+                },
                 alerting: AlertingConfig {
                     enabled: true,
                     channels: vec![AlertChannel {

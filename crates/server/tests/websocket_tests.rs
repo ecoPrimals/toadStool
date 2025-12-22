@@ -26,10 +26,11 @@ fn create_test_state() -> ServerState {
         config,
         resource_monitor,
         stats,
+        capability_provider: None,
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_execution_started_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -49,7 +50,7 @@ async fn test_format_execution_started_event() {
     assert!(parsed["data"]["runtime_type"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_execution_completed_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -71,7 +72,7 @@ async fn test_format_execution_completed_event() {
     assert_eq!(parsed["data"]["duration_ms"], 1500);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_runtime_engine_registered_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -88,7 +89,7 @@ async fn test_format_runtime_engine_registered_event() {
     assert!(parsed["data"]["runtime_type"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_resource_usage_update_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -109,7 +110,7 @@ async fn test_format_resource_usage_update_event() {
     assert_eq!(parsed["data"]["active_executions"], 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_health_status_changed_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -128,7 +129,7 @@ async fn test_format_health_status_changed_event() {
     assert_eq!(parsed["data"]["message"], "All systems operational");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_error_occurred_event() {
     use toadstool_server::websocket::format_server_event;
 
@@ -150,7 +151,7 @@ async fn test_format_error_occurred_event() {
     assert!(parsed["data"]["execution_id"].is_string());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_error_occurred_event_without_execution_id() {
     use toadstool_server::websocket::format_server_event;
 
@@ -170,7 +171,7 @@ async fn test_format_error_occurred_event_without_execution_id() {
     assert_eq!(parsed["data"]["execution_id"], serde_json::Value::Null);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_ping_message() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -195,7 +196,7 @@ async fn test_handle_ping_message() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_get_status_message() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -222,7 +223,7 @@ async fn test_handle_get_status_message() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_subscribe_message() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -247,7 +248,7 @@ async fn test_handle_subscribe_message() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_unknown_message_type() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -272,7 +273,7 @@ async fn test_handle_unknown_message_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_message_without_type() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -297,7 +298,7 @@ async fn test_handle_message_without_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_handle_invalid_json_message() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -311,7 +312,7 @@ async fn test_handle_invalid_json_message() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_creation() {
     let state = create_test_state();
 
@@ -320,7 +321,7 @@ async fn test_server_state_creation() {
     assert_eq!(state.runtime_engines.read().await.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_event_broadcasting() {
     let state = create_test_state();
     let mut receiver = state.event_broadcaster.subscribe();
@@ -351,7 +352,7 @@ async fn test_event_broadcasting() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_event_subscribers() {
     let state = create_test_state();
     let mut receiver1 = state.event_broadcaster.subscribe();
@@ -379,7 +380,7 @@ async fn test_multiple_event_subscribers() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_message_handling() {
     use axum::extract::ws::Message;
     use toadstool_server::websocket::handle_client_message;
@@ -417,7 +418,7 @@ async fn test_concurrent_message_handling() {
     assert_eq!(count, 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_all_event_types() {
     use toadstool_server::websocket::format_server_event;
 
@@ -468,7 +469,7 @@ async fn test_format_all_event_types() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_status_response_structure() {
     use axum::extract::ws::Message;
     use std::time::Duration;

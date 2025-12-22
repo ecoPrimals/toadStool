@@ -1,0 +1,6 @@
+customer_id,purchase_amount,category,timestamp
+001,125.50,electronics,2025-12-21T09:00:00Z
+002,89.99,clothing,2025-12-21T09:01:00Z
+003,245.00,electronics,2025-12-21T09:02:00Z
+...
+[5,000 records total]

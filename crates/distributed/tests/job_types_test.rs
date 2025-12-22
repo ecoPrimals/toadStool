@@ -448,11 +448,15 @@ fn test_compatibility_mode_emulated() {
 
 #[test]
 fn test_compatibility_mode_to_string() {
-    // Test converting compatibility mode to string
+    // Test converting compatibility mode to string (zero-copy)
     let mode = CompatibilityMode::Native;
-    let mode_str = mode.to_mode_string();
+    let mode_str = mode.as_str(); // Zero-copy optimization
 
     assert_eq!(mode_str, "native");
+
+    // Test owned string if needed
+    let owned = mode.as_str().to_string();
+    assert_eq!(owned, "native");
 }
 
 #[test]

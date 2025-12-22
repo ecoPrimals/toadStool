@@ -4,12 +4,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType, ToadStoolError,
-    ToadStoolResult,
+    ToadStoolResult, WorkloadType,
 };
+
+use crate::workload::{BackendSelector, WorkloadAnalyzer};
 
 /// Runtime orchestrator that manages multiple runtime engines
 pub struct RuntimeOrchestrator {
@@ -17,6 +19,10 @@ pub struct RuntimeOrchestrator {
     engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
     /// Runtime selection strategy
     selection_strategy: RuntimeSelectionStrategy,
+    /// Workload analyzer for intelligent routing (AI/ML, CUDA)
+    workload_analyzer: Arc<WorkloadAnalyzer>,
+    /// Backend selector for intelligent backend routing
+    backend_selector: Arc<BackendSelector>,
 }
 
 impl RuntimeOrchestrator {
@@ -26,6 +32,22 @@ impl RuntimeOrchestrator {
         Self {
             engines: Arc::new(RwLock::new(HashMap::new())),
             selection_strategy,
+            workload_analyzer: Arc::new(WorkloadAnalyzer::new()),
+            backend_selector: Arc::new(BackendSelector::new()),
+        }
+    }
+
+    /// Create orchestrator with custom backend selector (for testing)
+    #[must_use]
+    pub fn with_backend_selector(
+        selection_strategy: RuntimeSelectionStrategy,
+        backend_selector: BackendSelector,
+    ) -> Self {
+        Self {
+            engines: Arc::new(RwLock::new(HashMap::new())),
+            selection_strategy,
+            workload_analyzer: Arc::new(WorkloadAnalyzer::new()),
+            backend_selector: Arc::new(backend_selector),
         }
     }
 
@@ -94,10 +116,73 @@ impl RuntimeOrchestrator {
             }
         }
 
-        // Use selection strategy to choose runtime
-        self.selection_strategy
-            .select_runtime(request, &self.engines)
-            .await
+        // For AI/ML and CUDA workloads, use intelligent backend selection
+        let workload_type = request.workload.workload_type();
+        match workload_type {
+            WorkloadType::AiMl | WorkloadType::Cuda => {
+                self.select_intelligent_backend(request).await
+            }
+            _ => {
+                // Use standard selection strategy for other workloads
+                self.selection_strategy
+                    .select_runtime(request, &self.engines)
+                    .await
+            }
+        }
+    }
+
+    /// Intelligent backend selection for AI/ML and CUDA workloads
+    async fn select_intelligent_backend(
+        &self,
+        request: &ExecutionRequest,
+    ) -> ToadStoolResult<RuntimeType> {
+        // Analyze workload characteristics
+        let characteristics = self.workload_analyzer.analyze(&request.workload);
+
+        debug!(
+            "Workload characteristics: compute={:?}, memory={:?}, parallelism={:?}, gpu_advantage={:?}, cpu_viable={}",
+            characteristics.compute_intensity,
+            characteristics.memory_requirement,
+            characteristics.parallelism_level,
+            characteristics.gpu_advantage,
+            characteristics.cpu_viable
+        );
+
+        // For CUDA workloads, use backend selector to choose optimal backend
+        if matches!(request.workload.workload_type(), WorkloadType::Cuda) {
+            let decision = self.backend_selector.select_cuda_backend(&characteristics);
+
+            info!(
+                "Selected backend: {:?} (confidence: {:.0}%) - {}",
+                decision.cuda_backend,
+                decision.confidence * 100.0,
+                decision.reasoning
+            );
+
+            // Map CUDA backend to runtime type
+            // For now, all CUDA backends use the GPU runtime
+            // In the future, we might have separate runtimes for CPU fallback
+            let engines = self.engines.read().await;
+            if engines.contains_key(&RuntimeType::Gpu) {
+                Ok(RuntimeType::Gpu)
+            } else {
+                warn!("GPU runtime not available for CUDA workload, falling back to Native");
+                Ok(RuntimeType::Native)
+            }
+        } else {
+            // For AI/ML workloads, prefer GPU if available, otherwise use Native
+            let engines = self.engines.read().await;
+            if engines.contains_key(&RuntimeType::Gpu) {
+                info!("AI/ML workload: using GPU runtime");
+                Ok(RuntimeType::Gpu)
+            } else if engines.contains_key(&RuntimeType::Python) {
+                info!("AI/ML workload: using Python runtime (GPU not available)");
+                Ok(RuntimeType::Python)
+            } else {
+                info!("AI/ML workload: using Native runtime (fallback)");
+                Ok(RuntimeType::Native)
+            }
+        }
     }
 }
 
@@ -108,7 +193,7 @@ pub enum RuntimeSelectionStrategy {
     FirstAvailable,
     /// Use the runtime with the lowest load
     LoadBalanced,
-    /// Use the runtime best suited for the workload
+    /// Use the runtime best suited for the workload (with intelligent backend selection for AI/ML and CUDA)
     OptimalMatch,
 }
 

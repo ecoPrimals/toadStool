@@ -21,7 +21,7 @@ members = [
     "crates/management/analytics",    # Sprint 5
     "crates/runtime/container",
     "crates/runtime/gpu",
-    # "crates/runtime/specialty",  # ⚠️ async_trait fixed, but has 255 other compilation errors - needs full review session
+    # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations (see docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md)
     "crates/runtime/native",
     "crates/runtime/python",
     "crates/runtime/wasm",
@@ -32,6 +32,7 @@ members = [
     "crates/testing",
     "examples",
     "showcase",                       # Production showcase demos
+    "showcase/local-capabilities",    # Local capabilities showcase
 ]
 
 [workspace.package]
@@ -48,6 +49,14 @@ keywords = ["compute", "sandbox", "runtime", "security", "execution"]
 categories = ["development-tools", "web-programming", "api-bindings"]
 
 [workspace.dependencies]
+# ============================================================================
+# GPU COMPUTE FRAMEWORKS - Universal versioning to prevent linker conflicts
+# ============================================================================
+# CRITICAL: wgpu must be the same version across all crates to prevent
+# duplicate symbol errors during linking (wgpu_core symbols)
+wgpu = "0.19"
+
+
 # Core dependencies
 tokio = { version = "1.35", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -146,3 +155,14 @@ lto = true
 
 
  
+# Pedantic clippy enabled for improved code quality
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+# Allow certain pedantic lints for now (to be addressed in future sprints)
+missing-panics-doc = "allow"
+module-name-repetitions = "allow" 
+cast-precision-loss = "allow"
+cast-possible-truncation = "allow"
+cast-sign-loss = "allow"
+cast-possible-wrap = "allow"

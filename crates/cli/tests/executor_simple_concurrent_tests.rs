@@ -597,6 +597,7 @@ async fn test_mixed_operations_stress() -> Result<()> {
                     exec.down_biome(biome_name, false, 30, false).await
                 }));
             }
+            #[allow(clippy::unreachable)] // Test: all enum variants covered
             _ => unreachable!(),
         }
     }

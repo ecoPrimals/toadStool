@@ -52,13 +52,13 @@ fn test_evaluator_default() {
 }
 
 // Test Always condition
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_condition_always() {
     let condition = "Always";
     assert_eq!(condition, "Always");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_condition_always_evaluation() {
     // Always condition should always evaluate to true
     let result = true;
@@ -66,13 +66,13 @@ async fn test_condition_always_evaluation() {
 }
 
 // Test Never condition
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_condition_never() {
     let condition = "Never";
     assert_eq!(condition, "Never");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_condition_never_evaluation() {
     // Never condition should always evaluate to false
     let result = false;
@@ -109,42 +109,42 @@ fn test_workload_type_condition_multiple() {
 }
 
 // Test workload type matching
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_native_match() {
     let workload_types = vec!["native".to_string()];
     let context_workload_type = "native";
     assert!(workload_types.contains(&context_workload_type.to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_wasm_match() {
     let workload_types = vec!["wasm".to_string()];
     let context_workload_type = "wasm";
     assert!(workload_types.contains(&context_workload_type.to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_container_match() {
     let workload_types = vec!["container".to_string()];
     let context_workload_type = "container";
     assert!(workload_types.contains(&context_workload_type.to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_gpu_match() {
     let workload_types = vec!["gpu".to_string()];
     let context_workload_type = "gpu";
     assert!(workload_types.contains(&context_workload_type.to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_python_match() {
     let workload_types = vec!["python".to_string()];
     let context_workload_type = "python";
     assert!(workload_types.contains(&context_workload_type.to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_type_no_match() {
     let workload_types = vec!["native".to_string()];
     let context_workload_type = "wasm";
@@ -171,7 +171,7 @@ fn test_requires_capability_single() {
 }
 
 // Test capability matching
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_match_any() {
     let required_capabilities = vec!["network".to_string(), "filesystem".to_string()];
     let context_capabilities = vec!["network".to_string()];
@@ -182,7 +182,7 @@ async fn test_capability_match_any() {
     assert!(matches);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_no_match() {
     let required_capabilities = vec!["network".to_string()];
     let context_capabilities = vec!["filesystem".to_string()];
@@ -193,7 +193,7 @@ async fn test_capability_no_match() {
     assert!(!matches);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_multiple_matches() {
     let required_capabilities = vec!["network".to_string(), "filesystem".to_string()];
     let context_capabilities = vec!["network".to_string(), "filesystem".to_string()];
@@ -244,7 +244,7 @@ fn test_time_window_empty_days() {
 }
 
 // Test time window hour matching
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_time_window_hour_in_range() {
     let start_hour = 9u8;
     let end_hour = 17u8;
@@ -254,7 +254,7 @@ async fn test_time_window_hour_in_range() {
     assert!(in_range);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_time_window_hour_before_range() {
     let start_hour = 9u8;
     let end_hour = 17u8;
@@ -264,7 +264,7 @@ async fn test_time_window_hour_before_range() {
     assert!(!in_range);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_time_window_hour_after_range() {
     let start_hour = 9u8;
     let end_hour = 17u8;
@@ -274,7 +274,7 @@ async fn test_time_window_hour_after_range() {
     assert!(!in_range);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_time_window_overnight_range() {
     let start_hour = 22u8;
     let end_hour = 6u8;
@@ -285,7 +285,7 @@ async fn test_time_window_overnight_range() {
     assert!(in_range);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_time_window_overnight_range_early_morning() {
     let start_hour = 22u8;
     let end_hour = 6u8;
@@ -349,49 +349,49 @@ fn test_composite_condition_multiple_conditions() {
 }
 
 // Test composite condition evaluation logic
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_and_both_true() {
     let result1 = true;
     let result2 = true;
     assert!(result1 && result2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_and_one_false() {
     let result1 = true;
     let result2 = false;
     assert!(!(result1 && result2));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_or_both_true() {
     let result1 = true;
     let result2 = true;
     assert!(result1 || result2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_or_one_true() {
     let result1 = true;
     let result2 = false;
     assert!(result1 || result2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_or_both_false() {
     let result1 = false;
     let result2 = false;
     assert!(!(result1 || result2));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_not_true() {
     let result = true;
     // Test that NOT true == false
     assert!(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_composite_not_false() {
     let result = false;
     // Test that NOT false == true
@@ -399,7 +399,7 @@ async fn test_composite_not_false() {
 }
 
 // Test UserContext condition
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_user_context_username_match() {
     let allowed_users = vec!["alice".to_string(), "bob".to_string()];
     let username = "alice".to_string();
@@ -407,7 +407,7 @@ async fn test_user_context_username_match() {
     assert!(allowed_users.contains(&username));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_user_context_username_no_match() {
     let allowed_users = vec!["alice".to_string(), "bob".to_string()];
     let username = "charlie".to_string();
@@ -415,7 +415,7 @@ async fn test_user_context_username_no_match() {
     assert!(!allowed_users.contains(&username));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_user_context_group_match() {
     let allowed_groups = vec!["admins".to_string(), "operators".to_string()];
     let user_groups = vec!["admins".to_string(), "users".to_string()];
@@ -424,13 +424,13 @@ async fn test_user_context_group_match() {
     assert!(matches);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_user_context_no_user_info() {
     let user_info: Option<MockUserInfo> = None;
     assert!(user_info.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_user_context_empty_restrictions() {
     let allowed_users: Vec<String> = vec![];
     let allowed_groups: Vec<String> = vec![];
@@ -439,7 +439,7 @@ async fn test_user_context_empty_restrictions() {
 }
 
 // Test ResourceUsage condition
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_usage_condition() {
     let cpu_percent = 50.0;
     let memory_mb = 1024;
@@ -448,7 +448,7 @@ async fn test_resource_usage_condition() {
     assert!(memory_mb > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_usage_high_cpu() {
     let cpu_percent = 95.0;
     let threshold = 90.0;
@@ -456,7 +456,7 @@ async fn test_resource_usage_high_cpu() {
     assert!(cpu_percent > threshold);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_usage_high_memory() {
     let memory_mb = 8192;
     let threshold = 4096;
@@ -495,7 +495,7 @@ fn test_evaluation_context_with_user() {
 }
 
 // Test complex scenarios
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complex_evaluation_native_with_network() {
     let workload_type = "native";
     let capabilities = vec!["network".to_string()];
@@ -507,7 +507,7 @@ async fn test_complex_evaluation_native_with_network() {
     assert!(workload_match && capability_match);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complex_evaluation_time_and_user() {
     let hour = 14u8; // 2 PM
     let start_hour = 9u8;

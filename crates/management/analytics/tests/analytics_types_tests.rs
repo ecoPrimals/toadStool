@@ -12,7 +12,7 @@ fn test_analytics_config_default() {
     let config = AnalyticsConfig::default();
 
     assert!(config.enable_realtime);
-    assert_eq!(config.retention_days, 30);
+    assert_eq!(config.retention_days, 90);
     assert_eq!(config.prediction_window_hours, 24);
     assert_eq!(config.collection_interval_secs, 60);
     assert_eq!(config.alert_thresholds.cpu_threshold, 80.0);

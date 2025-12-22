@@ -1,0 +1,11 @@
+{
+  "backend": "Automatic",
+  "samples": 100,
+  "correct": 1,
+  "accuracy": 0.01,
+  "avg_latency_ms": 0.05995000000000001,
+  "min_latency_ms": 0.043,
+  "max_latency_ms": 0.165,
+  "throughput_per_sec": 16680.56713928273,
+  "total_time_ms": 6.0
+}

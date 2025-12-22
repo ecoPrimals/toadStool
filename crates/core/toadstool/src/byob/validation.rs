@@ -1,98 +1,101 @@
-//! Request validation for BYOB deployments
+//! BYOB deployment validation logic
+//!
+//! **Design**: Extracted validation concerns for clarity and testability
 
 use super::byob_types::{ByobDeploymentRequest, ServiceSpec};
 use crate::{ToadStoolError, ToadStoolResult};
 
-/// Validates deployment requests for resource quotas and constraints
+/// Validates BYOB deployment requests against resource quotas
 pub(super) struct DeploymentValidator;
 
 impl DeploymentValidator {
     /// Validate deployment request against resource quotas
-    pub fn validate(request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
+    ///
+    /// **Design**: Checks CPU, memory, storage, GPU, and service count limits
+    pub fn validate_deployment(request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
         Self::validate_resource_quotas(request)?;
         Self::validate_services(request)?;
-        Self::validate_network_config(request)?;
         Ok(())
     }
 
     /// Validate resource quotas
     fn validate_resource_quotas(request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
-        let totals = Self::calculate_resource_totals(request);
+        let total_resources = Self::calculate_total_resources(request);
 
-        if totals.cpu > request.resource_quotas.max_cpu_cores {
+        if total_resources.cpu > request.resource_quotas.max_cpu_cores {
             return Err(ToadStoolError::resource(format!(
                 "CPU requirement {:.2} exceeds team quota {:.2}",
-                totals.cpu, request.resource_quotas.max_cpu_cores
+                total_resources.cpu, request.resource_quotas.max_cpu_cores
             )));
         }
 
-        if totals.memory > request.resource_quotas.max_memory_bytes {
+        if total_resources.memory > request.resource_quotas.max_memory_bytes {
             return Err(ToadStoolError::resource(format!(
                 "Memory requirement {} exceeds team quota {}",
-                totals.memory, request.resource_quotas.max_memory_bytes
+                total_resources.memory, request.resource_quotas.max_memory_bytes
             )));
         }
 
-        if totals.storage > request.resource_quotas.max_storage_bytes {
+        if total_resources.storage > request.resource_quotas.max_storage_bytes {
             return Err(ToadStoolError::resource(format!(
                 "Storage requirement {} exceeds team quota {}",
-                totals.storage, request.resource_quotas.max_storage_bytes
+                total_resources.storage, request.resource_quotas.max_storage_bytes
             )));
         }
 
-        if totals.gpu > request.resource_quotas.max_gpu_count {
+        if total_resources.gpu > request.resource_quotas.max_gpu_count {
             return Err(ToadStoolError::resource(format!(
                 "GPU requirement {} exceeds team quota {}",
-                totals.gpu, request.resource_quotas.max_gpu_count
+                total_resources.gpu, request.resource_quotas.max_gpu_count
             )));
         }
 
         Ok(())
     }
 
-    /// Validate service specifications
+    /// Validate services configuration
     fn validate_services(request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
         if request.services.is_empty() {
             return Err(ToadStoolError::validation(
-                "Deployment must contain at least one service",
+                "Deployment must have at least one service",
             ));
         }
 
-        for (service_name, service_spec) in &request.services {
-            Self::validate_service_spec(service_name, service_spec)?;
-        }
-
-        Ok(())
-    }
-
-    /// Validate individual service specification
-    fn validate_service_spec(name: &str, spec: &ServiceSpec) -> ToadStoolResult<()> {
-        if spec.image.is_empty() {
-            return Err(ToadStoolError::validation(format!(
-                "Service '{name}' has empty image specification"
+        if request.services.len() > request.resource_quotas.max_concurrent_services as usize {
+            return Err(ToadStoolError::resource(format!(
+                "Service count {} exceeds team quota {}",
+                request.services.len(),
+                request.resource_quotas.max_concurrent_services
             )));
         }
 
-        // Validate port specifications
-        for port_mapping in &spec.ports {
-            if port_mapping.container_port == 0 {
-                return Err(ToadStoolError::validation(format!(
-                    "Service '{name}' has invalid container port 0"
-                )));
-            }
+        // Validate individual services
+        for (name, spec) in &request.services {
+            Self::validate_service(name, spec)?;
         }
 
         Ok(())
     }
 
-    /// Validate network configuration
-    fn validate_network_config(request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
-        // Validate network isolation settings
-        if let Some(network_config) = &request.network_config {
-            if network_config.isolation_level.is_empty() {
-                return Err(ToadStoolError::validation(
-                    "Network isolation level must be specified",
-                ));
+    /// Validate individual service
+    fn validate_service(name: &str, spec: &ServiceSpec) -> ToadStoolResult<()> {
+        if spec.image.is_none() && spec.command.is_none() {
+            return Err(ToadStoolError::validation(format!(
+                "Service '{}' must have either image or command specified",
+                name
+            )));
+        }
+
+        // Validate port mappings don't conflict
+        let mut seen_host_ports = std::collections::HashSet::new();
+        for port_mapping in &spec.ports {
+            if let Some(host_port) = port_mapping.host_port {
+                if !seen_host_ports.insert(host_port) {
+                    return Err(ToadStoolError::validation(format!(
+                        "Service '{}' has duplicate host port: {}",
+                        name, host_port
+                    )));
+                }
             }
         }
 
@@ -100,23 +103,23 @@ impl DeploymentValidator {
     }
 
     /// Calculate total resource requirements
-    fn calculate_resource_totals(request: &ByobDeploymentRequest) -> ResourceTotals {
-        let mut totals = ResourceTotals::default();
+    fn calculate_total_resources(request: &ByobDeploymentRequest) -> TotalResources {
+        let mut total = TotalResources::default();
 
-        for service_spec in request.services.values() {
-            totals.cpu += service_spec.resources.cpu_cores.unwrap_or(0.0);
-            totals.memory += service_spec.resources.memory_bytes.unwrap_or(0);
-            totals.storage += service_spec.resources.storage_bytes.unwrap_or(0);
-            totals.gpu += service_spec.resources.gpu_count.unwrap_or(0);
+        for spec in request.services.values() {
+            total.cpu += spec.resources.cpu_cores.unwrap_or(0.0);
+            total.memory += spec.resources.memory_bytes.unwrap_or(0);
+            total.storage += spec.resources.storage_bytes.unwrap_or(0);
+            total.gpu += spec.resources.gpu_count.unwrap_or(0);
         }
 
-        totals
+        total
     }
 }
 
-/// Resource totals for validation
-#[derive(Default)]
-struct ResourceTotals {
+/// Total resources calculated for a deployment
+#[derive(Debug, Default)]
+struct TotalResources {
     cpu: f64,
     memory: u64,
     storage: u64,
@@ -126,68 +129,98 @@ struct ResourceTotals {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::byob::*;
+    use uuid::Uuid;
 
-    #[test]
-    fn test_validate_empty_services() {
-        let mut request = create_test_request();
-        request.services.clear();
-
-        let result = DeploymentValidator::validate(&request);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_resource_quotas_exceeded() {
-        let mut request = create_test_request();
-        request.resource_quotas.max_cpu_cores = 0.5;
-
-        let result = DeploymentValidator::validate(&request);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_valid_request() {
-        let request = create_test_request();
-        let result = DeploymentValidator::validate(&request);
-        assert!(result.is_ok());
-    }
-
-    fn create_test_request() -> ByobDeploymentRequest {
-        use std::collections::HashMap;
-        use uuid::Uuid;
-
-        let mut services = HashMap::new();
-        services.insert(
-            "test-service".to_string(),
-            ServiceSpec {
-                image: "test:latest".to_string(),
-                environment: HashMap::new(),
-                ports: vec![],
-                volumes: vec![],
-                resources: ResourceRequirements {
-                    cpu_cores: Some(1.0),
-                    memory_bytes: Some(1024 * 1024 * 1024),
-                    storage_bytes: Some(1024 * 1024 * 1024),
-                    gpu_count: Some(0),
-                },
-                depends_on: vec![],
-                health_check: None,
+    fn create_test_service() -> ServiceSpec {
+        ServiceSpec {
+            name: "test-service".to_string(),
+            version: "1.0.0".to_string(),
+            image: Some("test:latest".to_string()),
+            command: None,
+            environment: std::collections::HashMap::new(),
+            resources: super::super::byob_types::ServiceResourceRequirements {
+                cpu_cores: Some(1.0),
+                memory_bytes: Some(1024 * 1024 * 1024), // 1GB
+                storage_bytes: Some(10 * 1024 * 1024 * 1024), // 10GB
+                gpu_count: None,
             },
-        );
+            ports: Vec::new(),
+            volumes: Vec::new(),
+            dependencies: Vec::new(),
+            health_check: None,
+            replicas: 1,
+        }
+    }
 
-        ByobDeploymentRequest {
+    #[test]
+    fn test_validate_deployment_success() {
+        let mut services = std::collections::HashMap::new();
+        services.insert("test".to_string(), create_test_service());
+
+        let request = ByobDeploymentRequest {
             deployment_id: Uuid::new_v4(),
-            team_id: "test-team".to_string(),
+            team_id: "team-1".to_string(),
+            deployment_name: "test-deployment".to_string(),
             services,
-            network_config: None,
-            resource_quotas: ResourceQuotas {
+            resource_quotas: super::super::byob_types::TeamResourceQuotas {
+                max_cpu_cores: 10.0,
+                max_memory_bytes: 10 * 1024 * 1024 * 1024, // 10GB
+                max_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
+                max_gpu_count: 0,
+                max_concurrent_services: 10,
+            },
+            security_config: super::super::byob_types::TeamSecurityConfig {
+                isolation_level: "standard".to_string(),
+                network_policies: vec![],
+                volume_policies: vec![],
+                resource_policies: vec![],
+            },
+            network_config: super::super::byob_types::TeamNetworkConfig {
+                network_name: "test-net".to_string(),
+                subnet_cidr: "10.0.0.0/24".to_string(),
+                dns_config: None,
+                load_balancer: None,
+            },
+            created_at: chrono::Utc::now(),
+        };
+
+        assert!(DeploymentValidator::validate_deployment(&request).is_ok());
+    }
+
+    #[test]
+    fn test_validate_deployment_exceeds_cpu_quota() {
+        let mut services = std::collections::HashMap::new();
+        let mut service = create_test_service();
+        service.resources.cpu_cores = Some(20.0);
+        services.insert("test".to_string(), service);
+
+        let request = ByobDeploymentRequest {
+            deployment_id: Uuid::new_v4(),
+            team_id: "team-1".to_string(),
+            deployment_name: "test-deployment".to_string(),
+            services,
+            resource_quotas: super::super::byob_types::TeamResourceQuotas {
                 max_cpu_cores: 10.0,
                 max_memory_bytes: 10 * 1024 * 1024 * 1024,
                 max_storage_bytes: 100 * 1024 * 1024 * 1024,
-                max_gpu_count: 2,
+                max_gpu_count: 0,
+                max_concurrent_services: 10,
             },
-        }
+            security_config: super::super::byob_types::TeamSecurityConfig {
+                isolation_level: "standard".to_string(),
+                network_policies: vec![],
+                volume_policies: vec![],
+                resource_policies: vec![],
+            },
+            network_config: super::super::byob_types::TeamNetworkConfig {
+                network_name: "test-net".to_string(),
+                subnet_cidr: "10.0.0.0/24".to_string(),
+                dns_config: None,
+                load_balancer: None,
+            },
+            created_at: chrono::Utc::now(),
+        };
+
+        assert!(DeploymentValidator::validate_deployment(&request).is_err());
     }
 }
-

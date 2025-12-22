@@ -12,6 +12,7 @@ use crate::ToadStoolResult;
 
 // Import types from parent modules  
 use crate::{LegacySystemType, LegacyArchitecture, SystemStatus, MemoryType, StorageType, NetworkProtocol};
+use crate::{SpecialtyRuntimeConfig, LegacyJob};
 
 /// Runtime metrics for specialty hardware systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,10 +51,10 @@ pub trait LegacyAdapter: Send + Sync {
     fn name(&self) -> &str;
     
     /// Get supported legacy system types
-    fn supported_systems(&self) -> Vec<String>;
+    fn supported_systems(&self) -> Vec<LegacySystemType>;
     
     /// Initialize the adapter
-    async fn initialize(&mut self, config: &HashMap<String, String>) 
+    async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) 
         -> ToadStoolResult<()>;
     
     /// Shutdown the adapter
@@ -61,7 +62,7 @@ pub trait LegacyAdapter: Send + Sync {
         -> ToadStoolResult<()>;
     
     /// Submit a legacy job
-    async fn submit_job(&self, job_id: Uuid) 
+    async fn submit_job(&self, job: LegacyJob) 
         -> ToadStoolResult<Uuid>;
     
     /// Get job status

@@ -100,6 +100,10 @@ pub struct ServerState {
 
     /// Server statistics
     pub stats: Arc<RwLock<ServerStatistics>>,
+
+    /// Capability provider for primal integration (optional)
+    pub capability_provider:
+        Option<Arc<toadstool_distributed::primal_capabilities::CapabilityProvider>>,
 }
 
 /// Server statistics tracking

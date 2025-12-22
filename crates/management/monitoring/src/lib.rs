@@ -2,15 +2,17 @@
 //!
 //! Cross-platform resource monitoring with configurable granularity.
 
+// Module declarations
+pub mod types;
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -20,74 +22,8 @@ use toadstool::resources::{
     ResourceMonitor, ResourceRequirements, RuntimeMetrics, SystemResources,
 };
 
-/// Monitoring granularity levels
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum MonitoringGranularity {
-    /// Sub-millisecond monitoring (100μs intervals) - for high-frequency trading, real-time systems
-    SubMillisecond,
-    /// Millisecond monitoring (1ms intervals) - for latency-sensitive applications
-    Millisecond,
-    /// High frequency (10ms intervals) - for interactive applications
-    HighFrequency,
-    /// Standard monitoring (100ms intervals) - for most applications
-    Standard,
-    /// Low frequency (1s intervals) - for background processes
-    LowFrequency,
-    /// Custom interval
-    Custom(Duration),
-}
-
-impl MonitoringGranularity {
-    #[must_use]
-    pub fn to_duration(self) -> Duration {
-        match self {
-            MonitoringGranularity::SubMillisecond => Duration::from_micros(100),
-            MonitoringGranularity::Millisecond => Duration::from_millis(1),
-            MonitoringGranularity::HighFrequency => Duration::from_millis(10),
-            MonitoringGranularity::Standard => Duration::from_millis(100),
-            MonitoringGranularity::LowFrequency => Duration::from_secs(1),
-            MonitoringGranularity::Custom(duration) => duration,
-        }
-    }
-}
-
-/// Monitoring configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonitoringConfig {
-    /// Monitoring granularity
-    pub granularity: MonitoringGranularity,
-    /// Enable network monitoring
-    pub enable_network_monitoring: bool,
-    /// Enable threshold monitoring
-    pub enable_threshold_monitoring: bool,
-    /// Threshold violation action
-    pub threshold_action: ThresholdAction,
-    /// Metrics retention duration
-    pub metrics_retention: Duration,
-}
-
-impl Default for MonitoringConfig {
-    fn default() -> Self {
-        Self {
-            granularity: MonitoringGranularity::Standard,
-            enable_network_monitoring: true,
-            enable_threshold_monitoring: true,
-            threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(3600), // 1 hour
-        }
-    }
-}
-
-/// Action to take when thresholds are exceeded
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ThresholdAction {
-    /// Log the violation
-    Log,
-    /// Log and send alert
-    Alert,
-    /// Log, alert, and terminate process
-    Terminate,
-}
+// Re-export types for backward compatibility
+pub use types::{MonitoringConfig, MonitoringGranularity, ResourceMonitorError, ThresholdAction};
 
 /// Concrete implementation of `ResourceMonitor` trait that provides
 /// configurable, high-granularity resource monitoring
@@ -118,86 +54,6 @@ struct NetworkStats {
     bytes_transmitted: u64,
     packets_received: u64,
     packets_transmitted: u64,
-}
-
-/// Resource monitoring error types
-#[derive(Debug, Clone)]
-pub enum ResourceMonitorError {
-    ProcessNotRegistered(String),
-    ProcessNotFound(String),
-    CommandExecutionFailed(String),
-    ParseError(String),
-    PlatformNotSupported(String),
-    ResourceLimitExceeded {
-        process_id: String,
-        resource_type: String,
-        current_value: f64,
-        limit: f64,
-    },
-    NetworkMonitoringNotAvailable,
-    ThresholdViolation {
-        workload_id: String,
-        resource_type: String,
-        current_value: f64,
-        threshold: f64,
-    },
-    Other(String),
-}
-
-impl std::fmt::Display for ResourceMonitorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ResourceMonitorError::ProcessNotRegistered(id) => {
-                write!(f, "Process not registered for monitoring: {id}")
-            }
-            ResourceMonitorError::ProcessNotFound(id) => {
-                write!(f, "Process not found: {id}")
-            }
-            ResourceMonitorError::CommandExecutionFailed(msg) => {
-                write!(f, "Command execution failed: {msg}")
-            }
-            ResourceMonitorError::ParseError(msg) => {
-                write!(f, "Parse error: {msg}")
-            }
-            ResourceMonitorError::PlatformNotSupported(platform) => {
-                write!(f, "Platform not supported: {platform}")
-            }
-            ResourceMonitorError::ResourceLimitExceeded {
-                process_id,
-                resource_type,
-                current_value,
-                limit,
-            } => {
-                write!(
-                    f,
-                    "Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}"
-                )
-            }
-            ResourceMonitorError::NetworkMonitoringNotAvailable => {
-                write!(f, "Network monitoring is not available on this platform")
-            }
-            ResourceMonitorError::ThresholdViolation {
-                workload_id,
-                resource_type,
-                current_value,
-                threshold,
-            } => {
-                write!(
-                    f,
-                    "Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}"
-                )
-            }
-            ResourceMonitorError::Other(msg) => write!(f, "Other error: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for ResourceMonitorError {}
-
-impl From<ResourceMonitorError> for ToadStoolError {
-    fn from(err: ResourceMonitorError) -> Self {
-        ToadStoolError::resource(err.to_string())
-    }
 }
 
 impl SystemResourceMonitor {
@@ -913,16 +769,18 @@ impl ResourceMonitor for SystemResourceMonitor {
         Ok(())
     }
 
-    fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
-        // For the synchronous trait method, we return the last cached metrics
-        // This is a limitation of the current trait design - ideally this should be async
-        let usage_data = self
-            .usage_data
-            .try_read()
-            .map_err(|_| ToadStoolError::resource("Failed to read usage data"))?;
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        let workload_id = workload_id.to_string();
+        Box::pin(async move {
+            // Modern async access - no blocking!
+            let usage_data = self.usage_data.read().await;
 
-        usage_data.get(workload_id).cloned().ok_or_else(|| {
-            ResourceMonitorError::ProcessNotRegistered(workload_id.to_string()).into()
+            usage_data.get(&workload_id).cloned().ok_or_else(|| {
+                ResourceMonitorError::ProcessNotRegistered(workload_id.clone()).into()
+            })
         })
     }
 

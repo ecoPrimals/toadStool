@@ -2,6 +2,11 @@
 //!
 //! Provides isolated environments for concurrent test execution without
 //! global state conflicts or the need for `#[serial]` markers.
+//!
+//! Test helpers may use `expect()` and `unwrap()` for setup operations,
+//! as test setup failures should fail fast.
+
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -162,14 +167,32 @@ impl<T> TestScope<T> {
         }
     }
 
+    /// Get immutable reference to the test resource
+    ///
+    /// # Safety
+    /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
+    /// This is a test helper where panic-on-misuse is acceptable.
+    #[allow(clippy::unwrap_used)]
     pub fn get(&self) -> &T {
         self.resource.as_ref().unwrap()
     }
 
+    /// Get mutable reference to the test resource
+    ///
+    /// # Safety
+    /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
+    /// This is a test helper where panic-on-misuse is acceptable.
+    #[allow(clippy::unwrap_used)]
     pub fn get_mut(&mut self) -> &mut T {
         self.resource.as_mut().unwrap()
     }
 
+    /// Consume the scope and return the inner resource
+    ///
+    /// # Safety
+    /// The resource is guaranteed to be `Some` until this method is called.
+    /// This is a test helper where panic-on-misuse is acceptable.
+    #[allow(clippy::unwrap_used)]
     pub fn into_inner(mut self) -> T {
         self.resource.take().unwrap()
     }

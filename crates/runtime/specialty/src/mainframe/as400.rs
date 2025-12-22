@@ -1,12 +1,16 @@
 //! AS/400 System Adapter
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolResult, ToadStoolError};
+use crate::{JobStatus, JobOutput, JobPriority, SpecialtyRuntimeConfig};
+use crate::{JCLSettings, COBOLSettings, ConnectionSettings, DatasetConfig, AuthenticationSettings};
 use super::types::*;
 
 /// AS/400 Adapter
@@ -40,7 +44,7 @@ impl AS400Adapter {
     }
 }
 
-// Native async trait - no macro needed
+#[async_trait::async_trait]
 impl LegacyAdapter for AS400Adapter {
     fn name(&self) -> &str {
         "AS/400 Adapter"

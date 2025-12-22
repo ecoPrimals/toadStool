@@ -17,6 +17,11 @@ pub trait Validate {
 }
 
 /// Validate a port number is in valid range
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if port is outside valid range (1024-65535)
+#[must_use]
 pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -35,6 +40,11 @@ pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
 }
 
 /// Validate a timeout duration is in valid range
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if timeout is below minimum (1ms) or above maximum (24h)
+#[must_use]
 pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -66,6 +76,11 @@ pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()>
 }
 
 /// Validate a worker thread count
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if count is below minimum (1) or above maximum (1024)
+#[must_use]
 pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -95,6 +110,11 @@ pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<(
 }
 
 /// Validate a pool size
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if size is below minimum (1) or above maximum (10,000)
+#[must_use]
 pub fn validate_pool_size(size: u32, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -124,6 +144,11 @@ pub fn validate_pool_size(size: u32, field_name: &str) -> ConfigResult<()> {
 }
 
 /// Validate a cache size
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if size is below minimum (1) or above maximum (1GB)
+#[must_use]
 pub fn validate_cache_size(size: usize, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -153,6 +178,11 @@ pub fn validate_cache_size(size: usize, field_name: &str) -> ConfigResult<()> {
 }
 
 /// Validate retry attempts
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if attempts is below minimum (0) or above maximum (100)
+#[must_use]
 pub fn validate_retry_attempts(attempts: u32, field_name: &str) -> ConfigResult<()> {
     use toadstool_config::defaults::validation;
     
@@ -182,6 +212,11 @@ pub fn validate_retry_attempts(attempts: u32, field_name: &str) -> ConfigResult<
 }
 
 /// Validate a non-empty string
+///
+/// # Errors
+///
+/// Returns `ConfigError::MissingField` if string is empty or contains only whitespace
+#[must_use]
 pub fn validate_non_empty(value: &str, field_name: &str) -> ConfigResult<()> {
     if value.trim().is_empty() {
         return Err(ConfigError::MissingField {
@@ -192,6 +227,12 @@ pub fn validate_non_empty(value: &str, field_name: &str) -> ConfigResult<()> {
 }
 
 /// Validate a URL format
+///
+/// # Errors
+///
+/// Returns `ConfigError::InvalidValue` if URL doesn't start with `http://` or `https://`  
+/// Returns `ConfigError::MissingField` if URL is empty
+#[must_use]
 pub fn validate_url(value: &str, field_name: &str) -> ConfigResult<()> {
     validate_non_empty(value, field_name)?;
     

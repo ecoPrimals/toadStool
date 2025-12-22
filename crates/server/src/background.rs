@@ -30,6 +30,14 @@ pub async fn start_background_services(state: ServerState) {
         statistics_collection_task(stats_state).await;
     });
 
+    // Start capability heartbeat if enabled
+    if state.capability_provider.is_some() {
+        let capability_state = state.clone();
+        tokio::spawn(async move {
+            capability_heartbeat_task(capability_state).await;
+        });
+    }
+
     // Start cleanup task
     tokio::spawn(async move {
         cleanup_task(state).await;
@@ -189,6 +197,33 @@ async fn cleanup_task(state: ServerState) {
 
         if cleanup_count > 0 {
             info!("Cleaned up {} timed-out executions", cleanup_count);
+        }
+    }
+}
+
+/// Capability heartbeat background task
+async fn capability_heartbeat_task(state: ServerState) {
+    debug!("Starting capability heartbeat task");
+
+    let heartbeat_interval = if let Some(ref primal_config) = state.config.primal_capabilities {
+        Duration::from_secs(primal_config.heartbeat_interval_secs)
+    } else {
+        Duration::from_secs(30)
+    };
+
+    let mut interval = interval(heartbeat_interval);
+
+    loop {
+        interval.tick().await;
+
+        if let Some(ref provider) = state.capability_provider {
+            debug!("Sending capability heartbeat to all registered primals");
+
+            if let Err(e) = provider.send_heartbeats().await {
+                warn!("Failed to send heartbeats: {:?}", e);
+            } else {
+                debug!("Heartbeats sent successfully to all registered primals");
+            }
         }
     }
 }

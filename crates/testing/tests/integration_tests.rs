@@ -18,7 +18,7 @@ use toadstool_testing::{
 };
 
 /// Test basic execution workflow across all runtime types
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_end_to_end_execution_workflow() {
     let runtime_types = vec![
         RuntimeType::Native,
@@ -46,7 +46,7 @@ async fn test_end_to_end_execution_workflow() {
 }
 
 /// Test WebSocket connection lifecycle
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_lifecycle() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -64,7 +64,7 @@ async fn test_websocket_connection_lifecycle() {
 }
 
 /// Test execution cancellation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_cancellation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -82,7 +82,7 @@ async fn test_execution_cancellation() {
 }
 
 /// Test federation discovery
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_federation_discovery() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -91,7 +91,7 @@ async fn test_federation_discovery() {
 }
 
 /// Test resource monitoring
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_monitoring() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -110,7 +110,7 @@ async fn test_resource_monitoring() {
 }
 
 /// Test security isolation levels
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_isolation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -150,7 +150,7 @@ async fn test_security_isolation() {
 }
 
 /// Test ecosystem integration
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_integration() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -173,7 +173,7 @@ async fn test_ecosystem_integration() {
 }
 
 /// Test concurrent executions
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_executions() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -196,7 +196,7 @@ async fn test_concurrent_executions() {
 }
 
 /// Test error handling and recovery
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_handling() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -233,7 +233,7 @@ async fn test_error_handling() {
 }
 
 /// Test system health and readiness
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_health() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);

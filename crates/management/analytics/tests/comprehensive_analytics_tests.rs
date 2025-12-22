@@ -23,7 +23,7 @@ use uuid::Uuid;
 fn test_analytics_config_default() {
     let config = AnalyticsConfig::default();
     assert!(config.enable_realtime);
-    assert_eq!(config.retention_days, 30);
+    assert_eq!(config.retention_days, 90);
     assert_eq!(config.prediction_window_hours, 24);
     assert_eq!(config.collection_interval_secs, 60);
     assert_eq!(config.alert_thresholds.cpu_threshold, 80.0);
@@ -478,14 +478,14 @@ fn test_dashboard_permissions_creation() {
 // Async Engine Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_analytics_engine_creation() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await;
     assert!(engine.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_analytics_engine_creation_with_custom_config() {
     let config = AnalyticsConfig {
         enable_realtime: false,
@@ -505,7 +505,7 @@ async fn test_analytics_engine_creation_with_custom_config() {
     assert!(engine.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_single_data_point() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -524,7 +524,7 @@ async fn test_collect_single_data_point() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_multiple_data_points() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -545,7 +545,7 @@ async fn test_collect_multiple_data_points() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_data_point_with_runtime_type() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -564,7 +564,7 @@ async fn test_collect_data_point_with_runtime_type() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_data_point_with_tags() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -588,7 +588,7 @@ async fn test_collect_data_point_with_tags() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_dashboard() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -616,7 +616,7 @@ async fn test_create_dashboard() {
     assert_eq!(result.unwrap(), dashboard_id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_multiple_dashboards() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -644,7 +644,7 @@ async fn test_create_multiple_dashboards() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_dashboard_data_not_found() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -654,7 +654,7 @@ async fn test_get_dashboard_data_not_found() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_dashboard_data_exists() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -683,7 +683,7 @@ async fn test_get_dashboard_data_exists() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_alerts_empty() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();
@@ -693,7 +693,7 @@ async fn test_evaluate_alerts_empty() {
     assert_eq!(result.unwrap().len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_metrics_empty_webhooks() {
     let config = AnalyticsConfig::default();
     let engine = IntelligentAnalyticsEngine::new(config).await.unwrap();

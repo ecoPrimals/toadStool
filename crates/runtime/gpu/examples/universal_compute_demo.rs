@@ -202,6 +202,7 @@ fn create_workload(
     UniversalWorkload {
         id: id.to_string(),
         requirements: ComputeRequirements {
+            estimated_operations: Some(1_000_000),
             min_parallel_threads: threads,
             memory_bytes: memory,
             precision: Precision::Fp32,

@@ -14,6 +14,7 @@ use chrono::Utc;
 use super::byob_types::*;
 use super::config::ByobExecutorConfig;
 use super::deployment::ActiveDeployment;
+use super::validation::DeploymentValidator;
 use crate::{
     ExecutionRequest, ExecutionStatus, RuntimeEngine, ToadStoolError, ToadStoolResult, WorkloadSpec,
 };
@@ -63,66 +64,10 @@ impl ByobComputeExecutor {
     }
 
     /// Validate deployment request
+    ///
+    /// **Design**: Delegated to DeploymentValidator for separation of concerns
     fn validate_deployment_request(&self, request: &ByobDeploymentRequest) -> ToadStoolResult<()> {
-        // Check resource quotas
-        let total_cpu: f64 = request
-            .services
-            .values()
-            .map(|s| s.resources.cpu_cores.unwrap_or(0.0))
-            .sum();
-        let total_memory: u64 = request
-            .services
-            .values()
-            .map(|s| s.resources.memory_bytes.unwrap_or(0))
-            .sum();
-        let total_storage: u64 = request
-            .services
-            .values()
-            .map(|s| s.resources.storage_bytes.unwrap_or(0))
-            .sum();
-        let total_gpu: u32 = request
-            .services
-            .values()
-            .map(|s| s.resources.gpu_count.unwrap_or(0))
-            .sum();
-
-        if total_cpu > request.resource_quotas.max_cpu_cores {
-            return Err(ToadStoolError::resource(format!(
-                "CPU requirement {} exceeds team quota {}",
-                total_cpu, request.resource_quotas.max_cpu_cores
-            )));
-        }
-
-        if total_memory > request.resource_quotas.max_memory_bytes {
-            return Err(ToadStoolError::resource(format!(
-                "Memory requirement {} exceeds team quota {}",
-                total_memory, request.resource_quotas.max_memory_bytes
-            )));
-        }
-
-        if total_storage > request.resource_quotas.max_storage_bytes {
-            return Err(ToadStoolError::resource(format!(
-                "Storage requirement {} exceeds team quota {}",
-                total_storage, request.resource_quotas.max_storage_bytes
-            )));
-        }
-
-        if total_gpu > request.resource_quotas.max_gpu_count {
-            return Err(ToadStoolError::resource(format!(
-                "GPU requirement {} exceeds team quota {}",
-                total_gpu, request.resource_quotas.max_gpu_count
-            )));
-        }
-
-        if request.services.len() > request.resource_quotas.max_concurrent_services as usize {
-            return Err(ToadStoolError::resource(format!(
-                "Service count {} exceeds team quota {}",
-                request.services.len(),
-                request.resource_quotas.max_concurrent_services
-            )));
-        }
-
-        Ok(())
+        DeploymentValidator::validate_deployment(request)
     }
 
     /// Create execution request for a service
@@ -131,6 +76,7 @@ impl ByobComputeExecutor {
         service: &ServiceSpec,
         _deployment_id: Uuid,
     ) -> ToadStoolResult<ExecutionRequest> {
+        // ✅ OPTIMIZED: Reduce clones by using references where possible
         let workload = if let Some(image) = &service.image {
             // Container workload
             WorkloadSpec::Container {
@@ -141,11 +87,10 @@ impl ByobComputeExecutor {
                 env_vars: service.environment.clone(),
                 volumes: service
                     .volumes
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .map(|v| crate::workload::VolumeMount {
-                        source: v.source.into(),
-                        target: v.target.into(),
+                        source: v.source.as_str().into(),
+                        target: v.target.as_str().into(),
                         mount_type: match v.mount_type.as_str() {
                             "volume" => crate::workload::VolumeMountType::Volume,
                             _ => crate::workload::VolumeMountType::Bind,
@@ -155,8 +100,7 @@ impl ByobComputeExecutor {
                     .collect(),
                 ports: service
                     .ports
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .map(|p| crate::workload::PortMapping {
                         container_port: p.container_port,
                         host_port: p.host_port.unwrap_or(self.config.default_host_port),
@@ -219,6 +163,7 @@ impl ByobComputeExecutor {
             environment: service.environment.clone(),
             input_data: crate::ExecutionInput::default(),
             callback_config: None,
+            encryption_config: None,
         };
 
         Ok(execution_request)
@@ -231,21 +176,26 @@ impl ByobComputeExecutor {
             deployment.request.deployment_id
         );
 
-        // Collect services to avoid borrow checker issues
-        let services: Vec<_> = deployment
-            .request
-            .services
-            .iter()
-            .map(|(name, spec)| (name.clone(), spec.clone()))
-            .collect();
+        // ✅ OPTIMIZED: Use references to avoid unnecessary clones
+        // Collect service names first to avoid borrow issues
+        let service_names: Vec<_> = deployment.request.services.keys().cloned().collect();
         let deployment_id = deployment.request.deployment_id;
 
         // Execute services in dependency order
-        for (service_name, service_spec) in services {
+        for service_name in service_names {
             debug!("Executing service: {}", service_name);
 
+            // Get service spec by reference
+            let service_spec = deployment
+                .request
+                .services
+                .get(&service_name)
+                .ok_or_else(|| {
+                    ToadStoolError::runtime(format!("Service {service_name} not found"))
+                })?;
+
             let execution_request =
-                self.create_service_execution_request(&service_spec, deployment_id)?;
+                self.create_service_execution_request(service_spec, deployment_id)?;
 
             let execution_id = execution_request.execution_id;
 
@@ -253,7 +203,7 @@ impl ByobComputeExecutor {
             match self.runtime_engine.execute(execution_request).await {
                 Ok(response) => {
                     if response.status == ExecutionStatus::Success {
-                        deployment.add_service_execution(service_name.clone(), execution_id);
+                        deployment.add_service_execution(&service_name, execution_id); // ✅ ZERO-COPY: Pass &str
                         info!("Service {} started successfully", service_name);
                     } else {
                         warn!("Service {} failed to start: {:?}", service_name, response);
@@ -287,7 +237,8 @@ impl ByobComputeExecutor {
         let gateway_ip = "10.0.0.1".to_string(); // Default gateway
 
         // Create service endpoints
-        let mut service_endpoints = HashMap::new();
+        // ✅ ZERO-COPY: Pre-allocate HashMap with known capacity
+        let mut service_endpoints = HashMap::with_capacity(deployment.services.len());
         for (service_name, service_spec) in &deployment.services {
             // Allocate internal IP address
             let internal_ip = format!("10.0.0.{}", 10 + service_endpoints.len());
@@ -543,10 +494,15 @@ impl ByobComputeExecutor {
             service_name, execution_id
         );
 
-        // NOTE: Service stop simulation - adds realistic delay.
-        // Full implementation would delegate to RuntimeEngine::stop_execution()
-        // with graceful shutdown timeout and force-kill fallback.
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // ✅ MODERNIZED: No artificial delay - would delegate to RuntimeEngine::stop_execution()
+        // with proper shutdown signal and graceful timeout handling.
+        // In production, this would:
+        // 1. Send shutdown signal to execution
+        // 2. Wait for acknowledgment (via channel/notify)
+        // 3. Apply timeout if needed
+        // 4. Force-kill as fallback
+        //
+        // For now, this is immediate since no actual execution to stop.
 
         debug!(
             "✅ Service execution stopped: {} ({})",
@@ -775,19 +731,16 @@ mod tests {
         assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
         assert_eq!(config.health_check_interval, Duration::from_secs(10));
         assert_eq!(config.deployment_timeout, Duration::from_secs(600));
+
+        #[allow(deprecated)]
         let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
-        assert_eq!(config.default_host_port, env_config.network.songbird_port);
+        #[allow(deprecated)]
+        let expected_port = env_config.network.songbird_port;
+
+        assert_eq!(config.default_host_port, expected_port);
         assert_eq!(
             config.web_service_ports,
-            vec![
-                80,
-                443,
-                env_config.network.songbird_port,
-                8443,
-                3000,
-                8000,
-                9000
-            ]
+            vec![80, 443, expected_port, 8443, 3000, 8000, 9000]
         );
     }
 
@@ -801,12 +754,18 @@ mod tests {
         assert_eq!(deployment_request.services.len(), 2);
 
         // Test service configurations
-        let web_service = deployment_request.services.get("web-service").unwrap();
+        let web_service = deployment_request
+            .services
+            .get("web-service")
+            .expect("web-service should exist in deployment request");
         assert_eq!(web_service.name, "web-service");
         assert!(web_service.image.is_some());
         assert!(!web_service.ports.is_empty());
 
-        let api_service = deployment_request.services.get("api-service").unwrap();
+        let api_service = deployment_request
+            .services
+            .get("api-service")
+            .expect("api-service should exist in deployment request");
         assert_eq!(api_service.name, "api-service");
         assert!(api_service.image.is_some());
         assert!(!api_service.environment.is_empty());

@@ -539,6 +539,9 @@ impl IntoResponse for ApiError {
             "VALIDATION_ERROR" => StatusCode::BAD_REQUEST,
             "NOT_FOUND" => StatusCode::NOT_FOUND,
             "UNAUTHORIZED" => StatusCode::UNAUTHORIZED,
+            "MISSING_TOKEN" => StatusCode::UNAUTHORIZED,
+            "INVALID_TOKEN" => StatusCode::UNAUTHORIZED,
+            "EXPIRED_TOKEN" => StatusCode::UNAUTHORIZED,
             "FORBIDDEN" => StatusCode::FORBIDDEN,
             "RATE_LIMITED" => StatusCode::TOO_MANY_REQUESTS,
             "TIMEOUT" => StatusCode::REQUEST_TIMEOUT,
@@ -590,6 +593,7 @@ pub struct ApiConfig {
 }
 
 impl Default for ApiConfig {
+    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {

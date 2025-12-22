@@ -196,4 +196,5 @@ impl MetricsCollector {
 
 // ===== Implementation Module =====
 // Implementation extracted for better organization
+mod helpers;
 pub mod integration_impl;

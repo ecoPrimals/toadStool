@@ -63,7 +63,7 @@ fn test_multiple_autoconfig_instances() {
     let _ = &config2.hardware_detector;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scan_system_completes() {
     // Test: scan_system runs without panic
     let mut config = IntelligentAutoConfig::new();
@@ -75,7 +75,7 @@ async fn test_scan_system_completes() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_services_completes() {
     // Test: discover_services runs without panic and completes within timeout
     use tokio::time::{timeout, Duration};
@@ -102,7 +102,7 @@ async fn test_discover_services_completes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_generate_intelligent_config_completes() {
     // Test: generate_intelligent_config runs without panic and completes within timeout
     use tokio::time::{timeout, Duration};
@@ -132,7 +132,7 @@ async fn test_generate_intelligent_config_completes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_configure_static_method() {
     // Test: auto_configure static method completes within timeout
     use tokio::time::{timeout, Duration};

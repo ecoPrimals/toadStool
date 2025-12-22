@@ -28,6 +28,7 @@ fn create_test_state() -> ApiState {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         websocket_manager: Arc::new(websocket::WebSocketManager::new()),
+        capability_provider: None,
     }
 }
 
@@ -43,7 +44,7 @@ async fn failing_handler() -> StatusCode {
 // Request ID Middleware Tests (8 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_adds_id() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -55,7 +56,7 @@ async fn test_request_id_middleware_adds_id() {
     assert!(response.headers().contains_key("x-request-id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_propagates_to_response() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -73,7 +74,7 @@ async fn test_request_id_middleware_propagates_to_response() {
     assert!(!request_id.unwrap().is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_different_ids() {
     let app1 = Router::new()
         .route("/test1", get(dummy_handler))
@@ -108,7 +109,7 @@ async fn test_request_id_middleware_different_ids() {
     assert_ne!(id1, id2, "Request IDs should be unique");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_with_post() {
     let app = Router::new()
         .route("/api/execute", axum::routing::post(dummy_handler))
@@ -124,7 +125,7 @@ async fn test_request_id_middleware_with_post() {
     assert!(response.headers().contains_key("x-request-id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_with_put() {
     let app = Router::new()
         .route("/api/update", axum::routing::put(dummy_handler))
@@ -140,7 +141,7 @@ async fn test_request_id_middleware_with_put() {
     assert!(response.headers().contains_key("x-request-id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_with_delete() {
     let app = Router::new()
         .route("/api/resource", axum::routing::delete(dummy_handler))
@@ -156,7 +157,7 @@ async fn test_request_id_middleware_with_delete() {
     assert!(response.headers().contains_key("x-request-id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_with_options() {
     let app = Router::new()
         .route("/api/test", axum::routing::options(dummy_handler))
@@ -172,7 +173,7 @@ async fn test_request_id_middleware_with_options() {
     assert!(response.headers().contains_key("x-request-id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_middleware_preserves_status_code() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -188,7 +189,7 @@ async fn test_request_id_middleware_preserves_status_code() {
 // CORS Middleware Tests (3 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cors_middleware_adds_headers() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -204,7 +205,7 @@ async fn test_cors_middleware_adds_headers() {
     assert!(headers.contains_key("access-control-allow-headers"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cors_middleware_allow_all_origins() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -221,7 +222,7 @@ async fn test_cors_middleware_allow_all_origins() {
     assert_eq!(allow_origin, Some("*"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cors_middleware_options_request() {
     let app = Router::new()
         .route("/test", axum::routing::options(dummy_handler))
@@ -241,7 +242,7 @@ async fn test_cors_middleware_options_request() {
 // Security Headers Middleware Tests (3 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_headers_middleware_adds_all_headers() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -259,7 +260,7 @@ async fn test_security_headers_middleware_adds_all_headers() {
     assert!(headers.contains_key("content-security-policy"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_headers_middleware_frame_options_deny() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -276,7 +277,7 @@ async fn test_security_headers_middleware_frame_options_deny() {
     assert_eq!(frame_options, Some("DENY"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_headers_middleware_csp_self_only() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -297,7 +298,7 @@ async fn test_security_headers_middleware_csp_self_only() {
 // Metrics Middleware Tests (8 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_increments_total_requests() {
     let state = create_test_state();
     let app = Router::new()
@@ -315,7 +316,7 @@ async fn test_metrics_middleware_increments_total_requests() {
     assert!(metrics.total_requests > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_increments_successful_requests() {
     let state = create_test_state();
     let app = Router::new()
@@ -334,7 +335,7 @@ async fn test_metrics_middleware_increments_successful_requests() {
     assert_eq!(metrics.failed_requests, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_increments_failed_requests() {
     let state = create_test_state();
     let app = Router::new()
@@ -353,7 +354,7 @@ async fn test_metrics_middleware_increments_failed_requests() {
     assert!(metrics.failed_requests > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_tracks_response_time() {
     let state = create_test_state();
     let app = Router::new()
@@ -371,7 +372,7 @@ async fn test_metrics_middleware_tracks_response_time() {
     assert!(metrics.average_response_time_ms >= 0.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_multiple_requests() {
     let state = create_test_state();
     let app = Router::new()
@@ -393,7 +394,7 @@ async fn test_metrics_middleware_multiple_requests() {
     assert_eq!(metrics.total_requests, 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_mixed_success_and_failure() {
     let state = create_test_state();
     let app = Router::new()
@@ -424,7 +425,7 @@ async fn test_metrics_middleware_mixed_success_and_failure() {
     assert_eq!(metrics.failed_requests, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_preserves_response() {
     let state = create_test_state();
     let app = Router::new()
@@ -441,7 +442,7 @@ async fn test_metrics_middleware_preserves_response() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_middleware_different_methods() {
     let state = create_test_state();
     let app = Router::new()
@@ -474,7 +475,7 @@ async fn test_metrics_middleware_different_methods() {
 // Auth Middleware Tests (8 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_missing_header() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -483,11 +484,11 @@ async fn test_auth_middleware_missing_header() {
     let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_valid_jwt_format() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -503,7 +504,7 @@ async fn test_auth_middleware_valid_jwt_format() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_empty_token() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -516,11 +517,11 @@ async fn test_auth_middleware_empty_token() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_malformed_jwt() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -533,11 +534,11 @@ async fn test_auth_middleware_malformed_jwt() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_missing_bearer_prefix() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -553,11 +554,11 @@ async fn test_auth_middleware_missing_bearer_prefix() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_invalid_authorization_format() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -570,11 +571,11 @@ async fn test_auth_middleware_invalid_authorization_format() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_case_sensitive_bearer() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -590,11 +591,11 @@ async fn test_auth_middleware_case_sensitive_bearer() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // Should fail because "Bearer" is case-sensitive - ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Should fail because "Bearer" is case-sensitive - Auth errors return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auth_middleware_single_part_token() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -607,15 +608,15 @@ async fn test_auth_middleware_single_part_token() {
         .unwrap();
 
     let response = app.oneshot(request).await.unwrap();
-    // ApiError returns INTERNAL_SERVER_ERROR by default
-    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    // Auth errors should return UNAUTHORIZED per REST standards
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 // ============================================================================
 // Rate Limit Middleware Tests (6 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_localhost() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -631,7 +632,7 @@ async fn test_rate_limit_middleware_localhost() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_external_ip() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -647,7 +648,7 @@ async fn test_rate_limit_middleware_external_ip() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_real_ip_header() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -663,7 +664,7 @@ async fn test_rate_limit_middleware_real_ip_header() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_missing_ip_header() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -676,7 +677,7 @@ async fn test_rate_limit_middleware_missing_ip_header() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_localhost_string() {
     let app = Router::new()
         .route("/test", get(dummy_handler))
@@ -692,7 +693,7 @@ async fn test_rate_limit_middleware_localhost_string() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limit_middleware_preserves_response() {
     let app = Router::new()
         .route("/test", get(dummy_handler))

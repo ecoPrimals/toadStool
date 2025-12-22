@@ -491,11 +491,105 @@ impl ComponentValue {
     }
 }
 
+// Re-export for backwards compatibility
+pub use crate::WasmRuntimeEngine;
+
+#[async_trait]
+impl ComponentModelSupport for WasmRuntimeEngine {
+    /// Check if component model is supported
+    fn supports_component_model(&self) -> bool {
+        self.config.component_model.enabled
+    }
+
+    /// Get component model configuration
+    fn get_component_config(&self) -> &ComponentModelConfig {
+        &self.config.component_model
+    }
+
+    /// Create component instance
+    async fn create_component_instance(&self, interface_name: &str) -> ToadStoolResult<String> {
+        if !self.supports_component_model() {
+            return Err(ToadStoolError::not_supported(
+                "Component model support is disabled".to_string(),
+            ));
+        }
+
+        self.component_registry
+            .create_instance(interface_name)
+            .await
+    }
+
+    /// Execute component function
+    async fn execute_component_function(
+        &self,
+        instance_id: &str,
+        function_name: &str,
+        args: &[ComponentValue],
+    ) -> ToadStoolResult<ComponentValue> {
+        if !self.supports_component_model() {
+            return Err(ToadStoolError::not_supported(
+                "Component model support is disabled".to_string(),
+            ));
+        }
+
+        // Get the component instance
+        let _instance = self.component_registry.get_instance(instance_id).await?;
+
+        // Update instance state to running
+        self.component_registry
+            .update_state(instance_id, ComponentState::Running)
+            .await?;
+
+        // For now, return a mock response - in a real implementation, this would
+        // invoke the actual component function through Wasmtime
+        info!(
+            "Executing component function: {} on instance: {}",
+            function_name, instance_id
+        );
+
+        // Simulate function execution result
+        let result = match function_name {
+            "add" => {
+                if args.len() == 2 {
+                    match (&args[0], &args[1]) {
+                        (ComponentValue::U32(a), ComponentValue::U32(b)) => {
+                            ComponentValue::U32(a + b)
+                        }
+                        _ => ComponentValue::String("Type error".to_string()),
+                    }
+                } else {
+                    ComponentValue::String("Argument count error".to_string())
+                }
+            }
+            "greet" => {
+                if args.len() == 1 {
+                    match &args[0] {
+                        ComponentValue::String(name) => {
+                            ComponentValue::String(format!("Hello, {name}!"))
+                        }
+                        _ => ComponentValue::String("Type error".to_string()),
+                    }
+                } else {
+                    ComponentValue::String("Argument count error".to_string())
+                }
+            }
+            _ => ComponentValue::String(format!("Unknown function: {function_name}")),
+        };
+
+        // Update instance state back to ready
+        self.component_registry
+            .update_state(instance_id, ComponentState::Ready)
+            .await?;
+
+        Ok(result)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_component_registry_creation() {
         let config = ComponentModelConfig::default();
         let registry = ComponentRegistry::new(config);
@@ -505,7 +599,7 @@ mod tests {
         assert_eq!(stats.total_interfaces, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_interface_registration() {
         let config = ComponentModelConfig::default();
         let registry = ComponentRegistry::new(config);
@@ -525,7 +619,7 @@ mod tests {
         assert_eq!(stats.total_interfaces, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_component_instance_creation() {
         let config = ComponentModelConfig::default();
         let registry = ComponentRegistry::new(config);
@@ -538,16 +632,22 @@ mod tests {
             types: vec![],
         };
 
-        registry.register_interface(interface).await.unwrap();
+        registry
+            .register_interface(interface)
+            .await
+            .expect("Interface registration should succeed in test");
 
-        let instance_id = registry.create_instance("test-interface").await.unwrap();
+        let instance_id = registry
+            .create_instance("test-interface")
+            .await
+            .expect("Instance creation should succeed");
         assert!(!instance_id.is_empty());
 
         let stats = registry.get_stats().await;
         assert_eq!(stats.total_instances, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_component_value_type_matching() {
         let bool_value = ComponentValue::Bool(true);
         assert!(bool_value.matches_type(&InterfaceType::Bool));
@@ -562,7 +662,7 @@ mod tests {
         assert!(!list_value.matches_type(&InterfaceType::List(Box::new(InterfaceType::Bool))));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_component_composition_validation() {
         let config = ComponentModelConfig::default();
         let registry = Arc::new(ComponentRegistry::new(config.clone()));
@@ -571,7 +671,7 @@ mod tests {
         // Test empty composition
         let result = linker.validate_composition(&[]).await;
         assert!(result.is_ok());
-        assert!(result.unwrap());
+        assert!(result.expect("Result should be Ok for validation test"));
     }
 
     #[test]
@@ -751,7 +851,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_registry_stats() {
         let config = ComponentModelConfig::default();
         let registry = ComponentRegistry::new(config);
@@ -764,7 +864,7 @@ mod tests {
         assert_eq!(stats.failed_instances, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_interface_with_exports() {
         let interface = ComponentInterface {
             name: "calculator".to_string(),
@@ -794,7 +894,8 @@ mod tests {
     #[test]
     fn test_component_value_serialization() {
         let value = ComponentValue::U32(42);
-        let json = serde_json::to_string(&value).unwrap();
+        let json =
+            serde_json::to_string(&value).expect("Serialization of simple value should succeed");
         let deserialized: ComponentValue = serde_json::from_str(&json).unwrap();
         assert!(matches!(deserialized, ComponentValue::U32(42)));
     }

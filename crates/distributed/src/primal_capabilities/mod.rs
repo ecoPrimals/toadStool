@@ -158,13 +158,13 @@ impl CapabilityProvider {
     async fn create_adapter_for_endpoint(&self, endpoint: &str) -> Result<Box<dyn PrimalAdapter>> {
         // Auto-detect primal type from endpoint or use generic adapter
         if endpoint.contains("songbird") || endpoint.contains("8080") {
-            Ok(Box::new(SongbirdAdapter::new(endpoint)))
+            Ok(Box::new(SongbirdAdapter::new(endpoint)?))
         } else if endpoint.contains("squirrel") || endpoint.contains("8083") {
             // Future: SquirrelAdapter
-            Ok(Box::new(SongbirdAdapter::new(endpoint))) // Generic for now
+            Ok(Box::new(SongbirdAdapter::new(endpoint)?)) // Generic for now
         } else {
             // Generic HTTP adapter for unknown primals
-            Ok(Box::new(SongbirdAdapter::new(endpoint))) // Generic for now
+            Ok(Box::new(SongbirdAdapter::new(endpoint)?)) // Generic for now
         }
     }
 }
@@ -189,7 +189,7 @@ impl Default for CapabilityProvider {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capability_provider_creation() {
         let provider = CapabilityProvider::default();
         let capabilities = provider.get_capabilities().await;
@@ -197,7 +197,7 @@ mod tests {
         assert!(!capabilities.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capability_update() {
         let provider = CapabilityProvider::default();
         let gpu_cap = Capability::compute_gpu();

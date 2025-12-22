@@ -377,7 +377,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_manager_with_inmemory_backend() {
         let config = test_config();
         let manager = AuthenticationManager::with_inmemory(config);
@@ -385,19 +385,24 @@ mod tests {
         let result = manager.get_current_token().await;
         assert!(result.is_ok());
 
-        let token = result.unwrap();
+        let token = result.expect("Token retrieval should succeed in test");
         assert_eq!(token.issuer, "beardog");
         assert!(token.expires_at > chrono::Utc::now());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_sign_token_request() {
         let config = test_config();
         let manager = AuthenticationManager::with_inmemory(config);
-        let token = manager.get_current_token().await.unwrap();
+        let token = manager
+            .get_current_token()
+            .await
+            .expect("Token retrieval should succeed in test");
 
         let signature = manager.sign_token_request(&token, "songbird").await;
         assert!(signature.is_ok());
-        assert!(signature.unwrap().starts_with("ed25519:"));
+        assert!(signature
+            .expect("Signature should be generated in test")
+            .starts_with("ed25519:"));
     }
 }

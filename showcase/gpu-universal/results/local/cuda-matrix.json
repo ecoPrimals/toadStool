@@ -1,0 +1,11 @@
+{
+  "backend": "Cuda",
+  "size": 2048,
+  "iterations": 5,
+  "avg_time_ms": 153.19278100000002,
+  "min_time_ms": 147.276029,
+  "max_time_ms": 164.511356,
+  "gflops": 112.14542272719756,
+  "throughput": 6.527722739102177,
+  "power_watts": 60.290000000000006
+}

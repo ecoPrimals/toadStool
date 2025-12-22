@@ -1,8 +1,15 @@
 //! Comprehensive tests for CLI ecosystem types
+//!
+//! ⚠️ These tests verify backward compatibility with the deprecated `EcosystemService` enum.
+//! The deprecated enum hardcodes service names, violating infant discovery principles.
+//! Production code should use the capability-based `ServiceType` instead.
+
+#![allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 
 use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_cli::ecosystem::*;
 use uuid::Uuid;
@@ -138,13 +145,13 @@ fn test_service_endpoint_creation() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Songbird,
         address: "127.0.0.1:8080".parse().unwrap(),
-        version: "1.0.0".to_string(),
+        version: Arc::from("1.0.0"),
         capabilities: vec!["discovery".to_string(), "routing".to_string()],
         trust_level: TrustLevel::Verified,
     };
 
     assert_eq!(endpoint.capabilities.len(), 2);
-    assert_eq!(endpoint.version, "1.0.0");
+    assert_eq!(endpoint.version, Arc::from("1.0.0"));
 }
 
 #[test]
@@ -152,7 +159,7 @@ fn test_service_endpoint_clone() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::BearDog,
         address: "192.168.1.1:9000".parse().unwrap(),
-        version: "2.0.0".to_string(),
+        version: Arc::from("2.0.0"),
         capabilities: vec![],
         trust_level: TrustLevel::Sovereign,
     };
@@ -183,7 +190,7 @@ fn test_discovery_result_with_services() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Songbird,
         address: "127.0.0.1:8080".parse().unwrap(),
-        version: "1.0.0".to_string(),
+        version: Arc::from("1.0.0"),
         capabilities: vec![],
         trust_level: TrustLevel::Discovered,
     };

@@ -1,5 +1,12 @@
 impl BiomeExecutor {
     /// Create new biome executor
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The distributed coordinator fails to initialize
+    /// - Configuration loading fails
+    #[must_use = "BiomeExecutor creation should be checked"]
     pub async fn new() -> Result<Self> {
         info!("🍄 Initializing Universal Compute Biome Executor");
 
@@ -22,7 +29,16 @@ impl BiomeExecutor {
     }
 
     /// Execute 'run' command - start biome in foreground
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Manifest loading or validation fails
+    /// - Biome is already running with the same name
+    /// - Biome startup fails
+    /// - User interruption handling fails
     #[allow(clippy::too_many_arguments)]
+    #[must_use = "Result of run_biome should be checked"]
     pub async fn run_biome(
         &self,
         _ctx: &CliContext,
@@ -58,8 +74,8 @@ impl BiomeExecutor {
             }
         }
 
-        // Apply resource overrides
-        let mut effective_manifest = manifest.clone();
+        // ✅ OPTIMIZED: Apply resource overrides in-place (avoid clone)
+        let mut effective_manifest = manifest;
         if let Some(cpu) = cpu_limit {
             effective_manifest.resources.cpu_limit = Some(cpu);
         }
@@ -67,15 +83,15 @@ impl BiomeExecutor {
             effective_manifest.resources.memory_limit = Some(memory);
         }
 
-        // Start biome
+        // Start biome (pass by reference to avoid clone)
         let biome_info = self
             .start_biome_internal(
-                biome_name.clone(),
+                &biome_name, // Now accepts &str - no clone needed
                 effective_manifest,
                 env,
                 false, // not detached
                 debug,
-                security,
+                &security, // ✅ OPTIMIZED: Pass &str reference
             )
             .await?;
 
@@ -92,7 +108,15 @@ impl BiomeExecutor {
     }
 
     /// Execute 'up' command - start biome in background
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Manifest loading or validation fails
+    /// - Biome is already running with the same name
+    /// - Biome startup in detached mode fails
     #[allow(clippy::too_many_arguments)]
+    #[must_use = "Result of up_biome should be checked"]
     pub async fn up_biome(
         &self,
         _ctx: &CliContext,
@@ -127,12 +151,12 @@ impl BiomeExecutor {
         // Start biome
         let biome_info = self
             .start_biome_internal(
-                biome_name.clone(),
+                &biome_name,
                 manifest,
                 env,
                 detach,
-                false,              // debug
-                "high".to_string(), // default security
+                false, // debug
+                "high", // ✅ OPTIMIZED: Use &str instead of String allocation
             )
             .await?;
 
@@ -154,6 +178,14 @@ impl BiomeExecutor {
     }
 
     /// Execute 'down' command - stop running biome
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Biome is not currently running
+    /// - Biome stop operation fails
+    /// - Purge operation fails (if requested)
+    #[must_use = "Result of down_biome should be checked"]
     pub async fn down_biome(
         &self,
         biome_name: String,
@@ -185,6 +217,13 @@ impl BiomeExecutor {
     }
 
     /// Execute 'ps' command - list running biomes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - JSON/YAML serialization fails
+    /// - Table formatting fails
+    #[must_use = "Result of list_biomes should be checked"]
     pub async fn list_biomes(
         &self,
         all: bool,
@@ -240,6 +279,14 @@ impl BiomeExecutor {
     }
 
     /// Execute 'logs' command - view biome/service logs
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Biome or service not found
+    /// - Log file cannot be read
+    /// - Log filtering/following fails
+    #[must_use = "Result of show_logs should be checked"]
     pub async fn show_logs(
         &self,
         target: String,
@@ -249,12 +296,11 @@ impl BiomeExecutor {
         level_filter: Option<String>,
         grep_pattern: Option<String>,
     ) -> Result<()> {
-        // Parse target (biome or biome.service)
-        let (biome_name, service_name) = if target.contains('.') {
-            let parts: Vec<&str> = target.split('.').collect();
-            (parts[0].to_string(), Some(parts[1].to_string()))
+        // ✅ OPTIMIZED: Parse target without unnecessary allocations
+        let (biome_name, service_name) = if let Some((biome, service)) = target.split_once('.') {
+            (biome.to_string(), Some(service.to_string()))
         } else {
-            (target.clone(), None)
+            (target.clone(), None) // Clone needed since target is used in error below
         };
 
         // Check if biome exists
@@ -264,17 +310,14 @@ impl BiomeExecutor {
                 .get(&biome_name)
                 .ok_or_else(|| anyhow::anyhow!("Biome '{biome_name}' not found"))?;
 
-            let log_key = if let Some(service) = &service_name {
-                service.clone()
-            } else {
-                "main".to_string()
-            };
+            // ✅ OPTIMIZED: Avoid unnecessary clones by using as_deref
+            let log_key = service_name.as_deref().unwrap_or("main");
 
             biome
                 .log_files
-                .get(&log_key)
+                .get(log_key)
                 .ok_or_else(|| anyhow::anyhow!("No logs found for {target}"))?
-                .clone()
+                .clone() // This clone is necessary (PathBuf from HashMap)
         };
 
         info!("📜 Showing logs for: {}", target);
@@ -294,12 +337,12 @@ impl BiomeExecutor {
 
     async fn start_biome_internal(
         &self,
-        biome_name: String,
+        biome_name: &str,
         manifest: BiomeManifest,
         env_vars: Vec<String>,
         _detached: bool,
         _debug: bool,
-        security_level: String,
+        security_level: &str, // ✅ OPTIMIZED: Accept &str instead of String
     ) -> Result<BiomeInfo> {
         let biome_id = Uuid::new_v4();
         let start_time = Utc::now();
@@ -311,7 +354,8 @@ impl BiomeExecutor {
         fs::create_dir_all(&log_dir).await?;
 
         // Parse environment variables
-        let mut environment = HashMap::new();
+        // ✅ ZERO-COPY: Pre-allocate with known capacity
+        let mut environment = HashMap::with_capacity(env_vars.len());
         for env_var in env_vars {
             if let Some((key, value)) = env_var.split_once('=') {
                 environment.insert(key.to_string(), value.to_string());
@@ -332,11 +376,12 @@ impl BiomeExecutor {
                         beardog_config,
                         &environment,
                         &log_dir,
-                        &security_level,
+                        security_level, // Already a &str
                     )
                     .await?;
                 processes.push(process);
-                log_files.insert("beardog".to_string(), log_dir.join("beardog.log"));
+                // ✅ OPTIMIZED: Use String literal for constant key
+                log_files.insert(String::from("beardog"), log_dir.join("beardog.log"));
             }
         }
 
@@ -354,12 +399,13 @@ impl BiomeExecutor {
                         primal_config,
                         &environment,
                         &log_dir,
-                        &security_level,
+                        security_level, // Already a &str
                     )
                     .await?;
                 processes.push(process);
+                // ✅ OPTIMIZED: Use String::from for primal_name (Arc<str> would be even better)
                 log_files.insert(
-                    primal_name.clone(),
+                    String::from(primal_name),
                     log_dir.join(format!("{primal_name}.log")),
                 );
             }
@@ -374,12 +420,13 @@ impl BiomeExecutor {
                     service_config,
                     &environment,
                     &log_dir,
-                    &security_level,
+                    security_level, // Already a &str
                 )
                 .await?;
             processes.push(process);
+            // ✅ OPTIMIZED: Use String::from instead of clone
             log_files.insert(
-                service_name.clone(),
+                String::from(service_name),
                 log_dir.join(format!("{service_name}.log")),
             );
         }
@@ -387,7 +434,7 @@ impl BiomeExecutor {
         // Create biome info
         let biome_info = BiomeInfo {
             id: biome_id,
-            name: biome_name.clone(),
+            name: biome_name.to_string(),
             status: BiomeStatus::Running,
             created: start_time,
             started: Some(start_time),
@@ -403,11 +450,11 @@ impl BiomeExecutor {
                 .services
                 .keys()
                 .map(|name| ServiceInfo {
-                    name: name.clone(),
-                    status: "running".to_string(),
+                    name: name.clone(), // Necessary - owned String needed
+                    status: String::from("running"), // ✅ OPTIMIZED: String::from for literals
                     replicas: 1,
                     ports: vec![],
-                    health: "healthy".to_string(),
+                    health: String::from("healthy"), // ✅ OPTIMIZED: String::from for literals
                 })
                 .collect(),
         };
@@ -422,7 +469,7 @@ impl BiomeExecutor {
 
         {
             let mut biomes = self.biomes.write().await;
-            biomes.insert(biome_name, running_biome);
+            biomes.insert(biome_name.to_string(), running_biome);
         }
 
         Ok(biome_info)
@@ -451,6 +498,7 @@ impl BiomeExecutor {
             environment: environment.clone(),
             input_data: ExecutionInput::default(),
             callback_config: None,
+        encryption_config: None,
         };
 
         // Submit to distributed coordinator
@@ -491,6 +539,7 @@ impl BiomeExecutor {
             environment: service_env,
             input_data: ExecutionInput::default(),
             callback_config: None,
+        encryption_config: None,
         };
 
         // Submit to distributed coordinator
@@ -617,7 +666,7 @@ impl BiomeExecutor {
                             "Gracefully stopping process {} (PID: {})",
                             execution_id, pid
                         );
-                        return self.send_signal_to_process(pid, "TERM").await;
+                        return self.send_signal_to_process(pid, "TERM");
                     }
                 }
             }
@@ -636,7 +685,7 @@ impl BiomeExecutor {
                 if process.execution_id == *execution_id {
                     if let Some(pid) = process.pid {
                         info!("Force killing process {} (PID: {})", execution_id, pid);
-                        return self.send_signal_to_process(pid, "KILL").await;
+                        return self.send_signal_to_process(pid, "KILL");
                     }
                 }
             }
@@ -750,59 +799,7 @@ impl BiomeExecutor {
         level_filter: Option<String>,
         grep_pattern: Option<String>,
     ) -> Result<()> {
-        use tokio::fs;
-        use tokio::io::{AsyncBufReadExt, BufReader};
-
-        info!("📄 Reading log file: {}", log_file.display());
-
-        if !log_file.exists() {
-            println!("Log file not found: {}", log_file.display());
-            return Ok(());
-        }
-
-        let file = fs::File::open(log_file).await?;
-        let reader = BufReader::new(file);
-        let mut all_lines = Vec::new();
-
-        let mut lines_stream = reader.lines();
-        while let Some(line) = lines_stream.next_line().await? {
-            all_lines.push(line);
-        }
-
-        let start_idx = if all_lines.len() > lines {
-            all_lines.len() - lines
-        } else {
-            0
-        };
-
-        for line in &all_lines[start_idx..] {
-            // Apply filters if specified
-            if let Some(pattern) = &grep_pattern {
-                if !line.contains(pattern) {
-                    continue;
-                }
-            }
-
-            if let Some(level) = &level_filter {
-                if !line.to_lowercase().contains(&level.to_lowercase()) {
-                    continue;
-                }
-            }
-
-            if timestamps {
-                println!("{line}");
-            } else {
-                // Basic timestamp stripping (remove first timestamp-like pattern)
-                let cleaned_line = if line.len() > 20 && line.chars().nth(19) == Some(' ') {
-                    &line[20..]
-                } else {
-                    line
-                };
-                println!("{cleaned_line}");
-            }
-        }
-
-        Ok(())
+        log_management::show_log_file(log_file, lines, timestamps, level_filter, grep_pattern).await
     }
 
     async fn tail_log_file(
@@ -813,66 +810,7 @@ impl BiomeExecutor {
         level_filter: Option<String>,
         grep_pattern: Option<String>,
     ) -> Result<()> {
-        use std::io::SeekFrom;
-        use tokio::fs;
-        use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
-        use tokio::time::{sleep, Duration};
-
-        info!("👁️  Tailing log file: {}", log_file.display());
-
-        if !log_file.exists() {
-            println!("Log file not found: {}", log_file.display());
-            return Ok(());
-        }
-
-        // Show initial lines
-        self.show_log_file(
-            log_file,
-            initial_lines,
-            timestamps,
-            level_filter.clone(),
-            grep_pattern.clone(),
-        )
-        .await?;
-
-        // Start tailing
-        let mut file = fs::File::open(log_file).await?;
-        file.seek(SeekFrom::End(0)).await?;
-
-        println!("--- Following log file (Ctrl+C to stop) ---");
-
-        loop {
-            let reader = BufReader::new(&mut file);
-            let mut lines_stream = reader.lines();
-
-            while let Some(line) = lines_stream.next_line().await? {
-                // Apply filters
-                if let Some(pattern) = &grep_pattern {
-                    if !line.contains(pattern) {
-                        continue;
-                    }
-                }
-
-                if let Some(level) = &level_filter {
-                    if !line.to_lowercase().contains(&level.to_lowercase()) {
-                        continue;
-                    }
-                }
-
-                if timestamps {
-                    println!("{line}");
-                } else {
-                    let cleaned_line = if line.len() > 20 && line.chars().nth(19) == Some(' ') {
-                        &line[20..]
-                    } else {
-                        &line
-                    };
-                    println!("{cleaned_line}");
-                }
-            }
-
-            sleep(Duration::from_millis(500)).await;
-        }
+        log_management::tail_log_file(log_file, initial_lines, timestamps, level_filter, grep_pattern).await
     }
 
     // Helper methods for improved functionality
@@ -956,7 +894,7 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    async fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
+    fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
         use std::process::Command;
 
         info!("Sending {} signal to PID {}", signal, pid);

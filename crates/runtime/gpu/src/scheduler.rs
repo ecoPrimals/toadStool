@@ -75,13 +75,19 @@ impl UniversalComputeScheduler {
         resources.push(resource);
     }
 
-    /// Get list of all registered resources
+    /// Get list of all registered resources (as descriptive strings)
     pub async fn list_resources(&self) -> Vec<String> {
         let resources = self.resources.read().await;
         resources
             .iter()
             .map(|r| format!("{} ({})", r.resource_id(), r.capabilities().resource_type))
             .collect()
+    }
+
+    /// Get all registered compute resource objects
+    pub async fn get_resources(&self) -> Vec<Arc<dyn UniversalComputeResource>> {
+        let resources = self.resources.read().await;
+        resources.clone()
     }
 
     /// Select best resource for workload based on policy

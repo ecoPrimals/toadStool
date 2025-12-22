@@ -299,7 +299,14 @@ impl UniversalComputeManager {
 
         // Create federation request
         let federation_request = operations::federation::FederationRequest {
-            shared_resources: shared_resources.clone(),
+            peer_id: uuid::Uuid::new_v4(),
+            mode: std::sync::Arc::from("standard"),
+            capabilities: self.get_local_capabilities(),
+            shared_resources: shared_resources
+                .iter()
+                .map(|s| std::sync::Arc::from(s.as_str()))
+                .collect(),
+            protocol_version: std::sync::Arc::from("1.0"),
         };
 
         // Attempt connection
@@ -317,8 +324,8 @@ impl UniversalComputeManager {
                 let peer = FederationPeer {
                     peer_id: response.peer_id,
                     endpoint: peer_addr,
-                    capabilities: response.capabilities,
-                    shared_resources: response.accepted_resources,
+                    capabilities: response.capabilities.clone(), // Arc<str> clone is cheap
+                    shared_resources: response.accepted_resources.clone(), // Arc<str> clone is cheap
                     status: FederationStatus::Connected,
                     last_heartbeat: chrono::Utc::now(),
                     trust_level: TrustLevel::Verified,

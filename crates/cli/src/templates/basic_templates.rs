@@ -5,6 +5,10 @@
 //! - `create_development_template()`: Development environment with enhanced tooling
 //!
 //! These templates form the basis for all specialized templates.
+//!
+//! ⚠️ **MIGRATION NOTICE**: Uses deprecated hardcoded ports during transition to capability-based discovery.
+
+#![allow(deprecated)] // Module uses deprecated fields during migration
 
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
@@ -32,22 +36,31 @@ pub fn create_basic_template() -> TemplateComponents {
     let description = "Basic universal compute biome with essential services".to_string();
 
     // Essential primals
+    // Note: Templates use specific primal names as deployment identifiers.
+    // Runtime discovery will map these to actual available services via capabilities.
     let mut primals = HashMap::new();
     primals.insert(
-        "beardog".to_string(),
+        "pki-provider".to_string(), // Generic name (typically provided by beardog)
         PrimalConfig {
             version: "latest".to_string(),
             source: WorkloadSource::Container {
                 registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "beardog".to_string(),
+                image: "beardog".to_string(), // Default implementation
                 tag: "latest".to_string(),
                 digest: None,
             },
             enabled: true,
-            config: HashMap::new(),
+            config: {
+                let mut config = HashMap::new();
+                config.insert(
+                    "capabilities".to_string(),
+                    serde_yaml::Value::String("pki,secrets,auth".to_string()),
+                );
+                config
+            },
             dependencies: vec![],
             health_check: Some(HealthCheck {
-                command: vec!["beardog".to_string(), "health".to_string()],
+                command: vec!["health-check".to_string()], // Generic health check
                 interval: 30,
                 timeout: 10,
                 retries: 3,
@@ -84,7 +97,8 @@ pub fn create_basic_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            // Capability-based dependencies - orchestrator resolves to available providers
+            dependencies: vec!["capability:pki".to_string()],
             health_check: Some({
                 let config = EnvironmentConfig::from_env();
                 HealthCheck {
@@ -130,7 +144,7 @@ pub fn create_basic_template() -> TemplateComponents {
     };
 
     let storage = BiomeStorage {
-        nestgate_integration: false,
+        nestgate_integration: None,
         datasets: vec![],
         volumes: vec![],
         backup_policy: None,
@@ -185,7 +199,8 @@ pub fn create_development_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            // Capability-based dependencies - orchestrator resolves to available providers
+            dependencies: vec!["capability:pki".to_string()],
             health_check: Some({
                 let config = EnvironmentConfig::from_env();
                 HealthCheck {

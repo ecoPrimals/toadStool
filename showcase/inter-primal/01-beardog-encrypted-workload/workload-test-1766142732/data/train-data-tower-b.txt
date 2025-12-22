@@ -1,0 +1,7 @@
+# CIFAR-10 Training Batch B (Tower B - Strandgate)
+# Samples: 25000
+# Classes: airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck
+Image 25001: cat [0.456, 0.789, 0.012, ...]
+Image 25002: deer [0.567, 0.890, 0.123, ...]
+Image 25003: dog [0.678, 0.901, 0.234, ...]
+# ... 24997 more images

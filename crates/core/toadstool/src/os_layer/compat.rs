@@ -577,7 +577,7 @@ mod tests {
         assert_eq!(deserialized.target_system, config.target_system);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_linux_initialize() {
         let mut layer = LinuxCompatibilityLayer::new();
         let result = layer.initialize().await;
@@ -585,7 +585,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_windows_initialize() {
         let mut layer = WindowsCompatibilityLayer::new();
         let result = layer.initialize().await;
@@ -593,7 +593,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_macos_initialize() {
         let mut layer = MacOSCompatibilityLayer::new();
         let result = layer.initialize().await;
@@ -601,7 +601,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_legacy_initialize() {
         let mut layer = LegacyCompatibilityLayer::new();
         let result = layer.initialize().await;
@@ -609,7 +609,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_linux_shutdown() {
         let mut layer = LinuxCompatibilityLayer::new();
         let result = layer.shutdown().await;
@@ -617,7 +617,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_windows_shutdown() {
         let mut layer = WindowsCompatibilityLayer::new();
         let result = layer.shutdown().await;
@@ -625,7 +625,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_macos_shutdown() {
         let mut layer = MacOSCompatibilityLayer::new();
         let result = layer.shutdown().await;
@@ -633,7 +633,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_legacy_shutdown() {
         let mut layer = LegacyCompatibilityLayer::new();
         let result = layer.shutdown().await;

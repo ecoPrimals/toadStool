@@ -1,0 +1,63 @@
+[package]
+name = "gpu-universal-showcase"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+# Exclude from parent workspace
+
+[dependencies]
+# ToadStool GPU runtime with all backends
+toadstool-runtime-gpu = { path = "../../crates/runtime/gpu", features = ["all-backends"] }
+toadstool = { path = "../../crates/core/toadstool" }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# Utilities
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+clap = { version = "4", features = ["derive"] }
+
+# Performance measurement
+criterion = "0.5"
+sysinfo = "0.30"
+
+# Math for benchmarks
+ndarray = "0.15"
+num-traits = "0.2"
+
+# Optional: PyTorch bindings for ML demo
+tch = { version = "0.14", optional = true }
+
+[features]
+default = ["cuda", "webgpu"]
+cuda = ["toadstool-runtime-gpu/cuda"]
+rocm = []  # ROCm detected automatically
+webgpu = ["toadstool-runtime-gpu/webgpu"]
+opencl = ["toadstool-runtime-gpu/opencl"]
+vulkan = ["toadstool-runtime-gpu/vulkan"]
+all-backends = ["cuda", "webgpu", "opencl", "vulkan"]
+pytorch = ["tch"]
+
+[[bin]]
+name = "bench-matrix-multiply"
+path = "local/src/matrix.rs"
+
+[[bin]]
+name = "bench-image-processing"
+path = "local/src/image.rs"
+
+[[bin]]
+name = "demo-cuda-on-amd"
+path = "local/src/cuda_on_amd.rs"
+required-features = ["pytorch"]
+
+[[bin]]
+name = "bench-cross-tower"
+path = "distributed/src/cross_tower.rs"
+

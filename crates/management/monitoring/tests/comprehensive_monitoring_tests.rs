@@ -367,7 +367,7 @@ fn test_resource_monitor_error_clone() {
 // SystemResourceMonitor Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_creation() {
     let monitor = SystemResourceMonitor::new();
 
@@ -375,7 +375,7 @@ async fn test_system_resource_monitor_creation() {
     assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_with_custom_config() {
     let config = MonitoringConfig {
         granularity: MonitoringGranularity::HighFrequency,
@@ -388,7 +388,7 @@ async fn test_system_resource_monitor_with_custom_config() {
     assert!(format!("{:?}", monitor).contains("SystemResourceMonitor"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_register_process() {
     let monitor = SystemResourceMonitor::new();
     let path = Path::new("/usr/bin/test");
@@ -398,7 +398,7 @@ async fn test_system_resource_monitor_register_process() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_register_multiple_processes() {
     let monitor = SystemResourceMonitor::new();
 
@@ -413,7 +413,7 @@ async fn test_system_resource_monitor_register_multiple_processes() {
     assert!(result2.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_unregister_process() {
     let monitor = SystemResourceMonitor::new();
     let path = Path::new("/usr/bin/test");
@@ -428,7 +428,7 @@ async fn test_system_resource_monitor_unregister_process() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_unregister_nonexistent() {
     let monitor = SystemResourceMonitor::new();
 
@@ -437,7 +437,7 @@ async fn test_system_resource_monitor_unregister_nonexistent() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_resource_monitor_set_thresholds() {
     let monitor = SystemResourceMonitor::new();
     let path = Path::new("/usr/bin/test");

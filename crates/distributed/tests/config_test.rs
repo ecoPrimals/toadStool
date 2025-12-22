@@ -452,7 +452,7 @@ fn test_toadstool_capabilities_all_runtime_types() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_toadstool_capabilities_detect_current() {
     let result = ToadStoolCapabilities::detect_current().await;
     assert!(result.is_ok());

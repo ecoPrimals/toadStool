@@ -36,10 +36,14 @@ print("Multi-line script executed successfully!")
 }
 
 #[test]
-#[should_panic(expected = "Script is required for Python workload")]
 fn test_python_builder_missing_script() {
-    let _submission = WorkloadSubmission::python().build();
-    // Should panic without script
+    let result = WorkloadSubmission::python().build();
+    // Should return error without script
+    assert!(result.is_err(), "Building without script should fail");
+    assert!(
+        result.unwrap_err().contains("Script is required"),
+        "Error should mention missing script"
+    );
 }
 
 #[test]

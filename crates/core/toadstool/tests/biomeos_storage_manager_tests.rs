@@ -70,7 +70,7 @@ fn test_storage_provisioning_manager_replication_disabled() {
 // Basic Volume Provisioning Tests (Local fallback capabilities)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[cfg(not(feature = "networking"))] // Only run in mock mode
 async fn test_provision_volume_basic() {
     let config = StorageProvisioningConfig {
@@ -97,7 +97,7 @@ async fn test_provision_volume_basic() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[cfg(not(feature = "networking"))]
 async fn test_list_volumes_basic() {
     let config = StorageProvisioningConfig {
@@ -115,7 +115,7 @@ async fn test_list_volumes_basic() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[cfg(not(feature = "networking"))]
 async fn test_delete_volume_basic() {
     let config = StorageProvisioningConfig {

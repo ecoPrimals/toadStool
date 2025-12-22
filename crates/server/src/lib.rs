@@ -72,6 +72,9 @@ pub mod mocks;
 pub mod state;
 pub mod websocket;
 
+// Re-export background services for tests
+pub use background::start_background_services;
+
 /// Main `ToadStool` server implementation
 pub struct ToadStoolServer {
     config: ServerConfig,
@@ -81,10 +84,54 @@ pub struct ToadStoolServer {
 
 impl ToadStoolServer {
     /// Create a new `ToadStool` server
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// during initialization of background services or state setup.
+    #[must_use = "ToadStoolServer creation should be checked"]
     pub async fn new(config: ServerConfig) -> ServerResult<Self> {
         info!("Initializing ToadStool server with config: {:?}", config);
 
         let (event_broadcaster, _) = broadcast::channel(1000);
+
+        // Initialize capability provider if configured
+        let capability_provider = if let Some(primal_config) = &config.primal_capabilities {
+            if primal_config.enabled {
+                info!("Initializing primal capability provider");
+
+                use toadstool_distributed::primal_capabilities::CapabilityProvider;
+                let provider = Arc::new(CapabilityProvider::default());
+
+                // Auto-register with configured primals
+                if primal_config.auto_register {
+                    if let Some(ref endpoint) = primal_config.songbird_endpoint {
+                        info!("Registering with Songbird at {}", endpoint);
+                        if let Err(e) = provider.register_with_primal(endpoint).await {
+                            tracing::warn!("Failed to register with Songbird: {:?}", e);
+                        } else {
+                            info!("Successfully registered with Songbird");
+                        }
+                    }
+
+                    if let Some(ref endpoint) = primal_config.squirrel_endpoint {
+                        info!("Registering with Squirrel at {}", endpoint);
+                        if let Err(e) = provider.register_with_primal(endpoint).await {
+                            tracing::warn!("Failed to register with Squirrel: {:?}", e);
+                        } else {
+                            info!("Successfully registered with Squirrel");
+                        }
+                    }
+                }
+
+                Some(provider)
+            } else {
+                info!("Primal capability provider disabled");
+                None
+            }
+        } else {
+            info!("Primal capability provider not configured");
+            None
+        };
 
         let state = ServerState {
             runtime_engines: Arc::new(RwLock::new(HashMap::new())),
@@ -93,6 +140,7 @@ impl ToadStoolServer {
             config: config.clone(),
             resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
+            capability_provider,
         };
 
         Ok(Self {
@@ -103,6 +151,10 @@ impl ToadStoolServer {
     }
 
     /// Register a runtime engine with the server
+    ///
+    /// # Errors
+    /// Returns a `ServerError::Configuration` if the runtime type is unknown or invalid.
+    #[must_use = "Runtime engine registration should be checked"]
     pub async fn register_runtime_engine(
         &mut self,
         runtime_type: &str,
@@ -192,6 +244,13 @@ impl ToadStoolServer {
     }
 
     /// Start the server
+    ///
+    /// # Errors
+    /// Returns a `ServerError` if:
+    /// - The bind address is invalid or cannot be parsed.
+    /// - The TCP listener cannot be bound to the specified address.
+    /// - The server fails to start accepting connections.
+    #[must_use = "Server start should be checked"]
     pub async fn start(&mut self) -> ServerResult<()> {
         info!("Starting ToadStool server on {}", self.config.bind_address);
 
@@ -233,6 +292,11 @@ impl ToadStoolServer {
     }
 
     /// Shutdown the server gracefully
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// during graceful shutdown of background services or active connections.
+    #[must_use = "Server shutdown should be checked"]
     pub async fn shutdown(&self) -> ServerResult<()> {
         info!("Shutting down ToadStool server");
 
@@ -264,6 +328,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)] // Testing config with deprecated fields during migration
     fn test_server_config_default() {
         let config = ServerConfig::default();
         // The default bind address is now environment-aware
@@ -276,7 +341,7 @@ mod tests {
             )
         );
         assert!(config.enable_api);
-        assert!(config.enable_websocket);
+        assert!(!config.enable_websocket); // Disabled by default for security
         assert_eq!(config.max_concurrent_executions, 100);
     }
 
@@ -292,7 +357,7 @@ mod tests {
         assert_eq!(config.max_concurrent_executions, 50);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_server_creation() {
         let config = ServerConfig::default();
         let server = ToadStoolServer::new(config).await;

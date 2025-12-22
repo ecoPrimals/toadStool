@@ -69,7 +69,7 @@ impl SCADAAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for PLCAdapter {
     fn name(&self) -> &str {
         "PLC Adapter"
@@ -173,7 +173,7 @@ impl LegacyAdapter for PLCAdapter {
     }
 }
 
-// Native async trait
+#[async_trait::async_trait]
 impl LegacyAdapter for SCADAAdapter {
     fn name(&self) -> &str {
         "SCADA Adapter"

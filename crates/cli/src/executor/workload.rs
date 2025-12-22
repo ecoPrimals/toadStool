@@ -24,6 +24,9 @@ use toadstool_runtime_native::NativeRuntimeEngine;
 use toadstool_runtime_python::PythonRuntimeEngine;
 use toadstool_runtime_wasm::WasmRuntimeEngine;
 
+#[cfg(feature = "gpu")]
+use toadstool_runtime_gpu::UniversalGpuEngine;
+
 /// Workload specification file format
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct WorkloadFile {
@@ -66,6 +69,12 @@ pub enum ExecutionSpec {
         args: Option<Vec<String>>,
         env: Option<HashMap<String, String>>,
     },
+    Gpu {
+        kernel_name: String,
+        source: String,
+        input_data: Option<serde_json::Value>,
+        output_data_keys: Option<Vec<String>>,
+    },
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -102,13 +111,15 @@ pub async fn execute_workload(
         info!("   Description: {}", desc);
     }
 
-    // Parse environment overrides
-    let mut env_map = HashMap::new();
-    for env_pair in env_overrides {
-        if let Some((key, value)) = env_pair.split_once('=') {
-            env_map.insert(key.to_string(), value.to_string());
-        }
-    }
+    // Parse environment overrides (zero-copy: only allocate when inserting into HashMap)
+    let env_map: HashMap<String, String> = env_overrides
+        .iter()
+        .filter_map(|env_pair| {
+            env_pair
+                .split_once('=')
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+        })
+        .collect();
 
     // Create runtime orchestrator
     info!("🔧 Initializing runtime orchestrator");
@@ -138,6 +149,7 @@ pub async fn execute_workload(
         environment: HashMap::new(),
         input_data: Default::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     info!("🚀 Executing workload: {}", workload_file.metadata.name);
@@ -196,6 +208,23 @@ async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator) -> Result<
         }
     }
 
+    // GPU runtime (optional, feature-gated)
+    #[cfg(feature = "gpu")]
+    {
+        match UniversalGpuEngine::new().await {
+            Ok(gpu_engine) => {
+                orchestrator
+                    .register_engine(RuntimeType::Gpu, Box::new(gpu_engine))
+                    .await
+                    .context("Failed to register GPU runtime")?;
+                info!("   ✅ GPU runtime registered");
+            }
+            Err(e) => {
+                debug!("   ⚠️  GPU runtime not available: {}", e);
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -218,7 +247,8 @@ fn convert_to_workload_spec(
     workload: &WorkloadFile,
     env_overrides: HashMap<String, String>,
 ) -> Result<WorkloadSpec> {
-    let mut env_vars = HashMap::new();
+    // ✅ ZERO-COPY: Pre-allocate with override capacity
+    let mut env_vars = HashMap::with_capacity(env_overrides.len());
 
     match &workload.execution {
         ExecutionSpec::Native {
@@ -272,6 +302,23 @@ fn convert_to_workload_spec(
                 env_vars,
             })
         }
+        ExecutionSpec::Gpu {
+            kernel_name,
+            source,
+            input_data: _,
+            output_data_keys: _,
+        } => {
+            // Parse as OpenCL for now (most universal)
+            Ok(WorkloadSpec::Gpu {
+                program: toadstool::workload::GpuProgramSource::OpenCL {
+                    source: source.clone(),
+                },
+                kernel_name: kernel_name.clone(),
+                work_group_size: None,
+                global_work_size: (1024, 1, 1), // Default size
+                args: vec![],                   // Args would be populated from input_data
+            })
+        }
         _ => anyhow::bail!("Workload type not yet supported"),
     }
 }
@@ -304,6 +351,8 @@ fn infer_runtime_type(workload: &WorkloadSpec) -> RuntimeType {
         WorkloadSpec::Wasm { .. } => RuntimeType::Wasm,
         WorkloadSpec::Container { .. } => RuntimeType::Container,
         WorkloadSpec::Gpu { .. } => RuntimeType::Gpu,
+        WorkloadSpec::AiMl { .. } => RuntimeType::Gpu, // AI/ML uses GPU runtime with backend selector
+        WorkloadSpec::Cuda { .. } => RuntimeType::Gpu, // CUDA uses GPU runtime with compat layer
     }
 }
 
@@ -387,7 +436,7 @@ mod tests {
     // Test 1: load_workload_file with TOML
     // ========================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_workload_file_toml() {
         let content = r#"
 [metadata]
@@ -414,7 +463,7 @@ command = "/bin/echo"
     // Test 2: load_workload_file with JSON
     // ========================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_workload_file_json() {
         let content = r#"
 {
@@ -437,7 +486,7 @@ command = "/bin/echo"
     // Test 3: load_workload_file with nonexistent file
     // ========================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_workload_file_not_found() {
         let path = PathBuf::from("/nonexistent/workload.toml");
         let result = load_workload_file(&path).await;

@@ -301,7 +301,7 @@ impl NativeRuntimeEngine {
         // Stop monitoring and get metrics
         let metrics = if let Some(monitor) = &self.resource_monitor {
             monitor.stop_monitoring(&request.execution_id.to_string())?;
-            match monitor.get_metrics(&request.execution_id.to_string()) {
+            match monitor.get_metrics(&request.execution_id.to_string()).await {
                 Ok(metrics) => metrics,
                 Err(e) => {
                     warn!(
@@ -522,7 +522,10 @@ mod tests {
 
     async fn create_test_engine() -> NativeRuntimeEngine {
         let mut engine = NativeRuntimeEngine::new();
-        engine.initialize(RuntimeConfig::default()).await.unwrap();
+        engine
+            .initialize(RuntimeConfig::default())
+            .await
+            .expect("Test engine initialization should succeed");
         engine
     }
 
@@ -547,16 +550,17 @@ mod tests {
             environment: HashMap::new(),
             input_data: ExecutionInput::default(),
             callback_config: None,
+            encryption_config: None,
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_engine_initialization() {
         let engine = create_test_engine().await;
         assert!(engine.supports_workload(&WorkloadType::Native));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capabilities() {
         let engine = create_test_engine().await;
         let capabilities = engine.get_capabilities();
@@ -568,19 +572,26 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_simple_execution() {
         let engine = create_test_engine().await;
         let request = create_test_request("/bin/echo", vec!["hello".to_string()]);
 
-        let response = engine.execute(request).await.unwrap();
+        let response = engine
+            .execute(request)
+            .await
+            .expect("Echo execution should succeed");
 
         assert_eq!(response.status, ExecutionStatus::Success);
-        assert!(response.output.stdout.unwrap().contains("hello"));
+        assert!(response
+            .output
+            .stdout
+            .expect("Echo should produce stdout")
+            .contains("hello"));
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_execution_with_args() {
         let engine = create_test_engine().await;
         let request = create_test_request("/bin/ls", vec!["-la".to_string(), "/tmp".to_string()]);
@@ -591,7 +602,7 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_timeout_handling() {
         let engine = create_test_engine().await;
         let mut request = create_test_request("/bin/sleep", vec!["5".to_string()]);
@@ -602,7 +613,7 @@ mod tests {
         assert_eq!(response.status, ExecutionStatus::TimedOut);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_invalid_executable() {
         let engine = create_test_engine().await;
         let request = create_test_request("/nonexistent/executable", vec![]);
@@ -612,7 +623,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_metrics() {
         let engine = create_test_engine().await;
         let metrics = engine.get_metrics().await.unwrap();
@@ -621,7 +632,7 @@ mod tests {
         assert!(metrics.cpu.usage_percent >= 0.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_shutdown() {
         let mut engine = create_test_engine().await;
         let shutdown_result = engine.shutdown().await;
@@ -629,7 +640,7 @@ mod tests {
         assert!(shutdown_result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_supports_workload() {
         let engine = NativeRuntimeEngine::new();
 
@@ -639,7 +650,7 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_execution_with_env_vars() {
         let engine = create_test_engine().await;
         let mut env_vars = HashMap::new();
@@ -667,7 +678,7 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_execution_with_working_dir() {
         let engine = create_test_engine().await;
         let mut request = create_test_request("/bin/pwd", vec![]);
@@ -688,7 +699,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_concurrent_executions() {
         let engine = Arc::new(create_test_engine().await);
         let mut handles = vec![];
@@ -712,7 +723,7 @@ mod tests {
     }
 
     #[cfg(unix)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_execution_failure_handling() {
         let engine = create_test_engine().await;
         // false command always returns exit code 1
@@ -728,7 +739,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_default_capabilities() {
         let engine = NativeRuntimeEngine::new();
         let capabilities = engine.get_capabilities();
@@ -740,7 +751,7 @@ mod tests {
         assert!(capabilities.max_concurrent_executions.unwrap() > 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_engine_default_construction() {
         let engine1 = NativeRuntimeEngine::new();
         let engine2 = NativeRuntimeEngine::default();
@@ -749,7 +760,7 @@ mod tests {
         assert_eq!(engine1.config.settings.len(), engine2.config.settings.len());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_debug_trait() {
         let engine = NativeRuntimeEngine::new();
         let debug_str = format!("{:?}", engine);

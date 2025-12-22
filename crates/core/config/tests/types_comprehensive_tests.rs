@@ -1,3 +1,7 @@
+//! Tests for backward compatibility with deprecated endpoint configuration
+//! These tests validate that legacy hardcoded endpoints still work
+#![allow(deprecated)]
+
 //! Comprehensive tests for config types module
 //! Target: config/src/types.rs (58% → 80%+ coverage)
 //!

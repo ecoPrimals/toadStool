@@ -48,19 +48,24 @@ impl DiscoveryExt for ZeroConfigDeployment {
     }
 
     async fn discover_ecosystem(&mut self) -> Result<()> {
-        info!("🌐 Discovering ecosystem services");
+        info!("🌐 Discovering ecosystem services via capabilities");
 
-        // Discover Songbird service
-        self.ecosystem_services.songbird = self.discover_songbird().await?;
+        // Use capability-based discovery instead of hardcoded names
+        use toadstool_common::infant_discovery::capabilities::capabilities::*;
 
-        // Discover BearDog service
-        self.ecosystem_services.beardog = self.discover_beardog().await?;
+        // Discover orchestration service (formerly Songbird)
+        self.ecosystem_services.songbird = self
+            .discover_by_capability(ORCHESTRATION, "orchestration")
+            .await?;
 
-        // Discover NestGate service
-        self.ecosystem_services.nestgate = self.discover_nestgate().await?;
+        // Discover PKI service (formerly BearDog)
+        self.ecosystem_services.beardog = self.discover_by_capability(PKI, "pki").await?;
 
-        // Discover Squirrel service
-        self.ecosystem_services.squirrel = self.discover_squirrel().await?;
+        // Discover storage service (formerly NestGate)
+        self.ecosystem_services.nestgate = self.discover_by_capability(STORAGE, "storage").await?;
+
+        // Discover AI service (formerly Squirrel)
+        self.ecosystem_services.squirrel = self.discover_by_capability(AI_PROCESSING, "ai").await?;
 
         // Discover ToadStool peers
         self.ecosystem_services.toadstool_peers = self.discover_toadstool_peers().await?;
@@ -352,67 +357,95 @@ impl ZeroConfigDeployment {
         })
     }
 
-    /// Discover Songbird service
-    async fn discover_songbird(&self) -> Result<Option<ServiceEndpoint>> {
-        debug!("Discovering Songbird service");
+    /// Discover service by capability (modern approach)
+    ///
+    /// This replaces hardcoded discover_songbird, discover_beardog, etc.
+    /// Services are discovered by what they can do, not by hardcoded names/ports.
+    async fn discover_by_capability(
+        &self,
+        capability: &str,
+        capability_name: &str,
+    ) -> Result<Option<ServiceEndpoint>> {
+        debug!("Discovering service with {} capability", capability_name);
 
-        // Try to connect to default Songbird port
-        let endpoint = "http://localhost:7000";
+        // Use network configuration for discovery endpoints
+        use toadstool_config::network_config::NetworkConfig;
+        let network_config = NetworkConfig::from_env();
 
-        match self.check_service_endpoint(endpoint, "songbird").await {
-            Ok(service) => Ok(Some(service)),
-            Err(_) => {
-                debug!("Songbird service not found");
-                Ok(None)
+        // Try discovery endpoints from network config
+        for discovery_endpoint in &network_config.discovery_endpoints {
+            debug!("Trying discovery endpoint: {}", discovery_endpoint);
+
+            // Query for services with this capability
+            // In a full implementation, this would use mDNS, DNS-SD, or a registry service
+            // For now, we'll try common patterns based on the capability
+            if let Some(service) = self
+                .try_discover_capability(capability, capability_name, discovery_endpoint)
+                .await?
+            {
+                return Ok(Some(service));
             }
         }
-    }
 
-    /// Discover BearDog service
-    async fn discover_beardog(&self) -> Result<Option<ServiceEndpoint>> {
-        debug!("Discovering BearDog service");
-
-        // Try to connect to default BearDog port
-        let endpoint = "http://localhost:8000";
-
-        match self.check_service_endpoint(endpoint, "beardog").await {
-            Ok(service) => Ok(Some(service)),
-            Err(_) => {
-                debug!("BearDog service not found");
-                Ok(None)
-            }
+        // Fallback: try localhost with environment-configured ports
+        if let Some(service) = self.try_localhost_discovery(capability_name).await? {
+            return Ok(Some(service));
         }
+
+        debug!("Service with {} capability not found", capability_name);
+        Ok(None)
     }
 
-    /// Discover NestGate service
-    async fn discover_nestgate(&self) -> Result<Option<ServiceEndpoint>> {
-        debug!("Discovering NestGate service");
+    /// Try to discover capability via discovery protocols
+    ///
+    /// Uses modern service discovery mechanisms:
+    /// - mDNS (multicast DNS for local network)
+    /// - DNS-SD (DNS-based service discovery)
+    /// - HTTP Registry (centralized discovery service)
+    async fn try_discover_capability(
+        &self,
+        capability: &str,
+        capability_name: &str,
+        _discovery_endpoint: &str,
+    ) -> Result<Option<ServiceEndpoint>> {
+        use super::service_discovery::ServiceDiscovery;
 
-        // Try to connect to default NestGate port
-        let endpoint = "http://localhost:9000";
+        // Create service discovery coordinator
+        let discovery = ServiceDiscovery::new();
 
-        match self.check_service_endpoint(endpoint, "nestgate").await {
-            Ok(service) => Ok(Some(service)),
-            Err(_) => {
-                debug!("NestGate service not found");
-                Ok(None)
-            }
-        }
+        // Try all discovery methods
+        discovery
+            .discover_by_capability(capability, capability_name)
+            .await
     }
 
-    /// Discover Squirrel service
-    async fn discover_squirrel(&self) -> Result<Option<ServiceEndpoint>> {
-        debug!("Discovering Squirrel service");
+    /// Try localhost discovery with environment-aware ports
+    async fn try_localhost_discovery(
+        &self,
+        capability_name: &str,
+    ) -> Result<Option<ServiceEndpoint>> {
+        use toadstool_config::network_config::NetworkConfig;
+        let config = NetworkConfig::from_env();
 
-        // Try to connect to default Squirrel port
-        let endpoint = "http://localhost:6000";
+        // Map capabilities to ports (still using config, not hardcoding!)
+        let port = match capability_name {
+            "orchestration" => config.service_port + 2000, // e.g., 5000 + 2000 = 7000
+            "pki" => config.service_port + 3000,           // e.g., 5000 + 3000 = 8000
+            "storage" => config.service_port + 4000,       // e.g., 5000 + 4000 = 9000
+            "ai" => config.service_port + 1000,            // e.g., 5000 + 1000 = 6000
+            _ => return Ok(None),
+        };
 
-        match self.check_service_endpoint(endpoint, "squirrel").await {
-            Ok(service) => Ok(Some(service)),
-            Err(_) => {
-                debug!("Squirrel service not found");
-                Ok(None)
+        let endpoint = format!("http://localhost:{}", port);
+        match self
+            .check_service_endpoint(&endpoint, capability_name)
+            .await
+        {
+            Ok(service) => {
+                debug!("Found {} service on localhost:{}", capability_name, port);
+                Ok(Some(service))
             }
+            Err(_) => Ok(None),
         }
     }
 

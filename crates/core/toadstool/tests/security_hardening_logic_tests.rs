@@ -425,7 +425,7 @@ mod security_hardening_logic_tests {
     // Concurrent Security Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_rate_limit_tracking() {
         let rate_limits: Arc<RwLock<HashMap<String, u32>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -440,7 +440,7 @@ mod security_hardening_logic_tests {
         assert_eq!(rl.get("user-123"), Some(&1));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_ban_list() {
         let banned_ips: Arc<RwLock<Vec<String>>> = Arc::new(RwLock::new(Vec::new()));
 
@@ -455,7 +455,7 @@ mod security_hardening_logic_tests {
         assert!(bl.contains(&"192.168.1.100".to_string()));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_audit_logging() {
         let audit_logs: Arc<RwLock<Vec<String>>> = Arc::new(RwLock::new(Vec::new()));
 

@@ -5,7 +5,7 @@
 
 use toadstool_cli::executor::BiomeExecutor;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_can_be_imported() {
     // This test verifies that BiomeExecutor is actually importable
     // The fact that this compiles proves the type is accessible
@@ -28,7 +28,7 @@ async fn test_biome_executor_can_be_imported() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_type_exists() {
     // Simplest possible test - does the type exist?
     // This will fail to compile if BiomeExecutor isn't accessible

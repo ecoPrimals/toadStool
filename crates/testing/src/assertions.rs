@@ -18,6 +18,14 @@
 //!
 //! This module provides domain-specific assertion helpers that make
 //! test failures more informative and tests more readable.
+//!
+//! # Note on Panics
+//!
+//! These assertion functions are designed to panic on assertion failures,
+//! as is standard practice for test assertions. This is intentional and
+//! appropriate for test infrastructure.
+
+#![allow(clippy::panic)] // Test assertions should panic on failure
 
 use toadstool::{
     execution::{ExecutionResponse, ExecutionStatus},
@@ -188,7 +196,7 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
         "Timing duration should be consistent with response duration"
     );
 
-    // Network metrics validation - basic sanity checks only
+    // Network metrics validation - basic validation checks only
     // Network bytes sent validation - all u64 values are valid by definition
 
     // Network bytes received validation - all u64 values are valid by definition
@@ -197,7 +205,7 @@ pub fn assert_metrics_present(response: &ExecutionResponse) {
 
     // Network packets received validation - all u64 values are valid by definition
 
-    // Storage metrics validation - basic sanity checks only
+    // Storage metrics validation - basic validation checks only
     // Storage bytes read validation - all u64 values are valid by definition
     // Storage bytes written validation - all u64 values are valid by definition
 }

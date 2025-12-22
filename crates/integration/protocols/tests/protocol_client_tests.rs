@@ -52,7 +52,7 @@ fn create_test_service_info() -> ServiceInfo {
 // Client Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_protocol_client_creation() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await;
@@ -60,7 +60,7 @@ async fn test_protocol_client_creation() {
     assert!(client.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_protocol_client_with_custom_service_id() {
     let mut config = create_test_config();
     config.service_id = "custom-service-id".to_string();
@@ -69,7 +69,7 @@ async fn test_protocol_client_with_custom_service_id() {
     assert!(client.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_protocol_client_with_multiple_transports() {
     let mut config = create_test_config();
     config.supported_transports = vec![
@@ -82,7 +82,7 @@ async fn test_protocol_client_with_multiple_transports() {
     assert!(client.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_protocol_client_with_auth_config() {
     let mut config = create_test_config();
     config.auth_config = Some(ServiceAuthConfig::bearer("test-token"));
@@ -95,7 +95,7 @@ async fn test_protocol_client_with_auth_config() {
 // Service Registration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -105,7 +105,7 @@ async fn test_register_service() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_multiple_services() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -139,7 +139,7 @@ async fn test_register_multiple_services() {
     assert!(result2.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service_with_metadata() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -159,7 +159,7 @@ async fn test_register_service_with_metadata() {
 // Service Discovery Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_services_no_discovery_config() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -169,7 +169,7 @@ async fn test_discover_services_no_discovery_config() {
     assert!(services.unwrap().is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_services_from_cache() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -188,7 +188,7 @@ async fn test_discover_services_from_cache() {
 // Message Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_message() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -200,7 +200,7 @@ async fn test_create_message() {
     assert_eq!(message.format, MessageFormat::Json);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_message_with_complex_payload() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -222,7 +222,7 @@ async fn test_create_message_with_complex_payload() {
     assert!(message.payload.is_object());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_message_has_unique_id() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -233,7 +233,7 @@ async fn test_message_has_unique_id() {
     assert_ne!(msg1.id, msg2.id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_message_has_timestamp() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -249,7 +249,7 @@ async fn test_message_has_timestamp() {
 // Service Health Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_service_health_unknown() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -258,7 +258,7 @@ async fn test_get_service_health_unknown() {
     assert!(matches!(health, HealthStatus::Unknown));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_service_health_after_registration() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -274,7 +274,7 @@ async fn test_get_service_health_after_registration() {
 // Event Subscription Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_subscribe_events() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -283,7 +283,7 @@ async fn test_subscribe_events() {
     // Just verify we can get a receiver without panicking
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_event_subscriptions() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -298,7 +298,7 @@ async fn test_multiple_event_subscriptions() {
 // Config Validation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_minimal_config() {
     let config = ProtocolConfig::default();
     let client = ProtocolClient::new(config).await;
@@ -306,7 +306,7 @@ async fn test_client_with_minimal_config() {
     assert!(client.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_short_timeout() {
     let mut config = create_test_config();
     config.request_timeout = Duration::from_millis(100);
@@ -315,7 +315,7 @@ async fn test_client_with_short_timeout() {
     assert!(client.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_long_timeout() {
     let mut config = create_test_config();
     config.request_timeout = Duration::from_secs(300);
@@ -328,7 +328,7 @@ async fn test_client_with_long_timeout() {
 // Message Format Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_messagepack_format() {
     let mut config = create_test_config();
     config.default_format = MessageFormat::MessagePack;
@@ -339,7 +339,7 @@ async fn test_client_with_messagepack_format() {
     assert_eq!(message.format, MessageFormat::MessagePack);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_client_with_cbor_format() {
     let mut config = create_test_config();
     config.default_format = MessageFormat::Cbor;
@@ -354,7 +354,7 @@ async fn test_client_with_cbor_format() {
 // Edge Case Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service_with_empty_endpoints() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -366,7 +366,7 @@ async fn test_register_service_with_empty_endpoints() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service_with_multiple_endpoints() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -397,7 +397,7 @@ async fn test_register_service_with_multiple_endpoints() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_message_with_empty_payload() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -407,7 +407,7 @@ async fn test_create_message_with_empty_payload() {
     assert!(message.payload.is_object());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_message_with_array_payload() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -416,7 +416,7 @@ async fn test_create_message_with_array_payload() {
     assert!(message.payload.is_array());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_services_with_different_names() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -459,7 +459,7 @@ async fn test_discover_services_with_different_names() {
 // Service Capabilities Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service_with_capabilities() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -475,7 +475,7 @@ async fn test_register_service_with_capabilities() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_service_with_no_capabilities() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();
@@ -491,7 +491,7 @@ async fn test_register_service_with_no_capabilities() {
 // Protocol Message Priority Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_message_default_priority() {
     let config = create_test_config();
     let client = ProtocolClient::new(config).await.unwrap();

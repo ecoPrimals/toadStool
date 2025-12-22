@@ -125,7 +125,7 @@ fn test_init_is_idempotent() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_ecosystem_creates_platform() {
     // init_with_ecosystem should create UniversalComputePlatform
     // May fail if dependencies not available, but should not panic
@@ -148,7 +148,7 @@ async fn test_init_with_ecosystem_creates_platform() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_biomeos_creates_platform() {
     // init_with_biomeos should create platform with biomeOS integration
     let result = init_with_biomeos().await;
@@ -225,6 +225,7 @@ fn test_all_modules_accessible() {
 #[test]
 fn test_config_module_accessible() {
     // config module should be re-exported
+    #[allow(deprecated)]
     let _ = config::defaults::network::SONGBIRD_PORT;
 }
 

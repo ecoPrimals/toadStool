@@ -14,13 +14,13 @@ use toadstool::ecosystem::*;
 // EcosystemCoordinator Creation & Configuration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_new_success() {
     let coordinator = EcosystemCoordinator::new();
     assert!(coordinator.is_ok(), "Coordinator creation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_new_returns_instance() {
     let coordinator = EcosystemCoordinator::new().unwrap();
     // Verify the coordinator is usable
@@ -379,7 +379,7 @@ fn test_ecosystem_message_type_clone() {
 // Async Function Tests - Discovery & Integration
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_with_auto_discovery_disabled() {
     let coordinator = EcosystemCoordinator::new().unwrap();
 
@@ -391,7 +391,7 @@ async fn test_discover_primals_with_auto_discovery_disabled() {
     assert!(discovered.is_ok() || discovered.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_primal_status_empty_coordinator() {
     let coordinator = EcosystemCoordinator::new().unwrap();
     let status = coordinator.get_primal_status().await;
@@ -405,7 +405,7 @@ async fn test_get_primal_status_empty_coordinator() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_is_primal_available_nonexistent() {
     let coordinator = EcosystemCoordinator::new().unwrap();
     let available = coordinator.is_primal_available("nonexistent").await;
@@ -413,7 +413,7 @@ async fn test_is_primal_available_nonexistent() {
     assert!(!available, "Nonexistent primal should not be available");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_is_primal_available_multiple_checks() {
     let coordinator = EcosystemCoordinator::new().unwrap();
 
@@ -428,7 +428,7 @@ async fn test_is_primal_available_multiple_checks() {
     assert!(!beardog_available);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_primal_capabilities_nonexistent() {
     let coordinator = EcosystemCoordinator::new().unwrap();
     let capabilities = coordinator.get_primal_capabilities("nonexistent").await;
@@ -461,7 +461,7 @@ fn test_primal_channel_construction() {
 // Integration & Error Path Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_integrate_empty_primal_list() {
     let coordinator = EcosystemCoordinator::new().unwrap();
     let result = coordinator.integrate_primals(vec![]).await;

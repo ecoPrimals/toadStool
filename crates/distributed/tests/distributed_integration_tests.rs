@@ -17,7 +17,7 @@ use uuid::Uuid;
 // Node Registration Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_registration() {
     // Test registering a new node in the distributed system
     let node_id = Uuid::new_v4();
@@ -27,7 +27,7 @@ async fn test_node_registration() {
     assert_eq!(node_addr.port(), 8080);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_node_registration() {
     // Test registering multiple nodes
     let mut nodes = Vec::new();
@@ -48,7 +48,7 @@ async fn test_multiple_node_registration() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_deregistration() {
     // Test deregistering a node
     let node_id = Uuid::new_v4();
@@ -58,7 +58,7 @@ async fn test_node_deregistration() {
     assert!(deregistered);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_heartbeat() {
     // Test node heartbeat mechanism
     let _node_id = Uuid::new_v4();
@@ -71,7 +71,7 @@ async fn test_node_heartbeat() {
 // Node Discovery Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_available_nodes() {
     // Test discovering nodes in the cluster
     let available_nodes = vec![
@@ -83,7 +83,7 @@ async fn test_discover_available_nodes() {
     assert_eq!(available_nodes.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_capability_discovery() {
     // Test discovering node capabilities
     let node_capabilities = vec![
@@ -98,7 +98,7 @@ async fn test_node_capability_discovery() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_health_monitoring() {
     // Test monitoring node health
     let health_statuses = vec![
@@ -119,7 +119,7 @@ async fn test_node_health_monitoring() {
 // Job Distribution Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_job_submission_to_coordinator() {
     // Test submitting a job to the coordinator
     let job_id = Uuid::new_v4();
@@ -128,7 +128,7 @@ async fn test_job_submission_to_coordinator() {
     assert!(!job_id.is_nil());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_job_distribution_to_nodes() {
     // Test distributing jobs across nodes
     let jobs = vec![
@@ -140,7 +140,7 @@ async fn test_job_distribution_to_nodes() {
     assert_eq!(jobs.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_balanced_distribution() {
     // Test load-balanced job distribution
     let mut node_loads: HashMap<String, u32> = HashMap::new();
@@ -153,7 +153,7 @@ async fn test_load_balanced_distribution() {
     assert_eq!(*min_load, 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capacity_aware_scheduling() {
     // Test scheduling based on node capacity
     let node_capacities = vec![
@@ -170,7 +170,7 @@ async fn test_capacity_aware_scheduling() {
 // Network Resilience Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_network_partition_detection() {
     // Test detecting network partitions
     let nodes = vec!["node1", "node2", "node3"];
@@ -180,7 +180,7 @@ async fn test_network_partition_detection() {
     assert!(partitioned);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_reconnection_handling() {
     // Test handling node reconnection after network issues
     let node_id = Uuid::new_v4();
@@ -190,7 +190,7 @@ async fn test_node_reconnection_handling() {
     assert!(reconnection_time.as_secs() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_job_failover() {
     // Test job failover to another node
     let original_node = "node1";
@@ -199,7 +199,7 @@ async fn test_job_failover() {
     assert_ne!(original_node, failover_node);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_split_brain_prevention() {
     // Test preventing split-brain scenarios
     let cluster_size = 5;
@@ -212,7 +212,7 @@ async fn test_split_brain_prevention() {
 // Cross-Node Communication Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_to_node_messaging() {
     // Test direct node-to-node communication
     let source_node = Uuid::new_v4();
@@ -222,7 +222,7 @@ async fn test_node_to_node_messaging() {
     assert_ne!(source_node, target_node);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_broadcast_messaging() {
     // Test broadcasting messages to all nodes
     let _message = "broadcast_message";
@@ -233,7 +233,7 @@ async fn test_broadcast_messaging() {
     assert_eq!(recipients.len(), node_count);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_message_routing() {
     // Test routing messages through the cluster
     let hops = vec!["node1", "node2", "node3"];
@@ -241,7 +241,7 @@ async fn test_message_routing() {
     assert!(hops.len() > 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_message_acknowledgment() {
     // Test message acknowledgment mechanism
     let message_id = Uuid::new_v4();
@@ -255,7 +255,7 @@ async fn test_message_acknowledgment() {
 // Cluster State Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_state_synchronization() {
     // Test synchronizing cluster state across nodes
     let state_version = 42u64;
@@ -263,7 +263,7 @@ async fn test_cluster_state_synchronization() {
     assert!(state_version > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_distributed_consensus() {
     // Test achieving consensus across nodes
     let proposals = vec![
@@ -279,7 +279,7 @@ async fn test_distributed_consensus() {
     assert!(consensus);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_leader_election() {
     // Test leader election in the cluster
     let nodes = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
@@ -289,7 +289,7 @@ async fn test_leader_election() {
     assert!(nodes.contains(leader));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_configuration_propagation() {
     // Test propagating configuration changes
     let config_version = 1u32;
@@ -302,7 +302,7 @@ async fn test_configuration_propagation() {
 // Resource Coordination Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_distributed_resource_allocation() {
     // Test allocating resources across nodes
     let total_resources = 1000;
@@ -312,7 +312,7 @@ async fn test_distributed_resource_allocation() {
     assert_eq!(allocated, total_resources);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_rebalancing() {
     // Test rebalancing resources across nodes
     let _initial_distribution = vec![500, 300, 200];
@@ -321,7 +321,7 @@ async fn test_resource_rebalancing() {
     assert!(target_per_node > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_quota_enforcement() {
     // Test enforcing resource quotas
     let node_quota = 1000;
@@ -335,7 +335,7 @@ async fn test_resource_quota_enforcement() {
 // Job Scheduling Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_priority_based_scheduling() {
     // Test scheduling jobs based on priority
     let jobs = vec![
@@ -348,7 +348,7 @@ async fn test_priority_based_scheduling() {
     assert_eq!(*highest_priority, 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_affinity_based_scheduling() {
     // Test scheduling jobs with node affinity
     let job_affinities = vec![("job1", vec!["node1", "node2"]), ("job2", vec!["node3"])];
@@ -356,7 +356,7 @@ async fn test_affinity_based_scheduling() {
     assert_eq!(job_affinities.len(), 2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_requirement_matching() {
     // Test matching job requirements to node capabilities
     let job_requirements = vec!["cpu", "memory", "gpu"];
@@ -373,7 +373,7 @@ async fn test_resource_requirement_matching() {
 // Fault Tolerance Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_failure_detection() {
     // Test detecting node failures
     let _node_id = Uuid::new_v4();
@@ -384,7 +384,7 @@ async fn test_node_failure_detection() {
     assert!(is_failed);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_automatic_job_resubmission() {
     // Test automatically resubmitting failed jobs
     let _failed_job_id = Uuid::new_v4();
@@ -395,7 +395,7 @@ async fn test_automatic_job_resubmission() {
     assert!(should_retry);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_graceful_node_shutdown() {
     // Test graceful node shutdown
     let _node_id = Uuid::new_v4();
@@ -405,7 +405,7 @@ async fn test_graceful_node_shutdown() {
     assert!(active_jobs > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_degraded_mode() {
     // Test cluster operation in degraded mode
     let _total_nodes = 5;
@@ -420,7 +420,7 @@ async fn test_cluster_degraded_mode() {
 // Performance Monitoring Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_distributed_metrics_collection() {
     // Test collecting metrics from all nodes
     let node_metrics = vec![
@@ -432,7 +432,7 @@ async fn test_distributed_metrics_collection() {
     assert_eq!(node_metrics.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_health_aggregation() {
     // Test aggregating cluster health
     let node_health_scores = vec![95, 90, 85];
@@ -441,7 +441,7 @@ async fn test_cluster_health_aggregation() {
     assert_eq!(avg_health, 90);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_job_completion_tracking() {
     // Test tracking job completions across nodes
     let completed_jobs = vec![("node1", 10), ("node2", 15), ("node3", 12)];
@@ -454,7 +454,7 @@ async fn test_job_completion_tracking() {
 // Security Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_node_authentication() {
     // Test authenticating nodes in the cluster
     let node_id = Uuid::new_v4();
@@ -464,7 +464,7 @@ async fn test_node_authentication() {
     assert!(!auth_token.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_encrypted_node_communication() {
     // Test encrypted communication between nodes
     let message = "sensitive_data";
@@ -474,7 +474,7 @@ async fn test_encrypted_node_communication() {
     assert!(encrypted);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_job_isolation_across_nodes() {
     // Test that jobs are isolated across nodes
     let job1_node = "node1";
@@ -487,7 +487,7 @@ async fn test_job_isolation_across_nodes() {
 // Scalability Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_dynamic_node_addition() {
     // Test adding nodes to running cluster
     let initial_node_count = 3;
@@ -497,7 +497,7 @@ async fn test_dynamic_node_addition() {
     assert_eq!(final_node_count, 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_horizontal_scaling() {
     // Test horizontal scaling of cluster
     let current_capacity = 1000;
@@ -508,7 +508,7 @@ async fn test_horizontal_scaling() {
     assert_eq!(new_capacity, 2000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_size_limits() {
     // Test cluster size limits
     let max_cluster_size = 100;
@@ -522,7 +522,7 @@ async fn test_cluster_size_limits() {
 // Data Consistency Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_distributed_state_consistency() {
     // Test state consistency across nodes
     let state_version = 42u64;
@@ -532,7 +532,7 @@ async fn test_distributed_state_consistency() {
     assert!(is_consistent);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_eventual_consistency() {
     // Test eventual consistency model
     let update_propagation_time = Duration::from_millis(100);
@@ -540,7 +540,7 @@ async fn test_eventual_consistency() {
     assert!(update_propagation_time.as_millis() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_conflict_resolution() {
     // Test resolving conflicts in distributed state
     let conflicting_versions = vec![42, 43, 42];

@@ -1,44 +1,120 @@
 //! Configuration constants for ToadStool
 //!
-//! This module contains well-known constants used throughout the system.
-//! Following modern Rust idioms, these are centralized for maintainability.
+//! # ⚠️ DEPRECATION NOTICE
+//!
+//! **Hardcoded ports are being phased out** in favor of runtime discovery.
+//! Use `RuntimeDiscovery` with `Capability` for modern primal-agnostic code.
+//!
+//! This module contains legacy well-known constants. For new code, use the
+//! capability-based discovery system to find primals at runtime.
 
-/// Default network ports for ecosystem primals
+/// # ⚠️ DEPRECATED: Default network ports for ecosystem primals
+///
+/// **Use `RuntimeDiscovery` instead** for primal-agnostic, runtime-discovered services.
+///
+/// These hardcoded ports assume:
+/// - Primals run on specific ports (brittle)
+/// - Single-instance deployments (not scalable)
+/// - Fixed port assignments (conflicts in multi-instance)
+///
+/// # Modern Alternative
+///
+/// ```rust,ignore
+/// use toadstool_common::{RuntimeDiscovery, Capability};
+///
+/// // OLD (hardcoded):
+/// // let songbird_port = constants::ports::SONGBIRD; // 8080
+///
+/// // NEW (discovered):
+/// let discovery = RuntimeDiscovery::new(client);
+/// let coordinators = discovery
+///     .discover_capability(&Capability::Coordination)
+///     .await?;
+/// let coordinator_endpoint = &coordinators[0].endpoint;
+/// ```
+///
+/// See: `toadstool-common::RuntimeDiscovery` for capability-based discovery
+#[deprecated(
+    since = "0.3.0",
+    note = "Use RuntimeDiscovery::discover_capability() for primal-agnostic service discovery. \
+            Hardcoded ports are being eliminated. See module docs for migration examples."
+)]
 pub mod ports {
     /// Default Songbird service mesh port
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find coordinator at runtime
     pub const SONGBIRD: u16 = 8080;
 
     /// Default BearDog security service port
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find security service at runtime
     pub const BEARDOG: u16 = 8081;
 
     /// Default NestGate storage service port
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find storage service at runtime
     pub const NESTGATE: u16 = 9000;
 
     /// Default ToadStool compute service port
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find compute service at runtime
     pub const TOADSTOOL: u16 = 7000;
 
     /// Default Squirrel MCP platform port
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find MCP platform at runtime
     pub const SQUIRREL: u16 = 6000;
 }
 
-/// Ecosystem primal service names
+/// # ⚠️ DEPRECATED: Ecosystem primal service names
+///
+/// **Use `RuntimeDiscovery` instead** for primal-agnostic, capability-based discovery.
+///
+/// These hardcoded names assume:
+/// - Fixed primal names (not extensible)
+/// - Known ecosystem topology (not dynamic)
+/// - Centralized naming (not federated)
+///
+/// # Modern Alternative
+///
+/// ```rust,ignore
+/// use toadstool_common::{RuntimeDiscovery, Capability};
+///
+/// // OLD (hardcoded name):
+/// // let service_name = constants::primals::SONGBIRD;
+///
+/// // NEW (discover by capability):
+/// let discovery = RuntimeDiscovery::new(client);
+/// let services = discovery
+///     .discover_capability(&Capability::Coordination)
+///     .await?;
+/// // Returns whatever coordinator is available, regardless of name
+/// ```
+///
+/// **Philosophy**: ToadStool should only know about itself. Discover others at runtime.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use RuntimeDiscovery::discover_capability() for primal-agnostic service discovery. \
+            Hardcoded primal names violate self-knowledge principle. See module docs."
+)]
 pub mod primals {
     /// Songbird service mesh identifier
+    /// **DEPRECATED**: Discover coordinator by capability, not hardcoded name
     pub const SONGBIRD: &str = "songbird";
 
-    /// BearDog security service identifier
+    /// BearDog security service identifier  
+    /// **DEPRECATED**: Discover security service by capability, not hardcoded name
     pub const BEARDOG: &str = "beardog";
 
     /// NestGate storage service identifier
+    /// **DEPRECATED**: Discover storage service by capability, not hardcoded name
     pub const NESTGATE: &str = "nestgate";
 
     /// ToadStool compute service identifier
+    /// **This is self-knowledge** - acceptable for identifying ourselves
     pub const TOADSTOOL: &str = "toadstool";
 
     /// Squirrel MCP platform identifier
+    /// **DEPRECATED**: Discover MCP platform by capability, not hardcoded name
     pub const SQUIRREL: &str = "squirrel";
 
     /// All known primal identifiers
+    /// **DEPRECATED**: Cannot enumerate dynamic ecosystem - discover at runtime
     pub const ALL: &[&str] = &[SONGBIRD, BEARDOG, NESTGATE, TOADSTOOL, SQUIRREL];
 }
 
@@ -78,11 +154,17 @@ pub mod timeouts {
     pub const HEALTH_CHECK: u64 = 5;
 }
 
+// Compile-time validation of timeout ordering
+// These assertions are evaluated during compilation, catching configuration errors early
+const _: () = assert!(timeouts::SHORT < timeouts::DEFAULT);
+const _: () = assert!(timeouts::DEFAULT < timeouts::LONG);
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)] // Testing legacy constants during migration
     fn test_port_constants() {
         assert_eq!(ports::SONGBIRD, 8080);
         assert_eq!(ports::BEARDOG, 8081);
@@ -90,6 +172,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // Testing legacy constants during migration
     fn test_primal_constants() {
         assert_eq!(primals::SONGBIRD, "songbird");
         assert_eq!(primals::BEARDOG, "beardog");
@@ -103,3 +186,6 @@ mod tests {
         const _: () = assert!(timeouts::DEFAULT < timeouts::LONG);
     }
 }
+
+// Compile-time validation of timeout ordering moved before test module
+// These assertions are evaluated during compilation, catching configuration errors early

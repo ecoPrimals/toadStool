@@ -4,6 +4,19 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool WebAssembly runtime engine with Wasmtime and WASI support"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
@@ -38,11 +51,23 @@ tempfile = { workspace = true }
 md5 = "0.7"
 sha2 = "0.10"
 hex = "0.4"
+num_cpus = "1.16"
 
 [features]
 default = ["url-module-loading"]
 url-module-loading = ["dep:reqwest"]
 
+# ⚠️ UNSAFE FEATURE: Enable unsafe `Module::deserialize()` for extreme performance
+# 
+# **DEFAULT**: 100% safe Rust with intelligent compilation pooling (<5% slower)
+# **THIS FEATURE**: Unsafe deserialization (requires trusting cached bytes)
+#
+# Philosophy: We prioritize safety. Unsafe is opt-in for specialized needs.
+# Most users should NOT enable this feature.
+unsafe-fast-cache = []
+
 [dev-dependencies]
+toadstool-testing = { path = "../../testing" }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+wat = "1.0"

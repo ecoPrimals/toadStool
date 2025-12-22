@@ -392,7 +392,7 @@ mod production_hardening_logic_tests {
     // Concurrent Operations Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_circuit_breaker_state() {
         let state: Arc<RwLock<String>> = Arc::new(RwLock::new("Closed".to_string()));
 
@@ -413,7 +413,7 @@ mod production_hardening_logic_tests {
         assert_eq!(*s, "Open");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_failure_tracking() {
         let failures: Arc<RwLock<u32>> = Arc::new(RwLock::new(0));
 
@@ -436,7 +436,7 @@ mod production_hardening_logic_tests {
         assert_eq!(*count, 10);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_resource_tracking() {
         let resources: Arc<RwLock<HashMap<String, usize>>> = Arc::new(RwLock::new(HashMap::new()));
 

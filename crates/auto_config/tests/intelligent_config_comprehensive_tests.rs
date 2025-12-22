@@ -308,7 +308,7 @@ async fn test_concurrent_config_creation() {
     let mut handles = vec![];
 
     for _ in 0..10 {
-        let sem = semaphore.clone();
+        let sem = Arc::clone(&semaphore);
         let handle = tokio::spawn(async move {
             let _permit = sem.acquire().await.unwrap();
 

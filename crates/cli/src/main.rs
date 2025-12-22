@@ -468,6 +468,10 @@ async fn show_capabilities_command(
 }
 
 /// Execute ecosystem integration commands
+///
+/// NOTE: Uses legacy EcosystemIntegrator which internally calls deprecated service modules.
+/// Migration to Adapters planned for v0.2.0.
+#[allow(deprecated)]
 async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
     let mut integrator = EcosystemIntegrator::new();
 
@@ -508,9 +512,9 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
             permission_file,
             validate_only,
         } => {
-            info!("🐻 Installing BearDog permissions");
+            info!("🔐 Installing crypto permissions");
             integrator
-                .install_beardog_permissions(permission_file.clone(), *validate_only)
+                .install_crypto_permissions(permission_file.clone(), *validate_only)
                 .await?;
         }
 
@@ -589,105 +593,12 @@ async fn execute_universal_command(operation: &UniversalCommands) -> Result<()> 
 }
 
 /// Get error suggestion based on error content
+///
+/// Uses zero-copy optimized implementation from utils::error_formatting
+/// with Cow<'_, str> for efficient string handling.
 fn get_error_suggestion(error: &anyhow::Error) -> Option<String> {
-    let error_str = error.to_string().to_lowercase();
-
-    // File system errors
-    if error_str.contains("no such file or directory") {
-        return Some(
-            "💡 Check that the file path is correct and the file exists. Use 'ls' to verify."
-                .to_string(),
-        );
-    }
-
-    if error_str.contains("permission denied") {
-        return Some(
-            "💡 Try running with sudo or check file permissions with 'chmod' and 'chown'."
-                .to_string(),
-        );
-    }
-
-    // Network errors
-    if error_str.contains("connection refused") {
-        return Some("💡 Check that the service is running and the address is correct. Use 'netstat -tlnp' to verify.".to_string());
-    }
-
-    if error_str.contains("connection timeout") {
-        return Some(
-            "💡 Check network connectivity and firewall settings. The service may be overloaded."
-                .to_string(),
-        );
-    }
-
-    // ToadStool specific errors
-    if error_str.contains("biome.yaml") {
-        return Some("💡 Use 'toadstool init' to create a new biome.yaml file or 'toadstool validate' to check an existing one.".to_string());
-    }
-
-    if error_str.contains("not found") && !error_str.contains("file") {
-        return Some("💡 Use 'toadstool ps' to see available biomes or 'toadstool capabilities' to check platform support.".to_string());
-    }
-
-    if error_str.contains("already running") {
-        return Some("💡 Use 'toadstool down <biome>' to stop the existing instance or 'toadstool ps' to check status.".to_string());
-    }
-
-    if error_str.contains("insufficient resources") {
-        return Some("💡 Check available resources with 'toadstool capabilities' and adjust limits in biome.yaml.".to_string());
-    }
-
-    if error_str.contains("security") {
-        return Some("💡 Check BearDog permissions with 'toadstool ecosystem auth --validate-only' and security policies.".to_string());
-    }
-
-    // Runtime errors
-    if error_str.contains("wasm") {
-        return Some(
-            "💡 Verify WASM module is valid and all required dependencies are available."
-                .to_string(),
-        );
-    }
-
-    if error_str.contains("gpu") {
-        return Some(
-            "💡 Check GPU drivers and CUDA/OpenCL installation with 'nvidia-smi' or 'clinfo'."
-                .to_string(),
-        );
-    }
-
-    if error_str.contains("container") {
-        return Some("💡 Verify Docker/container runtime is installed and running. Check with 'docker version'.".to_string());
-    }
-
-    // Ecosystem errors
-    if error_str.contains("songbird") {
-        return Some("💡 Use 'toadstool ecosystem discover' to find Songbird instances or check network connectivity.".to_string());
-    }
-
-    if error_str.contains("nestgate") {
-        return Some("💡 Verify NestGate endpoint and credentials. Use 'toadstool ecosystem storage --help' for options.".to_string());
-    }
-
-    if error_str.contains("beardog") {
-        return Some(
-            "💡 Install BearDog permissions with 'toadstool ecosystem auth <permission-file>'."
-                .to_string(),
-        );
-    }
-
-    // General suggestions
-    if error_str.contains("parse") || error_str.contains("invalid") {
-        return Some(
-            "💡 Check syntax and format of configuration files. Use '--help' for command usage."
-                .to_string(),
-        );
-    }
-
-    if error_str.contains("timeout") {
-        return Some("💡 Increase timeout values or check system performance. Some operations may take longer on slower systems.".to_string());
-    }
-
-    None
+    // Delegate to optimized implementation and convert Cow to String for compatibility
+    toadstool_cli::utils::error_formatting::get_error_suggestion(error).map(|cow| cow.into_owned())
 }
 
 /// Enhanced error reporting with context

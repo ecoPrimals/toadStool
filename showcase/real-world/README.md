@@ -94,6 +94,27 @@ cd 05-network-pool && ./demo.sh
 
 ---
 
+### 6️⃣ AI Orchestration (Local + Cloud AI) ⭐ **NEW!**
+**Scenario**: Hybrid local AI models + cloud APIs with intelligent routing
+
+- **What it shows**: Privacy-preserving AI with Songbird routing + Squirrel gateway
+- **Key features**: Local Llama 3, Cloud APIs (Claude/GPT), automatic routing
+- **Real-world value**: 96% cost savings ($12 vs $298/month), 100% privacy for sensitive data
+- **Runtime**: ~5 minutes
+
+```bash
+cd 06-ai-orchestration && ./demo.sh hybrid
+```
+
+**Components**:
+- 🍄 **ToadStool**: Universal compute orchestration
+- 🐦 **Songbird**: Distributed message routing
+- 🐿️ **Squirrel**: AI model/API gateway
+- 💻 **Local AI**: Llama 3, Mistral (your GPU, private, free)
+- ☁️ **Cloud AI**: Claude, GPT-4 (powerful APIs, when needed)
+
+---
+
 ## 🎬 Running All Demos
 
 For the full experience, run the master script:

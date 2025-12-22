@@ -98,7 +98,7 @@ fn test_config_replication_disabled() {
 // Volume Provisioning Tests (10 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_basic() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -118,7 +118,7 @@ async fn test_provision_volume_basic() {
     assert_eq!(volume_info.name, "test-volume");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_custom_size() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -136,7 +136,7 @@ async fn test_provision_volume_with_custom_size() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_minimal_config() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -154,7 +154,7 @@ async fn test_provision_volume_minimal_config() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_multiple_volumes() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -174,7 +174,7 @@ async fn test_provision_multiple_volumes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -191,7 +191,7 @@ async fn test_provision_persistent_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_read_write_once() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -209,7 +209,7 @@ async fn test_provision_volume_read_write_once() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_read_write_many() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -227,7 +227,7 @@ async fn test_provision_volume_read_write_many() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_backup_policy() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -245,7 +245,7 @@ async fn test_provision_volume_with_backup_policy() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume_with_host_path() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -262,7 +262,7 @@ async fn test_provision_persistent_volume_with_host_path() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume_large_capacity() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -283,7 +283,7 @@ async fn test_provision_persistent_volume_large_capacity() {
 // Volume Mount/Unmount Tests (6 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mount_volume() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -307,7 +307,7 @@ async fn test_mount_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unmount_volume() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -333,7 +333,7 @@ async fn test_unmount_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mount_volume_multiple_services() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -361,7 +361,7 @@ async fn test_mount_volume_multiple_services() {
     assert!(result2.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mount_different_paths() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -383,7 +383,7 @@ async fn test_mount_different_paths() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_remount_after_unmount() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -415,7 +415,7 @@ async fn test_remount_after_unmount() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unmount_different_services() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -449,7 +449,7 @@ async fn test_unmount_different_services() {
 // Volume Query Tests (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_volume_status() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -469,7 +469,7 @@ async fn test_get_volume_status() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_volumes_empty() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -478,7 +478,7 @@ async fn test_list_volumes_empty() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_volumes_after_provisioning() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -502,7 +502,7 @@ async fn test_list_volumes_after_provisioning() {
     assert!(volumes.len() >= 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_volume_status_after_mount() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -526,7 +526,7 @@ async fn test_get_volume_status_after_mount() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_volumes_check_details() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -552,7 +552,7 @@ async fn test_list_volumes_check_details() {
 // Volume Deletion Tests (3 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_volume() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -572,7 +572,7 @@ async fn test_delete_volume() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_volume_after_unmount() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -600,7 +600,7 @@ async fn test_delete_volume_after_unmount() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_multiple_volumes() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -629,7 +629,7 @@ async fn test_delete_multiple_volumes() {
 // Backend Initialization Tests (2 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_connection_inmemory() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
@@ -638,7 +638,7 @@ async fn test_initialize_connection_inmemory() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_connection_nestgate() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_nestgate(config);

@@ -68,7 +68,7 @@ fn test_performance_test_manager_creation() {
     drop(manager);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_simple_benchmark() {
     let config = PerformanceTestConfig {
         test_name: "simple_test".to_string(),
@@ -85,7 +85,7 @@ async fn test_simple_benchmark() {
     let result = manager
         .benchmark(|| async {
             // Simple no-op test function
-            tokio::time::sleep(Duration::from_micros(1)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             Ok(())
         })
         .await;
@@ -97,7 +97,7 @@ async fn test_simple_benchmark() {
     assert!(benchmark_result.total_duration > Duration::ZERO);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_benchmark_with_failures() {
     let config = PerformanceTestConfig {
         test_name: "failing_test".to_string(),
@@ -114,7 +114,7 @@ async fn test_benchmark_with_failures() {
     let call_count = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
     let result = manager
         .benchmark(|| {
-            let call_count = call_count.clone();
+            let call_count = Arc::clone(&call_count);
             async move {
                 let count = call_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if count % 2 == 0 {
@@ -283,7 +283,7 @@ fn test_performance_comparison_regression() {
     assert!(comparison.summary.contains("regression") || comparison.summary.contains("slower"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_test_basic() {
     let config = PerformanceTestConfig::default();
     let manager = PerformanceTestManager::new(config);
@@ -299,7 +299,7 @@ async fn test_load_test_basic() {
 
     let result = manager
         .load_test(load_config, || async {
-            tokio::time::sleep(Duration::from_micros(100)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             Ok(())
         })
         .await;
@@ -314,7 +314,7 @@ async fn test_load_test_basic() {
     assert_eq!(load_result.error_rate, 0.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_test_with_failures() {
     let config = PerformanceTestConfig::default();
     let manager = PerformanceTestManager::new(config);
@@ -332,7 +332,7 @@ async fn test_load_test_with_failures() {
 
     let result = manager
         .load_test(load_config, move || {
-            let counter = counter.clone();
+            let counter = Arc::clone(&counter);
             async move {
                 let count = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if count % 3 == 0 {
@@ -351,7 +351,7 @@ async fn test_load_test_with_failures() {
     assert!(load_result.error_rate > 0.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_report_generation() {
     let config = PerformanceTestConfig {
         test_name: "report_test".to_string(),
@@ -367,7 +367,7 @@ async fn test_performance_report_generation() {
 
     let _ = manager
         .benchmark(|| async {
-            tokio::time::sleep(Duration::from_micros(1)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             Ok(())
         })
         .await;
@@ -517,7 +517,7 @@ fn test_load_test_result_creation() {
 }
 
 // Note: BenchmarkContext::new is private, so we test it indirectly through benchmark()
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_benchmark_with_custom_metrics() {
     let config = PerformanceTestConfig {
         test_name: "custom_metrics_test".to_string(),
@@ -533,7 +533,7 @@ async fn test_benchmark_with_custom_metrics() {
 
     let result = manager
         .benchmark(|| async {
-            tokio::time::sleep(Duration::from_micros(1)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             Ok(())
         })
         .await;

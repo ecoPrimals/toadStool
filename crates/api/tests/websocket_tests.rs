@@ -131,7 +131,7 @@ fn test_connection_manager_state() {
     assert!(connections.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_manager_add() {
     // Test adding connections
     use std::collections::HashMap;
@@ -150,7 +150,7 @@ async fn test_connection_manager_add() {
     assert_eq!(count, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_manager_remove() {
     // Test removing connections
     use std::collections::HashMap;
@@ -178,7 +178,7 @@ async fn test_connection_manager_remove() {
     assert_eq!(connections.read().await.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_manager_count() {
     // Test connection count
     use std::collections::HashMap;
@@ -196,7 +196,7 @@ async fn test_connection_manager_count() {
     assert_eq!(connections.read().await.len(), 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_manager_concurrent_access() {
     // Test concurrent access to connection manager
     use std::collections::HashMap;

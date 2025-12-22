@@ -147,7 +147,7 @@ pub enum VolumeStatus {
 /// ```ignore
 /// use toadstool::biomeos_integration::storage_backend::InMemoryBackend;
 ///
-/// #[tokio::test]
+/// #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 /// async fn test_volume_lifecycle() {
 ///     let backend = InMemoryBackend::new();
 ///     
@@ -814,7 +814,7 @@ impl StorageBackend for InMemoryBackend {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_backend_provision() {
         let backend = InMemoryBackend::new("test-tier");
         let config = VolumeConfig {
@@ -834,7 +834,7 @@ mod tests {
         assert_eq!(info.storage_class, "fast");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_backend_lifecycle() {
         let backend = InMemoryBackend::new("test-tier");
         let config = VolumeConfig {
@@ -873,7 +873,7 @@ mod tests {
         assert!(status_result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_backend_list() {
         let backend = InMemoryBackend::new("test-tier");
 

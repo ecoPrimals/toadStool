@@ -21,7 +21,7 @@ use toadstool_cli::executor::*;
 // Initialization Tests (3 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_initialization() {
     let executor = BiomeExecutor::new().await;
     // Initialization may fail if distributed coordinator can't start,
@@ -35,7 +35,7 @@ fn test_biome_executor_module_compiles() {
     // (No assertion needed - compilation success is the test)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_can_be_created_multiple_times() {
     // Verify we can create multiple executors
     let _executor1 = BiomeExecutor::new().await;
@@ -288,7 +288,7 @@ fn test_wasm_execution_info_custom_limits() {
 // Biome Manifest Helper Tests (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_valid_biome_manifest() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("biome.yaml");
@@ -320,7 +320,7 @@ workloads:
     assert!(content.contains("test-biome"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_minimal_biome_manifest() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("minimal.yaml");
@@ -344,7 +344,7 @@ workloads: []
     assert!(content.contains("workloads: []"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_manifest_with_multiple_workloads() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("multi.yaml");
@@ -372,7 +372,7 @@ workloads:
     assert!(content.contains("service2"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_manifest_with_dependencies() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("deps.yaml");
@@ -400,7 +400,7 @@ workloads: []
     assert!(content.contains("redis"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_manifest_json_format() {
     let temp_dir = TempDir::new().unwrap();
     let manifest_path = temp_dir.path().join("biome.json");

@@ -1,240 +1,345 @@
-//! Common validation utilities for ToadStool configurations
+//! Configuration validation
 //!
-//! This module provides reusable validation functions and traits for
-//! configuration validation across the ToadStool platform.
+//! Validates ToadStool configuration values to ensure they are within acceptable ranges
 
-use std::time::Duration;
-use toadstool_common::error::{ConfigError, ConfigResult};
+use crate::{ConfigError, ConfigResult, ToadStoolConfig};
 
-/// Trait for types that can be validated
-pub trait Validate {
-    /// Validate the instance
+impl ToadStoolConfig {
+    /// Validate configuration values
     ///
     /// # Errors
     ///
-    /// Returns a `ConfigError` if validation fails
-    fn validate(&self) -> ConfigResult<()>;
-}
+    /// Returns `ConfigError` if validation fails for:
+    /// - Invalid port numbers (port == 0)
+    /// - Invalid worker thread counts
+    /// - Invalid timeout values
+    pub fn validate_runtime_config(&self) -> ConfigResult<()> {
+        // Validate bind address
+        if self.network.bind_address.port() == 0 {
+            return Err(ConfigError::Invalid(
+                "Bind address port cannot be 0".to_string(),
+            ));
+        }
 
-/// Validate a port number is in valid range
-pub fn validate_port(port: u16, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        // Validate endpoints
+        if self.network.endpoints.songbird.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Songbird endpoint cannot be empty".to_string(),
+            ));
+        }
 
-    // Note: MAX_PORT is u16::MAX (65535), so no need to check upper bound
-    if port < validation::MIN_PORT {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: port.to_string(),
-            reason: format!(
-                "Port must be at least {} (privileged ports < 1024 should be avoided)",
-                validation::MIN_PORT
-            ),
-        });
-    }
-    Ok(())
-}
+        if self.network.endpoints.beardog.is_empty() {
+            return Err(ConfigError::Invalid(
+                "BearDog endpoint cannot be empty".to_string(),
+            ));
+        }
 
-/// Validate a timeout duration is in valid range
-pub fn validate_timeout(timeout: Duration, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        if self.network.endpoints.nestgate.is_empty() {
+            return Err(ConfigError::Invalid(
+                "NestGate endpoint cannot be empty".to_string(),
+            ));
+        }
 
-    let timeout_ms = timeout.as_millis() as u64;
+        if self.network.endpoints.squirrel.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Squirrel endpoint cannot be empty".to_string(),
+            ));
+        }
 
-    if timeout_ms < validation::MIN_TIMEOUT_MS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: format!("{}ms", timeout_ms),
-            reason: format!("Timeout must be at least {}ms", validation::MIN_TIMEOUT_MS),
-        });
-    }
+        // Validate resource limits
+        if self.runtime.resource_limits.max_cpu_usage <= 0.0
+            || self.runtime.resource_limits.max_cpu_usage > 100.0
+        {
+            return Err(ConfigError::Invalid(
+                "Max CPU usage must be between 0 and 100".to_string(),
+            ));
+        }
 
-    if timeout_ms > validation::MAX_TIMEOUT_MS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: format!("{}ms", timeout_ms),
-            reason: format!(
-                "Timeout must not exceed {}ms (1 hour)",
-                validation::MAX_TIMEOUT_MS
-            ),
-        });
-    }
+        if self.runtime.resource_limits.max_memory_usage <= 0.0
+            || self.runtime.resource_limits.max_memory_usage > 100.0
+        {
+            return Err(ConfigError::Invalid(
+                "Max memory usage must be between 0 and 100".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.runtime.resource_limits.max_disk_usage <= 0.0
+            || self.runtime.resource_limits.max_disk_usage > 100.0
+        {
+            return Err(ConfigError::Invalid(
+                "Max disk usage must be between 0 and 100".to_string(),
+            ));
+        }
 
-/// Validate a worker thread count
-pub fn validate_worker_threads(count: usize, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        // Validate application settings
+        if self.app.name.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Application name cannot be empty".to_string(),
+            ));
+        }
 
-    if count < validation::MIN_WORKER_THREADS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: count.to_string(),
-            reason: format!(
-                "Worker thread count must be at least {}",
-                validation::MIN_WORKER_THREADS
-            ),
-        });
-    }
+        if self.app.worker_threads == 0 {
+            return Err(ConfigError::Invalid(
+                "Worker threads must be greater than 0".to_string(),
+            ));
+        }
 
-    if count > validation::MAX_WORKER_THREADS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: count.to_string(),
-            reason: format!(
-                "Worker thread count must not exceed {}",
-                validation::MAX_WORKER_THREADS
-            ),
-        });
-    }
+        if self.app.queue_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Queue size must be greater than 0".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.app.batch_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Batch size must be greater than 0".to_string(),
+            ));
+        }
 
-/// Validate a pool size
-pub fn validate_pool_size(size: u32, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        // Validate runtime settings
+        if self.runtime.max_concurrent_executions == 0 {
+            return Err(ConfigError::Invalid(
+                "Max concurrent executions must be greater than 0".to_string(),
+            ));
+        }
 
-    if (size as usize) < validation::MIN_POOL_SIZE {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: size.to_string(),
-            reason: format!("Pool size must be at least {}", validation::MIN_POOL_SIZE),
-        });
-    }
+        if self.runtime.execution_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Execution timeout must be greater than 0".to_string(),
+            ));
+        }
 
-    if (size as usize) > validation::MAX_POOL_SIZE {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: size.to_string(),
-            reason: format!("Pool size must not exceed {}", validation::MAX_POOL_SIZE),
-        });
-    }
+        // Validate network settings
+        if self.network.connection.request_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Request timeout must be greater than 0".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.network.connection.connection_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Connection timeout must be greater than 0".to_string(),
+            ));
+        }
 
-/// Validate a cache size
-pub fn validate_cache_size(size: usize, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        if self.network.connection.max_retries == 0 {
+            return Err(ConfigError::Invalid(
+                "Max retries must be greater than 0".to_string(),
+            ));
+        }
 
-    if size < validation::MIN_CACHE_SIZE {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: size.to_string(),
-            reason: format!("Cache size must be at least {}", validation::MIN_CACHE_SIZE),
-        });
-    }
+        if self.network.connection.max_connections_per_host == 0 {
+            return Err(ConfigError::Invalid(
+                "Max connections per host must be greater than 0".to_string(),
+            ));
+        }
 
-    if size > validation::MAX_CACHE_SIZE {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: size.to_string(),
-            reason: format!("Cache size must not exceed {}", validation::MAX_CACHE_SIZE),
-        });
-    }
+        // Validate container settings
+        if self.runtime.container.runtime.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Container runtime cannot be empty".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.runtime.container.default_registry.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Default registry cannot be empty".to_string(),
+            ));
+        }
 
-/// Validate retry attempts
-pub fn validate_retry_attempts(attempts: u32, field_name: &str) -> ConfigResult<()> {
-    use crate::defaults::validation;
+        if self.runtime.container.port_range.0 >= self.runtime.container.port_range.1 {
+            return Err(ConfigError::Invalid(
+                "Container port range start must be less than end".to_string(),
+            ));
+        }
 
-    // Note: MIN_RETRY_ATTEMPTS is 0 (u32::MIN), so no need to check lower bound
-    if attempts > validation::MAX_RETRY_ATTEMPTS {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: attempts.to_string(),
-            reason: format!(
-                "Retry attempts must not exceed {}",
-                validation::MAX_RETRY_ATTEMPTS
-            ),
-        });
-    }
+        // Validate WASM settings
+        if self.runtime.wasm.engine.is_empty() {
+            return Err(ConfigError::Invalid(
+                "WASM engine cannot be empty".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.runtime.wasm.max_memory == 0 {
+            return Err(ConfigError::Invalid(
+                "WASM max memory must be greater than 0".to_string(),
+            ));
+        }
 
-/// Validate a non-empty string
-pub fn validate_non_empty(value: &str, field_name: &str) -> ConfigResult<()> {
-    if value.trim().is_empty() {
-        return Err(ConfigError::MissingField {
-            field: field_name.to_string(),
-        });
-    }
-    Ok(())
-}
+        if self.runtime.wasm.max_execution_time == 0 {
+            return Err(ConfigError::Invalid(
+                "WASM max execution time must be greater than 0".to_string(),
+            ));
+        }
 
-/// Validate a URL format
-pub fn validate_url(value: &str, field_name: &str) -> ConfigResult<()> {
-    validate_non_empty(value, field_name)?;
+        // Validate Python settings
+        if self.runtime.python.executable.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Python executable cannot be empty".to_string(),
+            ));
+        }
 
-    // Basic URL validation - starts with http:// or https://
-    if !value.starts_with("http://") && !value.starts_with("https://") {
-        return Err(ConfigError::InvalidValue {
-            field: field_name.to_string(),
-            value: value.to_string(),
-            reason: "URL must start with http:// or https://".to_string(),
-        });
-    }
+        if self.runtime.python.index_url.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Python index URL cannot be empty".to_string(),
+            ));
+        }
 
-    Ok(())
-}
+        if self.runtime.python.max_memory == 0 {
+            return Err(ConfigError::Invalid(
+                "Python max memory must be greater than 0".to_string(),
+            ));
+        }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Duration;
+        if self.runtime.python.max_execution_time == 0 {
+            return Err(ConfigError::Invalid(
+                "Python max execution time must be greater than 0".to_string(),
+            ));
+        }
 
-    #[test]
-    fn test_validate_port() {
-        // Valid ports
-        assert!(validate_port(1024, "port").is_ok());
-        assert!(validate_port(8080, "port").is_ok());
-        assert!(validate_port(65535, "port").is_ok());
+        // Validate logging settings
+        if self.logging.level.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Log level cannot be empty".to_string(),
+            ));
+        }
 
-        // Invalid ports
-        assert!(validate_port(80, "port").is_err()); // Privileged
-        assert!(validate_port(1023, "port").is_err());
-    }
+        if self.logging.format.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Log format cannot be empty".to_string(),
+            ));
+        }
 
-    #[test]
-    fn test_validate_timeout() {
-        // Valid timeouts
-        assert!(validate_timeout(Duration::from_millis(100), "timeout").is_ok());
-        assert!(validate_timeout(Duration::from_secs(30), "timeout").is_ok());
+        if self.logging.max_log_size == 0 {
+            return Err(ConfigError::Invalid(
+                "Max log size must be greater than 0".to_string(),
+            ));
+        }
 
-        // Invalid timeouts
-        assert!(validate_timeout(Duration::from_millis(50), "timeout").is_err()); // Too short
-        assert!(validate_timeout(Duration::from_secs(7200), "timeout").is_err());
-        // Too long
-    }
+        if self.logging.max_log_files == 0 {
+            return Err(ConfigError::Invalid(
+                "Max log files must be greater than 0".to_string(),
+            ));
+        }
 
-    #[test]
-    fn test_validate_worker_threads() {
-        // Valid counts
-        assert!(validate_worker_threads(1, "workers").is_ok());
-        assert!(validate_worker_threads(4, "workers").is_ok());
-        assert!(validate_worker_threads(128, "workers").is_ok());
+        // Validate security settings
+        if self.security.auth.enabled && self.security.auth.jwt_secret.is_none() {
+            return Err(ConfigError::Invalid(
+                "JWT secret is required when authentication is enabled".to_string(),
+            ));
+        }
 
-        // Invalid counts
-        assert!(validate_worker_threads(0, "workers").is_err());
-        assert!(validate_worker_threads(256, "workers").is_err());
-    }
+        if self.security.auth.session_timeout.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Session timeout must be greater than 0".to_string(),
+            ));
+        }
 
-    #[test]
-    fn test_validate_non_empty() {
-        assert!(validate_non_empty("hello", "field").is_ok());
-        assert!(validate_non_empty("", "field").is_err());
-        assert!(validate_non_empty("   ", "field").is_err());
-    }
+        if self.security.auth.max_login_attempts == 0 {
+            return Err(ConfigError::Invalid(
+                "Max login attempts must be greater than 0".to_string(),
+            ));
+        }
 
-    #[test]
-    fn test_validate_url() {
-        assert!(validate_url("http://localhost:8080", "url").is_ok());
-        assert!(validate_url("https://example.com", "url").is_ok());
-        assert!(validate_url("ftp://example.com", "url").is_err());
-        assert!(validate_url("", "url").is_err());
+        if self.security.auth.lockout_duration.is_zero() {
+            return Err(ConfigError::Invalid(
+                "Lockout duration must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.encryption.enabled && self.security.encryption.algorithm.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Encryption algorithm is required when encryption is enabled".to_string(),
+            ));
+        }
+
+        if self.security.encryption.key_length == 0 {
+            return Err(ConfigError::Invalid(
+                "Encryption key length must be greater than 0".to_string(),
+            ));
+        }
+
+        if self.security.sandbox.enabled && self.security.sandbox.sandbox_type.is_empty() {
+            return Err(ConfigError::Invalid(
+                "Sandbox type is required when sandboxing is enabled".to_string(),
+            ));
+        }
+
+        // Validate cache settings
+        if let Some(cache_config) = &self.cache {
+            if cache_config.cache_type.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Cache type cannot be empty".to_string(),
+                ));
+            }
+
+            if cache_config.max_size == 0 {
+                return Err(ConfigError::Invalid(
+                    "Cache max size must be greater than 0".to_string(),
+                ));
+            }
+
+            if cache_config.ttl.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Cache TTL must be greater than 0".to_string(),
+                ));
+            }
+        }
+
+        // Validate metrics settings
+        if let Some(metrics_config) = &self.metrics {
+            if metrics_config.endpoint.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Metrics endpoint cannot be empty".to_string(),
+                ));
+            }
+
+            if metrics_config.format.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Metrics format cannot be empty".to_string(),
+                ));
+            }
+
+            if metrics_config.collection_interval.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Metrics collection interval must be greater than 0".to_string(),
+                ));
+            }
+        }
+
+        // Validate database settings
+        if let Some(database_config) = &self.database {
+            if database_config.url.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Database URL cannot be empty".to_string(),
+                ));
+            }
+
+            if database_config.database_type.is_empty() {
+                return Err(ConfigError::Invalid(
+                    "Database type cannot be empty".to_string(),
+                ));
+            }
+
+            if database_config.max_connections == 0 {
+                return Err(ConfigError::Invalid(
+                    "Database max connections must be greater than 0".to_string(),
+                ));
+            }
+
+            if database_config.connection_timeout.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Database connection timeout must be greater than 0".to_string(),
+                ));
+            }
+
+            if database_config.query_timeout.is_zero() {
+                return Err(ConfigError::Invalid(
+                    "Database query timeout must be greater than 0".to_string(),
+                ));
+            }
+        }
+
+        Ok(())
     }
 }

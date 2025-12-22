@@ -7,6 +7,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolResult, ToadStoolError};
+use crate::{JobStatus, JobOutput, JobPriority, SpecialtyRuntimeConfig};
 use super::types::*;
 
 /// IBM Mainframe Adapter for System/360, System/370, z/Series
@@ -93,7 +94,7 @@ impl IBMMainframeAdapter {
     }
 }
 
-// Native async trait - no macro needed
+#[async_trait::async_trait]
 impl LegacyAdapter for IBMMainframeAdapter {
     fn name(&self) -> &str {
         "IBM Mainframe Adapter"

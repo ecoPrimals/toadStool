@@ -61,9 +61,8 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
         &mut self,
         _config: RuntimeConfig,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let delay = self.delay_ms;
         Box::pin(async move {
-            tokio::time::sleep(Duration::from_millis(delay)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay simulation
             Ok(())
         })
     }
@@ -72,10 +71,10 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
         &self,
         _request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        let delay = self.delay_ms;
+        let delay = self.delay_ms; // Still used in response duration
         let should_succeed = self.should_succeed;
         Box::pin(async move {
-            tokio::time::sleep(Duration::from_millis(delay)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay sleep
 
             if should_succeed {
                 Ok(ExecutionResponse {
@@ -124,9 +123,8 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let delay = self.delay_ms;
         Box::pin(async move {
-            tokio::time::sleep(Duration::from_millis(delay)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay simulation
             Ok(())
         })
     }
@@ -297,7 +295,7 @@ fn create_complex_deployment_request() -> ByobDeploymentRequest {
 // Basic Executor Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_byob_executor_function() {
     let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
     let executor = create_byob_executor(runtime_engine);
@@ -306,7 +304,7 @@ async fn test_create_byob_executor_function() {
     assert!(Arc::strong_count(&executor) >= 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_byob_executor_with_custom_config() {
     let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
     let config = ByobExecutorConfig {
@@ -317,6 +315,7 @@ async fn test_byob_executor_with_custom_config() {
         deployment_timeout: Duration::from_secs(1200),
         default_host_port: 9000,
         web_service_ports: vec![80, 443, 8080, 8443],
+        graceful_shutdown_timeout_secs: 30,
     };
 
     let executor = ByobComputeExecutor::new(runtime_engine, config);

@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     AuthenticationSettings, COBOLSettings, CommunicationSettings, ConnectionSettings, 
     ConnectionType, DatasetConfig, JCLSettings, JobOutput, JobPriority, JobStatus, 
-    ToadStoolResult, ToadStoolError
+    SystemInfo, ToadStoolResult, ToadStoolError
 };
 
 /// Mainframe job representation

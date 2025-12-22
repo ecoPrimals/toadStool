@@ -750,7 +750,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_integration_manager() {
         let mut manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
 

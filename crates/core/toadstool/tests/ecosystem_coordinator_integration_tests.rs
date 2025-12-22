@@ -24,7 +24,7 @@ mod ecosystem_coordinator_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_primal_status_empty() {
         let coordinator = EcosystemCoordinator::new().unwrap();
         let result = coordinator.get_primal_status().await;
@@ -33,14 +33,14 @@ mod ecosystem_coordinator_tests {
         assert!(status_map.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_is_primal_available_nonexistent() {
         let coordinator = EcosystemCoordinator::new().unwrap();
         let available = coordinator.is_primal_available("nonexistent").await;
         assert!(!available);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_is_primal_available_multiple_checks() {
         let coordinator = EcosystemCoordinator::new().unwrap();
 
@@ -52,21 +52,21 @@ mod ecosystem_coordinator_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_primal_capabilities_nonexistent() {
         let coordinator = EcosystemCoordinator::new().unwrap();
         let result = coordinator.get_primal_capabilities("nonexistent").await;
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_integrate_primals_empty_list() {
         let coordinator = EcosystemCoordinator::new().unwrap();
         let result = coordinator.integrate_primals(vec![]).await;
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_discover_primals_no_auto_discovery() {
         let coordinator = EcosystemCoordinator::new().unwrap();
         // With default config (auto_discovery=true but no network), should complete without error

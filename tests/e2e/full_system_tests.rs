@@ -2,11 +2,16 @@
 //!
 //! These tests validate complete system functionality from a user's perspective,
 //! testing real workflows that users would perform with ToadStool.
+//!
+//! ✅ MODERNIZED: Uses event-driven coordination, no arbitrary sleeps
 
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
 use toadstool::RuntimeType;
+use tokio::sync::Notify;
+use tokio::time::timeout;
 
 /// Test complete biome lifecycle from CLI - ENHANCED with real validation
 #[tokio::test]
@@ -436,7 +441,18 @@ async fn simulate_biome_run(manifest_path: &Path) -> CommandResult {
 }
 
 async fn simulate_biome_list() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Biome list should complete");
+
     CommandResult {
         success: true,
         output: "test-biome\t\tRunning\t\t2m30s".to_string(),
@@ -445,7 +461,18 @@ async fn simulate_biome_list() -> CommandResult {
 }
 
 async fn simulate_biome_logs(biome_name: &str) -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(30)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Biome logs should complete");
+
     CommandResult {
         success: true,
         output: format!(
@@ -457,7 +484,18 @@ async fn simulate_biome_logs(biome_name: &str) -> CommandResult {
 }
 
 async fn simulate_biome_stop(biome_name: &str) -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Biome stop should complete");
+
     CommandResult {
         success: true,
         output: format!("Biome {} stopped successfully", biome_name),
@@ -489,7 +527,18 @@ async fn simulate_runtime_execution(runtime: &str) -> CommandResult {
 }
 
 async fn simulate_federation_start() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Federation start should complete");
+
     CommandResult {
         success: true,
         output: "Federation started on port 8080".to_string(),
@@ -498,7 +547,18 @@ async fn simulate_federation_start() -> CommandResult {
 }
 
 async fn simulate_peer_connection(peer_name: &str) -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Peer connection should complete");
+
     CommandResult {
         success: true,
         output: format!("Connected to peer: {}", peer_name),
@@ -507,7 +567,18 @@ async fn simulate_peer_connection(peer_name: &str) -> CommandResult {
 }
 
 async fn simulate_workload_distribution() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Workload distribution should complete");
+
     CommandResult {
         success: true,
         output: "Workload distributed across 2 peers".to_string(),
@@ -516,7 +587,18 @@ async fn simulate_workload_distribution() -> CommandResult {
 }
 
 async fn simulate_federation_status() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Federation status should complete");
+
     CommandResult {
         success: true,
         output: "Federation: Active\nPeers: 2\nWorkloads: 1".to_string(),
@@ -547,7 +629,18 @@ async fn simulate_secure_environment_creation() -> CommandResult {
 }
 
 async fn simulate_secure_execution() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Secure execution should complete");
+
     CommandResult {
         success: true,
         output: "Execution completed within security constraints".to_string(),
@@ -556,7 +649,18 @@ async fn simulate_secure_execution() -> CommandResult {
 }
 
 async fn simulate_security_compliance_check() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Security compliance check should complete");
+
     CommandResult {
         success: true,
         output: "Security compliance: PASSED".to_string(),
@@ -589,7 +693,18 @@ async fn simulate_resource_allocation() -> CommandResult {
 }
 
 async fn simulate_resource_monitoring() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(30)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Resource monitoring should complete");
+
     CommandResult {
         success: true,
         output: "CPU: 45%, Memory: 60%, Disk: 30%".to_string(),
@@ -598,7 +713,18 @@ async fn simulate_resource_monitoring() -> CommandResult {
 }
 
 async fn simulate_resource_cleanup() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Resource cleanup should complete");
+
     CommandResult {
         success: true,
         output: "All resources cleaned up successfully".to_string(),
@@ -607,7 +733,18 @@ async fn simulate_resource_cleanup() -> CommandResult {
 }
 
 async fn simulate_invalid_manifest_handling() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Invalid manifest handling should complete");
+
     CommandResult {
         success: true,
         output: "Error: Invalid manifest format detected and handled gracefully".to_string(),
@@ -616,7 +753,18 @@ async fn simulate_invalid_manifest_handling() -> CommandResult {
 }
 
 async fn simulate_runtime_failure_handling() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Runtime failure handling should complete");
+
     CommandResult {
         success: true,
         output: "Runtime failure detected, fallback executed successfully".to_string(),
@@ -625,7 +773,18 @@ async fn simulate_runtime_failure_handling() -> CommandResult {
 }
 
 async fn simulate_resource_exhaustion_handling() -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(80)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Resource exhaustion handling should complete");
+
     CommandResult {
         success: true,
         output: "Resource exhaustion detected, graceful degradation activated".to_string(),
@@ -634,7 +793,18 @@ async fn simulate_resource_exhaustion_handling() -> CommandResult {
 }
 
 async fn simulate_biome_execution(biome_name: &str) -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // Event-driven: Simulate async work completion
+    let ready = Arc::new(Notify::new());
+    let ready_clone = Arc::clone(&ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        ready_clone.notify_one();
+    });
+    #[allow(clippy::expect_used)] // Test infrastructure - expect is appropriate
+    timeout(Duration::from_secs(1), ready.notified())
+        .await
+        .expect("Biome execution should complete");
+
     CommandResult {
         success: true,
         output: format!("Biome {} executed successfully", biome_name),

@@ -7,7 +7,7 @@
 //! - Resource containment and monitoring
 //! - Security policy enforcement
 
-mod helpers;
+pub mod helpers;
 pub mod manager;
 pub mod traits;
 pub mod types;
@@ -32,3 +32,7 @@ pub use linux::LinuxSandboxManager;
 pub use macos::MacOSSandboxManager;
 #[cfg(target_os = "windows")]
 pub use windows::WindowsSandboxManager;
+
+// Unit tests for library code coverage
+#[cfg(test)]
+mod lib_tests;

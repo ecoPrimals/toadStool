@@ -108,34 +108,27 @@ impl AgentDeploymentManager {
         self.backend.remove_agent(agent_name).await
     }
 
-    /// Get agent status
-    pub fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus> {
-        // Create a blocking bridge since AgentBackend is async
-        tokio::runtime::Handle::current().block_on(self.backend.get_agent_status(agent_name))
+    /// Get agent status (now properly async!)
+    pub async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus> {
+        self.backend.get_agent_status(agent_name).await
     }
 
-    /// List all deployed agents
-    #[must_use]
-    pub fn list_agents(&self) -> Vec<AgentInfo> {
-        // Create a blocking bridge since AgentBackend is async
-        tokio::runtime::Handle::current()
-            .block_on(self.backend.list_agents())
-            .unwrap_or_default()
+    /// List all deployed agents (now properly async!)
+    pub async fn list_agents(&self) -> Vec<AgentInfo> {
+        self.backend.list_agents().await.unwrap_or_default()
     }
 
-    /// List all loaded models
-    #[must_use]
-    pub fn list_models(&self) -> Vec<ModelInfo> {
-        // Create a blocking bridge since AgentBackend is async
-        tokio::runtime::Handle::current()
-            .block_on(self.backend.list_models())
-            .unwrap_or_default()
+    /// List all loaded models (now properly async!)
+    pub async fn list_models(&self) -> Vec<ModelInfo> {
+        self.backend.list_models().await.unwrap_or_default()
     }
 
-    /// Get agent resource usage
-    pub fn get_agent_resources(&self, agent_name: &str) -> ToadStoolResult<AgentResourceUsage> {
-        // Create a blocking bridge since AgentBackend is async
-        tokio::runtime::Handle::current().block_on(self.backend.get_agent_resources(agent_name))
+    /// Get agent resource usage (now properly async!)
+    pub async fn get_agent_resources(
+        &self,
+        agent_name: &str,
+    ) -> ToadStoolResult<AgentResourceUsage> {
+        self.backend.get_agent_resources(agent_name).await
     }
 
     /// Unload a model
@@ -164,7 +157,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_manager_with_inmemory_backend() {
         let config = test_config();
         let mut manager = AgentDeploymentManager::with_inmemory(config);
@@ -181,7 +174,7 @@ mod tests {
         let result = manager.deploy_agent(&agent_config).await;
         assert!(result.is_ok());
 
-        let agent_info = result.unwrap();
+        let agent_info = result.expect("Agent deployment should succeed in test");
         assert_eq!(agent_info.name, "test-agent");
         assert!(agent_info.agent_id.starts_with("test-agent-"));
         assert_eq!(agent_info.status, AgentStatus::Running);

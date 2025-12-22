@@ -45,6 +45,10 @@ path = "cooperative_network_demo.rs"
 name = "crypto_lock_demo"
 path = "crypto_lock_demo.rs"
 
+[[bin]]
+name = "capability_discovery_demo"
+path = "capability_discovery_demo.rs"
+
 # Archived - API mismatches (outdated struct fields)
 # [[bin]]
 # name = "ecosystem_massive_job_demo"
@@ -175,6 +179,27 @@ path = "enhanced_wasm_component_demo.rs"
 name = "network_performance_benchmark"
 path = "network_performance_benchmark.rs"
 
+[[bin]]
+name = "modern_patterns_showcase"
+path = "modern_patterns_showcase.rs"
+
+[[bin]]
+name = "real_gpu_pool"
+path = "real_gpu_pool.rs"
+
+[[bin]]
+name = "opencl_gpu_demo"
+path = "opencl_gpu_demo.rs"
+required-features = []  # OpenCL feature is in GPU crate, not workspace
+
+[[bin]]
+name = "distributed_gpu_demo"
+path = "distributed_gpu_demo.rs"
+
+[[bin]]
+name = "beardog_encrypted_workload"
+path = "beardog_encrypted_workload.rs"
+
 [dependencies]
 # Core ToadStool
 toadstool = { path = "../crates/core/toadstool" }
@@ -231,4 +256,5 @@ default = ["pure-ecosystem"]
 pure-ecosystem = []
 # grpc = ["tonic"] # REMOVED: protobuf dependency
 # full-ecosystem = ["grpc"] # REMOVED: protobuf dependency
-full-ecosystem = ["pure-ecosystem"] 
+full-ecosystem = ["pure-ecosystem"]
+opencl = []  # Placeholder feature for examples that reference it 

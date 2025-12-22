@@ -13,6 +13,9 @@
 //! - **Capabilities**: Capability display and reporting
 //! - **Utilities**: Helper utilities and system info
 
+// Zero-copy constants
+pub mod constants;
+
 // Re-export all operation traits
 pub mod benchmarking;
 pub mod capabilities;

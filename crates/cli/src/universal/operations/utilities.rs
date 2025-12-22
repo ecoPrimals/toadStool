@@ -51,9 +51,10 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
             } => {
                 format!("windows_{}_{}", version.replace('.', "_"), architecture)
             }
-            PlatformType::Docker => "docker".to_string(),
-            PlatformType::Podman => "podman".to_string(),
-            PlatformType::Containerd => "containerd".to_string(),
+            // **Zero-Copy Optimization** (Nov 28, 2025): String::from is more efficient for literals
+            PlatformType::Docker => String::from("docker"),
+            PlatformType::Podman => String::from("podman"),
+            PlatformType::Containerd => String::from("containerd"),
             PlatformType::WebAssembly { runtime } => format!("wasm_{}", runtime.to_lowercase()),
             PlatformType::Language { name, .. } => format!("lang_{}", name.to_lowercase()),
             PlatformType::GPU { vendor, framework } => {

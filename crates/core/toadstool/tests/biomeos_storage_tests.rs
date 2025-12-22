@@ -222,7 +222,7 @@ fn test_storage_provisioning_manager_with_different_endpoints() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_mock() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://localhost:8080".to_string(),
@@ -253,7 +253,7 @@ async fn test_provision_volume_mock() {
     assert!(volume_info.id.starts_with("test-"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume_mock() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://localhost:8080".to_string(),
@@ -320,7 +320,7 @@ fn test_storage_provisioning_manager_with_replication_disabled() {
 // VolumeConfig Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_sizes() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://localhost:8080".to_string(),
@@ -359,7 +359,7 @@ async fn test_provision_volume_with_different_sizes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_storage_classes() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://localhost:8080".to_string(),
@@ -398,7 +398,7 @@ async fn test_provision_volume_with_different_storage_classes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_with_different_access_modes() {
     let config = StorageProvisioningConfig {
         nestgate_endpoint: "http://localhost:8080".to_string(),
@@ -503,7 +503,7 @@ fn test_replication_settings_clone() {
 // Integration Tests (Multiple Components)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_volume_provisioning_workflow() {
     // Create config with replication enabled
     let config = StorageProvisioningConfig {
@@ -562,7 +562,7 @@ fn test_volume_status_lifecycle() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_volume_provisioning() {
     use tokio::task::JoinSet;
 

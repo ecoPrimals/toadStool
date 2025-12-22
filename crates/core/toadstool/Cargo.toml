@@ -42,10 +42,14 @@ anyhow = { workspace = true }
 thiserror = "1.0"
 
 # System monitoring
-sysinfo = "0.32"
+sysinfo = "0.30"
+num_cpus = "1.16"
 
 # Encoding
 base64 = "0.22"
+
+# Security
+zeroize = { version = "1.7", features = ["derive"] }
 
 # Networking for ecosystem integration (now standard - ToadStool is distributed)
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
@@ -56,6 +60,10 @@ regex = "1.0"
 
 # Validation
 validator = "0.16"
+mdns-sd = "0.10"
+# MUST use same version as workspace to prevent duplicate symbol errors  
+wgpu = { workspace = true, optional = true }
+pollster = { version = "0.3", optional = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
@@ -71,3 +79,4 @@ networking = []
 websocket = ["tokio-tungstenite"]
 # Full ecosystem features
 full-ecosystem = ["websocket"] 
+wgpu = ["dep:wgpu", "dep:pollster"]

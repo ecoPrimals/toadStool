@@ -55,6 +55,7 @@ mod tests {
                 environment: HashMap::new(),
                 input_data: ExecutionInput::default(),
                 callback_config: None,
+            encryption_config: None,
             },
             target: ExecutionTarget::Local,
             priority: JobPriority::Normal,
@@ -90,7 +91,7 @@ mod tests {
         assert_eq!(queue.total_jobs(), 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_job_queue_add_job() {
         let mut queue = UniversalJobQueue::new();
         let job = create_test_universal_job();
@@ -120,7 +121,7 @@ mod tests {
         assert!(!config.retry_conditions.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_runtime_adapter_creation() {
         // Note: We test the individual detection methods instead of the full constructor
         // because the constructor includes biological platform detection which is still in development
@@ -134,31 +135,33 @@ mod tests {
         assert!(language_result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_runtime_adapter_detect_traditional_platforms() {
         let result = UniversalRuntimeAdapter::detect_traditional_platforms().await;
         assert!(result.is_ok());
-        let platforms = result.unwrap();
+        let platforms = result
+            .expect("Traditional platform detection should return Ok");
         // Should detect at least one platform (the current one)
         assert!(!platforms.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_runtime_adapter_detect_container_platforms() {
         let result = UniversalRuntimeAdapter::detect_container_platforms().await;
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_runtime_adapter_detect_language_runtimes() {
         let result = UniversalRuntimeAdapter::detect_language_runtimes().await;
         assert!(result.is_ok());
-        let runtimes = result.unwrap();
+        let runtimes = result
+            .expect("Language runtime detection should return Ok");
         // Should detect at least one runtime
         assert!(!runtimes.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_toadstool_capabilities_detect_current() {
         let result = ToadStoolCapabilities::detect_current().await;
         assert!(result.is_ok());
@@ -171,7 +174,7 @@ mod tests {
         assert!(capabilities.platform_capabilities.cpu_cores > 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_distributed_coordinator_creation() {
         let config = create_test_config();
         let result = DistributedCoordinator::new(config).await;

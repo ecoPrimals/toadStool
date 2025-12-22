@@ -4,6 +4,19 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool universal compute client library"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core dependencies
 toadstool = { path = "../core/toadstool" }

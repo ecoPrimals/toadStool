@@ -57,7 +57,7 @@ mod system_resource_monitor_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_process() {
         let monitor = SystemResourceMonitor::new();
         let path = Path::new("/usr/bin/test");
@@ -66,7 +66,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_multiple_processes() {
         let monitor = SystemResourceMonitor::new();
 
@@ -82,7 +82,7 @@ mod system_resource_monitor_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_unregister_process() {
         let monitor = SystemResourceMonitor::new();
         let path = Path::new("/usr/bin/test");
@@ -98,7 +98,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_unregister_nonexistent_process() {
         let monitor = SystemResourceMonitor::new();
 
@@ -106,7 +106,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_set_thresholds() {
         let monitor = SystemResourceMonitor::new();
 
@@ -116,7 +116,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_set_thresholds_multiple_workloads() {
         let monitor = SystemResourceMonitor::new();
 
@@ -134,7 +134,7 @@ mod system_resource_monitor_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_metrics_nonexistent_workload() {
         let monitor = SystemResourceMonitor::new();
 
@@ -142,7 +142,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_stop_monitoring_loop() {
         let monitor = SystemResourceMonitor::new();
 
@@ -150,7 +150,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_register_unregister_cycle() {
         let monitor = SystemResourceMonitor::new();
         let path = Path::new("/usr/bin/test");
@@ -169,7 +169,7 @@ mod system_resource_monitor_tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_process_registration_with_different_paths() {
         let monitor = SystemResourceMonitor::new();
 

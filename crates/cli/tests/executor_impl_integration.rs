@@ -33,7 +33,7 @@ services:
     )
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Complex manifest API - needs full spec"]
 async fn test_manifest_loading() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
@@ -49,7 +49,7 @@ async fn test_manifest_loading() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Complex manifest API - needs full spec"]
 async fn test_manifest_validation() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
@@ -67,7 +67,7 @@ async fn test_manifest_validation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Complex manifest API - needs full spec"]
 async fn test_resource_override_logic() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
@@ -94,7 +94,7 @@ async fn test_resource_override_logic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Complex manifest API - needs full spec"]
 async fn test_manifest_cloning() -> Result<()> {
     let temp_dir = tempfile::tempdir()?;
@@ -111,7 +111,7 @@ async fn test_manifest_cloning() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing() -> Result<()> {
     // Test environment variable parsing logic used in executor
     let env_vars = vec![
@@ -138,7 +138,7 @@ async fn test_environment_variable_parsing() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_id_generation() -> Result<()> {
     use uuid::Uuid;
 
@@ -153,7 +153,7 @@ async fn test_biome_id_generation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timeout_duration_handling() -> Result<()> {
     use std::time::Duration;
 
@@ -168,7 +168,7 @@ async fn test_timeout_duration_handling() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_distributed_config_creation() -> Result<()> {
     use toadstool_distributed::DistributedConfig;
 
@@ -183,7 +183,7 @@ async fn test_distributed_config_creation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_toadstool_config_creation() -> Result<()> {
     use toadstool_config::ToadStoolConfig;
 
@@ -198,7 +198,7 @@ async fn test_toadstool_config_creation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_context_propagation() -> Result<()> {
     use anyhow::Context;
 
@@ -213,7 +213,7 @@ async fn test_error_context_propagation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_result_error_handling_patterns() -> Result<()> {
     use anyhow::bail;
 
@@ -231,7 +231,7 @@ async fn test_result_error_handling_patterns() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_string_split_patterns() -> Result<()> {
     // Test string parsing used in executor
 
@@ -250,7 +250,7 @@ async fn test_string_split_patterns() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_option_handling_patterns() -> Result<()> {
     // Test Option handling patterns used in executor
 
@@ -267,7 +267,7 @@ async fn test_option_handling_patterns() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_hashmap_operations() -> Result<()> {
     use std::collections::HashMap;
 
@@ -289,7 +289,7 @@ async fn test_hashmap_operations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_rwlock_patterns() -> Result<()> {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -318,7 +318,7 @@ async fn test_async_rwlock_patterns() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_format_string_patterns() -> Result<()> {
     // Test format string patterns used in logging
     let biome_name = "test-biome";
@@ -336,7 +336,7 @@ async fn test_format_string_patterns() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_vec_operations() -> Result<()> {
     // Test Vec operations used in executor
     let warnings = vec!["Warning 1".to_string(), "Warning 2".to_string()];
@@ -354,7 +354,7 @@ async fn test_vec_operations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_path_operations() -> Result<()> {
     use std::path::Path;
 
@@ -374,7 +374,7 @@ async fn test_path_operations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_level_validation() -> Result<()> {
     // Test security level validation logic
     let valid_levels = vec!["low", "medium", "high", "isolated"];
@@ -388,7 +388,7 @@ async fn test_security_level_validation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_access_patterns() -> Result<()> {
     use std::sync::Arc;
 
@@ -398,7 +398,7 @@ async fn test_concurrent_access_patterns() -> Result<()> {
     let mut handles = vec![];
 
     for i in 0..5 {
-        let data_clone = data.clone();
+        let data_clone = Arc::clone(&data);
         let handle = tokio::spawn(async move {
             let guard = data_clone.read().await;
             (i, guard.len())
