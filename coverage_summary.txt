@@ -1,1 +1,1296 @@
 info: cargo-llvm-cov currently setting cfg(coverage); you can opt-out it by passing --no-cfg-coverage
+   Compiling toadstool-common v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/core/common)
+   Compiling toadstool-management-resources v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/management/resources)
+   Compiling toadstool-security-monitoring v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/security/monitoring)
+   Compiling toadstool-config v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/core/config)
+   Compiling toadstool v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/core/toadstool)
+   Compiling toadstool-integration-nestgate v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/integration/nestgate)
+   Compiling toadstool-testing v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/testing)
+   Compiling toadstool-management-monitoring v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/management/monitoring)
+   Compiling toadstool-runtime-wasm v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/runtime/wasm)
+   Compiling toadstool-runtime-native v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/runtime/native)
+   Compiling toadstool-runtime-python v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/runtime/python)
+   Compiling toadstool-auto-config v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/auto_config)
+   Compiling toadstool-security-policies v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/security/policies)
+   Compiling toadstool-runtime-gpu v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/runtime/gpu)
+   Compiling toadstool-management-performance v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/management/performance)
+   Compiling toadstool-integration-protocols v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/integration/protocols)
+   Compiling toadstool-client v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/client)
+   Compiling toadstool-integration-orchestrator v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/integration/orchestrator)
+   Compiling toadstool-integration-primals v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/integration/primals)
+   Compiling toadstool-management-analytics v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/management/analytics)
+   Compiling toadstool-security-sandbox v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/security/sandbox)
+   Compiling toadstool-showcase v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/showcase)
+   Compiling toadstool-distributed v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/distributed)
+   Compiling toadstool-cli v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/cli)
+   Compiling toadstool-api v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/api)
+   Compiling toadstool-server v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/server)
+   Compiling toadstool-runtime-container v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/crates/runtime/container)
+   Compiling toadstool-examples v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/examples)
+   Compiling toadstool-showcase-local v0.1.0 (/home/eastgate/Development/ecoPrimals/toadstool/showcase/local-capabilities)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3m 17s
+     Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/toadstool-24c047f2ccb44d57)
+
+running 165 tests
+test byob::byob_impl::tests::test_byob_executor_creation ... ok
+test byob::byob_impl::tests::test_deployment_request_validation ... ok
+test byob::byob_impl::tests::test_validate_deployment_request ... ok
+test byob::config::tests::test_config_debug_format ... ok
+test byob::config::tests::test_custom_config ... ok
+test byob::config::tests::test_config_serialization ... ok
+test byob::config::tests::test_custom_web_service_ports ... ok
+test byob::config::tests::test_large_concurrent_deployments ... ok
+test byob::config::tests::test_default_config ... ok
+test byob::config::tests::test_validate_minimum_timeout ... ok
+test byob::config::tests::test_validate_short_timeout ... ok
+test byob::config::tests::test_validate_zero_concurrent_deployments ... ok
+test byob::config::tests::test_validate_success ... ok
+test biomeos_integration::agent_backend::tests::test_inmemory_agent_backend_lifecycle ... ok
+test byob::config::tests::test_validate_zero_host_port ... ok
+test byob::deployment::tests::test_active_deployment_creation ... ok
+test byob::config::tests::test_web_service_ports_default ... ok
+test byob::deployment::tests::test_service_execution_management ... ok
+test byob::config::tests::test_various_network_subnets ... ok
+test byob::deployment::tests::test_update_status ... ok
+test byob::validation::tests::test_validate_deployment_exceeds_cpu_quota ... ok
+test byob::validation::tests::test_validate_deployment_success ... ok
+test byob::config::tests::test_config_deserialization ... ok
+test biomeos_integration::auth::tests::test_sign_token_request ... ok
+test biomeos_integration::storage::tests::test_manager_with_inmemory_backend ... ok
+test biomeos_integration::auth_backend::tests::test_expired_token_validation ... ok
+test biomeos_integration::auth_backend::tests::test_token_validation ... ok
+test biomeos_integration::storage_backend::tests::test_inmemory_backend_list ... ok
+test byob::config::tests::test_config_clone ... ok
+test biomeos_integration::auth_backend::tests::test_inmemory_auth_backend_request ... ok
+test biomeos_integration::auth_backend::tests::test_inmemory_auth_backend_refresh ... ok
+test biomeos_integration::auth::tests::test_manager_with_inmemory_backend ... ok
+test biomeos_integration::agents::tests::test_manager_with_inmemory_backend ... ok
+test biomeos_integration::agent_backend::tests::test_inmemory_agent_backend_list ... ok
+test biomeos_integration::agent_backend::tests::test_inmemory_agent_backend_deploy ... ok
+test biomeos_integration::storage_backend::tests::test_inmemory_backend_provision ... ok
+test biomeos_integration::storage_backend::tests::test_inmemory_backend_lifecycle ... ok
+test biomeos_integration::storage::tests::test_parse_size_string ... ok
+test discovery::tests::test_discovered_service_has_capability ... ok
+test discovery::tests::test_discovered_service_has_capability_features ... ok
+test discovery::tests::test_discovery_config_defaults ... ok
+test encryption::capability::tests::test_capability_matching ... ok
+test encryption::capability::tests::test_capability_no_match_security_level ... ok
+test discovery::orchestration::tests::test_orchestration_discovery_pattern ... ok
+test encryption::capability::tests::test_capability_scoring ... ok
+test encryption::tests::test_default_config ... ok
+test encryption::tests::test_encryption_context_builder ... ok
+test encryption::provider::tests::test_registry_find_provider ... ok
+test encryption::tests::test_security_level_ordering ... ok
+test encryption::types::tests::test_encrypted_payload_size ... ok
+test encryption::provider::tests::test_registry_register ... ok
+test encryption::types::tests::test_key_debug_redacts_material ... ok
+test encryption::types::tests::test_key_expiration ... ok
+test encryption::types::tests::test_key_rotation_policy ... ok
+test error::tests::test_backward_compat_configuration ... ok
+test error::tests::test_backward_compat_execution ... ok
+test error::tests::test_backward_compat_network ... ok
+test error::tests::test_backward_compat_resource ... ok
+test error::tests::test_backward_compat_security ... ok
+test error::tests::test_backward_compat_validation ... ok
+test error::tests::test_error_conversion_from_io ... ok
+test error::tests::test_error_conversion_from_json ... ok
+test error::tests::test_result_type ... ok
+test error::tests::test_result_type_error ... ok
+test error::tests::test_unified_error_import ... ok
+test os_layer::compat::tests::test_config_serialization_legacy ... ok
+test os_layer::compat::tests::test_config_serialization_linux ... ok
+test os_layer::compat::tests::test_config_serialization_macos ... ok
+test os_layer::compat::tests::test_config_serialization_windows ... ok
+test os_layer::compat::tests::test_legacy_can_handle ... ok
+test os_layer::compat::tests::test_legacy_config_default ... ok
+test os_layer::compat::tests::test_legacy_layer_creation ... ok
+test os_layer::compat::tests::test_legacy_layer_default ... ok
+test discovery::mdns::tests::test_mdns_service_creation ... ok
+test os_layer::compat::tests::test_legacy_layer_features ... ok
+test os_layer::compat::tests::test_linux_can_handle ... ok
+test os_layer::compat::tests::test_linux_config_default ... ok
+test os_layer::compat::tests::test_linux_layer_creation ... ok
+test os_layer::compat::tests::test_linux_layer_default ... ok
+test os_layer::compat::tests::test_linux_layer_features ... ok
+test os_layer::compat::tests::test_macos_config_default ... ok
+test os_layer::compat::tests::test_macos_layer_creation ... ok
+test os_layer::compat::tests::test_macos_layer_default ... ok
+test os_layer::compat::tests::test_macos_layer_features ... ok
+test os_layer::compat::tests::test_windows_can_handle ... ok
+test os_layer::compat::tests::test_windows_config_default ... ok
+test os_layer::compat::tests::test_windows_layer_creation ... ok
+test os_layer::compat::tests::test_windows_layer_features ... ok
+test os_layer::compat::tests::test_macos_can_handle ... ok
+test os_layer::platform::tests::test_default_features ... ok
+test os_layer::platform::tests::test_has_feature ... ok
+test os_layer::platform::tests::test_platform_clone ... ok
+test os_layer::compat::tests::test_linux_initialize ... ok
+test os_layer::compat::tests::test_legacy_initialize ... ok
+test discovery::orchestration::tests::test_default_construction ... ok
+test resources::tests::test_gpu_requirements ... ok
+test os_layer::compat::tests::test_macos_initialize ... ok
+test os_layer::compat::tests::test_windows_layer_default ... ok
+test os_layer::compat::tests::test_legacy_shutdown ... ok
+test resources::tests::test_network_requirements_with_constraints ... ok
+test os_layer::platform::tests::test_platform_info_fields ... ok
+test resources::tests::test_resource_requirements_default ... ok
+test resources::tests::test_resource_requirements_serialization ... ok
+test os_layer::platform::tests::test_platform_serialization ... ok
+test os_layer::platform::tests::test_summary ... ok
+test resources::tests::test_cpu_requirements_default ... ok
+test resources::tests::test_cpu_requirements_with_architecture ... ok
+test os_layer::platform::tests::test_platform_detect ... ok
+test os_layer::compat::tests::test_macos_shutdown ... ok
+test os_layer::compat::tests::test_linux_shutdown ... ok
+test os_layer::compat::tests::test_windows_shutdown ... ok
+test resources::tests::test_memory_requirements_default ... ok
+test resources::tests::test_memory_requirements_with_max ... ok
+test resources::tests::test_network_requirements_default ... ok
+test resources::tests::test_storage_requirements_default ... ok
+test os_layer::compat::tests::test_windows_initialize ... ok
+test workload::ai_ml::tests::test_cpu_viability ... ok
+test workload::ai_ml::tests::test_model_size_memory_estimation ... ok
+test workload::ai_ml::tests::test_workload_memory_estimation ... ok
+test workload::analyzer::tests::test_aiml_inference_small_model ... ok
+test resources::tests::test_storage_requirements_with_type ... ok
+test workload::ai_ml::tests::test_builder_pattern ... ok
+test workload::ai_ml::tests::test_compute_intensive_detection ... ok
+test workload::analyzer::tests::test_aiml_training_large_model ... ok
+test workload::analyzer::tests::test_cuda_large_workload ... ok
+test workload::analyzer::tests::test_cuda_small_workload ... ok
+test workload::analyzer::tests::test_memory_classification ... ok
+test workload::cuda::tests::test_compute_intensity_detection ... ok
+test workload::cuda::tests::test_cpu_viability ... ok
+test workload::cuda::tests::test_launch_config_calculations ... ok
+test workload::cuda::tests::test_launch_config_with_shared_mem ... ok
+test workload::integration_tests::tests::test_aiml_workload_analysis_inference_small ... ok
+test workload::cuda::tests::test_workload_builder ... ok
+test workload::integration_tests::tests::test_aiml_workload_analysis_training_large ... ok
+test workload::integration_tests::tests::test_backend_selection_cpu_only ... ok
+test workload::integration_tests::tests::test_backend_selection_amd_gpu ... ok
+test workload::integration_tests::tests::test_backend_selection_graceful_degradation ... ok
+test workload::integration_tests::tests::test_backend_selection_nvidia_gpu ... ok
+test workload::integration_tests::tests::test_cuda_thread_calculations ... ok
+test workload::integration_tests::tests::test_cuda_workload_analysis_large_parallel ... ok
+test workload::integration_tests::tests::test_cuda_workload_analysis_small_viable_cpu ... ok
+test workload::integration_tests::tests::test_memory_estimation_accuracy ... ok
+test workload::integration_tests::tests::test_workload_type_routing ... ok
+test workload::selector::tests::test_alternatives_provided ... ok
+test workload::selector::tests::test_amd_gpu_translation ... ok
+test workload::selector::tests::test_apple_gpu_translation ... ok
+test workload::selector::tests::test_cpu_parallel_fallback ... ok
+test workload::selector::tests::test_cpu_sequential_last_resort ... ok
+test workload::selector::tests::test_nvidia_gpu_native_cuda ... ok
+test workload::selector::tests::test_hardware_detection ... ok
+test self_identity::tests::test_requirements_are_optional ... ok
+test runtime_discovery::tests::test_find_by_capability ... ok
+test discovery::mdns::tests::test_mdns_advertise ... ok
+test runtime_discovery::tests::test_manual_registration ... ok
+test self_identity::tests::test_advertisement ... ok
+test self_identity::tests::test_self_identity_creation ... ok
+test runtime_discovery::tests::test_remove_service ... ok
+test self_identity::tests::test_matches_requirement ... ok
+test runtime_discovery::tests::test_runtime_discovery_creation ... ok
+test self_identity::tests::test_network_identity_optional ... ok
+test runtime_discovery::tests::test_start_stop_discovery ... ok
+test self_identity::tests::test_capabilities_are_self_knowledge_only ... ok
+test resources::tests::test_system_resource_monitor_creation ... ok
+test resources::tests::test_system_resource_monitor_default ... ok
+test self_identity::tests::test_with_network ... ok
+
+test result: ok. 165 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running tests/biomeos_agents_tests.rs (target/llvm-cov-target/debug/deps/biomeos_agents_tests-52c07f729c3d9511)
+
+running 47 tests
+test test_agent_deployment_config_clone ... ok
+test test_agent_deployment_config_serialization ... ok
+test test_agent_deployment_config_creation ... ok
+test test_agent_deployment_manager_creation ... ok
+test test_agent_deployment_config_with_resource_limits ... ok
+test test_agent_info_clone ... ok
+test test_agent_info_creation ... ok
+test test_agent_resource_usage_clone ... ok
+test test_agent_info_serialization ... ok
+test test_agent_resource_usage_creation ... ok
+test test_agent_resource_usage_no_gpu ... ok
+test test_agent_resource_usage_serialization ... ok
+test test_agent_status_eq ... ok
+test test_agent_deployment_manager_health_check ... ok
+test test_agent_deployment_manager_initialize_squirrel ... ok
+test test_agent_status_clone ... ok
+test test_agent_status_deploying ... ok
+test test_agent_status_failed ... ok
+test test_agent_status_running ... ok
+test test_agent_resource_usage_zero ... ok
+test test_agent_status_scaling ... ok
+test test_agent_status_serialization ... ok
+test test_agent_status_terminating ... ok
+test test_agent_status_stopped ... ok
+test test_agent_status_updating ... ok
+test test_biomeos_agents_coverage_summary ... ok
+test test_model_info_clone ... ok
+test test_model_info_creation ... ok
+test test_model_info_serialization ... ok
+test test_model_performance_metrics_clone ... ok
+test test_model_performance_metrics_creation ... ok
+test test_model_performance_metrics_fast ... ok
+test test_model_performance_metrics_serialization ... ok
+test test_model_performance_metrics_slow ... ok
+test test_model_resource_requirements_clone ... ok
+test test_model_resource_requirements_creation ... ok
+test test_model_resource_requirements_minimal ... ok
+test test_model_resource_requirements_no_gpu ... ok
+test test_model_resource_requirements_serialization ... ok
+test test_model_status_clone ... ok
+test test_model_status_eq ... ok
+test test_model_status_error ... ok
+test test_model_status_loading ... ok
+test test_model_status_ready ... ok
+test test_model_status_serialization ... ok
+test test_model_status_unloading ... ok
+test test_model_status_updating ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/biomeos_agents_types_tests.rs (target/llvm-cov-target/debug/deps/biomeos_agents_types_tests-cfd5dcf4d9d37f8a)
+
+running 26 tests
+test test_agent_deployment_config_creation ... ok
+test test_agent_info_creation ... ok
+test test_agent_deployment_config_with_local_registry ... ok
+test test_agent_deployment_config_serialization ... ok
+test test_agent_deployment_config_with_lambda_runtime ... ok
+test test_agent_info_with_single_replica ... ok
+test test_agent_info_serialization ... ok
+test test_agent_resource_usage_creation ... ok
+test test_agent_resource_usage_no_gpu ... ok
+test test_agent_status_deploying ... ok
+test test_agent_status_failed ... ok
+test test_agent_status_running ... ok
+test test_agent_status_scaling ... ok
+test test_agent_status_stopped ... ok
+test test_agent_status_terminating ... ok
+test test_agent_status_updating ... ok
+test test_model_info_creation ... ok
+test test_model_info_with_small_model ... ok
+test test_model_resource_requirements_with_gpu ... ok
+test test_model_info_serialization ... ok
+test test_model_resource_requirements_without_gpu ... ok
+test test_model_status_error ... ok
+test test_model_status_loading ... ok
+test test_model_status_ready ... ok
+test test_model_status_unloading ... ok
+test test_model_status_updating ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/biomeos_auth_tests.rs (target/llvm-cov-target/debug/deps/biomeos_auth_tests-9579b7ea3e09bc19)
+
+running 40 tests
+test test_auth_manager_config_clone ... ok
+test test_auth_manager_config_creation ... ok
+test test_auth_manager_config_no_validation ... ok
+test test_auth_manager_config_serialization ... ok
+test test_authentication_manager_creation ... ok
+test test_authentication_manager_no_validation ... ok
+test test_authentication_token_clone ... ok
+test test_authentication_token_creation ... ok
+test test_authentication_token_ed25519 ... ok
+test test_biomeos_auth_coverage_summary ... ok
+test test_authentication_token_serialization ... ok
+test test_propagation_result_clone ... ok
+test test_propagation_result_creation ... ok
+test test_propagation_result_partial_success ... ok
+test test_propagation_result_serialization ... ok
+test test_token_propagation_request_clone ... ok
+test test_token_propagation_request_creation ... ok
+test test_token_propagation_status_clone ... ok
+test test_token_propagation_request_serialization ... ok
+test test_token_propagation_status_eq ... ok
+test test_token_propagation_status_failed ... ok
+test test_token_propagation_status_pending ... ok
+test test_token_propagation_status_serialization ... ok
+test test_token_propagation_status_skipped ... ok
+test test_token_propagation_status_success ... ok
+test test_token_verification_request_clone ... ok
+test test_token_verification_response_clone ... ok
+test test_token_verification_request_creation ... ok
+test test_token_verification_response_expired ... ok
+test test_token_verification_request_serialization ... ok
+test test_token_verification_status_valid ... ok
+test test_token_verification_response_valid ... ok
+test test_token_verification_status_eq ... ok
+test test_token_verification_status_error ... ok
+test test_token_verification_status_expired ... ok
+test test_token_verification_status_clone ... ok
+test test_token_verification_status_not_found ... ok
+test test_token_verification_response_serialization ... ok
+test test_token_verification_status_serialization ... ok
+test test_token_verification_status_invalid ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/biomeos_auth_types_tests.rs (target/llvm-cov-target/debug/deps/biomeos_auth_types_tests-af41bd264551ee25)
+
+running 23 tests
+test test_auth_manager_config_creation ... ok
+test test_auth_manager_config_no_signature_validation ... ok
+test test_auth_manager_config_short_refresh ... ok
+test test_auth_manager_config_no_replay_protection ... ok
+test test_authentication_token_creation ... ok
+test test_authentication_token_expiry ... ok
+test test_auth_manager_config_serialization ... ok
+test test_authentication_token_multiple_audiences ... ok
+test test_authentication_token_serialization ... ok
+test test_authentication_token_with_claims ... ok
+test test_token_propagation_request_creation ... ok
+test test_token_propagation_request_different_targets ... ok
+test test_token_propagation_request_timestamp ... ok
+test test_token_propagation_request_with_signature ... ok
+test test_token_propagation_request_serialization ... ok
+test test_token_verification_response_invalid ... ok
+test test_token_verification_response_serialization ... ok
+test test_token_verification_response_valid ... ok
+test test_token_verification_status_error ... ok
+test test_token_verification_status_expired ... ok
+test test_token_verification_status_not_found ... ok
+test test_token_verification_status_invalid ... ok
+test test_token_verification_status_valid ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/biomeos_backend_comprehensive_tests.rs (target/llvm-cov-target/debug/deps/biomeos_backend_comprehensive_tests-bbdbd17ce50223db)
+
+running 62 tests
+test test_agent_status_updating ... ok
+test test_agent_status_scaling ... ok
+test test_agent_status_running ... ok
+test test_agent_status_deploying ... ok
+test test_agent_status_terminating ... ok
+test test_agent_status_stopped ... ok
+test test_agent_status_failed ... ok
+test test_agent_status_equality ... ok
+test test_inmemory_agent_backend_creation ... ok
+test test_inmemory_auth_backend_default ... ok
+test test_inmemory_agent_backend_default ... ok
+test test_auth_backend_trait_validate_token_valid ... ok
+test test_auth_backend_trait_validate_token_ed25519_type ... ok
+test test_auth_backend_trait_validate_token_bearer_type ... ok
+test test_inmemory_storage_backend_creation_with_string ... ok
+test test_inmemory_storage_backend_creation ... ok
+test test_inmemory_auth_backend_new ... ok
+test test_auth_backend_trait_validate_token_expired ... ok
+test test_auth_backend_trait_validate_token_invalid_type ... ok
+test test_auth_backend_trait_validate_token_invalid_issuer ... ok
+test test_model_status_loading ... ok
+test test_model_status_ready ... ok
+test test_model_status_unloading ... ok
+test test_model_status_updating ... ok
+test test_inmemory_agent_backend_list_empty ... ok
+test test_inmemory_storage_backend_list_empty ... ok
+test test_inmemory_storage_backend_initialize ... ok
+test test_inmemory_auth_backend_initialize_default ... ok
+test test_inmemory_storage_backend_unmount_nonexistent ... ok
+test test_inmemory_storage_backend_provision_basic ... ok
+test test_inmemory_auth_backend_refresh_token_fields ... ok
+test test_inmemory_storage_backend_provision_multiple ... ok
+test test_inmemory_agent_backend_initialize ... ok
+test test_inmemory_agent_backend_deploy_basic ... ok
+test test_inmemory_agent_backend_scale_agent ... ok
+test test_inmemory_agent_backend_list_multiple ... ok
+test test_inmemory_agent_backend_health_check ... ok
+test test_inmemory_agent_backend_stop_agent ... ok
+test test_inmemory_storage_backend_delete_nonexistent ... ok
+test test_inmemory_storage_backend_volume_lifecycle ... ok
+test test_inmemory_auth_backend_token_request_fields ... ok
+test test_inmemory_storage_backend_mount_nonexistent ... ok
+test test_inmemory_agent_backend_remove_agent ... ok
+test test_volume_status_attaching ... ok
+test test_volume_status_available ... ok
+test test_volume_status_creating ... ok
+test test_volume_status_deleting ... ok
+test test_volume_status_detaching ... ok
+test test_volume_status_equality ... ok
+test test_volume_status_error ... ok
+test test_volume_status_in_use ... ok
+test test_beardog_backend_creation_with_string ... ok
+test test_beardog_backend_creation_with_str ... ok
+test test_squirrel_backend_creation_with_strings ... ok
+test test_nestgate_backend_creation_with_string ... ok
+test test_nestgate_backend_creation_with_str ... ok
+test test_beardog_backend_creation ... ok
+test test_nestgate_backend_creation ... ok
+test test_squirrel_backend_creation ... ok
+test test_squirrel_backend_creation_various_configs ... ok
+test test_beardog_backend_creation_various_endpoints ... ok
+test test_nestgate_backend_creation_various_configs ... ok
+
+test result: ok. 62 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+
+     Running tests/biomeos_storage_comprehensive_tests.rs (target/llvm-cov-target/debug/deps/biomeos_storage_comprehensive_tests-e2fdaa6b19c421e9)
+
+running 31 tests
+test test_biomeos_storage_coverage_summary ... ok
+test test_storage_config_clone ... ok
+test test_storage_config_creation ... ok
+test test_storage_config_backup_disabled ... ok
+test test_storage_config_different_tiers ... ok
+test test_storage_config_empty_endpoint ... ok
+test test_storage_config_replication_factors ... ok
+test test_manager_clone_config ... ok
+test test_storage_config_debug_format ... ok
+test test_manager_with_replication_disabled ... ok
+test test_manager_with_different_tiers ... ok
+test test_manager_shared_backend ... ok
+test test_manager_multiple_instances ... ok
+test test_manager_with_custom_backend ... ok
+test test_manager_with_inmemory_backend ... ok
+test test_storage_config_serialization ... ok
+test test_provision_volume_different_sizes ... ok
+test test_get_volume_status_info ... ok
+test test_provision_persistent_volume ... ok
+test test_initialize_nestgate_connection ... ok
+test test_provision_volume_basic ... ok
+test test_multiple_operations_sequence ... ok
+test test_unmount_volume ... ok
+test test_volume_operations_sequence ... ok
+test test_list_volumes ... ok
+test test_get_volume_status ... ok
+test test_mount_volume ... ok
+test test_delete_volume ... ok
+test test_manager_backend_types ... ok
+test test_manager_with_high_replication ... ok
+test test_manager_with_nestgate_backend ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/biomeos_storage_coverage_nov7_tests.rs (target/llvm-cov-target/debug/deps/biomeos_storage_coverage_nov7_tests-b69f512b528d9bfc)
+
+running 28 tests
+test test_storage_provisioning_config_clone ... ok
+test test_storage_config_empty_endpoint ... ok
+test test_storage_provisioning_config_creation ... ok
+test test_multiple_storage_tiers ... ok
+test test_persistent_volume_clone ... ok
+test test_persistent_volume_read_write_many ... ok
+test test_storage_provisioning_config_deserialization ... ok
+test test_persistent_volume_basic ... ok
+test test_storage_provisioning_config_economy_tier ... ok
+test test_storage_provisioning_config_high_replication ... ok
+test test_storage_provisioning_config_premium_tier ... ok
+test test_storage_provisioning_config_no_replication ... ok
+test test_volume_config_empty_name ... ok
+test test_persistent_volume_with_host_path ... ok
+test test_volume_config_basic ... ok
+test test_volume_config_small ... ok
+test test_volume_config_clone ... ok
+test test_volume_config_large ... ok
+test test_volume_info_creation ... ok
+test test_volume_info_clone ... ok
+test test_volume_info_large_sizes ... ok
+test test_volume_info_different_statuses ... ok
+test test_storage_manager_multiple_instances ... ok
+test test_storage_manager_with_inmemory ... ok
+test test_storage_manager_config_access ... ok
+test test_volume_config_multiple_access_modes ... ok
+test test_storage_provisioning_config_serialization ... ok
+test test_storage_manager_with_nestgate ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/biomeos_storage_functional_week19.rs (target/llvm-cov-target/debug/deps/biomeos_storage_functional_week19-424c279480d5cdce)
+
+running 36 tests
+test test_config_access ... ok
+test test_config_backup_disabled ... ok
+test test_config_backup_enabled ... ok
+test test_config_replication_disabled ... ok
+test test_config_replication_enabled ... ok
+test test_config_replication_factor ... ok
+test test_config_storage_tier_cold ... ok
+test test_initialize_connection_inmemory ... ok
+test test_manager_with_inmemory_initialization ... ok
+test test_list_volumes_after_provisioning ... ok
+test test_provision_volume_with_custom_size ... ok
+test test_delete_volume ... ok
+test test_remount_after_unmount ... ok
+test test_mount_volume ... ok
+test test_delete_volume_after_unmount ... ok
+test test_delete_multiple_volumes ... ok
+test test_provision_multiple_volumes ... ok
+test test_get_volume_status ... ok
+test test_list_volumes_empty ... ok
+test test_provision_persistent_volume ... ok
+test test_provision_persistent_volume_large_capacity ... ok
+test test_sprint12_coverage_summary ... ok
+test test_provision_persistent_volume_with_host_path ... ok
+test test_get_volume_status_after_mount ... ok
+test test_provision_volume_with_backup_policy ... ok
+test test_provision_volume_basic ... ok
+test test_provision_volume_read_write_many ... ok
+test test_mount_different_paths ... ok
+test test_provision_volume_minimal_config ... ok
+test test_mount_volume_multiple_services ... ok
+test test_unmount_volume ... ok
+test test_list_volumes_check_details ... ok
+test test_unmount_different_services ... ok
+test test_provision_volume_read_write_once ... ok
+test test_manager_with_nestgate_initialization ... ok
+test test_initialize_connection_nestgate ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/biomeos_storage_manager_tests.rs (target/llvm-cov-target/debug/deps/biomeos_storage_manager_tests-f10402cfe9a5e581)
+
+running 7 tests
+test test_manager_with_backup_disabled ... ok
+test test_manager_with_replication_disabled ... ok
+test test_storage_provisioning_manager_with_cold_tier ... ok
+test test_storage_provisioning_manager_with_hot_tier ... ok
+test test_storage_provisioning_manager_replication_disabled ... ok
+test test_manager_with_high_replication ... ok
+test test_storage_provisioning_manager_new ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/biomeos_storage_tests.rs (target/llvm-cov-target/debug/deps/biomeos_storage_tests-3c4798cd419c3328)
+
+running 31 tests
+test test_volume_status_attaching ... ok
+test test_volume_status_available ... ok
+test test_volume_status_clone ... ok
+test test_volume_status_creating ... ok
+test test_replication_settings_disabled ... ok
+test test_replication_settings_clone ... ok
+test test_storage_provisioning_config_clone ... ok
+test test_storage_provisioning_config_backup_disabled ... ok
+test test_storage_provisioning_config_creation ... ok
+test test_storage_provisioning_config_replication_factors ... ok
+test test_replication_settings_creation ... ok
+test test_storage_provisioning_config_different_tiers ... ok
+test test_replication_settings_different_strategies ... ok
+test test_volume_status_deleting ... ok
+test test_volume_status_detaching ... ok
+test test_volume_status_equality ... ok
+test test_volume_status_error ... ok
+test test_volume_status_error_messages ... ok
+test test_volume_status_in_use ... ok
+test test_volume_status_lifecycle ... ok
+test test_storage_provisioning_manager_with_different_endpoints ... ok
+test test_storage_provisioning_manager_with_backup_disabled ... ok
+test test_storage_provisioning_manager_creation ... ok
+test test_storage_provisioning_manager_with_replication_disabled ... ok
+test test_provision_volume_with_different_sizes ... ok
+test test_complete_volume_provisioning_workflow ... ok
+test test_provision_volume_with_different_access_modes ... ok
+test test_concurrent_volume_provisioning ... ok
+test test_provision_persistent_volume_mock ... ok
+test test_provision_volume_with_different_storage_classes ... ok
+test test_provision_volume_mock ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/byob_comprehensive_tests.rs (target/llvm-cov-target/debug/deps/byob_comprehensive_tests-35eb0b179b4a321b)
+
+running 44 tests
+test test_resource_usage_clone ... ok
+test test_health_check_http ... ok
+test test_health_check_clone ... ok
+test test_port_mapping_clone ... ok
+test test_port_mapping_without_host_port ... ok
+test test_resource_usage_creation ... ok
+test test_port_mapping_udp_protocol ... ok
+test test_health_check_tcp ... ok
+test test_port_mapping_creation ... ok
+test test_byob_deployment_request_creation ... ok
+test test_service_resource_requirements_clone ... ok
+test test_service_resource_requirements_default ... ok
+test test_deployment_status_stopping ... ok
+test test_deployment_status_stopped ... ok
+test test_service_resource_requirements_debug ... ok
+test test_port_mapping_serialization ... ok
+test test_deployment_status_starting ... ok
+test test_deployment_status_running ... ok
+test test_deployment_status_failed ... ok
+test test_health_check_serialization ... ok
+test test_service_spec_clone ... ok
+test test_service_resource_requirements_serialization ... ok
+test test_service_spec_with_dependencies ... ok
+test test_resource_usage_serialization ... ok
+test test_service_spec_serialization ... ok
+test test_service_resource_requirements_with_values ... ok
+test test_byob_deployment_request_serialization ... ok
+test test_service_spec_with_environment ... ok
+test test_team_network_config_clone ... ok
+test test_team_resource_quotas_clone ... ok
+test test_service_spec_basic ... ok
+test test_team_network_config_serialization ... ok
+test test_team_resource_quotas_creation ... ok
+test test_team_security_config_creation ... ok
+test test_team_resource_quotas_debug ... ok
+test test_team_network_config_creation ... ok
+test test_team_security_config_clone ... ok
+test test_team_resource_quotas_serialization ... ok
+test test_volume_mount_clone ... ok
+test test_team_security_config_serialization ... ok
+test test_volume_mount_creation ... ok
+test test_volume_mount_read_only ... ok
+test test_volume_mount_serialization ... ok
+test test_team_security_config_with_policies ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/byob_data_structures_nov7_tests.rs (target/llvm-cov-target/debug/deps/byob_data_structures_nov7_tests-1019a106659e5e49)
+
+running 35 tests
+test test_service_spec_clone ... ok
+test test_byob_deployment_request_clone ... ok
+test test_byob_deployment_request_creation ... ok
+test test_service_spec_minimal ... ok
+test test_service_resource_requirements_all_none ... ok
+test test_service_spec_high_replicas ... ok
+test test_service_resource_requirements_fractional_cpu ... ok
+test test_service_resource_requirements_cpu_only ... ok
+test test_service_resource_requirements_memory_only ... ok
+test test_service_resource_requirements_many_gpus ... ok
+test test_service_resource_requirements_all_specified ... ok
+test test_complex_dependency_chain ... ok
+test test_byob_deployment_request_with_services ... ok
+test test_large_service_count ... ok
+test test_service_spec_with_image ... ok
+test test_service_spec_zero_replicas ... ok
+test test_service_spec_with_dependencies ... ok
+test test_team_network_config_basic ... ok
+test test_team_network_config_clone ... ok
+test test_service_spec_with_environment ... ok
+test test_team_network_config_different_subnets ... ok
+test test_team_network_config_large_subnet ... ok
+test test_byob_executor_config_clone ... ok
+test test_team_quotas_zero_limits ... ok
+test test_team_resource_quotas_clone ... ok
+test test_byob_deployment_request_serialization ... ok
+test test_byob_executor_config_default ... ok
+test test_team_resource_quotas_enterprise ... ok
+test test_team_resource_quotas_serialization ... ok
+test test_team_resource_quotas_small_team ... ok
+test test_team_security_config_clone ... ok
+test test_team_security_config_moderate ... ok
+test test_byob_deployment_request_deserialization ... ok
+test test_team_security_config_permissive ... ok
+test test_team_security_config_strict ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/byob_executor_async_tests.rs (target/llvm-cov-target/debug/deps/byob_executor_async_tests-a12bccd289652781)
+
+running 21 tests
+test test_resource_quotas_within_limits ... ok
+test test_deployment_with_zero_gpu_quota ... ok
+test test_deployment_id_uniqueness ... ok
+test test_deployment_timestamp_validity ... ok
+test test_minimal_deployment_request_valid ... ok
+test test_deployment_request_resource_validation ... ok
+test test_service_with_health_check_configuration ... ok
+test test_production_resource_quotas ... ok
+test test_service_with_dependencies ... ok
+test test_security_config_resource_policies ... ok
+test test_security_config_network_policies ... ok
+test test_complex_deployment_request_valid ... ok
+test test_service_replica_counts ... ok
+test test_service_with_port_mappings ... ok
+test test_service_with_environment_variables ... ok
+test test_total_service_instances ... ok
+test test_security_config_isolation_levels ... ok
+test test_network_config_subnet_allocation ... ok
+test test_network_config_name_assignment ... ok
+test test_create_byob_executor_function ... ok
+test test_byob_executor_with_custom_config ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/byob_executor_comprehensive_tests.rs (target/llvm-cov-target/debug/deps/byob_executor_comprehensive_tests-15cb264ecc318789)
+
+running 23 tests
+test test_deploy_biome_gpu_quota_exceeded ... ok
+test test_deployment_network_creation ... ok
+test test_deploy_biome_too_many_services ... ok
+test test_deployment_with_volumes ... ok
+test test_deployment_with_gpu_resources ... ok
+test test_deploy_biome_memory_quota_exceeded ... ok
+test test_deployment_with_native_workload ... ok
+test test_deployment_with_custom_ports ... ok
+test test_config_defaults ... ok
+test test_deploy_biome_resource_quota_exceeded ... ok
+test test_deploy_biome_with_service_failure ... ok
+test test_get_deployment_status_not_found ... ok
+test test_stop_deployment_success ... ok
+test test_stop_deployment_not_found ... ok
+test test_get_resource_usage_not_found ... ok
+test test_get_resource_usage_success ... ok
+test test_deployment_service_endpoints ... ok
+test test_deploy_biome_max_concurrent_deployments ... ok
+test test_deploy_biome_success ... ok
+test test_deploy_biome_storage_quota_exceeded ... ok
+test test_list_deployments_empty ... ok
+test test_get_deployment_status_success ... ok
+test test_list_deployments_multiple ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/byob_executor_integration_tests.rs (target/llvm-cov-target/debug/deps/byob_executor_integration_tests-386f57da43318203)
+
+running 19 tests
+test test_byob_executor_config_custom ... ok
+test test_byob_executor_creation_with_custom_config ... ok
+test test_deployment_request_with_max_resources ... ok
+test test_deployment_request_with_no_services ... ok
+test test_network_info_creation ... ok
+test test_service_endpoint_structure ... ok
+test test_service_endpoint_with_external_ip ... ok
+test test_service_with_multiple_volumes ... ok
+test test_deployment_request_clone ... ok
+test test_deployment_request_resource_quotas ... ok
+test test_deployment_request_security_config ... ok
+test test_deployment_request_network_config ... ok
+test test_deployment_request_services ... ok
+test test_deployment_request_structure ... ok
+test test_byob_executor_config_default ... ok
+test test_byob_executor_creation ... ok
+test test_byob_executor_config_clone ... ok
+test test_byob_executor_config_serialization ... ok
+test test_deployment_request_serialization ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/discovery_coverage_expansion.rs (target/llvm-cov-target/debug/deps/discovery_coverage_expansion-7e05b371b3d40e91)
+
+running 13 tests
+test test_orchestration_client_size ... ok
+test test_orchestration_client_creation ... ok
+test test_orchestration_client_load_balancing ... ok
+test test_orchestration_client_service_discovery ... ok
+test test_discovery_timeout_behavior ... ok
+test test_discover_orchestration_with_env_var ... ok
+test test_discover_orchestration_without_env ... ok
+test test_discovery_error_handling ... ok
+test test_orchestration_client_any_capability ... ok
+test test_orchestration_client_reuse ... ok
+test test_discovery_with_empty_endpoint ... ok
+test test_discovery_with_multiple_endpoints ... ok
+test test_concurrent_discovery_calls ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/discovery_integration_tests.rs (target/llvm-cov-target/debug/deps/discovery_integration_tests-84a51057c568798a)
+
+running 10 tests
+test test_discovered_service_clone ... ok
+test test_capability_features ... ok
+test test_capability_based_filtering ... ok
+test test_discovered_service_has_capability ... ok
+test test_mdns_without_network_identity ... ok
+test test_self_identity_builder ... ok
+test test_mdns_service_lifecycle ... ok
+test test_cached_services ... ok
+test test_discover_all_services ... ok
+test test_capability_based_discovery ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.42s
+
+     Running tests/ecosystem_comprehensive_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_comprehensive_tests-9f7e16b95e9baf9f)
+
+running 46 tests
+test test_ecosystem_config_default ... ok
+test test_ecosystem_message_capability_announcement ... ok
+test test_ecosystem_message_unique_ids ... ok
+test test_ecosystem_message_heartbeat ... ok
+test test_ecosystem_message_resource_request ... ok
+test test_ecosystem_message_workload_request ... ok
+test test_message_type_error ... ok
+test test_message_type_status_update ... ok
+test test_optional_primals ... ok
+test test_primal_instance_multiple_capabilities ... ok
+test test_primal_instance_nestgate ... ok
+test test_primal_instance_songbird ... ok
+test test_primal_status_connected ... ok
+test test_primal_status_disconnected ... ok
+test test_primal_status_discovered ... ok
+test test_primal_status_failed ... ok
+test test_ecosystem_config_custom ... ok
+test test_primal_type_beardog ... ok
+test test_primal_type_biomeos ... ok
+test test_primal_type_custom ... ok
+test test_primal_type_nestgate ... ok
+test test_primal_type_songbird ... ok
+test test_primal_type_squirrel ... ok
+test test_primal_type_toadstool ... ok
+test test_required_primals ... ok
+test test_concurrent_channel_access ... ok
+test test_discover_via_local_scan ... ok
+test test_ecosystem_coordinator_new ... ok
+test test_discover_primals_with_endpoints ... ok
+test test_create_primal_channel ... ok
+test test_discovery_timeout_default ... ok
+test test_ecosystem_coordinator_empty_initially ... ok
+test test_discover_primals_auto_discovery_disabled ... ok
+test test_primal_status_transition_discovered_to_connected ... ok
+test test_discovery_timeout_custom ... ok
+test test_discover_via_multicast ... ok
+test test_multiple_channels ... ok
+test test_store_multiple_primals ... ok
+test test_store_discovered_primal ... ok
+test test_discover_at_endpoint ... ok
+test test_concurrent_primal_access ... ok
+test test_discover_via_dns ... ok
+test test_connect_to_multiple_primals ... ok
+test test_discover_primals_empty ... ok
+test test_primal_status_transition_to_failed ... ok
+test test_connect_to_primal ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/ecosystem_coordinator_integration_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_coordinator_integration_tests-6a5688353f32f78a)
+
+running 21 tests
+test ecosystem_config_integration_tests::test_ecosystem_config_various_timeouts ... ok
+test ecosystem_coordinator_tests::test_ecosystem_coordinator_new ... ok
+test ecosystem_coordinator_tests::test_ecosystem_coordinator_creation_multiple_times ... ok
+test ecosystem_config_integration_tests::test_ecosystem_config_with_endpoints ... ok
+test ecosystem_config_integration_tests::test_ecosystem_config_serialization_roundtrip ... ok
+test ecosystem_message_tests::test_ecosystem_message_serialization ... ok
+test ecosystem_message_tests::test_ecosystem_message_creation ... ok
+test ecosystem_message_tests::test_ecosystem_message_with_different_payloads ... ok
+test ecosystem_message_tests::test_ecosystem_message_types ... ok
+test ecosystem_message_tests::test_message_type_clone ... ok
+test primal_instance_integration_tests::test_primal_instance_full_lifecycle ... ok
+test primal_type_integration_tests::test_all_primal_types_serialization ... ok
+test primal_instance_integration_tests::test_primal_status_failed ... ok
+test ecosystem_coordinator_tests::test_get_primal_status_empty ... ok
+test ecosystem_coordinator_tests::test_integrate_primals_empty_list ... ok
+test primal_instance_integration_tests::test_primal_status_transitions ... ok
+test primal_type_integration_tests::test_primal_type_in_vector ... ok
+test ecosystem_coordinator_tests::test_get_primal_capabilities_nonexistent ... ok
+test ecosystem_coordinator_tests::test_is_primal_available_nonexistent ... ok
+test ecosystem_coordinator_tests::test_is_primal_available_multiple_checks ... ok
+test ecosystem_coordinator_tests::test_discover_primals_no_auto_discovery ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.70s
+
+     Running tests/ecosystem_coordinator_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_coordinator_tests-9629e6396f63fb0d)
+
+running 33 tests
+test test_all_ecosystem_primal_types ... ok
+test test_ecosystem_config_clone ... ok
+test test_ecosystem_config_custom ... ok
+test test_ecosystem_config_default ... ok
+test test_ecosystem_config_debug ... ok
+test test_ecosystem_config_optional_primals ... ok
+test test_ecosystem_config_with_endpoints ... ok
+test test_ecosystem_config_with_required_primals ... ok
+test test_ecosystem_coordinator_creation ... ok
+test test_ecosystem_message_clone ... ok
+test test_ecosystem_message_creation ... ok
+test test_ecosystem_message_type_clone ... ok
+test test_ecosystem_message_debug ... ok
+test test_ecosystem_message_type_debug ... ok
+test test_ecosystem_message_type_variants ... ok
+test test_ecosystem_message_with_payload ... ok
+test test_message_flow ... ok
+test test_primal_instance_clone ... ok
+test test_primal_instance_creation ... ok
+test test_primal_instance_debug ... ok
+test test_primal_instance_with_multiple_capabilities ... ok
+test test_primal_lifecycle ... ok
+test test_primal_status_clone ... ok
+test test_primal_status_debug ... ok
+test test_primal_status_failed_with_reason ... ok
+test test_primal_type_clone ... ok
+test test_primal_status_variants ... ok
+test test_primal_type_equality ... ok
+test test_primal_type_variants ... ok
+test test_primal_status_equality ... ok
+test test_primal_type_debug ... ok
+test test_primal_types_in_config ... ok
+test test_ecosystem_coordinator_discover_primals ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.67s
+
+     Running tests/ecosystem_coverage_push_nov7_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_coverage_push_nov7_tests-336fbd16e8eb5a44)
+
+running 38 tests
+test test_primal_channel_construction ... ok
+test test_ecosystem_message_types_all_variants ... ok
+test test_ecosystem_config_custom_timeout ... ok
+test test_ecosystem_config_clone ... ok
+test test_primal_instance_clone ... ok
+test test_ecosystem_message_clone ... ok
+test test_primal_instance_with_empty_capabilities ... ok
+test test_primal_instance_with_long_version_string ... ok
+test test_ecosystem_config_default_values ... ok
+test test_ecosystem_message_type_debug_formatting ... ok
+test test_ecosystem_message_creation ... ok
+test test_primal_instance_with_many_capabilities ... ok
+test test_primal_instance_creation ... ok
+test test_primal_status_all_variants ... ok
+test test_primal_status_clone ... ok
+test test_primal_status_equality ... ok
+test test_primal_status_debug_formatting ... ok
+test test_primal_type_debug_formatting ... ok
+test test_primal_status_failed_variant ... ok
+test test_ecosystem_config_required_primals ... ok
+test test_ecosystem_config_optional_primals_contains_all ... ok
+test test_primal_type_equality ... ok
+test test_ecosystem_message_with_complex_payload ... ok
+test test_ecosystem_config_deserialization ... ok
+test test_primal_status_serialization ... ok
+test test_ecosystem_message_type_clone ... ok
+test test_primal_instance_serialization ... ok
+test test_ecosystem_message_serialization ... ok
+test test_ecosystem_config_serialization ... ok
+test test_ecosystem_config_with_endpoints ... ok
+test test_is_primal_available_nonexistent ... ok
+test test_ecosystem_coordinator_new_returns_instance ... ok
+test test_get_primal_capabilities_nonexistent ... ok
+test test_get_primal_status_empty_coordinator ... ok
+test test_integrate_empty_primal_list ... ok
+test test_ecosystem_coordinator_new_success ... ok
+test test_is_primal_available_multiple_checks ... ok
+test test_discover_primals_with_auto_discovery_disabled ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.77s
+
+     Running tests/ecosystem_error_handling_and_edge_cases_dec15.rs (target/llvm-cov-target/debug/deps/ecosystem_error_handling_and_edge_cases_dec15-a868b2180b4bc2db)
+
+running 27 tests
+test test_capability_string_formats ... ok
+test test_custom_primal_type_as_documented ... ok
+test test_ecosystem_config_as_documented ... ok
+test test_ecosystem_config_with_conflicting_required_optional ... ok
+test test_ecosystem_config_with_empty_optional_primals ... ok
+test test_ecosystem_config_default_invariants ... ok
+test test_ecosystem_config_with_duplicate_primals ... ok
+test test_ecosystem_config_clone ... ok
+test test_ecosystem_config_with_very_long_timeout ... ok
+test test_ecosystem_config_with_zero_timeout ... ok
+test test_multiple_config_instances_independence ... ok
+test test_primal_endpoint_edge_cases ... ok
+test test_ecosystem_config_with_many_endpoints ... ok
+test test_primal_endpoint_formats ... ok
+test test_primal_instance_clone_independence ... ok
+test test_primal_instance_creation ... ok
+test test_primal_instance_with_empty_capabilities ... ok
+test test_primal_instance_with_many_capabilities ... ok
+test test_primal_name_with_special_characters ... ok
+test test_primal_status_failed_with_empty_message ... ok
+test test_primal_status_failed_with_long_message ... ok
+test test_primal_status_variants ... ok
+test test_primal_type_custom_equality ... ok
+test test_primal_type_equality ... ok
+test test_primal_type_mixed_inequality ... ok
+test test_primal_version_formats ... ok
+test test_primal_instance_timestamp_ordering ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/ecosystem_expansion_week20_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_expansion_week20_tests-4b6ac6ccf10d9261)
+
+running 35 tests
+test test_ecosystem_message_all_types ... ok
+test test_ecosystem_config_empty_optional_primals ... ok
+test test_ecosystem_config_custom_timeout ... ok
+test test_ecosystem_config_no_auto_discovery ... ok
+test test_ecosystem_config_zero_timeout ... ok
+test test_ecosystem_config_required_primals ... ok
+test test_ecosystem_config_deserialization ... ok
+test test_primal_status_all_variants ... ok
+test test_ecosystem_config_with_endpoints ... ok
+test test_primal_instance_creation ... ok
+test test_primal_instance_empty_capabilities ... ok
+test test_primal_instance_deserialization ... ok
+test test_primal_instance_multiple_capabilities ... ok
+test test_ecosystem_config_serialization ... ok
+test test_ecosystem_message_empty_payload ... ok
+test test_primal_status_clone ... ok
+test test_primal_type_all_variants ... ok
+test test_primal_status_failed_with_message ... ok
+test test_primal_type_clone ... ok
+test test_primal_type_custom_creation ... ok
+test test_ecosystem_message_clone ... ok
+test test_primal_instance_with_version ... ok
+test test_primal_instance_clone ... ok
+test test_primal_instance_very_long_name ... ok
+test test_ecosystem_message_with_payload ... ok
+test test_primal_status_debug ... ok
+test test_ecosystem_message_creation ... ok
+test test_primal_status_equality ... ok
+test test_primal_type_debug ... ok
+test test_primal_status_inequality ... ok
+test test_primal_instance_serialization ... ok
+test test_ecosystem_message_serialization ... ok
+test test_ecosystem_coordinator_default_config ... ok
+test test_ecosystem_coordinator_creation ... ok
+test test_ecosystem_coordinator_with_custom_config ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_logic_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_logic_tests-5b80a429cf621610)
+
+running 45 tests
+test ecosystem_logic_tests::test_auto_discovery_disabled ... ok
+test ecosystem_logic_tests::test_discovery_timeout_default ... ok
+test ecosystem_logic_tests::test_auto_discovery_enabled ... ok
+test ecosystem_logic_tests::test_discovery_fallback ... ok
+test ecosystem_logic_tests::test_empty_endpoint ... ok
+test ecosystem_logic_tests::test_heartbeat_timestamp ... ok
+test ecosystem_logic_tests::test_heartbeat_timeout_check ... ok
+test ecosystem_logic_tests::test_heartbeat_within_timeout ... ok
+test ecosystem_logic_tests::test_invalid_primal_name ... ok
+test ecosystem_logic_tests::test_message_id_uniqueness ... ok
+test ecosystem_logic_tests::test_discovery_timeout_custom ... ok
+test ecosystem_logic_tests::test_discovery_timeout_check ... ok
+test ecosystem_logic_tests::test_capability_matching ... ok
+test ecosystem_logic_tests::test_connection_failure_reason ... ok
+test ecosystem_logic_tests::test_missing_capability_detection ... ok
+test ecosystem_logic_tests::test_endpoint_with_path ... ok
+test ecosystem_logic_tests::test_ecosystem_config_default ... ok
+test ecosystem_logic_tests::test_message_id_batch_generation ... ok
+test ecosystem_logic_tests::test_broadcast_message ... ok
+test ecosystem_logic_tests::test_primal_capabilities_list ... ok
+test ecosystem_logic_tests::test_ecosystem_config_custom ... ok
+test ecosystem_logic_tests::test_endpoint_url_construction ... ok
+test ecosystem_logic_tests::test_multiple_primal_endpoints ... ok
+test ecosystem_logic_tests::test_primal_status_connected ... ok
+test ecosystem_logic_tests::test_primal_name_validation ... ok
+test ecosystem_logic_tests::test_primal_status_disconnected ... ok
+test ecosystem_logic_tests::test_custom_primal_type ... ok
+test ecosystem_logic_tests::test_primal_status_discovered ... ok
+test ecosystem_logic_tests::test_primal_type_variants ... ok
+test ecosystem_logic_tests::test_primal_status_failed ... ok
+test ecosystem_logic_tests::test_route_message_target_not_found ... ok
+test ecosystem_logic_tests::test_primal_type_matching ... ok
+test ecosystem_logic_tests::test_required_primals_configuration ... ok
+test ecosystem_logic_tests::test_route_message_to_primal ... ok
+test ecosystem_logic_tests::test_primal_status_transitions ... ok
+test ecosystem_logic_tests::test_version_comparison ... ok
+test ecosystem_logic_tests::test_version_string_format ... ok
+test ecosystem_logic_tests::test_multiple_channels ... ok
+test ecosystem_logic_tests::test_channel_cleanup ... ok
+test ecosystem_logic_tests::test_channel_registry ... ok
+test ecosystem_logic_tests::test_primal_registry_initialization ... ok
+test ecosystem_logic_tests::test_primal_deregistration ... ok
+test ecosystem_logic_tests::test_primal_registration ... ok
+test ecosystem_logic_tests::test_concurrent_primal_discovery ... ok
+test ecosystem_logic_tests::test_concurrent_channel_access ... ok
+
+test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_month1_comprehensive.rs (target/llvm-cov-target/debug/deps/ecosystem_month1_comprehensive-c6d52490ca2ef439)
+
+running 36 tests
+test communication_tests::test_http_client_usage ... ok
+test communication_tests::test_primal_channel_structure ... ok
+test communication_tests::test_client_types ... ok
+test coordinator_tests::test_coordinator_initialization ... ok
+test communication_tests::test_websocket_client_usage ... ok
+test coordinator_tests::test_coordinator_channel_management ... ok
+test coordinator_tests::test_coordinator_primal_registration ... ok
+test coordinator_tests::test_coordinator_primal_lookup ... ok
+test discovery_tests::test_discovery_endpoint_validation ... ok
+test discovery_tests::test_discovery_methods ... ok
+test discovery_tests::test_discovery_protocol_id ... ok
+test discovery_tests::test_discovery_timeout_handling ... ok
+test ecosystem_config_tests::test_ecosystem_config_custom ... ok
+test ecosystem_config_tests::test_ecosystem_config_default ... ok
+test ecosystem_config_tests::test_ecosystem_config_primal_lists ... ok
+test ecosystem_config_tests::test_ecosystem_config_timeout_values ... ok
+test ecosystem_message_tests::test_ecosystem_message_structure ... ok
+test ecosystem_message_tests::test_ecosystem_message_types ... ok
+test ecosystem_message_tests::test_message_id_uniqueness ... ok
+test ecosystem_message_tests::test_message_routing ... ok
+test integration_tests::test_multi_primal_discovery ... ok
+test integration_tests::test_optional_primal_handling ... ok
+test integration_tests::test_primal_connection_retry ... ok
+test integration_tests::test_required_primal_check ... ok
+test primal_instance_tests::test_primal_instance_capabilities ... ok
+test primal_instance_tests::test_primal_instance_creation ... ok
+test primal_instance_tests::test_primal_instance_endpoint_formats ... ok
+test primal_instance_tests::test_primal_instance_timestamp ... ok
+test primal_instance_tests::test_primal_instance_version_formats ... ok
+test primal_status_tests::test_primal_status_comparison ... ok
+test primal_status_tests::test_primal_status_failed ... ok
+test primal_status_tests::test_primal_status_transitions ... ok
+test primal_status_tests::test_primal_status_variants ... ok
+test primal_type_tests::test_custom_primal_type ... ok
+test primal_type_tests::test_primal_type_equality ... ok
+test primal_type_tests::test_primal_type_variants ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_real_coverage.rs (target/llvm-cov-target/debug/deps/ecosystem_real_coverage-f9619b3dafc1d3d3)
+
+running 53 tests
+test test_auto_discovery_flag ... ok
+test test_capabilities_common_patterns ... ok
+test test_capabilities_list_operations ... ok
+test test_channel_registry_operations ... ok
+test test_discovery_timeout_default ... ok
+test test_discovery_timeout_variations ... ok
+test test_discovery_timestamp ... ok
+test test_ecosystem_config_custom ... ok
+test test_ecosystem_config_default ... ok
+test test_ecosystem_config_default_optional_primals ... ok
+test test_ecosystem_config_deserialization ... ok
+test test_ecosystem_config_serialization ... ok
+test test_ecosystem_config_timeout_variations ... ok
+test test_endpoint_port_extraction ... ok
+test test_endpoint_url_formatting ... ok
+test test_endpoint_url_validation_patterns ... ok
+test test_error_message_construction ... ok
+test test_heartbeat_timestamp ... ok
+test test_multiple_primal_integration_tracking ... ok
+test test_non_success_status_message ... ok
+test test_optional_primals_can_be_empty ... ok
+test test_primal_discovery_list_accumulation ... ok
+test test_primal_endpoint_map_operations ... ok
+test test_primal_integration_failure_pattern ... ok
+test test_primal_integration_success_pattern ... ok
+test test_primal_name_extraction_logic ... ok
+test test_primal_registry_operations ... ok
+test test_primal_status_clone ... ok
+test test_primal_status_connected ... ok
+test test_primal_status_disconnected ... ok
+test test_primal_status_discovered ... ok
+test test_primal_status_failed ... ok
+test test_primal_status_failed_with_different_errors ... ok
+test test_primal_status_lifecycle ... ok
+test test_primal_status_serialization ... ok
+test test_primal_type_beardog ... ok
+test test_primal_type_biomeos ... ok
+test test_primal_type_clone ... ok
+test test_primal_type_custom ... ok
+test test_primal_type_equality ... ok
+test test_primal_type_nestgate ... ok
+test test_primal_type_parsing_from_string ... ok
+test test_primal_type_serialization ... ok
+test test_primal_type_songbird ... ok
+test test_primal_type_squirrel ... ok
+test test_primal_type_toadstool ... ok
+test test_required_primals_validation ... ok
+test test_status_transition_connected_to_disconnected ... ok
+test test_status_transition_discovered_to_connected ... ok
+test test_status_transition_discovered_to_failed ... ok
+test test_version_fallback_logic ... ok
+test test_version_string_formats ... ok
+test test_timeout_concept ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_simple_concurrent_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_simple_concurrent_tests-a9e85c7bb216350a)
+
+running 10 tests
+test test_network_location_creation ... ok
+test test_context_with_metadata ... ok
+test test_security_levels ... ok
+test test_primal_context_creation ... ok
+test test_concurrent_primal_context_creation ... ok
+test test_concurrent_network_location_creation ... ok
+test test_timeout_protected_operations ... ok
+test test_event_driven_ecosystem_coordination ... ok
+test test_stress_context_creation ... ok
+test test_sustained_concurrent_operations ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_simple_types_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_simple_types_tests-4fe8cabfc78d08d4)
+
+running 20 tests
+test ecosystem_config_tests::test_ecosystem_config_clone ... ok
+test ecosystem_config_tests::test_ecosystem_config_custom ... ok
+test ecosystem_config_tests::test_ecosystem_config_default ... ok
+test ecosystem_config_tests::test_ecosystem_config_optional_primals ... ok
+test integration_tests::test_ecosystem_setup ... ok
+test integration_tests::test_primal_discovery_workflow ... ok
+test integration_tests::test_primal_status_update ... ok
+test primal_instance_tests::test_primal_instance_capabilities ... ok
+test primal_instance_tests::test_primal_instance_clone ... ok
+test primal_instance_tests::test_primal_instance_creation ... ok
+test primal_status_tests::test_primal_status_connected ... ok
+test primal_status_tests::test_primal_status_disconnected ... ok
+test primal_status_tests::test_primal_status_discovered ... ok
+test primal_status_tests::test_primal_status_equality ... ok
+test primal_status_tests::test_primal_status_failed ... ok
+test primal_status_tests::test_primal_status_transitions ... ok
+test primal_type_tests::test_primal_type_clone ... ok
+test primal_type_tests::test_primal_type_custom ... ok
+test primal_type_tests::test_primal_type_equality ... ok
+test primal_type_tests::test_primal_type_variants ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_tests.rs (target/llvm-cov-target/debug/deps/ecosystem_tests-65b52fba382db83c)
+
+running 37 tests
+test test_ecosystem_config_default ... ok
+test test_ecosystem_config_custom ... ok
+test test_ecosystem_config_empty_endpoints ... ok
+test test_ecosystem_config_long_timeout ... ok
+test test_ecosystem_config_with_all_optional_primals ... ok
+test test_ecosystem_config_timeout_variations ... ok
+test test_ecosystem_config_with_all_required_primals ... ok
+test test_ecosystem_config_with_required_primals ... ok
+test test_ecosystem_config_with_custom_endpoints ... ok
+test test_ecosystem_coordinator_creation ... ok
+test test_ecosystem_coordinator_multiple_instances ... ok
+test test_primal_instance_clone ... ok
+test test_primal_instance_creation ... ok
+test test_primal_instance_different_types ... ok
+test test_primal_instance_empty_capabilities ... ok
+test test_primal_instance_multiple_capabilities ... ok
+test test_primal_instance_version_comparison ... ok
+test test_primal_instance_with_versioned_endpoint ... ok
+test test_primal_status_connected ... ok
+test test_primal_status_disconnected ... ok
+test test_primal_status_discovered ... ok
+test test_primal_status_equality ... ok
+test test_primal_status_failed ... ok
+test test_primal_status_failed_with_long_message ... ok
+test test_primal_type_all_variants ... ok
+test test_primal_status_transitions ... ok
+test test_primal_type_beardog ... ok
+test test_primal_type_biomeos ... ok
+test test_primal_type_clone ... ok
+test test_primal_type_custom_with_special_chars ... ok
+test test_primal_type_custom ... ok
+test test_primal_type_debug ... ok
+test test_primal_type_equality ... ok
+test test_primal_type_nestgate ... ok
+test test_primal_type_songbird ... ok
+test test_primal_type_squirrel ... ok
+test test_primal_type_toadstool ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecosystem_zero_coverage_push.rs (target/llvm-cov-target/debug/deps/ecosystem_zero_coverage_push-07e6dac31ac50df6)
+
+running 21 tests
+test test_ecosystem_message_different_types ... ok
+test test_ecosystem_message_types ... ok
+test test_custom_primal_type ... ok
+test test_ecosystem_coordinator_creation ... ok
+test test_ecosystem_message_creation ... ok
+test test_primal_capabilities ... ok
+test test_primal_instance_creation ... ok
+test test_ecosystem_message_with_complex_payload ... ok
+test test_primal_instance_clone ... ok
+test test_primal_status ... ok
+test test_primal_status_transitions ... ok
+test test_ecosystem_message_serialization ... ok
+test test_ecosystem_config_serialization ... ok
+test test_ecosystem_config_customization ... ok
+test test_ecosystem_config_default ... ok
+test test_ecosystem_config_with_required_primals ... ok
+test test_primal_with_multiple_capabilities ... ok
+test test_primal_version_formats ... ok
+test test_primal_types ... ok
+test test_primal_instance_serialization ... ok
