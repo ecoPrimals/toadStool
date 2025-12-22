@@ -11,7 +11,7 @@ use tokio::fs;
 // We can't easily test BiomeExecutor::new() without full infrastructure,
 // but we CAN test the helper logic that's used within executor_impl.rs
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing_actual() {
     // This tests the actual env var parsing logic from start_biome_internal
     let env_vars = vec![
@@ -36,7 +36,7 @@ async fn test_environment_variable_parsing_actual() {
     assert_eq!(environment.get("DEBUG"), Some(&"true".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing_with_equals_in_value() {
     // Test handling of values containing '=' signs
     let env_vars = vec![
@@ -59,7 +59,7 @@ async fn test_environment_variable_parsing_with_equals_in_value() {
     assert_eq!(environment.get("MATH_EXPR"), Some(&"a=b+c".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing_empty_value() {
     // Test handling of empty values
     let env_vars = vec!["EMPTY_VAR=".to_string(), "NORMAL_VAR=value".to_string()];
@@ -76,7 +76,7 @@ async fn test_environment_variable_parsing_empty_value() {
     assert_eq!(environment.get("NORMAL_VAR"), Some(&"value".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_environment_variable_parsing_invalid_format() {
     // Test handling of invalid env vars (no '=' sign)
     let env_vars = vec![
@@ -99,7 +99,7 @@ async fn test_environment_variable_parsing_invalid_format() {
     assert!(!environment.contains_key("INVALID_NO_EQUALS"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_name_determination_logic() {
     // Test the logic from run_biome/up_biome for determining biome name
     let manifest_name = "my-biome".to_string();
@@ -116,7 +116,7 @@ async fn test_biome_name_determination_logic() {
     assert_eq!(effective_name_fallback, "my-biome");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_limit_override_logic() {
     // Test the resource override logic from run_biome
     struct ResourceLimits {
@@ -150,7 +150,7 @@ async fn test_resource_limit_override_logic() {
     assert_eq!(effective_memory, Some("512Mi".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_directory_creation_logic() {
     // Test the log directory creation logic from start_biome_internal
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -176,7 +176,7 @@ async fn test_log_directory_creation_logic() {
     assert!(service_log.is_file());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_log_file_path_generation() {
     // Test log file path generation for services/primals
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -339,7 +339,7 @@ fn test_health_interval_default() {
     assert!(default_health_interval > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_biome_check() {
     // Test concurrent access to biomes registry
     use tokio::sync::RwLock;
@@ -456,7 +456,7 @@ fn test_service_log_file_mapping() {
     assert_eq!(beardog_log.file_name().unwrap(), "beardog.log");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_process_list_structure() {
     // Test the processes Vec structure from start_biome_internal
     let processes: Vec<String> = Vec::new();
@@ -487,7 +487,7 @@ fn test_context_unused_parameter() {
     // Function completed without panic - test passes
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timeout_duration_handling() {
     // Test timeout duration handling
     use tokio::time::Duration;
@@ -500,7 +500,7 @@ async fn test_timeout_duration_handling() {
     // Test timeout would be used like this
     let result = tokio::time::timeout(duration, async {
         // Simulated operation
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
         Ok::<(), std::io::Error>(())
     })
     .await;
@@ -509,7 +509,7 @@ async fn test_timeout_duration_handling() {
     assert!(result.unwrap().is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_interrupt_signal_concept() {
     // Test concept of waiting for interruption signal
     // (Actual implementation uses tokio::signal)
@@ -521,13 +521,13 @@ async fn test_interrupt_signal_concept() {
 
     // Simulate interrupt
     tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
         interrupted_clone.store(true, Ordering::SeqCst);
     });
 
     // Wait for interrupt
     while !interrupted.load(Ordering::SeqCst) {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+        tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     }
 
     assert!(interrupted.load(Ordering::SeqCst));

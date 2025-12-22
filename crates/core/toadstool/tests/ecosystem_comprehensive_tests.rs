@@ -123,13 +123,13 @@ fn test_ecosystem_config_custom() {
 }
 
 // Test EcosystemCoordinator creation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_new() {
     let coordinator = create_mock_coordinator().await;
     assert!(coordinator.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_empty_initially() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let primals = coordinator.primals.read().await;
@@ -267,21 +267,21 @@ fn test_primal_instance_multiple_capabilities() {
 }
 
 // Test primal discovery
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_empty() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let discovered = simulate_discover_primals(&coordinator).await;
     assert!(discovered.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_with_endpoints() {
     let coordinator = create_mock_coordinator_with_endpoints().await.unwrap();
     let discovered = simulate_discover_primals(&coordinator).await;
     assert!(discovered.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_auto_discovery_disabled() {
     let mut coordinator = create_mock_coordinator().await.unwrap();
     coordinator.config.auto_discovery = false;
@@ -291,7 +291,7 @@ async fn test_discover_primals_auto_discovery_disabled() {
 }
 
 // Test storing discovered primals
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_store_discovered_primal() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -316,7 +316,7 @@ async fn test_store_discovered_primal() {
     assert!(primals.contains_key("songbird-test"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_store_multiple_primals() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -344,7 +344,7 @@ async fn test_store_multiple_primals() {
 }
 
 // Test primal connection
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connect_to_primal() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -353,7 +353,7 @@ async fn test_connect_to_primal() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connect_to_multiple_primals() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -369,7 +369,7 @@ async fn test_connect_to_multiple_primals() {
 }
 
 // Test communication channels
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_primal_channel() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -387,7 +387,7 @@ async fn test_create_primal_channel() {
     assert_eq!(channels.len(), 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_channels() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -507,28 +507,28 @@ fn test_message_type_error() {
 }
 
 // Test primal discovery methods
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_via_multicast() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let result = simulate_discover_via_multicast(&coordinator).await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_via_dns() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let result = simulate_discover_via_dns(&coordinator).await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_via_local_scan() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let result = simulate_discover_via_local_scan(&coordinator).await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_at_endpoint() {
     let coordinator = create_mock_coordinator().await.unwrap();
     let result =
@@ -537,7 +537,7 @@ async fn test_discover_at_endpoint() {
 }
 
 // Test concurrent access
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_primal_access() {
     let coordinator = Arc::new(create_mock_coordinator().await.unwrap());
 
@@ -563,7 +563,7 @@ async fn test_concurrent_primal_access() {
     assert_eq!(primals.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_channel_access() {
     let coordinator = Arc::new(create_mock_coordinator().await.unwrap());
 
@@ -619,7 +619,7 @@ fn test_optional_primals() {
 }
 
 // Test primal status transitions
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_primal_status_transition_discovered_to_connected() {
     let coordinator = create_mock_coordinator().await.unwrap();
 
@@ -632,7 +632,7 @@ async fn test_primal_status_transition_discovered_to_connected() {
     assert_eq!(primal.status, MockPrimalStatus::Connected);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_primal_status_transition_to_failed() {
     let mut primal = create_test_primal("songbird", MockPrimalType::Songbird);
     primal.status = MockPrimalStatus::Failed("Connection refused".to_string());
@@ -645,7 +645,7 @@ async fn test_primal_status_transition_to_failed() {
 }
 
 // Test discovery timeout
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_timeout_default() {
     let coordinator = create_mock_coordinator().await.unwrap();
     assert_eq!(
@@ -654,7 +654,7 @@ async fn test_discovery_timeout_default() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_timeout_custom() {
     let mut coordinator = create_mock_coordinator().await.unwrap();
     coordinator.config.discovery_timeout = Duration::from_secs(60);

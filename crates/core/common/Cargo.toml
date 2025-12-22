@@ -12,12 +12,25 @@ description = "Common utilities and types for ToadStool"
 keywords.workspace = true
 categories.workspace = true
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core dependencies
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
-chrono = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 num_cpus = "1.16"
@@ -30,6 +43,7 @@ tokio = { workspace = true }
 reqwest = { version = "0.11", features = ["json"] }
 toml = "0.8"
 base64 = "0.22"
+semver = { version = "1.0.27", features = ["serde"] }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

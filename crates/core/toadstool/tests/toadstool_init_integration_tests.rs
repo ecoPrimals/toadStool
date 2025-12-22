@@ -47,7 +47,7 @@ fn test_universal_capabilities_immutable() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_ecosystem_creates_platform() {
     // This may fail if ecosystem isn't available, which is expected
     let result = toadstool::init_with_ecosystem().await;
@@ -64,7 +64,7 @@ async fn test_init_with_ecosystem_creates_platform() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_biomeos_creates_platform() {
     // This may fail if biomeOS isn't available, which is expected
     let result = toadstool::init_with_biomeos().await;
@@ -81,7 +81,7 @@ async fn test_init_with_biomeos_creates_platform() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_ecosystem_calls_init() {
     // Verify that init_with_ecosystem calls init() first
     // If tracing is already initialized, it should handle gracefully
@@ -90,7 +90,7 @@ async fn test_init_with_ecosystem_calls_init() {
     let _ = result;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_init_with_biomeos_calls_init() {
     // Verify that init_with_biomeos calls init() first
     let result = toadstool::init_with_biomeos().await;

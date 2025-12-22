@@ -6,7 +6,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use toadstool_config::ToadStoolConfig;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_toadstool_config_default_creation() -> Result<()> {
     // Test config creation (used by intelligent config)
     let config = ToadStoolConfig::default();
@@ -18,7 +18,7 @@ async fn test_toadstool_config_default_creation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_runtime_settings() -> Result<()> {
     let config = ToadStoolConfig::default();
 
@@ -29,7 +29,7 @@ async fn test_config_runtime_settings() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_clone_operation() -> Result<()> {
     // Test config cloning (used in optimization)
     let config = ToadStoolConfig::default();
@@ -43,7 +43,7 @@ async fn test_config_clone_operation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_class_comparison() -> Result<()> {
     // Test performance classification logic
     let cpu_cores = 8u32;
@@ -61,7 +61,7 @@ async fn test_performance_class_comparison() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cpu_core_detection() -> Result<()> {
     // Test CPU core counting logic (simulate)
     let cores = 8u32; // Simulated value
@@ -72,7 +72,7 @@ async fn test_cpu_core_detection() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_calculation() -> Result<()> {
     // Test memory size calculations
     let bytes = 1024u64 * 1024 * 1024 * 16; // 16 GB
@@ -83,7 +83,7 @@ async fn test_memory_calculation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_allocation_calculation() -> Result<()> {
     // Test resource allocation logic
     let total_cpu = 8.0f64;
@@ -95,7 +95,7 @@ async fn test_resource_allocation_calculation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_optimization_level_selection() -> Result<()> {
     // Test optimization level logic
     let optimization_levels = vec!["none", "basic", "moderate", "aggressive"];
@@ -106,7 +106,7 @@ async fn test_optimization_level_selection() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_validation_logic() -> Result<()> {
     let config = ToadStoolConfig::default();
 
@@ -119,7 +119,7 @@ async fn test_config_validation_logic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_hashmap_config_storage() -> Result<()> {
     // Test HashMap usage for config storage
     let mut config_overrides: HashMap<String, String> = HashMap::new();
@@ -133,7 +133,7 @@ async fn test_hashmap_config_storage() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_discovery_list() -> Result<()> {
     // Test service discovery list operations
     let discovered_services = vec!["songbird".to_string(), "beardog".to_string()];
@@ -144,7 +144,7 @@ async fn test_service_discovery_list() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_detection() -> Result<()> {
     // Test capability detection logic
     let has_gpu = false; // Simulate no GPU
@@ -156,7 +156,7 @@ async fn test_capability_detection() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_platform_optimization_flags() -> Result<()> {
     // Test platform-specific optimization flags
     let mut optimizations: HashMap<String, bool> = HashMap::new();
@@ -171,7 +171,7 @@ async fn test_platform_optimization_flags() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_usage_pattern_tracking() -> Result<()> {
     // Test usage pattern tracking logic
     let mut usage_counts: HashMap<String, u64> = HashMap::new();
@@ -186,7 +186,7 @@ async fn test_usage_pattern_tracking() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_history_storage() -> Result<()> {
     // Test configuration history tracking
     let mut config_history = Vec::new();
@@ -202,13 +202,13 @@ async fn test_config_history_storage() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_generation() -> Result<()> {
     use chrono::Utc;
 
     // Test timestamp generation (used in config snapshots)
     let ts1 = Utc::now();
-    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     let ts2 = Utc::now();
 
     assert!(ts2 > ts1);
@@ -216,7 +216,7 @@ async fn test_timestamp_generation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_percentage_calculation() -> Result<()> {
     // Test percentage calculations for resource allocation
     let total = 100.0f64;
@@ -228,7 +228,7 @@ async fn test_percentage_calculation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_threshold_comparison() -> Result<()> {
     // Test threshold comparison logic
     let current_memory = 12.5f64; // GB
@@ -243,7 +243,7 @@ async fn test_threshold_comparison() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_min_max_calculations() -> Result<()> {
     // Test min/max calculations for resource limits
     let values = vec![2.0, 4.0, 8.0, 16.0];
@@ -257,7 +257,7 @@ async fn test_min_max_calculations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_option_unwrap_or_default() -> Result<()> {
     // Test Option handling patterns
     let some_value: Option<u32> = Some(42);
@@ -272,7 +272,7 @@ async fn test_option_unwrap_or_default() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_string_formatting() -> Result<()> {
     // Test string formatting for config descriptions
     let cpu_cores = 8;
@@ -286,7 +286,7 @@ async fn test_string_formatting() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_boolean_logic_optimization() -> Result<()> {
     // Test boolean logic for optimization decisions
     let has_sufficient_cpu = true;
@@ -302,7 +302,7 @@ async fn test_boolean_logic_optimization() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_result_handling() -> Result<()> {
     // Test Result handling patterns
     let success: Result<i32> = Ok(42);
@@ -317,7 +317,7 @@ async fn test_error_result_handling() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_vec_filter_operations() -> Result<()> {
     // Test Vec filtering for service selection
     let services = vec!["songbird", "beardog", "nestgate", "squirrel"];
@@ -332,7 +332,7 @@ async fn test_vec_filter_operations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_duration_conversion() -> Result<()> {
     use std::time::Duration;
 
@@ -346,7 +346,7 @@ async fn test_duration_conversion() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_config_access() -> Result<()> {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -356,7 +356,7 @@ async fn test_concurrent_config_access() -> Result<()> {
     let mut handles = vec![];
 
     for _ in 0..5 {
-        let config_clone = config.clone();
+        let config_clone = Arc::clone(&config);
         let handle = tokio::spawn(async move {
             let guard = config_clone.read().await;
             guard.runtime.max_concurrent_executions
@@ -372,7 +372,7 @@ async fn test_concurrent_config_access() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_field_updates() -> Result<()> {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -391,7 +391,7 @@ async fn test_config_field_updates() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_array_iteration() -> Result<()> {
     // Test array iteration for config options
     let optimization_options = ["none", "basic", "moderate", "aggressive"];

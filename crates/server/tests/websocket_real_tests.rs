@@ -5,7 +5,7 @@
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_types() {
     // Test that we can create different message types
     let workload_msg = create_workload_message();
@@ -19,7 +19,7 @@ async fn test_websocket_message_types() {
     assert!(error_msg.contains("test error"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_channel_creation() {
     // Test channel creation for websocket communication
     let (tx, mut rx) = mpsc::channel::<String>(100);
@@ -32,7 +32,7 @@ async fn test_websocket_channel_creation() {
     assert_eq!(received, "test message");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_id_generation() {
     // Test unique connection ID generation
     let id1 = Uuid::new_v4();
@@ -41,7 +41,7 @@ async fn test_websocket_connection_id_generation() {
     assert_ne!(id1, id2, "Connection IDs should be unique");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_serialization() {
     use serde_json::json;
 
@@ -62,7 +62,7 @@ async fn test_websocket_message_serialization() {
     assert_eq!(deserialized["workload_id"], "test-123");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_error_handling() {
     // Test that errors are properly formatted
     let error_response = format_websocket_error("Connection failed", "CONN_ERR");
@@ -71,7 +71,7 @@ async fn test_websocket_error_handling() {
     assert!(error_response.contains("CONN_ERR"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_heartbeat_message() {
     use serde_json::json;
 
@@ -85,7 +85,7 @@ async fn test_websocket_heartbeat_message() {
     assert!(serialized.contains("ping"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_broadcast_list() {
     use std::collections::HashMap;
 
@@ -103,7 +103,7 @@ async fn test_websocket_broadcast_list() {
     assert!(connections.contains_key(&id2));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_cleanup() {
     use std::collections::HashMap;
 
@@ -119,7 +119,7 @@ async fn test_websocket_connection_cleanup() {
     assert_eq!(connections.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_queue_overflow() {
     // Test handling of message queue overflow
     let (tx, mut rx) = mpsc::channel::<String>(2); // Small buffer
@@ -139,7 +139,7 @@ async fn test_websocket_message_queue_overflow() {
     tx.send("msg4".to_string()).await.unwrap();
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_concurrent_messages() {
     use tokio::task;
 

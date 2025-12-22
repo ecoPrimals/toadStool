@@ -50,6 +50,11 @@ pub struct ResourceCoordinator {
 
 impl ResourceCoordinator {
     /// Create new resource coordinator
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// if system resource detection fails.
+    #[must_use = "ResourceCoordinator creation should be checked"]
     pub async fn new() -> ToadStoolResult<Self> {
         let available_resources = UniversalSystemResources {
             cpu_cores: 8.0,                          // Default to 8 cores
@@ -67,6 +72,11 @@ impl ResourceCoordinator {
     }
 
     /// Allocate resources
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// if resource allocation exceeds available capacity.
+    #[must_use = "Resource allocation result should be checked"]
     pub async fn allocate_resources(
         &self,
         requirements: &ResourceRequirements,
@@ -87,6 +97,11 @@ impl ResourceCoordinator {
     }
 
     /// Release resources
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// if resource release encounters issues.
+    #[must_use = "Resource release result should be checked"]
     pub async fn release_resources(
         &self,
         mut allocation: ResourceAllocation,

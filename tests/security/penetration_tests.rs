@@ -2,9 +2,13 @@
 //!
 //! These tests validate system security by simulating various attack vectors
 //! and ensuring proper security controls are in place.
+//!
+//! # Modern Testing Approach
+//!
+//! All helper functions use immediate async returns instead of artificial delays.
+//! Real security implementations would use actual async security checks, not sleep-based simulation.
 
 use std::time::Duration;
-use tokio::time::sleep;
 
 /// Test sandbox escape attempts
 #[tokio::test]
@@ -350,10 +354,14 @@ struct IncidentResponseResult {
     containment_successful: bool,
 }
 
-// Helper functions (simulated security tests)
+// ============================================================================
+// Helper Functions (Modern Async Pattern - Zero Sleep)
+// ============================================================================
+//
+// ✅ MODERNIZED: All functions use immediate returns for mocked security checks
+// Real implementations would use actual async security validation, not sleep
 
 async fn test_privilege_escalation_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(100)).await;
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(50),
@@ -362,7 +370,6 @@ async fn test_privilege_escalation_prevention() -> SecurityTestResult {
 }
 
 async fn test_filesystem_escape_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(80)).await;
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(30),
@@ -371,7 +378,6 @@ async fn test_filesystem_escape_prevention() -> SecurityTestResult {
 }
 
 async fn test_network_escape_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(60)).await;
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(40),
@@ -380,7 +386,6 @@ async fn test_network_escape_prevention() -> SecurityTestResult {
 }
 
 async fn test_resource_limit_bypass_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(90)).await;
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(20),
@@ -389,7 +394,7 @@ async fn test_resource_limit_bypass_prevention() -> SecurityTestResult {
 }
 
 async fn test_command_injection_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(70)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(25),
@@ -398,7 +403,7 @@ async fn test_command_injection_prevention() -> SecurityTestResult {
 }
 
 async fn test_path_traversal_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(50)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(15),
@@ -407,7 +412,7 @@ async fn test_path_traversal_prevention() -> SecurityTestResult {
 }
 
 async fn test_environment_injection_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(40)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(20),
@@ -416,7 +421,7 @@ async fn test_environment_injection_prevention() -> SecurityTestResult {
 }
 
 async fn test_data_injection_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(60)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(35),
@@ -425,7 +430,7 @@ async fn test_data_injection_prevention() -> SecurityTestResult {
 }
 
 async fn test_unauthenticated_access_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(30)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(10),
@@ -434,7 +439,7 @@ async fn test_unauthenticated_access_prevention() -> SecurityTestResult {
 }
 
 async fn test_token_manipulation_detection() -> DetectionResult {
-    sleep(Duration::from_millis(80)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     DetectionResult {
         detected: true,
         confidence: 0.95,
@@ -446,7 +451,7 @@ async fn test_token_manipulation_detection() -> DetectionResult {
 }
 
 async fn test_authorization_bypass_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(60)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(25),
@@ -455,7 +460,7 @@ async fn test_authorization_bypass_prevention() -> SecurityTestResult {
 }
 
 async fn test_session_hijacking_prevention() -> SecurityTestResult {
-    sleep(Duration::from_millis(90)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityTestResult {
         blocked: true,
         detection_time: Duration::from_millis(45),
@@ -464,7 +469,7 @@ async fn test_session_hijacking_prevention() -> SecurityTestResult {
 }
 
 async fn test_request_rate_limiting() -> ProtectionResult {
-    sleep(Duration::from_millis(100)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     ProtectionResult {
         effective: true,
         mitigation_applied: true,
@@ -473,7 +478,7 @@ async fn test_request_rate_limiting() -> ProtectionResult {
 }
 
 async fn test_resource_exhaustion_protection() -> ProtectionResult {
-    sleep(Duration::from_millis(120)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     ProtectionResult {
         effective: true,
         mitigation_applied: true,
@@ -482,7 +487,7 @@ async fn test_resource_exhaustion_protection() -> ProtectionResult {
 }
 
 async fn test_connection_flooding_protection() -> ProtectionResult {
-    sleep(Duration::from_millis(80)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     ProtectionResult {
         effective: true,
         mitigation_applied: true,
@@ -491,7 +496,7 @@ async fn test_connection_flooding_protection() -> ProtectionResult {
 }
 
 async fn test_memory_bomb_protection() -> ProtectionResult {
-    sleep(Duration::from_millis(150)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     ProtectionResult {
         effective: true,
         mitigation_applied: true,
@@ -500,7 +505,7 @@ async fn test_memory_bomb_protection() -> ProtectionResult {
 }
 
 async fn test_weak_encryption_detection() -> DetectionResult {
-    sleep(Duration::from_millis(70)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     DetectionResult {
         detected: true,
         confidence: 0.98,
@@ -512,7 +517,7 @@ async fn test_weak_encryption_detection() -> DetectionResult {
 }
 
 async fn test_key_management_security() -> SecurityValidationResult {
-    sleep(Duration::from_millis(100)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityValidationResult {
         secure: true,
         vulnerabilities: vec![],
@@ -521,7 +526,7 @@ async fn test_key_management_security() -> SecurityValidationResult {
 }
 
 async fn test_certificate_validation() -> SecurityValidationResult {
-    sleep(Duration::from_millis(80)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SecurityValidationResult {
         secure: true,
         vulnerabilities: vec![],
@@ -530,7 +535,7 @@ async fn test_certificate_validation() -> SecurityValidationResult {
 }
 
 async fn test_random_number_generation_quality() -> QualityResult {
-    sleep(Duration::from_millis(90)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     QualityResult {
         sufficient: true,
         entropy_score: 0.97,
@@ -539,7 +544,7 @@ async fn test_random_number_generation_quality() -> QualityResult {
 }
 
 async fn test_sensitive_data_exposure_prevention() -> DataProtectionResult {
-    sleep(Duration::from_millis(60)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     DataProtectionResult {
         protected: true,
         encryption_strength: "AES-256".to_string(),
@@ -548,7 +553,7 @@ async fn test_sensitive_data_exposure_prevention() -> DataProtectionResult {
 }
 
 async fn test_data_encryption_at_rest() -> EncryptionResult {
-    sleep(Duration::from_millis(50)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     EncryptionResult {
         encrypted: true,
         algorithm: "AES-256-GCM".to_string(),
@@ -557,7 +562,7 @@ async fn test_data_encryption_at_rest() -> EncryptionResult {
 }
 
 async fn test_data_encryption_in_transit() -> EncryptionResult {
-    sleep(Duration::from_millis(40)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     EncryptionResult {
         encrypted: true,
         algorithm: "TLS 1.3".to_string(),
@@ -566,7 +571,7 @@ async fn test_data_encryption_in_transit() -> EncryptionResult {
 }
 
 async fn test_data_sanitization() -> SanitizationResult {
-    sleep(Duration::from_millis(70)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SanitizationResult {
         sanitized: true,
         methods_applied: vec!["Secure deletion".to_string(), "Memory clearing".to_string()],
@@ -575,7 +580,7 @@ async fn test_data_sanitization() -> SanitizationResult {
 }
 
 async fn test_tls_ssl_configuration() -> NetworkSecurityResult {
-    sleep(Duration::from_millis(60)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     NetworkSecurityResult {
         secure: true,
         protocol_version: "TLS 1.3".to_string(),
@@ -584,7 +589,7 @@ async fn test_tls_ssl_configuration() -> NetworkSecurityResult {
 }
 
 async fn test_network_segmentation() -> SegmentationResult {
-    sleep(Duration::from_millis(80)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     SegmentationResult {
         effective: true,
         isolated_networks: vec!["dmz".to_string(), "internal".to_string()],
@@ -593,7 +598,7 @@ async fn test_network_segmentation() -> SegmentationResult {
 }
 
 async fn test_firewall_rules() -> FirewallResult {
-    sleep(Duration::from_millis(50)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     FirewallResult {
         effective: true,
         rules_count: 25,
@@ -602,7 +607,7 @@ async fn test_firewall_rules() -> FirewallResult {
 }
 
 async fn test_port_scanning_detection() -> DetectionResult {
-    sleep(Duration::from_millis(90)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     DetectionResult {
         detected: true,
         confidence: 0.92,
@@ -614,7 +619,7 @@ async fn test_port_scanning_detection() -> DetectionResult {
 }
 
 async fn test_audit_log_integrity() -> AuditResult {
-    sleep(Duration::from_millis(70)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     AuditResult {
         intact: true,
         log_entries: 15847,
@@ -623,7 +628,7 @@ async fn test_audit_log_integrity() -> AuditResult {
 }
 
 async fn test_compliance_policy_enforcement() -> ComplianceResult {
-    sleep(Duration::from_millis(100)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     ComplianceResult {
         enforced: true,
         policy_violations: 0,
@@ -632,7 +637,7 @@ async fn test_compliance_policy_enforcement() -> ComplianceResult {
 }
 
 async fn test_security_event_monitoring() -> MonitoringResult {
-    sleep(Duration::from_millis(60)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     MonitoringResult {
         active: true,
         events_detected: 42,
@@ -641,7 +646,7 @@ async fn test_security_event_monitoring() -> MonitoringResult {
 }
 
 async fn test_incident_response_procedures() -> IncidentResponseResult {
-    sleep(Duration::from_millis(120)).await;
+    // ✅ MODERN: Immediate return (sleep removed)
     IncidentResponseResult {
         functional: true,
         response_time: Duration::from_secs(5),

@@ -1,30 +1,26 @@
 //! Federation Operations
 //!
 //! Extension trait for federation operations with other ToadStool instances.
+//!
+//! **Zero-Copy Optimization** (Phase 2): Uses `Arc<str>` throughout.
 
 use anyhow::Result;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-/// Temporary federation types (would normally be imported)
-#[derive(Debug, Clone)]
-pub struct FederationRequest {
-    pub shared_resources: Vec<String>,
-}
-
-#[derive(Debug)]
-pub struct FederationResponse {
-    pub peer_id: Uuid,
-    pub protocol_version: String,
-    pub capabilities: Vec<String>,
-    pub accepted_resources: Vec<String>,
-}
+// Re-export the actual federation types from types module
+pub use crate::universal::types::federation::{FederationRequest, FederationResponse};
 
 /// Federation operations trait
+///
+/// **Zero-Copy**: Returns `Arc<str>` for cheap clones
 pub trait FederationOps {
     /// Get local capabilities
-    fn get_local_capabilities(&self) -> Vec<String>;
+    ///
+    /// Returns `Arc<str>` to enable zero-cost sharing across operations.
+    fn get_local_capabilities(&self) -> Vec<std::sync::Arc<str>>;
 
     /// Connect to federation peer
     fn connect_to_peer(
@@ -61,13 +57,17 @@ pub trait FederationOps {
 
 /// Implementation of federation operations
 impl FederationOps for crate::universal::UniversalComputeManager {
-    fn get_local_capabilities(&self) -> Vec<String> {
+    fn get_local_capabilities(&self) -> Vec<Arc<str>> {
+        use super::constants::capabilities;
+        use std::sync::Arc;
+
+        // Zero-copy optimization: Use Arc<str> for cheap clones
         vec![
-            "universal-compute".to_string(),
-            "wasm-execution".to_string(),
-            "container-runtime".to_string(),
-            "substrate-detection".to_string(),
-            "workload-migration".to_string(),
+            Arc::from(capabilities::UNIVERSAL_COMPUTE),
+            Arc::from(capabilities::WASM_EXECUTION),
+            Arc::from(capabilities::CONTAINER_RUNTIME),
+            Arc::from(capabilities::SUBSTRATE_DETECTION),
+            Arc::from(capabilities::WORKLOAD_MIGRATION),
         ]
     }
 
@@ -79,9 +79,9 @@ impl FederationOps for crate::universal::UniversalComputeManager {
         // Implement federation protocol with peer authentication
         Ok(FederationResponse {
             peer_id: Uuid::new_v4(),
-            protocol_version: "1.0".to_string(),
-            capabilities: vec!["universal-compute".to_string()],
-            accepted_resources: request.shared_resources.clone(),
+            protocol_version: Arc::from(super::constants::protocol::VERSION_1_0),
+            capabilities: vec![Arc::from(super::constants::capabilities::UNIVERSAL_COMPUTE)],
+            accepted_resources: request.shared_resources.clone(), // Already Arc<str>
         })
     }
 

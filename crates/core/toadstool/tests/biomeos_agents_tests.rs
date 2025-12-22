@@ -479,7 +479,7 @@ fn test_agent_deployment_manager_creation() {
     // Manager created successfully (no Debug impl, so just verify creation)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_deployment_manager_initialize_squirrel() {
     let config = AgentDeploymentConfig {
         squirrel_endpoint: "http://localhost:8080".to_string(),
@@ -509,7 +509,7 @@ async fn test_agent_deployment_manager_initialize_squirrel() {
 // #[test]
 // fn test_agent_deployment_manager_list_models_empty() { ... }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_deployment_manager_health_check() {
     let config = AgentDeploymentConfig {
         squirrel_endpoint: "http://localhost:8080".to_string(),

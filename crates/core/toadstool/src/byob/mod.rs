@@ -15,6 +15,7 @@ pub mod byob_impl;
 pub mod byob_types;
 pub mod config;
 mod deployment; // Internal module
+mod validation; // Internal validation logic
 
 // Re-export all public types and implementations
 pub use byob_impl::*;

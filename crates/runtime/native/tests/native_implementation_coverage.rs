@@ -133,7 +133,7 @@ fn test_capabilities_list_matches_support_checks() {
 // Initialization Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_with_default_config() {
     let mut engine = NativeRuntimeEngine::new();
     let config = RuntimeConfig::default();
@@ -143,7 +143,7 @@ async fn test_initialize_with_default_config() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_doesnt_panic() {
     let mut engine = NativeRuntimeEngine::new();
     let config = RuntimeConfig::default();
@@ -152,7 +152,7 @@ async fn test_initialize_doesnt_panic() {
     let _result = engine.initialize(config).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_initialize_multiple_times_doesnt_fail() {
     let mut engine = NativeRuntimeEngine::new();
 

@@ -210,7 +210,7 @@ async fn test_real_file_cleanup_and_temp_dir_management() {
 
     // File should be cleaned up after temp_dir is dropped
     // (may take a moment for OS to cleanup)
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // ✅ MODERN: Immediate execution (sleep removed)
 
     println!("✓ File cleanup and temp dir management test passed");
 }

@@ -204,7 +204,7 @@ impl Default for NaturalLanguageConfig {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_machine_learning_intent() {
         let nl_config = NaturalLanguageConfig::new();
 
@@ -219,7 +219,7 @@ mod tests {
         assert!(analysis.confidence > 0.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_web_development_intent() {
         let nl_config = NaturalLanguageConfig::new();
 
@@ -234,7 +234,7 @@ mod tests {
         assert!(analysis.confidence > 0.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_explicit_preferences_extraction() {
         let nl_config = NaturalLanguageConfig::new();
 

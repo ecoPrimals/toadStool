@@ -87,12 +87,13 @@ impl DeviceDiscoveryService {
         }));
         
         // Add network discovery
+        // ✅ Using PortRegistry for dynamic port configuration
         discovery_methods.push(Box::new(NetworkDiscovery {
             scan_range: vec![
                 IpAddr::V4(Ipv4Addr::new(192, 168, 1, 0)),
                 IpAddr::V4(Ipv4Addr::new(10, 0, 0, 0)),
             ],
-            ports: vec![22, 80, 443, 8080, 8443, 3000, 5000],
+            ports: config.port_registry.edge_discovery_ports().to_vec(),
             timeout: Duration::from_secs(1),
         }));
         
@@ -222,23 +223,41 @@ impl DeviceDiscoveryService {
     }
     
     /// Start continuous discovery
+    ///
+    /// ✅ MODERNIZED: Uses tokio::time::interval instead of sleep
+    /// - No drift accumulation
+    /// - More precise timing
+    /// - Idiomatic Tokio pattern
     pub async fn start_continuous_discovery(&self) -> ToadStoolResult<()> {
         let discovery_interval = Duration::from_secs(self.config.discovery_timeout_secs);
         let service = Arc::new(self);
         
         tokio::spawn(async move {
+            // ✅ Use interval instead of sleep - prevents drift and more efficient
+            let mut interval = tokio::time::interval(discovery_interval);
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            
             loop {
+                // Wait for next tick (first tick fires immediately)
+                interval.tick().await;
+                
                 if service.needs_discovery().await {
                     if let Err(e) = service.discover_devices().await {
                         error!("Continuous discovery failed: {}", e);
                     }
                 }
-                
-                tokio::time::sleep(discovery_interval).await;
             }
         });
         
         Ok(())
+    }
+    
+    /// Trigger immediate discovery (on-demand)
+    ///
+    /// Useful for manual device discovery or responding to network events
+    pub async fn trigger_discovery(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
+        info!("Triggering immediate device discovery");
+        self.discover_devices().await
     }
 }
 

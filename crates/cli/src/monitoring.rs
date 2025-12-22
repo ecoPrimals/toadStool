@@ -389,9 +389,11 @@ impl MonitoringSystem {
     }
 
     /// Get metric statistics
-    pub async fn get_metric_stats(&self, metric_name: String) -> Result<Option<MetricStats>> {
+    ///
+    /// Zero-Copy Optimization: Takes `&str` instead of `String` to avoid allocation.
+    pub async fn get_metric_stats(&self, metric_name: &str) -> Result<Option<MetricStats>> {
         let metrics_store = self.metrics_store.read().await;
-        Ok(metrics_store.stats.get(&metric_name).cloned())
+        Ok(metrics_store.stats.get(metric_name).cloned())
     }
 
     /// Add custom alert rule
@@ -509,9 +511,9 @@ impl MonitoringSystem {
         _metrics: Vec<String>,
         interval: Duration,
     ) {
-        let sessions = self.sessions.clone();
-        let collectors = self.collectors.clone();
-        let metrics_store = self.metrics_store.clone();
+        let sessions = Arc::clone(&self.sessions);
+        let collectors = Arc::clone(&self.collectors);
+        let metrics_store = Arc::clone(&self.metrics_store);
 
         tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);

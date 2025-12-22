@@ -7,6 +7,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolResult, ToadStoolError};
+use crate::{JobStatus, JobOutput, JobPriority, SpecialtyRuntimeConfig};
 use super::types::*;
 
 /// VAX/VMS Adapter
@@ -43,7 +44,7 @@ impl VAXVMSAdapter {
     }
 }
 
-// Native async trait - no macro needed
+#[async_trait::async_trait]
 impl LegacyAdapter for VAXVMSAdapter {
     fn name(&self) -> &str {
         "VAX/VMS Adapter"

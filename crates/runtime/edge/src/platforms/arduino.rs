@@ -508,8 +508,10 @@ impl EdgeDevice for ArduinoDevice {
         let compiled_code = self.compile_code(code).await?;
         self.upload_code(&compiled_code).await?;
         
-        // Wait for execution to complete (Arduino runs continuously)
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+        // ✅ MODERNIZED: Removed simulation sleep
+        // NOTE: Real Arduino execution monitoring requires serial port integration
+        // Arduino runs continuously, read from serial buffer for actual monitoring
+        // This is a mock implementation for testing Arduino workflow
         
         // Get output from serial monitor
         let output = self.send_command("STATUS").await.unwrap_or_else(|_| "Running".to_string());

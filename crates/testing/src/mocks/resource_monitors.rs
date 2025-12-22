@@ -38,7 +38,7 @@ mock! {
     impl ResourceMonitor for ResourceMonitor {
         fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
         fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
-        fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics>;
+        fn get_metrics(&self, workload_id: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send>>;
         fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send>>;
     }
 }
@@ -60,7 +60,7 @@ impl MockResourceMonitor {
             .returning(|_workload_id| Ok(()));
 
         mock.expect_get_metrics()
-            .returning(|_workload_id| Ok(create_test_runtime_metrics()));
+            .returning(|_workload_id| Box::pin(async move { Ok(create_test_runtime_metrics()) }));
 
         mock.expect_get_system_resources().returning(|| {
             Box::pin(async move {
@@ -92,10 +92,12 @@ impl MockResourceMonitor {
             .returning(|_workload_id| Ok(()));
 
         mock.expect_get_metrics().returning(|_workload_id| {
-            let mut metrics = create_test_runtime_metrics();
-            metrics.cpu.usage_percent = 95.0; // High CPU usage
-            metrics.memory.used_bytes = 1024 * 1024 * 1024 * 7; // 7GB memory usage
-            Ok(metrics)
+            Box::pin(async move {
+                let mut metrics = create_test_runtime_metrics();
+                metrics.cpu.usage_percent = 95.0; // High CPU usage
+                metrics.memory.used_bytes = 1024 * 1024 * 1024 * 7; // 7GB memory usage
+                Ok(metrics)
+            })
         });
 
         mock.expect_get_system_resources().returning(|| {
@@ -134,9 +136,11 @@ impl MockResourceMonitor {
         });
 
         mock.expect_get_metrics().returning(|_workload_id| {
-            Err(toadstool::error::ToadStoolError::resource(
-                "Failed to get metrics",
-            ))
+            Box::pin(async move {
+                Err(toadstool::error::ToadStoolError::resource(
+                    "Failed to get metrics",
+                ))
+            })
         });
 
         mock.expect_get_system_resources().returning(|| {
@@ -155,54 +159,54 @@ impl MockResourceMonitor {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_successful_mock() {
+    #[tokio::test]
+    async fn test_successful_mock() {
         let monitor = MockResourceMonitor::new_successful();
 
         // Test monitoring lifecycle
         assert!(monitor.start_monitoring("test-workload").is_ok());
         assert!(monitor.stop_monitoring("test-workload").is_ok());
 
-        // Test metrics
-        let metrics = monitor.get_metrics("test-workload").unwrap();
+        // Test metrics (now async!)
+        let metrics = monitor.get_metrics("test-workload").await.unwrap();
         assert!(metrics.cpu.usage_percent >= 0.0);
 
         // Test system resources
-        let system_resources = tokio_test::block_on(monitor.get_system_resources()).unwrap();
+        let system_resources = monitor.get_system_resources().await.unwrap();
         assert!(system_resources.available_cpu_cores > 0.0);
     }
 
-    #[test]
-    fn test_limit_violations_mock() {
+    #[tokio::test]
+    async fn test_limit_violations_mock() {
         let monitor = MockResourceMonitor::new_limit_violations();
 
         assert!(monitor.start_monitoring("test-workload").is_ok());
 
-        let metrics = monitor.get_metrics("test-workload").unwrap();
+        let metrics = monitor.get_metrics("test-workload").await.unwrap();
         assert!(metrics.cpu.usage_percent > 90.0); // High CPU usage
 
         // Test that limited resources are reported
-        let system_resources = tokio_test::block_on(monitor.get_system_resources()).unwrap();
+        let system_resources = monitor.get_system_resources().await.unwrap();
         assert!(system_resources.available_cpu_cores < 4.0); // Limited resources
         assert!(system_resources.available_memory_bytes < 8 * 1024 * 1024 * 1024); // Less than 8GB
 
         assert!(monitor.stop_monitoring("test-workload").is_ok());
     }
 
-    #[test]
-    fn test_monitoring_failure_mock() {
+    #[tokio::test]
+    async fn test_monitoring_failure_mock() {
         let monitor = MockResourceMonitor::new_monitoring_failure();
 
         // Should fail to start monitoring
         assert!(monitor.start_monitoring("test-workload").is_err());
 
         // Should fail to get metrics
-        assert!(monitor.get_metrics("test-workload").is_err());
+        assert!(monitor.get_metrics("test-workload").await.is_err());
 
         // Should fail to stop monitoring
         assert!(monitor.stop_monitoring("test-workload").is_err());
 
         // Should fail to get system resources
-        assert!(tokio_test::block_on(monitor.get_system_resources()).is_err());
+        assert!(monitor.get_system_resources().await.is_err());
     }
 }

@@ -1,0 +1,15 @@
+[workspace]
+# This package is standalone and not part of the main workspace
+
+[package]
+name = "toadstool-squirrel-ai-showcase"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+toadstool = { path = "../../../crates/core/toadstool" }
+tokio = { version = "1.42", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+

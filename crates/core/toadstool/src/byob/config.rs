@@ -20,27 +20,28 @@ pub struct ByobExecutorConfig {
     pub default_host_port: u16,
     /// Common web service ports for external IP allocation
     pub web_service_ports: Vec<u16>,
+    /// Graceful shutdown timeout in seconds
+    pub graceful_shutdown_timeout_secs: u64,
 }
 
 impl Default for ByobExecutorConfig {
+    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
+        #[allow(deprecated)]
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
+
+        #[allow(deprecated)]
+        let coordinator_port = config.network.songbird_port;
+
         Self {
             max_concurrent_deployments: 50,
             default_network_subnet: "10.0.0.0/24".to_string(),
             resource_monitoring_interval: Duration::from_secs(30),
             health_check_interval: Duration::from_secs(10),
             deployment_timeout: Duration::from_secs(600), // 10 minutes
-            default_host_port: config.network.songbird_port,
-            web_service_ports: vec![
-                80,
-                443,
-                config.network.songbird_port,
-                8443,
-                3000,
-                8000,
-                9000,
-            ],
+            default_host_port: coordinator_port,
+            web_service_ports: vec![80, 443, coordinator_port, 8443, 3000, 8000, 9000],
+            graceful_shutdown_timeout_secs: 30, // 30 second graceful shutdown
         }
     }
 }
@@ -199,7 +200,8 @@ mod tests {
             "health_check_interval": {"secs": 5, "nanos": 0},
             "deployment_timeout": {"secs": 300, "nanos": 0},
             "default_host_port": 7000,
-            "web_service_ports": [80, 443, 8080]
+            "web_service_ports": [80, 443, 8080],
+            "graceful_shutdown_timeout_secs": 45
         }"#;
 
         let config: ByobExecutorConfig = serde_json::from_str(json).unwrap();
@@ -207,6 +209,7 @@ mod tests {
         assert_eq!(config.default_network_subnet, "172.16.0.0/16");
         assert_eq!(config.default_host_port, 7000);
         assert_eq!(config.web_service_ports, vec![80, 443, 8080]);
+        assert_eq!(config.graceful_shutdown_timeout_secs, 45);
     }
 
     #[test]

@@ -141,7 +141,7 @@ mod monitoring_logic_tests {
     // Process Tracking Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_process_registry() {
         let processes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -156,7 +156,7 @@ mod monitoring_logic_tests {
         assert!(procs.contains_key("process-1"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_process_registration_deregistration() {
         let processes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -187,7 +187,7 @@ mod monitoring_logic_tests {
     // Resource Metrics Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_metrics_collection() {
         let metrics: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -202,7 +202,7 @@ mod monitoring_logic_tests {
         assert_eq!(m.get("memory_usage"), Some(&2048.0));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_metrics_update() {
         let metrics: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -382,7 +382,7 @@ mod monitoring_logic_tests {
     // Concurrent Monitoring Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_metric_updates() {
         let metrics: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -405,7 +405,7 @@ mod monitoring_logic_tests {
         assert_eq!(m.len(), 10);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_process_monitoring() {
         let processes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -466,7 +466,7 @@ mod monitoring_logic_tests {
     // Monitoring State Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_monitoring_state_toggle() {
         let is_monitoring: Arc<RwLock<bool>> = Arc::new(RwLock::new(false));
 

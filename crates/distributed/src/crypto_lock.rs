@@ -472,13 +472,49 @@ impl ToadStoolCryptoLock {
 
     fn is_pure_rust_ecosystem(&self, target: &ExternalTarget) -> bool {
         // Define what constitutes "pure Rust ecosystem"
+        // Check service feature_set for ecosystem membership
+        // This replaces hardcoded service name matching with feature-based capability check
         match target {
-            ExternalTarget::ExternalTool { tool_name, .. } => {
-                // ToadStool, BearDog, NestGate, Songbird are always free
-                matches!(
-                    tool_name.as_str(),
-                    "toadstool" | "beardog" | "nestgate" | "songbird"
-                )
+            ExternalTarget::ExternalTool {
+                tool_name: _,
+                feature_set,
+                ..
+            } => {
+                // Check if tool declares ecosystem-native capability via feature_set
+                // This is the modern, metadata-driven approach
+                if feature_set
+                    .iter()
+                    .any(|f| f == "ecosystem_native" || f == "ecoprimals_trusted")
+                {
+                    return true;
+                }
+
+                // Check for explicit trust markers in feature set
+                if feature_set
+                    .iter()
+                    .any(|f| f == "trusted" || f == "no_crypto_lock")
+                {
+                    return true;
+                }
+
+                // Check if tool declares itself as a known primal type
+                const ECOSYSTEM_PRIMALS: &[&str] = &[
+                    "primal:toadstool",
+                    "primal:beardog",
+                    "primal:nestgate",
+                    "primal:songbird",
+                    "primal:squirrel",
+                ];
+                if feature_set
+                    .iter()
+                    .any(|f| ECOSYSTEM_PRIMALS.contains(&f.as_str()))
+                {
+                    return true;
+                }
+
+                // All ecosystem services now use feature_set (v0.3.0+)
+                // No fallback needed - services must declare their features explicitly
+                false
             }
             _ => false, // All other externals require crypto permission
         }

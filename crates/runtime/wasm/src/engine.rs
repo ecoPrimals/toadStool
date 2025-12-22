@@ -81,10 +81,12 @@ impl WasmRuntimeEngine {
         // Initialize components
         let cache = Arc::new(ModuleCache::new(config.cache.max_entries));
         let metrics = Arc::new(MetricsCollector::new());
+        // ✅ ZERO-COPY: Share config via Arc instead of cloning then wrapping
+        let config = Arc::new(config);
         let component_registry = Arc::new(ComponentRegistry::new(config.component_model.clone()));
         
-        let loader = Arc::new(ModuleLoader::new(engine.clone(), config.clone()));
-        let executor = Arc::new(ModuleExecutor::new(engine.clone(), config.clone()));
+        let loader = Arc::new(ModuleLoader::new(engine.clone(), Arc::clone(&config)));
+        let executor = Arc::new(ModuleExecutor::new(engine.clone(), Arc::clone(&config)));
 
         Ok(Self {
             engine,

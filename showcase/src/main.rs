@@ -114,6 +114,7 @@ echo ""
         environment: HashMap::new(),
         input_data: Default::default(),
         callback_config: None,
+        encryption_config: None,
     };
 
     println!("{}", "Executing workload...".bright_cyan());

@@ -1,0 +1,67 @@
+[package]
+name = "ml-inference-showcase"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+toadstool = { path = "../../../crates/core/toadstool" }
+toadstool-runtime-gpu = { path = "../../../crates/runtime/gpu", features = ["webgpu"] }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Real ML dependencies
+ndarray = "0.15"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Image processing for MNIST
+flate2 = "1.0"
+byteorder = "1.5"
+reqwest = { version = "0.11", features = ["blocking"] }
+
+# GPU compute
+cudarc = { version = "0.11", optional = true }
+wgpu = "0.19"
+
+[features]
+default = []
+cuda = ["cudarc", "toadstool-runtime-gpu/cuda"]
+webgpu = ["toadstool-runtime-gpu/webgpu"]
+
+[[bin]]
+name = "download-mnist"
+path = "src/download.rs"
+
+[[bin]]
+name = "mnist-cpu-baseline"
+path = "src/cpu_baseline.rs"
+
+[[bin]]
+name = "mnist-gpu-cuda"
+path = "src/gpu_cuda.rs"
+
+[[bin]]
+name = "validate-correctness"
+path = "src/validate.rs"
+
+[[bin]]
+name = "hybrid-pipeline"
+path = "src/hybrid.rs"
+
+[[bin]]
+name = "universal-abstraction-demo"
+path = "src/universal_demo.rs"
+
+[[bin]]
+name = "train-mnist"
+path = "src/train_mnist.rs"
+
+[[bin]]
+name = "validate-trained"
+path = "src/validate_trained.rs"

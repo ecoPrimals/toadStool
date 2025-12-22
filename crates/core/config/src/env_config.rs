@@ -3,7 +3,14 @@
 //! This module provides comprehensive environment variable support to eliminate
 //! all hardcoded values from the `ToadStool` codebase. It supports type-safe
 //! environment variable parsing with fallback defaults.
+//!
+//! # Modern Rust Features
+//!
+//! - Zero-copy string handling with `Cow` for static prefixes
+//! - Compile-time validation
+//! - Type-safe environment parsing
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
@@ -17,29 +24,39 @@ use tracing::debug;
 use crate::ToadStoolConfig;
 
 /// Environment variable configuration loader with type-safe parsing
+///
+/// # Zero-Copy Optimization
+///
+/// The `prefix` field uses `Cow<'static, str>` to avoid allocations for the
+/// common case of using the default "TOADSTOOL" prefix. This is a zero-cost
+/// abstraction that only allocates when a custom prefix is provided.
 #[derive(Debug, Clone)]
 pub struct EnvConfigLoader {
-    /// Environment prefix for `ToadStool` variables
-    prefix: String,
+    /// Environment prefix for `ToadStool` variables (zero-copy for defaults)
+    prefix: Cow<'static, str>,
     /// Cache of loaded environment variables
     cache: HashMap<String, String>,
 }
 
 impl EnvConfigLoader {
     /// Create a new environment configuration loader
+    ///
+    /// Uses zero-copy for the default "TOADSTOOL" prefix - no heap allocation!
     #[must_use]
     pub fn new() -> Self {
         Self {
-            prefix: "TOADSTOOL".to_string(),
+            prefix: Cow::Borrowed("TOADSTOOL"), // Zero allocation! 🚀
             cache: HashMap::new(),
         }
     }
 
     /// Create a new environment configuration loader with custom prefix
+    ///
+    /// Only allocates when using a non-static custom prefix.
     #[must_use]
     pub fn with_prefix(prefix: &str) -> Self {
         Self {
-            prefix: prefix.to_string(),
+            prefix: Cow::Owned(prefix.to_string()), // Allocate only when custom
             cache: HashMap::new(),
         }
     }
@@ -47,7 +64,7 @@ impl EnvConfigLoader {
     /// Load environment variables into cache
     pub fn load_cache(&mut self) {
         for (key, value) in env::vars() {
-            if key.starts_with(&self.prefix) {
+            if key.starts_with(self.prefix.as_ref()) {
                 self.cache.insert(key, value);
             }
         }
@@ -160,45 +177,98 @@ impl Default for EnvConfigLoader {
 }
 
 /// Configuration for network-related environment variables
+///
+/// # Self-Knowledge Architecture
+///
+/// Following the principle that "ToadStool knows only itself," this configuration
+/// contains only self-related network settings. Other primals are discovered at
+/// runtime through capability-based discovery.
+///
+/// ## Self-Knowledge (Valid):
+/// - `toadstool_*` - Our own ports and settings
+/// - `bind_address` - Where we listen
+/// - `external_hostname` - How we identify ourselves
+///
+/// ## Legacy Fields (Deprecated):
+/// - `songbird_port`, `beardog_port`, etc. - Use RuntimeDiscovery instead
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkEnvConfig {
-    /// Songbird service port
-    pub songbird_port: u16,
-    /// `BearDog` service port
-    pub beardog_port: u16,
-    /// `NestGate` service port
-    pub nestgate_port: u16,
-    /// Squirrel MCP service port
-    pub squirrel_port: u16,
-    /// `ToadStool` API port
+    // ========================================================================
+    // Self-Knowledge: ToadStool's Own Configuration
+    // ========================================================================
+    /// `ToadStool` API port (self-knowledge: our own port)
     pub toadstool_port: u16,
-    /// Federation port
+    /// Federation port (self-knowledge: our federation capability)
     pub federation_port: u16,
-    /// Metrics port
+    /// Metrics port (self-knowledge: our observability)
     pub metrics_port: u16,
-    /// Health check port
+    /// Health check port (self-knowledge: our health endpoint)
     pub health_port: u16,
-    /// WebSocket port
+    /// WebSocket port (self-knowledge: our realtime capability)
     pub websocket_port: u16,
-    /// Bind address
+    /// Bind address (self-knowledge: where we listen)
     pub bind_address: String,
-    /// External hostname
+    /// External hostname (self-knowledge: our identity)
     pub external_hostname: String,
-    /// Enable TLS
+
+    // ========================================================================
+    // Connection Behavior (applies to outbound connections)
+    // ========================================================================
+    /// Enable TLS for outbound connections
     pub tls_enabled: bool,
-    /// Connection timeout
+    /// Connection timeout for outbound connections
     pub connection_timeout_secs: u64,
-    /// Request timeout
+    /// Request timeout for outbound requests
     pub request_timeout_secs: u64,
-    /// Max retries
+    /// Max retries for failed requests
     pub max_retries: u32,
-    /// Max connections per host
+    /// Max connections per remote host
     pub max_connections_per_host: u32,
+
+    // ========================================================================
+    // Legacy Fields (Deprecated - Use RuntimeDiscovery)
+    // ========================================================================
+    /// ⚠️ DEPRECATED: Songbird service port
+    ///
+    /// **Modern approach**: Use `RuntimeDiscovery::discover_capability(&Capability::Coordination)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery for capability-based service discovery"
+    )]
+    pub songbird_port: u16,
+
+    /// ⚠️ DEPRECATED: `BearDog` service port
+    ///
+    /// **Modern approach**: Use `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery for capability-based service discovery"
+    )]
+    pub beardog_port: u16,
+
+    /// ⚠️ DEPRECATED: `NestGate` service port
+    ///
+    /// **Modern approach**: Use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery for capability-based service discovery"
+    )]
+    pub nestgate_port: u16,
+
+    /// ⚠️ DEPRECATED: Squirrel MCP service port
+    ///
+    /// **Modern approach**: Use `RuntimeDiscovery::discover_capability(&Capability::MCP)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery for capability-based service discovery"
+    )]
+    pub squirrel_port: u16,
 }
 
 impl NetworkEnvConfig {
     /// Load network configuration from environment variables
     #[must_use]
+    #[allow(deprecated)] // Using deprecated constants during migration to capability-based discovery
     pub fn from_env() -> Self {
         let loader = EnvConfigLoader::new();
 
@@ -222,34 +292,93 @@ impl NetworkEnvConfig {
         }
     }
 
-    /// Get Songbird endpoint
+    // ========================================================================
+    // Self-Knowledge Methods (Valid - Our Own Endpoints)
+    // ========================================================================
+
+    /// Get `ToadStool` endpoint (self-knowledge: our own endpoint)
     #[must_use]
+    pub fn toadstool_endpoint(&self) -> String {
+        format!("http://{}:{}", self.external_hostname, self.toadstool_port)
+    }
+
+    /// Get our federation endpoint (self-knowledge: our federation capability)
+    #[must_use]
+    pub fn federation_endpoint(&self) -> String {
+        format!("http://{}:{}", self.external_hostname, self.federation_port)
+    }
+
+    /// Get our metrics endpoint (self-knowledge: our observability)
+    #[must_use]
+    pub fn metrics_endpoint(&self) -> String {
+        format!("http://{}:{}", self.external_hostname, self.metrics_port)
+    }
+
+    /// Get our health check endpoint (self-knowledge: our health)
+    #[must_use]
+    pub fn health_endpoint(&self) -> String {
+        format!("http://{}:{}", self.external_hostname, self.health_port)
+    }
+
+    // ========================================================================
+    // Legacy Methods (Deprecated - Use RuntimeDiscovery)
+    // ========================================================================
+
+    /// ⚠️ DEPRECATED: Get Songbird endpoint
+    ///
+    /// **Use instead**:
+    /// ```rust,ignore
+    /// let discovery = RuntimeDiscovery::new(client);
+    /// let services = discovery.discover_capability(&Capability::Coordination).await?;
+    /// let endpoint = &services[0].endpoint;
+    /// ```
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination)"
+    )]
+    #[must_use]
+    #[allow(deprecated)]
     pub fn songbird_endpoint(&self) -> String {
         format!("http://{}:{}", self.bind_address, self.songbird_port)
     }
 
-    /// Get `BearDog` endpoint
+    /// ⚠️ DEPRECATED: Get `BearDog` endpoint
+    ///
+    /// **Use instead**: `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication)"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn beardog_endpoint(&self) -> String {
         format!("http://{}:{}", self.bind_address, self.beardog_port)
     }
 
-    /// Get `NestGate` endpoint
+    /// ⚠️ DEPRECATED: Get `NestGate` endpoint
+    ///
+    /// **Use instead**: `RuntimeDiscovery::discover_capability(&Capability::Storage)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage)"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn nestgate_endpoint(&self) -> String {
         format!("http://{}:{}", self.bind_address, self.nestgate_port)
     }
 
-    /// Get Squirrel endpoint
+    /// ⚠️ DEPRECATED: Get Squirrel endpoint
+    ///
+    /// **Use instead**: `RuntimeDiscovery::discover_capability(&Capability::MCP)`
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP)"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn squirrel_endpoint(&self) -> String {
         format!("http://{}:{}", self.bind_address, self.squirrel_port)
-    }
-
-    /// Get `ToadStool` endpoint
-    #[must_use]
-    pub fn toadstool_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, self.toadstool_port)
     }
 }
 
@@ -461,10 +590,14 @@ impl EnvironmentConfig {
             config.network.bind_address = addr;
         }
 
-        config.network.endpoints.songbird = self.network.songbird_endpoint();
-        config.network.endpoints.beardog = self.network.beardog_endpoint();
-        config.network.endpoints.nestgate = self.network.nestgate_endpoint();
-        config.network.endpoints.squirrel = self.network.squirrel_endpoint();
+        // Legacy endpoint configuration (deprecated - use capability-based discovery)
+        #[allow(deprecated)]
+        {
+            config.network.endpoints.songbird = self.network.songbird_endpoint();
+            config.network.endpoints.beardog = self.network.beardog_endpoint();
+            config.network.endpoints.nestgate = self.network.nestgate_endpoint();
+            config.network.endpoints.squirrel = self.network.squirrel_endpoint();
+        }
 
         config.network.connection.request_timeout =
             Duration::from_secs(self.network.request_timeout_secs);
@@ -550,9 +683,18 @@ pub fn apply_env_config(config: &mut ToadStoolConfig) {
 }
 
 #[cfg(test)]
-mod tests {
+#[allow(deprecated)] // Tests for legacy APIs during migration period
+pub(crate) mod tests {
     use super::*;
     use std::env;
+    use std::sync::Mutex;
+
+    // ✅ MODERN: Scoped lock for environment variable tests (shared across all config tests)
+    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+
+    pub(crate) fn get_env_lock() -> &'static Mutex<()> {
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     #[test]
     fn test_env_config_loader() {
@@ -577,8 +719,11 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
+    #[allow(deprecated)] // Testing deprecated method during migration
     fn test_network_env_config() {
+        // ✅ MODERN: Recover from poisoned lock (robust concurrent testing)
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+
         // Save original environment state
         let original_port = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
         let original_addr = env::var("TOADSTOOL_BIND_ADDRESS").ok();
@@ -592,25 +737,29 @@ mod tests {
         assert_eq!(config.bind_address, "0.0.0.0");
         assert_eq!(config.songbird_endpoint(), "http://0.0.0.0:9080");
 
-        // Restore original environment state
-        env::remove_var("TOADSTOOL_SONGBIRD_PORT");
-        env::remove_var("TOADSTOOL_BIND_ADDRESS");
+        // ✅ MODERN: Restore original environment state
         if let Some(val) = original_port {
             env::set_var("TOADSTOOL_SONGBIRD_PORT", val);
+        } else {
+            env::remove_var("TOADSTOOL_SONGBIRD_PORT");
         }
         if let Some(val) = original_addr {
             env::set_var("TOADSTOOL_BIND_ADDRESS", val);
+        } else {
+            env::remove_var("TOADSTOOL_BIND_ADDRESS");
         }
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_environment_config() {
+        // ✅ MODERN: Recover from poisoned lock (robust concurrent testing)
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+
         // Save original environment state
         let original_env = env::var("TOADSTOOL_ENV").ok();
         let original_debug = env::var("TOADSTOOL_DEBUG").ok();
 
-        // Set test values (don't remove first - just override)
+        // ✅ MODERN: Set test values explicitly
         env::set_var("TOADSTOOL_ENV", "development");
         env::set_var("TOADSTOOL_DEBUG", "false");
 
@@ -618,7 +767,7 @@ mod tests {
         assert_eq!(config.environment, "development");
         assert!(!config.debug);
 
-        // Restore original environment state
+        // ✅ MODERN: Restore original environment state
         match original_env {
             Some(val) => env::set_var("TOADSTOOL_ENV", val),
             None => env::remove_var("TOADSTOOL_ENV"),

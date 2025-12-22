@@ -551,7 +551,7 @@ pub struct BiomeNetworking {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeStorage {
-    pub nestgate_integration: bool,
+    pub nestgate_integration: Option<String>, // NestGate version or config
     pub datasets: Vec<DatasetConfig>,
     pub volumes: Vec<VolumeConfig>,
     pub backup_policy: Option<String>,
@@ -719,4 +719,5 @@ pub mod monitoring;
 pub mod network_config;
 pub mod templates;
 pub mod universal;
+pub mod utils;
 pub mod zero_config;

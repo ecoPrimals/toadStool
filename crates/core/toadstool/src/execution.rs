@@ -31,6 +31,8 @@ pub struct ExecutionRequest {
     pub input_data: ExecutionInput,
     /// Callback configuration
     pub callback_config: Option<CallbackConfig>,
+    /// Encryption configuration (for secure distributed workloads)
+    pub encryption_config: Option<crate::encryption::EncryptionConfig>,
 }
 
 impl Default for ExecutionRequest {
@@ -45,6 +47,7 @@ impl Default for ExecutionRequest {
             environment: HashMap::new(),
             input_data: ExecutionInput::default(),
             callback_config: None,
+            encryption_config: None,
         }
     }
 }

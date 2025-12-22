@@ -22,6 +22,7 @@ fn create_test_state() -> ApiState {
         metrics: Arc::new(RwLock::new(toadstool_api::ApiMetrics::default())),
         event_broadcaster: tx,
         websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
+        capability_provider: None,
     }
 }
 
@@ -29,7 +30,7 @@ fn create_test_state() -> ApiState {
 // Health Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_handler() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -52,7 +53,7 @@ async fn test_health_check_handler() {
 // Metrics Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_handler() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -74,7 +75,7 @@ async fn test_metrics_handler() {
 // Cluster Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_cluster_status() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -93,7 +94,7 @@ async fn test_get_cluster_status() {
     assert!(response.status().is_success() || response.status() == StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_cluster_nodes() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -116,7 +117,7 @@ async fn test_list_cluster_nodes() {
 // Logs Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_logs() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -137,7 +138,7 @@ async fn test_get_execution_logs() {
 // Workload Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_workloads() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -156,7 +157,7 @@ async fn test_list_workloads() {
     assert!(response.status().is_success() || response.status() == StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_workload_details() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -177,7 +178,7 @@ async fn test_get_workload_details() {
 // Execution Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -211,7 +212,7 @@ async fn test_submit_execution() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_execution_status() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -228,7 +229,7 @@ async fn test_get_execution_status() {
     assert!(response.status().is_success() || response.status() == StatusCode::NOT_FOUND);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_execution() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -255,7 +256,7 @@ async fn test_cancel_execution() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_executions() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -277,7 +278,7 @@ async fn test_list_executions() {
 // Additional API Endpoint Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_root_handler() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -290,7 +291,7 @@ async fn test_root_handler() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_endpoint_v2() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);
@@ -308,7 +309,7 @@ async fn test_health_endpoint_v2() {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_endpoint_v2() {
     let state = create_test_state();
     let app = toadstool_api::create_router(state);

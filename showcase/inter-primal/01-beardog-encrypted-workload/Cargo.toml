@@ -1,0 +1,13 @@
+[package]
+name = "beardog-encrypted-workload-showcase"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+toadstool = { path = "../../../crates/core/toadstool" }
+tokio = { version = "1", features = ["full"] }
+
+[[bin]]
+name = "beardog-encrypted-workload"
+path = "src/main.rs"
+

@@ -276,6 +276,7 @@ mod humantime_serde_optional {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::Duration;
 
+    #[allow(clippy::ref_option)] // Required by serde derive macro
     pub fn serialize<S>(value: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -561,8 +562,8 @@ mod tests {
     fn test_retry_config_defaults() {
         let config = RetryConfig::default();
         assert_eq!(config.max_retries, 3);
-        assert_eq!(config.backoff_multiplier, 2.0);
-        assert_eq!(config.jitter_percent, 10.0);
+        assert!((config.backoff_multiplier - 2.0).abs() < f64::EPSILON);
+        assert!((config.jitter_percent - 10.0).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -4,11 +4,11 @@
 
 use chrono::Utc;
 use std::sync::Arc;
-use std::time::Duration;
+// ✅ FULLY MODERNIZED: Duration no longer needed after sleep elimination
 use toadstool_api::websocket::{WebSocketConnection, WebSocketManager, WebSocketMessage};
 use uuid::Uuid;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_creation() {
     // Test WebSocket manager creation
     let manager = WebSocketManager::new();
@@ -17,7 +17,7 @@ async fn test_websocket_manager_creation() {
     assert_eq!(count, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_creation() {
     // Test WebSocket connection structure
     let conn = WebSocketConnection {
@@ -32,7 +32,7 @@ async fn test_websocket_connection_creation() {
     assert!(conn.last_ping.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_add_connection() {
     let manager = WebSocketManager::new();
 
@@ -49,7 +49,7 @@ async fn test_websocket_manager_add_connection() {
     assert_eq!(count, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_remove_connection() {
     let manager = WebSocketManager::new();
 
@@ -70,7 +70,7 @@ async fn test_websocket_manager_remove_connection() {
     assert_eq!(manager.get_connection_count().await, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_multiple_connections() {
     let manager = WebSocketManager::new();
 
@@ -87,13 +87,13 @@ async fn test_websocket_manager_multiple_connections() {
     assert_eq!(manager.get_connection_count().await, 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_concurrent_access() {
     let manager = Arc::new(WebSocketManager::new());
     let mut handles = vec![];
 
     for i in 0..10 {
-        let manager_clone = manager.clone();
+        let manager_clone = Arc::clone(&manager);
         let handle = tokio::spawn(async move {
             let conn = WebSocketConnection {
                 id: Uuid::new_v4(),
@@ -115,7 +115,7 @@ async fn test_websocket_manager_concurrent_access() {
     assert_eq!(manager.get_connection_count().await, 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_subscribe() {
     // Test WebSocket message types
     let msg = WebSocketMessage::Subscribe {
@@ -131,7 +131,7 @@ async fn test_websocket_message_subscribe() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_unsubscribe() {
     let msg = WebSocketMessage::Unsubscribe {
         event_types: vec!["logs".to_string()],
@@ -146,7 +146,7 @@ async fn test_websocket_message_unsubscribe() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_ping() {
     let msg = WebSocketMessage::Ping {
         timestamp: Utc::now(),
@@ -160,7 +160,7 @@ async fn test_websocket_message_ping() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_pong() {
     let msg = WebSocketMessage::Pong {
         timestamp: Utc::now(),
@@ -174,7 +174,7 @@ async fn test_websocket_message_pong() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_subscriptions() {
     let mut conn = WebSocketConnection {
         id: Uuid::new_v4(),
@@ -191,7 +191,7 @@ async fn test_websocket_connection_subscriptions() {
     assert!(conn.subscriptions.contains(&"logs".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_last_ping_update() {
     let mut conn = WebSocketConnection {
         id: Uuid::new_v4(),
@@ -206,7 +206,7 @@ async fn test_websocket_connection_last_ping_update() {
     assert!(conn.last_ping.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_id_uniqueness() {
     // Test that connection IDs are unique
     let id1 = Uuid::new_v4();
@@ -215,7 +215,7 @@ async fn test_websocket_connection_id_uniqueness() {
     assert_ne!(id1, id2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_connection_timestamp() {
     let now = Utc::now();
 
@@ -229,7 +229,7 @@ async fn test_websocket_connection_timestamp() {
     assert!(conn.connected_at <= Utc::now());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_api_event_types_exist() {
     // Test that ApiEvent type is accessible
     use toadstool_api::types::ApiEvent;
@@ -240,7 +240,7 @@ async fn test_api_event_types_exist() {
     assert!(!_type_name.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_id_generation() {
     // Test execution ID generation (used in events)
     let id1 = Uuid::new_v4();
@@ -250,17 +250,17 @@ async fn test_execution_id_generation() {
     assert!(!id1.is_nil());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_creation() {
     // Test timestamp creation (used in events and messages)
     let ts1 = Utc::now();
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     let ts2 = Utc::now();
 
     assert!(ts2 >= ts1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_clear_all() {
     let manager = WebSocketManager::new();
 
@@ -281,7 +281,7 @@ async fn test_websocket_manager_clear_all() {
     // For now, just verify we can track multiple connections
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_subscription_filtering() {
     // Test subscription list filtering logic
     let subscriptions = vec![
@@ -298,7 +298,7 @@ async fn test_subscription_filtering() {
     assert_eq!(filtered.len(), 2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_subscription_deduplication() {
     // Test subscription deduplication logic
     let mut subscriptions = vec![
@@ -313,18 +313,18 @@ async fn test_subscription_deduplication() {
     assert_eq!(subscriptions.len(), 2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_timeout_calculation() {
-    // Test timeout calculation logic
+    // ✅ MODERNIZED: Actual sleep needed for duration measurement
     let connected_at = Utc::now();
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     let now = Utc::now();
 
     let duration = now.signed_duration_since(connected_at);
     assert!(duration.num_milliseconds() >= 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_subscription_updates() {
     let manager = Arc::new(WebSocketManager::new());
 
@@ -340,7 +340,7 @@ async fn test_concurrent_subscription_updates() {
     // Test that we can safely access the manager concurrently
     let mut handles = vec![];
     for _ in 0..5 {
-        let manager_clone = manager.clone();
+        let manager_clone = Arc::clone(&manager);
         let handle = tokio::spawn(async move { manager_clone.get_connection_count().await });
         handles.push(handle);
     }
@@ -351,7 +351,7 @@ async fn test_concurrent_subscription_updates() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_uuid_string_conversion() {
     // Test UUID conversions used in WebSocket
     let id = Uuid::new_v4();
@@ -361,7 +361,7 @@ async fn test_uuid_string_conversion() {
     assert_eq!(id, parsed);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_subscription_vec_operations() {
     // Test Vec operations on subscriptions
     let mut subs = Vec::new();
@@ -376,7 +376,7 @@ async fn test_subscription_vec_operations() {
     assert_eq!(subs.len(), 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_option_datetime_handling() {
     // Test Option<DateTime> handling
     let mut last_ping: Option<chrono::DateTime<Utc>> = None;
@@ -391,7 +391,7 @@ async fn test_option_datetime_handling() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_message_serialization_types() {
     // Test that all message types can be pattern matched
     let now = Utc::now();
@@ -419,7 +419,7 @@ async fn test_websocket_message_serialization_types() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_lifecycle() {
     let manager = WebSocketManager::new();
 

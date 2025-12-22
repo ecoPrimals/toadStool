@@ -29,14 +29,14 @@ struct MockBiomeInfo {
 struct MockCliContext {}
 
 // Basic constructor tests
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_new() {
     // Test that executor can be created with default config
     let result = create_mock_executor().await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_new_with_defaults() {
     // Test that new executor has empty biomes map
     let executor = create_mock_executor().await.unwrap();
@@ -45,7 +45,7 @@ async fn test_biome_executor_new_with_defaults() {
 }
 
 // Test run_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_basic() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -69,7 +69,7 @@ async fn test_run_biome_basic() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_with_resource_limits() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -92,7 +92,7 @@ async fn test_run_biome_with_resource_limits() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_with_env_vars() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -117,7 +117,7 @@ async fn test_run_biome_with_env_vars() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_debug_mode() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -140,7 +140,7 @@ async fn test_run_biome_debug_mode() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_already_running() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -179,7 +179,7 @@ async fn test_run_biome_already_running() {
 }
 
 // Test up_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_detached() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -203,7 +203,7 @@ async fn test_up_biome_detached() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_foreground() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -228,7 +228,7 @@ async fn test_up_biome_foreground() {
 }
 
 // Test down_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_graceful() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -260,7 +260,7 @@ async fn test_down_biome_graceful() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_forced() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -292,7 +292,7 @@ async fn test_down_biome_forced() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_not_found() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -306,7 +306,7 @@ async fn test_down_biome_not_found() {
 }
 
 // Test list_biomes command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_empty() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -315,7 +315,7 @@ async fn test_list_biomes_empty() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_with_running_biomes() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -345,7 +345,7 @@ async fn test_list_biomes_with_running_biomes() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_verbose() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -356,7 +356,7 @@ async fn test_list_biomes_verbose() {
 }
 
 // Test status_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_status_biome_running() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -378,7 +378,7 @@ async fn test_status_biome_running() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_status_biome_not_found() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -388,7 +388,7 @@ async fn test_status_biome_not_found() {
 }
 
 // Test restart_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_restart_biome() {
     let executor = create_mock_executor().await.unwrap();
 
@@ -412,7 +412,7 @@ async fn test_restart_biome() {
 }
 
 // Test logs_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_logs_biome_default() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -429,7 +429,7 @@ async fn test_logs_biome_default() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_logs_biome_follow() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -447,7 +447,7 @@ async fn test_logs_biome_follow() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_logs_biome_with_lines_limit() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -466,7 +466,7 @@ async fn test_logs_biome_with_lines_limit() {
 }
 
 // Test exec_biome command
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_exec_biome_simple_command() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -483,7 +483,7 @@ async fn test_exec_biome_simple_command() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_exec_biome_interactive() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -502,7 +502,7 @@ async fn test_exec_biome_interactive() {
 }
 
 // Test security level variations
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_level_strict() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -524,7 +524,7 @@ async fn test_security_level_strict() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_level_relaxed() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -547,7 +547,7 @@ async fn test_security_level_relaxed() {
 }
 
 // Test concurrent operations
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_biome_operations() {
     let executor = Arc::new(create_mock_executor().await.unwrap());
 
@@ -581,7 +581,7 @@ async fn test_concurrent_biome_operations() {
 }
 
 // Test error handling
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_invalid_manifest_path() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};
@@ -604,7 +604,7 @@ async fn test_invalid_manifest_path() {
     // In real implementation, this would return an error
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_invalid_resource_limits() {
     let executor = create_mock_executor().await.unwrap();
     let ctx = MockCliContext {};

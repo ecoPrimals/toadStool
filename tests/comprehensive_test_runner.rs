@@ -16,34 +16,41 @@ async fn run_comprehensive_test_suite() {
     let start_time = Instant::now();
     let mut test_results = TestResults::new();
     
-    // 1. Unit Tests
-    println!("\n📋 Running Unit Tests...");
-    let unit_tests = run_unit_tests().await;
+    // ✅ MODERNIZED: Run all test suites concurrently for maximum speed
+    println!("\n🚀 Running All Test Suites Concurrently...");
+    
+    let (unit_tests, integration_tests, e2e_tests, performance_tests, chaos_tests, security_tests) = tokio::join!(
+        async {
+            println!("📋 Unit Tests...");
+            run_unit_tests().await
+        },
+        async {
+            println!("🔗 Integration Tests...");
+            run_integration_tests().await
+        },
+        async {
+            println!("🎯 E2E Tests...");
+            run_e2e_tests().await
+        },
+        async {
+            println!("⚡ Performance Tests...");
+            run_performance_tests().await
+        },
+        async {
+            println!("🌪️  Chaos Tests...");
+            run_chaos_tests().await
+        },
+        async {
+            println!("🔒 Security Tests...");
+            run_security_tests().await
+        },
+    );
+    
     test_results.add_suite_result("unit_tests", unit_tests);
-    
-    // 2. Integration Tests
-    println!("\n🔗 Running Integration Tests...");
-    let integration_tests = run_integration_tests().await;
     test_results.add_suite_result("integration_tests", integration_tests);
-    
-    // 3. End-to-End Tests
-    println!("\n🎯 Running End-to-End Tests...");
-    let e2e_tests = run_e2e_tests().await;
     test_results.add_suite_result("e2e_tests", e2e_tests);
-    
-    // 4. Performance Benchmarks
-    println!("\n⚡ Running Performance Benchmarks...");
-    let performance_tests = run_performance_tests().await;
     test_results.add_suite_result("performance_tests", performance_tests);
-    
-    // 5. Chaos Engineering Tests
-    println!("\n🌪️  Running Chaos Engineering Tests...");
-    let chaos_tests = run_chaos_tests().await;
     test_results.add_suite_result("chaos_tests", chaos_tests);
-    
-    // 6. Security Tests
-    println!("\n🔒 Running Security Tests...");
-    let security_tests = run_security_tests().await;
     test_results.add_suite_result("security_tests", security_tests);
     
     let total_duration = start_time.elapsed();
@@ -199,10 +206,9 @@ async fn run_integration_tests() -> SuiteResult {
 async fn run_e2e_tests() -> SuiteResult {
     let start = Instant::now();
     
-    // Simulate E2E test execution
-    tokio::time::sleep(Duration::from_secs(5)).await;
+    // ✅ MODERN: Immediate return for simulated E2E tests
+    // Real implementation would run actual cargo test commands (like unit tests above)
     
-    // For now, simulate successful E2E tests
     SuiteResult {
         name: "End-to-End Tests".to_string(),
         success: true,
@@ -217,8 +223,8 @@ async fn run_e2e_tests() -> SuiteResult {
 async fn run_performance_tests() -> SuiteResult {
     let start = Instant::now();
     
-    // Simulate performance benchmark execution
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    // ✅ MODERN: Immediate return for simulated performance tests
+    // Real implementation would run actual cargo bench or criterion benchmarks
     
     SuiteResult {
         name: "Performance Benchmarks".to_string(),
@@ -234,8 +240,8 @@ async fn run_performance_tests() -> SuiteResult {
 async fn run_chaos_tests() -> SuiteResult {
     let start = Instant::now();
     
-    // Simulate chaos engineering test execution
-    tokio::time::sleep(Duration::from_secs(4)).await;
+    // ✅ MODERN: Immediate return for simulated chaos tests
+    // Real implementation would run actual chaos test suite with cargo test
     
     SuiteResult {
         name: "Chaos Engineering Tests".to_string(),
@@ -251,8 +257,8 @@ async fn run_chaos_tests() -> SuiteResult {
 async fn run_security_tests() -> SuiteResult {
     let start = Instant::now();
     
-    // Simulate security test execution
-    tokio::time::sleep(Duration::from_secs(6)).await;
+    // ✅ MODERN: Immediate return for simulated security tests
+    // Real implementation would run actual security test suite with cargo test
     
     SuiteResult {
         name: "Security Tests".to_string(),
@@ -412,8 +418,8 @@ struct DiskInfo {
 }
 
 async fn get_system_memory_info() -> MemoryInfo {
-    // Simulate memory info retrieval
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // ✅ MODERN: Immediate return for mocked system info
+    // Real implementation would use sysinfo crate or /proc/meminfo
     MemoryInfo {
         total_gb: 16.0,
         available_gb: 12.3,
@@ -422,8 +428,8 @@ async fn get_system_memory_info() -> MemoryInfo {
 }
 
 async fn get_system_disk_info() -> DiskInfo {
-    // Simulate disk info retrieval
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // ✅ MODERN: Immediate return for mocked disk info
+    // Real implementation would use sysinfo crate or df command
     DiskInfo {
         total_gb: 500.0,
         available_gb: 387.2,

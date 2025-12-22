@@ -503,8 +503,9 @@ impl EdgeDevice for ESP32Device {
             });
         }
         
-        // For now, simulate execution
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        // ✅ MODERNIZED: Removed simulation sleep
+        // NOTE: Real ESP32 execution monitoring requires serial/JTAG integration
+        // This is a mock implementation for testing ESP32 workflow
         
         let output = self.send_command("RUN").await
             .unwrap_or_else(|_| "ESP32 execution completed".to_string());

@@ -87,13 +87,22 @@
 //! - **Self-Healing**: Adapts to hardware and network changes
 //! - **Progressive Enhancement**: Works better as more services are available
 
+pub mod ai_mcp_interface;
+pub mod capability_traits;
 pub mod ecosystem;
 pub mod hardware;
 pub mod intelligent;
 pub mod natural_language;
-pub mod squirrel_mcp;
 
 // Re-export the main types for easy access
+pub use ai_mcp_interface::{
+    AiMcpInterface, AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, McpRequest,
+    McpRequestType, McpResponse, PerformanceExpectations, ResourceHints, SessionInfo,
+};
+pub use capability_traits::{
+    EcosystemServiceDiscoverer, HardwareCapabilityDetector, MockEcosystemDiscoverer,
+    MockHardwareDetector,
+};
 pub use ecosystem::{DiscoveredServices, EcosystemDiscoverer, ServiceInfo, ServiceType};
 pub use hardware::{
     CpuInfo, GpuInfo, HardwareDetector, MemoryInfo, PerformanceClass, StorageInfo, StorageType,
@@ -107,11 +116,6 @@ pub use natural_language::{
     ConfigurationIntent, ConfigurationTemplate, ExplicitPreferences, IntentAnalysis,
     NaturalLanguageConfig, PerformancePreference, ResourcePreferences, RuntimePreferences,
     SecurityPreference, UsagePattern,
-};
-pub use squirrel_mcp::{
-    AiPreferences, AiSession, ConfigurationSummary, ExecutionIntent, PerformanceExpectations,
-    ResourceHints, SessionInfo, SquirrelMcpInterface, SquirrelMcpRequest, SquirrelMcpResponse,
-    SquirrelRequestType,
 };
 
 // Common result types
@@ -458,7 +462,7 @@ pub async fn get_system_summary() -> ToadStoolResult<SystemSummary> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     #[ignore = "slow integration test - runs full system detection"]
     async fn test_quick_start() {
         // Test that quick_start doesn't panic
@@ -526,7 +530,7 @@ mod tests {
         assert!(network_error.to_string().contains("Network error"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_summary_creation() {
         let capabilities = SystemCapabilities::default();
         let ecosystem = DiscoveredServices {

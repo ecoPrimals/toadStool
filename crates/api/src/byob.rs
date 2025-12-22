@@ -49,7 +49,7 @@ impl ByobApi {
                 get(get_resource_usage),
             )
             .route("/byob/health", get(health_check))
-            .with_state(self.executor.clone())
+            .with_state(Arc::clone(&self.executor))
     }
 }
 
@@ -245,13 +245,13 @@ mod tests {
     use super::*;
     use axum::http::StatusCode;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check() {
         let response = health_check().await.unwrap();
         assert_eq!(response.status, "healthy");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_api_error_conversion() {
         let error = ToadStoolError::not_found("test".to_string());
         let api_error = ApiError::from(error);

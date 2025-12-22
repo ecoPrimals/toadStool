@@ -32,3 +32,7 @@ pub use manager::{FilePolicyManager, PolicyManager};
 // Re-export evaluator and executor
 pub use evaluator::ConditionEvaluator;
 pub use executor::ActionExecutor;
+
+// Unit tests for library code coverage
+#[cfg(test)]
+mod lib_tests;

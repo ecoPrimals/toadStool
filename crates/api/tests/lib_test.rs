@@ -107,6 +107,7 @@ fn test_api_state_initialization() {
         executions: Arc::new(RwLock::new(HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
+        capability_provider: None,
     };
 
     // State should be created properly

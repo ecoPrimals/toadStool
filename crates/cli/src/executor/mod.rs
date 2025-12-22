@@ -14,6 +14,7 @@
 //! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
 // Submodules
+mod log_management;
 mod types;
 
 // Internal use

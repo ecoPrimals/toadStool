@@ -517,10 +517,11 @@ mod tests {
             config: crate::ServerConfig::default(),
             resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
             stats: Arc::new(RwLock::new(crate::ServerStatistics::default())),
+            capability_provider: None,
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_handler() {
         let state = create_test_state();
 
@@ -532,11 +533,13 @@ mod tests {
         .await;
 
         assert!(result.is_ok(), "Health check handler timed out");
-        let response = result.unwrap().into_response();
+        let response = result
+            .expect("Health check should return Ok response in test")
+            .into_response();
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_readiness_check_handler_not_ready() {
         let state = create_test_state();
         let response = readiness_check_handler(State(state)).await.into_response();
@@ -546,14 +549,14 @@ mod tests {
 
     // Note: test_readiness_check_handler_ready removed - would need runtime engine deps
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_metrics_handler() {
         let state = create_test_state();
         let response = metrics_handler(State(state)).await.into_response();
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_submit_execution_handler() {
         let state = create_test_state();
         let request = serde_json::json!({
@@ -566,7 +569,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_execution_status_handler_not_found() {
         let state = create_test_state();
         let execution_id = Uuid::new_v4();
@@ -576,7 +579,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_execution_status_handler_found() {
         let state = create_test_state();
         let execution_id = Uuid::new_v4();
@@ -608,7 +611,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_cancel_execution_handler_not_found() {
         let state = create_test_state();
         let execution_id = Uuid::new_v4();
@@ -618,7 +621,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_cancel_execution_handler_success() {
         let state = create_test_state();
         let execution_id = Uuid::new_v4();
@@ -651,14 +654,16 @@ mod tests {
 
         // Verify status changed to cancelled
         let executions = state.active_executions.read().await;
-        let execution = executions.get(&execution_id).unwrap();
+        let execution = executions
+            .get(&execution_id)
+            .expect("Execution ID should exist in state after successful submission");
         assert!(matches!(
             execution.status,
             toadstool::ExecutionStatus::Cancelled
         ));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_cancel_execution_handler_invalid_state() {
         let state = create_test_state();
         let execution_id = Uuid::new_v4();
@@ -690,7 +695,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_get_cluster_status_handler() {
         let state = create_test_state();
         let response = get_cluster_status_handler(State(state))
@@ -699,7 +704,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_list_runtime_engines_handler_empty() {
         let state = create_test_state();
         let response = list_runtime_engines_handler(State(state))
@@ -718,7 +723,7 @@ mod tests {
         assert!(DASHBOARD_HTML.contains("Runtime Engines"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_dashboard_handler() {
         let response = dashboard_handler().await.into_response();
         assert_eq!(response.status(), StatusCode::OK);

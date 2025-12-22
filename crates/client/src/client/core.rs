@@ -5,9 +5,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::stream::StreamExt;
-use tokio::sync::RwLock;
+use futures_util::SinkExt;
+use tokio::sync::{mpsc, RwLock};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use url::Url;
 use uuid::Uuid;
 
@@ -24,6 +25,35 @@ pub struct ToadStoolClient {
     http_client: reqwest::Client,
     active_executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     event_handlers: Arc<RwLock<EventHandlers>>,
+}
+
+/// Server events received via WebSocket
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ServerEvent {
+    ExecutionStarted {
+        execution_id: Uuid,
+        runtime_type: String,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    ExecutionCompleted {
+        execution_id: Uuid,
+        status: String,
+        duration_ms: u64,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    ResourceUsageUpdate {
+        cpu_usage_percent: f64,
+        memory_usage_percent: f64,
+        active_executions: u32,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
+    ErrorOccurred {
+        error_type: String,
+        message: String,
+        execution_id: Option<Uuid>,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    },
 }
 
 impl ToadStoolClient {
@@ -254,7 +284,7 @@ impl ToadStoolClient {
         }
     }
 
-    /// Wait for execution completion
+    /// Wait for execution completion (event-driven with polling fallback)
     ///
     /// # Errors
     ///
@@ -262,9 +292,90 @@ impl ToadStoolClient {
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
         debug!("Waiting for execution completion: {}", execution_id);
 
-        let mut polling_interval = Duration::from_millis(500); // Start with 500ms
-        let max_polling_interval = Duration::from_secs(5); // Cap at 5 seconds
+        // Try event-driven approach first if WebSocket is available
+        if self.config.enable_websocket {
+            match self.wait_for_completion_via_events(execution_id).await {
+                Ok(info) => return Ok(info),
+                Err(e) => {
+                    warn!(
+                        "WebSocket event subscription failed ({}), falling back to polling",
+                        e
+                    );
+                }
+            }
+        }
+
+        // Fallback to polling with exponential backoff
+        self.wait_for_completion_via_polling(execution_id).await
+    }
+
+    /// Wait for completion using WebSocket events (no polling!)
+    async fn wait_for_completion_via_events(
+        &self,
+        execution_id: Uuid,
+    ) -> ClientResult<ExecutionInfo> {
+        debug!(
+            "Waiting for execution via WebSocket events: {}",
+            execution_id
+        );
+
         let max_wait_time = Duration::from_secs(300); // 5 minutes default
+        let mut event_rx = self.subscribe_to_events().await?;
+
+        // Use timeout to prevent infinite waiting
+        tokio::time::timeout(max_wait_time, async {
+            while let Some(event) = event_rx.recv().await {
+                match event {
+                    ServerEvent::ExecutionCompleted {
+                        execution_id: event_id,
+                        ..
+                    } if event_id == execution_id => {
+                        info!("Execution completed via event: {}", execution_id);
+                        // Fetch final status
+                        return self.get_execution_status(execution_id).await;
+                    }
+                    ServerEvent::ErrorOccurred {
+                        execution_id: Some(event_id),
+                        error_type,
+                        message,
+                        ..
+                    } if event_id == execution_id => {
+                        warn!("Execution error via event: {} - {}", error_type, message);
+                        // Fetch final status to get error details
+                        return self.get_execution_status(execution_id).await;
+                    }
+                    _ => {
+                        // Ignore other events
+                        continue;
+                    }
+                }
+            }
+            Err(ClientError::WebSocket(
+                "Event stream closed before completion".to_string(),
+            ))
+        })
+        .await
+        .map_err(|_| {
+            ClientError::Timeout(format!(
+                "Execution {} did not complete within {:?}",
+                execution_id, max_wait_time
+            ))
+        })?
+    }
+
+    /// Wait for completion using polling (fallback)
+    async fn wait_for_completion_via_polling(
+        &self,
+        execution_id: Uuid,
+    ) -> ClientResult<ExecutionInfo> {
+        debug!("Waiting for execution via polling: {}", execution_id);
+
+        // ✅ LEGITIMATE POLLING: This polls an external HTTP API which doesn't provide
+        // event streaming or websockets yet. Polling with exponential backoff is appropriate here.
+        // Future improvement: Use Server-Sent Events or WebSockets when available.
+        let mut polling_interval = Duration::from_millis(500);
+        let max_polling_interval = Duration::from_secs(5);
+        let max_wait_time = Duration::from_secs(300);
         let start_time = std::time::Instant::now();
 
         loop {
@@ -282,18 +393,14 @@ impl ToadStoolClient {
                     return Ok(execution_info);
                 }
                 _ => {
-                    // Check timeout
                     if start_time.elapsed() > max_wait_time {
                         return Err(ClientError::Timeout(format!(
-                            "Execution {execution_id} did not complete within {max_wait_time:?}. Current status: {:?}. Try increasing the timeout or check if the workload is stuck.",
-                            execution_info.status
+                            "Execution {} did not complete within {:?}",
+                            execution_id, max_wait_time
                         )));
                     }
 
-                    // Wait before next poll with exponential backoff
                     tokio::time::sleep(polling_interval).await;
-
-                    // Exponential backoff: increase interval by 50% each time, capped at max
                     polling_interval =
                         std::cmp::min(polling_interval * 3 / 2, max_polling_interval);
                 }
@@ -367,7 +474,81 @@ impl ToadStoolClient {
         handlers.push(Box::new(handler));
     }
 
-    /// Start WebSocket connection for real-time events
+    /// Subscribe to server events via WebSocket
+    ///
+    /// Returns a channel receiver that receives server events in real-time.
+    /// This is the modern, event-driven approach that eliminates polling.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if WebSocket connection fails
+    pub async fn subscribe_to_events(&self) -> ClientResult<mpsc::UnboundedReceiver<ServerEvent>> {
+        let ws_url = self
+            .config
+            .base_url
+            .replace("http://", "ws://")
+            .replace("https://", "wss://");
+        let ws_url = format!("{ws_url}/ws");
+
+        debug!("Connecting to WebSocket: {}", ws_url);
+
+        let url = Url::parse(&ws_url)?;
+        let (ws_stream, _) = connect_async(url)
+            .await
+            .map_err(|e| ClientError::WebSocket(format!("Connection failed: {}", e)))?;
+
+        let (mut write, mut read) = ws_stream.split();
+
+        // Create channel for events
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        // Subscribe to events
+        let subscribe_msg = serde_json::json!({
+            "type": "subscribe"
+        });
+        write
+            .send(Message::Text(subscribe_msg.to_string()))
+            .await
+            .map_err(|e| ClientError::WebSocket(format!("Failed to subscribe: {}", e)))?;
+
+        // Spawn task to receive events
+        tokio::spawn(async move {
+            while let Some(msg_result) = read.next().await {
+                match msg_result {
+                    Ok(Message::Text(text)) => {
+                        match serde_json::from_str::<serde_json::Value>(&text) {
+                            Ok(value) => {
+                                // Parse as ServerEvent
+                                if let Ok(event) = serde_json::from_value::<ServerEvent>(value) {
+                                    if tx.send(event).is_err() {
+                                        debug!("Event receiver dropped, closing WebSocket");
+                                        break;
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to parse WebSocket message: {}", e);
+                            }
+                        }
+                    }
+                    Ok(Message::Close(_)) => {
+                        debug!("WebSocket closed by server");
+                        break;
+                    }
+                    Err(e) => {
+                        error!("WebSocket error: {}", e);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        });
+
+        info!("WebSocket event subscription established");
+        Ok(rx)
+    }
+
+    /// Start WebSocket connection for real-time events (legacy method)
     ///
     /// # Errors
     ///
@@ -386,7 +567,7 @@ impl ToadStoolClient {
 
         debug!("Connecting to WebSocket: {}", ws_url);
 
-        let event_handlers = self.event_handlers.clone();
+        let event_handlers = Arc::clone(&self.event_handlers);
 
         tokio::spawn(async move {
             if let Ok((ws_stream, _)) = connect_async(&ws_url).await {

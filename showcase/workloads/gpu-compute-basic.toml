@@ -1,0 +1,32 @@
+# Basic GPU Compute Workload
+# Demonstrates ToadStool's universal GPU runtime
+
+[metadata]
+name = "Basic GPU Vector Addition"
+description = "Simple vector addition on GPU - proves GPU runtime works"
+version = "1.0.0"
+
+[execution]
+type = "gpu"
+kernel_name = "vector_add"
+source = '''
+__kernel void vector_add(
+    __global const float* a,
+    __global const float* b,
+    __global float* result,
+    const unsigned int size
+) {
+    int gid = get_global_id(0);
+    if (gid < size) {
+        result[gid] = a[gid] + b[gid];
+    }
+}
+'''
+# Input data
+input_data = { "size" = 1024, "a" = "random", "b" = "random" }
+output_data_keys = ["result"]
+
+[resources]
+memory_mb = 256
+gpu = true
+

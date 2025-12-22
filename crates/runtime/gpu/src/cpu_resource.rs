@@ -147,16 +147,19 @@ impl CpuComputeResource {
                 level: 1,
                 size_bytes: 32 * 1024, // 32 KB typical L1
                 line_size_bytes: 64,
+                associativity: 8, // Typical L1 associativity
             },
             CacheLevel {
                 level: 2,
                 size_bytes: 256 * 1024, // 256 KB typical L2
                 line_size_bytes: 64,
+                associativity: 8, // Typical L2 associativity
             },
             CacheLevel {
                 level: 3,
                 size_bytes: 8 * 1024 * 1024, // 8 MB typical L3
                 line_size_bytes: 64,
+                associativity: 16, // Typical L3 associativity
             },
         ]
     }
@@ -411,6 +414,12 @@ impl Default for CpuComputeResource {
             );
             // Fallback to minimal single-threaded resource
             let num_cores = 1;
+
+            // JUSTIFICATION: This is Default::default() fallback for a critical system resource.
+            // If we cannot create even a single-threaded thread pool, the system is fundamentally
+            // broken and cannot execute compute tasks. Panicking here is appropriate as it's
+            // a catastrophic system failure, not a recoverable error.
+            #[allow(clippy::expect_used)]
             let thread_pool = rayon::ThreadPoolBuilder::new()
                 .num_threads(1)
                 .thread_name(|_| "toadstool-cpu-fallback".to_string())

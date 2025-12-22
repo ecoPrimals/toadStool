@@ -53,7 +53,7 @@ mod initialization_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capabilities_detection() {
         #[derive(Debug, Clone)]
         struct SystemCapabilities {
@@ -90,7 +90,7 @@ mod initialization_tests {
 mod job_submission_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_job_queue_management() {
         let queue: Arc<RwLock<Vec<Uuid>>> = Arc::new(RwLock::new(Vec::new()));
 
@@ -132,7 +132,7 @@ mod job_submission_tests {
         assert_eq!(priorities[3], JobPriority::Critical);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_job_submissions() {
         let submissions = Arc::new(RwLock::new(Vec::new()));
         let mut handles = vec![];
@@ -187,7 +187,7 @@ mod job_submission_tests {
 mod node_registration_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_node_registry() {
         #[derive(Debug, Clone)]
         struct Node {
@@ -238,7 +238,7 @@ mod node_registration_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_node_deregistration() {
         let nodes: Arc<RwLock<HashMap<Uuid, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -292,7 +292,7 @@ mod health_monitoring_tests {
         assert_eq!(statuses.len(), 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_tracking() {
         #[derive(Debug)]
         struct HealthCheck {
@@ -349,7 +349,7 @@ mod health_monitoring_tests {
         assert!(failure_count > max_failures);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_status_transitions() {
         #[derive(Debug, PartialEq)]
         enum Status {
@@ -392,7 +392,7 @@ mod capability_tracking_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_capability_registry() {
         let capabilities: Arc<RwLock<HashMap<Uuid, Vec<String>>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -494,7 +494,7 @@ mod job_scheduling_tests {
         assert!(constraints.min_cpu_cores > 0.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_job_queue_ordering() {
         #[derive(Debug, Clone)]
         struct Job {
@@ -574,7 +574,7 @@ mod network_resilience_tests {
         assert!(elapsed_ms > timeout_ms);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_failover_mechanism() {
         let primary_available = false;
         let secondary_available = true;
@@ -617,7 +617,7 @@ mod resource_coordination_tests {
         assert_eq!(available_cpu, 8.0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_resource_reservation() {
         #[derive(Debug)]
         struct Reservation {
@@ -673,7 +673,7 @@ mod resource_coordination_tests {
 mod concurrent_execution_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_parallel_job_execution() {
         let job_count = Arc::new(RwLock::new(0));
         let mut handles = vec![];
@@ -681,7 +681,7 @@ mod concurrent_execution_tests {
         for _ in 0..10 {
             let count = Arc::clone(&job_count);
             let handle = tokio::spawn(async move {
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
                 let mut c = count.write().await;
                 *c += 1;
             });
@@ -705,7 +705,7 @@ mod concurrent_execution_tests {
         assert!(!can_execute_all);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_job_synchronization() {
         let barrier_count = Arc::new(RwLock::new(0));
         let mut handles = vec![];
@@ -769,7 +769,7 @@ mod error_handling_tests {
         matches!(action, RecoveryAction::Retry);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_job_failure_handling() {
         let mut failed_jobs: Vec<Uuid> = Vec::new();
         let job_id = Uuid::new_v4();
@@ -797,7 +797,7 @@ mod error_handling_tests {
 mod performance_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_high_throughput_submission() {
         let submissions = Arc::new(RwLock::new(Vec::new()));
 

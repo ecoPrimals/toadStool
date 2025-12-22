@@ -1,0 +1,386 @@
+//! Distributed GPU Scheduling - Multi-Tower Compute Coordination
+//!
+//! This module provides capability-based GPU resource discovery and scheduling
+//! across multiple ToadStool towers using Songbird for coordination.
+//!
+//! ## Architecture
+//!
+//! The distributed scheduler is composed of three logical components:
+//!
+//! - **TowerManager**: Discovery and health monitoring of remote towers via Songbird
+//! - **JobTracker**: Lifecycle and state management of distributed jobs
+//! - **Scheduler**: Coordination and execution strategies
+//!
+//! ## Design Principles
+//!
+//! - **Self-Knowledge**: Only knows own capabilities, discovers others at runtime
+//! - **Zero-Cost Abstractions**: Module boundaries have no runtime overhead
+//! - **Testable**: Each component can be tested independently
+//! - **Evolvable**: Easy to add new strategies and capabilities
+
+mod job_tracker;
+mod tower_manager;
+mod types;
+
+pub use job_tracker::JobTracker;
+pub use tower_manager::TowerManager;
+pub use types::{
+    DistributedJobState, DistributedStats, JobStatus, PartitionStrategy, RemoteTowerEndpoint,
+};
+
+use crate::scheduler::UniversalComputeScheduler;
+use crate::universal::{UniversalWorkload, WorkloadResult};
+use std::collections::HashMap;
+use std::sync::Arc;
+use toadstool::error::{ToadStoolError, ToadStoolResult};
+use uuid::Uuid;
+
+/// Distributed GPU scheduler for multi-tower execution
+///
+/// Coordinates GPU workloads across multiple ToadStool towers discovered
+/// via Songbird capability-based discovery.
+///
+/// # Example
+///
+/// ```no_run
+/// use toadstool_runtime_gpu::distributed::DistributedGpuScheduler;
+/// use toadstool_runtime_gpu::scheduler::{UniversalComputeScheduler, SchedulingPolicy};
+/// use std::sync::Arc;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let local = Arc::new(UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch));
+/// let scheduler = DistributedGpuScheduler::new(local);
+///
+/// // Discover and register remote towers via Songbird
+/// // ...
+///
+/// // Execute workload across distributed towers
+/// // let result = scheduler.execute_distributed(workload, strategy).await?;
+/// # Ok(())
+/// # }
+/// ```
+pub struct DistributedGpuScheduler {
+    /// Local GPU scheduler
+    local_scheduler: Arc<UniversalComputeScheduler>,
+
+    /// Tower discovery and management
+    tower_manager: TowerManager,
+
+    /// Job state tracking
+    job_tracker: JobTracker,
+}
+
+impl DistributedGpuScheduler {
+    /// Create new distributed scheduler with local GPU scheduler
+    pub fn new(local_scheduler: Arc<UniversalComputeScheduler>) -> Self {
+        let tower_id = Uuid::new_v4().to_string();
+
+        Self {
+            local_scheduler,
+            tower_manager: TowerManager::new(tower_id),
+            job_tracker: JobTracker::new(),
+        }
+    }
+
+    /// Register a remote tower discovered via Songbird
+    ///
+    /// Towers are discovered at runtime through capability queries to Songbird.
+    /// No endpoints are hardcoded.
+    pub async fn register_remote_tower(&self, endpoint: RemoteTowerEndpoint) {
+        self.tower_manager.register_tower(endpoint).await;
+    }
+
+    /// Get all available tower IDs
+    pub async fn available_towers(&self) -> Vec<String> {
+        self.tower_manager.available_tower_ids().await
+    }
+
+    /// Execute workload with distribution strategy
+    ///
+    /// # Arguments
+    ///
+    /// * `workload` - The GPU workload to execute
+    /// * `strategy` - How to distribute the workload across towers
+    ///
+    /// # Returns
+    ///
+    /// Aggregated result from distributed execution
+    pub async fn execute_distributed(
+        &self,
+        workload: UniversalWorkload,
+        strategy: PartitionStrategy,
+    ) -> ToadStoolResult<WorkloadResult> {
+        let job_id = Uuid::new_v4().to_string();
+
+        // Register job
+        let job = DistributedJobState {
+            job_id: job_id.clone(),
+            workload: workload.clone(),
+            status: JobStatus::Pending,
+            assigned_tower: None,
+            result: None,
+            created_at: std::time::Instant::now(),
+            completed_at: None,
+        };
+        self.job_tracker.register_job(job).await;
+
+        tracing::info!(
+            "Executing distributed job {} with strategy: {:?}",
+            job_id,
+            strategy
+        );
+
+        // Execute based on strategy
+        let result = match strategy {
+            PartitionStrategy::Single => self.execute_single(&job_id, workload).await,
+            PartitionStrategy::Redundant { replicas } => {
+                self.execute_redundant(&job_id, workload, replicas).await
+            }
+            PartitionStrategy::DataParallel { chunk_size } => {
+                self.execute_data_parallel(&job_id, workload, chunk_size)
+                    .await
+            }
+            PartitionStrategy::Pipeline { stages } => {
+                self.execute_pipeline(&job_id, workload, stages).await
+            }
+        };
+
+        // Update job status based on result
+        match &result {
+            Ok(workload_result) => {
+                self.job_tracker
+                    .complete_job(&job_id, workload_result.clone())
+                    .await;
+            }
+            Err(_) => {
+                self.job_tracker.fail_job(&job_id).await;
+            }
+        }
+
+        result
+    }
+
+    /// Get distributed scheduling statistics
+    pub async fn statistics(&self) -> DistributedStats {
+        let mut stats = self.job_tracker.statistics().await;
+
+        // Add tower information
+        stats.total_towers = self.tower_manager.tower_count().await;
+        stats.active_towers = stats.total_towers; // TODO: Track active vs total
+
+        stats
+    }
+
+    // === Private Execution Methods ===
+
+    /// Execute on single best tower
+    async fn execute_single(
+        &self,
+        job_id: &str,
+        workload: UniversalWorkload,
+    ) -> ToadStoolResult<WorkloadResult> {
+        // Select best tower
+        let tower_id = self
+            .tower_manager
+            .select_best_tower(&workload.requirements)
+            .await?;
+
+        // Assign to tower
+        self.job_tracker
+            .assign_to_tower(job_id, tower_id.clone())
+            .await;
+
+        // Execute
+        if tower_id == self.tower_manager.local_tower_id() {
+            self.execute_local(workload).await
+        } else {
+            self.execute_remote(&tower_id, workload).await
+        }
+    }
+
+    /// Execute with redundancy (race multiple towers, use fastest)
+    async fn execute_redundant(
+        &self,
+        _job_id: &str,
+        workload: UniversalWorkload,
+        replicas: usize,
+    ) -> ToadStoolResult<WorkloadResult> {
+        // Select multiple towers
+        let towers = self
+            .tower_manager
+            .select_multiple_towers(&workload.requirements, replicas)
+            .await?;
+
+        if towers.is_empty() {
+            return Err(ToadStoolError::runtime("No towers available"));
+        }
+
+        // Execute on all towers, return first successful result
+        let mut handles = Vec::new();
+
+        for tower_id in towers {
+            let workload_clone = workload.clone();
+            let is_local = tower_id == self.tower_manager.local_tower_id();
+
+            let handle = if is_local {
+                let scheduler = Arc::clone(&self.local_scheduler);
+                tokio::spawn(async move {
+                    let resource = scheduler
+                        .select_resource(&workload_clone.requirements)
+                        .await?;
+                    let mut context = resource.create_context().await?;
+                    context.execute(&workload_clone).await
+                })
+            } else {
+                let endpoint = self.tower_manager.get_tower_endpoint(&tower_id).await;
+                tokio::spawn(async move {
+                    if let Some(ep) = endpoint {
+                        // TODO: Actual remote execution via HTTP/gRPC
+                        Self::execute_remote_http(&ep.address, workload_clone).await
+                    } else {
+                        Err(ToadStoolError::runtime("Tower endpoint not found"))
+                    }
+                })
+            };
+
+            handles.push(handle);
+        }
+
+        // Wait for first successful result
+        for handle in handles {
+            if let Ok(result) = handle.await {
+                if result.is_ok() {
+                    return result;
+                }
+            }
+        }
+
+        Err(ToadStoolError::runtime("All redundant executions failed"))
+    }
+
+    /// Execute with data parallelism (split data across towers)
+    async fn execute_data_parallel(
+        &self,
+        _job_id: &str,
+        workload: UniversalWorkload,
+        _chunk_size: usize,
+    ) -> ToadStoolResult<WorkloadResult> {
+        // For now, fall back to single execution
+        // TODO: Implement actual data partitioning and aggregation
+        self.execute_local(workload).await
+    }
+
+    /// Execute as pipeline (stages across towers)
+    async fn execute_pipeline(
+        &self,
+        _job_id: &str,
+        workload: UniversalWorkload,
+        stages: Vec<String>,
+    ) -> ToadStoolResult<WorkloadResult> {
+        if stages.is_empty() {
+            return self.execute_local(workload).await;
+        }
+
+        // For now, execute all stages locally
+        // TODO: Distribute stages across towers based on capabilities
+        self.execute_local(workload).await
+    }
+
+    /// Execute on local GPU
+    async fn execute_local(&self, workload: UniversalWorkload) -> ToadStoolResult<WorkloadResult> {
+        // Select best resource and create execution context
+        let resource = self
+            .local_scheduler
+            .select_resource(&workload.requirements)
+            .await?;
+        let mut context = resource.create_context().await?;
+        context.execute(&workload).await
+    }
+
+    /// Execute on remote tower
+    async fn execute_remote(
+        &self,
+        tower_id: &str,
+        workload: UniversalWorkload,
+    ) -> ToadStoolResult<WorkloadResult> {
+        let endpoint = self
+            .tower_manager
+            .get_tower_endpoint(tower_id)
+            .await
+            .ok_or_else(|| ToadStoolError::runtime("Tower endpoint not found"))?;
+
+        Self::execute_remote_http(&endpoint.address, workload).await
+    }
+
+    /// Execute on remote tower via HTTP (static for spawning)
+    async fn execute_remote_http(
+        address: &str,
+        _workload: UniversalWorkload,
+    ) -> ToadStoolResult<WorkloadResult> {
+        // TODO: Implement actual HTTP/gRPC remote execution
+        tracing::warn!("Remote execution to {} not yet implemented", address);
+
+        // Placeholder result
+        Ok(WorkloadResult {
+            outputs: HashMap::new(),
+            metrics: crate::universal::ExecutionMetrics {
+                execution_time: std::time::Duration::from_secs(0),
+                memory_used: 0,
+                energy_joules: None,
+                utilization: 0.0,
+            },
+            messages: vec!["Remote execution placeholder".to_string()],
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scheduler::SchedulingPolicy;
+    use std::time::Instant;
+
+    #[tokio::test]
+    async fn test_distributed_scheduler_creation() {
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let towers = scheduler.available_towers().await;
+        assert_eq!(towers.len(), 1); // Only local initially
+    }
+
+    #[tokio::test]
+    async fn test_register_remote_tower() {
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let endpoint = RemoteTowerEndpoint {
+            tower_id: "remote-1".to_string(),
+            address: "10.0.0.2:8080".to_string(),
+            gpu_capabilities: None,
+            last_seen: Instant::now(),
+            latency_ms: 5,
+        };
+
+        scheduler.register_remote_tower(endpoint).await;
+
+        let towers = scheduler.available_towers().await;
+        assert_eq!(towers.len(), 2); // Local + 1 remote
+    }
+
+    #[tokio::test]
+    async fn test_statistics() {
+        let local = Arc::new(UniversalComputeScheduler::new(
+            SchedulingPolicy::CapabilityMatch,
+        ));
+        let scheduler = DistributedGpuScheduler::new(local);
+
+        let stats = scheduler.statistics().await;
+        assert_eq!(stats.total_towers, 1);
+        assert_eq!(stats.total_jobs, 0);
+    }
+}

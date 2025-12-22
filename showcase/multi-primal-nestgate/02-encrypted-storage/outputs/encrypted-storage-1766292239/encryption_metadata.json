@@ -1,0 +1,10 @@
+{
+  "key_id": "beardog-key-68138233d9cbdf71",
+  "algorithm": "AES-256-GCM",
+  "iv": "6b15151a04c4f104330b707a34a86fab",
+  "auth_tag": "34350e26620c244e0547cdc0fbc48484",
+  "plaintext_hash": "a203b81dc0ce514640dc03dfc3ffcbc5",
+  "encrypted_hash": "encrypted-b4ed180d2a598e5ad9791f92",
+  "encryption_timestamp": "2025-12-20T23:44:04-05:00",
+  "genetic_lineage": "preserved"
+}

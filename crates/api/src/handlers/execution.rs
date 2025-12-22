@@ -87,29 +87,14 @@ pub async fn submit_execution(
         executions.insert(execution_id, execution_info);
     }
 
-    // Create resource allocation
+    // Create resource allocation - more idiomatic with single resources reference
+    let resources = request.resources.as_ref();
     let resource_allocation = ResourceAllocation {
         node_id: DEFAULT_NODE_ID.to_string(),
-        cpu_cores: request
-            .resources
-            .as_ref()
-            .and_then(|r| r.cpu_cores)
-            .unwrap_or(1.0),
-        memory_mb: request
-            .resources
-            .as_ref()
-            .and_then(|r| r.memory_mb)
-            .unwrap_or(512),
-        storage_mb: request
-            .resources
-            .as_ref()
-            .and_then(|r| r.storage_mb)
-            .unwrap_or(1024),
-        gpu_count: request
-            .resources
-            .as_ref()
-            .and_then(|r| r.gpu_count)
-            .unwrap_or(0),
+        cpu_cores: resources.and_then(|r| r.cpu_cores).unwrap_or(1.0),
+        memory_mb: resources.and_then(|r| r.memory_mb).unwrap_or(512),
+        storage_mb: resources.and_then(|r| r.storage_mb).unwrap_or(1024),
+        gpu_count: resources.and_then(|r| r.gpu_count).unwrap_or(0),
     };
 
     // Create monitoring endpoints
@@ -220,45 +205,40 @@ pub async fn list_executions(
     debug!("Listing executions with filter: {:?}", filter);
 
     let executions = state.executions.read().await;
+
+    // ✅ MODERN: Functional filtering with combinators instead of nested if-let
     let mut filtered_executions: Vec<_> = executions
         .values()
         .filter(|exec| {
-            // Apply filters
-            if let Some(status) = &filter.status {
-                if exec.status != *status {
-                    return false;
-                }
-            }
-            if let Some(runtime_type) = &filter.runtime_type {
-                if exec.runtime_type != *runtime_type {
-                    return false;
-                }
-            }
-            if let Some(after) = &filter.submitted_after {
-                if exec.submitted_at < *after {
-                    return false;
-                }
-            }
-            if let Some(before) = &filter.submitted_before {
-                if exec.submitted_at > *before {
-                    return false;
-                }
-            }
-            true
+            // ✅ MODERN: Use is_none_or for optional predicates (Rust 1.82+)
+            filter.status.as_ref().is_none_or(|s| &exec.status == s)
+                && filter
+                    .runtime_type
+                    .as_ref()
+                    .is_none_or(|rt| &exec.runtime_type == rt)
+                && filter
+                    .submitted_after
+                    .as_ref()
+                    .is_none_or(|after| exec.submitted_at >= *after)
+                && filter
+                    .submitted_before
+                    .as_ref()
+                    .is_none_or(|before| exec.submitted_at <= *before)
         })
         .collect();
 
-    // Sort by submission time (newest first)
-    filtered_executions.sort_by(|a, b| b.submitted_at.cmp(&a.submitted_at));
+    // ✅ MODERN: Functional sorting with sort_by_key
+    filtered_executions.sort_by_key(|exec| std::cmp::Reverse(exec.submitted_at));
 
     let total_items = filtered_executions.len() as u64;
     let total_pages = total_items.div_ceil(u64::from(per_page));
-    let start_index = ((page - 1) * per_page) as usize;
-    let end_index = std::cmp::min(start_index + per_page as usize, filtered_executions.len());
 
-    let page_data = filtered_executions[start_index..end_index]
-        .iter()
-        .map(|exec| (*exec).clone())
+    // ✅ MODERN: Iterator adapters for pagination (skip/take) instead of manual indexing
+    let page_data: Vec<_> = filtered_executions
+        .into_iter()
+        .skip(((page - 1) * per_page) as usize)
+        .take(per_page as usize)
+        .cloned()
         .collect();
 
     let pagination = PaginationInfo {

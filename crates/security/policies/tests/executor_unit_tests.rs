@@ -87,7 +87,7 @@ fn test_executor_default() {
 // Test: Execute - Allow
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_allow() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::Allow;
@@ -106,7 +106,7 @@ async fn test_execute_allow() {
 // Test: Execute - Deny
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_deny() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::Deny;
@@ -125,7 +125,7 @@ async fn test_execute_deny() {
 // Test: Execute - AllowWithWarning
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_allow_with_warning() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::AllowWithWarning {
@@ -148,7 +148,7 @@ async fn test_execute_allow_with_warning() {
 // Test: Execute - DenyWithMessage
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_deny_with_message() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::DenyWithMessage {
@@ -174,7 +174,7 @@ async fn test_execute_deny_with_message() {
 // Test: Execute - ModifySecurityContext - IsolationLevel
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_modify_security_context_isolation() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ModifySecurityContext {
@@ -205,7 +205,7 @@ async fn test_execute_modify_security_context_isolation() {
 // Test: Execute - ModifySecurityContext - Add Capabilities
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_modify_security_context_add_capabilities() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ModifySecurityContext {
@@ -240,7 +240,7 @@ async fn test_execute_modify_security_context_add_capabilities() {
 // Test: Execute - ModifySecurityContext - Remove Capabilities
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_modify_security_context_remove_capabilities() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ModifySecurityContext {
@@ -275,7 +275,7 @@ async fn test_execute_modify_security_context_remove_capabilities() {
 // Test: Execute - ModifySecurityContext - Combined
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_modify_security_context_combined() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ModifySecurityContext {
@@ -299,7 +299,7 @@ async fn test_execute_modify_security_context_combined() {
 // Test: Execute - ApplyResourceLimits - CPU
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_apply_resource_limits_cpu() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ApplyResourceLimits {
@@ -331,7 +331,7 @@ async fn test_execute_apply_resource_limits_cpu() {
 // Test: Execute - ApplyResourceLimits - Memory
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_apply_resource_limits_memory() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ApplyResourceLimits {
@@ -356,7 +356,7 @@ async fn test_execute_apply_resource_limits_memory() {
 // Test: Execute - ApplyResourceLimits - Network
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_apply_resource_limits_network() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ApplyResourceLimits {
@@ -384,7 +384,7 @@ async fn test_execute_apply_resource_limits_network() {
 // Test: Execute - ApplyResourceLimits - All
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_apply_resource_limits_all() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ApplyResourceLimits {
@@ -425,7 +425,7 @@ async fn test_execute_apply_resource_limits_all() {
 // Test: Execute - RequireAuthentication
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_require_authentication() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::RequireAuthentication {
@@ -451,7 +451,7 @@ async fn test_execute_require_authentication() {
 // Test: Execute - LogAndContinue
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_log_and_continue() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::LogAndContinue {
@@ -476,7 +476,7 @@ async fn test_execute_log_and_continue() {
 // Test: Execute - Custom Action
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_custom_action() {
     let executor = ActionExecutor::new();
     let mut params = HashMap::new();
@@ -507,7 +507,7 @@ async fn test_execute_custom_action() {
 // Test: Execute - Multiple Actions in Sequence
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_multiple_actions_sequence() {
     let executor = ActionExecutor::new();
     let context = create_test_context();
@@ -560,7 +560,7 @@ async fn test_execute_multiple_actions_sequence() {
 // Test: Execute - Edge Cases
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_empty_capabilities_lists() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ModifySecurityContext {
@@ -579,7 +579,7 @@ async fn test_execute_empty_capabilities_lists() {
     assert_eq!(result.security_modifications.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_no_resource_limits() {
     let executor = ActionExecutor::new();
     let action = PolicyAction::ApplyResourceLimits {

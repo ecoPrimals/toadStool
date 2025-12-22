@@ -85,6 +85,7 @@ pub use resources::{
 
 // From storage module
 pub use storage::{
-    BiomeStorage, PersistentVolume, ReplicationSettings, StorageClass, StorageProvisioningRequest,
-    VolumeInfo, VolumeMountInfo, VolumeMountSpec,
+    BiomeStorage, MountStatus, PersistentVolume, ReplicationSettings, StorageClass,
+    StorageProvisioningRequest, VolumeCleanupStatus, VolumeInfo, VolumeMountInfo, VolumeMountSpec,
+    VolumeMountStatus, VolumeProvisioningStatus,
 };

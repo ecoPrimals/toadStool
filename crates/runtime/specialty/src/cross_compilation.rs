@@ -12,13 +12,15 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 use tracing::info;
 
-use crate::{
-    CrossCompilationToolchain, LegacyArchitecture, ToolchainConfig, 
-    CompilationResult, LinkResult, ToadStoolResult, ToadStoolError,
-    LegacyJobSource, CompilationRequirements, ROMFormat,
-};
+use crate::types::cross_compilation::{CrossCompilationToolchain, CompilationResult, LinkResult, ROMFormat};
+use crate::types::systems::LegacyArchitecture;
+use crate::types::configs::ToolchainConfig;
+use crate::types::jobs::LegacyJobSource;
+use crate::types::requirements::CompilationRequirements;
+use crate::{ToadStoolResult, ToadStoolError};
 
 /// 6502 Toolchain
 #[derive(Debug)]
@@ -68,6 +70,7 @@ impl Toolchain68000 {
     }
 }
 
+#[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain6502 {
     fn name(&self) -> &str {
         &self.name
@@ -89,11 +92,10 @@ impl CrossCompilationToolchain for Toolchain6502 {
         // Simulate compilation
         Ok(CompilationResult {
             success: true,
-            executable: Some(PathBuf::from("output.prg")),
-            objects: vec![PathBuf::from("output.o")],
-            output: "6502 compilation successful".to_string(),
-            errors: String::new(),
-            warnings: String::new(),
+            output_path: Some(PathBuf::from("output.prg")),
+            object_files: vec![PathBuf::from("output.o")],
+            messages: vec!["6502 compilation successful".to_string()],
+            warnings: vec![],
         })
     }
     
@@ -103,10 +105,9 @@ impl CrossCompilationToolchain for Toolchain6502 {
         // Simulate linking
         Ok(LinkResult {
             success: true,
-            executable: Some(PathBuf::from("output.prg")),
-            output: "6502 linking successful".to_string(),
-            errors: String::new(),
-            memory_map: Some("Memory map".to_string()),
+            executable_path: Some(PathBuf::from("output.prg")),
+            messages: vec!["6502 linking successful".to_string()],
+            warnings: vec![],
         })
     }
     
@@ -125,6 +126,7 @@ impl CrossCompilationToolchain for Toolchain6502 {
     }
 }
 
+#[async_trait::async_trait]
 impl CrossCompilationToolchain for ToolchainZ80 {
     fn name(&self) -> &str {
         &self.name
@@ -160,10 +162,9 @@ impl CrossCompilationToolchain for ToolchainZ80 {
         // Simulate linking
         Ok(LinkResult {
             success: true,
-            executable: Some(PathBuf::from("output.com")),
-            output: "Z80 linking successful".to_string(),
-            errors: String::new(),
-            memory_map: Some("Memory map".to_string()),
+            executable_path: Some(PathBuf::from("output.com")),
+            messages: vec!["Z80 linking successful".to_string()],
+            warnings: vec![],
         })
     }
     
@@ -182,6 +183,7 @@ impl CrossCompilationToolchain for ToolchainZ80 {
     }
 }
 
+#[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain68000 {
     fn name(&self) -> &str {
         &self.name
@@ -217,10 +219,9 @@ impl CrossCompilationToolchain for Toolchain68000 {
         // Simulate linking
         Ok(LinkResult {
             success: true,
-            executable: Some(PathBuf::from("output.bin")),
-            output: "68000 linking successful".to_string(),
-            errors: String::new(),
-            memory_map: Some("Memory map".to_string()),
+            executable_path: Some(PathBuf::from("output.bin")),
+            messages: vec!["68000 linking successful".to_string()],
+            warnings: vec![],
         })
     }
     

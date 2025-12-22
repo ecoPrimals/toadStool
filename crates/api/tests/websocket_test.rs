@@ -210,21 +210,21 @@ fn test_websocket_message_event() {
 // WebSocketManager Tests (7 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_creation() {
     let manager = WebSocketManager::new();
     let count = manager.get_connection_count().await;
     assert_eq!(count, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_default() {
     let manager = WebSocketManager::default();
     let count = manager.get_connection_count().await;
     assert_eq!(count, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_add_connection() {
     let manager = WebSocketManager::new();
     let conn = WebSocketConnection {
@@ -239,7 +239,7 @@ async fn test_websocket_manager_add_connection() {
     assert_eq!(count, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_remove_connection() {
     let manager = WebSocketManager::new();
     let conn_id = Uuid::new_v4();
@@ -257,7 +257,7 @@ async fn test_websocket_manager_remove_connection() {
     assert_eq!(manager.get_connection_count().await, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_multiple_connections() {
     let manager = WebSocketManager::new();
 
@@ -274,7 +274,7 @@ async fn test_websocket_manager_multiple_connections() {
     assert_eq!(manager.get_connection_count().await, 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_broadcast_event() {
     let manager = WebSocketManager::new();
 
@@ -299,7 +299,7 @@ async fn test_websocket_manager_broadcast_event() {
     manager.broadcast_event(&event).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_concurrent_operations() {
     let manager = Arc::new(WebSocketManager::new());
 

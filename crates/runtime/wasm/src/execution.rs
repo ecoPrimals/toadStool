@@ -302,9 +302,10 @@ impl ModuleExecutor {
             network: toadstool::resources::NetworkMetrics::default(),
             gpu: None,
             timing: toadstool::resources::TimingMetrics {
-                start_time: chrono::Utc::now() - chrono::Duration::from_std(duration).unwrap_or_default(),
+                start_time: chrono::Utc::now() 
+                    - chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
                 end_time: Some(chrono::Utc::now()),
-                duration: chrono::Duration::from_std(duration).unwrap_or_default(),
+                duration: chrono::Duration::from_std(duration).unwrap_or_else(|_| chrono::Duration::zero()),
             },
         };
 

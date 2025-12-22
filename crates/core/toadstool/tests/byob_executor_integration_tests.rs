@@ -234,6 +234,7 @@ fn test_byob_executor_config_custom() {
         deployment_timeout: Duration::from_secs(1200),
         default_host_port: 8080,
         web_service_ports: vec![80, 443, 8080],
+        graceful_shutdown_timeout_secs: 30,
     };
 
     assert_eq!(config.max_concurrent_deployments, 100);
@@ -290,6 +291,7 @@ fn test_byob_executor_creation_with_custom_config() {
         deployment_timeout: Duration::from_secs(900),
         default_host_port: 9000,
         web_service_ports: vec![80, 443],
+        graceful_shutdown_timeout_secs: 30,
     };
 
     let executor = ByobComputeExecutor::new(runtime_engine, config);

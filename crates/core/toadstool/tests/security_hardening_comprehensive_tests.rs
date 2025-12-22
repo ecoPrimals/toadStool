@@ -536,7 +536,7 @@ fn test_activity_type_debug() {
 // SecurityAuditLogger Tests (3 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_audit_logger_creation() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -545,7 +545,7 @@ async fn test_security_audit_logger_creation() {
     assert_eq!(events.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_audit_logger_log_event() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -567,7 +567,7 @@ async fn test_security_audit_logger_log_event() {
     assert_eq!(events.len(), 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_security_audit_logger_multiple_events() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);

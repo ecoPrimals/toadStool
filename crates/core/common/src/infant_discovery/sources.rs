@@ -92,7 +92,7 @@ impl FallbackSource {
         // Helper to get host from environment or use default
         let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
             .or_else(|_| std::env::var("BIND_HOST"))
-            .unwrap_or_else(|_| "127.0.0.1".to_string());
+            .unwrap_or_else(|_| crate::constants::LOCALHOST_IPV4.to_string());
 
         // Helper to get service endpoints from environment or defaults
         let songbird_endpoint = std::env::var("SONGBIRD_URL")
@@ -205,24 +205,22 @@ impl EndpointSource for MDNSSource {
             // Check if service matches common patterns
             for (svc, port) in common_mdns_ports {
                 if service.contains(svc) {
-                    let endpoint = format!("http://localhost:{port}");
+                    let endpoint = format!("http://{}:{port}", crate::constants::DEFAULT_HOSTNAME);
 
                     // Try to verify service is actually running
-                    match reqwest::Client::new()
+                    if reqwest::Client::new()
                         .head(&endpoint)
                         .timeout(std::time::Duration::from_millis(500))
                         .send()
                         .await
+                        .is_ok()
                     {
-                        Ok(_) => {
-                            tracing::debug!(
-                                service,
-                                endpoint,
-                                "Found local service via mDNS-style lookup"
-                            );
-                            return Ok(Some(endpoint));
-                        }
-                        Err(_) => continue,
+                        tracing::debug!(
+                            service,
+                            endpoint,
+                            "Found local service via mDNS-style lookup"
+                        );
+                        return Ok(Some(endpoint));
                     }
                 }
             }
@@ -288,8 +286,9 @@ impl EndpointSource for ServiceMeshSource {
             match mesh_type {
                 ServiceMeshType::Consul => {
                     // Query Consul API for service
-                    let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
-                        .unwrap_or_else(|_| "http://localhost:8500".to_string());
+                    let consul_addr = std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
+                        format!("http://{}:8500", crate::constants::DEFAULT_HOSTNAME)
+                    });
 
                     let url = format!("{consul_addr}/v1/catalog/service/{service}");
 
@@ -327,14 +326,16 @@ impl EndpointSource for ServiceMeshSource {
                     }
                 }
                 ServiceMeshType::Etcd => {
+                    use base64::Engine;
+
                     // Query etcd for service key
-                    let etcd_addr = std::env::var("ETCD_ENDPOINTS")
-                        .unwrap_or_else(|_| "http://localhost:2379".to_string());
+                    let etcd_addr = std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
+                        format!("http://{}:2379", crate::constants::DEFAULT_HOSTNAME)
+                    });
 
                     let key = format!("/services/{service}");
                     let url = format!("{etcd_addr}/v3/kv/range");
 
-                    use base64::Engine;
                     let payload = serde_json::json!({
                         "key": base64::engine::general_purpose::STANDARD.encode(key.as_bytes()),
                     });
@@ -552,7 +553,7 @@ pub fn development_sources() -> Vec<Box<dyn EndpointSource>> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_environment_source() {
         env::set_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT", "http://test:9999");
 
@@ -564,7 +565,7 @@ mod tests {
         env::remove_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_fallback_source() {
         let source = FallbackSource::new();
         let result = source.resolve("ai_processing").await.unwrap();
@@ -576,7 +577,7 @@ mod tests {
         assert!(endpoint.contains("8081") || endpoint.contains("8080")); // Allow both defaults
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_custom_fallback() {
         let mut fallbacks = std::collections::HashMap::new();
         fallbacks.insert(

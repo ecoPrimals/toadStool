@@ -1,12 +1,16 @@
 //! Ecosystem Integration - Type Definitions
+//!
+//! # Zero-Copy Optimization (Phase 2.3)
+//! Service discovery types use `Arc<str>` for frequently-cloned string fields.
 
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use ring::signature::{UnparsedPublicKey, ED25519};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::time::Duration;
 use tracing::{error, warn};
 use uuid::Uuid;
@@ -21,15 +25,89 @@ pub struct EcosystemIntegrator {
     pub(super) credentials: Option<EcosystemCredentials>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compatibility
 pub struct ServiceEndpoint {
     pub service_type: EcosystemService,
     pub address: SocketAddr,
-    pub version: String,
+    /// **Zero-Copy**: Uses `Arc<str>` for cheap clones in registry lookups
+    pub version: Arc<str>,
     pub capabilities: Vec<String>,
     pub trust_level: TrustLevel,
 }
 
+// Custom Serialize implementation for ServiceEndpoint
+impl Serialize for ServiceEndpoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ServiceEndpoint", 5)?;
+        state.serialize_field("service_type", &self.service_type)?;
+        state.serialize_field("address", &self.address)?;
+        state.serialize_field("version", self.version.as_ref())?;
+        state.serialize_field("capabilities", &self.capabilities)?;
+        state.serialize_field("trust_level", &self.trust_level)?;
+        state.end()
+    }
+}
+
+// Custom Deserialize implementation for ServiceEndpoint
+impl<'de> Deserialize<'de> for ServiceEndpoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[allow(deprecated)] // EcosystemService is deprecated but still used for backward compat
+        struct ServiceEndpointHelper {
+            service_type: EcosystemService,
+            address: SocketAddr,
+            version: String,
+            capabilities: Vec<String>,
+            trust_level: TrustLevel,
+        }
+
+        let helper = ServiceEndpointHelper::deserialize(deserializer)?;
+        Ok(ServiceEndpoint {
+            service_type: helper.service_type,
+            address: helper.address,
+            version: Arc::from(helper.version.as_str()),
+            capabilities: helper.capabilities,
+            trust_level: helper.trust_level,
+        })
+    }
+}
+
+/// ⚠️ DEPRECATED: Hardcoded service names enum
+///
+/// **Use `ServiceType` instead.**
+///
+/// This enum hardcodes service names, violating the infant discovery principle.
+/// Services should be identified by capabilities, not by hardcoded names.
+///
+/// # Migration Guide
+/// ```rust,ignore
+/// // ❌ OLD: Hardcoded enum
+/// let service = EcosystemService::BearDog;
+/// match service {
+///     EcosystemService::BearDog => handle_crypto(),
+///     _ => {}
+/// }
+///
+/// // ✅ NEW: Capability-based ServiceType
+/// let service_type = ServiceType::from_capability_list(capabilities);
+/// if service_type.provides_crypto() {
+///     handle_crypto();
+/// }
+/// ```
+///
+/// See: `crate::ecosystem::service_type::ServiceType` for the replacement.
+#[deprecated(
+    since = "0.1.0",
+    note = "Use ServiceType instead. This enum hardcodes service names, violating infant discovery principles."
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EcosystemService {
     Songbird, // Service discovery and coordination
@@ -38,9 +116,12 @@ pub enum EcosystemService {
     Unknown(String),
 }
 
+#[allow(deprecated)] // Implementation of deprecated EcosystemService
 impl EcosystemService {
     // Removed parse() - unused helper. Services are constructed directly.
 
+    /// ⚠️ DEPRECATED: Use `ServiceType::display_name()` instead
+    #[deprecated(since = "0.1.0", note = "Use ServiceType::display_name() instead")]
     pub(super) fn name(&self) -> &str {
         match self {
             EcosystemService::Songbird => "songbird",
@@ -55,7 +136,8 @@ impl EcosystemService {
 pub enum TrustLevel {
     Unknown,
     Discovered, // Found via network scan
-    Advertised, // Advertised via Songbird
+    Advertised, // Advertised via mDNS/service mesh
+    Configured, // Explicitly configured (env var/config file)
     Verified,   // Cryptographically verified
     Sovereign,  // Full sovereign verification
 }
@@ -112,6 +194,7 @@ pub struct NestGateMount {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(deprecated)] // Using ServiceType during migration period
 pub struct DiscoveredService {
     pub service_type: ServiceType,
     pub address: SocketAddr,
@@ -120,12 +203,54 @@ pub struct DiscoveredService {
     pub last_seen: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use capability-based service identification. See service_type.rs"
+)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceType {
     Songbird,
     BearDog,
     NestGate,
     ToadStool,
+    /// Generic service identified by capabilities
+    Generic,
+}
+
+#[allow(deprecated)]
+impl ServiceType {
+    /// Map to capability name (for migration)
+    pub fn to_capability(&self) -> &'static str {
+        match self {
+            ServiceType::Songbird => "orchestration",
+            ServiceType::BearDog => "pki",
+            ServiceType::NestGate => "storage",
+            ServiceType::ToadStool => "compute:execution",
+            ServiceType::Generic => "generic",
+        }
+    }
+
+    /// Create from capability (for migration)
+    pub fn from_capability(capability: &str) -> Self {
+        match capability {
+            "orchestration" => ServiceType::Songbird,
+            "pki" => ServiceType::BearDog,
+            "storage" => ServiceType::NestGate,
+            "compute:execution" | "compute" => ServiceType::ToadStool,
+            _ => ServiceType::Generic,
+        }
+    }
+
+    /// Create from service name (for migration/backward compatibility)
+    pub fn from_name(name: &str) -> Self {
+        match name.to_lowercase().as_str() {
+            "songbird" | "orchestration" => ServiceType::Songbird,
+            "beardog" | "pki" => ServiceType::BearDog,
+            "nestgate" | "storage" => ServiceType::NestGate,
+            "toadstool" | "compute" => ServiceType::ToadStool,
+            _ => ServiceType::Generic,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,9 +311,11 @@ impl CryptoVerificationContext {
         Self::default()
     }
 
+    /// Zero-Copy Optimization: Takes `&str` to avoid allocations.
     #[must_use]
-    pub fn with_trusted_key(mut self, service: String, public_key: String) -> Self {
-        self.trusted_public_keys.insert(service, public_key);
+    pub fn with_trusted_key(mut self, service: &str, public_key: &str) -> Self {
+        self.trusted_public_keys
+            .insert(service.to_string(), public_key.to_string());
         self
     }
 
@@ -273,30 +400,9 @@ impl CryptoVerificationContext {
 }
 
 // Private helper types (used internally by EcosystemIntegrator)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct SongbirdRegistration {
-    pub(super) service_name: String,
-    pub(super) service_type: String,
-    pub(super) address: SocketAddr,
-    pub(super) capabilities: Vec<String>,
-    pub(super) metadata: HashMap<String, String>,
-    pub(super) auth_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub(super) struct SongbirdHeartbeat {
-    pub(super) service_id: String,
-    pub(super) status: String,
-    pub(super) timestamp: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct SongbirdResponse {
-    pub(super) service_id: String,
-    pub(super) registry_url: String,
-    pub(super) heartbeat_interval: u64,
-}
+// SongbirdRegistration, SongbirdHeartbeat, SongbirdResponse: REMOVED
+// These types were part of the deprecated hardcoded Songbird integration.
+// New code uses capability-based adapters in ecosystem::adapters instead.
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct EcosystemStatus {

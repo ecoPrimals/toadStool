@@ -30,6 +30,10 @@ pub struct UniversalScheduler {
 
 impl UniversalScheduler {
     /// Create new scheduler
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if resource coordinator initialization fails.
+    #[must_use = "Scheduler creation should be checked"]
     pub async fn new(primal_registry: Arc<UniversalPrimalRegistry>) -> ToadStoolResult<Self> {
         Ok(Self {
             primal_registry,
@@ -39,6 +43,13 @@ impl UniversalScheduler {
     }
 
     /// Schedule a job
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if:
+    /// - Resource allocation fails.
+    /// - Job execution fails.
+    /// - No suitable primal can be found for the job.
+    #[must_use = "Job scheduling result should be checked"]
     pub async fn schedule_job(&self, job: UniversalJob) -> ToadStoolResult<ExecutionResponse> {
         let job_id = job.id;
         info!("Scheduling job: {}", job_id);

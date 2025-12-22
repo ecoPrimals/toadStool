@@ -143,7 +143,7 @@ fn test_distributed_config_creation() {
 // Async Runtime Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_tokio_runtime_works() {
     // Simple async test to verify tokio works
     let result = tokio::time::timeout(tokio::time::Duration::from_millis(100), async {
@@ -154,7 +154,7 @@ async fn test_tokio_runtime_works() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_task_spawning() {
     let handle = tokio::spawn(async { 42 });
 
@@ -268,11 +268,9 @@ fn test_utc_timestamp() {
 #[test]
 fn test_timestamp_comparison() {
     use chrono::Utc;
-    use std::thread;
-    use std::time::Duration;
 
     let time1 = Utc::now();
-    thread::sleep(Duration::from_millis(10));
+    // ✅ MODERN: Immediate execution (sleep removed)
     let time2 = Utc::now();
 
     assert!(time2 > time1);
@@ -397,7 +395,7 @@ fn test_status_enum_usage() {
 // Integration Test Helpers
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_executor_can_be_created() -> Result<()> {
     use toadstool_cli::executor::BiomeExecutor;
 
@@ -408,7 +406,7 @@ async fn test_executor_can_be_created() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_executors() -> Result<()> {
     use toadstool_cli::executor::BiomeExecutor;
 

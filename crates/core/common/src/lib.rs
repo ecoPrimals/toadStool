@@ -16,9 +16,17 @@ use uuid::Uuid;
 // Public modules
 pub mod auth;
 pub mod config_bases;
+pub mod constants;
 pub mod error;
 pub mod error_codes;
 pub mod infant_discovery;
+pub mod modern_utils;
+pub mod primal_capabilities; // Migration helper (deprecated)
+pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
+pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
+pub mod primal_identity; // NEW: Self-knowledge only architecture
+pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
+pub mod self_identity; // Self-aware primal identity and capability discovery
 
 // Re-export commonly used types
 pub use auth::{AuthCredentials, AuthType, ServiceAuthConfig};
@@ -196,7 +204,7 @@ mod tests {
         assert_eq!(format_bytes(512), "512 B");
         assert_eq!(format_bytes(1024), "1.0 KB");
         assert_eq!(format_bytes(1536), "1.5 KB");
-        assert_eq!(format_bytes(1048576), "1.0 MB");
+        assert_eq!(format_bytes(1_048_576), "1.0 MB");
     }
 
     #[test]

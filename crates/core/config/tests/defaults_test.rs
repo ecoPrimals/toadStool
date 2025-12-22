@@ -2,6 +2,8 @@
 //!
 //! Coverage target: Test all default values are sensible (15 tests)
 
+#![allow(deprecated)] // Testing deprecated constants during migration
+
 use toadstool_config::defaults::*;
 
 // ============================================================================
@@ -141,7 +143,7 @@ fn test_retries_backoff_settings() {
 }
 
 // ============================================================================
-// Sanity Check Tests (2 tests)
+// Validation Tests (2 tests)
 // ============================================================================
 
 #[test]

@@ -294,7 +294,7 @@ fn test_primal_instance_version_format() {
 // discover_primals() Tests - Discovery Orchestration
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_empty_initially() {
     // Test: No primals discovered initially
     // Covers: Initial state
@@ -303,7 +303,7 @@ async fn test_discover_primals_empty_initially() {
     assert_eq!(discovered.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_auto_discovery_enabled() {
     // Test: Auto-discovery enabled by default
     // Covers: Auto-discovery flag
@@ -312,7 +312,7 @@ async fn test_discover_primals_auto_discovery_enabled() {
     assert!(auto_discovery);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_multiple_methods() {
     // Test: Discovery uses multiple methods
     // Covers: Multicast, DNS, local scan
@@ -323,7 +323,7 @@ async fn test_discover_primals_multiple_methods() {
     assert!(discovery_methods.contains(&"multicast"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_primals_stores_results() {
     // Test: Discovered primals are stored
     // Covers: Storage in HashMap
@@ -340,7 +340,7 @@ async fn test_discover_primals_stores_results() {
 // discover_via_multicast() Tests - Multicast Discovery
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multicast_discovery_protocol_id() {
     // Test: Multicast uses correct protocol ID
     // Covers: DISCOVERY_PROTOCOL_ID constant
@@ -350,7 +350,7 @@ async fn test_multicast_discovery_protocol_id() {
     assert_eq!(protocol_id, b"TOADSTOOL_DISCOVERY");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multicast_discovery_network_scan() {
     // Test: Multicast scans local network
     // Covers: Network scanning logic
@@ -362,7 +362,7 @@ async fn test_multicast_discovery_network_scan() {
     assert!(port > 1024);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multicast_discovery_timeout() {
     // Test: Multicast respects timeout
     // Covers: Discovery timeout
@@ -375,7 +375,7 @@ async fn test_multicast_discovery_timeout() {
 // discover_via_dns() Tests - DNS Discovery
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_dns_discovery_srv_records() {
     // Test: DNS discovery uses SRV records
     // Covers: DNS SRV lookup
@@ -385,7 +385,7 @@ async fn test_dns_discovery_srv_records() {
     assert!(srv_query.contains("_tcp"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_dns_discovery_returns_empty_on_failure() {
     // Test: DNS discovery returns empty vec on failure
     // Covers: Error handling
@@ -398,7 +398,7 @@ async fn test_dns_discovery_returns_empty_on_failure() {
 // discover_via_local_scan() Tests - Local Scan
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_local_scan_common_ports() {
     // Test: Local scan checks common ports
     // Covers: Port scanning
@@ -408,7 +408,7 @@ async fn test_local_scan_common_ports() {
     assert!(common_ports.contains(&8085));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_local_scan_localhost() {
     // Test: Local scan checks localhost
     // Covers: Localhost detection
@@ -421,7 +421,7 @@ async fn test_local_scan_localhost() {
 // discover_primal_at_endpoint() Tests - Endpoint Discovery
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_at_endpoint_url_parsing() {
     // Test: Endpoint URL parsing
     // Covers: URL validation
@@ -431,7 +431,7 @@ async fn test_discover_at_endpoint_url_parsing() {
     assert!(endpoint.contains(":"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_at_endpoint_health_check() {
     // Test: Health check endpoint
     // Covers: Health check path
@@ -440,7 +440,7 @@ async fn test_discover_at_endpoint_health_check() {
     assert_eq!(health_path, "/health");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_at_endpoint_info_endpoint() {
     // Test: Info endpoint for primal details
     // Covers: /api/v1/info endpoint
@@ -453,7 +453,7 @@ async fn test_discover_at_endpoint_info_endpoint() {
 // register_primal() Tests - Manual Registration
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_primal_adds_to_map() {
     // Test: Register adds primal to map
     // Covers: Manual registration
@@ -465,7 +465,7 @@ async fn test_register_primal_adds_to_map() {
     assert!(primals.contains_key("songbird"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_primal_validates_name() {
     // Test: Name validation
     // Covers: Name requirements
@@ -478,7 +478,7 @@ async fn test_register_primal_validates_name() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_primal_validates_endpoint() {
     // Test: Endpoint validation
     // Covers: Endpoint format checking
@@ -494,7 +494,7 @@ async fn test_register_primal_validates_endpoint() {
 // connect_to_primal() Tests - Connection Establishment
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connect_creates_channel() {
     // Test: Connection creates communication channel
     // Covers: Channel creation
@@ -505,7 +505,7 @@ async fn test_connect_creates_channel() {
     assert_eq!(channels.len(), 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connect_updates_status() {
     // Test: Connection updates primal status
     // Covers: Status update
@@ -517,7 +517,7 @@ async fn test_connect_updates_status() {
     assert_eq!(connected_status, "Connected");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connect_retry_on_failure() {
     // Test: Retry logic on connection failure
     // Covers: Retry mechanism
@@ -533,7 +533,7 @@ async fn test_connect_retry_on_failure() {
 // send_message() Tests - Communication
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_send_message_requires_connection() {
     // Test: Sending requires active connection
     // Covers: Connection check
@@ -546,7 +546,7 @@ async fn test_send_message_requires_connection() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_send_message_types() {
     // Test: Different message types
     // Covers: EcosystemMessageType
@@ -563,7 +563,7 @@ async fn test_send_message_types() {
     assert!(message_types.contains(&"Heartbeat"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_send_message_serialization() {
     // Test: Message serialization
     // Covers: JSON serialization
@@ -630,7 +630,7 @@ fn test_config_primal_endpoints() {
 // Error Handling Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_discovery_timeout() {
     // Test: Discovery timeout error
     // Covers: Timeout error handling
@@ -639,7 +639,7 @@ async fn test_error_discovery_timeout() {
     assert_eq!(error_type, "DiscoveryTimeout");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_connection_failed() {
     // Test: Connection failure error
     // Covers: Connection error handling
@@ -651,7 +651,7 @@ async fn test_error_connection_failed() {
     assert!(!error_msg.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_invalid_endpoint() {
     // Test: Invalid endpoint error
     // Covers: Endpoint validation error
@@ -663,7 +663,7 @@ async fn test_error_invalid_endpoint() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_primal_not_found() {
     // Test: Primal not found error
     // Covers: Missing primal error
@@ -678,7 +678,7 @@ async fn test_error_primal_not_found() {
 // Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_discovery_flow() {
     // Test: Complete discovery flow
     // Covers: End-to-end discovery
@@ -698,7 +698,7 @@ async fn test_full_discovery_flow() {
     assert_eq!(flow_steps[6], "return_results");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_connection_flow() {
     // Test: Complete connection flow
     // Covers: End-to-end connection
@@ -715,7 +715,7 @@ async fn test_full_connection_flow() {
     assert_eq!(connection_steps.len(), 6);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_primal_connections() {
     // Test: Multiple primals can connect concurrently
     // Covers: Concurrent operations
@@ -732,7 +732,7 @@ async fn test_concurrent_primal_connections() {
 // Lifecycle Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_coordinator_lifecycle() {
     // Test: Coordinator lifecycle
     // Covers: Creation, discovery, operation, shutdown
@@ -749,7 +749,7 @@ async fn test_coordinator_lifecycle() {
     assert_eq!(lifecycle.len(), 6);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_primal_reconnection() {
     // Test: Primal reconnection after disconnect
     // Covers: Reconnection logic

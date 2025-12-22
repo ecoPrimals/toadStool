@@ -141,9 +141,10 @@ pub async fn analyze_intent(
     }
 
     // Find the highest scoring intent
+    // ✅ FIXED: Use total_cmp to handle NaN gracefully (treats NaN as less than all values)
     let (primary_intent, (confidence, matched_keywords)) = intent_scores
         .iter()
-        .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap())
+        .max_by(|a, b| a.1 .0.total_cmp(&b.1 .0))
         .map(|(name, (score, keywords))| (name.clone(), (*score, keywords.clone())))
         .unwrap_or_else(|| ("general_purpose".to_string(), (0.0, Vec::new())));
 
@@ -157,7 +158,8 @@ pub async fn analyze_intent(
         .map(|(name, (score, _))| (name.clone(), *score))
         .collect();
 
-    secondary_intents.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    // ✅ FIXED: Use total_cmp to handle NaN gracefully
+    secondary_intents.sort_by(|a, b| b.1.total_cmp(&a.1));
 
     debug!(
         "Primary intent: {} (confidence: {:.2})",

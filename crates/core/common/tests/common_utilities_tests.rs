@@ -291,7 +291,7 @@ fn test_id_generation_batch() {
 #[test]
 fn test_timestamp_ordering() {
     let ts1 = Timestamp::now();
-    std::thread::sleep(Duration::from_millis(10));
+    // ✅ MODERN: Immediate execution (sleep removed)
     let ts2 = Timestamp::now();
 
     assert!(ts2.inner() >= ts1.inner());

@@ -27,17 +27,26 @@
 
 pub mod assertions;
 pub mod builders;
+pub mod chaos;
 pub mod fixtures;
 pub mod integration;
 pub mod mocks;
 pub mod performance;
 pub mod properties;
 
+// Modern concurrent testing helpers
+pub mod helpers;
+
 // Re-export commonly used testing utilities
 pub use assertions::*;
 pub use builders::*;
 pub use fixtures::*;
 pub use mocks::*;
+
+// Re-export concurrent helpers for modern testing
+pub use helpers::concurrent::*;
+pub use helpers::isolation::*;
+pub use helpers::timeout::*;
 
 // Re-export external testing dependencies for convenience
 pub use fake;
@@ -83,7 +92,7 @@ pub fn init_test_env() {
 #[macro_export]
 macro_rules! async_test {
     ($name:ident, $timeout:expr, $body:expr) => {
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
         #[timeout($timeout)]
         async fn $name() -> $crate::TestResult {
             $crate::init_test_env();

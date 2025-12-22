@@ -194,6 +194,7 @@ impl ExecutionRequestBuilder {
                 .input_data
                 .unwrap_or_else(crate::fixtures::create_test_execution_input),
             callback_config: None,
+            encryption_config: None,
         }
     }
 }

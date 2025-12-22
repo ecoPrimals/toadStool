@@ -7,7 +7,7 @@ use chrono::Utc;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_uuid_generation() -> Result<()> {
     // Test UUID generation for request/session IDs
     let id1 = Uuid::new_v4();
@@ -19,7 +19,7 @@ async fn test_uuid_generation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_session_id_string_conversion() -> Result<()> {
     // Test session ID string conversions
     let session_id = Uuid::new_v4();
@@ -31,7 +31,7 @@ async fn test_session_id_string_conversion() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_counter_increment() -> Result<()> {
     // Test request counter logic
     let mut counter = 0u64;
@@ -45,7 +45,7 @@ async fn test_request_counter_increment() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_session_storage() -> Result<()> {
     // Test session storage in HashMap
     let mut sessions: HashMap<String, String> = HashMap::new();
@@ -59,11 +59,11 @@ async fn test_session_storage() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timestamp_tracking() -> Result<()> {
     // Test timestamp tracking for sessions
     let started_at = Utc::now();
-    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
     let last_activity = Utc::now();
 
     assert!(last_activity > started_at);
@@ -71,7 +71,7 @@ async fn test_timestamp_tracking() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_id_validation() -> Result<()> {
     // Test agent ID validation logic
     let agent_id = "agent-123".to_string();
@@ -82,7 +82,7 @@ async fn test_agent_id_validation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_instruction_parsing() -> Result<()> {
     // Test instruction parsing logic
     let instruction = "set high performance mode";
@@ -95,7 +95,7 @@ async fn test_instruction_parsing() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_preferences_storage() -> Result<()> {
     // Test preferences storage
     let mut preferences: HashMap<String, String> = HashMap::new();
@@ -112,7 +112,7 @@ async fn test_preferences_storage() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_type_classification() -> Result<()> {
     // Test request type classification
     let request_types = vec![
@@ -128,7 +128,7 @@ async fn test_request_type_classification() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_response_message_formatting() -> Result<()> {
     // Test response message formatting
     let status = "completed";
@@ -140,7 +140,7 @@ async fn test_response_message_formatting() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metadata_hashmap() -> Result<()> {
     // Test metadata storage
     let mut metadata: HashMap<String, String> = HashMap::new();
@@ -154,7 +154,7 @@ async fn test_metadata_hashmap() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_option_handling_for_session() -> Result<()> {
     // Test Option handling for optional session ID
     let with_session: Option<String> = Some("session-123".to_string());
@@ -166,7 +166,7 @@ async fn test_option_handling_for_session() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_success_flag_logic() -> Result<()> {
     // Test success flag in responses
     let success = true;
@@ -178,7 +178,7 @@ async fn test_success_flag_logic() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_session_access() -> Result<()> {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -188,7 +188,7 @@ async fn test_concurrent_session_access() -> Result<()> {
     let mut handles = vec![];
 
     for i in 0..5 {
-        let sessions_clone = sessions.clone();
+        let sessions_clone = Arc::clone(&sessions);
         let handle = tokio::spawn(async move {
             let mut guard = sessions_clone.write().await;
             guard.insert(format!("session-{}", i), "active".to_string());
@@ -206,7 +206,7 @@ async fn test_concurrent_session_access() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_uniqueness() -> Result<()> {
     // Test request ID uniqueness
     let mut request_ids = vec![];
@@ -225,7 +225,7 @@ async fn test_request_id_uniqueness() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_task_description_validation() -> Result<()> {
     // Test task description validation
     let task = "optimize for high throughput processing".to_string();
@@ -237,7 +237,7 @@ async fn test_task_description_validation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_recommendation_generation() -> Result<()> {
     // Test recommendation string generation
     let recommendations = "Enable zero-copy optimization, increase thread pool size".to_string();
@@ -248,7 +248,7 @@ async fn test_recommendation_generation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_diff_generation() -> Result<()> {
     // Test config diff string
     let diff = "runtime.max_concurrent_executions: 10 -> 20";
@@ -259,7 +259,7 @@ async fn test_config_diff_generation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_system_status_metrics() -> Result<()> {
     // Test system status metrics
     let mut metrics: HashMap<String, String> = HashMap::new();
@@ -273,7 +273,7 @@ async fn test_system_status_metrics() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_intent_parsing() -> Result<()> {
     // Test execution intent parsing
     let intent = "run high performance workload";
@@ -286,7 +286,7 @@ async fn test_execution_intent_parsing() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_expectations() -> Result<()> {
     // Test performance expectations structure
     let mut expectations: HashMap<String, String> = HashMap::new();
@@ -299,7 +299,7 @@ async fn test_performance_expectations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pattern_classification() -> Result<()> {
     // Test memory pattern classification
     let patterns = vec!["sequential", "random", "streaming"];
@@ -310,7 +310,7 @@ async fn test_memory_pattern_classification() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_io_intensity_levels() -> Result<()> {
     // Test I/O intensity levels
     let intensity_levels = vec!["low", "medium", "high"];
@@ -321,7 +321,7 @@ async fn test_io_intensity_levels() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_response_type_matching() -> Result<()> {
     // Test response type classification
     let response_types = vec![
@@ -337,7 +337,7 @@ async fn test_response_type_matching() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_session_preferences_update() -> Result<()> {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -356,7 +356,7 @@ async fn test_session_preferences_update() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_string_concatenation() -> Result<()> {
     // Test string concatenation for messages
     let prefix = "AI Response:";
@@ -369,7 +369,7 @@ async fn test_string_concatenation() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_vec_iteration() -> Result<()> {
     // Test Vec iteration for processing items
     let items = vec!["item1", "item2", "item3"];
@@ -385,7 +385,7 @@ async fn test_vec_iteration() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_result_chaining() -> Result<()> {
     // Test Result chaining patterns
     let result1: Result<i32> = Ok(42);
@@ -397,7 +397,7 @@ async fn test_result_chaining() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_option_map_pattern() -> Result<()> {
     // Test Option map patterns
     let some_value: Option<i32> = Some(10);

@@ -435,7 +435,7 @@ fn test_ecosystem_coordinator_creation() {
     assert!(result.is_ok(), "Coordinator creation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_discover_primals() {
     let coordinator = EcosystemCoordinator::new().unwrap();
 

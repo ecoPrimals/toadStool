@@ -31,6 +31,7 @@ mod tests {
             environment: HashMap::new(),
             input_data: Default::default(),
             callback_config: None,
+            encryption_config: None,
         }
     }
 
@@ -81,6 +82,7 @@ mod tests {
                 environment: HashMap::new(),
                 input_data: Default::default(),
                 callback_config: None,
+                encryption_config: None,
             };
 
             let result = engine.execute(request).await;

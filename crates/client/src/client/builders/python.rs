@@ -109,13 +109,16 @@ impl PythonWorkloadBuilder {
 
     /// Build the workload submission
     ///
-    /// # Panics
-    /// Panics if the script is not set, as it is required for Python workloads
-    #[must_use]
-    pub fn build(self) -> WorkloadSubmission {
-        WorkloadSubmission {
+    /// # Errors
+    /// Returns an error if script is not set
+    pub fn build(self) -> Result<WorkloadSubmission, String> {
+        let script = self
+            .script
+            .ok_or_else(|| "Script is required for Python workload".to_string())?;
+
+        Ok(WorkloadSubmission {
             workload_type: WorkloadType::Python {
-                script: self.script.expect("Script is required for Python workload"),
+                script,
                 requirements: self.requirements,
             },
             runtime_hint: Some("python".to_string()),
@@ -124,6 +127,6 @@ impl PythonWorkloadBuilder {
             environment: self.environment,
             resources: self.resources,
             metadata: self.metadata,
-        }
+        })
     }
 }

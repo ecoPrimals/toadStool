@@ -9,7 +9,7 @@ use toadstool::performance_hardening::*;
 // Configuration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_config_default() {
     let config = PerformanceHardeningConfig::default();
 
@@ -20,7 +20,7 @@ async fn test_performance_hardening_config_default() {
     assert!(config.enable_connection_pooling);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_hardening_config_clone() {
     let config = PerformanceHardeningConfig::default();
     let cloned = config.clone();
@@ -33,7 +33,7 @@ async fn test_performance_hardening_config_clone() {
     assert_eq!(config.enable_caching, cloned.enable_caching);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_optimized_monitoring_config_default() {
     let config = OptimizedMonitoringConfig::default();
 
@@ -45,7 +45,7 @@ async fn test_optimized_monitoring_config_default() {
     assert_eq!(config.aggregation_window, Duration::from_secs(60));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_config_default() {
     let config = MemoryPoolConfig::default();
 
@@ -56,7 +56,7 @@ async fn test_memory_pool_config_default() {
     assert_eq!(config.cleanup_interval, Duration::from_secs(60));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_caching_config_default() {
     let config = CachingConfig::default();
 
@@ -66,7 +66,7 @@ async fn test_caching_config_default() {
     assert_eq!(config.hit_rate_threshold, 0.8);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_optimization_config_default() {
     let config = AsyncOptimizationConfig::default();
 
@@ -76,7 +76,7 @@ async fn test_async_optimization_config_default() {
     assert_eq!(config.queue_size_limit, 1000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_connection_pool_config_default() {
     let config = PerformanceConnectionPoolConfig::default();
 
@@ -87,7 +87,7 @@ async fn test_performance_connection_pool_config_default() {
     assert_eq!(config.health_check_interval, Duration::from_secs(60));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_config_clone() {
     let config = OptimizedMonitoringConfig::default();
     let cloned = config.clone();
@@ -97,7 +97,7 @@ async fn test_monitoring_config_clone() {
     assert_eq!(config.batch_size, cloned.batch_size);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_config_clone() {
     let config = MemoryPoolConfig::default();
     let cloned = config.clone();
@@ -107,7 +107,7 @@ async fn test_memory_pool_config_clone() {
     assert_eq!(config.growth_factor, cloned.growth_factor);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_caching_config_clone() {
     let config = CachingConfig::default();
     let cloned = config.clone();
@@ -117,7 +117,7 @@ async fn test_caching_config_clone() {
     assert_eq!(config.hit_rate_threshold, cloned.hit_rate_threshold);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_monitoring_config() {
     let config = OptimizedMonitoringConfig {
         base_sampling_interval: Duration::from_millis(50),
@@ -133,7 +133,7 @@ async fn test_custom_monitoring_config() {
     assert_eq!(config.high_load_multiplier, 0.25);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_memory_pool_config() {
     let config = MemoryPoolConfig {
         initial_size: 50,
@@ -148,7 +148,7 @@ async fn test_custom_memory_pool_config() {
     assert_eq!(config.growth_factor, 2.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_custom_caching_config() {
     let config = CachingConfig {
         max_size: 5000,
@@ -162,7 +162,7 @@ async fn test_custom_caching_config() {
     assert_eq!(config.hit_rate_threshold, 0.9);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_adaptive_sampling_multipliers() {
     let config = OptimizedMonitoringConfig::default();
 
@@ -177,7 +177,7 @@ async fn test_monitoring_adaptive_sampling_multipliers() {
     assert!(low_load_interval > config.base_sampling_interval.as_millis() as f64);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_growth_calculation() {
     let config = MemoryPoolConfig::default();
 
@@ -189,7 +189,7 @@ async fn test_memory_pool_growth_calculation() {
     assert!(grown_size <= config.max_size);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_shrink_threshold() {
     let config = MemoryPoolConfig::default();
 
@@ -201,7 +201,7 @@ async fn test_memory_pool_shrink_threshold() {
     assert!(shrink_point < config.max_size);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cache_hit_rate_threshold() {
     let config = CachingConfig::default();
 
@@ -214,7 +214,7 @@ async fn test_cache_hit_rate_threshold() {
     assert!(poor_hit_rate < config.hit_rate_threshold);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_batch_configuration() {
     let config = AsyncOptimizationConfig::default();
 
@@ -226,7 +226,7 @@ async fn test_async_batch_configuration() {
     assert!(config.queue_size_limit >= config.batch_size);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_pool_size_constraints() {
     let config = PerformanceConnectionPoolConfig::default();
 
@@ -237,7 +237,7 @@ async fn test_connection_pool_size_constraints() {
     assert!(config.idle_timeout >= Duration::from_secs(60));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_disabled_performance_features() {
     let config = PerformanceHardeningConfig {
         enable_optimized_monitoring: false,
@@ -255,7 +255,7 @@ async fn test_disabled_performance_features() {
     assert!(!config.enable_connection_pooling);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_selective_feature_enablement() {
     let config = PerformanceHardeningConfig {
         enable_optimized_monitoring: true,
@@ -271,7 +271,7 @@ async fn test_selective_feature_enablement() {
     assert!(config.enable_caching);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_config_serialization_fields() {
     let config = PerformanceHardeningConfig::default();
 
@@ -285,7 +285,7 @@ async fn test_performance_config_serialization_fields() {
     // All fields accessible means serialization will work
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_extreme_monitoring_config() {
     let config = OptimizedMonitoringConfig {
         base_sampling_interval: Duration::from_millis(1), // Very fast
@@ -300,7 +300,7 @@ async fn test_extreme_monitoring_config() {
     assert_eq!(config.batch_size, 100);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_minimal_memory_pool_config() {
     let config = MemoryPoolConfig {
         initial_size: 1,
@@ -315,7 +315,7 @@ async fn test_minimal_memory_pool_config() {
     assert!(config.growth_factor > 1.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_large_cache_config() {
     let config = CachingConfig {
         max_size: 100_000,                          // 100K entries
@@ -328,7 +328,7 @@ async fn test_large_cache_config() {
     assert_eq!(config.hit_rate_threshold, 0.95);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_aggressive_async_optimization() {
     let config = AsyncOptimizationConfig {
         batch_size: 100,
@@ -341,7 +341,7 @@ async fn test_aggressive_async_optimization() {
     assert_eq!(config.concurrency_limit, 1000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_pool_minimal() {
     let config = PerformanceConnectionPoolConfig {
         initial_size: 1,
@@ -356,7 +356,7 @@ async fn test_connection_pool_minimal() {
     assert!(config.initial_size <= config.max_size);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_connection_pool_enterprise() {
     let config = PerformanceConnectionPoolConfig {
         initial_size: 50,
@@ -371,7 +371,7 @@ async fn test_connection_pool_enterprise() {
     assert!(config.health_check_interval < config.idle_timeout);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitoring_batch_size_calculation() {
     let config = OptimizedMonitoringConfig::default();
 
@@ -384,7 +384,7 @@ async fn test_monitoring_batch_size_calculation() {
     assert_eq!(samples_per_window, 600);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pool_capacity_range() {
     let config = MemoryPoolConfig::default();
 
@@ -394,7 +394,7 @@ async fn test_memory_pool_capacity_range() {
     assert!(config.max_size <= 1_000_000); // Reasonable upper bound
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cache_ttl_vs_cleanup() {
     let config = CachingConfig::default();
 
@@ -403,7 +403,7 @@ async fn test_cache_ttl_vs_cleanup() {
     assert!(config.cleanup_interval < config.default_ttl);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_operation_constraints() {
     let config = AsyncOptimizationConfig::default();
 

@@ -5,6 +5,19 @@ edition = "2021"
 description = "Distributed computing coordination for ToadStool"
 license = "MIT OR Apache-2.0"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [features]
 default = []
 channels = []
@@ -53,3 +66,7 @@ num_cpus = "1.16"
 
 # Configuration
 config = "0.14" 
+[dev-dependencies]
+toadstool-testing = { path = "../testing" }
+tokio-test = "0.4"
+tempfile = "3.0"

@@ -480,7 +480,7 @@ fn test_state_transition_to_cancelled() {
 // Concurrent State Update Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_execution_requests() {
     let mut requests = vec![];
 
@@ -507,7 +507,7 @@ async fn test_concurrent_execution_requests() {
     assert_eq!(ids.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_state_transitions() {
     let mut handles = vec![];
 
@@ -515,7 +515,7 @@ async fn test_concurrent_state_transitions() {
         let handle = tokio::spawn(async {
             let _state = ExecutionStatus::Pending;
             let _state = ExecutionStatus::Running;
-            tokio::time::sleep(Duration::from_millis(1)).await;
+            tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
             ExecutionStatus::Success
         });
         handles.push(handle);

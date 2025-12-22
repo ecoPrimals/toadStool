@@ -1,0 +1,19 @@
+{
+  "workload_id": "demo-coordination-1766291790",
+  "type": "matrix_multiply",
+  "runtime": "native",
+  "parameters": {
+    "matrix_size": 500,
+    "iterations": 50
+  },
+  "resource_requirements": {
+    "cpu_cores": 2,
+    "memory_mb": 512,
+    "timeout_seconds": 30
+  },
+  "orchestration": {
+    "coordinator": "songbird",
+    "execution_strategy": "single_node",
+    "result_callback": "songbird_results_api"
+  }
+}

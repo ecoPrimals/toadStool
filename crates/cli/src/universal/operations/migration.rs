@@ -235,7 +235,8 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
             biome_name: biome.to_string(),
             timestamp: chrono::Utc::now(),
             data_path: std::path::PathBuf::from(format!(
-                "/tmp/checkpoint_{}",
+                "{}{}",
+                super::constants::paths::CHECKPOINT_PREFIX,
                 uuid::Uuid::new_v4()
             )),
         })
@@ -273,7 +274,11 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
         info!("📤 Exporting workload state: {}", biome);
         Ok(WorkloadExport {
             biome_name: biome.to_string(),
-            export_path: std::path::PathBuf::from(format!("/tmp/export_{}", uuid::Uuid::new_v4())),
+            export_path: std::path::PathBuf::from(format!(
+                "{}{}",
+                super::constants::paths::EXPORT_PREFIX,
+                uuid::Uuid::new_v4()
+            )),
             metadata: std::collections::HashMap::new(),
         })
     }

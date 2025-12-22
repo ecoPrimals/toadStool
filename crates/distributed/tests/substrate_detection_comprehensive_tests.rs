@@ -8,7 +8,7 @@ use toadstool_distributed::substrate_detection::*;
 // Test 1-10: SubstrateDetector Initialization and Basic Operations
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_substrate_detector_creation() {
     // Test: Detector can be created
     let _detector = SubstrateDetector::new();
@@ -16,7 +16,7 @@ async fn test_substrate_detector_creation() {
     // Test passes if creation succeeds without panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_substrate_detector_default() {
     // Test: Default implementation works
     let _detector = SubstrateDetector {};
@@ -24,7 +24,7 @@ async fn test_substrate_detector_default() {
     // Test passes if unit struct instantiation succeeds
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_all_completes() {
     // Test: detect_all runs without panic
     let detector = SubstrateDetector::new();
@@ -36,7 +36,7 @@ async fn test_detect_all_completes() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_traditional_platforms() {
     // Test: Traditional platform detection
     let detector = SubstrateDetector::new();
@@ -48,7 +48,7 @@ async fn test_detect_traditional_platforms() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_container_platforms() {
     // Test: Container platform detection
     let detector = SubstrateDetector::new();
@@ -60,7 +60,7 @@ async fn test_detect_container_platforms() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_language_runtimes() {
     // Test: Language runtime detection
     let detector = SubstrateDetector::new();
@@ -72,7 +72,7 @@ async fn test_detect_language_runtimes() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_gpu_platforms() {
     // Test: GPU platform detection
     let detector = SubstrateDetector::new();
@@ -84,7 +84,7 @@ async fn test_detect_gpu_platforms() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_all_includes_specialized() {
     // Test: detect_all includes specialized platforms
     let detector = SubstrateDetector::new();
@@ -96,7 +96,7 @@ async fn test_detect_all_includes_specialized() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_all_includes_experimental() {
     // Test: detect_all includes experimental platforms
     let detector = SubstrateDetector::new();
@@ -108,7 +108,7 @@ async fn test_detect_all_includes_experimental() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_all_comprehensive() {
     // Test: detect_all covers all platform categories
     let detector = SubstrateDetector::new();
@@ -239,7 +239,7 @@ fn test_platform_type_serialization() {
 // Test 21-30: Detection Methods - Traditional Platforms
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_x86_64_platform() {
     // Test: x86_64 detection on compatible systems
     let detector = SubstrateDetector::new();
@@ -256,7 +256,7 @@ async fn test_detect_x86_64_platform() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_arm64_platform() {
     // Test: ARM64 detection on compatible systems
     let detector = SubstrateDetector::new();
@@ -272,7 +272,7 @@ async fn test_detect_arm64_platform() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_os_linux() {
     // Test: Linux OS detection
     let detector = SubstrateDetector::new();
@@ -284,7 +284,7 @@ async fn test_detect_os_linux() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_os_macos() {
     // Test: macOS detection
     let detector = SubstrateDetector::new();
@@ -296,7 +296,7 @@ async fn test_detect_os_macos() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_os_windows() {
     // Test: Windows detection
     let detector = SubstrateDetector::new();
@@ -308,7 +308,7 @@ async fn test_detect_os_windows() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_traditional_platform_count() {
     // Test: Traditional platforms return at least one platform
     let detector = SubstrateDetector::new();
@@ -394,7 +394,7 @@ fn test_platform_version_format() {
 // Test 31-40: Container Platform Detection
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_docker() {
     // Test: Docker detection
     let detector = SubstrateDetector::new();
@@ -406,7 +406,7 @@ async fn test_detect_docker() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_podman() {
     // Test: Podman detection
     let detector = SubstrateDetector::new();
@@ -419,7 +419,7 @@ async fn test_detect_podman() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_containerd() {
     // Test: containerd detection
     let detector = SubstrateDetector::new();
@@ -431,7 +431,7 @@ async fn test_detect_containerd() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_container_platform_list() {
     // Test: Container platforms return list
     let detector = SubstrateDetector::new();
@@ -455,7 +455,7 @@ fn test_container_runtime_info() {
     assert!(runtime.available);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_wasm_runtime() {
     // Test: WebAssembly runtime detection
     let detector = SubstrateDetector::new();
@@ -521,7 +521,7 @@ fn test_container_platform_empty_list() {
 // Test 41-50: Language Runtime Detection
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_python_runtime() {
     // Test: Python runtime detection
     let detector = SubstrateDetector::new();
@@ -533,7 +533,7 @@ async fn test_detect_python_runtime() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_node_runtime() {
     // Test: Node.js runtime detection
     let detector = SubstrateDetector::new();
@@ -545,7 +545,7 @@ async fn test_detect_node_runtime() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_rust_runtime() {
     // Test: Rust toolchain detection
     let detector = SubstrateDetector::new();
@@ -631,7 +631,7 @@ fn test_language_runtime_serialization() {
     assert!(json.is_ok(), "Should serialize runtime info");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_java_runtime() {
     // Test: Java/JVM runtime detection
     let detector = SubstrateDetector::new();
@@ -668,7 +668,7 @@ fn test_runtime_availability_flags() {
 // Test 51-55: Exotic and Specialized Platforms
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_substrate_capabilities_all_fields() {
     // Test: Substrate capabilities has all required fields
     let detector = SubstrateDetector::new();
@@ -685,7 +685,7 @@ async fn test_substrate_capabilities_all_fields() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detect_all_no_panic() {
     // Test: detect_all doesn't panic
     let detector = SubstrateDetector::new();
@@ -695,7 +695,7 @@ async fn test_detect_all_no_panic() {
     // Test passes if detection completes without panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_platform_detection_parallel() {
     // Test: Platform detection runs in parallel
     let detector = SubstrateDetector::new();

@@ -17,7 +17,7 @@ use toadstool_testing::{
 };
 
 /// Benchmark execution request creation throughput
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_execution_request_creation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -61,7 +61,7 @@ async fn benchmark_execution_request_creation() {
 }
 
 /// Benchmark concurrent execution request creation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_concurrent_execution_creation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -102,7 +102,7 @@ async fn benchmark_concurrent_execution_creation() {
 }
 
 /// Benchmark resource requirements creation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_resource_requirements_creation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -135,7 +135,7 @@ async fn benchmark_resource_requirements_creation() {
 }
 
 /// Benchmark security context creation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_security_context_creation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -196,7 +196,7 @@ async fn benchmark_security_context_creation() {
 }
 
 /// Benchmark memory usage patterns
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_memory_usage() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -235,7 +235,7 @@ async fn benchmark_memory_usage() {
 }
 
 /// Benchmark startup and initialization performance
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_startup_performance() {
     let iterations = 100;
     let mut total_duration = Duration::from_secs(0);
@@ -271,7 +271,7 @@ async fn benchmark_startup_performance() {
 }
 
 /// Benchmark API endpoint performance simulation
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_api_performance() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -310,6 +310,7 @@ async fn benchmark_api_performance() {
                     .timeout(Duration::from_secs(10))
                     .build();
             }
+            #[allow(clippy::unreachable)] // Benchmark: all enum variants covered
             _ => unreachable!(),
         }
     }
@@ -329,7 +330,7 @@ async fn benchmark_api_performance() {
 }
 
 /// Benchmark system health check performance
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn benchmark_health_check_performance() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);

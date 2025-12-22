@@ -365,20 +365,20 @@ fn test_biome_deployment_empty_manifest() {
 // BiomeOrchestrator Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_new() {
     let result = BiomeOrchestrator::new().await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_initialize() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
     let result = orchestrator.initialize().await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_execute_deployment() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
 
@@ -400,7 +400,7 @@ async fn test_biome_orchestrator_execute_deployment() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_execute_deployment_returns_response() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
 
@@ -425,7 +425,7 @@ async fn test_biome_orchestrator_execute_deployment_returns_response() {
     let _execution_response: ExecutionResponse = response;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_orchestrator_multiple_deployments() {
     let orchestrator = BiomeOrchestrator::new().await.unwrap();
 
@@ -454,13 +454,13 @@ async fn test_biome_orchestrator_multiple_deployments() {
 // BiomeOSIntegration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_os_integration_new() {
     let result = BiomeOSIntegration::new().await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_os_integration_execute_deployment() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
@@ -482,7 +482,7 @@ async fn test_biome_os_integration_execute_deployment() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_os_integration_multiple_jobs() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
@@ -521,7 +521,7 @@ async fn test_biome_os_integration_multiple_jobs() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_os_integration_concurrent_deployments() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
@@ -549,7 +549,7 @@ async fn test_biome_os_integration_concurrent_deployments() {
 // Integration Scenario Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_deployment_lifecycle() {
     // Create integration
     let integration = BiomeOSIntegration::new().await.unwrap();
@@ -574,7 +574,7 @@ async fn test_full_deployment_lifecycle() {
     assert!(response.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_deployment_with_complex_manifest() {
     let integration = BiomeOSIntegration::new().await.unwrap();
 
@@ -596,7 +596,7 @@ async fn test_deployment_with_complex_manifest() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_orchestrator_initialization_sequence() {
     // Create orchestrator
     let orchestrator = BiomeOrchestrator::new().await.unwrap();

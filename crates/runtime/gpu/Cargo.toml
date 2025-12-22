@@ -4,6 +4,19 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool Universal GPU Compute Runtime - If it has parallel compute units, we can harness it"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
@@ -19,6 +32,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = { workspace = true }
 
+# HTTP client for distributed execution
+reqwest = { workspace = true }
+
 # Utilities
 uuid = { version = "1.8", features = ["v4", "serde"] }
 tracing = "0.1"
@@ -30,47 +46,65 @@ chrono = { version = "0.4", features = ["serde"] }
 # System integration and monitoring
 sysinfo = { workspace = true }
 num_cpus = "1.0"
+rayon = "1.8"
 
 # Universal GPU compute frameworks (all optional for universal support)
-# WebGPU support (universal, future-ready)
-wgpu = { version = "0.19", optional = true }
+# AGNOSTIC DESIGN: Each framework is truly optional and mutually exclusive in features
 
-# Vulkan compute support (universal)
+# WebGPU support (universal, future-ready) - Feature-gated to avoid conflicts
+# MUST use same version as workspace to prevent duplicate symbol errors
+wgpu = { workspace = true, optional = true, features = ["wgsl"] }
+
+# Vulkan compute support (universal) - Only enabled explicitly
 vulkano = { version = "0.34", optional = true }
 ash = { version = "0.37", optional = true }
 
-# OpenCL support (universal) - using working version
+# OpenCL support (universal) - Only enabled explicitly
 ocl = { version = "0.19", optional = true }
 
-# Universal intermediate representations
+# Universal intermediate representations - Only for spirv feature
 spirv = { version = "0.3", optional = true }
 
-# CUDA support (NVIDIA-specific)
+# CUDA support (NVIDIA-specific) - Only enabled explicitly
 cudarc = { version = "0.11", optional = true, features = ["cuda-12050"] }
 
-# Metal support (Apple-specific) - Not available on Linux, so commenting out for now
-# metal = { version = "0.25", optional = true }
-
-# JIT compilation and optimization (using compatible versions)
+# JIT compilation and optimization - Only for jit feature
 cranelift-jit = { version = "0.100", optional = true }
 wasmtime = { version = "18", optional = true }
 
 [features]
-default = ["universal-basic"]
-# Advanced features (require additional setup)
-full = ["webgpu", "opencl", "vulkan", "cuda"]
-universal-basic = []
-universal-detection = []
-universal-optimized = []
+# SOVEREIGN + PRAGMATIC DESIGN:
+# Default: Pure Rust WebGPU (self-sovereign, universal)
+# Optional: Vendor backends for optimization (CUDA for AI/ML)
+default = ["webgpu"]
+
+# PRIMARY: Pure Rust, self-contained, universal (like NestGate's internal ZFS)
 webgpu = ["wgpu"]
-opencl = ["ocl"]
-vulkan = ["vulkano", "ash"]
-# Add missing features to fix cfg warnings
-cuda = ["cudarc"]
-# metal = ["metal"] # Not available on Linux
-rocm = []
-directcompute = []
-spirv = ["dep:spirv"]
+
+# OPTIMIZATION: Vendor-specific backends (pragmatic, opt-in)
+# Use when ecosystem requires it (e.g., Python AI needs CUDA in 2025)
+cuda = ["cudarc"]          # For PyTorch/TensorFlow AI workloads
+opencl = ["ocl"]           # Legacy fallback for broader compatibility
+vulkan = ["vulkano", "ash"] # Direct Vulkan for advanced use cases
+
+# AI/ML CONVENIENCE: CUDA + WebGPU fallback
+ai-ml = ["cuda", "webgpu"]
+
+# MAXIMUM COMPATIBILITY: All backends (testing, development)
+all-backends = ["webgpu", "cuda", "opencl", "vulkan"]
+
+# Platform-specific detection features (no dependencies, pure logic)
+detect-nvidia = []
+detect-amd = []
+detect-intel = []
+detect-apple = []
+
+# EVOLUTION PATH:
+# 2025: CUDA needed for Python AI (PyTorch/TensorFlow)
+# 2026+: WebGPU AI libraries mature (torch-webgpu, Burn, Candle)
+# 2027+: Drop CUDA, go full WebGPU (true vendor agnosticism)
+
+# Additional features (independent)
 spirv-support = ["spirv"]
 jit = ["cranelift-jit", "wasmtime"]
 testing = []
@@ -79,3 +113,13 @@ testing = []
 tokio-test = { workspace = true }
 proptest = "1.0"
 criterion = "0.5"
+tracing-subscriber = "0.3"
+
+# Dev dependencies don't share features - each test runs in isolation
+
+[[example]]
+name = "universal_compute_demo"
+path = "examples/universal_compute_demo.rs"
+required-features = [] # Can run with just detection, no actual GPU needed
+
+# Bench configuration removed - benches directory not yet implemented

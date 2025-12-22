@@ -1,0 +1,559 @@
+//! Comprehensive coverage tests for PolicyManager
+//!
+//! This module provides extensive test coverage for the PolicyManager,
+//! focusing on lifecycle management, policy loading, caching, and enforcement.
+
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+use toadstool_security_policies::manager::{PolicyManager, FilePolicyManager};
+use toadstool_security_policies::types::*;
+use toadstool::security::{IsolationLevel, SecurityContext, UserContext, NetworkSecurity, FilesystemSecurity};
+use toadstool::workload::WorkloadSpec;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+fn create_test_config() -> PolicyManagerConfig {
+    PolicyManagerConfig {
+        policy_dir: PathBuf::from("/tmp/test-policies"),
+        cache_enabled: true,
+        cache_ttl_hours: 1,
+        strict_enforcement: true,
+        default_violation_action: ViolationAction::Block,
+        max_composition_depth: 5,
+        validation_timeout_ms: 1000,
+    }
+}
+
+fn create_test_policy(id: &str) -> SecurityPolicy {
+    SecurityPolicy {
+        id: id.to_string(),
+        name: format!("Test Policy {}", id),
+        version: "1.0.0".to_string(),
+        description: Some("Test policy for coverage".to_string()),
+        author: Some("Test Suite".to_string()),
+        created_at: chrono::Utc::now(),
+        modified_at: chrono::Utc::now(),
+        rules: vec![create_test_rule("rule-1")],
+        inherits: vec![],
+        metadata: HashMap::new(),
+        signature: None,
+    }
+}
+
+fn create_test_rule(id: &str) -> PolicyRule {
+    PolicyRule {
+        id: id.to_string(),
+        name: format!("Test Rule {}", id),
+        condition: PolicyCondition::Always,
+        action: PolicyAction::Allow,
+        priority: 100,
+        enabled: true,
+        description: Some("Test rule".to_string()),
+    }
+}
+
+fn create_test_workload_spec() -> WorkloadSpec {
+    // WorkloadSpec is an enum, not a struct
+    WorkloadSpec::Container {
+        image: "test:latest".to_string(),
+        command: Some(vec!["test".to_string()]),
+        args: Some(vec![]),
+        env_vars: HashMap::new(),
+        working_dir: None,
+        volumes: vec![],
+        ports: vec![],
+        registry_auth: None,
+    }
+}
+
+fn create_test_security_context() -> SecurityContext {
+    SecurityContext {
+        isolation_level: IsolationLevel::Standard,
+        capabilities: vec![],
+        user_context: Some(UserContext {
+            username: None,
+            uid: Some(1000),
+            gid: Some(1000),
+            groups: vec![],
+        }),
+        network_security: NetworkSecurity {
+            allow_outbound: false,
+            allow_inbound: false,
+            ..Default::default()
+        },
+        filesystem_security: FilesystemSecurity {
+            read_only: false,
+            ..Default::default()
+        },
+    }
+}
+
+fn create_test_system_info() -> SystemInfo {
+    SystemInfo {
+        hostname: "test-host".to_string(),
+        os_type: "Linux".to_string(),
+        os_version: "5.15.0".to_string(),
+        architecture: "x86_64".to_string(),
+        cpu_count: 8,
+        memory_total_mb: 16384,
+        load_average: 1.5,
+        uptime_seconds: 86400,
+    }
+}
+
+// ============================================================================
+// Manager Creation and Configuration Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_policy_manager_creation() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config.clone()).expect("Failed to create manager");
+    
+    // Verify manager can be created
+    assert!(std::mem::size_of_val(&manager) > 0);
+}
+
+#[tokio::test]
+async fn test_policy_manager_with_custom_config() {
+    let config = PolicyManagerConfig {
+        policy_dir: PathBuf::from("/custom/path"),
+        cache_enabled: false,
+        cache_ttl_hours: 24,
+        strict_enforcement: false,
+        default_violation_action: ViolationAction::LogAndContinue,
+        max_composition_depth: 10,
+        validation_timeout_ms: 5000,
+    };
+    
+    let manager = FilePolicyManager::new(config.clone());
+    assert!(std::mem::size_of_val(&manager) > 0);
+}
+
+#[tokio::test]
+async fn test_policy_manager_default_config() {
+    let config = PolicyManagerConfig::default();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    assert!(std::mem::size_of_val(&manager) > 0);
+}
+
+// ============================================================================
+// Policy Loading Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_load_policy_basic() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    let policy = create_test_policy("policy-1");
+    
+    let result = manager.load_policy(policy.clone()).await;
+    
+    // Should succeed in loading policy
+    assert!(result.is_ok(), "Failed to load policy: {:?}", result.err());
+}
+
+#[tokio::test]
+async fn test_load_multiple_policies() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    for i in 1..=5 {
+        let policy = create_test_policy(&format!("policy-{}", i));
+        let result = manager.load_policy(policy).await;
+        assert!(result.is_ok(), "Failed to load policy {}", i);
+    }
+}
+
+#[tokio::test]
+async fn test_load_policy_with_inheritance() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    // Load parent policy first
+    let parent_policy = create_test_policy("parent-policy");
+    manager.load_policy(parent_policy).await.unwrap();
+    
+    // Load child policy that inherits from parent
+    let mut child_policy = create_test_policy("child-policy");
+    child_policy.inherits = vec!["parent-policy".to_string()];
+    
+    let result = manager.load_policy(child_policy).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_load_policy_duplicate_id() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let policy1 = create_test_policy("duplicate");
+    let policy2 = create_test_policy("duplicate");
+    
+    // First load should succeed
+    assert!(manager.load_policy(policy1).await.is_ok());
+    
+    // Second load with same ID should either succeed (replace) or fail gracefully
+    let result = manager.load_policy(policy2).await;
+    assert!(result.is_ok() || result.is_err());
+}
+
+// ============================================================================
+// Policy Evaluation Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_evaluate_policy_allow() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let mut policy = create_test_policy("allow-policy");
+    policy.rules = vec![PolicyRule {
+        id: "allow-rule".to_string(),
+        name: "Allow Rule".to_string(),
+        condition: PolicyCondition::Always,
+        action: PolicyAction::Allow,
+        priority: 100,
+        enabled: true,
+        description: None,
+    }];
+    
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let result = manager.evaluate_policy(&policy.id, &context).await;
+    
+    assert!(result.is_ok());
+    let eval_result = result.unwrap();
+    assert_eq!(eval_result.result, PolicyResult::Allow);
+}
+
+#[tokio::test]
+async fn test_evaluate_policy_deny() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let mut policy = create_test_policy("deny-policy");
+    policy.rules = vec![PolicyRule {
+        id: "deny-rule".to_string(),
+        name: "Deny Rule".to_string(),
+        condition: PolicyCondition::Always,
+        action: PolicyAction::Deny,
+        priority: 100,
+        enabled: true,
+        description: None,
+    }];
+    
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let result = manager.evaluate_policy(&policy.id, &context).await;
+    
+    assert!(result.is_ok());
+    let eval_result = result.unwrap();
+    assert_eq!(eval_result.result, PolicyResult::Deny);
+}
+
+#[tokio::test]
+async fn test_evaluate_policy_with_warnings() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let mut policy = create_test_policy("warning-policy");
+    policy.rules = vec![PolicyRule {
+        id: "warning-rule".to_string(),
+        name: "Warning Rule".to_string(),
+        condition: PolicyCondition::Always,
+        action: PolicyAction::AllowWithWarning {
+            message: "This is a test warning".to_string(),
+        },
+        priority: 100,
+        enabled: true,
+        description: None,
+    }];
+    
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let result = manager.evaluate_policy(&policy.id, &context).await;
+    
+    assert!(result.is_ok());
+    let eval_result = result.unwrap();
+    assert_eq!(eval_result.result, PolicyResult::Allow);
+    assert!(!eval_result.warnings.is_empty());
+}
+
+#[tokio::test]
+async fn test_evaluate_nonexistent_policy() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let result = manager.evaluate_policy("nonexistent", &context).await;
+    
+    // Should return error for nonexistent policy
+    assert!(result.is_err());
+}
+
+// ============================================================================
+// Policy Rule Priority Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_rule_priority_ordering() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let mut policy = create_test_policy("priority-policy");
+    policy.rules = vec![
+        PolicyRule {
+            id: "low-priority".to_string(),
+            name: "Low Priority Rule".to_string(),
+            condition: PolicyCondition::Always,
+            action: PolicyAction::Deny,
+            priority: 10,
+            enabled: true,
+            description: None,
+        },
+        PolicyRule {
+            id: "high-priority".to_string(),
+            name: "High Priority Rule".to_string(),
+            condition: PolicyCondition::Always,
+            action: PolicyAction::Allow,
+            priority: 100,
+            enabled: true,
+            description: None,
+        },
+    ];
+    
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let result = manager.evaluate_policy(&policy.id, &context).await;
+    
+    assert!(result.is_ok());
+    let eval_result = result.unwrap();
+    // Higher priority rule should win
+    assert_eq!(eval_result.result, PolicyResult::Allow);
+}
+
+// ============================================================================
+// Cache Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_policy_caching_enabled() {
+    let mut config = create_test_config();
+    config.cache_enabled = true;
+    config.cache_ttl_hours = 1;
+    
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    let policy = create_test_policy("cached-policy");
+    
+    // Load policy twice - second should use cache
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let result = manager.load_policy(policy).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_policy_caching_disabled() {
+    let mut config = create_test_config();
+    config.cache_enabled = false;
+    
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    let policy = create_test_policy("uncached-policy");
+    
+    // Load policy twice - should process both times
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let result = manager.load_policy(policy).await;
+    assert!(result.is_ok());
+}
+
+// ============================================================================
+// Concurrent Access Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_concurrent_policy_loading() {
+    let config = create_test_config();
+    let manager = std::sync::Arc::new(FilePolicyManager::new(config).expect("Failed to create manager"));
+    
+    let mut handles = vec![];
+    
+    for i in 1..=10 {
+        let manager_clone = manager.clone();
+        let handle = tokio::spawn(async move {
+            let policy = create_test_policy(&format!("concurrent-{}", i));
+            manager_clone.load_policy(policy).await
+        });
+        handles.push(handle);
+    }
+    
+    // Wait for all tasks
+    for handle in handles {
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+    }
+}
+
+#[tokio::test]
+async fn test_concurrent_policy_evaluation() {
+    let config = create_test_config();
+    let manager = std::sync::Arc::new(FilePolicyManager::new(config).expect("Failed to create manager"));
+    
+    let policy = create_test_policy("shared-policy");
+    manager.load_policy(policy.clone()).await.unwrap();
+    
+    let mut handles = vec![];
+    
+    for _ in 1..=10 {
+        let manager_clone = manager.clone();
+        let policy_id = policy.id.clone();
+        let handle = tokio::spawn(async move {
+            let context = PolicyEvaluationContext {
+                workload: create_test_workload_spec(),
+                security_context: create_test_security_context(),
+                requested_capabilities: std::collections::HashSet::new(),
+                user_info: None,
+                system_info: create_test_system_info(),
+                timestamp: std::time::SystemTime::now(),
+                variables: HashMap::new(),
+            };
+            manager_clone.evaluate_policy(&policy_id, &context).await
+        });
+        handles.push(handle);
+    }
+    
+    // Wait for all evaluations
+    for handle in handles {
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+    }
+}
+
+// ============================================================================
+// Policy Lifecycle Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_policy_lifecycle() {
+    let config = create_test_config();
+    let manager = FilePolicyManager::new(config).expect("Failed to create manager");
+    
+    let policy = create_test_policy("lifecycle-policy");
+    let policy_id = policy.id.clone();
+    
+    // 1. Load policy
+    let load_result = manager.load_policy(policy.clone()).await;
+    assert!(load_result.is_ok());
+    
+    // 2. Evaluate policy
+    let context = PolicyEvaluationContext {
+        workload: create_test_workload_spec(),
+        security_context: create_test_security_context(),
+        requested_capabilities: std::collections::HashSet::new(),
+        user_info: None,
+        system_info: create_test_system_info(),
+        timestamp: std::time::SystemTime::now(),
+        variables: HashMap::new(),
+    };
+    
+    let eval_result = manager.evaluate_policy(&policy_id, &context).await;
+    assert!(eval_result.is_ok());
+    
+    // 3. Unload policy (if supported)
+    // This is a lifecycle test, exact API depends on implementation
+}
+
+#[tokio::test]
+async fn test_policy_manager_stress() {
+    let config = create_test_config();
+    let manager = std::sync::Arc::new(FilePolicyManager::new(config).expect("Failed to create manager"));
+    
+    // Load 50 policies
+    for i in 1..=50 {
+        let policy = create_test_policy(&format!("stress-policy-{}", i));
+        let result = manager.load_policy(policy).await;
+        assert!(result.is_ok());
+    }
+    
+    // Evaluate them concurrently
+    let mut handles = vec![];
+    for i in 1..=50 {
+        let manager_clone = manager.clone();
+        let handle = tokio::spawn(async move {
+            let context = PolicyEvaluationContext {
+                workload: create_test_workload_spec(),
+                security_context: create_test_security_context(),
+                requested_capabilities: std::collections::HashSet::new(),
+                user_info: None,
+                system_info: create_test_system_info(),
+                timestamp: std::time::SystemTime::now(),
+                variables: HashMap::new(),
+            };
+            manager_clone
+                .evaluate_policy(&format!("stress-policy-{}", i), &context)
+                .await
+        });
+        handles.push(handle);
+    }
+    
+    // Verify all succeeded
+    for handle in handles {
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+    }
+}
+

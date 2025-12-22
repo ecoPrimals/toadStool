@@ -1,0 +1,45 @@
+{
+  "ecosystem_id": "local-complete-pipeline",
+  "discovered_at": "2025-12-20T23:40:20-05:00",
+  "services": [
+    {
+      "service_id": "songbird-local",
+      "type": "coordinator",
+      "endpoint": "http://localhost:8000",
+      "capabilities": ["coordination", "orchestration", "routing"],
+      "version": "0.1.0",
+      "status": "healthy"
+    },
+    {
+      "service_id": "toadstool-local",
+      "type": "compute",
+      "endpoint": "http://localhost:8080",
+      "capabilities": ["compute.native", "compute.container", "compute.gpu"],
+      "metadata": {
+        "platform": "Linux",
+        "arch": "x86_64",
+        "gpu": "NVIDIA GPU"
+      },
+      "status": "healthy"
+    },
+    {
+      "service_id": "nestgate-local",
+      "type": "storage",
+      "endpoint": "http://localhost:8082",
+      "capabilities": ["persistent_storage", "metadata_query", "versioning"],
+      "metadata": {
+        "backend": "zfs",
+        "compression": "lz4",
+        "deduplication": true
+      },
+      "status": "healthy"
+    }
+  ],
+  "ecosystem_stats": {
+    "total_services": 3,
+    "coordinators": 1,
+    "compute_nodes": 1,
+    "storage_nodes": 1,
+    "capabilities": 9
+  }
+}

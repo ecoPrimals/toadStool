@@ -19,6 +19,11 @@
 //! This module provides consistent test data and fixtures to eliminate
 //! hardcoded values in tests and ensure reproducible test scenarios.
 
+// Export integration test fixtures
+pub mod runtime;
+pub mod security;
+pub mod server;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -39,6 +44,9 @@ use toadstool::{
     },
     workload::{ExecutableSource, WasmModuleSource, WorkloadSpec},
 };
+
+// Re-export common test environment
+pub use security::TestEnvironment;
 
 /// Test configuration constants
 pub struct TestConstants;
@@ -82,6 +90,7 @@ pub fn create_test_execution_request() -> ExecutionRequest {
         environment: create_test_environment(),
         input_data: create_test_execution_input(),
         callback_config: None,
+        encryption_config: None,
     }
 }
 
@@ -316,6 +325,7 @@ pub mod random {
             environment: random_environment(),
             input_data: random_execution_input(),
             callback_config: None,
+            encryption_config: None,
         }
     }
 
@@ -427,7 +437,10 @@ mod tests {
         assert!(!request.execution_id.is_nil());
         assert!(request.timeout.is_some());
         assert_eq!(
-            request.timeout.unwrap().as_secs(),
+            request
+                .timeout
+                .expect("Test request should have timeout configured")
+                .as_secs(),
             TestConstants::DEFAULT_TIMEOUT_SECS
         );
     }

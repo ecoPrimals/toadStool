@@ -6,9 +6,14 @@
 //! - NestGate storage coordination
 //! - Squirrel AI workload execution
 //! - biomeOS manifest orchestration
+//!
+//! # Modern Concurrent Testing
+//!
+//! This module uses modern async patterns instead of sleep-based coordination:
+//! - Immediate async returns for mocked services
+//! - Event-driven coordination using channels
+//! - Zero sleep calls (production-grade testing)
 
-use std::time::Duration;
-use tokio::time::sleep;
 use uuid::Uuid;
 
 use toadstool::{
@@ -121,54 +126,79 @@ async fn test_full_ecosystem_workflow() {
     println!("✓ Full ecosystem workflow test passed");
 }
 
-// Helper functions for simulation
+// ============================================================================
+// Modern Async Helper Functions (Zero-Sleep Pattern)
+// ============================================================================
+//
+// These functions use proper async patterns instead of sleep-based delays:
+// - Immediate returns for mocked operations
+// - Event-driven coordination where needed
+// - Production-grade concurrent testing
+//
+// Old pattern (ELIMINATED):
+//   async fn foo() { sleep(Duration::from_millis(10)).await; true }
+//
+// New pattern (PRODUCTION-GRADE):
+//   async fn foo() { /* actual async work or immediate mock */ true }
 
+/// Simulate Songbird service registration (modern async pattern)
 async fn simulate_songbird_registration(_service_id: Uuid) -> bool {
-    sleep(Duration::from_millis(10)).await;
-    true // Simulate successful registration
+    // ✅ MODERN: Immediate return for mocked operation
+    // Real implementation would use actual async I/O, not sleep
+    true
 }
 
+/// Simulate Songbird service discovery (modern async pattern)
 async fn simulate_songbird_discovery() -> Vec<String> {
-    sleep(Duration::from_millis(10)).await;
+    // ✅ MODERN: Immediate return with mock data
     vec![
         "toadstool-compute".to_string(),
         "nestgate-storage".to_string(),
     ]
 }
 
+/// Simulate BearDog security validation (modern async pattern)
 async fn simulate_beardog_validation(_security_context: &SecurityContext) -> bool {
-    sleep(Duration::from_millis(10)).await;
-    true // Simulate successful validation
+    // ✅ MODERN: Immediate validation for mocked operation
+    true
 }
 
+/// Simulate NestGate storage coordination (modern async pattern)
 async fn simulate_nestgate_coordination(_storage_request: &StorageRequest) -> bool {
-    sleep(Duration::from_millis(10)).await;
-    true // Simulate successful coordination
+    // ✅ MODERN: Immediate return for mocked storage check
+    true
 }
 
+/// Simulate Squirrel AI workload execution (modern async pattern)
 async fn simulate_squirrel_execution(_ai_workload: &AIWorkload) -> bool {
-    sleep(Duration::from_millis(50)).await;
-    true // Simulate successful AI execution
+    // ✅ MODERN: Immediate return for mocked AI execution
+    // Real implementation would use actual async workload processing
+    true
 }
 
+/// Simulate biomeOS manifest orchestration (modern async pattern)
 async fn simulate_biomeos_orchestration(_manifest: &BiomeManifest) -> bool {
-    sleep(Duration::from_millis(20)).await;
-    true // Simulate successful orchestration
+    // ✅ MODERN: Immediate return for mocked orchestration
+    true
 }
 
+/// Simulate Songbird routing (modern async pattern)
 async fn simulate_songbird_routing(_request: &EcosystemRequest) -> bool {
-    sleep(Duration::from_millis(10)).await;
-    true // Simulate successful routing
+    // ✅ MODERN: Immediate return for mocked routing decision
+    true
 }
 
+/// Simulate ToadStool execution (modern async pattern)
 async fn simulate_toadstool_execution(_request: &EcosystemRequest) -> bool {
-    sleep(Duration::from_millis(100)).await;
-    true // Simulate successful execution
+    // ✅ MODERN: Immediate return for mocked execution
+    // Real implementation would use actual async execution engine
+    true
 }
 
+/// Simulate result delivery (modern async pattern)
 async fn simulate_result_delivery() -> bool {
-    sleep(Duration::from_millis(10)).await;
-    true // Simulate successful delivery
+    // ✅ MODERN: Immediate return for mocked delivery
+    true
 }
 
 // Test data structures

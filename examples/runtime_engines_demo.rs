@@ -305,6 +305,7 @@ fn create_native_request() -> anyhow::Result<ExecutionRequest> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 
@@ -358,6 +359,7 @@ fn create_wasm_request() -> anyhow::Result<ExecutionRequest> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 
@@ -403,6 +405,7 @@ fn create_container_request() -> anyhow::Result<ExecutionRequest> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 
@@ -452,6 +455,7 @@ fn create_gpu_request() -> anyhow::Result<ExecutionRequest> {
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 
@@ -523,6 +527,7 @@ fn create_security_test_request(
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 
@@ -567,5 +572,6 @@ fn create_resource_test_request(memory_mb: u64) -> anyhow::Result<ExecutionReque
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }

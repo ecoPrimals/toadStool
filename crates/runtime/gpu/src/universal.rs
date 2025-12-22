@@ -84,6 +84,9 @@ pub struct CacheLevel {
     pub level: u8,
     pub size_bytes: u64,
     pub line_size_bytes: u32,
+    /// Cache associativity (ways)
+    /// 0 = fully associative or unknown
+    pub associativity: u32,
 }
 
 /// Optimized memory access patterns
@@ -357,6 +360,10 @@ pub struct ComputeRequirements {
     /// Required operations
     pub operations: Vec<Operation>,
 
+    /// Estimated number of operations (for performance prediction)
+    /// If None, scheduler will estimate based on workload characteristics
+    pub estimated_operations: Option<u64>,
+
     /// Maximum acceptable execution time
     pub max_execution_time: Option<Duration>,
 
@@ -371,6 +378,7 @@ impl Default for ComputeRequirements {
             memory_bytes: 1024,
             precision: Precision::Fp32,
             operations: vec![Operation::GeneralCompute],
+            estimated_operations: None,
             max_execution_time: None,
             preferred_access_pattern: None,
         }
@@ -426,7 +434,7 @@ pub trait ComputeContext: Send + Sync {
 }
 
 /// Universal workload description (hardware-agnostic)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UniversalWorkload {
     /// Unique workload ID
     pub id: String,
@@ -448,7 +456,7 @@ pub struct UniversalWorkload {
 }
 
 /// Buffer for compute data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComputeBuffer {
     pub name: String,
     pub data: Vec<u8>,
@@ -456,7 +464,7 @@ pub struct ComputeBuffer {
 }
 
 /// Universal kernel representation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum UniversalKernel {
     /// Source code in a universal language
     Source {
@@ -479,7 +487,7 @@ pub enum UniversalKernel {
 }
 
 /// Supported kernel languages
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum KernelLanguage {
     Wgsl,
     Spirv,
@@ -492,7 +500,7 @@ pub enum KernelLanguage {
 }
 
 /// Binary formats
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum BinaryFormat {
     SpirvBinary,
     NativeBinary,
@@ -500,7 +508,7 @@ pub enum BinaryFormat {
 }
 
 /// Optimization hints for scheduler
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct OptimizationHints {
     /// Prefer latency over throughput
     pub low_latency: bool,
@@ -516,7 +524,7 @@ pub struct OptimizationHints {
 }
 
 /// Result of workload execution
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct WorkloadResult {
     /// Output buffers
     pub outputs: HashMap<String, Vec<u8>>,
@@ -529,7 +537,7 @@ pub struct WorkloadResult {
 }
 
 /// Execution metrics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExecutionMetrics {
     /// Actual execution time
     pub execution_time: Duration,
@@ -602,6 +610,7 @@ mod tests {
             memory_bytes: 1024 * 1024, // 1 MB
             precision: Precision::Fp32,
             operations: vec![Operation::MatrixMultiply],
+            estimated_operations: Some(1024 * 1024),
             max_execution_time: None,
             preferred_access_pattern: None,
         };

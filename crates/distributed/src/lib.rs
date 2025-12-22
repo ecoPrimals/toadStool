@@ -29,6 +29,9 @@ pub mod songbird_integration;
 // Crypto lock system - BearDog cryptographic access control
 pub mod crypto_lock;
 
+// BearDog integration - capability-based encryption services
+pub mod beardog_integration;
+
 // Substrate detection for universal compute platforms
 pub mod substrate_detection;
 
@@ -99,20 +102,20 @@ pub use substrate_detection::*;
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_distributed_coordinator_creation() {
         let config = DistributedConfig::default();
         let coordinator = DistributedCoordinator::new(config).await;
         assert!(coordinator.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_job_queue() {
         let queue = UniversalJobQueue::new();
         assert_eq!(queue.total_jobs(), 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_universal_scheduler_creation() {
         let config = UniversalSchedulerConfig::default();
         let scheduler = UniversalScheduler::new(config).await;

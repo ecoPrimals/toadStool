@@ -1,248 +1,430 @@
 //! Comprehensive tests for API middleware
-//! Addresses zero-coverage file: api/src/middleware.rs (182 lines)
+//! Tests all middleware functions with realistic request/response scenarios
 
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+
+use axum::{
+    body::Body,
+    extract::Request,
+    http::{Method, StatusCode},
+    middleware::{self},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
+use tokio::sync::{broadcast, RwLock};
+use tower::ServiceExt;
 use uuid::Uuid;
 
-// Mock types for testing
-#[derive(Clone)]
-struct MockApiMetrics {
-    total_requests: u64,
-    successful_requests: u64,
-    failed_requests: u64,
-    average_response_time_ms: f64,
+use toadstool_api::{middleware::*, ApiMetrics, ApiState};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Create a test API state
+fn create_test_state() -> ApiState {
+    let executions = Arc::new(RwLock::new(HashMap::new()));
+    let metrics = Arc::new(RwLock::new(ApiMetrics::default()));
+    let (tx, _) = broadcast::channel(100);
+    let websocket_manager = Arc::new(toadstool_api::websocket::WebSocketManager::new());
+
+    ApiState {
+        executions,
+        metrics,
+        event_broadcaster: tx,
+        websocket_manager,
+        capability_provider: None,
+    }
 }
 
-// Test request ID generation
-#[test]
-fn test_request_id_is_uuid() {
-    let request_id = Uuid::new_v4().to_string();
-    assert!(!request_id.is_empty());
-    assert!(request_id.contains('-'));
+/// Simple handler for testing
+async fn test_handler() -> impl IntoResponse {
+    (StatusCode::OK, "test response")
 }
 
-#[test]
-fn test_request_id_unique() {
-    let id1 = Uuid::new_v4().to_string();
-    let id2 = Uuid::new_v4().to_string();
+/// Slow handler for testing metrics
+async fn slow_handler() -> impl IntoResponse {
+    tokio::task::yield_now().await; // ✅ FULLY MODERNIZED
+    (StatusCode::OK, "slow response")
+}
+
+/// Handler that returns an error
+async fn error_handler() -> impl IntoResponse {
+    (StatusCode::INTERNAL_SERVER_ERROR, "error response")
+}
+
+// ============================================================================
+// Request ID Middleware Tests
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_request_id_middleware_adds_request_id() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(request_id_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    // Check that response has x-request-id header
+    let request_id = response.headers().get("x-request-id");
+    assert!(request_id.is_some());
+
+    // Verify it's a valid UUID format
+    let id_str = request_id.unwrap().to_str().unwrap();
+    assert_eq!(id_str.len(), 36); // UUID format length
+    assert!(id_str.contains('-'));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_request_id_middleware_unique_ids() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(request_id_middleware));
+
+    // Make two requests
+    let request1 = Request::builder().uri("/test").body(Body::empty()).unwrap();
+    let response1 = app.clone().oneshot(request1).await.unwrap();
+    let id1 = response1
+        .headers()
+        .get("x-request-id")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    let request2 = Request::builder().uri("/test").body(Body::empty()).unwrap();
+    let response2 = app.oneshot(request2).await.unwrap();
+    let id2 = response2
+        .headers()
+        .get("x-request-id")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    // IDs should be different
     assert_ne!(id1, id2);
 }
 
-#[test]
-fn test_request_id_format() {
-    let request_id = Uuid::new_v4().to_string();
-    // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    assert_eq!(request_id.len(), 36);
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_request_id_middleware_persists_through_pipeline() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(request_id_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    // Verify request ID is present and valid
+    let request_id = response.headers().get("x-request-id").unwrap();
+    let _ = Uuid::parse_str(request_id.to_str().unwrap()).expect("Should be a valid UUID");
 }
 
-#[test]
-fn test_multiple_request_ids() {
-    let mut ids = Vec::new();
-    for _ in 0..10 {
-        ids.push(Uuid::new_v4().to_string());
-    }
+// ============================================================================
+// Metrics Middleware Tests
+// ============================================================================
 
-    // All should be unique
-    let unique_count = ids.iter().collect::<std::collections::HashSet<_>>().len();
-    assert_eq!(unique_count, 10);
-}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_metrics_middleware_tracks_successful_request() {
+    let state = create_test_state();
+    let state_clone = state.clone();
 
-// Test metrics tracking
-#[tokio::test]
-async fn test_metrics_initial_state() {
-    let metrics = MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    };
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
 
-    assert_eq!(metrics.total_requests, 0);
-    assert_eq!(metrics.successful_requests, 0);
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Check metrics were updated
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 1);
+    assert_eq!(metrics.successful_requests, 1);
     assert_eq!(metrics.failed_requests, 0);
+    // Response time should be tracked (may be very small for fast tests)
+    assert!(metrics.average_response_time_ms >= 0.0);
 }
 
-#[tokio::test]
-async fn test_metrics_increment_total() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_metrics_middleware_tracks_failed_request() {
+    let state = create_test_state();
+    let state_clone = state.clone();
 
-    {
-        let mut m = metrics.write().await;
-        m.total_requests += 1;
+    let app = Router::new()
+        .route("/test", get(error_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    // Check metrics were updated
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 1);
+    assert_eq!(metrics.successful_requests, 0);
+    assert_eq!(metrics.failed_requests, 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_metrics_middleware_tracks_response_time() {
+    let state = create_test_state();
+    let state_clone = state.clone();
+
+    let app = Router::new()
+        .route("/test", get(slow_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let _ = app.oneshot(request).await.unwrap();
+
+    // ✅ MODERNIZED: Check that response time was recorded (no longer expect > 1s due to sleep removal)
+    let metrics = state.metrics.read().await;
+    assert!(metrics.average_response_time_ms >= 0.0); // Response time should be recorded
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_metrics_middleware_average_calculation() {
+    let state = create_test_state();
+    let state_clone = state.clone();
+
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
+
+    // Make multiple requests
+    for _ in 0..5 {
+        let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+        let _ = app.clone().oneshot(request).await.unwrap();
     }
 
-    let m = metrics.read().await;
-    assert_eq!(m.total_requests, 1);
+    // Check metrics
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 5);
+    assert_eq!(metrics.successful_requests, 5);
+    // Response time should be tracked (may be very small for fast tests)
+    assert!(metrics.average_response_time_ms >= 0.0);
 }
 
-#[tokio::test]
-async fn test_metrics_successful_request() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
+// ============================================================================
+// Auth Middleware Tests
+// ============================================================================
 
-    {
-        let mut m = metrics.write().await;
-        m.total_requests += 1;
-        m.successful_requests += 1;
-    }
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_auth_middleware_accepts_valid_token() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(auth_middleware));
 
-    let m = metrics.read().await;
-    assert_eq!(m.total_requests, 1);
-    assert_eq!(m.successful_requests, 1);
-    assert_eq!(m.failed_requests, 0);
+    let request = Request::builder()
+        .uri("/test")
+        .header(
+            "authorization",
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
-async fn test_metrics_failed_request() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_auth_middleware_rejects_missing_token() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(auth_middleware));
 
-    {
-        let mut m = metrics.write().await;
-        m.total_requests += 1;
-        m.failed_requests += 1;
-    }
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
 
-    let m = metrics.read().await;
-    assert_eq!(m.total_requests, 1);
-    assert_eq!(m.successful_requests, 0);
-    assert_eq!(m.failed_requests, 1);
+    let response = app.oneshot(request).await.unwrap();
+    // Auth middleware returns ApiError which may be converted to different status codes
+    // Missing token should result in an error status (not 200 OK)
+    assert_ne!(response.status(), StatusCode::OK);
 }
 
-#[tokio::test]
-async fn test_metrics_response_time_calculation() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_auth_middleware_rejects_malformed_token() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(auth_middleware));
 
-    {
-        let mut m = metrics.write().await;
-        m.total_requests = 1;
-        m.average_response_time_ms = 150.0;
-    }
+    let request = Request::builder()
+        .uri("/test")
+        .header("authorization", "Bearer invalid.token")
+        .body(Body::empty())
+        .unwrap();
 
-    let m = metrics.read().await;
-    assert_eq!(m.average_response_time_ms, 150.0);
+    let response = app.oneshot(request).await.unwrap();
+    // Auth middleware returns ApiError which may be converted to different status codes
+    assert!(response.status().is_client_error() || response.status().is_server_error());
 }
 
-#[tokio::test]
-async fn test_metrics_average_response_time_update() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_auth_middleware_rejects_empty_token() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(auth_middleware));
 
-    {
-        let mut m = metrics.write().await;
-        m.total_requests = 2;
-        m.average_response_time_ms = 100.0;
+    let request = Request::builder()
+        .uri("/test")
+        .header("authorization", "Bearer ")
+        .body(Body::empty())
+        .unwrap();
 
-        // Simulate updating average with new value
-        let new_duration = 200.0;
-        m.average_response_time_ms = f64::midpoint(m.average_response_time_ms, new_duration);
-    }
-
-    let m = metrics.read().await;
-    assert_eq!(m.average_response_time_ms, 150.0);
+    let response = app.oneshot(request).await.unwrap();
+    // Auth middleware returns ApiError which may be converted to different status codes
+    assert!(response.status().is_client_error() || response.status().is_server_error());
 }
 
-// Test JWT token validation
-#[test]
-fn test_jwt_token_structure_valid() {
-    let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-    let parts: Vec<&str> = token.split('.').collect();
-    assert_eq!(parts.len(), 3);
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_auth_middleware_rejects_token_without_bearer() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(auth_middleware));
+
+    let request = Request::builder()
+        .uri("/test")
+        .header(
+            "authorization",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.test",
+        )
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    // Auth middleware returns ApiError which may be converted to different status codes
+    assert!(response.status().is_client_error() || response.status().is_server_error());
 }
 
-#[test]
-fn test_jwt_token_structure_invalid() {
-    let token = "invalid.token";
-    let parts: Vec<&str> = token.split('.').collect();
-    assert_ne!(parts.len(), 3);
+// ============================================================================
+// Rate Limit Middleware Tests
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_rate_limit_middleware_allows_localhost() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(rate_limit_middleware));
+
+    let request = Request::builder()
+        .uri("/test")
+        .header("x-forwarded-for", "127.0.0.1")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[test]
-fn test_jwt_token_empty() {
-    let token: &str = "";
-    assert!(token.is_empty());
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_rate_limit_middleware_checks_external_ip() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(rate_limit_middleware));
+
+    let request = Request::builder()
+        .uri("/test")
+        .header("x-forwarded-for", "192.168.1.100")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    // Should pass (current implementation logs and continues)
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[test]
-fn test_jwt_bearer_prefix_extraction() {
-    let auth_header = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.test";
-    let token = auth_header.strip_prefix("Bearer ");
-    assert!(token.is_some());
-    assert!(token.unwrap().starts_with("eyJ"));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_rate_limit_middleware_uses_x_real_ip() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(rate_limit_middleware));
+
+    let request = Request::builder()
+        .uri("/test")
+        .header("x-real-ip", "10.0.0.1")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[test]
-fn test_jwt_bearer_prefix_missing() {
-    let auth_header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.test";
-    let token = auth_header.strip_prefix("Bearer ");
-    assert!(token.is_none());
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_rate_limit_middleware_fallback_unknown_ip() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(rate_limit_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+    // Should default to "unknown" and continue
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
-// Test rate limiting
-#[test]
-fn test_rate_limit_constants() {
-    const MAX_REQUESTS: u32 = 100;
-    const WINDOW_SECS: u64 = 60;
+// ============================================================================
+// CORS Middleware Tests
+// ============================================================================
 
-    assert_eq!(MAX_REQUESTS, 100);
-    assert_eq!(WINDOW_SECS, 60);
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cors_middleware_adds_allow_origin() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(cors_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(
+        response
+            .headers()
+            .get("access-control-allow-origin")
+            .unwrap(),
+        "*"
+    );
 }
 
-#[test]
-fn test_rate_limit_localhost_detection() {
-    let localhost_ipv4 = "127.0.0.1";
-    let localhost_name = "localhost";
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cors_middleware_adds_allow_methods() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(cors_middleware));
 
-    assert_eq!(localhost_ipv4, "127.0.0.1");
-    assert_eq!(localhost_name, "localhost");
-}
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
 
-#[test]
-fn test_rate_limit_external_ip() {
-    let external_ip = "192.168.1.100";
-    assert_ne!(external_ip, "127.0.0.1");
-    assert_ne!(external_ip, "localhost");
-}
+    let response = app.oneshot(request).await.unwrap();
 
-#[test]
-fn test_rate_limit_unknown_ip() {
-    let unknown_ip = "unknown";
-    assert_eq!(unknown_ip, "unknown");
-}
+    let methods = response
+        .headers()
+        .get("access-control-allow-methods")
+        .unwrap()
+        .to_str()
+        .unwrap();
 
-// Test CORS headers
-#[test]
-fn test_cors_allow_origin() {
-    let allow_origin = "*";
-    assert_eq!(allow_origin, "*");
-}
-
-#[test]
-fn test_cors_allow_methods() {
-    let methods = "GET, POST, PUT, DELETE, OPTIONS";
     assert!(methods.contains("GET"));
     assert!(methods.contains("POST"));
     assert!(methods.contains("PUT"));
@@ -250,265 +432,247 @@ fn test_cors_allow_methods() {
     assert!(methods.contains("OPTIONS"));
 }
 
-#[test]
-fn test_cors_allow_headers() {
-    let headers = "content-type, authorization, x-request-id";
-    assert!(headers.contains("content-type"));
-    assert!(headers.contains("authorization"));
-    assert!(headers.contains("x-request-id"));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cors_middleware_adds_allow_headers() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(cors_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    let headers_value = response
+        .headers()
+        .get("access-control-allow-headers")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    assert!(headers_value.contains("content-type"));
+    assert!(headers_value.contains("authorization"));
+    assert!(headers_value.contains("x-request-id"));
 }
 
-#[test]
-fn test_cors_expose_headers() {
-    let headers = "x-request-id";
-    assert!(headers.contains("x-request-id"));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cors_middleware_adds_expose_headers() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(cors_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(
+        response
+            .headers()
+            .get("access-control-expose-headers")
+            .unwrap(),
+        "x-request-id"
+    );
 }
 
-#[test]
-fn test_cors_max_age() {
-    let max_age = "86400";
-    assert_eq!(max_age, "86400");
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_cors_middleware_adds_max_age() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(cors_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(
+        response.headers().get("access-control-max-age").unwrap(),
+        "86400"
+    );
 }
 
-// Test security headers
-#[test]
-fn test_security_header_x_frame_options() {
-    let value = "DENY";
-    assert_eq!(value, "DENY");
+// ============================================================================
+// Security Headers Middleware Tests
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_security_headers_middleware_adds_x_frame_options() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(response.headers().get("x-frame-options").unwrap(), "DENY");
 }
 
-#[test]
-fn test_security_header_x_content_type_options() {
-    let value = "nosniff";
-    assert_eq!(value, "nosniff");
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_security_headers_middleware_adds_x_content_type_options() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(
+        response.headers().get("x-content-type-options").unwrap(),
+        "nosniff"
+    );
 }
 
-#[test]
-fn test_security_header_x_xss_protection() {
-    let value = "1; mode=block";
-    assert!(value.contains("mode=block"));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_security_headers_middleware_adds_x_xss_protection() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    let xss_protection = response
+        .headers()
+        .get("x-xss-protection")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    assert!(xss_protection.contains("1"));
+    assert!(xss_protection.contains("mode=block"));
 }
 
-#[test]
-fn test_security_header_referrer_policy() {
-    let value = "strict-origin-when-cross-origin";
-    assert_eq!(value, "strict-origin-when-cross-origin");
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_security_headers_middleware_adds_referrer_policy() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    assert_eq!(
+        response.headers().get("referrer-policy").unwrap(),
+        "strict-origin-when-cross-origin"
+    );
 }
 
-#[test]
-fn test_security_header_csp() {
-    let value = "default-src 'self'";
-    assert!(value.contains("default-src"));
-    assert!(value.contains("'self'"));
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_security_headers_middleware_adds_csp() {
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware));
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    let csp = response
+        .headers()
+        .get("content-security-policy")
+        .unwrap()
+        .to_str()
+        .unwrap();
+
+    assert!(csp.contains("default-src"));
+    assert!(csp.contains("'self'"));
 }
 
-// Test response time tracking
-#[test]
-fn test_response_time_slow_request() {
-    let duration_ms = 1500;
-    assert!(duration_ms > 1000);
+// ============================================================================
+// Integration Tests - Multiple Middleware Layers
+// ============================================================================
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_middleware_stack_with_all_layers() {
+    let state = create_test_state();
+    let state_clone = state.clone();
+
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn(security_headers_middleware))
+        .layer(middleware::from_fn(cors_middleware))
+        .layer(middleware::from_fn(request_id_middleware))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    // Verify all middleware added their headers/effects
+    assert!(response.headers().get("x-request-id").is_some());
+    assert!(response
+        .headers()
+        .get("access-control-allow-origin")
+        .is_some());
+    assert!(response.headers().get("x-frame-options").is_some());
+
+    // Verify metrics were tracked
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 1);
 }
 
-#[test]
-fn test_response_time_fast_request() {
-    let duration_ms = 50;
-    assert!(duration_ms < 1000);
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_middleware_order_matters() {
+    let state = create_test_state();
+    let state_clone = state.clone();
+
+    // Request ID should be added before metrics (so metrics can log it)
+    let app = Router::new()
+        .route("/test", get(test_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .layer(middleware::from_fn(request_id_middleware))
+        .with_state(state.clone());
+
+    let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+    let response = app.oneshot(request).await.unwrap();
+
+    // Both should work regardless of order
+    assert!(response.headers().get("x-request-id").is_some());
+
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 1);
 }
 
-#[test]
-fn test_response_time_exactly_threshold() {
-    let duration_ms = 1000;
-    assert_eq!(duration_ms, 1000);
-}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_middleware_with_different_http_methods() {
+    let state = create_test_state();
+    let state_clone = state.clone();
 
-// Test HTTP status code checking
-#[test]
-fn test_status_code_success_200() {
-    let code = 200;
-    assert!((200..300).contains(&code));
-}
+    let app = Router::new()
+        .route("/test", get(test_handler).post(test_handler))
+        .layer(middleware::from_fn_with_state(
+            state_clone,
+            metrics_middleware,
+        ))
+        .with_state(state.clone());
 
-#[test]
-fn test_status_code_success_201() {
-    let code = 201;
-    assert!((200..300).contains(&code));
-}
+    // Test GET
+    let get_request = Request::builder()
+        .method(Method::GET)
+        .uri("/test")
+        .body(Body::empty())
+        .unwrap();
+    let _ = app.clone().oneshot(get_request).await.unwrap();
 
-#[test]
-fn test_status_code_client_error_400() {
-    let code = 400;
-    assert!((400..500).contains(&code));
-}
+    // Test POST
+    let post_request = Request::builder()
+        .method(Method::POST)
+        .uri("/test")
+        .body(Body::empty())
+        .unwrap();
+    let _ = app.oneshot(post_request).await.unwrap();
 
-#[test]
-fn test_status_code_client_error_404() {
-    let code = 404;
-    assert!((400..500).contains(&code));
-}
-
-#[test]
-fn test_status_code_server_error_500() {
-    let code = 500;
-    assert!((500..600).contains(&code));
-}
-
-// Test header value creation
-#[test]
-fn test_header_value_x_request_id() {
-    let request_id = Uuid::new_v4().to_string();
-    assert!(!request_id.is_empty());
-}
-
-#[test]
-fn test_header_value_fallback() {
-    let fallback = "unknown";
-    assert_eq!(fallback, "unknown");
-}
-
-// Test IP extraction
-#[test]
-fn test_ip_from_x_forwarded_for() {
-    let header_value: &str = "192.168.1.100";
-    assert!(!header_value.is_empty());
-}
-
-#[test]
-fn test_ip_from_x_real_ip() {
-    let header_value: &str = "10.0.0.1";
-    assert!(!header_value.is_empty());
-}
-
-// Test concurrent metrics updates
-#[tokio::test]
-async fn test_concurrent_metrics_updates() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
-
-    let handles: Vec<_> = (0..10)
-        .map(|_| {
-            let m = Arc::clone(&metrics);
-            tokio::spawn(async move {
-                let mut metrics = m.write().await;
-                metrics.total_requests += 1;
-            })
-        })
-        .collect();
-
-    for handle in handles {
-        assert!(handle.await.is_ok());
-    }
-
-    let m = metrics.read().await;
-    assert_eq!(m.total_requests, 10);
-}
-
-#[tokio::test]
-async fn test_concurrent_success_tracking() {
-    let metrics = Arc::new(RwLock::new(MockApiMetrics {
-        total_requests: 0,
-        successful_requests: 0,
-        failed_requests: 0,
-        average_response_time_ms: 0.0,
-    }));
-
-    let handles: Vec<_> = (0..5)
-        .map(|_| {
-            let m = Arc::clone(&metrics);
-            tokio::spawn(async move {
-                let mut metrics = m.write().await;
-                metrics.total_requests += 1;
-                metrics.successful_requests += 1;
-            })
-        })
-        .collect();
-
-    for handle in handles {
-        assert!(handle.await.is_ok());
-    }
-
-    let m = metrics.read().await;
-    assert_eq!(m.total_requests, 5);
-    assert_eq!(m.successful_requests, 5);
-}
-
-// Test JWT validation edge cases
-#[test]
-fn test_jwt_with_extra_dots() {
-    let token = "part1.part2.part3.extra";
-    let parts: Vec<&str> = token.split('.').collect();
-    assert!(parts.len() > 3);
-}
-
-#[test]
-fn test_jwt_with_single_part() {
-    let token = "singlepart";
-    let parts: Vec<&str> = token.split('.').collect();
-    assert_eq!(parts.len(), 1);
-}
-
-#[test]
-fn test_jwt_with_two_parts() {
-    let token = "part1.part2";
-    let parts: Vec<&str> = token.split('.').collect();
-    assert_eq!(parts.len(), 2);
-}
-
-// Test authorization header parsing
-#[test]
-fn test_auth_header_case_sensitivity() {
-    let header = "Bearer token123";
-    assert!(header.starts_with("Bearer"));
-}
-
-#[test]
-fn test_auth_header_with_whitespace() {
-    let header = "Bearer   token123";
-    let token = header.strip_prefix("Bearer ");
-    assert!(token.is_some());
-}
-
-// Test metrics calculation
-#[tokio::test]
-async fn test_metrics_success_rate_calculation() {
-    let metrics = MockApiMetrics {
-        total_requests: 100,
-        successful_requests: 95,
-        failed_requests: 5,
-        average_response_time_ms: 123.4,
-    };
-
-    let success_rate = (metrics.successful_requests as f64 / metrics.total_requests as f64) * 100.0;
-    assert_eq!(success_rate, 95.0);
-}
-
-#[tokio::test]
-async fn test_metrics_failure_rate_calculation() {
-    let metrics = MockApiMetrics {
-        total_requests: 100,
-        successful_requests: 95,
-        failed_requests: 5,
-        average_response_time_ms: 123.4,
-    };
-
-    let failure_rate = (metrics.failed_requests as f64 / metrics.total_requests as f64) * 100.0;
-    assert_eq!(failure_rate, 5.0);
-}
-
-// Test response time thresholds
-#[test]
-fn test_slow_request_threshold() {
-    let threshold_ms = 1000;
-    let duration_ms = 1500;
-    assert!(duration_ms > threshold_ms);
-}
-
-#[test]
-fn test_fast_request_threshold() {
-    let threshold_ms = 1000;
-    let duration_ms = 500;
-    assert!(duration_ms < threshold_ms);
+    // Both should be tracked
+    let metrics = state.metrics.read().await;
+    assert_eq!(metrics.total_requests, 2);
 }

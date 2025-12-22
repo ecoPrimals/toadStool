@@ -1,4 +1,9 @@
 //! Server test fixtures for integration testing
+//!
+//! Test fixtures may use `expect()` for setup operations, as test setup
+//! failures should fail fast.
+
+#![allow(clippy::expect_used)] // Test fixtures may expect on setup
 
 use std::net::SocketAddr;
 

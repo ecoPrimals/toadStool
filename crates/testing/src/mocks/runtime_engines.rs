@@ -402,7 +402,7 @@ mod tests {
     use super::*;
     use crate::fixtures::create_test_execution_request;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_successful_mock() {
         let mut mock = MockRuntimeEngine::new_successful();
 
@@ -414,7 +414,10 @@ mod tests {
 
         // Test execution
         let request = create_test_execution_request();
-        let response = mock.execute(request.clone()).await.unwrap();
+        let response = mock
+            .execute(request.clone())
+            .await
+            .expect("Mock execution should succeed");
         assert_eq!(response.execution_id, request.execution_id);
         assert_eq!(response.status, ExecutionStatus::Success);
 
@@ -430,7 +433,7 @@ mod tests {
         assert!(mock.shutdown().await.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_failure_mocks() {
         // Test initialization failure
         let mut init_fail_mock = MockRuntimeEngine::new_init_failure();
@@ -451,7 +454,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_timeout_mock() {
         let mut mock = MockRuntimeEngine::new_timeout();
         assert!(mock
@@ -465,7 +468,7 @@ mod tests {
         assert_eq!(response.duration.as_secs(), 30);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_resource_limit_mock() {
         let mut mock = MockRuntimeEngine::new_resource_limit_exceeded();
         assert!(mock
@@ -478,7 +481,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_security_violation_mock() {
         let mut mock = MockRuntimeEngine::new_security_violation();
         assert!(mock
@@ -491,7 +494,7 @@ mod tests {
         assert!(matches!(response.status, ExecutionStatus::Failed { .. }));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_cancelled_mock() {
         let mut mock = MockRuntimeEngine::new_cancelled();
         assert!(mock
@@ -504,7 +507,7 @@ mod tests {
         assert_eq!(response.status, ExecutionStatus::Cancelled);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_limited_support_mock() {
         let mut mock = MockRuntimeEngine::new_limited_support();
         assert!(mock

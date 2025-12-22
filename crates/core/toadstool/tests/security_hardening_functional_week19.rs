@@ -12,7 +12,7 @@ use toadstool::security_hardening::*;
 // RateLimiter Functional Tests (15 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_allows_first_request() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 10,
@@ -27,7 +27,7 @@ async fn test_rate_limiter_allows_first_request() {
     assert!(allowed, "First request should be allowed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_allows_multiple_under_limit() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 10,
@@ -46,7 +46,7 @@ async fn test_rate_limiter_allows_multiple_under_limit() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_blocks_over_limit() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 5,
@@ -68,7 +68,7 @@ async fn test_rate_limiter_blocks_over_limit() {
     assert!(!blocked, "Request over limit should be blocked");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_separate_clients() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 5,
@@ -89,7 +89,7 @@ async fn test_rate_limiter_separate_clients() {
     assert!(limiter.check_rate_limit("client2").await.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_ban_blocks_requests() {
     let config = RateLimitingConfig::default();
     let limiter = RateLimiter::new(config);
@@ -105,7 +105,7 @@ async fn test_rate_limiter_ban_blocks_requests() {
     assert!(!blocked, "Banned client should be blocked");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_daily_limit() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 1000,
@@ -126,7 +126,7 @@ async fn test_rate_limiter_daily_limit() {
     assert!(!limiter.check_rate_limit("client1").await.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiter_zero_limit() {
     let config = RateLimitingConfig {
         max_requests_per_minute: 0,
@@ -276,7 +276,7 @@ fn test_input_validator_sanitize_preserves_clean() {
 // SecurityAuditLogger Functional Tests (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_audit_logger_logs_event() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -295,7 +295,7 @@ async fn test_audit_logger_logs_event() {
     logger.log_event(event).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_audit_logger_retrieves_events() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -319,7 +319,7 @@ async fn test_audit_logger_retrieves_events() {
     assert!(events.len() <= 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_audit_logger_different_severities() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -344,7 +344,7 @@ async fn test_audit_logger_different_severities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_audit_logger_different_event_types() {
     let config = AuditConfig::default();
     let logger = SecurityAuditLogger::new(config);
@@ -376,7 +376,7 @@ async fn test_audit_logger_different_event_types() {
 // SecurityHardeningManager Integration Tests (5 tests)
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_validates_clean_input() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);
@@ -384,7 +384,7 @@ async fn test_manager_validates_clean_input() {
     assert!(manager.validate_input("clean text").is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_blocks_malicious_input() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);
@@ -394,7 +394,7 @@ async fn test_manager_blocks_malicious_input() {
         .is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_sanitizes_input() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);
@@ -405,7 +405,7 @@ async fn test_manager_sanitizes_input() {
     assert!(!clean.contains("<b>"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_logs_event() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);
@@ -424,7 +424,7 @@ async fn test_manager_logs_event() {
     manager.log_security_event(event).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_records_failure() {
     let config = SecurityHardeningConfig::default();
     let manager = SecurityHardeningManager::new(config);

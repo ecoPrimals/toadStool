@@ -40,10 +40,14 @@ fn test_container_builder_with_custom_registry() {
 }
 
 #[test]
-#[should_panic(expected = "Image is required for container workload")]
 fn test_container_builder_missing_image() {
-    let _submission = WorkloadSubmission::container().build();
-    // Should panic without image
+    let result = WorkloadSubmission::container().build();
+    // Should return error without image
+    assert!(result.is_err(), "Building without image should fail");
+    assert!(
+        result.unwrap_err().contains("Image is required"),
+        "Error should mention missing image"
+    );
 }
 
 #[test]

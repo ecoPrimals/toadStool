@@ -199,7 +199,7 @@ fn test_cache_metrics_perfect_hit_rate() {
 // WasmRuntimeEngine Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_creation_default() {
     let config = WasmRuntimeConfig::default();
     let result = WasmRuntimeEngine::new(config);
@@ -211,7 +211,7 @@ async fn test_wasm_engine_creation_default() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_creation_custom_config() {
     let config = WasmRuntimeConfig {
         max_memory_mb: 256,
@@ -223,7 +223,7 @@ async fn test_wasm_engine_creation_custom_config() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_get_capabilities() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -233,7 +233,7 @@ async fn test_wasm_engine_get_capabilities() {
     assert!(!capabilities.supported_architectures.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_supports_wasm_workload() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -242,7 +242,7 @@ async fn test_wasm_engine_supports_wasm_workload() {
     assert!(engine.supports_workload(&WorkloadType::Wasm));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_rejects_non_wasm_workload() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -252,7 +252,7 @@ async fn test_wasm_engine_rejects_non_wasm_workload() {
     assert!(!engine.supports_workload(&WorkloadType::Native));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_architectures() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -263,7 +263,7 @@ async fn test_wasm_engine_architectures() {
         .contains(&"wasm32".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_platform_features() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -273,7 +273,7 @@ async fn test_wasm_engine_platform_features() {
     assert!(has_wasi.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_with_disabled_caching() {
     let mut config = WasmRuntimeConfig::default();
     config.cache.enabled = false;
@@ -282,7 +282,7 @@ async fn test_wasm_engine_with_disabled_caching() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_with_fuel_limit() {
     let config = WasmRuntimeConfig {
         fuel_limit: Some(500_000),
@@ -293,7 +293,7 @@ async fn test_wasm_engine_with_fuel_limit() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_engine_version() {
     let config = WasmRuntimeConfig::default();
     let engine = WasmRuntimeEngine::new(config).unwrap();
@@ -306,7 +306,7 @@ async fn test_wasm_engine_version() {
 // Configuration Validation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_config_validation_reasonable_limits() {
     let configs = vec![
         WasmRuntimeConfig {

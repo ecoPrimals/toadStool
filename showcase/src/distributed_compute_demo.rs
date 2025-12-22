@@ -373,6 +373,7 @@ fn create_execution_request(workload: WorkloadSpec, subtask_id: usize) -> Result
         },
         input_data: Default::default(),
         callback_config: None,
+        encryption_config: None,
     })
 }
 

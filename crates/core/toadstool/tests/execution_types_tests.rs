@@ -433,6 +433,7 @@ fn test_execution_request_with_callback() {
 
     let request = ExecutionRequest {
         callback_config: Some(callback),
+        encryption_config: None,
         ..Default::default()
     };
 

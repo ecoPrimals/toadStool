@@ -291,7 +291,7 @@ fn test_validate_composite_nested() {
 // Test: Evaluation - Always/Never
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_always() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Always;
@@ -302,7 +302,7 @@ async fn test_evaluate_always() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_never() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Never;
@@ -317,7 +317,7 @@ async fn test_evaluate_never() {
 // Test: Evaluation - WorkloadType
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_workload_type_match() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::WorkloadType {
@@ -330,7 +330,7 @@ async fn test_evaluate_workload_type_match() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_workload_type_no_match() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::WorkloadType {
@@ -347,7 +347,7 @@ async fn test_evaluate_workload_type_no_match() {
 // Test: Evaluation - RequiresCapability
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_capability_match() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::RequiresCapability {
@@ -363,7 +363,7 @@ async fn test_evaluate_capability_match() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_capability_no_match() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::RequiresCapability {
@@ -380,7 +380,7 @@ async fn test_evaluate_capability_no_match() {
 // Test: Evaluation - ResourceUsage
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_resource_usage() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::ResourceUsage {
@@ -399,7 +399,7 @@ async fn test_evaluate_resource_usage() {
 // Test: Evaluation - TimeWindow
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_time_window_any_day() {
     let evaluator = ConditionEvaluator::new();
     // Empty days means any day
@@ -419,7 +419,7 @@ async fn test_evaluate_time_window_any_day() {
 // Test: Evaluation - UserContext
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_user_context_match_user() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::UserContext {
@@ -433,7 +433,7 @@ async fn test_evaluate_user_context_match_user() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_user_context_match_group() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::UserContext {
@@ -447,7 +447,7 @@ async fn test_evaluate_user_context_match_group() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_user_context_no_user_info() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::UserContext {
@@ -461,7 +461,7 @@ async fn test_evaluate_user_context_no_user_info() {
     assert!(result.unwrap()); // Empty users/groups with no user info => true
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_user_context_no_match() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::UserContext {
@@ -479,7 +479,7 @@ async fn test_evaluate_user_context_no_match() {
 // Test: Evaluation - Composite AND
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_and_all_true() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -493,7 +493,7 @@ async fn test_evaluate_composite_and_all_true() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_and_one_false() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -507,7 +507,7 @@ async fn test_evaluate_composite_and_one_false() {
     assert!(!result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_and_all_false() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -525,7 +525,7 @@ async fn test_evaluate_composite_and_all_false() {
 // Test: Evaluation - Composite OR
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_or_all_true() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -539,7 +539,7 @@ async fn test_evaluate_composite_or_all_true() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_or_one_true() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -553,7 +553,7 @@ async fn test_evaluate_composite_or_one_true() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_or_all_false() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -571,7 +571,7 @@ async fn test_evaluate_composite_or_all_false() {
 // Test: Evaluation - Composite NOT
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_not_true() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -585,7 +585,7 @@ async fn test_evaluate_composite_not_true() {
     assert!(!result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_not_false() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -599,7 +599,7 @@ async fn test_evaluate_composite_not_false() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_composite_not_invalid_count() {
     let evaluator = ConditionEvaluator::new();
     let condition = PolicyCondition::Composite {
@@ -616,7 +616,7 @@ async fn test_evaluate_composite_not_invalid_count() {
 // Test: Evaluation - Complex Nested Conditions
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_complex_nested_and_or() {
     let evaluator = ConditionEvaluator::new();
     // (Always AND (Never OR Always)) should be true
@@ -637,7 +637,7 @@ async fn test_evaluate_complex_nested_and_or() {
     assert!(result.unwrap());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_complex_triple_nested() {
     let evaluator = ConditionEvaluator::new();
     // NOT(Always AND (Never OR Always)) should be false

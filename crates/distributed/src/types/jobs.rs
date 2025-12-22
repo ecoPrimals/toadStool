@@ -350,20 +350,24 @@ impl ResourceRequirementIndex {
 }
 
 impl CompatibilityMode {
+    /// Get mode as string (zero-copy for standard modes)
+    ///
+    /// Returns a static string for standard modes, only allocates for LegacyCompat
     #[must_use]
-    pub fn to_mode_string(&self) -> String {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Native => "native".to_string(),
-            Self::Container => "container".to_string(),
-            Self::Emulated => "emulated".to_string(),
-            Self::Hybrid => "hybrid".to_string(),
-            Self::LinuxCompat => "linux_compat".to_string(),
-            Self::WindowsCompat => "windows_compat".to_string(),
-            Self::MacOSCompat => "macos_compat".to_string(),
-            Self::ContainerCompat => "container_compat".to_string(),
-            Self::LegacyCompat { system_type } => {
-                format!("legacy_compat_{system_type}")
-            }
+            Self::Native => "native",
+            Self::Container => "container",
+            Self::Emulated => "emulated",
+            Self::Hybrid => "hybrid",
+            Self::LinuxCompat => "linux_compat",
+            Self::WindowsCompat => "windows_compat",
+            Self::MacOSCompat => "macos_compat",
+            Self::ContainerCompat => "container_compat",
+            Self::LegacyCompat { .. } => "legacy_compat", // Generic for legacy
         }
     }
+
+    // ✅ REMOVED: to_mode_string() - deprecated since 0.1.0
+    // Use as_str() instead to avoid allocation, or call .to_string() on as_str() if ownership is needed
 }

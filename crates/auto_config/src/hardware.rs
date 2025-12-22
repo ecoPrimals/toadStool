@@ -24,6 +24,11 @@ impl HardwareDetector {
     }
 
     /// Comprehensive system scan to detect all hardware capabilities
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if system information cannot be retrieved
+    /// or hardware detection fails.
+    #[must_use = "Hardware scan result should be checked"]
     pub async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
         info!("🔍 Starting comprehensive hardware scan...");
 
@@ -866,13 +871,13 @@ struct SystemInfo {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_hardware_detector_creation() {
         let detector = HardwareDetector::new();
         assert!(detector._system_info.is_none());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_scan() {
         let mut detector = HardwareDetector::new();
         let result = detector.scan_system().await;

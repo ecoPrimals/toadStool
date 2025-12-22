@@ -11,7 +11,7 @@ use uuid::Uuid;
 // Test 1-10: Monitor Initialization and Configuration
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_initialization() {
     // Test: Monitor initializes successfully
     let monitor = create_test_monitor().await;
@@ -19,7 +19,7 @@ async fn test_monitor_initialization() {
     assert!(monitor.is_ok(), "Monitor should initialize");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_default_config() {
     // Test: Default configuration is valid
     let config = create_default_monitor_config();
@@ -28,7 +28,7 @@ async fn test_monitor_default_config() {
     assert!(config.interval_secs <= 300, "Interval should be reasonable");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_custom_config() {
     // Test: Custom configuration is applied
     let config = MonitorConfig {
@@ -41,7 +41,7 @@ async fn test_monitor_custom_config() {
     assert!(config.enabled);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_config_validation() {
     // Test: Invalid configuration is rejected
     let invalid_configs = vec![
@@ -65,7 +65,7 @@ async fn test_monitor_config_validation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_enabled_flag() {
     // Test: Monitor can be disabled
     let config = MonitorConfig {
@@ -77,7 +77,7 @@ async fn test_monitor_enabled_flag() {
     assert!(!config.enabled, "Monitor should be disabled");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_metrics_collection_flag() {
     // Test: Metrics collection can be toggled
     let with_metrics = MonitorConfig {
@@ -96,7 +96,7 @@ async fn test_monitor_metrics_collection_flag() {
     assert!(!without_metrics.collect_metrics);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_interval_range() {
     // Test: Valid interval ranges
     let valid_intervals = vec![5u64, 10, 30, 60, 120, 300];
@@ -110,7 +110,7 @@ async fn test_monitor_interval_range() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_multiple_instances() {
     // Test: Multiple monitors can be created
     let monitor1 = create_test_monitor().await.unwrap();
@@ -121,7 +121,7 @@ async fn test_monitor_multiple_instances() {
     assert_ne!(monitor1.id, monitor2.id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_state_initialization() {
     // Test: Monitor starts in correct state
     let monitor = create_test_monitor().await.unwrap();
@@ -131,7 +131,7 @@ async fn test_monitor_state_initialization() {
     assert!(metrics.is_empty(), "Should have no metrics initially");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_resource_limits() {
     // Test: Resource limits are set
     let monitor = create_test_monitor().await.unwrap();
@@ -144,7 +144,7 @@ async fn test_monitor_resource_limits() {
 // Test 11-20: Metric Collection
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_cpu_metrics() {
     // Test: CPU metrics are collected
     let cpu_metric = collect_cpu_metric();
@@ -154,7 +154,7 @@ async fn test_collect_cpu_metrics() {
     assert_eq!(cpu_metric.name, "cpu_percent");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_memory_metrics() {
     // Test: Memory metrics are collected
     let memory_metric = collect_memory_metric();
@@ -163,7 +163,7 @@ async fn test_collect_memory_metrics() {
     assert_eq!(memory_metric.name, "memory_bytes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_disk_metrics() {
     // Test: Disk metrics are collected
     let disk_metric = collect_disk_metric();
@@ -172,7 +172,7 @@ async fn test_collect_disk_metrics() {
     assert_eq!(disk_metric.name, "disk_bytes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_network_metrics() {
     // Test: Network metrics are collected
     let net_rx = collect_network_rx_metric();
@@ -182,7 +182,7 @@ async fn test_collect_network_metrics() {
     assert!(net_tx.value >= 0.0, "Network TX should be non-negative");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_timestamp() {
     // Test: Metrics include timestamps
     use chrono::Utc;
@@ -200,7 +200,7 @@ async fn test_metric_timestamp() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_labels() {
     // Test: Metrics can have labels
     let mut labels = HashMap::new();
@@ -218,7 +218,7 @@ async fn test_metric_labels() {
     assert_eq!(metric.labels.get("host"), Some(&"localhost".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_aggregation() {
     // Test: Metrics can be aggregated
     let metrics = vec![10.0, 20.0, 30.0, 40.0, 50.0];
@@ -234,7 +234,7 @@ async fn test_metric_aggregation() {
     assert_eq!(min, 10.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_history_size() {
     // Test: Metric history is limited
     let max_history = 1000;
@@ -243,7 +243,7 @@ async fn test_metric_history_size() {
     assert!(max_history <= 10000, "History size should be reasonable");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_collection_interval() {
     // Test: Collection respects interval
     let interval = Duration::from_secs(30);
@@ -252,7 +252,7 @@ async fn test_metric_collection_interval() {
     assert!(interval.as_secs() <= 300, "Interval should be <= 5 minutes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metric_cleanup_old_data() {
     // Test: Old metrics are cleaned up
     let retention_period = Duration::from_secs(3600); // 1 hour
@@ -271,7 +271,7 @@ async fn test_metric_cleanup_old_data() {
 // Test 21-30: Monitor Lifecycle
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_start() {
     // Test: Monitor can be started
     let mut monitor = create_test_monitor().await.unwrap();
@@ -281,7 +281,7 @@ async fn test_monitor_start() {
     assert!(monitor.is_running(), "Monitor should be running");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_stop() {
     // Test: Monitor can be stopped
     let mut monitor = create_test_monitor().await.unwrap();
@@ -293,7 +293,7 @@ async fn test_monitor_stop() {
     assert!(!monitor.is_running(), "Monitor should be stopped");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_restart() {
     // Test: Monitor can be restarted
     let mut monitor = create_test_monitor().await.unwrap();
@@ -309,7 +309,7 @@ async fn test_monitor_restart() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_start_idempotent() {
     // Test: Starting already-running monitor is safe
     let mut monitor = create_test_monitor().await.unwrap();
@@ -321,7 +321,7 @@ async fn test_monitor_start_idempotent() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_stop_idempotent() {
     // Test: Stopping already-stopped monitor is safe
     let mut monitor = create_test_monitor().await.unwrap();
@@ -332,7 +332,7 @@ async fn test_monitor_stop_idempotent() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_graceful_shutdown() {
     // Test: Monitor shuts down gracefully
     let mut monitor = create_test_monitor().await.unwrap();
@@ -344,7 +344,7 @@ async fn test_monitor_graceful_shutdown() {
     assert!(!monitor.is_running(), "Monitor should be stopped");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_shutdown_timeout() {
     // Test: Shutdown respects timeout
     let timeout = Duration::from_secs(10);
@@ -356,7 +356,7 @@ async fn test_monitor_shutdown_timeout() {
     assert!(timeout.as_secs() <= 60, "Timeout should be reasonable");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_cleanup_on_stop() {
     // Test: Resources are cleaned up on stop
     let mut monitor = create_test_monitor().await.unwrap();
@@ -369,7 +369,7 @@ async fn test_monitor_cleanup_on_stop() {
     // Cleanup behavior verified - test passes if no panic occurs
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_state_transitions() {
     // Test: Valid state transitions
     let states = vec!["stopped", "starting", "running", "stopping", "stopped"];
@@ -383,7 +383,7 @@ async fn test_monitor_state_transitions() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_concurrent_operations() {
     // Test: Monitor handles concurrent operations
     let monitor = create_test_monitor().await.unwrap();
@@ -405,7 +405,7 @@ async fn test_monitor_concurrent_operations() {
 // Test 31-40: Alert System
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_threshold_config() {
     // Test: Alert thresholds can be configured
     let alert_config = AlertConfig {
@@ -419,7 +419,7 @@ async fn test_alert_threshold_config() {
     assert!(alert_config.memory_threshold > 0.0 && alert_config.memory_threshold <= 100.0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_trigger_cpu() {
     // Test: CPU alert triggers at threshold
     let threshold = 80.0;
@@ -428,7 +428,7 @@ async fn test_alert_trigger_cpu() {
     assert!(current > threshold, "Should trigger alert");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_trigger_memory() {
     // Test: Memory alert triggers at threshold
     let threshold = 90.0;
@@ -437,7 +437,7 @@ async fn test_alert_trigger_memory() {
     assert!(current > threshold, "Should trigger alert");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_severity_levels() {
     // Test: Alert severity levels
     let severities = vec!["info", "warning", "error", "critical"];
@@ -447,7 +447,7 @@ async fn test_alert_severity_levels() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_message_format() {
     // Test: Alert messages are formatted correctly
     let alert = Alert {
@@ -465,7 +465,7 @@ async fn test_alert_message_format() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_deduplication() {
     // Test: Duplicate alerts are handled
     let alert1 = create_test_alert("cpu", 85.0);
@@ -475,7 +475,7 @@ async fn test_alert_deduplication() {
     assert_eq!(alert1.metric_name, alert2.metric_name);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_cooldown_period() {
     // Test: Alert cooldown prevents spam
     let cooldown = Duration::from_secs(300); // 5 minutes
@@ -486,7 +486,7 @@ async fn test_alert_cooldown_period() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_history() {
     // Test: Alert history is maintained
     let max_history = 100;
@@ -495,7 +495,7 @@ async fn test_alert_history() {
     assert!(max_history <= 1000, "History size should be reasonable");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_notification_channels() {
     // Test: Multiple notification channels
     let channels = vec!["log", "email", "webhook", "stdout"];
@@ -509,7 +509,7 @@ async fn test_alert_notification_channels() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_alert_disable() {
     // Test: Alerts can be disabled
     let config = AlertConfig {
@@ -526,7 +526,7 @@ async fn test_alert_disable() {
 // Test 41-50: Export and Reporting
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_metrics_json() {
     // Test: Metrics can be exported as JSON
     let metrics = vec![create_test_metric()];
@@ -535,7 +535,7 @@ async fn test_export_metrics_json() {
     assert!(json.is_ok(), "Should export to JSON");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_metrics_csv() {
     // Test: Metrics can be exported as CSV
     let csv_header = "timestamp,name,value,labels";
@@ -547,7 +547,7 @@ async fn test_export_metrics_csv() {
     assert!(csv_header.contains("value"), "CSV should have value");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_to_file() {
     // Test: Metrics can be exported to file
     let export_path = PathBuf::from("/tmp/metrics-export.json");
@@ -555,7 +555,7 @@ async fn test_export_to_file() {
     assert!(export_path.to_str().is_some(), "Path should be valid");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_generate_report() {
     // Test: Reports can be generated
     let report = MonitorReport {
@@ -570,7 +570,7 @@ async fn test_generate_report() {
     assert!(report.avg_cpu >= 0.0, "CPU should be valid");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_report_time_range() {
     // Test: Reports support time ranges
     use chrono::{Duration as ChronoDuration, Utc};
@@ -581,7 +581,7 @@ async fn test_report_time_range() {
     assert!(end > start, "End should be after start");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_report_format_text() {
     // Test: Text format reports
     let report_text = "Monitoring Report\nCPU: 45%\nMemory: 60%";
@@ -590,7 +590,7 @@ async fn test_report_format_text() {
     assert!(report_text.contains("Memory"), "Report should show Memory");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_report_format_html() {
     // Test: HTML format reports
     let report_html = "<html><body><h1>Monitoring Report</h1></body></html>";
@@ -598,7 +598,7 @@ async fn test_report_format_html() {
     assert!(report_html.contains("<html>"), "Should be HTML");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_summary() {
     // Test: Summary statistics
     let summary = MetricsSummary {
@@ -615,7 +615,7 @@ async fn test_metrics_summary() {
     assert!(summary.p50 <= summary.p95, "P50 should be <= P95");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_prometheus_format() {
     // Test: Prometheus format export
     let prometheus = "# TYPE cpu_percent gauge\ncpu_percent 45.0";
@@ -624,7 +624,7 @@ async fn test_export_prometheus_format() {
     assert!(prometheus.contains("gauge"), "Should specify metric type");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_streaming_export() {
     // Test: Streaming export for large datasets
     let batch_size = 1000;
@@ -637,7 +637,7 @@ async fn test_streaming_export() {
 // Test 51-60: Error Handling and Edge Cases
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_handles_collection_error() {
     // Test: Monitor handles collection errors gracefully
     let error_msg = "Failed to collect metric";
@@ -646,7 +646,7 @@ async fn test_monitor_handles_collection_error() {
     assert!(error_msg.len() > 5, "Error should have substantial message");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_handles_full_buffer() {
     // Test: Monitor handles full metric buffer
     let max_metrics = 1000;
@@ -655,7 +655,7 @@ async fn test_monitor_handles_full_buffer() {
     assert!(current_metrics > max_metrics, "Buffer should be full");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_handles_invalid_metric() {
     // Test: Invalid metrics are rejected
     let invalid_value = f64::NAN;
@@ -663,7 +663,7 @@ async fn test_monitor_handles_invalid_metric() {
     assert!(invalid_value.is_nan(), "NaN should be rejected");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_recovers_from_error() {
     // Test: Monitor recovers from errors
     let mut monitor = create_test_monitor().await.unwrap();
@@ -676,7 +676,7 @@ async fn test_monitor_recovers_from_error() {
     assert!(result.is_ok(), "Should recover and restart");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_handles_system_overload() {
     // Test: Monitor handles system under load
     let high_cpu = 99.9;
@@ -686,7 +686,7 @@ async fn test_monitor_handles_system_overload() {
     assert!(high_memory < 100.0, "Memory should be < 100%");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_timeout_protection() {
     // Test: Operations have timeout protection
     let timeout = Duration::from_secs(30);
@@ -694,7 +694,7 @@ async fn test_monitor_timeout_protection() {
     assert!(timeout.as_secs() > 0, "Timeout should be set");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_thread_safety() {
     // Test: Monitor is thread-safe
     let monitor = create_test_monitor().await.unwrap();
@@ -704,7 +704,7 @@ async fn test_monitor_thread_safety() {
     assert_eq!(monitor.id, monitor_clone.id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_memory_leak_prevention() {
     // Test: Old metrics are cleaned up
     let retention_period = Duration::from_secs(3600);
@@ -712,7 +712,7 @@ async fn test_monitor_memory_leak_prevention() {
     assert!(retention_period.as_secs() > 0, "Should clean up old data");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_handles_missing_permissions() {
     // Test: Graceful handling of permission errors
     let error_type = "PermissionDenied";
@@ -720,7 +720,7 @@ async fn test_monitor_handles_missing_permissions() {
     assert_eq!(error_type, "PermissionDenied");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_platform_compatibility() {
     // Test: Platform-specific handling
     let platforms = vec!["linux", "macos", "windows"];

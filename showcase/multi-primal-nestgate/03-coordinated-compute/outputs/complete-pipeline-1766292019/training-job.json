@@ -1,0 +1,29 @@
+{
+  "job_id": "ml-training-1766292020",
+  "job_type": "ml_training",
+  "model": "mnist_classifier",
+  "dataset": "mnist",
+  "training_config": {
+    "epochs": 10,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "optimizer": "adam"
+  },
+  "orchestration": {
+    "coordinator": "songbird",
+    "compute_service": "auto_discover",
+    "storage_service": "auto_discover",
+    "checkpoint_frequency": 2,
+    "persist_results": true,
+    "result_versioning": true
+  },
+  "storage_config": {
+    "checkpoint_path": "ml/checkpoints/mnist",
+    "final_model_path": "ml/models/mnist",
+    "result_metadata": {
+      "project": "mnist_demo",
+      "tags": ["demo", "mnist", "training"],
+      "retention": "permanent"
+    }
+  }
+}

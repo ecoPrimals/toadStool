@@ -317,6 +317,9 @@ pub struct NetworkLimits {
 }
 
 /// Resource monitor trait
+///
+/// **Modern Async Design**: All methods are properly async to avoid blocking
+/// the runtime with `block_in_place` or `block_on` anti-patterns.
 pub trait ResourceMonitor: Send + Sync {
     /// Start monitoring resources for a workload
     fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
@@ -324,8 +327,11 @@ pub trait ResourceMonitor: Send + Sync {
     /// Stop monitoring resources for a workload
     fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
 
-    /// Get current resource metrics
-    fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics>;
+    /// Get current resource metrics (async to avoid blocking)
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>>;
 
     /// Get system resource availability
     fn get_system_resources(
@@ -424,9 +430,11 @@ impl SystemResourceMonitor {
 
     async fn get_cpu_usage(&self) -> ToadStoolResult<f64> {
         self.refresh_system().await?;
-        let system = self.system.read().await;
-        let cpu_usage = f64::from(system.global_cpu_usage());
-        Ok(cpu_usage)
+        let mut system = self.system.write().await;
+        system.refresh_cpu();
+        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+            / system.cpus().len().max(1) as f32;
+        Ok(f64::from(cpu_usage))
     }
 
     async fn get_memory_info(&self) -> ToadStoolResult<(u64, u64)> {
@@ -651,18 +659,17 @@ impl ResourceMonitor for SystemResourceMonitor {
         Ok(())
     }
 
-    fn get_metrics(&self, workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         let workload_metrics = self.workload_metrics.clone();
         let workload_id = workload_id.to_string();
 
-        let metrics = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let metrics_map = workload_metrics.read().await;
-                metrics_map.get(&workload_id).cloned().unwrap_or_default()
-            })
-        });
-
-        Ok(metrics)
+        Box::pin(async move {
+            let metrics_map = workload_metrics.read().await;
+            Ok(metrics_map.get(&workload_id).cloned().unwrap_or_default())
+        })
     }
 
     fn get_system_resources(
@@ -674,7 +681,11 @@ impl ResourceMonitor for SystemResourceMonitor {
             system.refresh_all();
 
             // Get CPU info (without additional refresh)
-            let cpu_usage = f64::from(system.global_cpu_usage());
+            // sysinfo 0.30 API: refresh then get usage
+            system.refresh_cpu();
+            let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>()
+                / system.cpus().len() as f32;
+            let cpu_usage = f64::from(cpu_usage);
             let cpu_cores = system.cpus().len() as f64;
             let available_cpu_cores = cpu_cores * (1.0 - cpu_usage / 100.0);
 
@@ -832,14 +843,14 @@ mod tests {
         assert_eq!(network.max_latency_ms, Some(100));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_resource_monitor_creation() {
         let monitor = SystemResourceMonitor::new();
         let _guard = monitor.system.read().await;
         // If we can read the lock, the monitor was created successfully
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_resource_monitor_default() {
         let monitor = SystemResourceMonitor::default();
         let _guard = monitor.system.read().await;

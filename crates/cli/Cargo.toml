@@ -4,6 +4,19 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool CLI - Universal Compute Command Center for Sovereign Science"
 
+[lints.clippy]
+# Production-grade safety lints
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+# Performance lints
+clone_on_ref_ptr = "warn"
+large_enum_variant = "warn"
+# Concurrency lints
+mutex_atomic = "warn"
+
 [[bin]]
 name = "toadstool-cli"
 path = "src/main.rs"
@@ -20,6 +33,7 @@ humantime-serde = "1.1"
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-python = { path = "../runtime/python" }
 toadstool-runtime-wasm = { path = "../runtime/wasm" }
+toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 
 # CLI framework
 clap = { version = "4.4", features = ["derive", "color", "suggestions"] }
@@ -52,6 +66,7 @@ dirs = "5.0"
 
 # Networking
 reqwest = { workspace = true, features = ["json"] }
+# mdns = "3.0"  # Note: mDNS discovery available via toadstool-config crate
 
 # System information
 num_cpus = "1.0"
@@ -98,3 +113,8 @@ ecosystem = []
 universal = []
 monitoring = []
 templates = []
+
+# GPU FEATURES: Sovereign + Pragmatic
+gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
+gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # Add CUDA for Python AI
+gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility

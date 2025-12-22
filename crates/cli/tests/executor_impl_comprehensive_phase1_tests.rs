@@ -12,7 +12,7 @@ use uuid::Uuid;
 // Test 1-20: Constructor and Initialization
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_new_succeeds() {
     // Test: BiomeExecutor::new() creates instance successfully
     // Validates: Constructor, config loading, distributed coordinator init
@@ -23,7 +23,7 @@ async fn test_biome_executor_new_succeeds() {
     assert!(result.is_ok(), "Executor creation should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_initialization_state() {
     // Test: New executor has correct initial state
     let executor = create_mock_executor()
@@ -39,7 +39,7 @@ async fn test_biome_executor_initialization_state() {
     assert!(executor.is_ready(), "Should be ready after initialization");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_config_loading() {
     // Test: Configuration loads correctly during initialization
     let executor = create_mock_executor().await.expect("Should create");
@@ -47,7 +47,7 @@ async fn test_biome_executor_config_loading() {
     assert!(executor.has_valid_config(), "Config should be valid");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_distributed_coordinator_init() {
     // Test: Distributed coordinator initializes properly
     let executor = create_mock_executor().await.expect("Should create");
@@ -58,7 +58,7 @@ async fn test_biome_executor_distributed_coordinator_init() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_concurrent_initialization() {
     // Test: Multiple concurrent initializations are safe
     let handles: Vec<_> = (0..5)
@@ -75,7 +75,7 @@ async fn test_biome_executor_concurrent_initialization() {
 // Test 21-40: run_biome() - Foreground Execution
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_loads_manifest() {
     // Test: run_biome loads and parses manifest file
     let _executor = create_mock_executor().await.unwrap();
@@ -87,7 +87,7 @@ async fn test_run_biome_loads_manifest() {
     assert_eq!(manifest.version, "1.0.0");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_validates_manifest() {
     // Test: Manifest validation catches errors
     let _executor = create_mock_executor().await.unwrap();
@@ -100,7 +100,7 @@ async fn test_run_biome_validates_manifest() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_checks_duplicate_names() {
     // Test: Cannot run biome with duplicate name
     let _executor = create_mock_executor().await.unwrap();
@@ -113,7 +113,7 @@ async fn test_run_biome_checks_duplicate_names() {
     assert!(result, "Should detect duplicate biome name");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_applies_cpu_limit() {
     // Test: CPU limit override is applied correctly
     let _manifest = create_test_manifest("test", "1.0.0").await.unwrap();
@@ -123,7 +123,7 @@ async fn test_run_biome_applies_cpu_limit() {
     assert_eq!(cpu_limit, Some(2.5), "CPU limit should be valid");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_applies_memory_limit() {
     // Test: Memory limit override is applied correctly
     let _manifest = create_test_manifest("test", "1.0.0").await.unwrap();
@@ -137,7 +137,7 @@ async fn test_run_biome_applies_memory_limit() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_parses_environment_variables() {
     // Test: Environment variables are parsed correctly
     let env_vars = vec![
@@ -153,7 +153,7 @@ async fn test_run_biome_parses_environment_variables() {
     assert_eq!(parsed.get("KEY2"), Some(&"value2".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_handles_missing_manifest() {
     // Test: Error handling for missing manifest file
     let _executor = create_mock_executor().await.unwrap();
@@ -163,7 +163,7 @@ async fn test_run_biome_handles_missing_manifest() {
     assert!(result.is_err(), "Should fail with nonexistent manifest");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_handles_invalid_yaml() {
     // Test: Error handling for malformed YAML
     let invalid_yaml_path = create_invalid_yaml_file().await.unwrap();
@@ -172,7 +172,7 @@ async fn test_run_biome_handles_invalid_yaml() {
     assert!(result.is_err(), "Should fail with invalid YAML");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_security_level_validation() {
     // Test: Security level is validated
     let valid_levels = vec!["low", "medium", "high", "critical"];
@@ -191,7 +191,7 @@ async fn test_run_biome_security_level_validation() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_run_biome_creates_log_directory() {
     // Test: Log directory is created
     let biome_name = "test-biome";
@@ -208,7 +208,7 @@ async fn test_run_biome_creates_log_directory() {
 // Test 41-60: up_biome() - Background Execution
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_starts_in_background() {
     // Test: up_biome starts biome detached
     let _executor = create_mock_executor().await.unwrap();
@@ -218,7 +218,7 @@ async fn test_up_biome_starts_in_background() {
     assert!(result.is_ok(), "Background start should succeed");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_detached_flag() {
     // Test: Detached flag behavior
     let _executor = create_mock_executor().await.unwrap();
@@ -227,7 +227,7 @@ async fn test_up_biome_detached_flag() {
     assert!(detached, "Detached flag should be set");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_restart_flag() {
     // Test: Restart flag is respected
     let _executor = create_mock_executor().await.unwrap();
@@ -236,7 +236,7 @@ async fn test_up_biome_restart_flag() {
     assert!(restart, "Restart flag should enable auto-restart");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_health_check_interval() {
     // Test: Health check interval is configurable
     let intervals = vec![5u64, 10, 30, 60];
@@ -250,7 +250,7 @@ async fn test_up_biome_health_check_interval() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_duplicate_name_rejection() {
     // Test: Cannot start multiple biomes with same name
     let _executor = create_mock_executor().await.unwrap();
@@ -261,7 +261,7 @@ async fn test_up_biome_duplicate_name_rejection() {
     assert!(exists, "Should detect duplicate biome");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_generates_unique_id() {
     // Test: Each biome gets unique ID
     let id1 = Uuid::new_v4();
@@ -270,7 +270,7 @@ async fn test_up_biome_generates_unique_id() {
     assert_ne!(id1, id2, "IDs should be unique");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_default_security_level() {
     // Test: Default security level is "high"
     let default_security = "high";
@@ -278,7 +278,7 @@ async fn test_up_biome_default_security_level() {
     assert_eq!(default_security, "high", "Default should be high security");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_up_biome_logs_start_message() {
     // Test: Appropriate log messages are generated
     let biome_name = "test-biome";
@@ -295,7 +295,7 @@ async fn test_up_biome_logs_start_message() {
 // Test 61-80: down_biome() - Stopping Biomes
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_stops_running_biome() {
     // Test: down_biome stops a running biome
     let _executor = create_mock_executor().await.unwrap();
@@ -306,7 +306,7 @@ async fn test_down_biome_stops_running_biome() {
     assert!(result.is_ok(), "Should stop biome successfully");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_nonexistent_biome_error() {
     // Test: Error when stopping nonexistent biome
     let executor = create_mock_executor().await.unwrap();
@@ -315,7 +315,7 @@ async fn test_down_biome_nonexistent_biome_error() {
     assert!(!exists, "Should not find nonexistent biome");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_force_flag() {
     // Test: Force flag enables immediate kill
     let force = true;
@@ -324,7 +324,7 @@ async fn test_down_biome_force_flag() {
     assert!(force, "Force flag should enable immediate stop");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_graceful_timeout() {
     // Test: Graceful shutdown respects timeout
     let timeout_secs = vec![10u64, 30, 60, 120];
@@ -334,7 +334,7 @@ async fn test_down_biome_graceful_timeout() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_purge_flag() {
     // Test: Purge flag cleans up biome data
     let purge = true;
@@ -342,7 +342,7 @@ async fn test_down_biome_purge_flag() {
     assert!(purge, "Purge flag should trigger cleanup");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_stops_all_processes() {
     // Test: All biome processes are stopped
     let process_count = 5;
@@ -353,7 +353,7 @@ async fn test_down_biome_stops_all_processes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_removes_from_registry() {
     // Test: Biome is removed from registry after stop
     let _executor = create_mock_executor().await.unwrap();
@@ -365,7 +365,7 @@ async fn test_down_biome_removes_from_registry() {
     assert!(!_executor.check_biome_exists("test-biome").await);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_down_biome_cleanup_log_files() {
     // Test: Log files are handled appropriately
     let log_file = PathBuf::from("/tmp/test-biome.log");
@@ -378,7 +378,7 @@ async fn test_down_biome_cleanup_log_files() {
 // Test 81-100: list_biomes() - Listing and Filtering
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_empty_list() {
     // Test: Empty list when no biomes running
     let _executor = create_mock_executor().await.unwrap();
@@ -387,7 +387,7 @@ async fn test_list_biomes_empty_list() {
     assert_eq!(count, 0, "Should have no biomes initially");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_shows_running() {
     // Test: Running biomes are shown
     let _executor = create_mock_executor().await.unwrap();
@@ -399,7 +399,7 @@ async fn test_list_biomes_shows_running() {
     assert_eq!(count, 2, "Should show both biomes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_all_flag() {
     // Test: --all flag shows all states
     let all_flag = true;
@@ -407,7 +407,7 @@ async fn test_list_biomes_all_flag() {
     assert!(all_flag, "All flag should show all biomes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_status_filter_running() {
     // Test: Filter by "running" status
     let status_filter = Some("running".to_string());
@@ -419,7 +419,7 @@ async fn test_list_biomes_status_filter_running() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_status_filter_stopped() {
     // Test: Filter by "stopped" status
     let status_filter = Some("stopped".to_string());
@@ -431,7 +431,7 @@ async fn test_list_biomes_status_filter_stopped() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_json_format() {
     // Test: JSON output format
     let format = "json";
@@ -439,7 +439,7 @@ async fn test_list_biomes_json_format() {
     assert_eq!(format, "json", "Should support JSON format");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_yaml_format() {
     // Test: YAML output format
     let format = "yaml";
@@ -447,7 +447,7 @@ async fn test_list_biomes_yaml_format() {
     assert_eq!(format, "yaml", "Should support YAML format");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_table_format() {
     // Test: Table output format (default)
     let format = "table";
@@ -455,7 +455,7 @@ async fn test_list_biomes_table_format() {
     assert_eq!(format, "table", "Should support table format");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_resources_flag() {
     // Test: --resources flag shows resource usage
     let resources = true;
@@ -463,7 +463,7 @@ async fn test_list_biomes_resources_flag() {
     assert!(resources, "Resources flag should show usage");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_biomes_multiple_statuses() {
     // Test: Handle biomes in different states
     let statuses = vec![
@@ -488,7 +488,7 @@ async fn test_list_biomes_multiple_statuses() {
 // Test 101-120: show_logs() - Log Viewing
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_parses_target() {
     // Test: Target parsing (biome or biome.service)
     let target = "test-biome.web";
@@ -501,7 +501,7 @@ async fn test_show_logs_parses_target() {
     assert_eq!(parts[1], "web");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_biome_only_target() {
     // Test: Biome-only target (no service)
     let target = "test-biome";
@@ -509,7 +509,7 @@ async fn test_show_logs_biome_only_target() {
     assert!(!target.contains('.'), "Biome-only should not have dot");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_follow_flag() {
     // Test: --follow flag for tail -f behavior
     let follow = true;
@@ -517,7 +517,7 @@ async fn test_show_logs_follow_flag() {
     assert!(follow, "Follow flag should enable live tail");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_lines_limit() {
     // Test: Lines limit parameter
     let limits = vec![10usize, 50, 100, 500, 1000];
@@ -527,7 +527,7 @@ async fn test_show_logs_lines_limit() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_timestamps_flag() {
     // Test: --timestamps flag shows timestamps
     let timestamps = true;
@@ -535,7 +535,7 @@ async fn test_show_logs_timestamps_flag() {
     assert!(timestamps, "Timestamps flag should show timestamps");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_level_filter() {
     // Test: Filter by log level
     let levels = vec!["ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
@@ -545,7 +545,7 @@ async fn test_show_logs_level_filter() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_grep_pattern() {
     // Test: Grep pattern filtering
     let pattern = "error.*timeout".to_string();
@@ -556,7 +556,7 @@ async fn test_show_logs_grep_pattern() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_nonexistent_biome() {
     // Test: Error for nonexistent biome
     let executor = create_mock_executor().await.unwrap();
@@ -565,7 +565,7 @@ async fn test_show_logs_nonexistent_biome() {
     assert!(!exists, "Should not find nonexistent biome");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_missing_log_file() {
     // Test: Handle missing log file gracefully
     let log_file = PathBuf::from("/tmp/nonexistent.log");
@@ -573,7 +573,7 @@ async fn test_show_logs_missing_log_file() {
     assert!(!log_file.exists(), "Log file should not exist");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_show_logs_service_name_validation() {
     // Test: Service name is validated
     let valid_services = vec!["web", "api", "db", "cache", "worker"];

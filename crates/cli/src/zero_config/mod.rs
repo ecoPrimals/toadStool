@@ -11,6 +11,7 @@ mod configuration;
 mod core;
 mod deployment;
 mod discovery;
+mod service_discovery; // New: Modern service discovery protocols
 mod types;
 mod verification;
 

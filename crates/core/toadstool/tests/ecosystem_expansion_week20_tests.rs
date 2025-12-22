@@ -398,13 +398,13 @@ fn test_ecosystem_message_clone() {
 // EcosystemCoordinator Tests - Creation and Basic Operations
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_creation() {
     let coordinator = EcosystemCoordinator::new();
     assert!(coordinator.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_default_config() {
     let _coordinator = EcosystemCoordinator::new().unwrap();
 
@@ -412,7 +412,7 @@ async fn test_ecosystem_coordinator_default_config() {
     // We can't access config directly, but creation success is verified by is_ok() above
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_ecosystem_coordinator_with_custom_config() {
     let coordinator = EcosystemCoordinator::new();
     assert!(coordinator.is_ok());

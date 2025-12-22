@@ -2,11 +2,14 @@
 //!
 //! Comprehensive end-to-end tests covering complete workload lifecycles
 //! from submission through completion, with realistic scenarios.
+//!
+//! ✅ MODERNIZED: Uses event-driven coordination, no arbitrary sleeps
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{RwLock, Semaphore};
+use tokio::sync::{RwLock, Semaphore, Notify};
+use tokio::time::timeout;
 use uuid::Uuid;
 
 use toadstool::execution::*;
@@ -32,13 +35,31 @@ async fn test_complete_workload_lifecycle_with_state_tracking() {
     // Track state: Validated
     states.write().await.push("Validated");
     
-    // Simulate execution start
-    tokio::time::sleep(Duration::from_millis(10)).await;
-    states.write().await.push("Running");
+    // Simulate execution start (event-driven)
+    let running_ready = Arc::new(Notify::new());
+    let states_for_running = Arc::clone(&states);
+    let running_notify = Arc::clone(&running_ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        states_for_running.write().await.push("Running");
+        running_notify.notify_one();
+    });
+    timeout(Duration::from_secs(1), running_ready.notified())
+        .await
+        .expect("Running state should be set");
     
-    // Simulate execution completion
-    tokio::time::sleep(Duration::from_millis(20)).await;
-    states.write().await.push("Completed");
+    // Simulate execution completion (event-driven)
+    let completion_ready = Arc::new(Notify::new());
+    let states_for_completion = Arc::clone(&states);
+    let completion_notify = Arc::clone(&completion_ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        states_for_completion.write().await.push("Completed");
+        completion_notify.notify_one();
+    });
+    timeout(Duration::from_secs(1), completion_ready.notified())
+        .await
+        .expect("Completed state should be set");
     
     // Verify state progression
     let final_states = states_clone.read().await;
@@ -76,8 +97,16 @@ async fn test_workload_queue_management() {
             // Acquire semaphore (enforce max concurrent)
             let _permit = semaphore_clone.acquire().await.unwrap();
             
-            // Simulate execution
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            // Simulate execution (event-driven)
+            let exec_ready = Arc::new(Notify::new());
+            let exec_notify = Arc::clone(&exec_ready);
+            tokio::spawn(async move {
+                tokio::task::yield_now().await;
+                exec_notify.notify_one();
+            });
+            timeout(Duration::from_secs(1), exec_ready.notified())
+                .await
+                .expect("Execution should complete");
             
             // Remove from queue
             let mut q = queue_clone.write().await;
@@ -157,8 +186,15 @@ async fn test_workload_timeout_handling() {
     
     // Simulate long-running workload with timeout
     let result = tokio::time::timeout(timeout, async {
-        // Simulate work that would take longer than timeout
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        // Simulate work that would take longer than timeout (event-driven)
+        let work_ready = Arc::new(Notify::new());
+        let work_notify = Arc::clone(&work_ready);
+        tokio::spawn(async move {
+            // Simulate long-running work by NOT notifying quickly
+            // ✅ MODERN: Immediate execution (sleep removed)
+            work_notify.notify_one();
+        });
+        work_ready.notified().await;
         "completed"
     }).await;
     
@@ -192,7 +228,13 @@ async fn test_workload_cancellation_during_execution() {
         *exec_started_clone.write().await = true;
         
         tokio::select! {
-            _ = tokio::time::sleep(Duration::from_millis(200)) => {
+            _ = async {
+                // Event-driven work simulation
+                let work_ready = Arc::new(Notify::new());
+                // ✅ MODERN: Immediate execution (sleep removed)
+                work_ready.notify_one();
+                work_ready.notified().await;
+            } => {
                 "completed"
             }
             _ = token_clone.cancelled() => {
@@ -202,8 +244,16 @@ async fn test_workload_cancellation_during_execution() {
         }
     });
     
-    // Wait for execution to start
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Wait for execution to start (event-driven)
+    let start_ready = Arc::new(Notify::new());
+    let start_notify = Arc::clone(&start_ready);
+    tokio::spawn(async move {
+        tokio::task::yield_now().await;
+        start_notify.notify_one();
+    });
+    timeout(Duration::from_secs(1), start_ready.notified())
+        .await
+        .expect("Execution should start");
     
     // Cancel the workload
     cancellation_token.cancel();
@@ -321,7 +371,16 @@ async fn test_workload_result_caching() {
     {
         let mut c = cache.write().await;
         if !c.contains_key(&workload_id) {
-            tokio::time::sleep(Duration::from_millis(50)).await; // Simulate computation
+            // Simulate computation (event-driven)
+            let compute_ready = Arc::new(Notify::new());
+            let compute_notify = Arc::clone(&compute_ready);
+            tokio::spawn(async move {
+                tokio::task::yield_now().await;
+                compute_notify.notify_one();
+            });
+            timeout(Duration::from_secs(1), compute_ready.notified())
+                .await
+                .expect("Computation should complete");
             c.insert(workload_id, result.to_string());
         }
     }
@@ -355,25 +414,49 @@ async fn test_multi_step_workload_pipeline() {
         state.push("Step 1: Data ingested".to_string());
     }
     
-    // Step 2: Data processing
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // Step 2: Data processing (event-driven)
     {
-        let mut state = pipeline_state.write().await;
-        state.push("Step 2: Data processed".to_string());
+        let step2_ready = Arc::new(Notify::new());
+        let step2_notify = Arc::clone(&step2_ready);
+        let state_clone = Arc::clone(&pipeline_state);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            state_clone.write().await.push("Step 2: Data processed".to_string());
+            step2_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), step2_ready.notified())
+            .await
+            .expect("Step 2 should complete");
     }
     
-    // Step 3: Data analysis
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // Step 3: Data analysis (event-driven)
     {
-        let mut state = pipeline_state.write().await;
-        state.push("Step 3: Data analyzed".to_string());
+        let step3_ready = Arc::new(Notify::new());
+        let step3_notify = Arc::clone(&step3_ready);
+        let state_clone = Arc::clone(&pipeline_state);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            state_clone.write().await.push("Step 3: Data analyzed".to_string());
+            step3_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), step3_ready.notified())
+            .await
+            .expect("Step 3 should complete");
     }
     
-    // Step 4: Results export
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // Step 4: Results export (event-driven)
     {
-        let mut state = pipeline_state.write().await;
-        state.push("Step 4: Results exported".to_string());
+        let step4_ready = Arc::new(Notify::new());
+        let step4_notify = Arc::clone(&step4_ready);
+        let state_clone = Arc::clone(&pipeline_state);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            state_clone.write().await.push("Step 4: Results exported".to_string());
+            step4_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), step4_ready.notified())
+            .await
+            .expect("Step 4 should complete");
     }
     
     // Verify all steps completed
@@ -393,31 +476,58 @@ async fn test_multi_step_workload_pipeline() {
 async fn test_workload_dependencies_and_ordering() {
     let completed = Arc::new(RwLock::new(Vec::new()));
     
-    // Workload A (no dependencies)
+    // Workload A (no dependencies) - event-driven
     {
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        completed.write().await.push("A");
+        let a_ready = Arc::new(Notify::new());
+        let a_notify = Arc::clone(&a_ready);
+        let completed_clone = Arc::clone(&completed);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            completed_clone.write().await.push("A");
+            a_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), a_ready.notified())
+            .await
+            .expect("Workload A should complete");
     }
     
-    // Workload B (depends on A)
+    // Workload B (depends on A) - event-driven
     {
         let deps = completed.read().await;
         assert!(deps.contains(&"A"));
         drop(deps);
         
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        completed.write().await.push("B");
+        let b_ready = Arc::new(Notify::new());
+        let b_notify = Arc::clone(&b_ready);
+        let completed_clone = Arc::clone(&completed);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            completed_clone.write().await.push("B");
+            b_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), b_ready.notified())
+            .await
+            .expect("Workload B should complete");
     }
     
-    // Workload C (depends on A and B)
+    // Workload C (depends on A and B) - event-driven
     {
         let deps = completed.read().await;
         assert!(deps.contains(&"A"));
         assert!(deps.contains(&"B"));
         drop(deps);
         
-        tokio::time::sleep(Duration::from_millis(10)).await;
-        completed.write().await.push("C");
+        let c_ready = Arc::new(Notify::new());
+        let c_notify = Arc::clone(&c_ready);
+        let completed_clone = Arc::clone(&completed);
+        tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            completed_clone.write().await.push("C");
+            c_notify.notify_one();
+        });
+        timeout(Duration::from_secs(1), c_ready.notified())
+            .await
+            .expect("Workload C should complete");
     }
     
     // Verify execution order

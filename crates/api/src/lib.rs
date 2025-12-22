@@ -30,6 +30,9 @@ pub struct ApiState {
     pub metrics: Arc<RwLock<ApiMetrics>>,
     pub event_broadcaster: broadcast::Sender<ApiEvent>,
     pub websocket_manager: Arc<websocket::WebSocketManager>,
+    /// Capability provider for primal integration (optional for backwards compatibility)
+    pub capability_provider:
+        Option<Arc<toadstool_distributed::primal_capabilities::CapabilityProvider>>,
 }
 
 /// API metrics
@@ -120,6 +123,7 @@ mod tests {
             metrics,
             event_broadcaster: tx,
             websocket_manager: Arc::new(websocket::WebSocketManager::new()),
+            capability_provider: None,
         };
 
         assert_eq!(state.executions.try_read().unwrap().len(), 0);

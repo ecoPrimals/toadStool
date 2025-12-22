@@ -72,7 +72,7 @@ mod ecosystem_logic_tests {
     // Primal Registry Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_registry_initialization() {
         let primals: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -80,7 +80,7 @@ mod ecosystem_logic_tests {
         assert!(reg.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_registration() {
         let primals: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -98,7 +98,7 @@ mod ecosystem_logic_tests {
         assert!(reg.contains_key("nestgate-1"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_deregistration() {
         let primals: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -310,7 +310,7 @@ mod ecosystem_logic_tests {
     // Communication Channel Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_channel_registry() {
         let channels: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -323,7 +323,7 @@ mod ecosystem_logic_tests {
         assert!(ch.contains_key("songbird-channel"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_channels() {
         let channels: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -338,7 +338,7 @@ mod ecosystem_logic_tests {
         assert_eq!(ch.len(), 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_channel_cleanup() {
         let channels: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -464,7 +464,7 @@ mod ecosystem_logic_tests {
     // Concurrent Access Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_primal_discovery() {
         let primals: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -487,7 +487,7 @@ mod ecosystem_logic_tests {
         assert_eq!(reg.len(), 10);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_channel_access() {
         let channels: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 

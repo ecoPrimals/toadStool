@@ -7,6 +7,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ToadStoolError, ToadStoolResult};
 
+pub mod ai_ml;
+pub mod analyzer;
+pub mod cuda;
+pub mod integration_tests;
+pub mod selector;
+
+pub use ai_ml::{AiFramework, AiMlWorkload, AiOperation, ModelSize, Precision};
+pub use analyzer::{
+    ComputeIntensity, GpuAdvantage, MemoryRequirement, ParallelismLevel, WorkloadAnalyzer,
+    WorkloadCharacteristics,
+};
+pub use cuda::{CudaBackend, CudaLaunchConfig, CudaSource, CudaWorkload};
+pub use selector::{BackendDecision, BackendSelector, GpuDevice, GpuVendor, HardwareCapabilities};
+
 /// Workload specification containing all information needed to execute a workload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadSpec {
@@ -77,6 +91,16 @@ pub enum WorkloadSpec {
         /// Environment variables
         env_vars: HashMap<String, String>,
     },
+    /// AI/ML workload (intelligent backend selection)
+    AiMl {
+        /// AI/ML workload specification
+        workload: ai_ml::AiMlWorkload,
+    },
+    /// CUDA workload (compatibility layer)
+    Cuda {
+        /// CUDA workload specification
+        workload: cuda::CudaWorkload,
+    },
 }
 
 impl Default for WorkloadSpec {
@@ -95,6 +119,10 @@ impl Default for WorkloadSpec {
 
 impl WorkloadSpec {
     /// Get the workload type
+    ///
+    /// This is called frequently in runtime selection, so it's marked inline
+    /// for performance optimization.
+    #[inline]
     #[must_use]
     pub fn workload_type(&self) -> WorkloadType {
         match self {
@@ -103,6 +131,8 @@ impl WorkloadSpec {
             WorkloadSpec::Container { .. } => WorkloadType::Container,
             WorkloadSpec::Gpu { .. } => WorkloadType::Gpu,
             WorkloadSpec::Python { .. } => WorkloadType::Python,
+            WorkloadSpec::AiMl { .. } => WorkloadType::AiMl,
+            WorkloadSpec::Cuda { .. } => WorkloadType::Cuda,
         }
     }
 
@@ -128,11 +158,22 @@ impl WorkloadSpec {
             WorkloadSpec::Python { source, .. } => {
                 self.validate_python_source(source)?;
             }
+            WorkloadSpec::AiMl { workload } => {
+                // AI/ML workloads are self-validating
+                let _ = workload.estimate_total_memory_bytes(); // Verify it computes
+            }
+            WorkloadSpec::Cuda { workload } => {
+                // CUDA workloads are self-validating
+                let _ = workload.launch_config.total_threads(); // Verify it computes
+            }
         }
         Ok(())
     }
 
     /// Validate executable source
+    ///
+    /// Inlined for performance - called on every native workload execution
+    #[inline]
     fn validate_executable(&self, executable: &ExecutableSource) -> ToadStoolResult<()> {
         match executable {
             ExecutableSource::File { path } => {
@@ -160,6 +201,9 @@ impl WorkloadSpec {
     }
 
     /// Validate WASM module source
+    ///
+    /// Inlined for performance - called on every WASM workload execution
+    #[inline]
     fn validate_wasm_module(&self, module: &WasmModuleSource) -> ToadStoolResult<()> {
         match module {
             WasmModuleSource::File { path } => {
@@ -251,6 +295,10 @@ pub enum WorkloadType {
     Gpu,
     /// Python script
     Python,
+    /// AI/ML workload
+    AiMl,
+    /// CUDA workload
+    Cuda,
 }
 
 /// Source of an executable

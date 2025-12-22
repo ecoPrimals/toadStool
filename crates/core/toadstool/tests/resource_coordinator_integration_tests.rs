@@ -4,13 +4,13 @@
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::ResourceCoordinator;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_new() {
     let coordinator = ResourceCoordinator::new().await;
     assert!(coordinator.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_get_available_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let resources = coordinator.get_available_resources().await;
@@ -23,7 +23,7 @@ async fn test_resource_coordinator_get_available_resources() {
     assert_eq!(resources.gpu_units, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_allocate_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
@@ -35,7 +35,7 @@ async fn test_resource_coordinator_allocate_resources() {
     assert!(alloc.released_at.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_release_resources() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
@@ -45,7 +45,7 @@ async fn test_resource_coordinator_release_resources() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_multiple_allocations() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -56,7 +56,7 @@ async fn test_resource_coordinator_multiple_allocations() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_allocate_and_release_cycle() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -70,7 +70,7 @@ async fn test_resource_coordinator_allocate_and_release_cycle() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_custom_requirements() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -89,7 +89,7 @@ async fn test_resource_coordinator_custom_requirements() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_allocation_has_job_id() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
@@ -102,7 +102,7 @@ async fn test_resource_coordinator_allocation_has_job_id() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_allocation_timestamps() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
@@ -116,7 +116,7 @@ async fn test_resource_coordinator_allocation_timestamps() {
     assert!(allocation.released_at.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_release_sets_timestamp() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let requirements = ResourceRequirements::default();
@@ -129,7 +129,7 @@ async fn test_resource_coordinator_release_sets_timestamp() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_available_resources_immutable() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 
@@ -141,7 +141,7 @@ async fn test_resource_coordinator_available_resources_immutable() {
     assert_eq!(resources1.storage_bytes, resources2.storage_bytes);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_concurrent_allocations() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let coordinator = std::sync::Arc::new(coordinator);
@@ -162,14 +162,14 @@ async fn test_resource_coordinator_concurrent_allocations() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_special_hardware_empty() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let resources = coordinator.get_available_resources().await;
     assert!(resources.special_hardware.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_network_bandwidth_value() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
     let resources = coordinator.get_available_resources().await;
@@ -178,7 +178,7 @@ async fn test_resource_coordinator_network_bandwidth_value() {
     assert_eq!(resources.network_bandwidth, 1_048_576_000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_coordinator_multiple_releases() {
     let coordinator = ResourceCoordinator::new().await.unwrap();
 

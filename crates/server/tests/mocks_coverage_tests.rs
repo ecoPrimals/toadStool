@@ -48,14 +48,14 @@ fn test_mock_resource_monitor_stop_monitoring() {
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_mock_resource_monitor_get_metrics() {
+#[tokio::test]
+async fn test_mock_resource_monitor_get_metrics() {
     let monitor = MockResourceMonitor::new();
-    let result = monitor.get_metrics("test-workload");
+    let result = monitor.get_metrics("test-workload").await;
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mock_resource_monitor_get_system_resources() {
     let monitor = MockResourceMonitor::new();
     let result = monitor.get_system_resources().await;
@@ -69,17 +69,17 @@ async fn test_mock_resource_monitor_get_system_resources() {
     assert_eq!(resources.available_gpu_units, 1);
 }
 
-#[test]
-fn test_mock_resource_monitor_multiple_workloads() {
+#[tokio::test]
+async fn test_mock_resource_monitor_multiple_workloads() {
     let monitor = MockResourceMonitor::new();
 
     monitor.start_monitoring("workload1").unwrap();
     monitor.start_monitoring("workload2").unwrap();
     monitor.start_monitoring("workload3").unwrap();
 
-    let metrics1 = monitor.get_metrics("workload1");
-    let metrics2 = monitor.get_metrics("workload2");
-    let metrics3 = monitor.get_metrics("workload3");
+    let metrics1 = monitor.get_metrics("workload1").await;
+    let metrics2 = monitor.get_metrics("workload2").await;
+    let metrics3 = monitor.get_metrics("workload3").await;
 
     assert!(metrics1.is_ok());
     assert!(metrics2.is_ok());
@@ -161,7 +161,7 @@ fn test_mock_system_resources_with_usage_network_totals() {
 // Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mock_integration_workflow() {
     let monitor = MockResourceMonitor::new();
 
@@ -172,8 +172,8 @@ async fn test_mock_integration_workflow() {
     let sys_resources = monitor.get_system_resources().await.unwrap();
     assert!(sys_resources.available_cpu_cores > 0.0);
 
-    // Get metrics
-    let metrics = monitor.get_metrics("integration-test").unwrap();
+    // Get metrics (now async)
+    let metrics = monitor.get_metrics("integration-test").await.unwrap();
     assert_eq!(
         std::mem::size_of_val(&metrics),
         std::mem::size_of::<toadstool::RuntimeMetrics>()

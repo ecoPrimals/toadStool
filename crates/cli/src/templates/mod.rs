@@ -12,13 +12,17 @@
 //! - `rendering`: YAML rendering and template information display
 
 // Type definitions
-mod types_mod;
+pub mod types_mod;
 pub use types_mod::{BiomeTemplate, CustomServiceSpec, CustomTemplateSpec};
 
+// Zero-copy constants
+pub mod constants;
+
 // Template implementations
-mod basic_templates;
+pub mod basic_templates;
+pub mod capability_helpers;
 mod rendering;
-mod specialized_templates;
+pub mod specialized_templates;
 
 // Core imports (minimal, only for struct definition)
 use std::path::PathBuf;

@@ -14,6 +14,10 @@
 //!
 //! Extracted from `generator_impl.rs` (Nov 7, 2025) as part of the refactoring
 //! to keep files under 1000 lines.
+//!
+//! ⚠️ **MIGRATION NOTICE**: Uses deprecated hardcoded ports during transition to capability-based discovery.
+
+#![allow(deprecated)] // Module uses deprecated fields during migration
 
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
@@ -27,7 +31,9 @@ use crate::{
 
 /// Create science template with data analysis tools
 pub fn create_science_template() -> TemplateComponents {
-    let name = "science-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::SCIENCE.to_string();
     let description = "Scientific computing biome with Jupyter and data analysis tools".to_string();
 
     let (_, _, mut primals, mut services, mut resources, security, networking, mut storage) =
@@ -35,18 +41,18 @@ pub fn create_science_template() -> TemplateComponents {
 
     // Add NestGate for data management
     primals.insert(
-        "nestgate".to_string(),
+        service_names::NESTGATE.to_string(),
         PrimalConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "nestgate".to_string(),
-                tag: "latest".to_string(),
+                registry: registries::SOVEREIGN_SCIENCE.to_string(),
+                image: service_names::NESTGATE.to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             enabled: true,
             config: HashMap::new(),
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec!["capability:pki".to_string()],
             health_check: Some(HealthCheck {
                 command: vec!["nestgate".to_string(), "health".to_string()],
                 interval: 30,
@@ -59,24 +65,27 @@ pub fn create_science_template() -> TemplateComponents {
 
     // Jupyter notebook service
     services.insert(
-        "jupyter".to_string(),
+        service_names::JUPYTER.to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "docker.io".to_string(),
-                image: "jupyter/scipy-notebook".to_string(),
-                tag: "latest".to_string(),
+                registry: registries::DOCKER_HUB.to_string(),
+                image: super::constants::images::JUPYTER_SCIPY.to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(1),
             resources: ServiceResources {
                 cpu_limit: Some(8.0),
-                memory_limit: Some("16GB".to_string()),
-                storage_limit: Some("100GB".to_string()),
+                memory_limit: Some(super::constants::resource_sizes::GB_16.to_string()),
+                storage_limit: Some(super::constants::resource_sizes::GB_100.to_string()),
             },
-            environment: vec![("JUPYTER_ENABLE_LAB".to_string(), "yes".to_string())]
-                .into_iter()
-                .collect(),
+            environment: vec![(
+                super::constants::env_vars::JUPYTER_ENABLE_LAB.to_string(),
+                "yes".to_string(),
+            )]
+            .into_iter()
+            .collect(),
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
@@ -86,7 +95,13 @@ pub fn create_science_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string(), "nestgate".to_string()],
+            // Dependencies: Capability-based (orchestrator will resolve to available providers)
+            // Modern orchestrators support capability discovery - if orchestrator is legacy,
+            // it can map capabilities back to known service names
+            dependencies: vec![
+                "capability:pki".to_string(),     // PKI/cert management (e.g., beardog)
+                "capability:storage".to_string(), // Persistent storage (e.g., nestgate)
+            ],
             health_check: Some({
                 let config = EnvironmentConfig::from_env();
                 HealthCheck {
@@ -139,7 +154,7 @@ pub fn create_science_template() -> TemplateComponents {
                 protocol: "tcp".to_string(),
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec!["capability:pki".to_string()], // PKI capability (runtime discovery)
             health_check: Some(HealthCheck {
                 command: vec![
                     "pg_isready".to_string(),
@@ -160,7 +175,7 @@ pub fn create_science_template() -> TemplateComponents {
     resources.storage_limit = Some("500GB".to_string());
 
     // Enable NestGate storage integration
-    storage.nestgate_integration = true;
+    storage.nestgate_integration = Some("latest".to_string());
     storage.datasets = vec![
         DatasetConfig {
             name: "research-data".to_string(),
@@ -190,7 +205,9 @@ pub fn create_science_template() -> TemplateComponents {
 
 /// Create AI research template with GPU support
 pub fn create_ai_research_template() -> TemplateComponents {
-    let name = "ai-research-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::AI_RESEARCH.to_string();
     let description =
         "AI/ML research biome with PyTorch, TensorFlow, and GPU acceleration".to_string();
 
@@ -201,18 +218,18 @@ pub fn create_ai_research_template() -> TemplateComponents {
     services.insert(
         "pytorch".to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "docker.io".to_string(),
+                registry: registries::DOCKER_HUB.to_string(),
                 image: "pytorch/pytorch".to_string(),
-                tag: "latest".to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(1),
             resources: ServiceResources {
                 cpu_limit: Some(16.0),
-                memory_limit: Some("64GB".to_string()),
-                storage_limit: Some("500GB".to_string()),
+                memory_limit: Some(super::constants::resource_sizes::GB_64.to_string()),
+                storage_limit: Some(super::constants::resource_sizes::GB_500.to_string()),
             },
             environment: HashMap::new(),
             ports: vec![{
@@ -224,7 +241,7 @@ pub fn create_ai_research_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec![service_names::BEARDOG.to_string()],
             health_check: None,
         },
     );
@@ -253,7 +270,7 @@ pub fn create_ai_research_template() -> TemplateComponents {
                 protocol: "tcp".to_string(),
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec!["capability:pki".to_string()], // PKI capability (runtime discovery)
             health_check: None,
         },
     );
@@ -286,7 +303,9 @@ pub fn create_ai_research_template() -> TemplateComponents {
 
 /// Create quantum computing template
 pub fn create_quantum_template() -> TemplateComponents {
-    let name = "quantum-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::QUANTUM.to_string();
     let description = "Quantum computing research with Qiskit and simulators".to_string();
 
     let (_, _, primals, mut services, mut resources, security, networking, storage) =
@@ -296,18 +315,18 @@ pub fn create_quantum_template() -> TemplateComponents {
     services.insert(
         "qiskit".to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "docker.io".to_string(),
+                registry: registries::DOCKER_HUB.to_string(),
                 image: "qiskit/qiskit".to_string(),
-                tag: "latest".to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(1),
             resources: ServiceResources {
                 cpu_limit: Some(32.0),
                 memory_limit: Some("128GB".to_string()),
-                storage_limit: Some("500GB".to_string()),
+                storage_limit: Some(super::constants::resource_sizes::GB_500.to_string()),
             },
             environment: HashMap::new(),
             ports: vec![{
@@ -319,7 +338,7 @@ pub fn create_quantum_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec![service_names::BEARDOG.to_string()],
             health_check: None,
         },
     );
@@ -327,7 +346,7 @@ pub fn create_quantum_template() -> TemplateComponents {
     // Extreme resources for quantum simulation
     resources.cpu_limit = Some(64.0);
     resources.memory_limit = Some("256GB".to_string());
-    resources.storage_limit = Some("1TB".to_string());
+    resources.storage_limit = Some(super::constants::resource_sizes::TB_1.to_string());
 
     (
         name,
@@ -343,7 +362,9 @@ pub fn create_quantum_template() -> TemplateComponents {
 
 /// Create genomics/bioinformatics template
 pub fn create_genomics_template() -> TemplateComponents {
-    let name = "genomics-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::GENOMICS.to_string();
     let description = "Bioinformatics and genomics analysis with enhanced security".to_string();
 
     let (_, _, primals, mut services, mut resources, mut security, networking, mut storage) =
@@ -353,18 +374,18 @@ pub fn create_genomics_template() -> TemplateComponents {
     services.insert(
         "bioconductor".to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "docker.io".to_string(),
+                registry: registries::DOCKER_HUB.to_string(),
                 image: "bioconductor/bioconductor_docker".to_string(),
-                tag: "latest".to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(1),
             resources: ServiceResources {
                 cpu_limit: Some(16.0),
-                memory_limit: Some("64GB".to_string()),
-                storage_limit: Some("1TB".to_string()),
+                memory_limit: Some(super::constants::resource_sizes::GB_64.to_string()),
+                storage_limit: Some(super::constants::resource_sizes::TB_1.to_string()),
             },
             environment: HashMap::new(),
             ports: vec![{
@@ -376,7 +397,10 @@ pub fn create_genomics_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string(), "nestgate".to_string()],
+            dependencies: vec![
+                service_names::BEARDOG.to_string(),
+                service_names::NESTGATE.to_string(),
+            ],
             health_check: None,
         },
     );
@@ -394,7 +418,7 @@ pub fn create_genomics_template() -> TemplateComponents {
     storage.datasets = vec![
         DatasetConfig {
             name: "reference-genomes".to_string(),
-            size: Some("500GB".to_string()),
+            size: Some(super::constants::resource_sizes::GB_500.to_string()),
             compression: Some("zstd".to_string()),
             encryption: true,
         },
@@ -420,7 +444,9 @@ pub fn create_genomics_template() -> TemplateComponents {
 
 /// Create computer vision template
 pub fn create_vision_template() -> TemplateComponents {
-    let name = "vision-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::VISION.to_string();
     let description = "Computer vision and image processing with GPU acceleration".to_string();
 
     let (_, _, primals, mut services, mut resources, security, networking, storage) =
@@ -430,18 +456,18 @@ pub fn create_vision_template() -> TemplateComponents {
     services.insert(
         "opencv".to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "docker.io".to_string(),
+                registry: registries::DOCKER_HUB.to_string(),
                 image: "opencv/opencv".to_string(),
-                tag: "latest".to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(1),
             resources: ServiceResources {
                 cpu_limit: Some(8.0),
-                memory_limit: Some("32GB".to_string()),
-                storage_limit: Some("500GB".to_string()),
+                memory_limit: Some(super::constants::resource_sizes::GB_32.to_string()),
+                storage_limit: Some(super::constants::resource_sizes::GB_500.to_string()),
             },
             environment: HashMap::new(),
             ports: vec![{
@@ -453,15 +479,15 @@ pub fn create_vision_template() -> TemplateComponents {
                 }
             }],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec![service_names::BEARDOG.to_string()],
             health_check: None,
         },
     );
 
     // GPU resources for vision processing
     resources.cpu_limit = Some(16.0);
-    resources.memory_limit = Some("64GB".to_string());
-    resources.storage_limit = Some("1TB".to_string());
+    resources.memory_limit = Some(super::constants::resource_sizes::GB_64.to_string());
+    resources.storage_limit = Some(super::constants::resource_sizes::TB_1.to_string());
     resources.gpu_limit = Some(2);
 
     (
@@ -478,7 +504,9 @@ pub fn create_vision_template() -> TemplateComponents {
 
 /// Create distributed computing cluster template
 pub fn create_distributed_template() -> TemplateComponents {
-    let name = "distributed-biome".to_string();
+    use super::constants::{registries, service_names, template_names, versions};
+
+    let name = template_names::DISTRIBUTED.to_string();
     let description =
         "Multi-node distributed computing cluster with Songbird orchestration".to_string();
 
@@ -487,20 +515,23 @@ pub fn create_distributed_template() -> TemplateComponents {
 
     // Add Songbird for orchestration
     primals.insert(
-        "songbird".to_string(),
+        service_names::SONGBIRD.to_string(),
         PrimalConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "songbird".to_string(),
-                tag: "latest".to_string(),
+                registry: registries::SOVEREIGN_SCIENCE.to_string(),
+                image: service_names::SONGBIRD.to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             enabled: true,
             config: HashMap::new(),
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec![service_names::BEARDOG.to_string()],
             health_check: Some(HealthCheck {
-                command: vec!["songbird".to_string(), "health".to_string()],
+                command: vec![
+                    service_names::SONGBIRD.to_string(),
+                    super::constants::commands::HEALTH.to_string(),
+                ],
                 interval: 30,
                 timeout: 10,
                 retries: 3,
@@ -511,18 +542,18 @@ pub fn create_distributed_template() -> TemplateComponents {
 
     // Add NestGate for distributed storage
     primals.insert(
-        "nestgate".to_string(),
+        service_names::NESTGATE.to_string(),
         PrimalConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: "nestgate".to_string(),
-                tag: "latest".to_string(),
+                registry: registries::SOVEREIGN_SCIENCE.to_string(),
+                image: service_names::NESTGATE.to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             enabled: true,
             config: HashMap::new(),
-            dependencies: vec!["beardog".to_string()],
+            dependencies: vec!["capability:pki".to_string()],
             health_check: Some(HealthCheck {
                 command: vec!["nestgate".to_string(), "health".to_string()],
                 interval: 30,
@@ -537,28 +568,31 @@ pub fn create_distributed_template() -> TemplateComponents {
     services.insert(
         "worker".to_string(),
         ServiceConfig {
-            version: "latest".to_string(),
+            version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
-                registry: "registry.ecosystem.sovereignscience.org".to_string(),
+                registry: registries::SOVEREIGN_SCIENCE.to_string(),
                 image: "compute-worker".to_string(),
-                tag: "latest".to_string(),
+                tag: versions::LATEST.to_string(),
                 digest: None,
             },
             replicas: Some(10), // Multiple worker instances
             resources: ServiceResources {
                 cpu_limit: Some(8.0),
-                memory_limit: Some("16GB".to_string()),
-                storage_limit: Some("100GB".to_string()),
+                memory_limit: Some(super::constants::resource_sizes::GB_16.to_string()),
+                storage_limit: Some(super::constants::resource_sizes::GB_100.to_string()),
             },
             environment: HashMap::new(),
             ports: vec![],
             volumes: vec![],
-            dependencies: vec!["beardog".to_string(), "songbird".to_string()],
+            dependencies: vec![
+                service_names::BEARDOG.to_string(),
+                service_names::SONGBIRD.to_string(),
+            ],
             health_check: Some({
                 let config = EnvironmentConfig::from_env();
                 HealthCheck {
                     command: vec![
-                        "curl".to_string(),
+                        super::constants::commands::CURL.to_string(),
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
@@ -584,7 +618,7 @@ pub fn create_distributed_template() -> TemplateComponents {
     networking.network_policies = vec!["cluster-internal".to_string()];
 
     // Distributed storage
-    storage.nestgate_integration = true;
+    storage.nestgate_integration = Some(versions::LATEST.to_string());
 
     (
         name,
@@ -600,11 +634,13 @@ pub fn create_distributed_template() -> TemplateComponents {
 
 /// Create sovereign/air-gapped template
 pub fn create_sovereign_template() -> TemplateComponents {
-    let name = "sovereign-biome".to_string();
+    use super::constants::{template_names, versions};
+
+    let name = template_names::SOVEREIGN.to_string();
     let description =
         "Maximum security sovereign computing with air-gapped configuration".to_string();
 
-    let (_, _, primals, services, mut resources, mut security, mut networking, storage) =
+    let (_, _, primals, services, mut resources, mut security, mut networking, mut storage) =
         super::basic_templates::create_basic_template();
 
     // Maximum security settings
@@ -629,8 +665,12 @@ pub fn create_sovereign_template() -> TemplateComponents {
 
     // Moderate resources for security-focused workloads
     resources.cpu_limit = Some(8.0);
-    resources.memory_limit = Some("16GB".to_string());
-    resources.storage_limit = Some("100GB".to_string());
+    resources.memory_limit = Some(super::constants::resource_sizes::GB_16.to_string());
+    resources.storage_limit = Some(super::constants::resource_sizes::GB_100.to_string());
+
+    // Secure storage with NestGate for maximum data protection
+    storage.nestgate_integration = Some(versions::LATEST.to_string());
+    storage.backup_policy = Some("encrypted-daily".to_string());
 
     (
         name,
@@ -658,18 +698,21 @@ pub fn create_custom_template(spec: &CustomTemplateSpec) -> TemplateComponents {
             primals.insert(
                 primal_name.clone(),
                 PrimalConfig {
-                    version: "latest".to_string(),
+                    version: super::constants::versions::LATEST.to_string(),
                     source: WorkloadSource::Container {
-                        registry: "registry.ecosystem.sovereignscience.org".to_string(),
+                        registry: super::constants::registries::SOVEREIGN_SCIENCE.to_string(),
                         image: primal_name.clone(),
-                        tag: "latest".to_string(),
+                        tag: super::constants::versions::LATEST.to_string(),
                         digest: None,
                     },
                     enabled: true,
                     config: HashMap::new(),
-                    dependencies: vec!["beardog".to_string()],
+                    dependencies: vec![super::constants::service_names::BEARDOG.to_string()],
                     health_check: Some(HealthCheck {
-                        command: vec![primal_name.clone(), "health".to_string()],
+                        command: vec![
+                            primal_name.clone(),
+                            super::constants::commands::HEALTH.to_string(),
+                        ],
                         interval: 30,
                         timeout: 10,
                         retries: 3,
@@ -709,7 +752,7 @@ pub fn create_custom_template(spec: &CustomTemplateSpec) -> TemplateComponents {
                     })
                     .collect(),
                 volumes: vec![], // Custom volumes not yet supported in specs
-                dependencies: vec!["beardog".to_string()],
+                dependencies: vec!["capability:pki".to_string()], // PKI capability (runtime discovery)
                 health_check: None,
             },
         );

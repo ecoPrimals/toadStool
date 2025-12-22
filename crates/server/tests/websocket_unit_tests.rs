@@ -28,6 +28,7 @@ fn create_test_state() -> ServerState {
         config,
         resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     }
 }
 
@@ -275,7 +276,7 @@ mod format_server_event_unit_tests {
 mod handle_client_message_unit_tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_handle_ping_message_unit() {
         let state = create_test_state();
         let (tx, mut rx) = mpsc::unbounded_channel();
@@ -300,7 +301,7 @@ mod handle_client_message_unit_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_handle_get_status_empty_state() {
         let state = create_test_state();
         let (tx, mut rx) = mpsc::unbounded_channel();
@@ -323,7 +324,7 @@ mod handle_client_message_unit_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_handle_subscribe_message_unit() {
         let state = create_test_state();
         let (tx, mut rx) = mpsc::unbounded_channel();

@@ -123,7 +123,7 @@ mod error_handling_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_duplicate_biome_detection() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -143,7 +143,7 @@ mod error_handling_tests {
         assert!(is_duplicate, "Should detect duplicate biome");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_biome_not_found_detection() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -349,7 +349,7 @@ mod error_handling_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_transition_error_handling() {
         let current_state = "starting";
         let requested_state = "paused";
@@ -443,7 +443,7 @@ mod error_handling_tests {
         context: String,
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_error_logging() {
         let error_log: Arc<RwLock<Vec<ErrorLog>>> = Arc::new(RwLock::new(Vec::new()));
 

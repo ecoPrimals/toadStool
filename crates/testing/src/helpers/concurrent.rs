@@ -321,7 +321,7 @@ mod tests {
         let mut handles = vec![];
 
         for _ in 0..10 {
-            let s = state.clone();
+            let s = Arc::clone(&state);
             handles.push(tokio::spawn(async move {
                 s.write(|val| *val += 1).await;
             }));
@@ -338,7 +338,7 @@ mod tests {
     #[tokio::test]
     async fn test_wait_for_condition() {
         let state = Arc::new(Mutex::new(false));
-        let s = state.clone();
+        let s = Arc::clone(&state);
 
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -347,7 +347,7 @@ mod tests {
 
         wait_for_async_condition(
             || {
-                let s = state.clone();
+                let s = Arc::clone(&state);
                 async move { *s.lock().await }
             },
             Duration::from_secs(1),

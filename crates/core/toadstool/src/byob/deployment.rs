@@ -58,8 +58,10 @@ impl ActiveDeployment {
     }
 
     /// Add a service execution
-    pub fn add_service_execution(&mut self, service_name: String, execution_id: Uuid) {
-        self.service_executions.insert(service_name, execution_id);
+    /// ✅ ZERO-COPY: Use &str to avoid unnecessary String allocation at call site
+    pub fn add_service_execution(&mut self, service_name: &str, execution_id: Uuid) {
+        self.service_executions
+            .insert(service_name.to_string(), execution_id);
         self.updated_at = Instant::now();
     }
 
@@ -209,7 +211,7 @@ mod tests {
         let mut deployment = ActiveDeployment::new(request, network_info);
 
         let execution_id = Uuid::new_v4();
-        deployment.add_service_execution("service1".to_string(), execution_id);
+        deployment.add_service_execution("service1", execution_id); // ✅ ZERO-COPY: No .to_string() needed
 
         assert_eq!(deployment.service_executions.len(), 1);
         assert_eq!(

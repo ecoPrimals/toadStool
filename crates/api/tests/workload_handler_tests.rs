@@ -23,6 +23,7 @@ fn create_test_app() -> Router {
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         event_broadcaster,
         websocket_manager: Arc::new(websocket::WebSocketManager::new()),
+        capability_provider: None,
     };
     create_router(state)
 }
@@ -50,7 +51,7 @@ fn create_valid_request() -> WorkloadRequest {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_success() {
     let app = create_test_app();
 
@@ -79,7 +80,7 @@ async fn test_execute_workload_success() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_different_primals() {
     let test_cases = vec![
         ("songbird", "compute.execute"),
@@ -100,7 +101,7 @@ async fn test_execute_workload_with_different_primals() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_container_type() {
     let mut request = create_valid_request();
     request.workload_type = WorkloadType::Container {
@@ -117,7 +118,7 @@ async fn test_execute_workload_with_container_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_wasm_type() {
     let mut request = create_valid_request();
     request.workload_type = WorkloadType::Wasm {
@@ -128,7 +129,7 @@ async fn test_execute_workload_with_wasm_type() {
     matches!(request.workload_type, WorkloadType::Wasm { .. });
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_native_type() {
     let mut request = create_valid_request();
     request.workload_type = WorkloadType::Native {
@@ -139,7 +140,7 @@ async fn test_execute_workload_with_native_type() {
     matches!(request.workload_type, WorkloadType::Native { .. });
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_environment_variables() {
     let mut request = create_valid_request();
     request
@@ -156,7 +157,7 @@ async fn test_execute_workload_with_environment_variables() {
     assert_eq!(request.environment.get("KEY1"), Some(&"value1".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_commands() {
     let test_cases = vec![
         vec!["ls", "-la"],
@@ -178,7 +179,7 @@ async fn test_execute_workload_with_commands() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_with_timeouts() {
     let timeout_cases = vec![
         Some(10),  // 10 seconds
@@ -196,7 +197,7 @@ async fn test_execute_workload_with_timeouts() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_request_id_formats() {
     let id_formats = vec![
         "simple-id",
@@ -213,7 +214,7 @@ async fn test_execute_workload_request_id_formats() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_workload_capability_strings() {
     let capabilities = vec![
         "compute.execute",
@@ -234,7 +235,7 @@ async fn test_execute_workload_capability_strings() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_cloneable() {
     let request = create_valid_request();
     let cloned = request.clone();
@@ -244,7 +245,7 @@ async fn test_workload_request_cloneable() {
     assert_eq!(request.required_capability, cloned.required_capability);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_serialization() {
     let request = create_valid_request();
 
@@ -258,7 +259,7 @@ async fn test_workload_request_serialization() {
     assert_eq!(deserialized.request_id, request.request_id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_structure() {
     use chrono::Utc;
 
@@ -279,7 +280,7 @@ async fn test_workload_response_structure() {
     assert!(response.error.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_with_error() {
     use chrono::Utc;
 
@@ -297,7 +298,7 @@ async fn test_workload_response_with_error() {
     assert!(response.error.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_status_variants() {
     use chrono::Utc;
 
@@ -326,7 +327,7 @@ async fn test_workload_status_variants() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_with_empty_command() {
     let mut request = create_valid_request();
     request.workload_type = WorkloadType::Container {
@@ -339,7 +340,7 @@ async fn test_workload_request_with_empty_command() {
     matches!(request.workload_type, WorkloadType::Container { .. });
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_with_many_env_vars() {
     let mut request = create_valid_request();
 
@@ -353,7 +354,7 @@ async fn test_workload_request_with_many_env_vars() {
     assert_eq!(request.environment.len(), 50);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_default_resources() {
     let request = create_valid_request();
 
@@ -363,7 +364,7 @@ async fn test_workload_request_default_resources() {
     assert!(!request.resource_requirements.gpu_required);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_workload_requests_sequentially() {
     let requests = vec![
         create_valid_request(),
@@ -386,7 +387,7 @@ async fn test_multiple_workload_requests_sequentially() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_debug_format() {
     let request = create_valid_request();
 
@@ -396,7 +397,7 @@ async fn test_workload_request_debug_format() {
     assert!(debug_str.contains("WorkloadRequest") || debug_str.contains("request_id"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_api_error_for_invalid_json() {
     let app = create_test_app();
 
@@ -422,7 +423,7 @@ async fn test_api_error_for_invalid_json() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_execution_logs_request() {
     // Test that the handler logs the request
     // This tests the info! and debug! logging paths
@@ -434,7 +435,7 @@ async fn test_workload_execution_logs_request() {
     assert!(!request.required_capability.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_logs_completion() {
     use chrono::Utc;
 

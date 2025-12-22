@@ -3,7 +3,6 @@
 //! These tests exercise the actual middleware code paths to increase coverage.
 
 use std::sync::Arc;
-use std::time::Duration;
 use toadstool_api::types::ApiConfig;
 use toadstool_api::{ApiMetrics, ApiState};
 use tokio::sync::RwLock;
@@ -16,10 +15,11 @@ fn create_test_api_state() -> ApiState {
         executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         metrics: Arc::new(RwLock::new(ApiMetrics::default())),
         websocket_manager: Arc::new(toadstool_api::websocket::WebSocketManager::new()),
+        capability_provider: None,
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_api_state_creation() {
     // Test creating API state (exercises constructor logic)
     let state = create_test_api_state();
@@ -31,7 +31,7 @@ async fn test_api_state_creation() {
     assert_eq!(metrics.failed_requests, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_increment_total_requests() {
     let state = create_test_api_state();
 
@@ -45,7 +45,7 @@ async fn test_metrics_increment_total_requests() {
     assert_eq!(metrics.total_requests, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_increment_successful_requests() {
     let state = create_test_api_state();
 
@@ -60,7 +60,7 @@ async fn test_metrics_increment_successful_requests() {
     assert_eq!(metrics.successful_requests, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_increment_failed_requests() {
     let state = create_test_api_state();
 
@@ -75,14 +75,14 @@ async fn test_metrics_increment_failed_requests() {
     assert_eq!(metrics.failed_requests, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_concurrent_increments() {
     let state = Arc::new(create_test_api_state());
     let mut handles = vec![];
 
     // Simulate 10 concurrent requests
     for _ in 0..10 {
-        let state_clone = state.clone();
+        let state_clone = Arc::clone(&state);
         let handle = tokio::spawn(async move {
             let mut metrics = state_clone.metrics.write().await;
             metrics.total_requests += 1;
@@ -100,7 +100,7 @@ async fn test_metrics_concurrent_increments() {
     assert_eq!(metrics.successful_requests, 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_generation() {
     use uuid::Uuid;
 
@@ -112,7 +112,7 @@ async fn test_request_id_generation() {
     assert!(!id1.to_string().is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_request_id_string_conversion() {
     use uuid::Uuid;
 
@@ -124,19 +124,20 @@ async fn test_request_id_string_conversion() {
     assert_eq!(id_string.len(), 36); // UUID string length with hyphens
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_instant_elapsed_measurement() {
     use std::time::Instant;
 
-    // Test duration measurement (used in metrics middleware)
+    // ✅ MODERNIZED: Test duration measurement (used in metrics middleware)
+    // Small sleep needed to actually measure elapsed time
     let start = Instant::now();
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     let elapsed = start.elapsed();
 
     assert!(elapsed.as_millis() >= 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_duration_conversion() {
     use std::time::Duration;
 
@@ -148,7 +149,7 @@ async fn test_duration_conversion() {
     assert!(duration.as_nanos() > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_status_code_classification() {
     use axum::http::StatusCode;
 
@@ -177,7 +178,7 @@ async fn test_status_code_classification() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_header_value_creation() {
     use axum::http::HeaderValue;
 
@@ -189,7 +190,7 @@ async fn test_header_value_creation() {
     assert_eq!(value_str.to_str().unwrap(), "test-value");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_header_value_static() {
     use axum::http::HeaderValue;
 
@@ -198,7 +199,7 @@ async fn test_header_value_static() {
     assert_eq!(value.to_str().unwrap(), "unknown");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_reset_logic() {
     let state = create_test_api_state();
 
@@ -224,7 +225,7 @@ async fn test_metrics_reset_logic() {
     assert_eq!(metrics.failed_requests, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_tracking() {
     let state = create_test_api_state();
 
@@ -246,7 +247,7 @@ async fn test_execution_tracking() {
     assert!(!executions.contains_key(&exec_id2));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_broadcast_channel_creation() {
     // Test broadcast channel creation (used for events)
     let (tx, mut rx) = tokio::sync::broadcast::channel::<String>(100);
@@ -258,7 +259,7 @@ async fn test_broadcast_channel_creation() {
     assert_eq!(received, "test event");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rwlock_read_concurrent_access() {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -268,7 +269,7 @@ async fn test_rwlock_read_concurrent_access() {
     let mut handles = vec![];
 
     for _ in 0..5 {
-        let data_clone = data.clone();
+        let data_clone = Arc::clone(&data);
         let handle = tokio::spawn(async move {
             let guard = data_clone.read().await;
             guard.len()
@@ -282,7 +283,7 @@ async fn test_rwlock_read_concurrent_access() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rwlock_write_exclusive_access() {
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -292,7 +293,7 @@ async fn test_rwlock_write_exclusive_access() {
     let mut handles = vec![];
 
     for i in 0..5 {
-        let data_clone = data.clone();
+        let data_clone = Arc::clone(&data);
         let handle = tokio::spawn(async move {
             let mut guard = data_clone.write().await;
             *guard += i;
@@ -308,7 +309,7 @@ async fn test_rwlock_write_exclusive_access() {
     assert_eq!(final_value, 1 + 2 + 3 + 4);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_api_config_defaults() {
     // Test API config default values
     let config = ApiConfig::default();
@@ -318,7 +319,7 @@ async fn test_api_config_defaults() {
     assert!(config.request_timeout_secs > 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_websocket_manager_creation() {
     // Test WebSocket manager creation
     let manager = toadstool_api::websocket::WebSocketManager::new();
@@ -328,7 +329,7 @@ async fn test_websocket_manager_creation() {
     assert_eq!(count, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_method_clone() {
     use axum::http::Method;
 
@@ -339,7 +340,7 @@ async fn test_method_clone() {
     assert_eq!(method, cloned);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_path_string_extraction() {
     // Test path extraction logic
     let uri = "/api/v1/execute";
@@ -349,7 +350,7 @@ async fn test_path_string_extraction() {
     assert!(path.starts_with('/'));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_error_type_creation() {
     use chrono::Utc;
     use toadstool_api::types::ApiError;
@@ -368,7 +369,7 @@ async fn test_error_type_creation() {
     assert_eq!(error.message, "Test error message");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_string_formatting() {
     // Test string formatting used in logging
     let method = "GET";
@@ -381,7 +382,7 @@ async fn test_string_formatting() {
     assert!(formatted.contains("42ms"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rate_limiting_constants() {
     // Test that rate limiting constants are accessible
     const MAX_REQUESTS: u32 = 100;
@@ -394,14 +395,14 @@ async fn test_rate_limiting_constants() {
     assert_eq!(WINDOW_SECS, 60);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_state_access() {
     let state = Arc::new(create_test_api_state());
     let mut handles = vec![];
 
     // Test concurrent access to different state components
     for i in 0..3 {
-        let state_clone = state.clone();
+        let state_clone = Arc::clone(&state);
         let handle = tokio::spawn(async move {
             // Access metrics
             let metrics = state_clone.metrics.read().await;
@@ -423,7 +424,7 @@ async fn test_concurrent_state_access() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_calculation() {
     // Test metrics calculation logic
     let total = 100u64;
@@ -436,7 +437,7 @@ async fn test_metrics_calculation() {
     assert!((success_rate - 95.0).abs() < 0.01);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_duration_as_nanos() {
     use std::time::Duration;
 
@@ -445,7 +446,7 @@ async fn test_duration_as_nanos() {
     assert_eq!(duration.as_nanos(), 1500 * 1000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_header_map_operations() {
     use axum::http::HeaderMap;
 

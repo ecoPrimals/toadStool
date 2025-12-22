@@ -22,6 +22,7 @@ use toadstool::{
 use super::compiler::UniversalKernelCompiler;
 use super::config::{CompilationConfig, ResourceConfig, UniversalGpuConfig};
 use super::coordinator::ComputeResourceCoordinator;
+use super::strategy::{BackendSelectionStrategy, EvolutionMetrics};
 use super::traits::ParallelComputeFramework;
 use super::types::{
     ComputeEngineStatistics, ComputeResult, ComputeSession, ComputeWorkload, DeviceId,
@@ -44,6 +45,10 @@ pub struct UniversalGpuEngine {
     config: UniversalGpuConfig,
     /// Resource monitor
     resource_monitor: Option<Arc<dyn ResourceMonitor>>,
+    /// Backend selection strategy (sovereign vs pragmatic)
+    selection_strategy: BackendSelectionStrategy,
+    /// Evolution metrics (ecosystem maturity tracking)
+    evolution_metrics: Arc<RwLock<EvolutionMetrics>>,
 }
 
 impl UniversalGpuEngine {
@@ -54,12 +59,21 @@ impl UniversalGpuEngine {
 
     /// Create new GPU engine with custom configuration
     pub async fn with_config(config: UniversalGpuConfig) -> ToadStoolResult<Self> {
+        Self::with_config_and_strategy(config, BackendSelectionStrategy::default()).await
+    }
+
+    /// Create new GPU engine with custom configuration and selection strategy
+    pub async fn with_config_and_strategy(
+        config: UniversalGpuConfig,
+        selection_strategy: BackendSelectionStrategy,
+    ) -> ToadStoolResult<Self> {
         let frameworks = Arc::new(RwLock::new(HashMap::new()));
         let devices = Arc::new(RwLock::new(HashMap::new()));
         let active_sessions = Arc::new(RwLock::new(HashMap::new()));
         let kernel_compiler = Arc::new(UniversalKernelCompiler::new(config.compilation.clone()));
         let resource_coordinator =
             Arc::new(ComputeResourceCoordinator::new(config.resources.clone()));
+        let evolution_metrics = Arc::new(RwLock::new(EvolutionMetrics::default()));
 
         let engine = Self {
             frameworks,
@@ -69,7 +83,12 @@ impl UniversalGpuEngine {
             resource_coordinator,
             config,
             resource_monitor: None,
+            selection_strategy,
+            evolution_metrics,
         };
+
+        // Log evolution status on startup
+        engine.log_evolution_status().await;
 
         // Initialize frameworks and discover devices
         engine.discover_frameworks().await?;
@@ -116,13 +135,32 @@ impl UniversalGpuEngine {
         &self,
         framework_type: GpuFramework,
     ) -> ToadStoolResult<Arc<dyn ParallelComputeFramework>> {
-        if framework_type == GpuFramework::WebGpu {
-            let framework = super::frameworks::WebGpuFramework::new()?;
-            Ok(Arc::new(framework))
-        } else {
-            // For other frameworks, use fallback implementation
-            let framework = super::frameworks::FallbackFramework::new(framework_type);
-            Ok(Arc::new(framework))
+        match framework_type {
+            GpuFramework::WebGpu => {
+                let framework = super::frameworks::WebGpuFramework::new()?;
+                Ok(Arc::new(framework))
+            }
+            GpuFramework::Vulkan => {
+                // Vulkan support requires additional platform-specific dependencies
+                // Users should use WebGPU for cross-platform GPU compute
+                Err(ToadStoolError::configuration(
+                    "Vulkan framework requires manual enablement via 'vulkan' feature flag. \
+                     Consider using WebGPU for cross-platform compatibility.",
+                ))
+            }
+            GpuFramework::OpenCl => {
+                // OpenCL support requires additional platform-specific dependencies
+                // Users should use WebGPU for cross-platform GPU compute
+                Err(ToadStoolError::configuration(
+                    "OpenCL framework requires manual enablement via 'opencl' feature flag. \
+                     Consider using WebGPU for cross-platform compatibility.",
+                ))
+            }
+            _ => {
+                // For other frameworks, use fallback implementation
+                let framework = super::frameworks::FallbackFramework::new(framework_type);
+                Ok(Arc::new(framework))
+            }
         }
     }
 
@@ -201,7 +239,7 @@ impl UniversalGpuEngine {
         }
 
         // Use load balancer to select device
-        let coordinator = self.resource_coordinator.clone();
+        let coordinator = Arc::clone(&self.resource_coordinator);
         coordinator
             .select_device(&available_devices, requirements)
             .await
@@ -630,6 +668,40 @@ impl UniversalGpuEngine {
             },
         }
     }
+
+    /// Log current evolution status
+    async fn log_evolution_status(&self) {
+        let metrics = self.evolution_metrics.read().await;
+        metrics.log_status();
+    }
+
+    /// Get evolution metrics
+    pub async fn get_evolution_metrics(&self) -> EvolutionMetrics {
+        self.evolution_metrics.read().await.clone()
+    }
+
+    /// Update evolution metrics (for future dynamic tracking)
+    pub async fn update_evolution_metrics(&self, metrics: EvolutionMetrics) {
+        *self.evolution_metrics.write().await = metrics;
+        self.log_evolution_status().await;
+    }
+
+    /// Get backend selection strategy
+    pub fn get_selection_strategy(&self) -> BackendSelectionStrategy {
+        self.selection_strategy.clone()
+    }
+
+    /// Select best framework for a workload
+    pub async fn select_framework_for_workload(
+        &self,
+        workload: Option<&WorkloadType>,
+    ) -> Option<GpuFramework> {
+        let frameworks = self.frameworks.read().await;
+        let available: Vec<GpuFramework> = frameworks.keys().cloned().collect();
+
+        self.selection_strategy
+            .select_framework(workload, &available)
+    }
 }
 
 impl Default for UniversalGpuEngine {
@@ -646,6 +718,8 @@ impl Default for UniversalGpuEngine {
             )),
             config: UniversalGpuConfig::default(),
             resource_monitor: None,
+            selection_strategy: BackendSelectionStrategy::default(),
+            evolution_metrics: Arc::new(RwLock::new(EvolutionMetrics::default())),
         }
     }
 }

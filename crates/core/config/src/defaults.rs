@@ -7,6 +7,11 @@
 //! **Philosophy**: Every default can be overridden via environment variables.
 //! These are **fallback values** only, not hardcoded limitations.
 //!
+//! **Modern Rust Features**:
+//! - Compile-time validation via const assertions
+//! - Zero-cost abstractions
+//! - Type-safe constants
+//!
 //! # Organization
 //!
 //! Constants are organized into logical modules:
@@ -55,48 +60,90 @@
 //!
 //! For complete environment configuration, use `EnvironmentConfig::from_env()`.
 
-/// Network-related default values
+/// # ⚠️ PARTIALLY DEPRECATED: Network-related default values
 ///
-/// # Example
+/// **Primal ports (SONGBIRD_PORT, BEARDOG_PORT, etc.) are deprecated.**
+/// Use `RuntimeDiscovery` with capability-based discovery instead.
 ///
-/// ```rust
+/// **Self-configuration (API_PORT, METRICS_PORT) remains valid** - these are ToadStool's own ports.
+///
+/// # Modern Example
+///
+/// ```rust,ignore
 /// use toadstool_config::defaults::network;
+/// use toadstool_common::{RuntimeDiscovery, Capability};
 ///
-/// // Build service endpoint URLs
-/// let songbird_url = format!("http://{}:{}", network::LOCALHOST, network::SONGBIRD_PORT);
-/// let beardog_url = format!("http://{}:{}", network::LOCALHOST, network::BEARDOG_PORT);
+/// // ✅ GOOD: Use for self-configuration
+/// let my_api_port = network::API_PORT;
+/// let my_metrics_port = network::METRICS_PORT;
 ///
-/// // Validate network defaults
-/// assert_eq!(network::LOCALHOST, "127.0.0.1");
-/// assert!(network::API_PORT > 0);
-/// assert!(network::METRICS_PORT > 0);
+/// // ❌ BAD: Don't hardcode other primals
+/// // let songbird_port = network::SONGBIRD_PORT;
+///
+/// // ✅ GOOD: Discover other primals at runtime
+/// let discovery = RuntimeDiscovery::new(client);
+/// let coordinators = discovery
+///     .discover_capability(&Capability::Coordination)
+///     .await?;
 /// ```
+///
+/// **Philosophy**: Know yourself, discover others at runtime.
 pub mod network {
     /// Default localhost address for binding
+    /// ✅ Self-configuration - valid to use
     pub const LOCALHOST: &str = "127.0.0.1";
 
-    /// Default Songbird service port
+    /// # ⚠️ DEPRECATED: Default Songbird service port
+    ///
+    /// **Use `RuntimeDiscovery`** to find coordinator at runtime.
+    /// Hardcoding violates primal-agnostic principles.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination) instead"
+    )]
     pub const SONGBIRD_PORT: u16 = 8080;
 
-    /// Default BearDog authentication service port
+    /// # ⚠️ DEPRECATED: Default BearDog authentication service port
+    ///
+    /// **Use `RuntimeDiscovery`** to find security service at runtime.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication) instead"
+    )]
     pub const BEARDOG_PORT: u16 = 8081;
 
-    /// Default NestGate orchestration service port
+    /// # ⚠️ DEPRECATED: Default NestGate orchestration service port
+    ///
+    /// **Use `RuntimeDiscovery`** to find storage service at runtime.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage) instead"
+    )]
     pub const NESTGATE_PORT: u16 = 8082;
 
-    /// Default Squirrel MCP service port
+    /// # ⚠️ DEPRECATED: Default Squirrel MCP service port
+    ///
+    /// **Use `RuntimeDiscovery`** to find MCP platform at runtime.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP) instead"
+    )]
     pub const SQUIRREL_PORT: u16 = 8083;
 
     /// Default ToadStool API port
+    /// ✅ Self-configuration - valid to use for our own port
     pub const API_PORT: u16 = 8084;
 
     /// Default metrics/telemetry port
+    /// ✅ Self-configuration - valid to use for our own metrics
     pub const METRICS_PORT: u16 = 9090;
 
     /// Default discovery service port
+    /// ✅ Self-configuration - valid to use for our own discovery endpoint
     pub const DISCOVERY_PORT: u16 = 8085;
 
     /// Default federation port for cross-primal communication
+    /// ✅ Self-configuration - valid to use for our own federation endpoint
     pub const FEDERATION_PORT: u16 = 7777;
 }
 
@@ -292,34 +339,72 @@ pub mod resources {
     pub const SIDECAR_MEMORY_REQUEST: &str = "128Mi";
 }
 
-/// Endpoint defaults
+/// # ⚠️ DEPRECATED: Endpoint defaults
+///
+/// **Hardcoded endpoints violate the self-knowledge principle.**
+/// Use `RuntimeDiscovery` for capability-based service discovery instead.
+///
+/// # Modern Alternative
+///
+/// ```rust,ignore
+/// use toadstool_common::{RuntimeDiscovery, Capability};
+///
+/// // OLD (hardcoded):
+/// // let songbird_url = defaults::endpoints::songbird();
+///
+/// // NEW (discovered):
+/// let discovery = RuntimeDiscovery::new(client);
+/// let coordinators = discovery
+///     .discover_capability(&Capability::Coordination)
+///     .await?;
+/// let coordinator_url = &coordinators[0].endpoint;
+/// ```
+///
+/// **Philosophy**: ToadStool should only have hardcoded knowledge about itself (API endpoint),
+/// not about other primals. Discover them at runtime based on capabilities.
+#[deprecated(
+    since = "0.3.0",
+    note = "Hardcoded primal endpoints violate self-knowledge principle. \
+            Use RuntimeDiscovery::discover_capability() for dynamic service location. \
+            Only use for self-configuration (api()) or as emergency fallbacks."
+)]
 pub mod endpoints {
     /// Default Songbird endpoint
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find coordinator at runtime
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn songbird() -> String {
         format!("http://localhost:{}", super::network::SONGBIRD_PORT)
     }
 
     /// Default BearDog endpoint
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find security service at runtime
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn beardog() -> String {
         format!("http://localhost:{}", super::network::BEARDOG_PORT)
     }
 
     /// Default NestGate endpoint
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find storage service at runtime
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn nestgate() -> String {
         format!("http://localhost:{}", super::network::NESTGATE_PORT)
     }
 
     /// Default Squirrel endpoint
+    /// **DEPRECATED**: Use `RuntimeDiscovery` to find MCP platform at runtime
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn squirrel() -> String {
         format!("http://localhost:{}", super::network::SQUIRREL_PORT)
     }
 
     /// Default API endpoint
+    /// ✅ VALID: Self-knowledge - ToadStool's own API endpoint
     pub fn api() -> String {
         format!("http://localhost:{}", super::network::API_PORT)
     }
 
     /// Default cloud endpoint
+    /// **DEPRECATED**: Use service discovery instead of hardcoded cloud endpoint
     pub fn cloud() -> String {
         "http://localhost:8080".to_string()
     }
@@ -462,11 +547,42 @@ pub mod durations {
     }
 }
 
+// ============================================================================
+// Compile-Time Validation
+// ============================================================================
+//
+// These const assertions are evaluated at compile time, catching configuration
+// errors before runtime. This is a modern Rust pattern for zero-cost validation.
+
+// Validate port ranges are non-empty and properly ordered
+const _: () = assert!(ports::CONTAINER_START < ports::CONTAINER_END);
+const _: () = assert!(ports::RANGE_START < ports::RANGE_END);
+
+// Validate validation thresholds are sensible
+const _: () = assert!(validation::MAX_CACHE_SIZE > validation::MIN_CACHE_SIZE);
+const _: () = assert!(validation::MAX_WORKER_THREADS > validation::MIN_WORKER_THREADS);
+const _: () = assert!(validation::MAX_POOL_SIZE > validation::MIN_POOL_SIZE);
+const _: () = assert!(validation::MAX_TIMEOUT_MS > validation::MIN_TIMEOUT_MS);
+const _: () = assert!(validation::MIN_PORT >= 1024); // Avoid privileged ports
+
+// Validate resource defaults are within validation ranges
+const _: () = assert!(resources::WORKER_THREADS >= validation::MIN_WORKER_THREADS);
+const _: () = assert!(resources::WORKER_THREADS <= validation::MAX_WORKER_THREADS);
+const _: () = assert!(resources::MAX_CONNECTIONS >= validation::MIN_POOL_SIZE);
+const _: () = assert!(resources::MAX_CONNECTIONS <= validation::MAX_POOL_SIZE);
+
+// Validate timeouts are positive and ordered
+const _: () = assert!(timeouts::EXECUTION_MS > 0);
+const _: () = assert!(timeouts::HEALTH_CHECK_MS > 0);
+const _: () = assert!(timeouts::CONNECTION_MS > 0);
+const _: () = assert!(timeouts::REQUEST_MS > 0);
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)] // Testing deprecated constants during migration
     fn test_network_ports_are_distinct() {
         let ports = [
             network::SONGBIRD_PORT,
@@ -526,6 +642,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)] // Testing deprecated endpoint functions during migration
     fn test_endpoints_are_valid() {
         let songbird = endpoints::songbird();
         assert!(songbird.starts_with("http://"));

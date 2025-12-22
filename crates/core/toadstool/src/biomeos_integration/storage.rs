@@ -169,7 +169,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_manager_with_inmemory_backend() {
         let config = test_config();
         let manager = StorageProvisioningManager::with_inmemory(config);
@@ -186,13 +186,13 @@ mod tests {
         let result = manager.provision_volume(&volume_config).await;
         assert!(result.is_ok());
 
-        let volume_info = result.unwrap();
+        let volume_info = result.expect("Volume provision should succeed in test");
         assert_eq!(volume_info.name, "test-volume");
         assert!(volume_info.id.starts_with("test-"));
         assert_eq!(volume_info.status, "Available");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_parse_size_string() {
         assert_eq!(parse_size_string("100Gi"), Some(107_374_182_400));
         assert_eq!(parse_size_string("1TB"), Some(1_000_000_000_000));

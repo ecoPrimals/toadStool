@@ -148,6 +148,7 @@ impl ZeroUnsafeModuleCache {
             if let Some(entry) = compiled.get_mut(key) {
                 entry.record_access();
                 self.stats.write().await.compiled_hits += 1;
+                // ✅ Clone module - necessary as Module is not Copy and caller needs owned value
                 return Ok(entry.module.clone());
             }
         }
@@ -158,7 +159,8 @@ impl ZeroUnsafeModuleCache {
             if let Some(entry) = source_cache.get_mut(key) {
                 entry.record_access();
                 self.stats.write().await.source_hits += 1;
-                Some(entry.wasm_bytes.clone())
+                // ✅ Arc::clone is cheap (just increments ref count)
+                Some(Arc::clone(&entry.wasm_bytes))
             } else {
                 None
             }
@@ -173,7 +175,8 @@ impl ZeroUnsafeModuleCache {
             })?;
 
             let entry = SourceEntry::new(bytes.to_vec());
-            let wasm_arc = entry.wasm_bytes.clone();
+            // ✅ Arc::clone is cheap (just increments ref count)
+            let wasm_arc = Arc::clone(&entry.wasm_bytes);
 
             let mut source_cache = self.source_cache.write().await;
 

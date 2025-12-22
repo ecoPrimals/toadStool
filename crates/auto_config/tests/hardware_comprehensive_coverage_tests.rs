@@ -357,7 +357,7 @@ async fn test_concurrent_hardware_detection() {
     let mut handles = vec![];
 
     for _ in 0..10 {
-        let sem = semaphore.clone();
+        let sem = Arc::clone(&semaphore);
         let handle = tokio::spawn(async move {
             let _permit = sem.acquire().await.unwrap();
 

@@ -191,7 +191,7 @@ fn test_inmemory_auth_backend_new() {
     // new() should construct successfully
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_auth_backend_initialize_default() {
     let backend = InMemoryAuthBackend::new();
     let result = backend.initialize().await;
@@ -199,7 +199,7 @@ async fn test_inmemory_auth_backend_initialize_default() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_auth_backend_token_request_fields() {
     let backend = InMemoryAuthBackend::new();
     let request = TokenRequest {
@@ -222,7 +222,7 @@ async fn test_inmemory_auth_backend_token_request_fields() {
     assert!(token.scope.contains(&"cross-primal".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_auth_backend_refresh_token_fields() {
     let backend = InMemoryAuthBackend::new();
     let request = TokenRefreshRequest {
@@ -466,7 +466,7 @@ fn test_inmemory_storage_backend_creation_with_string() {
     // Backend should accept String as storage_tier
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_initialize() {
     let backend = InMemoryBackend::new("standard");
     let result = backend.initialize().await;
@@ -474,7 +474,7 @@ async fn test_inmemory_storage_backend_initialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_provision_basic() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
     let config = VolumeConfig {
@@ -494,7 +494,7 @@ async fn test_inmemory_storage_backend_provision_basic() {
     assert_eq!(info.status, "Available");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_provision_multiple() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
 
@@ -517,7 +517,7 @@ async fn test_inmemory_storage_backend_provision_multiple() {
     assert_eq!(volumes.len(), 5);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_volume_lifecycle() {
     let backend = Arc::new(InMemoryBackend::new("premium"));
     let config = VolumeConfig {
@@ -558,14 +558,14 @@ async fn test_inmemory_storage_backend_volume_lifecycle() {
     assert!(status_result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_list_empty() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
     let volumes = backend.list_volumes().await.unwrap();
     assert_eq!(volumes.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_mount_nonexistent() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
     let result = backend
@@ -574,14 +574,14 @@ async fn test_inmemory_storage_backend_mount_nonexistent() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_unmount_nonexistent() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
     let result = backend.unmount_volume("nonexistent", "test-service").await;
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_storage_backend_delete_nonexistent() {
     let backend = Arc::new(InMemoryBackend::new("standard"));
     let result = backend.delete_volume("nonexistent").await;
@@ -604,7 +604,7 @@ fn test_inmemory_agent_backend_default() {
     // Default should construct successfully
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_initialize() {
     let backend = InMemoryAgentBackend::new();
     let result = backend.initialize().await;
@@ -612,7 +612,7 @@ async fn test_inmemory_agent_backend_initialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_deploy_basic() {
     let backend = InMemoryAgentBackend::new();
     let config = AgentConfig {
@@ -634,7 +634,7 @@ async fn test_inmemory_agent_backend_deploy_basic() {
     assert_eq!(info.replicas, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_scale_agent() {
     let backend = InMemoryAgentBackend::new();
     let config = AgentConfig {
@@ -657,7 +657,7 @@ async fn test_inmemory_agent_backend_scale_agent() {
     assert_eq!(status, AgentStatus::Running);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_stop_agent() {
     let backend = InMemoryAgentBackend::new();
     let config = AgentConfig {
@@ -680,7 +680,7 @@ async fn test_inmemory_agent_backend_stop_agent() {
     assert_eq!(status, AgentStatus::Stopped);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_remove_agent() {
     let backend = InMemoryAgentBackend::new();
     let config = AgentConfig {
@@ -703,14 +703,14 @@ async fn test_inmemory_agent_backend_remove_agent() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_list_empty() {
     let backend = InMemoryAgentBackend::new();
     let agents = backend.list_agents().await.unwrap();
     assert_eq!(agents.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_list_multiple() {
     let backend = InMemoryAgentBackend::new();
 
@@ -730,7 +730,7 @@ async fn test_inmemory_agent_backend_list_multiple() {
     assert_eq!(agents.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_inmemory_agent_backend_health_check() {
     let backend = InMemoryAgentBackend::new();
     let result = backend.health_check().await;

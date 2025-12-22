@@ -263,7 +263,7 @@ fn test_os_layer_manager_disabled() {
     // Should still create successfully
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_os_layer_manager_initialize() {
     let config = OSLayerConfig::default();
     let manager = OSLayerManager::new(config);
@@ -271,7 +271,7 @@ async fn test_os_layer_manager_initialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_os_layer_manager_initialize_disabled() {
     let config = OSLayerConfig {
         enabled: false,
@@ -340,7 +340,7 @@ fn test_os_layer_manager_all_platforms() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_os_layer_manager_initialize_then_platform_info() {
     let config = OSLayerConfig::default();
     let manager = OSLayerManager::new(config);
@@ -359,7 +359,7 @@ fn test_os_layer_manager_platform_info_consistency() {
     assert_eq!(info1.arch, info2.arch);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_os_layer_manager_reinitialize() {
     let config = OSLayerConfig::default();
     let manager = OSLayerManager::new(config);
@@ -369,7 +369,7 @@ async fn test_os_layer_manager_reinitialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_os_layer_manager_init_with_custom_modes() {
     let config = OSLayerConfig {
         enabled: true,

@@ -38,9 +38,13 @@ pub struct ServerConfig {
 
     /// Health check configuration
     pub health_check: HealthCheckConfig,
+
+    /// Primal capability system configuration (optional)
+    pub primal_capabilities: Option<PrimalCapabilitiesConfig>,
 }
 
 impl Default for ServerConfig {
+    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         Self {
@@ -49,7 +53,7 @@ impl Default for ServerConfig {
                 config.network.bind_address, config.network.songbird_port
             ),
             enable_api: true,
-            enable_websocket: true,
+            enable_websocket: false, // Disabled by default for security - opt-in required
             enable_cors: true,
             max_concurrent_executions: 100,
             default_timeout: Duration::from_secs(300),
@@ -58,6 +62,7 @@ impl Default for ServerConfig {
             rate_limiting: None,
             logging: LoggingConfig::default(),
             health_check: HealthCheckConfig::default(),
+            primal_capabilities: Some(PrimalCapabilitiesConfig::default()),
         }
     }
 }
@@ -212,6 +217,42 @@ impl Default for HealthCheckConfig {
             check_resources: true,
             memory_threshold_percent: 90.0,
             cpu_threshold_percent: 95.0,
+        }
+    }
+}
+
+/// Primal capability system configuration
+#[derive(Debug, Clone)]
+pub struct PrimalCapabilitiesConfig {
+    /// Enable capability provider
+    pub enabled: bool,
+
+    /// Songbird endpoint (if available)
+    pub songbird_endpoint: Option<String>,
+
+    /// Squirrel endpoint (if available)
+    pub squirrel_endpoint: Option<String>,
+
+    /// Heartbeat interval in seconds
+    pub heartbeat_interval_secs: u64,
+
+    /// Auto-register on startup
+    pub auto_register: bool,
+}
+
+impl Default for PrimalCapabilitiesConfig {
+    fn default() -> Self {
+        Self {
+            enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES")
+                .map(|v| v == "true")
+                .unwrap_or(false),
+            songbird_endpoint: std::env::var("SONGBIRD_ENDPOINT").ok(),
+            squirrel_endpoint: std::env::var("SQUIRREL_ENDPOINT").ok(),
+            heartbeat_interval_secs: std::env::var("PRIMAL_HEARTBEAT_INTERVAL")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(30),
+            auto_register: true,
         }
     }
 }

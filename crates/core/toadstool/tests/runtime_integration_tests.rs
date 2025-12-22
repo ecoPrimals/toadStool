@@ -17,7 +17,7 @@ use uuid::Uuid;
 // Runtime Selection Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_native_runtime_selection() {
     // Test that Native workloads select Native runtime
     let mut request = ExecutionRequest::default();
@@ -26,7 +26,7 @@ async fn test_native_runtime_selection() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Native));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_runtime_selection() {
     // Test that WASM workloads select WASM runtime
     let mut request = ExecutionRequest::default();
@@ -35,7 +35,7 @@ async fn test_wasm_runtime_selection() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Wasm));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_container_runtime_selection() {
     // Test that Container workloads select Container runtime
     let mut request = ExecutionRequest::default();
@@ -44,7 +44,7 @@ async fn test_container_runtime_selection() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Container));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_python_runtime_selection() {
     // Test that Python workloads select Python runtime
     let mut request = ExecutionRequest::default();
@@ -53,7 +53,7 @@ async fn test_python_runtime_selection() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Python));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_gpu_runtime_selection() {
     // Test that GPU workloads select GPU runtime
     let mut request = ExecutionRequest::default();
@@ -62,7 +62,7 @@ async fn test_gpu_runtime_selection() {
     assert_eq!(request.runtime_hint, Some(RuntimeType::Gpu));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_automatic_runtime_selection() {
     // Test automatic runtime selection based on workload
     let request = ExecutionRequest::default();
@@ -75,7 +75,7 @@ async fn test_automatic_runtime_selection() {
 // Multi-Engine Workflow Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_sequential_runtime_execution() {
     // Test executing workloads across different runtimes sequentially
     let runtimes = vec![
@@ -95,7 +95,7 @@ async fn test_sequential_runtime_execution() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_parallel_runtime_execution() {
     // Test executing workloads on multiple runtimes in parallel
     let execution_ids: Vec<Uuid> = (0..5).map(|_| Uuid::new_v4()).collect();
@@ -108,7 +108,7 @@ async fn test_parallel_runtime_execution() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_switching_workflow() {
     // Test switching between runtimes in a workflow
     let workflow_steps = vec![
@@ -125,7 +125,7 @@ async fn test_runtime_switching_workflow() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mixed_runtime_batch_execution() {
     // Test batch execution across mixed runtimes
     let batch_requests = vec![
@@ -142,7 +142,7 @@ async fn test_mixed_runtime_batch_execution() {
 // Resource Sharing Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_shared_input_data_across_runtimes() {
     // Test sharing input data between runtime executions
     let shared_data = vec![1u8, 2, 3, 4, 5];
@@ -156,7 +156,7 @@ async fn test_shared_input_data_across_runtimes() {
     assert_eq!(input1.data, input2.data);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_shared_environment_variables() {
     // Test sharing environment variables across runtimes
     let mut shared_env = HashMap::new();
@@ -173,7 +173,7 @@ async fn test_shared_environment_variables() {
     assert_eq!(request1.environment, request2.environment);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_output_data_transfer_between_runtimes() {
     // Test transferring output from one runtime as input to another
     let output_data = vec![10u8, 20, 30];
@@ -188,7 +188,7 @@ async fn test_output_data_transfer_between_runtimes() {
 // Runtime Interoperability Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_native_to_wasm_interop() {
     // Test Native runtime output feeding into WASM runtime
     let native_output = "native_result".as_bytes().to_vec();
@@ -199,7 +199,7 @@ async fn test_native_to_wasm_interop() {
     assert!(!wasm_input.data.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wasm_to_container_interop() {
     // Test WASM runtime output feeding into Container runtime
     let wasm_output = vec![1, 2, 3, 4];
@@ -210,7 +210,7 @@ async fn test_wasm_to_container_interop() {
     assert_eq!(container_input.data.len(), 4);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_container_to_python_interop() {
     // Test Container runtime output feeding into Python runtime
     let container_output = "{'key': 'value'}".as_bytes().to_vec();
@@ -221,7 +221,7 @@ async fn test_container_to_python_interop() {
     assert!(!python_input.data.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_python_to_gpu_interop() {
     // Test Python runtime output feeding into GPU runtime
     let python_output = vec![0.1f32, 0.2, 0.3, 0.4];
@@ -237,7 +237,7 @@ async fn test_python_to_gpu_interop() {
 // Runtime Configuration Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_specific_timeout() {
     // Test runtime-specific timeout configurations
     let timeout_configs = vec![
@@ -255,7 +255,7 @@ async fn test_runtime_specific_timeout() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_resource_limits() {
     // Test runtime-specific resource limits
     let runtime_limits = vec![
@@ -270,7 +270,7 @@ async fn test_runtime_resource_limits() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_security_contexts() {
     // Test runtime-specific security contexts
     let native_context = SecurityContext::default();
@@ -287,7 +287,7 @@ async fn test_runtime_security_contexts() {
 // Execution State Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execution_state_across_runtimes() {
     // Test that execution states work consistently across runtimes
     let states = vec![
@@ -302,7 +302,7 @@ async fn test_execution_state_across_runtimes() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_failure_state_propagation() {
     // Test that failures propagate correctly from runtimes
     let failure = ExecutionStatus::Failed {
@@ -317,7 +317,7 @@ async fn test_runtime_failure_state_propagation() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_cancellation_propagation() {
     // Test that cancellations propagate to all runtimes
     let cancelled = ExecutionStatus::Cancelled;
@@ -329,7 +329,7 @@ async fn test_runtime_cancellation_propagation() {
 // Runtime Performance Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_startup_overhead() {
     // Test measuring runtime startup time
     let runtimes = vec![
@@ -348,7 +348,7 @@ async fn test_runtime_startup_overhead() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_runtime_capacity() {
     // Test concurrent execution capacity across runtimes
     let concurrent_count = 10;
@@ -374,7 +374,7 @@ async fn test_concurrent_runtime_capacity() {
 // Error Handling Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_unavailable_fallback() {
     // Test fallback when preferred runtime is unavailable
     let mut request = ExecutionRequest::default();
@@ -384,7 +384,7 @@ async fn test_runtime_unavailable_fallback() {
     assert!(request.runtime_hint.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_execution_error_handling() {
     // Test handling execution errors from different runtimes
     let error_scenarios = vec![
@@ -401,7 +401,7 @@ async fn test_runtime_execution_error_handling() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_timeout_across_engines() {
     // Test timeout handling across different runtimes
     let timeout_status = ExecutionStatus::TimedOut;
@@ -414,7 +414,7 @@ async fn test_runtime_timeout_across_engines() {
 // Data Format Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_binary_data_across_runtimes() {
     // Test binary data handling across runtimes
     let binary_data = vec![0xFF, 0x00, 0xAB, 0xCD];
@@ -425,7 +425,7 @@ async fn test_binary_data_across_runtimes() {
     assert_eq!(input.data, binary_data);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_text_data_across_runtimes() {
     // Test text data handling across runtimes
     let text_data = "Hello from runtime".as_bytes().to_vec();
@@ -437,7 +437,7 @@ async fn test_text_data_across_runtimes() {
     assert_eq!(decoded, "Hello from runtime");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_json_data_across_runtimes() {
     // Test JSON data handling across runtimes
     let json_str = r#"{"key": "value"}"#;
@@ -455,7 +455,7 @@ async fn test_json_data_across_runtimes() {
 // Workflow Coordination Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_pipeline_execution_coordination() {
     // Test coordinating a pipeline across runtimes
     let pipeline = vec![
@@ -467,7 +467,7 @@ async fn test_pipeline_execution_coordination() {
     assert_eq!(pipeline.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_fan_out_execution_pattern() {
     // Test fan-out pattern (one input, multiple runtimes)
     let input_data = vec![1, 2, 3, 4, 5];
@@ -491,7 +491,7 @@ async fn test_fan_out_execution_pattern() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_fan_in_execution_pattern() {
     // Test fan-in pattern (multiple outputs, one aggregator)
     let outputs = vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
@@ -509,7 +509,7 @@ async fn test_fan_in_execution_pattern() {
 // Runtime Metrics Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_execution_metrics() {
     // Test collecting metrics from different runtimes
     let runtimes = vec![
@@ -527,7 +527,7 @@ async fn test_runtime_execution_metrics() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cross_runtime_performance_comparison() {
     // Test comparing performance across runtimes
     let performance_data = vec![

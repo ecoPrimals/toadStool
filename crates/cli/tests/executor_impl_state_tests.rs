@@ -111,7 +111,7 @@ mod state_management_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_storage_and_retrieval() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -134,7 +134,7 @@ mod state_management_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_update_operations() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -167,7 +167,7 @@ mod state_management_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_biome_states() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -230,7 +230,7 @@ mod state_management_tests {
         assert!(!is_valid_transition("error", "running"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_transition_enforcement() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -272,7 +272,7 @@ mod state_management_tests {
     // State Monitoring Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_change_tracking() {
         #[derive(Clone)]
         #[allow(dead_code)]
@@ -315,7 +315,7 @@ mod state_management_tests {
         assert_eq!(hist[3].to_state, "stopped");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_query_by_status() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -383,7 +383,7 @@ mod state_management_tests {
     // Concurrent State Access Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_state_reads() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -411,7 +411,7 @@ mod state_management_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_state_updates() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -441,7 +441,7 @@ mod state_management_tests {
     // State Recovery Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_recovery_after_restart() {
         // Simulate storing state before restart
         let persisted_states = vec![
@@ -483,7 +483,7 @@ mod state_management_tests {
     // State Cleanup Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_cleanup_on_stop() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -517,7 +517,7 @@ mod state_management_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_state_removal() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));
@@ -554,7 +554,7 @@ mod state_management_tests {
     // Restart Counter Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_restart_counter_increment() {
         let state_store: Arc<RwLock<HashMap<String, BiomeState>>> =
             Arc::new(RwLock::new(HashMap::new()));

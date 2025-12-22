@@ -1,0 +1,5 @@
+model_state=trained_20_epochs
+optimizer_state=adam_lr_0.001
+epoch=20
+loss=.5
+accuracy=90

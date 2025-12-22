@@ -691,6 +691,7 @@ fn test_callback_with_all_events() {
 
     let request = ExecutionRequest {
         callback_config: Some(config),
+        encryption_config: None,
         ..Default::default()
     };
 

@@ -25,7 +25,7 @@ mod universal_logic_tests {
     // Primal Registry Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_registry_initialization() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -33,7 +33,7 @@ mod universal_logic_tests {
         assert!(reg.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_registration() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -49,7 +49,7 @@ mod universal_logic_tests {
         assert!(reg.contains_key("security-primal-1"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_deregistration() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -69,7 +69,7 @@ mod universal_logic_tests {
         assert!(!reg.contains_key("temp-primal"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_primals_same_type() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -451,7 +451,7 @@ mod universal_logic_tests {
     // Concurrent Access Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_primal_registry_access() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -475,7 +475,7 @@ mod universal_logic_tests {
         assert_eq!(reg.len(), 10);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_primal_lookup() {
         let registry: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 

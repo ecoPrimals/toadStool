@@ -36,21 +36,22 @@ fn create_test_request() -> ExecutionRequest {
                 source: "kernel void test() {}".to_string(),
             },
             kernel_name: "test".to_string(),
-            work_group_size: Some((8, 8, 1)),
             global_work_size: (64, 64, 1),
+            work_group_size: Some((8, 8, 1)),
             args: vec![],
         },
-        security_context: SecurityContext::default(),
         runtime_hint: None,
         resources: ResourceRequirements::default(),
+        security_context: SecurityContext::default(),
         timeout: Some(Duration::from_secs(60)),
         environment: HashMap::new(),
         input_data: ExecutionInput::default(),
         callback_config: None,
+        encryption_config: None,
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_creation_default() {
     let result = UniversalGpuEngine::new().await;
     assert!(
@@ -64,7 +65,7 @@ async fn test_engine_creation_default() {
     assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_creation_with_config() {
     let config = create_test_config();
     let result = UniversalGpuEngine::with_config(config).await;
@@ -76,7 +77,7 @@ async fn test_engine_creation_with_config() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_capabilities() {
     let engine = UniversalGpuEngine::new().await.unwrap();
     let caps = engine.get_capabilities();
@@ -87,7 +88,7 @@ async fn test_engine_capabilities() {
     assert!(caps.platform_features.contains_key("parallel_compute"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_initialization() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     let result = engine.initialize(RuntimeConfig::default()).await;
@@ -99,7 +100,7 @@ async fn test_engine_initialization() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_shutdown() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
@@ -112,7 +113,7 @@ async fn test_engine_shutdown() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_supports_workload() {
     let engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -126,7 +127,7 @@ async fn test_engine_supports_workload() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_execute_request() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
     engine.initialize(RuntimeConfig::default()).await.unwrap();
@@ -141,7 +142,7 @@ async fn test_engine_execute_request() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_metrics() {
     let engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -156,7 +157,7 @@ async fn test_engine_metrics() {
     assert!(metrics.gpu.is_some(), "GPU metrics should be available");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_with_webgpu_framework() {
     let mut config = create_test_config();
     config.discovery.enabled_frameworks = vec![GpuFramework::WebGpu];
@@ -168,7 +169,7 @@ async fn test_engine_with_webgpu_framework() {
     assert!(caps.supported_workloads.contains(&WorkloadType::Gpu));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_config_serialization() {
     let config = create_test_config();
 
@@ -182,7 +183,7 @@ async fn test_engine_config_serialization() {
     assert!(deserialized.is_ok(), "Config should deserialize from JSON");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_lifecycle() {
     // Test full lifecycle: create -> init -> shutdown
     let mut engine = UniversalGpuEngine::new().await.unwrap();
@@ -222,7 +223,7 @@ fn test_config_clone() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_multiple_init_calls() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -234,7 +235,7 @@ async fn test_engine_multiple_init_calls() {
     assert!(result2.is_ok(), "Second init should be idempotent");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_shutdown_before_init() {
     let mut engine = UniversalGpuEngine::new().await.unwrap();
 
@@ -248,7 +249,7 @@ async fn test_engine_shutdown_before_init() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_engine_framework_fallback() {
     let mut config = create_test_config();
     config.discovery.auto_fallback = true;

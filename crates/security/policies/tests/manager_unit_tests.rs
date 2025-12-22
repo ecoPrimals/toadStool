@@ -99,7 +99,7 @@ fn create_test_context() -> PolicyEvaluationContext {
 // FilePolicyManager Creation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_new() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -108,7 +108,7 @@ async fn test_manager_new() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_new_creates_directory() {
     let temp_dir = TempDir::new().unwrap();
     let policy_dir = temp_dir.path().join("new_policies");
@@ -123,7 +123,7 @@ async fn test_manager_new_creates_directory() {
     assert!(policy_dir.exists());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_manager_new_with_existing_directory() {
     let temp_dir = TempDir::new().unwrap();
     std::fs::create_dir_all(temp_dir.path()).unwrap();
@@ -137,7 +137,7 @@ async fn test_manager_new_with_existing_directory() {
 // Policy Loading Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_policy_not_found() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -147,7 +147,7 @@ async fn test_load_policy_not_found() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_and_load_policy() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -168,7 +168,7 @@ async fn test_save_and_load_policy() {
     assert_eq!(loaded_policy.name, "Test Policy");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_policy_from_cache() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -187,7 +187,7 @@ async fn test_load_policy_from_cache() {
     assert_eq!(second_load.unwrap().id, "cached_policy");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_load_policy_cache_disabled() {
     let temp_dir = TempDir::new().unwrap();
     let mut config = create_test_config(&temp_dir);
@@ -205,7 +205,7 @@ async fn test_load_policy_cache_disabled() {
 // Policy Saving Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_with_validation() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -216,7 +216,7 @@ async fn test_save_policy_with_validation() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_with_empty_id() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -229,7 +229,7 @@ async fn test_save_policy_with_empty_id() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_with_empty_name() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -242,7 +242,7 @@ async fn test_save_policy_with_empty_name() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_with_empty_version() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -255,7 +255,7 @@ async fn test_save_policy_with_empty_version() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_updates_cache() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -269,7 +269,7 @@ async fn test_save_policy_updates_cache() {
     assert!(loaded.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_save_policy_non_strict_enforcement() {
     let temp_dir = TempDir::new().unwrap();
     let mut config = create_test_config(&temp_dir);
@@ -287,7 +287,7 @@ async fn test_save_policy_non_strict_enforcement() {
 // Policy Deletion Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_policy() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -307,7 +307,7 @@ async fn test_delete_policy() {
     assert!(manager.load_policy("delete_me").await.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_nonexistent_policy() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -318,7 +318,7 @@ async fn test_delete_nonexistent_policy() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_policy_removes_from_cache() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -341,7 +341,7 @@ async fn test_delete_policy_removes_from_cache() {
 // Policy Listing Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_policies_empty() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -352,7 +352,7 @@ async fn test_list_policies_empty() {
     assert_eq!(result.unwrap().len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_policies_single() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -369,7 +369,7 @@ async fn test_list_policies_single() {
     assert_eq!(policies[0], "single_policy");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_policies_multiple() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -397,7 +397,7 @@ async fn test_list_policies_multiple() {
 // Policy Validation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_valid() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -411,7 +411,7 @@ async fn test_validate_policy_valid() {
     assert_eq!(errors.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_empty_id() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -428,7 +428,7 @@ async fn test_validate_policy_empty_id() {
     assert!(errors[0].contains("ID"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_empty_name() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -445,7 +445,7 @@ async fn test_validate_policy_empty_name() {
     assert!(errors.iter().any(|e| e.contains("name")));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_empty_version() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -462,7 +462,7 @@ async fn test_validate_policy_empty_version() {
     assert!(errors.iter().any(|e| e.contains("version")));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_self_inheritance() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -479,7 +479,7 @@ async fn test_validate_policy_self_inheritance() {
     assert!(errors.iter().any(|e| e.contains("inherit from itself")));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_validate_policy_with_rules() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -497,7 +497,7 @@ async fn test_validate_policy_with_rules() {
 // Policy Evaluation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_policy_simple() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -511,7 +511,7 @@ async fn test_evaluate_policy_simple() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_nonexistent_policy() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -522,7 +522,7 @@ async fn test_evaluate_nonexistent_policy() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_evaluate_policy_with_rules() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -543,7 +543,7 @@ async fn test_evaluate_policy_with_rules() {
 // Policy Composition Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_compose_policies_empty() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -553,7 +553,7 @@ async fn test_compose_policies_empty() {
     assert!(result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_compose_policies_single() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -571,7 +571,7 @@ async fn test_compose_policies_single() {
     assert_eq!(composed.rules.len(), 2);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_compose_policies_multiple() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -591,7 +591,7 @@ async fn test_compose_policies_multiple() {
     assert_eq!(composed.rules.len(), 5); // 2 + 3
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_compose_policies_nonexistent() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -605,7 +605,7 @@ async fn test_compose_policies_nonexistent() {
 // Policy Dependencies Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_policy_dependencies_empty() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -621,7 +621,7 @@ async fn test_get_policy_dependencies_empty() {
     assert_eq!(deps.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_policy_dependencies_with_inheritance() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);
@@ -641,7 +641,7 @@ async fn test_get_policy_dependencies_with_inheritance() {
     assert!(deps.contains(&"parent2".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_policy_dependencies_nonexistent() {
     let temp_dir = TempDir::new().unwrap();
     let config = create_test_config(&temp_dir);

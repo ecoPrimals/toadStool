@@ -8,13 +8,13 @@ use toadstool_distributed::substrate_detection::*;
 // SubstrateDetector Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_substrate_detector_new() {
     let _detector = SubstrateDetector::new();
     // Creation should not panic
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_substrate_detector_default() {
     let _detector = SubstrateDetector;
     // Default constructor should work

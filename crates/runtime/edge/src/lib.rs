@@ -52,6 +52,8 @@ pub struct EdgeRuntimeConfig {
     pub security_level: EdgeSecurityLevel,
     /// Resource allocation strategy
     pub resource_strategy: ResourceAllocationStrategy,
+    /// Port registry for dynamic port management
+    pub port_registry: toadstool_config::ports::PortRegistry,
 }
 
 #[derive(Debug, Clone)]
@@ -126,6 +128,7 @@ impl Default for EdgeRuntimeConfig {
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,
             resource_strategy: ResourceAllocationStrategy::Adaptive,
+            port_registry: toadstool_config::ports::PortRegistry::default(),
         }
     }
 }

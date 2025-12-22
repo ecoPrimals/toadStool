@@ -67,33 +67,57 @@ impl IntelligentAutoConfig {
     }
 
     /// Scan system capabilities
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if hardware detection fails or system
+    /// capabilities cannot be determined.
+    #[must_use = "System scan result should be checked"]
     pub async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
         self.hardware_detector.scan_system().await
     }
 
     /// Discover ecosystem services
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if service discovery fails or network
+    /// scanning encounters errors.
+    #[must_use = "Service discovery result should be checked"]
     pub async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
         self.ecosystem_discoverer.discover_services().await
     }
 
     /// Generate intelligent configuration based on system analysis
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if:
+    /// - Hardware scanning fails.
+    /// - Platform optimization fails.
+    /// - Service discovery fails.
+    /// - Configuration generation or validation fails.
+    #[must_use = "Configuration generation result should be checked"]
     pub async fn generate_intelligent_config(&mut self) -> ToadStoolResult<ToadStoolConfig> {
         info!("🧠 Generating intelligent configuration...");
 
-        // Phase 1: Hardware Discovery
-        let hardware = self.hardware_detector.scan_system().await?;
+        // ✅ CONCURRENT EXECUTION: Launch independent discovery phases in parallel
+        // Only Platform Detection depends on Hardware Discovery - everything else is independent
+        let (hardware_result, ecosystem_result, usage_result) = tokio::join!(
+            // Phase 1: Hardware Discovery
+            self.hardware_detector.scan_system(),
+            // Phase 3: Ecosystem Discovery (independent, can run concurrently)
+            self.ecosystem_discoverer.discover_services(),
+            // Phase 4: Usage Analysis (independent, can run concurrently)
+            self.usage_learner.analyze_environment(),
+        );
 
-        // Phase 2: Platform Detection
+        let hardware = hardware_result?;
+        let ecosystem = ecosystem_result?;
+        let usage_hints = usage_result?;
+
+        // Phase 2: Platform Detection (depends on hardware, must be sequential)
         let platform = self
             .platform_optimizer
             .optimize_for_platform(&hardware)
             .await?;
-
-        // Phase 3: Ecosystem Discovery
-        let ecosystem = self.ecosystem_discoverer.discover_services().await?;
-
-        // Phase 4: Usage Analysis
-        let usage_hints = self.usage_learner.analyze_environment().await?;
 
         // Phase 5: Generate Configuration
         let config = self
@@ -108,21 +132,43 @@ impl IntelligentAutoConfig {
     /// This is the main entry point for zero-touch `ToadStool` configuration.
     /// It performs comprehensive system analysis and generates an optimal
     /// configuration without requiring any user input.
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if:
+    /// - Hardware scanning fails during system detection.
+    /// - Platform optimization encounters errors.
+    /// - Ecosystem discovery fails.
+    /// - Configuration validation fails.
+    /// - Any phase of the auto-configuration process encounters an error.
+    #[must_use = "Auto-configuration result should be checked"]
     pub async fn auto_configure() -> ToadStoolResult<ToadStoolConfig> {
         info!("🧠 ToadStool Auto-Configuration Starting...");
         info!("✨ Zero-touch setup - making ToadStool grandma-friendly!");
 
         let mut auto_config = Self::new();
 
-        // Phase 1: Hardware Discovery
-        info!("🔍 Phase 1: Scanning hardware capabilities...");
-        let hardware = auto_config.hardware_detector.scan_system().await?;
-        info!(
-            "🖥️ Detected: {} cores, {:.1}GB RAM, {} GPUs, {:.1}GB storage",
-            hardware.cpu_cores, hardware.memory_gb, hardware.gpu_count, hardware.storage_gb
+        // ✅ CONCURRENT EXECUTION: Launch independent discovery phases in parallel
+        info!("🔍 Phases 1/3/4: Scanning hardware, ecosystem, and usage patterns concurrently...");
+        let (hardware_result, ecosystem_result, usage_result) = tokio::join!(
+            auto_config.hardware_detector.scan_system(),
+            auto_config.ecosystem_discoverer.discover_services(),
+            auto_config.usage_learner.analyze_environment(),
         );
 
-        // Phase 2: Platform Optimization
+        let hardware = hardware_result?;
+        let ecosystem = ecosystem_result?;
+        let _usage_hints = usage_result?;
+
+        info!(
+            "🖥️ Hardware: {} cores, {:.1}GB RAM, {} GPUs, {:.1}GB storage",
+            hardware.cpu_cores, hardware.memory_gb, hardware.gpu_count, hardware.storage_gb
+        );
+        info!(
+            "🔗 Ecosystem: {} services discovered",
+            ecosystem.discovered_services.len()
+        );
+
+        // Phase 2: Platform Optimization (depends on hardware, must be sequential)
         info!(
             "🔧 Phase 2: Optimizing for platform {}...",
             std::env::consts::OS
@@ -134,14 +180,6 @@ impl IntelligentAutoConfig {
         info!(
             "⚡ Platform optimizations applied: {} optimizations",
             platform_config.optimizations.len()
-        );
-
-        // Phase 3: Ecosystem Discovery
-        info!("🌐 Phase 3: Discovering ecosystem services...");
-        let ecosystem = auto_config.ecosystem_discoverer.discover_services().await?;
-        info!(
-            "🔗 Found ecosystem services: {:?}",
-            ecosystem.discovered_services.keys().collect::<Vec<_>>()
         );
 
         // Phase 4: Usage Pattern Analysis
@@ -417,6 +455,11 @@ impl PlatformOptimizer {
     }
 
     /// Optimize configuration for the current platform
+    ///
+    /// # Errors
+    /// Currently does not return errors, but future versions may return errors
+    /// if platform-specific optimizations fail.
+    #[must_use = "Platform optimization result should be checked"]
     pub async fn optimize_for_platform(
         &self,
         hardware: &SystemCapabilities,
@@ -539,6 +582,11 @@ impl UsageLearner {
     }
 
     /// Analyze the environment to predict usage patterns
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if environment detection fails or
+    /// file system operations encounter errors.
+    #[must_use = "Environment analysis result should be checked"]
     pub async fn analyze_environment(&mut self) -> ToadStoolResult<UsageHints> {
         let mut usage_hints = UsageHints::default();
 
@@ -823,7 +871,7 @@ pub struct PerformanceMetrics {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     #[ignore = "slow integration test - runs hardware/network detection"]
     async fn test_auto_configuration_basic() {
         let result = IntelligentAutoConfig::auto_configure().await;

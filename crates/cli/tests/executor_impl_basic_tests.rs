@@ -20,7 +20,7 @@ mod executor_impl_basic_tests {
     // BiomeExecutor Creation Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_biome_executor_initialization() {
         // Test that we can create the structure (even if new() might fail in test env)
         // This tests the type structure
@@ -65,7 +65,7 @@ mod executor_impl_basic_tests {
     // Biome Lifecycle Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_biome_registry_operations() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -97,7 +97,7 @@ mod executor_impl_basic_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_biome_duplicate_detection() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -121,7 +121,7 @@ mod executor_impl_basic_tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_multiple_biomes_registration() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -407,7 +407,7 @@ mod executor_impl_basic_tests {
     // Concurrent Access Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_biome_registration() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -433,7 +433,7 @@ mod executor_impl_basic_tests {
         assert_eq!(biome_map.len(), 10);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_read_operations() {
         let biomes: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -506,7 +506,7 @@ mod executor_impl_basic_tests {
     // Biome State Management Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_biome_state_transitions() {
         // Simulate state transitions: stopped -> starting -> running -> stopping -> stopped
         let states = vec!["stopped", "starting", "running", "stopping", "stopped"];

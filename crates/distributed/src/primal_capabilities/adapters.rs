@@ -49,22 +49,54 @@ pub struct SongbirdAdapter {
 }
 
 impl SongbirdAdapter {
-    /// Create a new Songbird adapter
-    pub fn new(songbird_endpoint: &str) -> Self {
+    /// Create a new Songbird adapter with runtime discovery
+    ///
+    /// # Architecture
+    ///
+    /// Follows primal self-knowledge principle:
+    /// - ToadStool knows its own endpoint from configuration/environment
+    /// - Songbird endpoint is discovered at runtime (via mDNS, consul, or explicit config)
+    /// - No hardcoded fallbacks - fail fast if configuration is missing
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - HTTP client cannot be created
+    /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
+    pub fn new(songbird_endpoint: &str) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {e}"))?;
 
-        // Get ToadStool's own endpoint from environment or use default
-        let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT")
-            .unwrap_or_else(|_| "http://localhost:8084".to_string());
+        // Get ToadStool's own endpoint from environment (required - primal self-knowledge)
+        let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT").map_err(|_| {
+            anyhow::anyhow!(
+                "TOADSTOOL_ENDPOINT not set - primal must know its own endpoint for discovery. \
+                 Set via environment variable or configuration file."
+            )
+        })?;
 
-        Self {
+        Ok(Self {
             endpoint: songbird_endpoint.to_string(),
             client,
             toadstool_endpoint,
-        }
+        })
+    }
+
+    /// Create adapter with explicit endpoint (for testing/development)
+    #[cfg(test)]
+    pub fn new_with_endpoint(songbird_endpoint: &str, toadstool_endpoint: String) -> Result<Self> {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {e}"))?;
+
+        Ok(Self {
+            endpoint: songbird_endpoint.to_string(),
+            client,
+            toadstool_endpoint,
+        })
     }
 }
 

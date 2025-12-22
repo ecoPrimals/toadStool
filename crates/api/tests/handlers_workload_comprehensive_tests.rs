@@ -8,13 +8,13 @@ use uuid::Uuid;
 // Test 1-5: Handler Registration and Setup
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_exists() {
     // Test: Workload handler is defined and accessible
     // This test passes if compilation succeeds
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_route_registration() {
     // Test: Handler route is properly registered
     let route_path = "/api/v1/workloads";
@@ -23,7 +23,7 @@ async fn test_workload_handler_route_registration() {
     assert!(route_path.starts_with("/api"), "Should be API route");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_http_methods() {
     // Test: Correct HTTP methods are supported
     let supported_methods = vec!["GET", "POST", "PUT", "DELETE"];
@@ -32,7 +32,7 @@ async fn test_workload_handler_http_methods() {
     assert!(supported_methods.contains(&"GET"), "Should support GET");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_accepts_json() {
     // Test: Handler accepts JSON content-type
     let content_type = "application/json";
@@ -40,7 +40,7 @@ async fn test_workload_handler_accepts_json() {
     assert_eq!(content_type, "application/json", "Should accept JSON");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_returns_json() {
     // Test: Handler returns JSON responses
     let response_type = "application/json";
@@ -52,7 +52,7 @@ async fn test_workload_handler_returns_json() {
 // Test 6-10: Request Validation
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_validation_required_fields() {
     // Test: Required fields are validated
     let required_fields = vec!["workload_type", "name", "spec"];
@@ -66,7 +66,7 @@ async fn test_workload_request_validation_required_fields() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_validation_workload_type() {
     // Test: Workload type is validated
     let valid_types = vec!["container", "wasm", "native", "python", "gpu"];
@@ -80,7 +80,7 @@ async fn test_workload_request_validation_workload_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_validation_name() {
     // Test: Workload name is validated
     let valid_names = vec!["my-workload", "test_workload", "workload123"];
@@ -96,7 +96,7 @@ async fn test_workload_request_validation_name() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_validation_spec() {
     // Test: Workload spec is validated
     let spec_keys = vec!["image", "command", "args", "env", "resources"];
@@ -106,7 +106,7 @@ async fn test_workload_request_validation_spec() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_request_validation_optional_fields() {
     // Test: Optional fields are handled correctly
     let optional_fields = vec!["description", "labels", "annotations"];
@@ -124,7 +124,7 @@ async fn test_workload_request_validation_optional_fields() {
 // Test 11-15: Response Generation
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_structure() {
     // Test: Response has correct structure
     let response_fields = vec!["workload_id", "status", "message"];
@@ -138,7 +138,7 @@ async fn test_workload_response_structure() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_success_status() {
     // Test: Success response has correct status
     let success_status = 200;
@@ -146,7 +146,7 @@ async fn test_workload_response_success_status() {
     assert_eq!(success_status, 200, "Success should return 200");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_created_status() {
     // Test: Created response has correct status
     let created_status = 201;
@@ -154,7 +154,7 @@ async fn test_workload_response_created_status() {
     assert_eq!(created_status, 201, "Created should return 201");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_includes_id() {
     // Test: Response includes workload ID
     let workload_id = Uuid::new_v4();
@@ -162,7 +162,7 @@ async fn test_workload_response_includes_id() {
     assert!(!workload_id.is_nil(), "ID should be generated");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_response_includes_timestamp() {
     // Test: Response includes creation timestamp
     use chrono::Utc;
@@ -175,7 +175,7 @@ async fn test_workload_response_includes_timestamp() {
 // Test 16-20: Error Handling
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_error_invalid_json() {
     // Test: Handler handles invalid JSON
     let invalid_json = "{invalid}";
@@ -186,7 +186,7 @@ async fn test_workload_handler_error_invalid_json() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_error_missing_fields() {
     // Test: Handler handles missing required fields
     let error_message = "Missing required field: workload_type";
@@ -197,7 +197,7 @@ async fn test_workload_handler_error_missing_fields() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_error_invalid_type() {
     // Test: Handler handles invalid workload type
     let error_message = "Invalid workload type: unknown";
@@ -208,7 +208,7 @@ async fn test_workload_handler_error_invalid_type() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_error_400_status() {
     // Test: Bad request returns 400
     let bad_request_status = 400;
@@ -216,7 +216,7 @@ async fn test_workload_handler_error_400_status() {
     assert_eq!(bad_request_status, 400, "Bad request should return 400");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_workload_handler_error_500_status() {
     // Test: Internal error returns 500
     let internal_error_status = 500;

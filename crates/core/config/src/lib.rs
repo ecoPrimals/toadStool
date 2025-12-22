@@ -27,9 +27,15 @@
 pub mod config_utils;
 pub mod constants;
 pub mod defaults;
+pub mod discovery_defaults;
+pub mod discovery_integration;
 pub mod env_config;
+pub mod mdns_discovery; // ✅ Phase 4: mDNS service discovery
+pub mod network_config;
+pub mod ports;
+pub mod primal_capabilities; // ✅ NEW: Universal capability-based discovery
 pub mod runtime_defaults;
-pub mod validation;
+pub mod services;
 
 /// Network configuration utilities
 ///
@@ -62,8 +68,16 @@ pub mod network {
     /// Default max connections per host
     pub const DEFAULT_MAX_CONNECTIONS_PER_HOST: u32 = 100;
 
-    /// Generate default Songbird endpoint
+    /// Generate default Songbird endpoint (fallback only)
+    ///
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    /// This function is kept only for backward compatibility and test fixtures.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_songbird_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
@@ -72,8 +86,15 @@ pub mod network {
         )
     }
 
-    /// Generate default `BearDog` endpoint
+    /// Generate default `BearDog` endpoint (fallback only)
+    ///
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_beardog_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
@@ -82,8 +103,15 @@ pub mod network {
         )
     }
 
-    /// Generate default `NestGate` endpoint
+    /// Generate default `NestGate` endpoint (fallback only)
+    ///
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Storage) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_nestgate_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
@@ -92,8 +120,15 @@ pub mod network {
         )
     }
 
-    /// Generate default Squirrel MCP endpoint
+    /// Generate default Squirrel MCP endpoint (fallback only)
+    ///
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::AI) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_squirrel_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
@@ -102,7 +137,13 @@ pub mod network {
         )
     }
 
-    /// Generate default `ToadStool` API endpoint
+    /// Generate default `ToadStool` API endpoint (self-knowledge)
+    ///
+    /// ⚠️ **DEPRECATED**: Use PrimalIdentity for self-knowledge instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use PrimalIdentity to get own endpoint instead"
+    )]
     #[must_use]
     pub fn default_toadstool_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
@@ -127,14 +168,26 @@ pub mod network {
         })
     }
 
-    // ===== NEW ENVIRONMENT-AWARE FUNCTIONS =====
-    // These functions use EnvironmentConfig for runtime configuration
-    // and replace hardcoded constants
+    // ===== LEGACY PORT FUNCTIONS (DEPRECATED) =====
+    // These functions are kept for backward compatibility but should not be used in new code.
+    // Use capability-based discovery instead via `toadstool_common::runtime_discovery`.
+    //
+    // **Migration Path**:
+    // 1. Old: `network::get_songbird_endpoint()` - Hardcoded service name
+    // 2. New: `ServiceDiscovery::find_by_capability(Capability::Coordination)` - Capability-based
+    //
+    // See `docs/guides/SELF_KNOWLEDGE_MIGRATION.md` for migration guide.
 
     /// Get Songbird port from environment or default
     ///
-    /// This function respects `TOADSTOOL_SONGBIRD_PORT` environment variable.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    /// This function will be removed in a future version.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_songbird_port() -> u16 {
         std::env::var("TOADSTOOL_SONGBIRD_PORT")
             .ok()
@@ -144,8 +197,13 @@ pub mod network {
 
     /// Get `BearDog` port from environment or default
     ///
-    /// This function respects `TOADSTOOL_BEARDOG_PORT` environment variable.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_beardog_port() -> u16 {
         std::env::var("TOADSTOOL_BEARDOG_PORT")
             .ok()
@@ -155,8 +213,22 @@ pub mod network {
 
     /// Get `NestGate` port from environment or default
     ///
-    /// This function respects `TOADSTOOL_NESTGATE_PORT` environment variable.
+    /// # ⚠️ DEPRECATED - Use Capability-Based Discovery
+    ///
+    /// Modern pattern: Discover storage services by capability.
+    ///
+    /// ```rust,ignore
+    /// let discovery = RuntimeDiscovery::new(discovery_client);
+    /// let storage_services = discovery
+    ///     .discover_capability(&Capability::Storage(StorageCapability::ObjectStorage))
+    ///     .await?;
+    /// ```
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use RuntimeDiscovery::discover_capability(Capability::Storage) for service discovery"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_nestgate_port() -> u16 {
         std::env::var("TOADSTOOL_NESTGATE_PORT")
             .ok()
@@ -166,8 +238,22 @@ pub mod network {
 
     /// Get Squirrel MCP port from environment or default
     ///
-    /// This function respects `TOADSTOOL_SQUIRREL_PORT` environment variable.
+    /// # ⚠️ DEPRECATED - Use Capability-Based Discovery
+    ///
+    /// Modern pattern: Discover AI services by capability.
+    ///
+    /// ```rust,ignore
+    /// let discovery = RuntimeDiscovery::new(discovery_client);
+    /// let ai_services = discovery
+    ///     .discover_capability(&Capability::AI)
+    ///     .await?;
+    /// ```
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use RuntimeDiscovery::discover_capability(Capability::AI) for service discovery"
+    )]
     #[must_use]
+    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_squirrel_port() -> u16 {
         std::env::var("TOADSTOOL_SQUIRREL_PORT")
             .ok()
@@ -177,7 +263,11 @@ pub mod network {
 
     /// Get `ToadStool` API port from environment or default
     ///
-    /// This function respects `TOADSTOOL_API_PORT` environment variable.
+    /// ⚠️ **DEPRECATED**: Use self-knowledge via `PrimalIdentity` instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use PrimalIdentity to get own endpoint instead"
+    )]
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
         std::env::var("TOADSTOOL_API_PORT")
@@ -188,7 +278,7 @@ pub mod network {
 
     /// Get bind host from environment or default
     ///
-    /// This function respects `TOADSTOOL_BIND_HOST` environment variable.
+    /// This function is still valid for self-knowledge purposes.
     #[must_use]
     pub fn get_bind_host() -> String {
         std::env::var("TOADSTOOL_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
@@ -196,40 +286,65 @@ pub mod network {
 
     /// Generate Songbird endpoint from environment configuration
     ///
-    /// This function uses environment variables for runtime configuration.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_songbird_endpoint() -> String {
         format!("http://{}:{}", get_bind_host(), get_songbird_port())
     }
 
     /// Generate `BearDog` endpoint from environment configuration
     ///
-    /// This function uses environment variables for runtime configuration.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_beardog_endpoint() -> String {
         format!("http://{}:{}", get_bind_host(), get_beardog_port())
     }
 
     /// Generate `NestGate` endpoint from environment configuration
     ///
-    /// This function uses environment variables for runtime configuration.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::Storage) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_nestgate_endpoint() -> String {
         format!("http://{}:{}", get_bind_host(), get_nestgate_port())
     }
 
     /// Generate Squirrel MCP endpoint from environment configuration
     ///
-    /// This function uses environment variables for runtime configuration.
+    /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use ServiceDiscovery::find_by_capability(Capability::AI) instead"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_squirrel_endpoint() -> String {
         format!("http://{}:{}", get_bind_host(), get_squirrel_port())
     }
 
     /// Generate `ToadStool` API endpoint from environment configuration
     ///
-    /// This function uses environment variables for runtime configuration.
+    /// ⚠️ **DEPRECATED**: Use self-knowledge via `PrimalIdentity` instead.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use PrimalIdentity to get own endpoint instead"
+    )]
     #[must_use]
+    #[allow(deprecated)]
     pub fn get_toadstool_endpoint() -> String {
         format!("http://{}:{}", get_bind_host(), get_toadstool_port())
     }
@@ -566,8 +681,38 @@ pub mod production {
 }
 
 // ===== Configuration Type Definitions =====
-// Extracted to separate module for better organization
+// Refactored into domain-specific modules under types/
+// See types/ directory for organized configuration types
 pub mod types;
 
-// Re-export all types for backwards compatibility and convenience
-pub use types::*;
+// Re-export all types for backward compatibility and convenience
+// This allows both:
+//   - `use toadstool_config::ToadStoolConfig;` (old style)
+//   - `use toadstool_config::types::ToadStoolConfig;` (new style)
+pub use types::{
+    // Individual configuration types
+    ApplicationConfig,
+    AuditConfig,
+    AuthConfig,
+    AuthzConfig,
+    BackendCacheConfig,
+    ConnectionConfig,
+    ContainerConfig,
+    DatabaseConfig,
+    EncryptionConfig,
+    EndpointConfig,
+    FeatureFlags,
+    GpuConfig,
+    LoggingConfig,
+    MetricsConfig,
+    NetworkConfig,
+    PythonConfig,
+    ResourceLimits,
+    RuntimeConfig,
+    SandboxConfig,
+    SecurityConfig,
+    TlsConfig,
+    // Main config orchestrator
+    ToadStoolConfig,
+    WasmConfig,
+};

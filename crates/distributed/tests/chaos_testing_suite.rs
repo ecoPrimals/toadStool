@@ -53,6 +53,7 @@ fn create_test_execution_request(id: usize) -> ExecutionRequest {
             metadata: HashMap::new(),
         },
         callback_config: None,
+        encryption_config: None,
     }
 }
 

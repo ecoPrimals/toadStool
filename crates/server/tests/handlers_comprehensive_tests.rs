@@ -16,6 +16,7 @@ fn create_test_state() -> ServerState {
         config: ServerConfig::default(),
         resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     }
 }
 
@@ -23,7 +24,7 @@ fn create_test_state() -> ServerState {
 // Health Check Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check_handler_does_not_panic() {
     let state = create_test_state();
 
@@ -39,7 +40,7 @@ async fn test_health_check_handler_does_not_panic() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_readiness_check_handler_does_not_panic() {
     let state = create_test_state();
     let result =
@@ -48,7 +49,7 @@ async fn test_readiness_check_handler_does_not_panic() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_readiness_check_multiple_calls() {
     let state = create_test_state();
 
@@ -66,7 +67,7 @@ async fn test_readiness_check_multiple_calls() {
 // Metrics Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_handler_does_not_panic() {
     let state = create_test_state();
     let result = toadstool_server::handlers::metrics_handler(axum::extract::State(state)).await;
@@ -74,7 +75,7 @@ async fn test_metrics_handler_does_not_panic() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_with_statistics() {
     let state = create_test_state();
 
@@ -90,7 +91,7 @@ async fn test_metrics_with_statistics() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_metrics_with_active_executions() {
     let state = create_test_state();
 
@@ -121,7 +122,7 @@ async fn test_metrics_with_active_executions() {
 // Submit Execution Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_handler_basic() {
     let state = create_test_state();
 
@@ -142,7 +143,7 @@ async fn test_submit_execution_handler_basic() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_python() {
     let state = create_test_state();
 
@@ -160,7 +161,7 @@ async fn test_submit_execution_python() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_container() {
     let state = create_test_state();
 
@@ -178,7 +179,7 @@ async fn test_submit_execution_container() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_submit_execution_wasm() {
     let state = create_test_state();
 
@@ -200,7 +201,7 @@ async fn test_submit_execution_wasm() {
 // Get Execution Status Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_status_nonexistent_execution() {
     let state = create_test_state();
     let execution_id = uuid::Uuid::new_v4();
@@ -214,7 +215,7 @@ async fn test_get_status_nonexistent_execution() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_status_existing_execution() {
     let state = create_test_state();
     let execution_id = uuid::Uuid::new_v4();
@@ -250,7 +251,7 @@ async fn test_get_status_existing_execution() {
 // Cancel Execution Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_nonexistent_execution() {
     let state = create_test_state();
     let execution_id = uuid::Uuid::new_v4();
@@ -264,7 +265,7 @@ async fn test_cancel_nonexistent_execution() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_existing_execution() {
     let state = create_test_state();
     let execution_id = uuid::Uuid::new_v4();
@@ -300,7 +301,7 @@ async fn test_cancel_existing_execution() {
 // Cluster Status Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_status_empty() {
     let state = create_test_state();
 
@@ -310,7 +311,7 @@ async fn test_cluster_status_empty() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cluster_status_with_active_executions() {
     let state = create_test_state();
 
@@ -349,7 +350,7 @@ async fn test_cluster_status_with_active_executions() {
 // Runtime Management Handler Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_runtime_engines_empty() {
     let state = create_test_state();
 
@@ -359,7 +360,7 @@ async fn test_list_runtime_engines_empty() {
     drop(result);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_runtime_engines_multiple_calls() {
     let state = create_test_state();
 
@@ -373,7 +374,7 @@ async fn test_list_runtime_engines_multiple_calls() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_runtime_engines_concurrent() {
     let state = create_test_state();
 
@@ -444,7 +445,7 @@ fn test_statistics_field_updates() {
 // State Management Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_creation() {
     let state = create_test_state();
 
@@ -452,7 +453,7 @@ async fn test_server_state_creation() {
     assert_eq!(state.active_executions.read().await.len(), 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_clone() {
     let state1 = create_test_state();
     let state2 = state1.clone();
@@ -468,7 +469,7 @@ async fn test_server_state_clone() {
     ));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_state_access() {
     let state = create_test_state();
 
@@ -489,7 +490,7 @@ async fn test_concurrent_state_access() {
 // Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_execution_lifecycle() {
     let state = create_test_state();
     let execution_id = uuid::Uuid::new_v4();

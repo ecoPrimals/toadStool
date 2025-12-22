@@ -1,0 +1,11 @@
+{
+  "backend": "CPU",
+  "samples": 1000,
+  "correct": 71,
+  "accuracy": 0.071,
+  "avg_latency_ms": 0.043502999999999445,
+  "min_latency_ms": 0.043,
+  "max_latency_ms": 0.092,
+  "throughput_per_sec": 22986.92044226864,
+  "total_time_ms": 44.0
+}

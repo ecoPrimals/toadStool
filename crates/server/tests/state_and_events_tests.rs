@@ -38,8 +38,11 @@ impl ResourceMonitor for MockResourceMonitor {
         Ok(())
     }
 
-    fn get_metrics(&self, _workload_id: &str) -> ToadStoolResult<RuntimeMetrics> {
-        Ok(RuntimeMetrics::default())
+    fn get_metrics(
+        &self,
+        _workload_id: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move { Ok(RuntimeMetrics::default()) })
     }
 
     fn get_system_resources(
@@ -372,13 +375,14 @@ fn test_server_state_creation() {
         config,
         resource_monitor,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     };
 
     // Verify state was created successfully
     assert_eq!(state.config.max_concurrent_executions, 100);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_event_broadcasting() {
     let config = ServerConfig::default();
     let resource_monitor = Arc::new(MockResourceMonitor::new());
@@ -391,6 +395,7 @@ async fn test_server_state_event_broadcasting() {
         config,
         resource_monitor,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     };
 
     // Send an event
@@ -417,7 +422,7 @@ async fn test_server_state_event_broadcasting() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_active_executions() {
     let config = ServerConfig::default();
     let resource_monitor = Arc::new(MockResourceMonitor::new());
@@ -430,6 +435,7 @@ async fn test_server_state_active_executions() {
         config,
         resource_monitor,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     };
 
     // Add an active execution
@@ -472,6 +478,7 @@ fn test_server_state_clone() {
         config,
         resource_monitor,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
+        capability_provider: None,
     };
 
     // Clone the state

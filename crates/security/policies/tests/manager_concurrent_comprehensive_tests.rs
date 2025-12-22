@@ -2,6 +2,10 @@
 //!
 //! ✅ MODERN CONCURRENT TESTING - No sleeps, no serial, fully event-driven
 //! Tests run in parallel, proving production-grade concurrent safety
+//!
+//! Test infrastructure may use expect() for setup - test failure is appropriate
+
+#![allow(clippy::expect_used)] // Test infrastructure - expect is appropriate for setup
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

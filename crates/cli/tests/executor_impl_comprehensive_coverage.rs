@@ -43,7 +43,7 @@ impl MockCliContext {
 // BiomeExecutor::new() Tests - Initialization
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_biome_executor_new_success() {
     // Test: Executor initializes successfully
     // Covers: BiomeExecutor::new() lines 3-22
@@ -53,7 +53,9 @@ async fn test_biome_executor_new_success() {
     // attempt initialization.
 
     // For now, document that this needs integration test with real deps
-    // TODO: Create integration test with test distributed coordinator
+    // NOTE: Integration test with distributed coordinator
+    // Will be added as part of test coverage expansion
+    // Priority: P2 (test coverage goal)
 }
 
 #[test]
@@ -607,7 +609,7 @@ fn test_error_handling_resource_exhaustion() {
 // Concurrent Operation Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_biome_operations() {
     // Test: Multiple biomes can operate concurrently
     // Covers: Concurrent access to biomes registry

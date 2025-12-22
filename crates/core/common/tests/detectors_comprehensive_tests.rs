@@ -27,7 +27,7 @@ fn test_kubernetes_detector_name() {
     assert_eq!(detector.name(), "kubernetes");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_kubernetes_detector_no_kubernetes_env() {
     // Ensure we're not in a k8s environment for this test
     std::env::remove_var("KUBERNETES_SERVICE_HOST");
@@ -61,7 +61,7 @@ fn test_docker_detector_name() {
     assert_eq!(detector.name(), "docker");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_docker_detector_no_docker_env() {
     let detector = DockerDetector::new();
     let result = detector.detect().await;
@@ -92,7 +92,7 @@ fn test_consul_detector_name() {
     assert_eq!(detector.name(), "consul");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_consul_detector_no_consul() {
     std::env::remove_var("CONSUL_HTTP_ADDR");
 
@@ -128,7 +128,7 @@ fn test_cloud_detector_name() {
     assert_eq!(detector.name(), "cloud");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cloud_detector_no_cloud_env() {
     // Remove all cloud environment variables
     std::env::remove_var("AWS_REGION");
@@ -166,7 +166,7 @@ fn test_bare_metal_detector_name() {
     assert_eq!(detector.name(), "bare_metal");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_detector_always_succeeds() {
     let detector = BareMetalDetector::new();
     let result = detector.detect().await;
@@ -181,7 +181,7 @@ async fn test_bare_metal_detector_always_succeeds() {
     assert_eq!(substrate.capabilities[0], SubstrateCapability::BareMetal);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_detector_metadata() {
     let detector = BareMetalDetector::new();
     let result = detector.detect().await.unwrap().unwrap();
@@ -193,13 +193,13 @@ async fn test_bare_metal_detector_metadata() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_detector_capabilities() {
     let detector = BareMetalDetector::new();
     let result = detector.detect().await.unwrap().unwrap();
 
-    assert!(result.has_capability(SubstrateCapability::BareMetal));
-    assert!(!result.has_capability(SubstrateCapability::CloudCompute));
+    assert!(result.has_capability(&SubstrateCapability::BareMetal));
+    assert!(!result.has_capability(&SubstrateCapability::CloudCompute));
 }
 
 // ============================================================================
@@ -238,7 +238,7 @@ fn test_standard_detectors_all_names() {
 // Detector Integration Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detector_chain_execution() {
     let detectors = standard_detectors();
 
@@ -249,7 +249,7 @@ async fn test_detector_chain_execution() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_fallback_works() {
     // BareMetalDetector should always succeed as fallback
     let detector = BareMetalDetector::new();
@@ -263,7 +263,7 @@ async fn test_bare_metal_fallback_works() {
 // Detector Type Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_kubernetes_detector_substrate_type() {
     let detector = KubernetesDetector::new();
     // We can't guarantee k8s detection, but we can test the type is correct
@@ -275,7 +275,7 @@ async fn test_kubernetes_detector_substrate_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_docker_detector_substrate_type() {
     let detector = DockerDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -283,7 +283,7 @@ async fn test_docker_detector_substrate_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_consul_detector_substrate_type() {
     let detector = ConsulDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -294,7 +294,7 @@ async fn test_consul_detector_substrate_type() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cloud_detector_substrate_type() {
     let detector = CloudDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -306,7 +306,7 @@ async fn test_cloud_detector_substrate_type() {
 // Capability Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_kubernetes_capabilities() {
     let detector = KubernetesDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -318,7 +318,7 @@ async fn test_kubernetes_capabilities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_docker_capabilities() {
     let detector = DockerDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -328,7 +328,7 @@ async fn test_docker_capabilities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_consul_capabilities() {
     let detector = ConsulDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -341,7 +341,7 @@ async fn test_consul_capabilities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cloud_capabilities() {
     let detector = CloudDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -351,7 +351,7 @@ async fn test_cloud_capabilities() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_capabilities() {
     let detector = BareMetalDetector::new();
     let substrate = detector.detect().await.unwrap().unwrap();
@@ -366,7 +366,7 @@ async fn test_bare_metal_capabilities() {
 // Metadata Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_metadata_deployment() {
     let detector = BareMetalDetector::new();
     let substrate = detector.detect().await.unwrap().unwrap();
@@ -374,7 +374,7 @@ async fn test_bare_metal_metadata_deployment() {
     assert!(substrate.metadata.contains_key("deployment"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_kubernetes_metadata_structure() {
     let detector = KubernetesDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -383,7 +383,7 @@ async fn test_kubernetes_metadata_structure() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_docker_metadata_structure() {
     let detector = DockerDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -392,7 +392,7 @@ async fn test_docker_metadata_structure() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_consul_metadata_structure() {
     let detector = ConsulDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -401,7 +401,7 @@ async fn test_consul_metadata_structure() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cloud_metadata_structure() {
     let detector = CloudDetector::new();
     if let Ok(Some(substrate)) = detector.detect().await {
@@ -440,7 +440,7 @@ fn test_detector_default_equals_new() {
 // Error Handling Tests
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_detectors_never_panic() {
     let detectors = standard_detectors();
 
@@ -450,7 +450,7 @@ async fn test_detectors_never_panic() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_bare_metal_never_returns_error() {
     let detector = BareMetalDetector::new();
     let result = detector.detect().await;

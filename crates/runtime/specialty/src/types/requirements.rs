@@ -231,6 +231,12 @@ pub enum StorageType {
     Cartridge,
     /// Drum storage
     DrumStorage,
+    /// Flash memory
+    Flash,
+    /// ROM (Read-Only Memory)
+    ROM,
+    /// EEPROM
+    EEPROM,
 }
 
 /// File system types for legacy systems

@@ -13,7 +13,7 @@ use toadstool_testing::{
 };
 
 /// Test runtime engine failure resilience
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_runtime_engine_failure_resilience() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -58,7 +58,7 @@ async fn test_runtime_engine_failure_resilience() {
 }
 
 /// Test network partition tolerance
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_network_partition_tolerance() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -76,7 +76,7 @@ async fn test_network_partition_tolerance() {
 }
 
 /// Test resource exhaustion handling
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resource_exhaustion_handling() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -108,7 +108,7 @@ async fn test_resource_exhaustion_handling() {
 }
 
 /// Test cascading failure prevention
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cascading_failure_prevention() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -135,7 +135,7 @@ async fn test_cascading_failure_prevention() {
 }
 
 /// Test database corruption recovery
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_database_corruption_recovery() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -161,7 +161,7 @@ async fn test_database_corruption_recovery() {
 }
 
 /// Test Byzantine fault tolerance
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_byzantine_fault_tolerance() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -186,7 +186,7 @@ async fn test_byzantine_fault_tolerance() {
 }
 
 /// Test slow service handling
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_slow_service_handling() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -210,7 +210,7 @@ async fn test_slow_service_handling() {
 }
 
 /// Test sustained load with multiple failures
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_sustained_load_with_failures() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -252,7 +252,7 @@ async fn test_sustained_load_with_failures() {
 }
 
 /// Test graceful degradation under extreme conditions
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_graceful_degradation() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -285,7 +285,7 @@ async fn test_graceful_degradation() {
 }
 
 /// Test memory leak detection and recovery
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_leak_detection() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -316,7 +316,7 @@ async fn test_memory_leak_detection() {
 }
 
 /// Test rapid failure-recovery cycles
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_rapid_failure_recovery_cycles() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -345,7 +345,7 @@ async fn test_rapid_failure_recovery_cycles() {
 }
 
 /// Test timeout handling under load
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_timeout_handling_under_load() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -376,7 +376,7 @@ async fn test_timeout_handling_under_load() {
 }
 
 /// Test concurrent runtime failures
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_runtime_failures() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -408,7 +408,7 @@ async fn test_concurrent_runtime_failures() {
 }
 
 /// Test recovery from partial system failure
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_partial_system_failure() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
@@ -449,7 +449,7 @@ async fn test_partial_system_failure() {
 }
 
 /// Test burst traffic handling
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_burst_traffic_handling() {
     let config = IntegrationTestConfig::default();
     let _manager = IntegrationTestManager::new(config);
