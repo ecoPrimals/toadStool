@@ -133,4 +133,5 @@ config.local.json
 # Backup files
 *.bak
 *.backup
-*.old 
+*.old showcase/inter-primal/05-deep-learning-distributed/datasets/*.tar.gz
+*.tar.gz

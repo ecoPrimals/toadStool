@@ -5,6 +5,7 @@ edition = "2021"
 authors.workspace = true
 license.workspace = true
 description = "Resource monitoring and metrics collection for ToadStool runtime environments"
+readme = "README.md"
 
 [dependencies]
 toadstool = { path = "../../core/toadstool" }

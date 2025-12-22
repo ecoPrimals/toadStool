@@ -25,6 +25,7 @@ members = [
     "crates/runtime/native",
     "crates/runtime/python",
     "crates/runtime/wasm",
+    "crates/runtime/secure_enclave",  # NEW: Zero-knowledge compute (Dec 22, 2025)
     "crates/security/monitoring",
     "crates/security/policies",
     "crates/security/sandbox",

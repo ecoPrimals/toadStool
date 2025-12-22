@@ -11,6 +11,7 @@ documentation.workspace = true
 description = "ToadStool Universal Compute Platform - Core library for universal execution"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [dependencies]
 # Core dependencies

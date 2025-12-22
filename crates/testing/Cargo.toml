@@ -11,6 +11,7 @@ documentation.workspace = true
 description = "Testing utilities, mocks, and infrastructure for ToadStool"
 keywords = ["testing", "mocks", "utilities", "toadstool"]
 categories = ["development-tools::testing"]
+readme = "README.md"
 
 [lints.clippy]
 # Production-grade safety lints

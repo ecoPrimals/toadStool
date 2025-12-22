@@ -46,8 +46,7 @@ impl DistributedCoordinator {
     #[must_use = "DistributedCoordinator creation should be checked"]
     pub async fn new(config: DistributedConfig) -> ToadStoolResult<Self> {
         info!(
-            "Initializing distributed coordinator with config: {:?}",
-            config
+            "Initializing distributed coordinator with capability-based discovery"
         );
 
         // Detect capabilities
@@ -56,7 +55,7 @@ impl DistributedCoordinator {
         // Create standalone executor
         let standalone_executor = Arc::new(StandaloneExecutor::new(config.standalone.clone())?);
 
-        // Create Songbird integration if configured
+        // Create Songbird integration using capability discovery (not hardcoded endpoints)
         let songbird_integration = if let Some(songbird_config) = &config.songbird_integration {
             info!("Initializing Songbird integration");
 

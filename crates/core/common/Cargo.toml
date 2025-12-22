@@ -11,6 +11,7 @@ documentation.workspace = true
 description = "Common utilities and types for ToadStool"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [lints.clippy]
 # Production-grade safety lints
