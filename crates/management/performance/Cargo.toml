@@ -3,6 +3,7 @@ name = "toadstool-management-performance"
 version = "0.1.0"
 edition = "2021"
 description = "Performance management and optimization for ToadStool"
+readme = "README.md"
 authors = ["ToadStool Project"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/toadstool-project/toadstool"

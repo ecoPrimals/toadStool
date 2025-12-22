@@ -11,6 +11,7 @@ documentation.workspace = true
 description = "Configuration management for ToadStool - Zero hardcoding hierarchical configuration system"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [lints.clippy]
 # Production-grade safety lints  

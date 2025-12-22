@@ -3,5 +3,6 @@ name = "toadstool-management-resources"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool resources component"
+readme = "README.md"
 
 [dependencies]

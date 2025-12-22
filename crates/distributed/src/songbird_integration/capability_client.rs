@@ -251,8 +251,12 @@ impl CapabilityClient {
             }
         }
 
+        // ✅ EVOLVED: Proper error with context
         Err(last_error.unwrap_or_else(|| {
-            ToadStoolError::runtime("All services failed during failover attempt")
+            ToadStoolError::Integration(toadstool_common::error::IntegrationError::ServiceUnavailable {
+                service: "songbird".to_string(),
+                reason: "All services failed during failover attempt".to_string(),
+            })
         }))
     }
 
