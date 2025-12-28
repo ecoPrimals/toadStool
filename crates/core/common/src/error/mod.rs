@@ -44,11 +44,11 @@
 //! at the module root, ensuring complete backward compatibility.
 
 // Module declarations
-pub mod types;
 pub mod constructors;
-pub mod conversions;
 pub mod context;
+pub mod conversions;
 pub mod extensions;
+pub mod types;
 
 // Re-export all public types for backward compatibility
 pub use types::{
@@ -59,4 +59,3 @@ pub use types::{
 
 pub use context::ToadStoolErrorExt;
 pub use extensions::{ToadStoolErrorWithCode, ToadStoolResultWithCode};
-

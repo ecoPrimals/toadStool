@@ -15,21 +15,21 @@ pub enum Error {
     #[error("Failed to allocate isolated memory: {reason}")]
     MemoryAllocation {
         /// Reason for allocation failure
-        reason: String
+        reason: String,
     },
 
     /// Memory locking failed (mlock)
     #[error("Failed to lock memory pages: {reason}")]
     MemoryLock {
         /// Reason for lock failure
-        reason: String
+        reason: String,
     },
 
     /// Memory protection failed (madvise)
     #[error("Failed to set memory protection: {reason}")]
     MemoryProtection {
         /// Reason for protection failure
-        reason: String
+        reason: String,
     },
 
     /// Invalid memory layout
@@ -38,49 +38,49 @@ pub enum Error {
         /// Requested size in bytes
         size: usize,
         /// Required alignment
-        alignment: usize
+        alignment: usize,
     },
 
     /// Decompression failed
     #[error("Decompression failed: {reason}")]
     Decompression {
         /// Reason for decompression failure
-        reason: String
+        reason: String,
     },
 
     /// Encryption/decryption failed
     #[error("Cryptographic operation failed: {operation}")]
     Cryptography {
         /// Operation that failed
-        operation: String
+        operation: String,
     },
 
     /// Key management error
     #[error("Key store error: {reason}")]
     KeyStore {
         /// Reason for key store error
-        reason: String
+        reason: String,
     },
 
     /// BTSP communication error
     #[error("BTSP protocol error: {reason}")]
     Btsp {
         /// Reason for BTSP error
-        reason: String
+        reason: String,
     },
 
     /// Audit log error
     #[error("Audit logging failed: {reason}")]
     AuditLog {
         /// Reason for audit log failure
-        reason: String
+        reason: String,
     },
 
     /// Security violation detected
     #[error("Security violation: {violation}")]
     SecurityViolation {
         /// Description of violation
-        violation: String
+        violation: String,
     },
 
     /// I/O operation failed
@@ -187,4 +187,3 @@ mod tests {
         assert!(matches!(err, Error::Io(_)));
     }
 }
-

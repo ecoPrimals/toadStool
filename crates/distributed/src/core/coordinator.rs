@@ -45,9 +45,7 @@ impl DistributedCoordinator {
     /// - Configuration validation fails
     #[must_use = "DistributedCoordinator creation should be checked"]
     pub async fn new(config: DistributedConfig) -> ToadStoolResult<Self> {
-        info!(
-            "Initializing distributed coordinator with capability-based discovery"
-        );
+        info!("Initializing distributed coordinator with capability-based discovery");
 
         // Detect capabilities
         let capabilities = Arc::new(RwLock::new(Self::detect_capabilities().await?));

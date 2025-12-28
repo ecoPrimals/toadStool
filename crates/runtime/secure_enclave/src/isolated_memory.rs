@@ -51,13 +51,13 @@ const PAGE_SIZE: usize = 4096;
 pub struct IsolatedMemoryRegion {
     /// Pointer to allocated memory (never null)
     ptr: NonNull<u8>,
-    
+
     /// Logical size (as requested by user)
     logical_size: usize,
-    
+
     /// Physical size (rounded up to page boundary)
     physical_size: usize,
-    
+
     /// Memory layout (for deallocation)
     layout: Layout,
 }
@@ -210,7 +210,7 @@ impl IsolatedMemoryRegion {
     pub const fn size(&self) -> usize {
         self.logical_size
     }
-    
+
     /// Get the physical size of this memory region (rounded to page boundary)
     #[must_use]
     pub const fn physical_size(&self) -> usize {
@@ -228,10 +228,10 @@ impl IsolatedMemoryRegion {
         unsafe {
             std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
         }
-        
+
         // Compiler fence to prevent optimizer from removing the write
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
-        
+
         tracing::trace!("Wiped {} bytes of isolated memory", self.physical_size);
     }
 }
@@ -244,7 +244,7 @@ impl Drop for IsolatedMemoryRegion {
         unsafe {
             std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.physical_size);
         }
-        
+
         // Compiler fence to ensure wipe completes
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
@@ -254,7 +254,8 @@ impl Drop for IsolatedMemoryRegion {
         // - physical_size matches what was locked in new()
         #[cfg(target_family = "unix")]
         unsafe {
-            let result = libc::munlock(self.ptr.as_ptr() as *const libc::c_void, self.physical_size);
+            let result =
+                libc::munlock(self.ptr.as_ptr() as *const libc::c_void, self.physical_size);
             if result != 0 {
                 tracing::error!(
                     "munlock failed during drop: {}",
@@ -271,7 +272,10 @@ impl Drop for IsolatedMemoryRegion {
             dealloc(self.ptr.as_ptr(), self.layout);
         }
 
-        tracing::trace!("Dropped isolated memory region of {} bytes (physical)", self.physical_size);
+        tracing::trace!(
+            "Dropped isolated memory region of {} bytes (physical)",
+            self.physical_size
+        );
     }
 }
 
@@ -296,11 +300,11 @@ mod tests {
     #[test]
     fn test_read_write() {
         let mut region = IsolatedMemoryRegion::new(1024).unwrap();
-        
+
         // Write data
         let data = b"sensitive data";
         region.as_mut_slice()[..data.len()].copy_from_slice(data);
-        
+
         // Read back
         let read_back = &region.as_slice()[..data.len()];
         assert_eq!(read_back, data);
@@ -309,11 +313,11 @@ mod tests {
     #[test]
     fn test_explicit_wipe() {
         let mut region = IsolatedMemoryRegion::new(1024).unwrap();
-        
+
         // Write data
         region.as_mut_slice().fill(0xFF);
         assert_eq!(region.as_slice()[0], 0xFF);
-        
+
         // Explicit wipe
         region.wipe();
         assert_eq!(region.as_slice()[0], 0x00);
@@ -346,4 +350,3 @@ mod tests {
         // 4. Memory is deallocated
     }
 }
-

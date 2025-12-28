@@ -182,6 +182,10 @@ pub mod network {
     ///
     /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
     /// This function will be removed in a future version.
+    ///
+    /// # Self-Knowledge Principle
+    ///
+    /// Checks `SONGBIRD_PORT` (not `TOADSTOOL_SONGBIRD_PORT`) - other primals manage their own env
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
@@ -189,7 +193,8 @@ pub mod network {
     #[must_use]
     #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_songbird_port() -> u16 {
-        std::env::var("TOADSTOOL_SONGBIRD_PORT")
+        // ✅ DEEP SOLUTION: Check SONGBIRD_PORT (self-knowledge - Songbird knows its port, not ToadStool)
+        std::env::var("SONGBIRD_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::network::SONGBIRD_PORT)
@@ -198,6 +203,10 @@ pub mod network {
     /// Get `BearDog` port from environment or default
     ///
     /// ⚠️ **DEPRECATED**: Use capability-based discovery instead.
+    ///
+    /// # Self-Knowledge Principle
+    ///
+    /// Checks `BEARDOG_PORT` (not `TOADSTOOL_BEARDOG_PORT`) - other primals manage their own env
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
@@ -205,7 +214,8 @@ pub mod network {
     #[must_use]
     #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_beardog_port() -> u16 {
-        std::env::var("TOADSTOOL_BEARDOG_PORT")
+        // ✅ DEEP SOLUTION: Check BEARDOG_PORT (self-knowledge)
+        std::env::var("BEARDOG_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::network::BEARDOG_PORT)
@@ -223,6 +233,10 @@ pub mod network {
     ///     .discover_capability(&Capability::Storage(StorageCapability::ObjectStorage))
     ///     .await?;
     /// ```
+    ///
+    /// # Self-Knowledge Principle
+    ///
+    /// Checks `NESTGATE_PORT` (not `TOADSTOOL_NESTGATE_PORT`) - other primals manage their own env
     #[deprecated(
         since = "0.7.0",
         note = "Use RuntimeDiscovery::discover_capability(Capability::Storage) for service discovery"
@@ -230,7 +244,8 @@ pub mod network {
     #[must_use]
     #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_nestgate_port() -> u16 {
-        std::env::var("TOADSTOOL_NESTGATE_PORT")
+        // ✅ DEEP SOLUTION: Check NESTGATE_PORT (self-knowledge)
+        std::env::var("NESTGATE_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::network::NESTGATE_PORT)
@@ -270,7 +285,10 @@ pub mod network {
     )]
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
-        std::env::var("TOADSTOOL_API_PORT")
+        // ✅ SELF-KNOWLEDGE: ToadStool checks its own port
+        // Check TOADSTOOL_PORT (primary) or TOADSTOOL_API_PORT (legacy)
+        std::env::var("TOADSTOOL_PORT")
+            .or_else(|_| std::env::var("TOADSTOOL_API_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(crate::defaults::network::API_PORT)
@@ -278,10 +296,13 @@ pub mod network {
 
     /// Get bind host from environment or default
     ///
+    /// # Self-Knowledge: ToadStool's own bind address
+    ///
     /// This function is still valid for self-knowledge purposes.
     #[must_use]
     pub fn get_bind_host() -> String {
-        std::env::var("TOADSTOOL_BIND_HOST").unwrap_or_else(|_| "127.0.0.1".to_string())
+        // ✅ SELF-KNOWLEDGE: Check BIND_ADDRESS (ToadStool's own bind address)
+        std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())
     }
 
     /// Generate Songbird endpoint from environment configuration

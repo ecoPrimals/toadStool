@@ -179,23 +179,22 @@ fn test_zero_knowledge_property() {
             // In reality: decrypt here using key from BTSP
             // Process plaintext
             // Re-encrypt before returning
-            
+
             // For test: verify we can process without exposing to provider
             assert_eq!(data.len(), 8);
-            
+
             // Simulate computation on decrypted data
             // Provider never sees this plaintext
             let simulated_result = vec![0x01, 0x02, 0x03, 0x04];
-            
+
             Ok(simulated_result)
         })
         .expect("Processing failed");
 
     assert_eq!(result.len(), 4);
-    
+
     // Key insight: The provider (cloud) only ever saw:
     // - Input: encrypted_blob (entropy ~7.99)
     // - Output: result (also encrypted in real system)
     // Never saw the plaintext or the computation details!
 }
-

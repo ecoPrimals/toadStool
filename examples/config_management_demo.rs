@@ -418,9 +418,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_management_demo() {
-        // Set some test environment variables
+        // ✅ SELF-KNOWLEDGE: Other primals use non-prefixed env vars
         env::set_var("TOADSTOOL_ENV", "test");
-        env::set_var("TOADSTOOL_SONGBIRD_PORT", "9080");
+        env::set_var("SONGBIRD_PORT", "9080"); // Non-prefixed for other primal
         env::set_var("TOADSTOOL_DEBUG", "true");
 
         // Test configuration loading
@@ -435,7 +435,7 @@ mod tests {
 
         // Clean up
         env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+        env::remove_var("SONGBIRD_PORT"); // Fixed: Match the env var we actually set
         env::remove_var("TOADSTOOL_DEBUG");
     }
 }

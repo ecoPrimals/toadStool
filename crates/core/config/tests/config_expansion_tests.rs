@@ -311,28 +311,31 @@ fn test_get_songbird_port_default() {
 
 #[test]
 fn test_get_songbird_port_from_env() {
-    let _lock = get_env_lock().lock().unwrap();
-    env::set_var("TOADSTOOL_SONGBIRD_PORT", "9080");
+    // ✅ DEEP SOLUTION: Handle poisoned lock gracefully
+    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::set_var("SONGBIRD_PORT", "9080");
     let port = network::get_songbird_port();
     assert_eq!(port, 9080);
-    env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+    env::remove_var("SONGBIRD_PORT");
 }
 
 #[test]
 fn test_get_beardog_port_default() {
-    let _lock = get_env_lock().lock().unwrap();
-    env::remove_var("TOADSTOOL_BEARDOG_PORT");
+    // ✅ SELF-KNOWLEDGE: BearDog manages its own env var
+    let _lock = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::remove_var("BEARDOG_PORT");
     let port = network::get_beardog_port();
     assert_eq!(port, 8081);
 }
 
 #[test]
 fn test_get_beardog_port_from_env() {
-    let _lock = get_env_lock().lock().unwrap();
-    env::set_var("TOADSTOOL_BEARDOG_PORT", "9081");
+    // ✅ SELF-KNOWLEDGE: BearDog manages its own env var (not TOADSTOOL_BEARDOG_PORT)
+    let _lock = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::set_var("BEARDOG_PORT", "9081");
     let port = network::get_beardog_port();
     assert_eq!(port, 9081);
-    env::remove_var("TOADSTOOL_BEARDOG_PORT");
+    env::remove_var("BEARDOG_PORT");
 }
 
 // ===== TESTS ALREADY USE TestEnv - NO GLOBAL ENV POLLUTION =====
@@ -341,36 +344,40 @@ fn test_get_beardog_port_from_env() {
 
 #[test]
 fn test_get_toadstool_port_default() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::remove_var("TOADSTOOL_API_PORT");
+    // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
+    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::remove_var("TOADSTOOL_PORT");
     let port = network::get_toadstool_port();
     assert_eq!(port, 8084);
 }
 
 #[test]
 fn test_get_toadstool_port_from_env() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::set_var("TOADSTOOL_API_PORT", "9084");
+    // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
+    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::set_var("TOADSTOOL_PORT", "9084");
     let port = network::get_toadstool_port();
     assert_eq!(port, 9084);
-    env::remove_var("TOADSTOOL_API_PORT");
+    env::remove_var("TOADSTOOL_PORT");
 }
 
 #[test]
 fn test_get_bind_host_default() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::remove_var("TOADSTOOL_BIND_HOST");
+    // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
+    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::remove_var("BIND_ADDRESS");
     let host = network::get_bind_host();
     assert_eq!(host, "127.0.0.1");
 }
 
 #[test]
 fn test_get_bind_host_from_env() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    env::set_var("TOADSTOOL_BIND_HOST", "0.0.0.0");
+    // ✅ DEEP SOLUTION: Handle poisoned lock gracefully - idiomatic error recovery
+    let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
+    env::set_var("BIND_ADDRESS", "0.0.0.0");
     let host = network::get_bind_host();
     assert_eq!(host, "0.0.0.0");
-    env::remove_var("TOADSTOOL_BIND_HOST");
+    env::remove_var("BIND_ADDRESS");
 }
 
 // Deprecated endpoint tests - maintained for backward compatibility validation

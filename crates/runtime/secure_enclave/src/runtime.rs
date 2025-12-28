@@ -48,10 +48,10 @@ use crate::key_store::EphemeralKeyStore;
 pub struct SecureEnclaveRuntime {
     /// Key store for ephemeral keys
     key_store: EphemeralKeyStore,
-    
+
     /// Runtime configuration
     config: RuntimeConfig,
-    
+
     /// Audit logger for security events
     audit_logger: Option<AuditLogger>,
 }
@@ -61,10 +61,10 @@ pub struct SecureEnclaveRuntime {
 pub struct RuntimeConfig {
     /// Maximum memory to allocate for processing (bytes)
     pub max_memory: usize,
-    
+
     /// Enable audit logging
     pub audit_logging: bool,
-    
+
     /// Enable proof generation
     pub proof_generation: bool,
 }
@@ -88,7 +88,7 @@ impl SecureEnclaveRuntime {
     /// Create a new secure enclave runtime with custom configuration
     pub fn with_config(config: RuntimeConfig) -> Result<Self> {
         let key_store = EphemeralKeyStore::new()?;
-        
+
         let audit_logger = if config.audit_logging {
             Some(AuditLogger::new())
         } else {
@@ -101,8 +101,8 @@ impl SecureEnclaveRuntime {
             config.audit_logging
         );
 
-        Ok(Self { 
-            key_store, 
+        Ok(Self {
+            key_store,
             config,
             audit_logger,
         })
@@ -113,14 +113,14 @@ impl SecureEnclaveRuntime {
     /// Keys are automatically wiped when the runtime is dropped
     pub fn store_key(&mut self, key: &[u8]) -> Result<()> {
         let result = self.key_store.store_key(key);
-        
+
         if result.is_ok() {
             self.audit_log(
                 AuditEventType::KeyStored,
                 format!(r#"{{"key_size": {}}}"#, key.len()),
             )?;
         }
-        
+
         result
     }
 
@@ -158,7 +158,7 @@ impl SecureEnclaveRuntime {
 
         // Allocate isolated memory
         let mut memory = IsolatedMemoryRegion::new(data.len())?;
-        
+
         self.audit_log(
             AuditEventType::MemoryAllocated,
             format!(r#"{{"size": {}}}"#, memory.physical_size()),
@@ -182,7 +182,7 @@ impl SecureEnclaveRuntime {
 
         result
     }
-    
+
     /// Log an audit event
     fn audit_log(&mut self, event_type: AuditEventType, details: impl Into<String>) -> Result<()> {
         if let Some(ref mut logger) = self.audit_logger {
@@ -190,7 +190,7 @@ impl SecureEnclaveRuntime {
         }
         Ok(())
     }
-    
+
     /// Get reference to audit logger
     #[must_use]
     pub const fn audit_logger(&self) -> Option<&AuditLogger> {
@@ -268,4 +268,3 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-
