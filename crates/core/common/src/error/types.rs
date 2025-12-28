@@ -325,4 +325,3 @@ pub type NetworkResult<T> = Result<T, NetworkError>;
 
 /// Result type for system operations
 pub type SystemResult<T> = Result<T, SystemError>;
-

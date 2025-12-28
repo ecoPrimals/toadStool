@@ -25,7 +25,7 @@ const MAX_KEY_SIZE: usize = 64;
 pub struct EphemeralKeyStore {
     /// Isolated memory for key storage
     memory: IsolatedMemoryRegion,
-    
+
     /// Current key size (0 if no key stored)
     key_size: usize,
 }
@@ -34,7 +34,7 @@ impl EphemeralKeyStore {
     /// Create a new empty key store
     pub fn new() -> Result<Self> {
         let memory = IsolatedMemoryRegion::new(MAX_KEY_SIZE)?;
-        
+
         Ok(Self {
             memory,
             key_size: 0,
@@ -114,10 +114,10 @@ mod tests {
     #[test]
     fn test_store_and_retrieve_key() {
         let mut store = EphemeralKeyStore::new().unwrap();
-        
+
         let key = b"test_key_32_bytes_long_padding!!";
         store.store_key(key).unwrap();
-        
+
         assert!(store.has_key());
         assert_eq!(store.key().unwrap(), key);
     }
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_empty_store() {
         let store = EphemeralKeyStore::new().unwrap();
-        
+
         assert!(!store.has_key());
         assert!(store.key().is_err());
     }
@@ -133,24 +133,23 @@ mod tests {
     #[test]
     fn test_key_too_large() {
         let mut store = EphemeralKeyStore::new().unwrap();
-        
+
         let large_key = vec![0u8; MAX_KEY_SIZE + 1];
         let result = store.store_key(&large_key);
-        
+
         assert!(result.is_err());
     }
 
     #[test]
     fn test_explicit_wipe() {
         let mut store = EphemeralKeyStore::new().unwrap();
-        
+
         let key = b"sensitive_key";
         store.store_key(key).unwrap();
         assert!(store.has_key());
-        
+
         store.wipe();
         assert!(!store.has_key());
         assert!(store.key().is_err());
     }
 }
-

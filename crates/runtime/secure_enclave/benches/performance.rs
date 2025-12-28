@@ -64,17 +64,21 @@ fn bench_zstd_decompression(c: &mut Criterion) {
         let compressed = zstd::encode_all(&data[..], 3).unwrap();
 
         group.throughput(Throughput::Bytes(*size as u64));
-        group.bench_with_input(BenchmarkId::new("isolated", label), &compressed, |b, comp| {
-            b.iter(|| {
-                let (memory, _stats) = decompress_isolated(
-                    black_box(comp),
-                    CompressionAlgorithm::Zstd,
-                    Some(*size),
-                )
-                .unwrap();
-                black_box(memory);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("isolated", label),
+            &compressed,
+            |b, comp| {
+                b.iter(|| {
+                    let (memory, _stats) = decompress_isolated(
+                        black_box(comp),
+                        CompressionAlgorithm::Zstd,
+                        Some(*size),
+                    )
+                    .unwrap();
+                    black_box(memory);
+                });
+            },
+        );
     }
 
     group.finish();
@@ -91,17 +95,21 @@ fn bench_lz4_decompression(c: &mut Criterion) {
         let compressed = lz4::block::compress(&data, None, false).unwrap();
 
         group.throughput(Throughput::Bytes(*size as u64));
-        group.bench_with_input(BenchmarkId::new("isolated", label), &compressed, |b, comp| {
-            b.iter(|| {
-                let (memory, _stats) = decompress_isolated(
-                    black_box(comp),
-                    CompressionAlgorithm::Lz4,
-                    Some(*size),
-                )
-                .unwrap();
-                black_box(memory);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("isolated", label),
+            &compressed,
+            |b, comp| {
+                b.iter(|| {
+                    let (memory, _stats) = decompress_isolated(
+                        black_box(comp),
+                        CompressionAlgorithm::Lz4,
+                        Some(*size),
+                    )
+                    .unwrap();
+                    black_box(memory);
+                });
+            },
+        );
     }
 
     group.finish();
@@ -236,4 +244,3 @@ criterion_group!(
 );
 
 criterion_main!(benches);
-

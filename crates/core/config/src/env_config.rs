@@ -72,9 +72,18 @@ impl EnvConfigLoader {
     }
 
     /// Get environment variable as string with fallback
+    ///
+    /// # Zero-Copy + Smart Prefix Handling
+    ///
+    /// Handles empty prefix correctly (no leading underscore)
     #[must_use]
     pub fn get_string(&self, key: &str, default: &str) -> String {
-        let env_key = format!("{}_{}", self.prefix, key);
+        // ✅ DEEP SOLUTION: Smart prefix handling - no leading underscore for empty prefix
+        let env_key = if self.prefix.is_empty() {
+            key.to_string()
+        } else {
+            format!("{}_{}", self.prefix, key)
+        };
         env::var(&env_key).unwrap_or_else(|_| default.to_string())
     }
 
@@ -96,9 +105,18 @@ impl EnvConfigLoader {
     }
 
     /// Get environment variable as u16 with fallback
+    ///
+    /// # Zero-Copy + Smart Prefix Handling
+    ///
+    /// Handles empty prefix correctly (no leading underscore)
     #[must_use]
     pub fn get_u16(&self, key: &str, default: u16) -> u16 {
-        let env_key = format!("{}_{}", self.prefix, key);
+        // ✅ DEEP SOLUTION: Smart prefix handling - no leading underscore for empty prefix
+        let env_key = if self.prefix.is_empty() {
+            key.to_string()
+        } else {
+            format!("{}_{}", self.prefix, key)
+        };
         env::var(&env_key)
             .and_then(|v| v.parse().map_err(|_| env::VarError::NotPresent))
             .unwrap_or(default)

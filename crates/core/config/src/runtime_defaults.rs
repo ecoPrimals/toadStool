@@ -250,8 +250,8 @@ mod tests {
     #[test]
     #[allow(deprecated)] // Testing legacy endpoint configuration
     fn test_env_overrides() {
-        let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                     // Save original environment state
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner()); // ✅ MODERN: Concurrent-safe + poison recovery
+                                                                               // Save original environment state
         let original_env = env::var("TOADSTOOL_ENV").ok();
         let original_debug = env::var("TOADSTOOL_DEBUG").ok();
         let original_log_level = env::var("TOADSTOOL_LOG_LEVEL").ok();
@@ -354,8 +354,8 @@ mod tests {
 
     #[test]
     fn test_current_environment_detection() {
-        let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-                                                     // Save original environment state
+        let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner()); // ✅ MODERN: Concurrent-safe + poison recovery
+                                                                               // Save original environment state
         let original_toadstool_env = env::var("TOADSTOOL_ENVIRONMENT").ok();
         let original_env = env::var("ENVIRONMENT").ok();
         let original_toadstool_env_short = env::var("TOADSTOOL_ENV").ok();

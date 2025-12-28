@@ -80,8 +80,8 @@ pub type ToadStoolResultWithCode<T> = Result<T, ToadStoolErrorWithCode>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::context::ToadStoolErrorExt;
+    use super::*;
     use std::time::Duration;
 
     #[test]
@@ -325,4 +325,3 @@ mod tests {
         let _: ToadStoolError = resource_err.into();
     }
 }
-

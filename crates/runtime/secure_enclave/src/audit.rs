@@ -12,25 +12,25 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub enum AuditEventType {
     /// Memory region allocated
     MemoryAllocated,
-    
+
     /// Memory region deallocated
     MemoryDeallocated,
-    
+
     /// Key stored in key store
     KeyStored,
-    
+
     /// Key wiped from key store
     KeyWiped,
-    
+
     /// Data decompressed
     DataDecompressed,
-    
+
     /// Processing started
     ProcessingStarted,
-    
+
     /// Processing completed
     ProcessingCompleted,
-    
+
     /// Security violation detected
     SecurityViolation,
 }
@@ -56,19 +56,19 @@ impl AuditEventType {
 pub struct AuditEvent {
     /// Event sequence number (monotonic)
     pub sequence: u64,
-    
+
     /// Timestamp (microseconds since epoch)
     pub timestamp_micros: u64,
-    
+
     /// Event type
     pub event_type: AuditEventType,
-    
+
     /// Event details (JSON-serializable)
     pub details: String,
-    
+
     /// Hash of previous event (tamper detection)
     pub prev_hash: Option<Hash>,
-    
+
     /// Hash of this event (tamper detection)
     pub event_hash: Hash,
 }
@@ -87,7 +87,8 @@ impl AuditEvent {
             .as_micros() as u64;
 
         // Compute event hash (includes previous hash for chain integrity)
-        let event_hash = Self::compute_hash(sequence, timestamp_micros, &event_type, &details, prev_hash);
+        let event_hash =
+            Self::compute_hash(sequence, timestamp_micros, &event_type, &details, prev_hash);
 
         Self {
             sequence,
@@ -108,24 +109,24 @@ impl AuditEvent {
         prev_hash: Option<Hash>,
     ) -> Hash {
         let mut hasher = blake3::Hasher::new();
-        
+
         // Include sequence number
         hasher.update(&sequence.to_le_bytes());
-        
+
         // Include timestamp
         hasher.update(&timestamp_micros.to_le_bytes());
-        
+
         // Include event type
         hasher.update(event_type.as_str().as_bytes());
-        
+
         // Include details
         hasher.update(details.as_bytes());
-        
+
         // Include previous hash (chain integrity)
         if let Some(prev) = prev_hash {
             hasher.update(prev.as_bytes());
         }
-        
+
         hasher.finalize()
     }
 
@@ -138,7 +139,7 @@ impl AuditEvent {
             &self.details,
             self.prev_hash,
         );
-        
+
         computed_hash == self.event_hash
     }
 }
@@ -148,7 +149,7 @@ impl AuditEvent {
 pub struct AuditLogger {
     /// Event log (append-only)
     events: Vec<AuditEvent>,
-    
+
     /// Next sequence number
     next_sequence: u64,
 }
@@ -177,7 +178,7 @@ impl AuditLogger {
     ///
     /// ```rust,ignore
     /// let mut logger = AuditLogger::new();
-    /// 
+    ///
     /// logger.log(
     ///     AuditEventType::MemoryAllocated,
     ///     r#"{"size": 4096, "purpose": "decompression"}"#,
@@ -319,9 +320,7 @@ mod tests {
     fn test_event_verification() {
         let mut logger = AuditLogger::new();
 
-        logger
-            .log(AuditEventType::MemoryAllocated, "test")
-            .unwrap();
+        logger.log(AuditEventType::MemoryAllocated, "test").unwrap();
 
         let event = &logger.events()[0];
         assert!(event.verify());
@@ -332,16 +331,26 @@ mod tests {
         let mut logger = AuditLogger::new();
 
         // Log multiple events
-        logger.log(AuditEventType::MemoryAllocated, "event 1").unwrap();
+        logger
+            .log(AuditEventType::MemoryAllocated, "event 1")
+            .unwrap();
         logger.log(AuditEventType::KeyStored, "event 2").unwrap();
-        logger.log(AuditEventType::ProcessingStarted, "event 3").unwrap();
+        logger
+            .log(AuditEventType::ProcessingStarted, "event 3")
+            .unwrap();
 
         // Verify integrity
         assert!(logger.verify_integrity().is_ok());
 
         // Check chain
-        assert_eq!(logger.events()[1].prev_hash, Some(logger.events()[0].event_hash));
-        assert_eq!(logger.events()[2].prev_hash, Some(logger.events()[1].event_hash));
+        assert_eq!(
+            logger.events()[1].prev_hash,
+            Some(logger.events()[0].event_hash)
+        );
+        assert_eq!(
+            logger.events()[2].prev_hash,
+            Some(logger.events()[1].event_hash)
+        );
     }
 
     #[test]
@@ -361,7 +370,9 @@ mod tests {
     fn test_tamper_detection_modified_event() {
         let mut logger = AuditLogger::new();
 
-        logger.log(AuditEventType::MemoryAllocated, "original").unwrap();
+        logger
+            .log(AuditEventType::MemoryAllocated, "original")
+            .unwrap();
 
         // Tamper with event details
         logger.events[0].details = "tampered".to_string();
@@ -434,4 +445,3 @@ mod tests {
         assert!(logger.verify_integrity().is_ok());
     }
 }
-

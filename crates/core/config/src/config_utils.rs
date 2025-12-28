@@ -38,9 +38,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_songbird_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("SONGBIRD_PORT", config.network.songbird_port)
+        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
+        // Use constant default, not cached config value (avoids double-loading issue)
+        let loader = EnvConfigLoader::with_prefix(""); // Check SONGBIRD_PORT, not TOADSTOOL_SONGBIRD_PORT
+        loader.get_u16("SONGBIRD_PORT", crate::defaults::network::SONGBIRD_PORT)
     }
 
     /// Get `BearDog` port from environment or default
@@ -49,6 +50,11 @@ impl ConfigUtils {
     ///
     /// **Modern Pattern**: Use `RuntimeDiscovery::discover_capability(&Capability::Crypto)`
     /// instead of hardcoded BearDog endpoints. Each primal has self-knowledge only.
+    ///
+    /// # Self-Knowledge Principle
+    ///
+    /// This function violates self-knowledge by checking OTHER primal's environment.
+    /// Uses non-prefixed env var: `BEARDOG_PORT` (not `TOADSTOOL_BEARDOG_PORT`)
     #[deprecated(
         since = "0.2.0",
         note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
@@ -56,9 +62,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_beardog_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("BEARDOG_PORT", config.network.beardog_port)
+        // ✅ DEEP SOLUTION: No prefix for other primals - they manage their own env vars
+        // Use constant default, not cached config value (avoids double-loading issue)
+        let loader = EnvConfigLoader::with_prefix(""); // No prefix - check raw BEARDOG_PORT
+        loader.get_u16("BEARDOG_PORT", crate::defaults::network::BEARDOG_PORT)
     }
 
     /// Get `NestGate` port from environment or default
@@ -74,9 +81,10 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_nestgate_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("NESTGATE_PORT", config.network.nestgate_port)
+        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
+        // Use constant default, not cached config value (avoids double-loading issue)
+        let loader = EnvConfigLoader::with_prefix(""); // Check NESTGATE_PORT, not TOADSTOOL_NESTGATE_PORT
+        loader.get_u16("NESTGATE_PORT", crate::defaults::network::NESTGATE_PORT)
     }
 
     /// Get Squirrel port from environment or default
@@ -92,17 +100,20 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_squirrel_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("SQUIRREL_PORT", config.network.squirrel_port)
+        // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
+        // Use constant default (8083), not cached config value
+        let loader = EnvConfigLoader::with_prefix(""); // Check SQUIRREL_PORT, not TOADSTOOL_SQUIRREL_PORT
+        loader.get_u16("SQUIRREL_PORT", 8083)
     }
 
     /// Get `ToadStool` port from environment or default
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_u16("TOADSTOOL_PORT", config.network.toadstool_port)
+        // ✅ SELF-KNOWLEDGE: ToadStool knows its own port
+        // Use empty prefix and full env var name "TOADSTOOL_PORT"
+        // Use constant default (8084), not cached config value
+        let loader = EnvConfigLoader::with_prefix(""); // Check TOADSTOOL_PORT directly
+        loader.get_u16("TOADSTOOL_PORT", 8084)
     }
 
     /// Get federation port from environment or default
@@ -140,9 +151,10 @@ impl ConfigUtils {
     /// Get bind address from environment or default
     #[must_use]
     pub fn get_bind_address() -> String {
-        let config = crate::env_config::EnvironmentConfig::from_env();
-        let loader = EnvConfigLoader::new();
-        loader.get_string("BIND_ADDRESS", &config.network.bind_address)
+        // ✅ SELF-KNOWLEDGE: ToadStool knows its own bind address
+        // Use constant default, not cached config value
+        let loader = EnvConfigLoader::with_prefix(""); // Check BIND_ADDRESS directly
+        loader.get_string("BIND_ADDRESS", "127.0.0.1")
     }
 
     /// Get external hostname from environment or default
@@ -169,8 +181,8 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_songbird_endpoint() -> String {
-        let net_config = NetworkEnvConfig::from_env();
-        net_config.songbird_endpoint()
+        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
+        format!("http://{}:{}", Self::get_bind_address(), Self::get_songbird_port())
     }
 
     /// Get `BearDog` endpoint from environment or default
@@ -185,8 +197,8 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_beardog_endpoint() -> String {
-        let net_config = NetworkEnvConfig::from_env();
-        net_config.beardog_endpoint()
+        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
+        format!("http://{}:{}", Self::get_bind_address(), Self::get_beardog_port())
     }
 
     /// Get `NestGate` endpoint from environment or default
@@ -201,8 +213,8 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_nestgate_endpoint() -> String {
-        let net_config = NetworkEnvConfig::from_env();
-        net_config.nestgate_endpoint()
+        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
+        format!("http://{}:{}", Self::get_bind_address(), Self::get_nestgate_port())
     }
 
     /// Get Squirrel endpoint from environment or default
@@ -217,8 +229,8 @@ impl ConfigUtils {
     #[must_use]
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_squirrel_endpoint() -> String {
-        let net_config = NetworkEnvConfig::from_env();
-        net_config.squirrel_endpoint()
+        // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
+        format!("http://{}:{}", Self::get_bind_address(), Self::get_squirrel_port())
     }
 
     /// Get `ToadStool` endpoint from environment or default
@@ -707,18 +719,19 @@ mod tests {
         let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
 
         // Save original environment state
-        let original_songbird = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
-        let original_beardog = env::var("TOADSTOOL_BEARDOG_PORT").ok();
-        let original_nestgate = env::var("TOADSTOOL_NESTGATE_PORT").ok();
-        let original_host = env::var("TOADSTOOL_BIND_ADDRESS").ok();
+        // ✅ SELF-KNOWLEDGE: Other primals use non-prefixed env vars
+        let original_songbird = env::var("SONGBIRD_PORT").ok();
+        let original_beardog = env::var("BEARDOG_PORT").ok();
+        let original_nestgate = env::var("NESTGATE_PORT").ok();
+        let original_host = env::var("BIND_ADDRESS").ok();
         let original_debug = env::var("TOADSTOOL_DEBUG").ok();
         let original_env = env::var("TOADSTOOL_ENV").ok(); // Fixed: use ENV not ENVIRONMENT
 
-        // ✅ MODERN: Set known test values explicitly
-        env::set_var("TOADSTOOL_SONGBIRD_PORT", "8080");
-        env::set_var("TOADSTOOL_BEARDOG_PORT", "8081");
-        env::set_var("TOADSTOOL_NESTGATE_PORT", "8082");
-        env::set_var("TOADSTOOL_BIND_ADDRESS", "127.0.0.1");
+        // ✅ SELF-KNOWLEDGE: Set other primal ports without TOADSTOOL_ prefix
+        env::set_var("SONGBIRD_PORT", "8080");
+        env::set_var("BEARDOG_PORT", "8081");
+        env::set_var("NESTGATE_PORT", "8082");
+        env::set_var("BIND_ADDRESS", "127.0.0.1");
         env::set_var("TOADSTOOL_ENV", "development"); // Fixed: use ENV not ENVIRONMENT
         env::set_var("TOADSTOOL_DEBUG", "false"); // Explicitly set to false
 
@@ -731,7 +744,7 @@ mod tests {
         assert!(!ConfigUtils::get_debug_mode());
 
         // Test environment override
-        env::set_var("TOADSTOOL_SONGBIRD_PORT", "9080");
+        env::set_var("SONGBIRD_PORT", "9080");
         env::set_var("TOADSTOOL_DEBUG", "true");
 
         assert_eq!(ConfigUtils::get_songbird_port(), 9080);
@@ -739,16 +752,16 @@ mod tests {
 
         // ✅ MODERN: Restore original environment state
         match original_songbird {
-            Some(val) => env::set_var("TOADSTOOL_SONGBIRD_PORT", val),
-            None => env::remove_var("TOADSTOOL_SONGBIRD_PORT"),
+            Some(val) => env::set_var("SONGBIRD_PORT", val),
+            None => env::remove_var("SONGBIRD_PORT"),
         }
         match original_beardog {
-            Some(val) => env::set_var("TOADSTOOL_BEARDOG_PORT", val),
-            None => env::remove_var("TOADSTOOL_BEARDOG_PORT"),
+            Some(val) => env::set_var("BEARDOG_PORT", val),
+            None => env::remove_var("BEARDOG_PORT"),
         }
         match original_nestgate {
-            Some(val) => env::set_var("TOADSTOOL_NESTGATE_PORT", val),
-            None => env::remove_var("TOADSTOOL_NESTGATE_PORT"),
+            Some(val) => env::set_var("NESTGATE_PORT", val),
+            None => env::remove_var("NESTGATE_PORT"),
         }
         match original_host {
             Some(val) => env::set_var("TOADSTOOL_BIND_ADDRESS", val),
