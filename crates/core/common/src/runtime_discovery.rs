@@ -94,7 +94,8 @@ impl RuntimeDiscovery {
             let cache = self.cache.read().await;
             if let Some(services) = cache.get_by_capability(capability) {
                 if !services.is_empty() {
-                    return Ok(services);
+                    // Clone Arc contents only at API boundary
+                    return Ok(services.iter().map(|s| (**s).clone()).collect());
                 }
             }
         }
@@ -145,8 +146,9 @@ impl RuntimeDiscovery {
                 tracing::warn!("Discovery failed: {}", e);
 
                 // Return cached services as fallback
+                // Clone Arc contents only at API boundary
                 let cache = self.cache.read().await;
-                Ok(cache.get_all())
+                Ok(cache.get_all().iter().map(|s| (**s).clone()).collect())
             }
         }
     }
@@ -251,13 +253,17 @@ impl RuntimeDiscovery {
 }
 
 /// Service cache for discovered services
+///
+/// Uses Arc<DiscoveredService> internally for zero-copy sharing.
+/// This avoids expensive clones during cache operations (insert, lookup).
+/// Cloning only happens at API boundaries when returning to callers.
 #[derive(Debug)]
 struct ServiceCache {
-    /// Services indexed by capability
-    by_capability: HashMap<Capability, Vec<DiscoveredService>>,
+    /// Services indexed by capability (Arc for cheap sharing)
+    by_capability: HashMap<Capability, Vec<Arc<DiscoveredService>>>,
 
-    /// All services
-    all_services: Vec<DiscoveredService>,
+    /// All services (Arc for cheap sharing)
+    all_services: Vec<Arc<DiscoveredService>>,
 
     /// Cache timestamp
     last_updated: std::time::Instant,
@@ -272,29 +278,33 @@ impl ServiceCache {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)] // Needed for indexing and storage
     fn insert(&mut self, service: DiscoveredService) {
-        // Add to all services
-        if !self.all_services.iter().any(|s| s.id == service.id) {
-            self.all_services.push(service.clone());
+        // Wrap in Arc once for zero-copy sharing across indexes
+        let service_arc = Arc::new(service);
+
+        // Add to all services (cheap Arc clone - just ref count increment)
+        if !self.all_services.iter().any(|s| s.id == service_arc.id) {
+            self.all_services.push(Arc::clone(&service_arc));
         }
 
-        // Index by capabilities
-        for capability in &service.capabilities {
+        // Index by capabilities (cheap Arc clone - just ref count increment)
+        for capability in &service_arc.capabilities {
             self.by_capability
                 .entry(capability.clone())
                 .or_default()
-                .push(service.clone());
+                .push(Arc::clone(&service_arc));
         }
 
         self.last_updated = std::time::Instant::now();
     }
 
-    fn get_by_capability(&self, capability: &Capability) -> Option<Vec<DiscoveredService>> {
+    fn get_by_capability(&self, capability: &Capability) -> Option<Vec<Arc<DiscoveredService>>> {
+        // Cheap Arc clones (just ref count increments, not deep copies)
         self.by_capability.get(capability).cloned()
     }
 
-    fn get_all(&self) -> Vec<DiscoveredService> {
+    fn get_all(&self) -> Vec<Arc<DiscoveredService>> {
+        // Cheap Arc clones (just ref count increments, not deep copies)
         self.all_services.clone()
     }
 
