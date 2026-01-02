@@ -25,6 +25,9 @@ pub mod traits;
 pub mod types;
 pub mod universal;
 
+// Unified memory (NEW - vendor-agnostic zero-copy)
+pub mod unified_memory;
+
 // Real GPU backends (no mocks)
 #[cfg(feature = "opencl")]
 pub mod backends;

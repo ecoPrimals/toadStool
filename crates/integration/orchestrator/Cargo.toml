@@ -3,6 +3,11 @@ name = "toadstool-integration-orchestrator"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool generic orchestrator integration via capability discovery"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["orchestration", "integration", "coordination", "primal"]
+categories = ["api-bindings"]
 
 [dependencies]
 # Core ToadStool types

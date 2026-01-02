@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Modern API and interface layer for ToadStool"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["api", "rest", "graphql", "web", "http"]
+categories = ["web-programming::http-server"]
 
 [lints.clippy]
 # Production-grade safety lints

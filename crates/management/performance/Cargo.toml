@@ -7,6 +7,8 @@ readme = "README.md"
 authors = ["ToadStool Project"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/toadstool-project/toadstool"
+keywords = ["performance", "optimization", "profiling", "benchmarking"]
+categories = ["development-tools::profiling"]
 
 [dependencies]
 # Core ToadStool dependencies

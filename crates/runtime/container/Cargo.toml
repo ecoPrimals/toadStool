@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "ToadStool container runtime engine"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["container", "docker", "runtime", "orchestration"]
+categories = ["development-tools"]
 
 [dependencies]
 # Core ToadStool dependencies

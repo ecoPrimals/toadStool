@@ -4,5 +4,9 @@ version.workspace = true
 edition.workspace = true
 description = "ToadStool resources component"
 readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+keywords = ["resources", "management", "monitoring", "allocation"]
+categories = ["development-tools"]
 
 [dependencies]

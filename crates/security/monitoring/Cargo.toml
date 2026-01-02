@@ -3,5 +3,10 @@ name = "toadstool-security-monitoring"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool monitoring component"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["security", "monitoring", "audit", "compliance"]
+categories = ["development-tools::profiling"]
 
 [dependencies]
