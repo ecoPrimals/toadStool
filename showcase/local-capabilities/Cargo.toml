@@ -2,6 +2,12 @@
 name = "toadstool-showcase-local"
 version = "0.1.0"
 edition = "2021"
+description = "ToadStool local capabilities showcase and demonstrations"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["showcase", "local", "capabilities", "demos"]
+categories = ["development-tools"]
 
 [[bin]]
 name = "demo-native-execution"

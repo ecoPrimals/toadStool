@@ -88,6 +88,7 @@ Toadstool-Compute serves as the **universal compute platform** that:
 - [PRODUCTION_READINESS_SUMMARY.md](./PRODUCTION_READINESS_SUMMARY.md) - Production overview
 - [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) - Platform architecture
 - [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) - Quality standards
+- [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - ⭐ **NEW** Unified memory architecture (Jan 2026)
 
 ### Core Specifications (Historical - Preserved for Context)
 - [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) - Project overview and architecture

@@ -5,6 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Native executable runtime engine for ToadStool with security and monitoring"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["runtime", "native", "execution", "sandboxing"]
+categories = ["os", "development-tools"]
 
 [lints.clippy]
 # Production-grade safety lints

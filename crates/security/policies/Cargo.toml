@@ -6,6 +6,9 @@ description = "Advanced security policy management for ToadStool"
 authors = ["ToadStool Project"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/toadstool-project/toadstool"
+readme = "README.md"
+keywords = ["security", "policy", "access-control", "rbac"]
+categories = ["authentication"]
 
 [lints.clippy]
 # Production-grade safety lints

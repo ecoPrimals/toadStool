@@ -3,6 +3,11 @@ name = "toadstool-runtime-gpu"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool Universal GPU Compute Runtime - If it has parallel compute units, we can harness it"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["gpu", "compute", "cuda", "opencl", "webgpu"]
+categories = ["hardware-support", "science"]
 
 [lints.clippy]
 # Production-grade safety lints
@@ -42,6 +47,10 @@ log = "0.4"
 anyhow = "1.0"
 thiserror = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+
+# Concurrency primitives (for unified memory)
+dashmap = "6.0"
+parking_lot = "0.12"
 
 # System integration and monitoring
 sysinfo = { workspace = true }

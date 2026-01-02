@@ -3,6 +3,11 @@ name = "toadstool-integration-nestgate"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool NestGate storage and data pipeline integration"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["storage", "integration", "nestgate", "primal"]
+categories = ["api-bindings"]
 
 [dependencies]
 # HTTP client

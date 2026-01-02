@@ -5,6 +5,7 @@ edition.workspace = true
 description = "Python runtime engine for ToadStool - preparing for Squirrel MCP integration"
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
 documentation.workspace = true
 homepage.workspace = true
 keywords.workspace = true

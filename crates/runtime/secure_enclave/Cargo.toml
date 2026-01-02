@@ -5,6 +5,9 @@ edition = "2021"
 authors = ["ToadStool Contributors"]
 description = "Secure enclave runtime for zero-knowledge compute"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+keywords = ["security", "enclave", "zero-knowledge", "cryptography"]
+categories = ["cryptography", "no-std"]
 
 [dependencies]
 # Core ToadStool

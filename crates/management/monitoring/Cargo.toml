@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 description = "Resource monitoring and metrics collection for ToadStool runtime environments"
 readme = "README.md"
+repository = "https://github.com/ecoPrimals/toadstool"
+keywords = ["monitoring", "metrics", "observability", "telemetry"]
+categories = ["development-tools::profiling"]
 
 [dependencies]
 toadstool = { path = "../../core/toadstool" }

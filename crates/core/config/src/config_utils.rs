@@ -182,7 +182,11 @@ impl ConfigUtils {
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_songbird_endpoint() -> String {
         // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!("http://{}:{}", Self::get_bind_address(), Self::get_songbird_port())
+        format!(
+            "http://{}:{}",
+            Self::get_bind_address(),
+            Self::get_songbird_port()
+        )
     }
 
     /// Get `BearDog` endpoint from environment or default
@@ -198,7 +202,11 @@ impl ConfigUtils {
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_beardog_endpoint() -> String {
         // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!("http://{}:{}", Self::get_bind_address(), Self::get_beardog_port())
+        format!(
+            "http://{}:{}",
+            Self::get_bind_address(),
+            Self::get_beardog_port()
+        )
     }
 
     /// Get `NestGate` endpoint from environment or default
@@ -214,7 +222,11 @@ impl ConfigUtils {
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_nestgate_endpoint() -> String {
         // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!("http://{}:{}", Self::get_bind_address(), Self::get_nestgate_port())
+        format!(
+            "http://{}:{}",
+            Self::get_bind_address(),
+            Self::get_nestgate_port()
+        )
     }
 
     /// Get Squirrel endpoint from environment or default
@@ -230,7 +242,11 @@ impl ConfigUtils {
     #[allow(deprecated)] // Using deprecated method during migration
     pub fn get_squirrel_endpoint() -> String {
         // ✅ SELF-KNOWLEDGE: Build endpoint from discovered port
-        format!("http://{}:{}", Self::get_bind_address(), Self::get_squirrel_port())
+        format!(
+            "http://{}:{}",
+            Self::get_bind_address(),
+            Self::get_squirrel_port()
+        )
     }
 
     /// Get `ToadStool` endpoint from environment or default

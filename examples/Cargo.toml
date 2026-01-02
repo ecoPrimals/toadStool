@@ -5,6 +5,10 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Examples for ToadStool Universal Compute Platform"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "EXAMPLE_STATUS.md"
+keywords = ["examples", "demos", "tutorials", "compute"]
+categories = ["development-tools"]
 
 # Note: Examples currently excluded from documentation due to incomplete dependencies
 # (toadstool-api, toadstool-management-analytics not in workspace)
@@ -199,6 +203,10 @@ path = "distributed_gpu_demo.rs"
 [[bin]]
 name = "beardog_encrypted_workload"
 path = "beardog_encrypted_workload.rs"
+
+[[bin]]
+name = "unified_memory_demo"
+path = "unified_memory_demo.rs"
 
 [dependencies]
 # Core ToadStool

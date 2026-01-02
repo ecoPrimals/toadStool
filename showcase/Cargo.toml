@@ -2,6 +2,11 @@
 name = "toadstool-showcase"
 version = "0.1.0"
 edition = "2021"
+description = "ToadStool showcase demonstrations and real-world examples"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+keywords = ["showcase", "demos", "examples", "distributed"]
+categories = ["development-tools"]
 
 [[bin]]
 name = "showcase-real"

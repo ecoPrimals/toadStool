@@ -3,6 +3,11 @@ name = "toadstool-client"
 version.workspace = true
 edition.workspace = true
 description = "ToadStool universal compute client library"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadstool"
+readme = "README.md"
+keywords = ["client", "compute", "distributed", "rpc"]
+categories = ["api-bindings", "network-programming"]
 
 [lints.clippy]
 # Production-grade safety lints
