@@ -27,7 +27,6 @@ pub mod agent_backend;
 pub mod agents;
 pub mod auth;
 pub mod auth_backend;
-pub mod registry_client; // ✅ NEW: biomeOS capability registry client
 pub mod storage;
 pub mod storage_backend;
 pub mod types;
@@ -37,7 +36,6 @@ pub use agent_backend::{AgentBackend, InMemoryAgentBackend, SquirrelBackend};
 pub use agents::*;
 pub use auth::*;
 pub use auth_backend::{AuthBackend, BearDogBackend, InMemoryAuthBackend};
-pub use registry_client::{BiomeOSClient, PrimalInfo}; // ✅ NEW: Re-export registry client
 pub use storage::*;
 pub use storage_backend::{InMemoryBackend, NestGateBackend, StorageBackend, VolumeStatus};
 pub use types::*;
