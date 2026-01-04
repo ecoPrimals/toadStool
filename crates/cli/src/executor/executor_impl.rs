@@ -363,7 +363,6 @@ impl BiomeExecutor {
     ///
     /// **Design**: Query biomeOS registry for Security capability provider.
     /// Falls back to hardcoded localhost if biomeOS unavailable (backward compat).
-    #[allow(dead_code)] // TODO: Use in start_biome_internal (Phase 2.3)
     async fn discover_security_provider(
         &self,
     ) -> Result<toadstool::biomeos_integration::PrimalInfo> {
@@ -484,12 +483,18 @@ impl BiomeExecutor {
         let mut log_files = HashMap::new();
 
         // BearDog must start first if required
+        // ✅ CAPABILITY-BASED: Discover security provider instead of hardcoding "beardog"
         if manifest.security.beardog_required {
+            // Discover security provider via biomeOS (or fallback to localhost)
+            let security_provider = self.discover_security_provider().await?;
+            info!("🔐 Security provider discovered: {} at {}", 
+                  security_provider.name, security_provider.endpoint);
+            
             if let Some(beardog_config) = manifest.primals.get("beardog") {
-                info!("🐻 Starting BearDog security primal");
+                info!("🐻 Starting security primal: {}", security_provider.name);
                 let process = self
                     .start_primal(
-                        "beardog",
+                        &security_provider.name, // ✅ Use discovered name
                         beardog_config,
                         &environment,
                         &log_dir,
@@ -497,8 +502,11 @@ impl BiomeExecutor {
                     )
                     .await?;
                 processes.push(process);
-                // ✅ OPTIMIZED: Use String literal for constant key
-                log_files.insert(String::from("beardog"), log_dir.join("beardog.log"));
+                // ✅ Use discovered name for logging
+                log_files.insert(
+                    security_provider.name.clone(),
+                    log_dir.join(format!("{}.log", security_provider.name)),
+                );
             }
         }
 
