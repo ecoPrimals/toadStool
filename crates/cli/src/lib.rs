@@ -250,6 +250,42 @@ pub enum Commands {
         operation: UniversalCommands,
     },
 
+    /// Start ToadStool as a daemon service (workload execution service)
+    /// 
+    /// Like the fungus: CLI = fruiting body (specialized), Daemon = mycelium (network-wide)
+    /// 
+    /// The daemon mode transforms ToadStool from a CLI tool into an ecosystem compute service:
+    /// - HTTP API for workload submission
+    /// - Auto-registration with biomeOS capability registry
+    /// - Resource monitoring and reporting
+    /// - Multi-tower coordination
+    /// - Persistent service management
+    Daemon {
+        /// Register with biomeOS capability registry
+        #[arg(long)]
+        register: bool,
+
+        /// HTTP API port
+        #[arg(long, default_value = "8084")]
+        port: u16,
+
+        /// Unix socket path for IPC
+        #[arg(long)]
+        socket: Option<PathBuf>,
+
+        /// Configuration file
+        #[arg(long)]
+        config: Option<PathBuf>,
+
+        /// Maximum concurrent workloads
+        #[arg(long, default_value = "10")]
+        max_workloads: usize,
+
+        /// biomeOS registry socket path
+        #[arg(long)]
+        biomeos_socket: Option<PathBuf>,
+    },
+
     /// Zero-configuration rapid deployment
     ZeroConfig {
         /// Save configuration to file
@@ -713,6 +749,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     Ok(warnings)
 }
 
+pub mod daemon;
 pub mod ecosystem;
 pub mod executor;
 pub mod monitoring;
