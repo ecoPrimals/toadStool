@@ -50,10 +50,12 @@ mod api_types;
 mod config;
 mod http_server;
 mod server;
+mod workload_manager;
 
 pub use api_types::*;
 pub use config::DaemonConfig;
 pub use server::DaemonServer;
+pub use workload_manager::WorkloadManager;
 
 /// Start ToadStool in daemon mode
 ///
