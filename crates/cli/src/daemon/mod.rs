@@ -46,9 +46,12 @@ use anyhow::Result;
 use std::path::PathBuf;
 use tracing::info;
 
+mod api_types;
 mod config;
+mod http_server;
 mod server;
 
+pub use api_types::*;
 pub use config::DaemonConfig;
 pub use server::DaemonServer;
 
