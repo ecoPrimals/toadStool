@@ -12,6 +12,7 @@ use tokio::signal;
 use tracing::{info, warn};
 
 use super::config::DaemonConfig;
+use super::workload_manager::WorkloadManager;
 #[cfg(feature = "daemon")]
 use super::http_server;
 
@@ -28,6 +29,9 @@ pub struct DaemonServer {
     
     /// biomeOS client (if registered)
     biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
+    
+    /// Workload manager
+    workload_manager: Arc<WorkloadManager>,
 }
 
 impl DaemonServer {
@@ -71,7 +75,10 @@ impl DaemonServer {
             None
         };
         
-        // TODO Phase 3: Start workload manager
+        // Create workload manager
+        let workload_manager = WorkloadManager::new(config.max_concurrent_workloads).await?;
+        info!("✅ Workload manager initialized");
+        
         // TODO Phase 4: Start resource monitor
         // TODO Phase 5: Start heartbeat loop
         
@@ -80,6 +87,7 @@ impl DaemonServer {
         Ok(Self {
             config,
             biomeos_client,
+            workload_manager: Arc::new(workload_manager),
         })
     }
     
@@ -118,9 +126,10 @@ impl DaemonServer {
         {
             let port = self.config.port;
             let client = self.biomeos_client.clone();
+            let manager = self.workload_manager.clone();
             
             tokio::spawn(async move {
-                if let Err(e) = http_server::start_http_server(port, client).await {
+                if let Err(e) = http_server::start_http_server(port, client, manager).await {
                     warn!("⚠️  HTTP server stopped: {e}");
                 }
             });

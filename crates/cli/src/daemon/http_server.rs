@@ -17,8 +17,6 @@ use std::sync::Arc;
 #[cfg(feature = "daemon")]
 use std::time::Instant;
 #[cfg(feature = "daemon")]
-use tokio::sync::RwLock;
-#[cfg(feature = "daemon")]
 use tower_http::cors::CorsLayer;
 #[cfg(feature = "daemon")]
 use tower_http::trace::TraceLayer;
@@ -27,6 +25,8 @@ use tracing::{error, info};
 
 #[cfg(feature = "daemon")]
 use super::api_types::*;
+#[cfg(feature = "daemon")]
+use super::workload_manager::WorkloadManager;
 
 /// Shared server state
 #[cfg(feature = "daemon")]
@@ -38,8 +38,8 @@ pub struct ServerState {
     /// biomeOS client (if connected)
     pub biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
     
-    /// Active workloads (workload_id -> status)
-    pub workloads: Arc<RwLock<std::collections::HashMap<String, WorkloadStatusResponse>>>,
+    /// Workload manager
+    pub workload_manager: Arc<WorkloadManager>,
 }
 
 /// Start HTTP API server
@@ -47,11 +47,12 @@ pub struct ServerState {
 pub async fn start_http_server(
     port: u16,
     biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
+    workload_manager: Arc<WorkloadManager>,
 ) -> anyhow::Result<()> {
     let state = ServerState {
         start_time: Instant::now(),
         biomeos_client,
-        workloads: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        workload_manager,
     };
 
     let app = create_router(state);
@@ -104,11 +105,7 @@ fn create_router(state: ServerState) -> Router {
 #[cfg(feature = "daemon")]
 async fn health_handler(State(state): State<ServerState>) -> impl IntoResponse {
     let uptime_secs = state.start_time.elapsed().as_secs();
-    let workloads = state.workloads.read().await;
-    let active_workloads = workloads
-        .values()
-        .filter(|w| w.status == WorkloadStatus::Running || w.status == WorkloadStatus::Queued)
-        .count();
+    let active_workloads = state.workload_manager.active_workload_count().await;
     
     Json(HealthResponse {
         status: "ok".to_string(),
@@ -122,12 +119,26 @@ async fn health_handler(State(state): State<ServerState>) -> impl IntoResponse {
 /// Metrics handler (Prometheus-compatible)
 #[cfg(feature = "daemon")]
 async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse {
-    let workloads = state.workloads.read().await;
+    // Get all workload IDs
+    let workload_ids = state.workload_manager.list_workloads().await;
     
-    let queued = workloads.values().filter(|w| w.status == WorkloadStatus::Queued).count();
-    let running = workloads.values().filter(|w| w.status == WorkloadStatus::Running).count();
-    let completed = workloads.values().filter(|w| w.status == WorkloadStatus::Completed).count();
-    let failed = workloads.values().filter(|w| w.status == WorkloadStatus::Failed).count();
+    // Count by status
+    let mut queued = 0;
+    let mut running = 0;
+    let mut completed = 0;
+    let mut failed = 0;
+    
+    for id in workload_ids {
+        if let Some(status_resp) = state.workload_manager.get_workload_status(&id).await {
+            match status_resp.status {
+                WorkloadStatus::Queued => queued += 1,
+                WorkloadStatus::Running => running += 1,
+                WorkloadStatus::Completed => completed += 1,
+                WorkloadStatus::Failed => failed += 1,
+                WorkloadStatus::Cancelled => {}, // Don't count cancelled
+            }
+        }
+    }
     
     let metrics = format!(
         "# HELP toadstool_daemon_uptime_seconds Daemon uptime in seconds\n\
@@ -155,7 +166,7 @@ async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse 
     (StatusCode::OK, metrics)
 }
 
-/// Submit workload handler (Phase 3 will implement actual execution)
+/// Submit workload handler
 #[cfg(feature = "daemon")]
 async fn submit_workload_handler(
     State(state): State<ServerState>,
@@ -163,30 +174,19 @@ async fn submit_workload_handler(
 ) -> Result<Json<SubmitWorkloadResponse>, ApiError> {
     info!("📥 Received workload submission from: {}", request.requester);
     
-    // TODO Phase 3: Implement actual workload execution
-    // For now, just queue it and return a workload ID
-    
-    let workload_id = uuid::Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().to_rfc3339();
-    
-    let status_response = WorkloadStatusResponse {
-        workload_id: workload_id.clone(),
-        status: WorkloadStatus::Queued,
-        started_at: Some(now.clone()),
-        completed_at: None,
-        exit_code: None,
-        error: None,
-        resource_usage: None,
-    };
-    
-    state.workloads.write().await.insert(workload_id.clone(), status_response);
+    // Submit to workload manager
+    let workload_id = state
+        .workload_manager
+        .submit_workload(request)
+        .await
+        .map_err(|e| ApiError::InternalError(format!("Failed to submit workload: {}", e)))?;
     
     info!("✅ Workload queued: {}", workload_id);
     
     Ok(Json(SubmitWorkloadResponse {
         workload_id,
         status: WorkloadStatus::Queued,
-        message: "Workload queued successfully (Phase 3 will implement execution)".to_string(),
+        message: "Workload queued successfully".to_string(),
     }))
 }
 
@@ -196,13 +196,13 @@ async fn get_workload_handler(
     State(state): State<ServerState>,
     Path(id): Path<String>,
 ) -> Result<Json<WorkloadStatusResponse>, ApiError> {
-    let workloads = state.workloads.read().await;
-    
-    let status = workloads
-        .get(&id)
+    let status = state
+        .workload_manager
+        .get_workload_status(&id)
+        .await
         .ok_or_else(|| ApiError::NotFound(format!("Workload {} not found", id)))?;
     
-    Ok(Json(status.clone()))
+    Ok(Json(status))
 }
 
 /// Delete workload handler
@@ -211,16 +211,16 @@ async fn delete_workload_handler(
     State(state): State<ServerState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-    info!("🗑️  Deleting workload: {}", id);
+    info!("🗑️  Cancelling workload: {}", id);
     
-    let mut workloads = state.workloads.write().await;
+    state
+        .workload_manager
+        .cancel_workload(&id)
+        .await
+        .map_err(|e| ApiError::NotFound(format!("Workload {} not found: {}", id, e)))?;
     
-    if workloads.remove(&id).is_some() {
-        info!("✅ Workload deleted: {}", id);
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(ApiError::NotFound(format!("Workload {} not found", id)))
-    }
+    info!("✅ Workload cancelled: {}", id);
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// List workloads handler
@@ -228,18 +228,20 @@ async fn delete_workload_handler(
 async fn list_workloads_handler(
     State(state): State<ServerState>,
 ) -> impl IntoResponse {
-    let workloads = state.workloads.read().await;
+    let workload_ids = state.workload_manager.list_workloads().await;
     
-    let summaries: Vec<WorkloadSummary> = workloads
-        .values()
-        .map(|w| WorkloadSummary {
-            workload_id: w.workload_id.clone(),
-            status: w.status,
-            requester: "unknown".to_string(), // TODO: Store requester in workload
-            started_at: w.started_at.clone().unwrap_or_else(|| "unknown".to_string()),
-            persistent: false, // TODO: Store persistent flag
-        })
-        .collect();
+    let mut summaries = Vec::new();
+    for id in workload_ids {
+        if let Some(status) = state.workload_manager.get_workload_status(&id).await {
+            summaries.push(WorkloadSummary {
+                workload_id: id,
+                status: status.status,
+                requester: "unknown".to_string(), // TODO: Store requester in metadata
+                started_at: status.started_at.unwrap_or_else(|| "unknown".to_string()),
+                persistent: false, // TODO: Expose persistent flag
+            });
+        }
+    }
     
     Json(ListWorkloadsResponse {
         total: summaries.len(),
@@ -300,6 +302,7 @@ impl From<anyhow::Error> for ApiError {
 pub async fn start_http_server(
     _port: u16,
     _biomeos_client: Option<std::sync::Arc<()>>,
+    _workload_manager: std::sync::Arc<()>,
 ) -> anyhow::Result<()> {
     anyhow::bail!("Daemon mode requires the 'daemon' feature to be enabled")
 }
