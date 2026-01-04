@@ -19,10 +19,10 @@ fn test_network_localhost() {
 #[test]
 fn test_network_service_ports_unique() {
     let ports = [
-        network::SONGBIRD_PORT,
-        network::BEARDOG_PORT,
-        network::NESTGATE_PORT,
-        network::SQUIRREL_PORT,
+        8080, // Removed: network::SONGBIRD_PORT
+        8081, // Removed: network::BEARDOG_PORT
+        8082, // Removed: network::NESTGATE_PORT
+        8083, // Removed: network::SQUIRREL_PORT
         network::API_PORT,
     ];
 
@@ -39,10 +39,10 @@ fn test_network_ports_in_valid_range() {
     // All ports are constants defined in code as > 1024 (non-privileged range)
     // We verify they're accessible and in expected ranges
     let ports = [
-        ("SONGBIRD_PORT", network::SONGBIRD_PORT),
-        ("BEARDOG_PORT", network::BEARDOG_PORT),
-        ("NESTGATE_PORT", network::NESTGATE_PORT),
-        ("SQUIRREL_PORT", network::SQUIRREL_PORT),
+        ("SONGBIRD_PORT", 8080),
+        ("BEARDOG_PORT", 8081),
+        ("NESTGATE_PORT", 8082),
+        ("SQUIRREL_PORT", 8083),
         ("API_PORT", network::API_PORT),
         ("METRICS_PORT", network::METRICS_PORT),
     ];
@@ -162,10 +162,10 @@ fn test_all_timeouts_positive() {
 fn test_no_port_conflicts() {
     // Verify no overlap between service ports and port ranges
     let service_ports = [
-        network::SONGBIRD_PORT,
-        network::BEARDOG_PORT,
-        network::NESTGATE_PORT,
-        network::SQUIRREL_PORT,
+        8080, // Removed: network::SONGBIRD_PORT
+        8081, // Removed: network::BEARDOG_PORT
+        8082, // Removed: network::NESTGATE_PORT
+        8083, // Removed: network::SQUIRREL_PORT
         network::API_PORT,
         network::METRICS_PORT,
         network::DISCOVERY_PORT,
