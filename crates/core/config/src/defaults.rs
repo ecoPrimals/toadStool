@@ -93,42 +93,24 @@ pub mod network {
     /// ✅ Self-configuration - valid to use
     pub const LOCALHOST: &str = "127.0.0.1";
 
-    /// # ⚠️ DEPRECATED: Default Songbird service port
-    ///
-    /// **Use `RuntimeDiscovery`** to find coordinator at runtime.
-    /// Hardcoding violates primal-agnostic principles.
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination) instead"
-    )]
-    pub const SONGBIRD_PORT: u16 = 8080;
-
-    /// # ⚠️ DEPRECATED: Default BearDog authentication service port
-    ///
-    /// **Use `RuntimeDiscovery`** to find security service at runtime.
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication) instead"
-    )]
-    pub const BEARDOG_PORT: u16 = 8081;
-
-    /// # ⚠️ DEPRECATED: Default NestGate orchestration service port
-    ///
-    /// **Use `RuntimeDiscovery`** to find storage service at runtime.
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage) instead"
-    )]
-    pub const NESTGATE_PORT: u16 = 8082;
-
-    /// # ⚠️ DEPRECATED: Default Squirrel MCP service port
-    ///
-    /// **Use `RuntimeDiscovery`** to find MCP platform at runtime.
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP) instead"
-    )]
-    pub const SQUIRREL_PORT: u16 = 8083;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REMOVED: Deprecated primal port constants
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // The following constants have been REMOVED to enforce pure infant discovery:
+    //
+    // - SONGBIRD_PORT: Use BiomeOSClient::get_coordination_provider() or env var
+    // - BEARDOG_PORT: Use BiomeOSClient::get_security_provider() or env var
+    // - NESTGATE_PORT: Use BiomeOSClient::get_storage_provider() or env var
+    // - SQUIRREL_PORT: Use BiomeOSClient::get_ai_provider() or env var
+    //
+    // Migration:
+    //   OLD: let port = defaults::network::BEARDOG_PORT;
+    //   NEW: std::env::var("BEARDOG_PORT").ok().and_then(|p| p.parse().ok())
+    //        .unwrap_or_else(|| panic!("BEARDOG_PORT not set - use discovery!"))
+    //
+    // Philosophy: ToadStool knows ONLY itself. Other primals discovered at runtime.
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /// Default ToadStool API port
     /// ✅ Self-configuration - valid to use for our own port
@@ -339,64 +321,33 @@ pub mod resources {
     pub const SIDECAR_MEMORY_REQUEST: &str = "128Mi";
 }
 
-/// # ⚠️ DEPRECATED: Endpoint defaults
+/// # Self-Configuration Endpoints
 ///
-/// **Hardcoded endpoints violate the self-knowledge principle.**
-/// Use `RuntimeDiscovery` for capability-based service discovery instead.
+/// **Philosophy**: ToadStool should only have knowledge about its own API endpoint.
+/// Other primals must be discovered at runtime using `BiomeOSClient` or `RuntimeDiscovery`.
 ///
-/// # Modern Alternative
+/// # Migration from Deprecated Endpoints
+///
+/// The following endpoint helpers have been REMOVED to enforce infant discovery:
+/// - `songbird()` - Use `BiomeOSClient::get_coordination_provider().await?.endpoint`
+/// - `beardog()` - Use `BiomeOSClient::get_security_provider().await?.endpoint`
+/// - `nestgate()` - Use `BiomeOSClient::get_storage_provider().await?.endpoint`
+/// - `squirrel()` - Use `BiomeOSClient::get_ai_provider().await?.endpoint`
+///
+/// # Example
 ///
 /// ```rust,ignore
-/// use toadstool_common::{RuntimeDiscovery, Capability};
-///
-/// // OLD (hardcoded):
-/// // let songbird_url = defaults::endpoints::songbird();
+/// // OLD (hardcoded - REMOVED):
+/// // let url = defaults::endpoints::beardog();
 ///
 /// // NEW (discovered):
-/// let discovery = RuntimeDiscovery::new(client);
-/// let coordinators = discovery
-///     .discover_capability(&Capability::Coordination)
-///     .await?;
-/// let coordinator_url = &coordinators[0].endpoint;
-/// ```
+/// use toadstool::biomeos_integration::BiomeOSClient;
 ///
-/// **Philosophy**: ToadStool should only have hardcoded knowledge about itself (API endpoint),
-/// not about other primals. Discover them at runtime based on capabilities.
-#[deprecated(
-    since = "0.3.0",
-    note = "Hardcoded primal endpoints violate self-knowledge principle. \
-            Use RuntimeDiscovery::discover_capability() for dynamic service location. \
-            Only use for self-configuration (api()) or as emergency fallbacks."
-)]
+/// let biomeos = BiomeOSClient::connect().await?;
+/// let security = biomeos.get_security_provider().await?;
+/// let url = security.endpoint; // Discovered at runtime!
+/// ```
 pub mod endpoints {
-    /// Default Songbird endpoint
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find coordinator at runtime
-    #[allow(deprecated)] // Using deprecated constant during migration
-    pub fn songbird() -> String {
-        format!("http://localhost:{}", super::network::SONGBIRD_PORT)
-    }
-
-    /// Default BearDog endpoint
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find security service at runtime
-    #[allow(deprecated)] // Using deprecated constant during migration
-    pub fn beardog() -> String {
-        format!("http://localhost:{}", super::network::BEARDOG_PORT)
-    }
-
-    /// Default NestGate endpoint
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find storage service at runtime
-    #[allow(deprecated)] // Using deprecated constant during migration
-    pub fn nestgate() -> String {
-        format!("http://localhost:{}", super::network::NESTGATE_PORT)
-    }
-
-    /// Default Squirrel endpoint
-    /// **DEPRECATED**: Use `RuntimeDiscovery` to find MCP platform at runtime
-    #[allow(deprecated)] // Using deprecated constant during migration
-    pub fn squirrel() -> String {
-        format!("http://localhost:{}", super::network::SQUIRREL_PORT)
-    }
-
     /// Default API endpoint
     /// ✅ VALID: Self-knowledge - ToadStool's own API endpoint
     pub fn api() -> String {

@@ -286,14 +286,14 @@ pub struct NetworkEnvConfig {
 impl NetworkEnvConfig {
     /// Load network configuration from environment variables
     #[must_use]
-    #[allow(deprecated)] // Using deprecated constants during migration to capability-based discovery
+    #[allow(deprecated)] // Setting deprecated fields for backwards compat during migration
     pub fn from_env() -> Self {
         let loader = EnvConfigLoader::new();
 
         Self {
-            songbird_port: loader.get_u16("SONGBIRD_PORT", crate::defaults::network::SONGBIRD_PORT),
-            beardog_port: loader.get_u16("BEARDOG_PORT", crate::defaults::network::BEARDOG_PORT),
-            nestgate_port: loader.get_u16("NESTGATE_PORT", crate::defaults::network::NESTGATE_PORT),
+            songbird_port: loader.get_u16("SONGBIRD_PORT", 8080),
+            beardog_port: loader.get_u16("BEARDOG_PORT", 8081),
+            nestgate_port: loader.get_u16("NESTGATE_PORT", 8082),
             squirrel_port: loader.get_u16("SQUIRREL_PORT", 8083),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", 8084),
             federation_port: loader.get_u16("FEDERATION_PORT", 7777),
@@ -355,9 +355,8 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination)"
     )]
     #[must_use]
-    #[allow(deprecated)]
     pub fn songbird_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, self.songbird_port)
+        format!("http://{}:{}", self.bind_address, 8080)
     }
 
     /// ⚠️ DEPRECATED: Get `BearDog` endpoint
@@ -368,9 +367,8 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication)"
     )]
     #[must_use]
-    #[allow(deprecated)]
     pub fn beardog_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, self.beardog_port)
+        format!("http://{}:{}", self.bind_address, 8081)
     }
 
     /// ⚠️ DEPRECATED: Get `NestGate` endpoint
@@ -381,9 +379,8 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage)"
     )]
     #[must_use]
-    #[allow(deprecated)]
     pub fn nestgate_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, self.nestgate_port)
+        format!("http://{}:{}", self.bind_address, 8082)
     }
 
     /// ⚠️ DEPRECATED: Get Squirrel endpoint
@@ -394,9 +391,8 @@ impl NetworkEnvConfig {
         note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP)"
     )]
     #[must_use]
-    #[allow(deprecated)]
     pub fn squirrel_endpoint(&self) -> String {
-        format!("http://{}:{}", self.bind_address, self.squirrel_port)
+        format!("http://{}:{}", self.bind_address, 8083)
     }
 }
 

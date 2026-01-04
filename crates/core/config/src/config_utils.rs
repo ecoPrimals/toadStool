@@ -36,12 +36,11 @@ impl ConfigUtils {
         note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_songbird_port() -> u16 {
         // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
         // Use constant default, not cached config value (avoids double-loading issue)
         let loader = EnvConfigLoader::with_prefix(""); // Check SONGBIRD_PORT, not TOADSTOOL_SONGBIRD_PORT
-        loader.get_u16("SONGBIRD_PORT", crate::defaults::network::SONGBIRD_PORT)
+        loader.get_u16("SONGBIRD_PORT", 8080)
     }
 
     /// Get `BearDog` port from environment or default
@@ -60,12 +59,11 @@ impl ConfigUtils {
         note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_beardog_port() -> u16 {
         // ✅ DEEP SOLUTION: No prefix for other primals - they manage their own env vars
         // Use constant default, not cached config value (avoids double-loading issue)
         let loader = EnvConfigLoader::with_prefix(""); // No prefix - check raw BEARDOG_PORT
-        loader.get_u16("BEARDOG_PORT", crate::defaults::network::BEARDOG_PORT)
+        loader.get_u16("BEARDOG_PORT", 8081)
     }
 
     /// Get `NestGate` port from environment or default
@@ -79,12 +77,11 @@ impl ConfigUtils {
         note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn get_nestgate_port() -> u16 {
         // ✅ DEEP SOLUTION: No prefix for other primals - respects self-knowledge principle
         // Use constant default, not cached config value (avoids double-loading issue)
         let loader = EnvConfigLoader::with_prefix(""); // Check NESTGATE_PORT, not TOADSTOOL_NESTGATE_PORT
-        loader.get_u16("NESTGATE_PORT", crate::defaults::network::NESTGATE_PORT)
+        loader.get_u16("NESTGATE_PORT", 8082)
     }
 
     /// Get Squirrel port from environment or default
