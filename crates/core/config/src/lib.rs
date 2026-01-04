@@ -77,12 +77,11 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_songbird_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
             "http://{}:{}",
-            config.network.bind_address, config.network.songbird_port
+            config.network.bind_address, 8080
         )
     }
 
@@ -94,12 +93,11 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_beardog_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
             "http://{}:{}",
-            config.network.bind_address, config.network.beardog_port
+            config.network.bind_address, 8081
         )
     }
 
@@ -111,12 +109,11 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::Storage) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_nestgate_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
             "http://{}:{}",
-            config.network.bind_address, config.network.nestgate_port
+            config.network.bind_address, 8082
         )
     }
 
@@ -128,12 +125,11 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::AI) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated field during migration
     pub fn default_squirrel_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
         format!(
             "http://{}:{}",
-            config.network.bind_address, config.network.squirrel_port
+            config.network.bind_address, 8083
         )
     }
 
@@ -191,13 +187,12 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_songbird_port() -> u16 {
         // ✅ DEEP SOLUTION: Check SONGBIRD_PORT (self-knowledge - Songbird knows its port, not ToadStool)
         std::env::var("SONGBIRD_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(crate::defaults::network::SONGBIRD_PORT)
+            .unwrap_or(8080)
     }
 
     /// Get `BearDog` port from environment or default
@@ -212,13 +207,12 @@ pub mod network {
         note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_beardog_port() -> u16 {
         // ✅ DEEP SOLUTION: Check BEARDOG_PORT (self-knowledge)
         std::env::var("BEARDOG_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(crate::defaults::network::BEARDOG_PORT)
+            .unwrap_or(8081)
     }
 
     /// Get `NestGate` port from environment or default
@@ -242,13 +236,12 @@ pub mod network {
         note = "Use RuntimeDiscovery::discover_capability(Capability::Storage) for service discovery"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_nestgate_port() -> u16 {
         // ✅ DEEP SOLUTION: Check NESTGATE_PORT (self-knowledge)
         std::env::var("NESTGATE_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(crate::defaults::network::NESTGATE_PORT)
+            .unwrap_or(8082)
     }
 
     /// Get Squirrel MCP port from environment or default
@@ -268,12 +261,11 @@ pub mod network {
         note = "Use RuntimeDiscovery::discover_capability(Capability::AI) for service discovery"
     )]
     #[must_use]
-    #[allow(deprecated)] // Using deprecated constant during migration
     pub fn get_squirrel_port() -> u16 {
         std::env::var("TOADSTOOL_SQUIRREL_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(crate::defaults::network::SQUIRREL_PORT)
+            .unwrap_or(8083)
     }
 
     /// Get `ToadStool` API port from environment or default
