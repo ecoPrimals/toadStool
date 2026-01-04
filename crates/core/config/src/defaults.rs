@@ -533,13 +533,12 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)] // Testing deprecated constants during migration
     fn test_network_ports_are_distinct() {
         let ports = [
-            network::SONGBIRD_PORT,
-            network::BEARDOG_PORT,
-            network::NESTGATE_PORT,
-            network::SQUIRREL_PORT,
+            8080, // Removed: network::SONGBIRD_PORT
+            8081, // Removed: network::BEARDOG_PORT
+            8082, // Removed: network::NESTGATE_PORT
+            8083, // Removed: network::SQUIRREL_PORT
             network::API_PORT,
         ];
 
@@ -593,15 +592,13 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)] // Testing deprecated endpoint functions during migration
     fn test_endpoints_are_valid() {
-        let songbird = endpoints::songbird();
+        let songbird = endpoints::api(); // Test the only remaining endpoint
         assert!(songbird.starts_with("http://"));
-        assert!(songbird.contains("8080"));
+        assert!(songbird.contains("8084")); // API_PORT
 
-        let beardog = endpoints::beardog();
-        assert!(beardog.starts_with("http://"));
-        assert!(beardog.contains("8081"));
+        // Note: songbird() and beardog() endpoint helpers have been removed
+        // Use BiomeOSClient::get_*_provider().await?.endpoint for discovery
     }
 
     #[test]

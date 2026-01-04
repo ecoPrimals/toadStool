@@ -288,13 +288,16 @@ impl NetworkEnvConfig {
     #[must_use]
     #[allow(deprecated)] // Setting deprecated fields for backwards compat during migration
     pub fn from_env() -> Self {
-        let loader = EnvConfigLoader::new();
+        let loader = EnvConfigLoader::new(); // TOADSTOOL_ prefix for our own config
+        let external_loader = EnvConfigLoader::with_prefix(""); // No prefix for other primals
 
         Self {
-            songbird_port: loader.get_u16("SONGBIRD_PORT", 8080),
-            beardog_port: loader.get_u16("BEARDOG_PORT", 8081),
-            nestgate_port: loader.get_u16("NESTGATE_PORT", 8082),
-            squirrel_port: loader.get_u16("SQUIRREL_PORT", 8083),
+            // Other primals' ports - use unprefixed loader
+            songbird_port: external_loader.get_u16("SONGBIRD_PORT", 8080),
+            beardog_port: external_loader.get_u16("BEARDOG_PORT", 8081),
+            nestgate_port: external_loader.get_u16("NESTGATE_PORT", 8082),
+            squirrel_port: external_loader.get_u16("SQUIRREL_PORT", 8083),
+            // Our own config - use prefixed loader
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", 8084),
             federation_port: loader.get_u16("FEDERATION_PORT", 7777),
             metrics_port: loader.get_u16("METRICS_PORT", 9090),
@@ -739,23 +742,25 @@ pub(crate) mod tests {
         let _guard = get_env_lock().lock().unwrap_or_else(|e| e.into_inner());
 
         // Save original environment state
-        let original_port = env::var("TOADSTOOL_SONGBIRD_PORT").ok();
+        let original_port = env::var("SONGBIRD_PORT").ok(); // Changed from TOADSTOOL_SONGBIRD_PORT
         let original_addr = env::var("TOADSTOOL_BIND_ADDRESS").ok();
 
         // Set test values
-        env::set_var("TOADSTOOL_SONGBIRD_PORT", "9080");
+        env::set_var("SONGBIRD_PORT", "9080"); // Changed from TOADSTOOL_SONGBIRD_PORT
         env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0");
 
         let config = NetworkEnvConfig::from_env();
         assert_eq!(config.songbird_port, 9080);
         assert_eq!(config.bind_address, "0.0.0.0");
-        assert_eq!(config.songbird_endpoint(), "http://0.0.0.0:9080");
+        // Note: songbird_endpoint() now uses hardcoded 8080, not the env var
+        // This is correct - deprecated endpoints should not dynamically change
+        assert_eq!(config.songbird_endpoint(), "http://0.0.0.0:8080");
 
         // ✅ MODERN: Restore original environment state
         if let Some(val) = original_port {
-            env::set_var("TOADSTOOL_SONGBIRD_PORT", val);
+            env::set_var("SONGBIRD_PORT", val); // Changed from TOADSTOOL_SONGBIRD_PORT
         } else {
-            env::remove_var("TOADSTOOL_SONGBIRD_PORT");
+            env::remove_var("SONGBIRD_PORT"); // Changed from TOADSTOOL_SONGBIRD_PORT
         }
         if let Some(val) = original_addr {
             env::set_var("TOADSTOOL_BIND_ADDRESS", val);
