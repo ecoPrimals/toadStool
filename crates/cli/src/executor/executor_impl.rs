@@ -355,7 +355,102 @@ impl BiomeExecutor {
         Ok(())
     }
 
+    // -------------------------------------------------------------------------
+    // Primal Discovery Methods (Capability-Based)
+    // -------------------------------------------------------------------------
+
+    /// Discover security provider (e.g., BearDog) via capability-based discovery
+    ///
+    /// **Design**: Query biomeOS registry for Security capability provider.
+    /// Falls back to hardcoded localhost if biomeOS unavailable (backward compat).
+    #[allow(dead_code)] // TODO: Use in start_biome_internal (Phase 2.3)
+    async fn discover_security_provider(
+        &self,
+    ) -> Result<toadstool::biomeos_integration::PrimalInfo> {
+        if let Some(ref client) = self.biomeos_client {
+            // Primary: Discover via biomeOS registry
+            match client.get_security_provider().await {
+                Ok(provider) => {
+                    info!("✅ Discovered security provider: {} at {}", provider.name, provider.endpoint);
+                    return Ok(provider);
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to discover security provider via biomeOS: {e}");
+                }
+            }
+        }
+
+        // Fallback: Hardcoded localhost (backward compatibility)
+        warn!("📍 Using fallback security provider (localhost:8081)");
+        Ok(toadstool::biomeos_integration::PrimalInfo {
+            name: "beardog".to_string(),
+            endpoint: "http://localhost:8081".to_string(),
+            capabilities: vec![],
+            metadata: std::collections::HashMap::new(),
+        })
+    }
+
+    /// Discover discovery/coordination provider (e.g., Songbird) via capability-based discovery
+    ///
+    /// **Design**: Query biomeOS registry for Discovery capability provider.
+    #[allow(dead_code)] // TODO: Use in distributed coordinator setup (Phase 2.3)
+    async fn discover_discovery_provider(
+        &self,
+    ) -> Result<toadstool::biomeos_integration::PrimalInfo> {
+        if let Some(ref client) = self.biomeos_client {
+            match client.get_discovery_provider().await {
+                Ok(provider) => {
+                    info!("✅ Discovered discovery provider: {} at {}", provider.name, provider.endpoint);
+                    return Ok(provider);
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to discover discovery provider via biomeOS: {e}");
+                }
+            }
+        }
+
+        // Fallback: Hardcoded localhost
+        warn!("📍 Using fallback discovery provider (localhost:8082)");
+        Ok(toadstool::biomeos_integration::PrimalInfo {
+            name: "songbird".to_string(),
+            endpoint: "http://localhost:8082".to_string(),
+            capabilities: vec![],
+            metadata: std::collections::HashMap::new(),
+        })
+    }
+
+    /// Discover storage provider (e.g., NestGate) via capability-based discovery
+    ///
+    /// **Design**: Query biomeOS registry for Storage capability provider.
+    #[allow(dead_code)] // TODO: Use in storage backend setup (Phase 2.3)
+    async fn discover_storage_provider(
+        &self,
+    ) -> Result<toadstool::biomeos_integration::PrimalInfo> {
+        if let Some(ref client) = self.biomeos_client {
+            match client.get_storage_provider().await {
+                Ok(provider) => {
+                    info!("✅ Discovered storage provider: {} at {}", provider.name, provider.endpoint);
+                    return Ok(provider);
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to discover storage provider via biomeOS: {e}");
+                }
+            }
+        }
+
+        // Fallback: Hardcoded localhost
+        warn!("📍 Using fallback storage provider (localhost:8083)");
+        Ok(toadstool::biomeos_integration::PrimalInfo {
+            name: "nestgate".to_string(),
+            endpoint: "http://localhost:8083".to_string(),
+            capabilities: vec![],
+            metadata: std::collections::HashMap::new(),
+        })
+    }
+
+    // -------------------------------------------------------------------------
     // Internal implementation methods
+    // -------------------------------------------------------------------------
 
     async fn start_biome_internal(
         &self,
