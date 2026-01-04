@@ -267,6 +267,26 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             execute_universal_command(operation).await?;
         }
 
+        Commands::Daemon {
+            register,
+            port,
+            socket,
+            config,
+            max_workloads,
+            biomeos_socket,
+        } => {
+            info!("🍄 Starting ToadStool daemon mode");
+            toadstool_cli::daemon::start_daemon(
+                *port,
+                *register,
+                socket.clone(),
+                config.clone(),
+                *max_workloads,
+                biomeos_socket.clone(),
+            )
+            .await?;
+        }
+
         Commands::ZeroConfig {
             save_config,
             skip_discovery,
