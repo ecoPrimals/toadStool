@@ -21,10 +21,32 @@ impl BiomeExecutor {
                 .context("Failed to initialize distributed coordinator")?,
         );
 
+        // ✅ NEW: Connect to biomeOS registry for capability-based discovery
+        let biomeos_client = match toadstool::biomeos_integration::BiomeOSClient::connect().await {
+            Ok(client) => {
+                info!("✅ Connected to biomeOS registry");
+                
+                // Register ToadStool capabilities
+                if let Err(e) = client.register_self().await {
+                    warn!("⚠️  Failed to register with biomeOS: {e}");
+                } else {
+                    info!("📝 Registered ToadStool capabilities with biomeOS");
+                }
+                
+                Some(Arc::new(client))
+            }
+            Err(e) => {
+                warn!("⚠️  biomeOS registry not available: {e}");
+                warn!("   Running in standalone mode (no primal discovery)");
+                None
+            }
+        };
+
         Ok(Self {
             distributed,
             biomes: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             _config: config,
+            biomeos_client,
         })
     }
 
