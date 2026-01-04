@@ -110,6 +110,11 @@ prometheus = { version = "0.13", default-features = false }
 # HTTP client
 url = "2.5"
 
+# HTTP server (for daemon mode)
+axum = { workspace = true, optional = true }
+tower = { version = "0.4", optional = true }
+tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
+
 [dev-dependencies]
 tempfile = "3.8"
 assert_cmd = "2.0"
@@ -117,11 +122,12 @@ predicates = "3.0"
 
 [features]
 default = ["full"]
-full = ["ecosystem", "universal", "monitoring", "templates"]
+full = ["ecosystem", "universal", "monitoring", "templates", "daemon"]
 ecosystem = []
 universal = []
 monitoring = []
 templates = []
+daemon = ["axum", "tower", "tower-http"]
 
 # GPU FEATURES: Sovereign + Pragmatic
 gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
