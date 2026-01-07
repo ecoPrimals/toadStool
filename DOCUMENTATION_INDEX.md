@@ -140,9 +140,10 @@ In `docs/guides/`:
 
 ## 📊 Reports & Reviews
 
-### Session Reports (`docs/sessions/`)
+### Session Reports (Archived)
 
-35 session reports tracking development progress.
+Session reports have been archived to `../archive/toadstool-sessions-jan-2026/` as a fossil record.
+See [LATEST_SESSION.md](LATEST_SESSION.md) for current session summary.
 
 **Latest (Dec 22, 2025)**:
 - Complete evolution session
@@ -181,11 +182,12 @@ In `docs/guides/`:
 
 ## 🗂️ Archive
 
-### Old Session Reports
+### Session Archive (Fossil Record)
 
-Located in `archive/sessions/`:
-- `dec-21-2025/` - December 21 session reports
-- `dec-22-2025/` - December 22 intermediate reports
+All session reports moved to `../archive/toadstool-sessions-jan-2026/`:
+- Jan 2-4, 2026 sessions
+- Dec 2025 session reports
+- Historical development tracking
 - Generic old reports
 
 **Note**: These are for historical reference. See current reports above for latest status.

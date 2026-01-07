@@ -15,7 +15,7 @@
 | **Testing** | [TESTING.md](TESTING.md) |
 | **Documentation** | [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) |
 | **Quick starts** | [QUICK_START_GPU.md](QUICK_START_GPU.md), [QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md) |
-| **Latest session** | [docs/sessions/jan-2-2026/](docs/sessions/jan-2-2026/) |
+| **Latest session** | [LATEST_SESSION.md](LATEST_SESSION.md) - Jan 4, 2026 Daemon Mode & Evolution Polish |
 | **Code changes** | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
@@ -168,9 +168,9 @@ let result = service
 - **[QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md)** - Encryption guide
 
 ### Session Archive
-- **[docs/sessions/jan-2-2026/](docs/sessions/jan-2-2026/)** - Latest session
-  - Comprehensive Audit (1,157 lines)
-  - Execution Summary
+- **Session reports archived** - See `../archive/toadstool-sessions-jan-2026/`
+  - Jan 2-4, 2026 sessions (archived)
+  - Comprehensive Audit & Evolution Polish reports
   - Progress Report
   - Metadata Complete
   - Session Complete
@@ -273,7 +273,7 @@ We follow modern Rust best practices:
 3. Explore [examples/](examples/)
 
 ### 3. Deep Dive
-1. Read session reports in [docs/sessions/jan-2-2026/](docs/sessions/jan-2-2026/)
+1. Read [LATEST_SESSION.md](LATEST_SESSION.md) for recent work summary
 2. Review [TESTING.md](TESTING.md)
 3. Explore crate-specific READMEs
 
@@ -309,7 +309,7 @@ We follow modern Rust best practices:
 
 - **Issues**: File on repository issue tracker
 - **Documentation**: [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
-- **Session Archive**: [docs/sessions/](docs/sessions/)
+- **Session Archive**: `../archive/toadstool-sessions-jan-2026/` (fossil record)
 
 ---
 

@@ -10,10 +10,10 @@
 //! The daemon mode transforms ToadStool from a CLI tool into an ecosystem workload execution service:
 //!
 //! - **HTTP API Server**: Accept workload requests from other primals or remote nodes
-//! - **biomeOS Integration**: Auto-register capabilities, report resources, heartbeat
+//! - **Capability Registry**: Auto-register capabilities, report resources, heartbeat
 //! - **Workload Manager**: Queue, execute, and monitor workloads
-//! - **Resource Monitor**: Track CPU, memory, GPU, storage and report to biomeOS
-//! - **Infant Discovery**: Discover BearDog (security) and Songbird (routing) at runtime
+//! - **Resource Monitor**: Track CPU, memory, GPU, storage and report to registry
+//! - **Infant Discovery**: Discover security and coordination providers at runtime by capability
 //!
 //! ## Usage
 //!
@@ -35,10 +35,10 @@
 //! The daemon starts with ZERO knowledge and discovers everything at runtime:
 //!
 //! 1. Load self-knowledge (ports, resources)
-//! 2. Connect to biomeOS registry (if --register)
+//! 2. Connect to capability registry (if --register)
 //! 3. Register capabilities (Compute, Storage, Orchestration)
-//! 4. Discover BearDog for security/auth
-//! 5. Discover Songbird for service routing
+//! 4. Discover security provider by capability
+//! 5. Discover coordination provider by capability
 //! 6. Start API server
 //! 7. Begin heartbeat reporting
 
@@ -62,11 +62,11 @@ pub use workload_manager::WorkloadManager;
 /// ## Infant Discovery Flow
 ///
 /// 1. **Self-Knowledge**: Load own ports and resource info
-/// 2. **biomeOS Discovery**: Connect to capability registry (optional)
+/// 2. **Registry Discovery**: Connect to capability registry (optional)
 /// 3. **Capability Registration**: Report what we provide (Compute, Storage, Orchestration)
-/// 4. **Dependency Discovery**: Find BearDog (security) and Songbird (routing)
+/// 4. **Dependency Discovery**: Find security and coordination providers by capability
 /// 5. **API Server**: Start HTTP server for workload submission
-/// 6. **Heartbeat**: Report resources and health to biomeOS
+/// 6. **Heartbeat**: Report resources and health to registry
 ///
 /// ## Philosophy
 ///
@@ -81,7 +81,7 @@ pub async fn start_daemon(
 ) -> Result<()> {
     info!("🍄 Starting ToadStool daemon mode...");
     info!("📍 Port: {}", port);
-    info!("🔗 biomeOS registration: {}", if register_with_biomeos { "enabled" } else { "disabled" });
+    info!("🔗 Capability registry: {}", if register_with_biomeos { "enabled" } else { "disabled" });
 
     // Load configuration
     let config = DaemonConfig::load(
@@ -102,9 +102,9 @@ pub async fn start_daemon(
     info!("📈 Metrics: http://localhost:{}/metrics", port);
     
     if register_with_biomeos {
-        info!("🔗 Registered with biomeOS capability registry");
+        info!("🔗 Registered with capability registry");
     } else {
-        info!("📍 Running in standalone mode (no biomeOS registration)");
+        info!("📍 Running in standalone mode (no registry)");
     }
 
     // Run daemon until shutdown signal

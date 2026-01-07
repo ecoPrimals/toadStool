@@ -389,7 +389,7 @@ Every daemon instance:
 ---
 
 *For daemon mode user guide, see*: `docs/daemon/DAEMON_MODE_USER_GUIDE.md`  
-*For implementation details, see*: `docs/sessions/jan-4-2026/DAEMON_MODE_IMPLEMENTATION_SUMMARY.md`  
+*For implementation details, see*: `../archive/toadstool-sessions-jan-2026/sessions/jan-4-2026/DAEMON_MODE_IMPLEMENTATION_SUMMARY.md` (archived)  
 *For current status, see*: `STATUS.md`
 
 ---
