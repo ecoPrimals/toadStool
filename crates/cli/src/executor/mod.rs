@@ -57,10 +57,6 @@ pub struct BiomeExecutor {
     biomes: Arc<tokio::sync::RwLock<HashMap<String, RunningBiome>>>,
     /// Configuration
     _config: ToadStoolConfig,
-    /// biomeOS registry client for capability-based primal discovery
-    /// TODO: Use this to discover BearDog, Songbird, NestGate by capability (Phase 2)
-    #[allow(dead_code)]
-    biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
 }
 
 // Include the implementation

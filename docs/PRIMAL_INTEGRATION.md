@@ -392,7 +392,7 @@ toadstool-cli execute my-ai-task.toml
 ### **ToadStool**
 - [README.md](../README.md) - Project overview
 - [GPU Runtime](../crates/runtime/gpu/README.md) - GPU compute
-- [Universal Compute](../docs/sessions/dec-8-2025/⭐_MASTER_SESSION_SUMMARY_DEC_8_2025.md) - Architecture
+- [Universal Compute](../../archive/toadstool-sessions-jan-2026/) - Architecture (archived)
 
 ### **Songbird**
 - Distributed message routing

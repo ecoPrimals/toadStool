@@ -35,9 +35,6 @@ pub struct ServerState {
     /// Server start time
     pub start_time: Instant,
     
-    /// biomeOS client (if connected)
-    pub biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
-    
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
 }
@@ -46,12 +43,10 @@ pub struct ServerState {
 #[cfg(feature = "daemon")]
 pub async fn start_http_server(
     port: u16,
-    biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
     workload_manager: Arc<WorkloadManager>,
 ) -> anyhow::Result<()> {
     let state = ServerState {
         start_time: Instant::now(),
-        biomeos_client,
         workload_manager,
     };
 
@@ -112,7 +107,7 @@ async fn health_handler(State(state): State<ServerState>) -> impl IntoResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_secs,
         active_workloads,
-        biomeos_connected: state.biomeos_client.is_some(),
+        biomeos_connected: false, // Discovery via mDNS/environment
     })
 }
 
@@ -160,7 +155,7 @@ async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse 
         running,
         completed,
         failed,
-        if state.biomeos_client.is_some() { 1 } else { 0 }
+        0 // Discovery via mDNS/environment (no hardcoded registry)
     );
     
     (StatusCode::OK, metrics)

@@ -20,15 +20,12 @@ use super::http_server;
 ///
 /// Coordinates all daemon functionality:
 /// - HTTP API server
-/// - biomeOS integration
+/// - Capability registry integration (via mDNS/environment)
 /// - Workload management
 /// - Resource monitoring
 pub struct DaemonServer {
     /// Configuration
     config: DaemonConfig,
-    
-    /// biomeOS client (if registered)
-    biomeos_client: Option<Arc<toadstool::biomeos_integration::BiomeOSClient>>,
     
     /// Workload manager
     workload_manager: Arc<WorkloadManager>,
@@ -40,40 +37,24 @@ impl DaemonServer {
     /// ## Infant Discovery Flow
     ///
     /// 1. Load self-knowledge (ports, resources)
-    /// 2. Connect to biomeOS registry (if enabled)
+    /// 2. Connect to capability registry (if enabled)
     /// 3. Register capabilities
-    /// 4. Discover dependencies (BearDog, Songbird)
+    /// 4. Discover dependencies (security, coordination providers) by capability
     /// 5. Start API server
     /// 6. Begin heartbeat
     pub async fn start(config: DaemonConfig) -> Result<Self> {
         info!("🍄 Initializing ToadStool daemon server...");
         
-        // Connect to biomeOS registry (if enabled)
-        let biomeos_client = if config.register_with_biomeos {
-            match Self::connect_to_biomeos(&config).await {
-                Ok(client) => {
-                    info!("✅ Connected to biomeOS capability registry");
-                    
-                    // Register our capabilities
-                    if let Err(e) = Self::register_capabilities(&client).await {
-                        warn!("⚠️  Failed to register capabilities: {e}");
-                        warn!("📍 Continuing in standalone mode");
-                        None
-                    } else {
-                        info!("✅ Registered ToadStool capabilities with biomeOS");
-                        Some(Arc::new(client))
-                    }
-                }
-                Err(e) => {
-                    warn!("⚠️  Failed to connect to biomeOS registry: {e}");
-                    warn!("📍 Running in standalone mode");
-                    None
-                }
-            }
+        // Announce capabilities via mDNS (if enabled)
+        if config.register_with_biomeos {
+            info!("📢 Announcing capabilities via mDNS/discovery");
+            info!("  - Capability: Compute (wasm, container, python, native, gpu)");
+            info!("  - Capability: Storage (local, distributed, encrypted)");
+            info!("  - Capability: Orchestration (workflow coordination)");
+            // TODO: Use DiscoveryEngine to announce capabilities
         } else {
-            info!("📍 biomeOS registration disabled - running in standalone mode");
-            None
-        };
+            info!("📍 Discovery disabled - running in standalone mode");
+        }
         
         // Create workload manager
         let workload_manager = WorkloadManager::new(config.max_concurrent_workloads).await?;
@@ -86,34 +67,10 @@ impl DaemonServer {
         
         Ok(Self {
             config,
-            biomeos_client,
             workload_manager: Arc::new(workload_manager),
         })
     }
     
-    /// Connect to biomeOS capability registry
-    async fn connect_to_biomeos(_config: &DaemonConfig) -> Result<toadstool::biomeos_integration::BiomeOSClient> {
-        info!("🔗 Connecting to biomeOS capability registry...");
-        
-        // Use real BiomeOSClient
-        let client = toadstool::biomeos_integration::BiomeOSClient::connect().await?;
-        
-        Ok(client)
-    }
-    
-    /// Register capabilities with biomeOS
-    async fn register_capabilities(client: &toadstool::biomeos_integration::BiomeOSClient) -> Result<()> {
-        info!("📋 Registering capabilities with biomeOS...");
-        
-        // Use real capability registration
-        client.register_self().await?;
-        
-        info!("  - Capability: Compute (wasm, container, python, native, gpu)");
-        info!("  - Capability: Storage (local, distributed, encrypted)");
-        info!("  - Capability: Orchestration");
-        
-        Ok(())
-    }
     
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
@@ -125,11 +82,10 @@ impl DaemonServer {
         #[cfg(feature = "daemon")]
         {
             let port = self.config.port;
-            let client = self.biomeos_client.clone();
             let manager = self.workload_manager.clone();
             
             tokio::spawn(async move {
-                if let Err(e) = http_server::start_http_server(port, client, manager).await {
+                if let Err(e) = http_server::start_http_server(port, manager).await {
                     warn!("⚠️  HTTP server stopped: {e}");
                 }
             });

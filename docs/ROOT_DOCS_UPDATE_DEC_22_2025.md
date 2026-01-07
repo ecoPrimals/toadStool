@@ -27,7 +27,7 @@
 - Grade: A (92/100) - Maintained
 - Status: Capability Discovery Complete! 🚀
 - Today: Discovery system, hot paths clean, 321+ tests passing
-- See: docs/sessions/DEC_22_2025_CONTINUATION.md
+- See: `../../archive/toadstool-sessions-jan-2026/` (archived)
 ```
 
 ---
@@ -161,7 +161,7 @@ All three root docs now consistently reflect:
 3. Check [STATUS.md](../STATUS.md) for current state
 
 ### **For Current Progress**:
-1. [docs/sessions/DEC_22_2025_CONTINUATION.md](sessions/DEC_22_2025_CONTINUATION.md) - Today's session ⭐
+1. Session reports archived to `../../archive/toadstool-sessions-jan-2026/`
 2. [COMPREHENSIVE_AUDIT_REPORT_DEC_22_2025.md](../COMPREHENSIVE_AUDIT_REPORT_DEC_22_2025.md) - Full audit
 3. [README_REPORTS.md](../README_REPORTS.md) - All reports guide
 
