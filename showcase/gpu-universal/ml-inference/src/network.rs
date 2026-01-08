@@ -110,6 +110,137 @@ impl SimpleNetwork {
         
         Ok(correct as f32 / total as f32)
     }
+    
+    /// Forward pass on GPU using OpenCL
+    #[cfg(feature = "opencl")]
+    pub fn forward_gpu_opencl(
+        &self,
+        input: &Array1<f32>,
+        executor: &crate::gpu_kernels::OpenCLExecutor,
+    ) -> Result<Array1<f32>> {
+        use anyhow::Context;
+        
+        // Prepare data for GPU
+        let input_vec = input.to_vec();
+        let w1_vec = self.w1.as_slice().context("w1 not contiguous")?.to_vec();
+        let b1_vec = self.b1.to_vec();
+        let w2_vec = self.w2.as_slice().context("w2 not contiguous")?.to_vec();
+        let b2_vec = self.b2.to_vec();
+        
+        // Execute on GPU (batch size = 1)
+        let output_vec = executor.forward_pass(
+            &input_vec,
+            &w1_vec,
+            &b1_vec,
+            &w2_vec,
+            &b2_vec,
+            1,
+        )?;
+        
+        // Convert back to ndarray
+        Ok(Array1::from_vec(output_vec))
+    }
+    
+    /// Forward pass batch on GPU using OpenCL
+    #[cfg(feature = "opencl")]
+    pub fn forward_batch_gpu_opencl(
+        &self,
+        inputs: &Array2<f32>,
+        executor: &crate::gpu_kernels::OpenCLExecutor,
+    ) -> Result<Array2<f32>> {
+        use anyhow::Context;
+        
+        let batch_size = inputs.nrows();
+        
+        // Prepare data for GPU
+        let input_vec = inputs.as_slice().context("inputs not contiguous")?.to_vec();
+        let w1_vec = self.w1.as_slice().context("w1 not contiguous")?.to_vec();
+        let b1_vec = self.b1.to_vec();
+        let w2_vec = self.w2.as_slice().context("w2 not contiguous")?.to_vec();
+        let b2_vec = self.b2.to_vec();
+        
+        // Execute on GPU
+        let output_vec = executor.forward_pass(
+            &input_vec,
+            &w1_vec,
+            &b1_vec,
+            &w2_vec,
+            &b2_vec,
+            batch_size,
+        )?;
+        
+        // Convert back to ndarray
+        Array2::from_shape_vec((batch_size, 10), output_vec)
+            .context("Failed to reshape output")
+    }
+    
+    /// Forward pass batch on GPU using Vulkan
+    #[cfg(feature = "vulkan")]
+    pub fn forward_batch_gpu_vulkan(
+        &self,
+        inputs: &Array2<f32>,
+        executor: &crate::vulkan_executor::VulkanExecutor,
+    ) -> Result<Array2<f32>> {
+        use anyhow::Context;
+        
+        let batch_size = inputs.nrows();
+        let input_size = 784;
+        let hidden_size = 128;
+        let output_size = 10;
+        
+        // Prepare data
+        let input_vec = inputs.as_slice().context("inputs not contiguous")?.to_vec();
+        let w1_vec = self.w1.as_slice().context("w1 not contiguous")?.to_vec();
+        let b1_vec = self.b1.to_vec();
+        let w2_vec = self.w2.as_slice().context("w2 not contiguous")?.to_vec();
+        let b2_vec = self.b2.to_vec();
+        
+        // Layer 1: input @ w1 + b1
+        let mut hidden = executor.matrix_multiply(
+            &input_vec,
+            &w1_vec,
+            batch_size,
+            input_size,
+            hidden_size,
+        )?;
+        
+        // Add bias (broadcast across batch)
+        for i in 0..batch_size {
+            for j in 0..hidden_size {
+                hidden[i * hidden_size + j] += b1_vec[j];
+            }
+        }
+        
+        // ReLU activation
+        executor.relu(&mut hidden)?;
+        
+        // Layer 2: hidden @ w2 + b2
+        let mut output = executor.matrix_multiply(
+            &hidden,
+            &w2_vec,
+            batch_size,
+            hidden_size,
+            output_size,
+        )?;
+        
+        // Add bias (broadcast across batch)
+        for i in 0..batch_size {
+            for j in 0..output_size {
+                output[i * output_size + j] += b2_vec[j];
+            }
+        }
+        
+        // Softmax per sample
+        for i in 0..batch_size {
+            let start = i * output_size;
+            let end = start + output_size;
+            executor.softmax(&mut output[start..end])?;
+        }
+        
+        // Convert back to ndarray
+        Array2::from_shape_vec((batch_size, 10), output)
+            .context("Failed to reshape output")
+    }
 }
 
 impl Default for SimpleNetwork {

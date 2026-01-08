@@ -145,3 +145,4 @@ showcase/**/datasets/*.zip
 showcase/**/datasets/cifar-*
 showcase/**/datasets/imagenet-*
 showcase/**/datasets/mnist-*
+zluda-external/

@@ -27,12 +27,19 @@ reqwest = { version = "0.11", features = ["blocking"] }
 
 # GPU compute
 cudarc = { version = "0.11", optional = true }
+ocl = { version = "0.19", optional = true }
+ash = { version = "0.37", optional = true }
 wgpu = "0.19"
+bytemuck = { version = "1.14", features = ["derive"] }
+futures-intrusive = "0.5"
 
 [features]
 default = []
 cuda = ["cudarc", "toadstool-runtime-gpu/cuda"]
+opencl = ["ocl", "toadstool-runtime-gpu/opencl"]
+vulkan = ["ash", "toadstool-runtime-gpu/vulkan"]
 webgpu = ["toadstool-runtime-gpu/webgpu"]
+all-gpus = ["cuda", "opencl", "vulkan", "webgpu"]
 
 [[bin]]
 name = "download-mnist"
@@ -65,3 +72,19 @@ path = "src/train_mnist.rs"
 [[bin]]
 name = "validate-trained"
 path = "src/validate_trained.rs"
+
+[[bin]]
+name = "dual-gpu-demo"
+path = "src/bin/dual_gpu_demo.rs"
+
+[[bin]]
+name = "dual-gpu-parallel"
+path = "src/bin/dual_gpu_parallel.rs"
+
+[[bin]]
+name = "amd-vs-nvidia"
+path = "src/bin/amd_vs_nvidia.rs"
+
+[[bin]]
+name = "cross-gpu-inference"
+path = "src/bin/cross_gpu_inference.rs"

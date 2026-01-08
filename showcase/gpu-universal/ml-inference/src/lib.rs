@@ -2,11 +2,24 @@
 //!
 //! Production-grade neural network inference with validation
 
+#[cfg(feature = "opencl")]
+pub mod gpu_kernels;
+#[cfg(feature = "opencl")]
+pub mod conv2d_kernels;
+pub mod cnn;
+pub mod wgpu_executor;
+pub mod gpu_selector;
 pub mod mnist;
 pub mod network;
-pub mod cpu_inference;
-pub mod gpu_inference;
-pub mod training;
+
+#[cfg(feature = "vulkan")]
+pub mod vulkan_executor;
+
+// Optional modules (not all showcases use these)
+// Commented out until implemented
+// pub mod cpu_inference;
+// pub mod gpu_inference;
+// pub mod training;
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

@@ -1,0 +1,36 @@
+[package]
+name = "vector-add-showcase"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+# This is a standalone workspace
+
+[dependencies]
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# OpenCL support (vendor-agnostic)
+ocl = { version = "0.19", optional = true }
+
+# Vulkan support (vendor-agnostic)
+ash = { version = "0.38", optional = true }
+
+# CUDA support (for comparison)
+cudarc = { version = "0.12", features = ["cuda-12050"], optional = true }
+
+[features]
+default = ["opencl"]
+opencl = ["dep:ocl"]
+vulkan = ["dep:ash"]
+cuda = ["dep:cudarc"]
+
+[[bin]]
+name = "vector-add-demo"
+path = "src/bin/demo.rs"
+
+[[bin]]
+name = "vector-add-benchmark"
+path = "src/bin/benchmark.rs"
+
