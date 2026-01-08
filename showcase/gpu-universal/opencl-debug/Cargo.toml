@@ -1,0 +1,9 @@
+[package]
+name = "opencl-debug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ocl = "0.19"
+ocl-core = "0.11"
+anyhow = "1"

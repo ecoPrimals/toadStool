@@ -1,0 +1,56 @@
+[
+  {
+    "name": "MNIST LeNet-5 CPU",
+    "gpu": "CPU",
+    "backend": "Native",
+    "throughput": 4447.198001206858,
+    "latency_ms": 3.597771,
+    "batch_size": 16,
+    "runs": 10
+  },
+  {
+    "name": "MNIST LeNet-5 CPU",
+    "gpu": "CPU",
+    "backend": "Native",
+    "throughput": 4434.958560855946,
+    "latency_ms": 14.430800000000001,
+    "batch_size": 64,
+    "runs": 10
+  },
+  {
+    "name": "MNIST LeNet-5 CPU",
+    "gpu": "CPU",
+    "backend": "Native",
+    "throughput": 4405.4036957069275,
+    "latency_ms": 58.110452,
+    "batch_size": 256,
+    "runs": 10
+  },
+  {
+    "name": "MNIST LeNet-5 OpenCL",
+    "gpu": "NVIDIA Corporation NVIDIA GeForce RTX 3090",
+    "backend": "OpenCL",
+    "throughput": 4428.494483479778,
+    "latency_ms": 3.612966,
+    "batch_size": 16,
+    "runs": 10
+  },
+  {
+    "name": "MNIST LeNet-5 OpenCL",
+    "gpu": "NVIDIA Corporation NVIDIA GeForce RTX 3090",
+    "backend": "OpenCL",
+    "throughput": 4432.120993579034,
+    "latency_ms": 14.440039,
+    "batch_size": 64,
+    "runs": 10
+  },
+  {
+    "name": "MNIST LeNet-5 OpenCL",
+    "gpu": "NVIDIA Corporation NVIDIA GeForce RTX 3090",
+    "backend": "OpenCL",
+    "throughput": 4408.998089973804,
+    "latency_ms": 58.063078,
+    "batch_size": 256,
+    "runs": 10
+  }
+]

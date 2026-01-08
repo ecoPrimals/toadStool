@@ -1,0 +1,8 @@
+[package]
+name = "opencl-detection"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ocl = "0.19"
+anyhow = "1"

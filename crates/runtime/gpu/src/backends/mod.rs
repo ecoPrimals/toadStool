@@ -23,3 +23,9 @@ pub mod cuda_impl;
 
 #[cfg(feature = "cuda")]
 pub use cuda_impl::{CudaBackend, CudaComputeResource};
+
+#[cfg(feature = "vulkan")]
+pub mod vulkan_impl;
+
+#[cfg(feature = "vulkan")]
+pub use vulkan_impl::{VulkanBackend, VulkanComputeResource};

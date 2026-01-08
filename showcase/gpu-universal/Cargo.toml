@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
+members = [ "opencl-debug","opencl-detection", "simple-compute-test", "vulkan-compute-test", "vulkan-detection", "wgpu-compute-test"]
 # Exclude from parent workspace
 
 [dependencies]
