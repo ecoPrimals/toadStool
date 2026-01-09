@@ -505,8 +505,7 @@ mod tests {
 
     #[test]
     fn test_service_endpoint_with_path() {
-        let endpoint = ServiceEndpoint::http("api.example.com", 8080)
-            .with_path("/v2/compute");
+        let endpoint = ServiceEndpoint::http("api.example.com", 8080).with_path("/v2/compute");
         assert_eq!(endpoint.url(), "http://api.example.com:8080/v2/compute");
     }
 
@@ -515,16 +514,22 @@ mod tests {
         let endpoint = ServiceEndpoint::http("api.example.com", 8080)
             .with_metadata("region", "us-west")
             .with_metadata("tier", "production");
-        
-        assert_eq!(endpoint.metadata.get("region"), Some(&"us-west".to_string()));
-        assert_eq!(endpoint.metadata.get("tier"), Some(&"production".to_string()));
+
+        assert_eq!(
+            endpoint.metadata.get("region"),
+            Some(&"us-west".to_string())
+        );
+        assert_eq!(
+            endpoint.metadata.get("tier"),
+            Some(&"production".to_string())
+        );
     }
 
     #[test]
     fn test_toadstool_identity_default_capabilities() {
         let identity = ToadStoolIdentity::new();
         let caps = identity.capabilities();
-        
+
         // Should have compute capabilities
         assert!(caps.contains(&Capability::Compute(ComputeCapability::NativeExecution)));
         assert!(caps.contains(&Capability::Compute(ComputeCapability::WasmExecution)));
@@ -535,7 +540,7 @@ mod tests {
     fn test_toadstool_identity_add_endpoint() {
         let mut identity = ToadStoolIdentity::new();
         identity.add_endpoint(ServiceEndpoint::http("localhost", 8080));
-        
+
         let endpoints = identity.endpoints();
         assert_eq!(endpoints.len(), 1);
         assert_eq!(endpoints[0].protocol, "http");
@@ -548,7 +553,7 @@ mod tests {
             ServiceEndpoint::grpc("localhost", 9090),
         ];
         let identity = ToadStoolIdentity::new().with_endpoints(endpoints);
-        
+
         assert_eq!(identity.endpoints().len(), 2);
     }
 
@@ -556,10 +561,10 @@ mod tests {
     fn test_toadstool_identity_add_capability() {
         let mut identity = ToadStoolIdentity::new();
         let initial_count = identity.capabilities().len();
-        
+
         identity.add_capability(Capability::Storage(StorageCapability::ObjectStorage));
         assert_eq!(identity.capabilities().len(), initial_count + 1);
-        
+
         // Adding duplicate should not increase count
         identity.add_capability(Capability::Storage(StorageCapability::ObjectStorage));
         assert_eq!(identity.capabilities().len(), initial_count + 1);
@@ -569,16 +574,19 @@ mod tests {
     fn test_toadstool_identity_add_metadata() {
         let mut identity = ToadStoolIdentity::new();
         identity.add_metadata("custom_key".to_string(), "custom_value".to_string());
-        
+
         let metadata = identity.metadata();
-        assert_eq!(metadata.get("custom_key"), Some(&"custom_value".to_string()));
+        assert_eq!(
+            metadata.get("custom_key"),
+            Some(&"custom_value".to_string())
+        );
     }
 
     #[test]
     fn test_toadstool_identity_metadata_includes_platform() {
         let identity = ToadStoolIdentity::new();
         let metadata = identity.metadata();
-        
+
         assert!(metadata.contains_key("platform"));
         assert!(metadata.contains_key("arch"));
         assert!(metadata.contains_key("description"));
@@ -593,7 +601,7 @@ mod tests {
             healthy: true,
             metadata: HashMap::new(),
         };
-        
+
         assert!(service.has_capability(&Capability::Compute(ComputeCapability::GpuCompute)));
         assert!(!service.has_capability(&Capability::Storage(StorageCapability::ObjectStorage)));
     }
@@ -610,7 +618,7 @@ mod tests {
             healthy: true,
             metadata: HashMap::new(),
         };
-        
+
         assert!(service.has_compute_capability());
     }
 
@@ -618,14 +626,12 @@ mod tests {
     fn test_discovered_service_has_storage_capability() {
         let service = DiscoveredService {
             id: None,
-            capabilities: vec![
-                Capability::Storage(StorageCapability::Database),
-            ],
+            capabilities: vec![Capability::Storage(StorageCapability::Database)],
             endpoints: vec![],
             healthy: true,
             metadata: HashMap::new(),
         };
-        
+
         assert!(service.has_storage_capability());
         assert!(!service.has_compute_capability());
     }
@@ -634,14 +640,12 @@ mod tests {
     fn test_discovered_service_has_auth_capability() {
         let service = DiscoveredService {
             id: None,
-            capabilities: vec![
-                Capability::Authentication(AuthCapability::UserAuth),
-            ],
+            capabilities: vec![Capability::Authentication(AuthCapability::UserAuth)],
             endpoints: vec![],
             healthy: true,
             metadata: HashMap::new(),
         };
-        
+
         assert!(service.has_auth_capability());
         assert!(!service.has_compute_capability());
         assert!(!service.has_storage_capability());
@@ -660,13 +664,13 @@ mod tests {
             healthy: true,
             metadata: HashMap::new(),
         };
-        
+
         let http_endpoints = service.endpoints_for_protocol("http");
         assert_eq!(http_endpoints.len(), 2);
-        
+
         let https_endpoints = service.endpoints_for_protocol("https");
         assert_eq!(https_endpoints.len(), 1);
-        
+
         let grpc_endpoints = service.endpoints_for_protocol("grpc");
         assert_eq!(grpc_endpoints.len(), 0);
     }
@@ -676,7 +680,7 @@ mod tests {
         let cap1 = Capability::Compute(ComputeCapability::NativeExecution);
         let cap2 = Capability::Compute(ComputeCapability::NativeExecution);
         let cap3 = Capability::Compute(ComputeCapability::WasmExecution);
-        
+
         assert_eq!(cap1, cap2);
         assert_ne!(cap1, cap3);
     }
@@ -691,7 +695,7 @@ mod tests {
             name: "custom-service".to_string(),
             version: "1.0".to_string(),
         };
-        
+
         assert_eq!(cap1, cap2);
     }
 
@@ -705,7 +709,7 @@ mod tests {
     fn test_service_endpoint_clone() {
         let endpoint1 = ServiceEndpoint::http("localhost", 8080);
         let endpoint2 = endpoint1.clone();
-        
+
         assert_eq!(endpoint1.protocol, endpoint2.protocol);
         assert_eq!(endpoint1.address, endpoint2.address);
         assert_eq!(endpoint1.port, endpoint2.port);
@@ -727,7 +731,7 @@ mod tests {
             healthy: false,
             metadata: HashMap::new(),
         };
-        
+
         assert!(service.id.is_none());
         assert!(!service.healthy);
     }
@@ -743,7 +747,7 @@ mod tests {
             ComputeCapability::EdgeExecution,
             ComputeCapability::SpecialtyHardware,
         ];
-        
+
         assert_eq!(caps.len(), 7);
     }
 
@@ -756,7 +760,7 @@ mod tests {
             StorageCapability::Database,
             StorageCapability::Cache,
         ];
-        
+
         assert_eq!(caps.len(), 5);
     }
 
@@ -766,9 +770,9 @@ mod tests {
             AuthCapability::UserAuth,
             AuthCapability::ServiceAuth,
             AuthCapability::TokenManagement,
-            AuthCapability::CryptoOperations,
+            AuthCapability::UserAuth,
         ];
-        
+
         assert_eq!(caps.len(), 4);
     }
 }

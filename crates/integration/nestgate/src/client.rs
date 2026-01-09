@@ -67,9 +67,7 @@ impl NestGateClient {
         let service = discovery
             .find_service_by_capability(capability)
             .await
-            .map_err(|e| {
-                NestGateError::Connection(format!("No storage service found: {}", e))
-            })?;
+            .map_err(|e| NestGateError::Connection(format!("No storage service found: {}", e)))?;
 
         let endpoint = service
             .endpoints

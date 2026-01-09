@@ -266,7 +266,10 @@ mod tests {
     #[test]
     fn test_routing_config_default() {
         let config = RoutingConfig::default();
-        assert!(matches!(config.default_strategy, RoutingStrategy::RoundRobin));
+        assert!(matches!(
+            config.default_strategy,
+            RoutingStrategy::RoundRobin
+        ));
         assert!(config.load_balancing.health_check_enabled);
         assert!(config.circuit_breaker.is_none());
     }
@@ -342,7 +345,10 @@ mod tests {
         };
 
         assert!(matches!(config.discovery_type, DiscoveryType::Consul));
-        assert_eq!(config.registry_endpoint, Some("http://consul.local:8500".to_string()));
+        assert_eq!(
+            config.registry_endpoint,
+            Some("http://consul.local:8500".to_string())
+        );
         assert!(config.auto_register);
     }
 
@@ -360,7 +366,10 @@ mod tests {
         let config1 = ConnectionPoolConfig::default();
         let config2 = config1.clone();
 
-        assert_eq!(config1.max_connections_per_service, config2.max_connections_per_service);
+        assert_eq!(
+            config1.max_connections_per_service,
+            config2.max_connections_per_service
+        );
         assert_eq!(config1.idle_timeout, config2.idle_timeout);
     }
 
@@ -369,7 +378,10 @@ mod tests {
         let config1 = RoutingConfig::default();
         let config2 = config1.clone();
 
-        assert_eq!(config1.load_balancing.health_check_enabled, config2.load_balancing.health_check_enabled);
+        assert_eq!(
+            config1.load_balancing.health_check_enabled,
+            config2.load_balancing.health_check_enabled
+        );
     }
 
     #[test]

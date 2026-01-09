@@ -33,10 +33,10 @@ impl OpenClComputeUnit {
     pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
         // Temporary stub - returns error until API is modernized
         // Use wgpu backend for production GPU compute
-        Err(ComputeError::BackendError(
-            anyhow::anyhow!("OpenCL backend needs API modernization - use wgpu instead")
-        ))
-        
+        Err(ComputeError::BackendError(anyhow::anyhow!(
+            "OpenCL backend needs API modernization - use wgpu instead"
+        )))
+
         // OLD CODE - needs updating for new ocl API:
         // let name = device.name().map_err(|e| ComputeError::BackendError(e.into()))?;
         // TODO: Update to new API

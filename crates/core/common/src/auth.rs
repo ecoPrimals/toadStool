@@ -8,8 +8,10 @@ use std::collections::HashMap;
 
 /// Authentication type for service-to-service communication
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum AuthType {
     /// No authentication
+    #[default]
     None,
     /// Basic authentication (username/password)
     Basic,
@@ -25,11 +27,6 @@ pub enum AuthType {
     Custom(String),
 }
 
-impl Default for AuthType {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Service authentication credentials
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

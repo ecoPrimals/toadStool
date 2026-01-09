@@ -69,8 +69,10 @@ mod tests {
     #[tokio::test]
     async fn test_mdns_adapter_discover_returns_empty() {
         let config = DiscoveryConfig::default();
-        let adapter = MdnsAdapter::new(config).await.expect("Failed to create adapter");
-        
+        let adapter = MdnsAdapter::new(config)
+            .await
+            .expect("Failed to create adapter");
+
         // Should return empty vector (placeholder implementation)
         let endpoints = adapter.discover("storage").await.expect("Discovery failed");
         assert_eq!(endpoints.len(), 0);
@@ -79,13 +81,21 @@ mod tests {
     #[tokio::test]
     async fn test_mdns_adapter_discover_with_different_capabilities() {
         let config = DiscoveryConfig::default();
-        let adapter = MdnsAdapter::new(config).await.expect("Failed to create adapter");
-        
+        let adapter = MdnsAdapter::new(config)
+            .await
+            .expect("Failed to create adapter");
+
         // Test with various capability strings
         let endpoints1 = adapter.discover("compute").await.expect("Discovery failed");
-        let endpoints2 = adapter.discover("security").await.expect("Discovery failed");
-        let endpoints3 = adapter.discover("coordination").await.expect("Discovery failed");
-        
+        let endpoints2 = adapter
+            .discover("security")
+            .await
+            .expect("Discovery failed");
+        let endpoints3 = adapter
+            .discover("coordination")
+            .await
+            .expect("Discovery failed");
+
         assert_eq!(endpoints1.len(), 0);
         assert_eq!(endpoints2.len(), 0);
         assert_eq!(endpoints3.len(), 0);
@@ -98,7 +108,7 @@ mod tests {
             vec!["storage".to_string(), "replication".to_string()],
             "http://192.168.1.100:8000".to_string(),
         );
-        
+
         assert_eq!(endpoint.service_id, "service-123");
         assert_eq!(endpoint.capabilities.len(), 2);
         assert_eq!(endpoint.capabilities[0], "storage");
@@ -116,7 +126,7 @@ mod tests {
             vec![],
             "http://localhost:9000".to_string(),
         );
-        
+
         assert_eq!(endpoint.service_id, "service-456");
         assert_eq!(endpoint.capabilities.len(), 0);
         assert_eq!(endpoint.url, "http://localhost:9000");
@@ -129,7 +139,7 @@ mod tests {
             vec!["gpu-compute".to_string()],
             "http://10.0.0.5:7777".to_string(),
         );
-        
+
         assert_eq!(endpoint.service_id, "compute-1");
         assert_eq!(endpoint.capabilities.len(), 1);
         assert_eq!(endpoint.capabilities[0], "gpu-compute");
@@ -148,7 +158,7 @@ mod tests {
             vec!["test".to_string()],
             "http://10.0.0.1:8080".to_string(),
         );
-        
+
         assert_eq!(endpoint1.trust_level, TrustLevel::Local);
         assert_eq!(endpoint2.trust_level, TrustLevel::Local);
     }
@@ -160,7 +170,7 @@ mod tests {
             vec!["capability".to_string()],
             "http://example.local:8080".to_string(),
         );
-        
+
         assert_eq!(endpoint.discovered_via, DiscoveryMethod::MDns);
     }
 }

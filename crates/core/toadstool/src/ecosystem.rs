@@ -195,9 +195,9 @@ impl EcosystemCoordinator {
             DiscoveryMethodConfig::Auto => DiscoveryMethod::Auto,
             DiscoveryMethodConfig::Environment => DiscoveryMethod::Environment,
             DiscoveryMethodConfig::Mdns => DiscoveryMethod::Mdns,
-            DiscoveryMethodConfig::ConfigFile { path } => DiscoveryMethod::ConfigFile {
-                path: path.clone(),
-            },
+            DiscoveryMethodConfig::ConfigFile { path } => {
+                DiscoveryMethod::ConfigFile { path: path.clone() }
+            }
             DiscoveryMethodConfig::Registry { endpoint } => DiscoveryMethod::Registry {
                 endpoint: endpoint.clone(),
             },
@@ -249,7 +249,11 @@ impl EcosystemCoordinator {
         if self.config.auto_discovery {
             // Try to discover services for each required capability
             for capability in &self.config.required_capabilities {
-                match self.discovery.find_service_by_capability(capability.clone()).await {
+                match self
+                    .discovery
+                    .find_service_by_capability(capability.clone())
+                    .await
+                {
                     Ok(service) => {
                         info!("✅ Found service for capability: {:?}", capability);
                         discovered.push(service);
@@ -262,7 +266,11 @@ impl EcosystemCoordinator {
 
             // Try optional capabilities (don't fail if not found)
             for capability in &self.config.optional_capabilities {
-                if let Ok(service) = self.discovery.find_service_by_capability(capability.clone()).await {
+                if let Ok(service) = self
+                    .discovery
+                    .find_service_by_capability(capability.clone())
+                    .await
+                {
                     info!("✅ Found optional service for capability: {:?}", capability);
                     discovered.push(service);
                 }
@@ -336,19 +344,19 @@ impl EcosystemCoordinator {
                             {
                                 if let Some(name) = primal_data.get("name").and_then(|v| v.as_str())
                                 {
-                            let endpoint = format!("http://{}", addr.ip());
-                            match self.discover_service_at_endpoint(&endpoint).await {
-                                Ok(service) => {
-                                    discovered_primals.push(service);
-                                    debug!("✅ Discovered service via multicast: {}", name);
-                                }
-                                Err(e) => {
-                                    debug!(
-                                        "❌ Failed to validate multicast service {}: {}",
-                                        name, e
-                                    );
-                                }
-                            }
+                                    let endpoint = format!("http://{}", addr.ip());
+                                    match self.discover_service_at_endpoint(&endpoint).await {
+                                        Ok(service) => {
+                                            discovered_primals.push(service);
+                                            debug!("✅ Discovered service via multicast: {}", name);
+                                        }
+                                        Err(e) => {
+                                            debug!(
+                                                "❌ Failed to validate multicast service {}: {}",
+                                                name, e
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -404,9 +412,10 @@ impl EcosystemCoordinator {
         for (name, dns_name) in dns_names {
             #[allow(deprecated)]
             match self
-                .discover_service_at_endpoint(
-                    &format!("http://{dns_name}:{}", network::get_songbird_port()),
-                )
+                .discover_service_at_endpoint(&format!(
+                    "http://{dns_name}:{}",
+                    network::get_songbird_port()
+                ))
                 .await
             {
                 Ok(service) => discovered.push(service),
@@ -477,7 +486,10 @@ impl EcosystemCoordinator {
     /// Use `integrate_services()` instead.
     #[deprecated(since = "0.4.0", note = "Use integrate_services()")]
     #[allow(dead_code)]
-    pub async fn integrate_primals_legacy(&self, _primals: Vec<ServiceInstance>) -> ToadStoolResult<()> {
+    pub async fn integrate_primals_legacy(
+        &self,
+        _primals: Vec<ServiceInstance>,
+    ) -> ToadStoolResult<()> {
         warn!("⚠️  integrate_primals() is deprecated - use integrate_services() instead");
         Ok(())
     }
@@ -499,12 +511,14 @@ impl EcosystemCoordinator {
         let service = services
             .values()
             .find(|s| s.name == primal_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {primal_name}")))?;
+            .ok_or_else(|| {
+                ToadStoolError::not_found(format!("Service not found: {primal_name}"))
+            })?;
 
         let channels = self.channels.read().await;
-        let channel = channels
-            .get(&service.id)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found for: {primal_name}")))?;
+        let channel = channels.get(&service.id).ok_or_else(|| {
+            ToadStoolError::not_found(format!("Channel not found for: {primal_name}"))
+        })?;
 
         match &channel.client {
             #[cfg(feature = "networking")]
@@ -638,7 +652,9 @@ impl EcosystemCoordinator {
         let service = services
             .values()
             .find(|s| s.name == primal_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {primal_name}")))?;
+            .ok_or_else(|| {
+                ToadStoolError::not_found(format!("Service not found: {primal_name}"))
+            })?;
 
         Ok(service
             .capabilities
@@ -675,7 +691,7 @@ impl EcosystemCoordinator {
         {
             let client = reqwest::Client::new();
             let info_url = format!("{endpoint}/info");
-            
+
             let response = client
                 .get(&info_url)
                 .timeout(Duration::from_secs(5))
@@ -773,7 +789,10 @@ impl EcosystemCoordinator {
     }
 
     /// Integrate with discovered services
-    pub async fn integrate_services(&self, services: Vec<DiscoveredService>) -> ToadStoolResult<()> {
+    pub async fn integrate_services(
+        &self,
+        services: Vec<DiscoveredService>,
+    ) -> ToadStoolResult<()> {
         info!("🔗 Integrating with {} services", services.len());
 
         for service in services {
@@ -790,7 +809,10 @@ impl EcosystemCoordinator {
 
     /// Integrate with a specific service
     async fn integrate_service(&self, service: DiscoveredService) -> ToadStoolResult<()> {
-        info!("🔗 Integrating with service: {} ({})", service.name, service.id);
+        info!(
+            "🔗 Integrating with service: {} ({})",
+            service.name, service.id
+        );
 
         // Create communication channel
         let channel = self.create_service_channel(&service)?;
@@ -817,8 +839,14 @@ impl EcosystemCoordinator {
     }
 
     /// Create communication channel with a service
-    fn create_service_channel(&self, service: &DiscoveredService) -> ToadStoolResult<ServiceChannel> {
-        debug!("📡 Creating communication channel with service {}", service.id);
+    fn create_service_channel(
+        &self,
+        service: &DiscoveredService,
+    ) -> ToadStoolResult<ServiceChannel> {
+        debug!(
+            "📡 Creating communication channel with service {}",
+            service.id
+        );
 
         let endpoint = service
             .primary_endpoint()
@@ -868,12 +896,18 @@ impl EcosystemCoordinator {
             }
             #[cfg(not(feature = "networking"))]
             ServiceClient::Mock => {
-                debug!("✅ Mock health check passed for service {}", channel.service_id);
+                debug!(
+                    "✅ Mock health check passed for service {}",
+                    channel.service_id
+                );
                 Ok(())
             }
             #[cfg(feature = "websocket")]
             ServiceClient::WebSocket(_) => {
-                debug!("🔍 WebSocket health check for service {}", channel.service_id);
+                debug!(
+                    "🔍 WebSocket health check for service {}",
+                    channel.service_id
+                );
                 Ok(())
             }
             #[cfg(feature = "networking")]
@@ -886,7 +920,9 @@ impl EcosystemCoordinator {
                     .timeout(Duration::from_secs(5))
                     .send()
                     .await
-                    .map_err(|e| ToadStoolError::network(format!("TRPC health check failed: {e}")))?;
+                    .map_err(|e| {
+                        ToadStoolError::network(format!("TRPC health check failed: {e}"))
+                    })?;
 
                 if !response.status().is_success() {
                     return Err(ToadStoolError::network(format!(
@@ -895,7 +931,10 @@ impl EcosystemCoordinator {
                     )));
                 }
 
-                debug!("✅ tRPC health check passed for service {}", channel.service_id);
+                debug!(
+                    "✅ tRPC health check passed for service {}",
+                    channel.service_id
+                );
                 Ok(())
             }
         }

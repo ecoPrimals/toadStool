@@ -114,7 +114,7 @@ mod tests {
             last_seen: Instant::now(),
             latency_ms: 10,
         };
-        
+
         assert_eq!(endpoint.tower_id, "tower-1");
         assert_eq!(endpoint.address, "http://tower1.local:8080");
         assert_eq!(endpoint.latency_ms, 10);
@@ -123,8 +123,11 @@ mod tests {
 
     #[test]
     fn test_distributed_job_state_creation() {
-        use crate::universal::{UniversalWorkload, ComputeRequirements, UniversalKernel, OptimizationHints, KernelLanguage};
-        
+        use crate::universal::{
+            ComputeRequirements, KernelLanguage, OptimizationHints, UniversalKernel,
+            UniversalWorkload,
+        };
+
         let workload = UniversalWorkload {
             id: "workload-123".to_string(),
             requirements: ComputeRequirements::default(),
@@ -137,7 +140,7 @@ mod tests {
             output_size: 1024,
             hints: OptimizationHints::default(),
         };
-        
+
         let job = DistributedJobState {
             job_id: "job-123".to_string(),
             workload: workload.clone(),
@@ -147,7 +150,7 @@ mod tests {
             created_at: Instant::now(),
             completed_at: None,
         };
-        
+
         assert_eq!(job.job_id, "job-123");
         assert_eq!(job.status, JobStatus::Pending);
         assert!(job.assigned_tower.is_none());
@@ -159,7 +162,7 @@ mod tests {
     fn test_partition_strategy_single() {
         let strategy = PartitionStrategy::Single;
         match strategy {
-            PartitionStrategy::Single => {}, // Expected
+            PartitionStrategy::Single => {} // Expected
             _ => panic!("Expected Single strategy"),
         }
     }
@@ -188,8 +191,14 @@ mod tests {
 
     #[test]
     fn test_partition_strategy_pipeline() {
-        let stages = vec!["preprocess".to_string(), "compute".to_string(), "postprocess".to_string()];
-        let strategy = PartitionStrategy::Pipeline { stages: stages.clone() };
+        let stages = vec![
+            "preprocess".to_string(),
+            "compute".to_string(),
+            "postprocess".to_string(),
+        ];
+        let strategy = PartitionStrategy::Pipeline {
+            stages: stages.clone(),
+        };
         match strategy {
             PartitionStrategy::Pipeline { stages: s } => {
                 assert_eq!(s.len(), 3);

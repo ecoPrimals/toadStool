@@ -21,7 +21,7 @@ fn test_execution_status_variants() {
         ExecutionStatus::TimedOut,
         ExecutionStatus::Paused,
     ];
-    
+
     for status in statuses {
         // Should serialize and deserialize
         let json = serde_json::to_string(&status).unwrap();
@@ -47,10 +47,10 @@ fn test_workload_spec_native() {
         executable: "/bin/echo".to_string(),
         args: vec!["hello".to_string()],
     };
-    
+
     let json = serde_json::to_string(&spec).unwrap();
     let deserialized: WorkloadSpec = serde_json::from_str(&json).unwrap();
-    
+
     match deserialized {
         WorkloadSpec::Native { executable, args } => {
             assert_eq!(executable, "/bin/echo");
@@ -67,7 +67,7 @@ fn test_workload_spec_container() {
         command: Some(vec!["nginx".to_string()]),
         args: Some(vec!["-g".to_string(), "daemon off;".to_string()]),
     };
-    
+
     assert!(serde_json::to_string(&spec).is_ok());
 }
 
@@ -78,7 +78,7 @@ fn test_workload_spec_wasm() {
         function: "main".to_string(),
         args: vec![],
     };
-    
+
     assert!(serde_json::to_string(&spec).is_ok());
 }
 
@@ -88,7 +88,7 @@ fn test_workload_spec_python() {
         script: "print('hello')".to_string(),
         requirements: Some(vec!["numpy".to_string()]),
     };
-    
+
     assert!(serde_json::to_string(&spec).is_ok());
 }
 
@@ -99,7 +99,7 @@ fn test_workload_spec_gpu() {
         platform: "opencl".to_string(),
         args: vec!["1024".to_string()],
     };
-    
+
     assert!(serde_json::to_string(&spec).is_ok());
 }
 
@@ -122,7 +122,7 @@ fn test_execution_request_validation_success() {
         metadata: HashMap::new(),
         callback_url: None,
     };
-    
+
     assert!(request.validate().is_ok());
 }
 
@@ -141,7 +141,7 @@ fn test_execution_request_validation_invalid_priority() {
         metadata: HashMap::new(),
         callback_url: None,
     };
-    
+
     assert!(request.validate().is_err());
 }
 
@@ -160,7 +160,7 @@ fn test_execution_request_validation_empty_executable() {
         metadata: HashMap::new(),
         callback_url: None,
     };
-    
+
     assert!(request.validate().is_err());
 }
 
@@ -180,7 +180,7 @@ fn test_execution_request_validation_empty_image() {
         metadata: HashMap::new(),
         callback_url: None,
     };
-    
+
     assert!(request.validate().is_err());
 }
 
@@ -197,7 +197,7 @@ fn test_resource_requirements_validation() {
         gpu_count: Some(1),
         network_mbps: Some(1000),
     };
-    
+
     assert!(resources.validate().is_ok());
 }
 
@@ -210,7 +210,7 @@ fn test_resource_requirements_invalid_cpu() {
         gpu_count: None,
         network_mbps: None,
     };
-    
+
     assert!(resources.validate().is_err());
 }
 
@@ -223,7 +223,7 @@ fn test_resource_requirements_invalid_memory() {
         gpu_count: None,
         network_mbps: None,
     };
-    
+
     assert!(resources.validate().is_err());
 }
 
@@ -247,7 +247,7 @@ fn test_execution_response_creation() {
             websocket_url: "ws://localhost/ws".to_string(),
         },
     };
-    
+
     assert!(serde_json::to_string(&response).is_ok());
 }
 
@@ -263,7 +263,7 @@ fn test_node_status_variants() {
         NodeStatus::Unhealthy,
         NodeStatus::Offline,
     ];
-    
+
     for status in statuses {
         let json = serde_json::to_string(&status).unwrap();
         let deserialized: NodeStatus = serde_json::from_str(&json).unwrap();
@@ -278,7 +278,7 @@ fn test_node_status_variants() {
 #[test]
 fn test_api_error_new() {
     let error = ApiError::new("TEST_ERROR", "Test message");
-    
+
     assert_eq!(error.error_code, "TEST_ERROR");
     assert_eq!(error.message, "Test message");
     assert!(error.details.is_none());
@@ -290,15 +290,14 @@ fn test_api_error_new() {
 fn test_api_error_with_details() {
     let error = ApiError::new("TEST_ERROR", "Test message")
         .with_details(serde_json::json!({"field": "value"}));
-    
+
     assert!(error.details.is_some());
 }
 
 #[test]
 fn test_api_error_with_request_id() {
-    let error = ApiError::new("TEST_ERROR", "Test message")
-        .with_request_id("req-123".to_string());
-    
+    let error = ApiError::new("TEST_ERROR", "Test message").with_request_id("req-123".to_string());
+
     assert_eq!(error.request_id, Some("req-123".to_string()));
 }
 
@@ -306,7 +305,7 @@ fn test_api_error_with_request_id() {
 fn test_api_error_from_toadstool_error() {
     let ts_error = ToadStoolError::execution("Test execution error");
     let api_error = ApiError::from_toadstool_error(ts_error);
-    
+
     assert_eq!(api_error.error_code, "EXECUTION_ERROR");
 }
 
@@ -314,7 +313,7 @@ fn test_api_error_from_toadstool_error() {
 fn test_api_error_into_response() {
     let error = ApiError::new("NOT_FOUND", "Resource not found");
     let response = error.into_response();
-    
+
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
@@ -325,7 +324,7 @@ fn test_api_error_into_response() {
 #[test]
 fn test_execution_filter_default() {
     let filter = ExecutionFilter::default();
-    
+
     assert_eq!(filter.page, Some(1));
     assert_eq!(filter.per_page, Some(20));
     assert!(filter.status.is_none());
@@ -342,7 +341,7 @@ fn test_execution_filter_validation() {
         page: Some(1),
         per_page: Some(50),
     };
-    
+
     assert!(filter.validate().is_ok());
 }
 
@@ -356,7 +355,7 @@ fn test_execution_filter_invalid_page() {
         page: Some(0), // Invalid: < 1
         per_page: Some(20),
     };
-    
+
     assert!(filter.validate().is_err());
 }
 
@@ -370,7 +369,7 @@ fn test_execution_filter_invalid_per_page() {
         page: Some(1),
         per_page: Some(101), // Invalid: > 100
     };
-    
+
     assert!(filter.validate().is_err());
 }
 
@@ -381,7 +380,7 @@ fn test_execution_filter_invalid_per_page() {
 #[test]
 fn test_api_metrics_default() {
     let metrics = ApiMetrics::default();
-    
+
     assert_eq!(metrics.total_requests, 0);
     assert_eq!(metrics.successful_requests, 0);
     assert_eq!(metrics.failed_requests, 0);
@@ -400,10 +399,10 @@ fn test_api_metrics_serialization() {
         active_connections: 10,
         uptime_seconds: 3600,
     };
-    
+
     let json = serde_json::to_string(&metrics).unwrap();
     let deserialized: ApiMetrics = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(deserialized.total_requests, 1000);
     assert_eq!(deserialized.average_response_time_ms, 125.5);
 }
@@ -421,7 +420,7 @@ fn test_log_level_variants() {
         LogLevel::Warn,
         LogLevel::Error,
     ];
-    
+
     for level in levels {
         assert!(serde_json::to_string(&level).is_ok());
     }
@@ -439,7 +438,7 @@ fn test_alert_severity_variants() {
         AlertSeverity::Error,
         AlertSeverity::Critical,
     ];
-    
+
     for severity in severities {
         assert!(serde_json::to_string(&severity).is_ok());
     }
@@ -459,10 +458,10 @@ fn test_pagination_info() {
         has_next: true,
         has_prev: true,
     };
-    
+
     let json = serde_json::to_string(&pagination).unwrap();
     let deserialized: PaginationInfo = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(deserialized.page, 2);
     assert_eq!(deserialized.total_pages, 10);
     assert!(deserialized.has_next);
@@ -479,7 +478,7 @@ fn test_auth_request_validation() {
         username: "testuser".to_string(),
         password: "password123".to_string(),
     };
-    
+
     assert!(request.validate().is_ok());
 }
 
@@ -489,7 +488,7 @@ fn test_auth_request_empty_username() {
         username: String::new(),
         password: "password123".to_string(),
     };
-    
+
     assert!(request.validate().is_err());
 }
 
@@ -499,7 +498,7 @@ fn test_auth_request_empty_password() {
         username: "testuser".to_string(),
         password: String::new(),
     };
-    
+
     assert!(request.validate().is_err());
 }
 
@@ -510,7 +509,7 @@ fn test_auth_request_empty_password() {
 #[test]
 fn test_api_config_default() {
     let config = ApiConfig::default();
-    
+
     assert!(config.enable_rest);
     assert!(config.enable_websocket);
     assert!(config.cors_enabled);
@@ -524,7 +523,7 @@ fn test_api_config_serialization() {
     let config = ApiConfig::default();
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: ApiConfig = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(deserialized.api_version, config.api_version);
 }
 
@@ -540,10 +539,10 @@ fn test_cluster_capacity_serialization() {
         storage_gb: 10240,
         gpu_count: 8,
     };
-    
+
     let json = serde_json::to_string(&capacity).unwrap();
     let deserialized: ClusterCapacity = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(deserialized.cpu_cores, 128);
     assert_eq!(deserialized.gpu_count, 8);
 }
@@ -556,16 +555,16 @@ fn test_cluster_capacity_serialization() {
 fn test_resource_usage_serialization() {
     let usage = ResourceUsage {
         cpu_percent: 75.5,
-        memory_bytes: 1073741824, // 1GB
-        disk_bytes: 10737418240, // 10GB
-        network_bytes_in: 1048576, // 1MB
+        memory_bytes: 1073741824,   // 1GB
+        disk_bytes: 10737418240,    // 10GB
+        network_bytes_in: 1048576,  // 1MB
         network_bytes_out: 2097152, // 2MB
         gpu_percent: Some(80.0),
     };
-    
+
     let json = serde_json::to_string(&usage).unwrap();
     let deserialized: ResourceUsage = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(deserialized.cpu_percent, 75.5);
     assert_eq!(deserialized.gpu_percent, Some(80.0));
 }
@@ -578,12 +577,12 @@ fn test_resource_usage_serialization() {
 fn test_time_range_serialization() {
     let start = Utc::now();
     let end = start + chrono::Duration::hours(1);
-    
+
     let time_range = TimeRange { start, end };
-    
+
     let json = serde_json::to_string(&time_range).unwrap();
     let deserialized: TimeRange = serde_json::from_str(&json).unwrap();
-    
+
     assert!(deserialized.end > deserialized.start);
 }
 
@@ -606,9 +605,8 @@ fn test_execution_info_clone() {
         resource_usage: None,
         metadata: HashMap::new(),
     };
-    
+
     let cloned = info.clone();
     assert_eq!(info.execution_id, cloned.execution_id);
     assert_eq!(info.status, cloned.status);
 }
-
