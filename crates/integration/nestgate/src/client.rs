@@ -1,4 +1,19 @@
 //! `NestGate` client implementation for artifact and storage management
+//!
+//! **Evolution**: Now supports capability-based discovery in addition to direct endpoints.
+//!
+//! ## Usage Patterns
+//!
+//! ### Pattern 1: Direct Endpoint (Legacy, still supported)
+//! ```ignore
+//! let client = NestGateClient::connect("http://localhost:8080").await?;
+//! ```
+//!
+//! ### Pattern 2: Capability-Based Discovery (NEW)
+//! ```ignore
+//! let client = NestGateClient::discover().await?;
+//! // Discovers ANY storage service with ArtifactStorage capability
+//! ```
 
 use chrono::Utc;
 use reqwest::Client;
@@ -8,6 +23,9 @@ use std::collections::HashMap;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
+use toadstool_common::primal_identity::{Capability, StorageCapability};
+use toadstool_common::service_discovery::{DiscoveryMethod, ServiceDiscovery};
+
 use crate::config::NestGateConfig;
 use crate::pipeline::{PipelineConfig, PipelineStatus};
 use crate::types::{
@@ -16,6 +34,8 @@ use crate::types::{
 };
 
 /// Main `NestGate` client for storage and pipeline operations
+///
+/// **Design**: Supports both direct endpoint and capability-based discovery
 #[derive(Debug, Clone)]
 pub struct NestGateClient {
     client: Client,
@@ -23,7 +43,52 @@ pub struct NestGateClient {
 }
 
 impl NestGateClient {
-    /// Connect to `NestGate` server with default configuration
+    /// Discover storage service by capability (RECOMMENDED)
+    ///
+    /// Discovers ANY storage service advertising ArtifactStorage capability.
+    /// This is vendor-agnostic and works with NestGate, S3, MinIO, GCS, etc.
+    ///
+    /// # Errors
+    /// Returns an error if no storage service is found or connection fails
+    pub async fn discover() -> NestGateResult<Self> {
+        Self::discover_with_capability(Capability::Storage(StorageCapability::ArtifactStorage))
+            .await
+    }
+
+    /// Discover storage service by specific capability
+    ///
+    /// # Errors
+    /// Returns an error if no service is found or connection fails
+    pub async fn discover_with_capability(capability: Capability) -> NestGateResult<Self> {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
+            .await
+            .map_err(|e| NestGateError::Connection(format!("Discovery failed: {}", e)))?;
+
+        let service = discovery
+            .find_service_by_capability(capability)
+            .await
+            .map_err(|e| {
+                NestGateError::Connection(format!("No storage service found: {}", e))
+            })?;
+
+        let endpoint = service
+            .endpoints
+            .first()
+            .ok_or_else(|| NestGateError::Connection("No endpoints available".to_string()))?;
+
+        let endpoint_url = endpoint.url();
+
+        info!(
+            "Discovered storage service: {} at {}",
+            service.name, endpoint_url
+        );
+
+        Self::connect(&endpoint_url).await
+    }
+
+    /// Connect to storage server with default configuration (Direct endpoint)
+    ///
+    /// **Note**: Consider using `discover()` for capability-based discovery.
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails

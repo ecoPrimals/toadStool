@@ -89,7 +89,7 @@ async fn main() -> Result<()> {
     if let WorkloadData::F32Matrix(output, batch, rest) = &result.data {
         let out_size = rest / batch;
         let out_dim = (out_size as f32).sqrt() as usize;
-        
+
         println!("Output (1×1×2×2) - Input 4×4 → Output 2×2:");
         for row in 0..out_dim {
             print!("  [");
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
             println!("]");
         }
         println!();
-        
+
         println!("Verification:");
         println!("  Top-left 2×2 region: [1, 2, 5, 6] → max = 6 ✅");
         println!("  Top-right 2×2 region: [3, 4, 7, 8] → max = 8 ✅");
@@ -163,7 +163,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Matrix(output, _, rest) = &avg_result.data {
         let out_dim = (*rest as f32).sqrt() as usize;
-        
+
         println!("Output (1×1×2×2) - Input 4×4 → Output 2×2:");
         for row in 0..out_dim {
             print!("  [");
@@ -176,7 +176,7 @@ async fn main() -> Result<()> {
             println!("]");
         }
         println!();
-        
+
         println!("Verification:");
         println!("  Top-left: (1+2+5+6)/4 = 3.50 ✅");
         println!("  Top-right: (3+4+7+8)/4 = 5.50 ✅");
@@ -255,7 +255,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Matrix(output, _, rest) = &pattern1_result.data {
         let out_dim = (*rest as f32).sqrt() as usize;
-        
+
         println!("MaxPool Output:");
         for row in 0..out_dim {
             print!("  [");
@@ -309,7 +309,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Matrix(output, _, rest) = &pattern2_result.data {
         let out_dim = (*rest as f32).sqrt() as usize;
-        
+
         println!("MaxPool Output:");
         for row in 0..out_dim {
             print!("  [");
@@ -462,4 +462,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

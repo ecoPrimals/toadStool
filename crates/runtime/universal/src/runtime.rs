@@ -2,8 +2,8 @@
 //!
 //! This module provides the main UniversalRuntime API that applications use.
 
-use crate::types::*;
 use crate::capabilities::{CapabilityDiscovery, WorkloadProfile};
+use crate::types::*;
 
 /// Universal compute runtime
 ///
@@ -89,7 +89,11 @@ impl UniversalRuntime {
     }
 
     /// Execute on a specific unit by index
-    pub async fn execute_on(&self, index: usize, workload: Workload) -> Result<Output, ComputeError> {
+    pub async fn execute_on(
+        &self,
+        index: usize,
+        workload: Workload,
+    ) -> Result<Output, ComputeError> {
         let unit = self.units.get(index).ok_or(ComputeError::NoSuitableUnit)?;
         unit.execute(workload).await
     }
@@ -132,7 +136,7 @@ impl UniversalRuntime {
     {
         // Note: In a full implementation, we'd serialize/compile the function
         // For now, this is a placeholder showing the API design
-        
+
         let workload = WorkloadBuilder::new()
             .operation(OperationType::Map)
             .data_f32(input.clone())
@@ -163,9 +167,9 @@ impl UniversalRuntime {
 
             match caps.unit_type {
                 ComputeUnitType::Cpu => stats.num_cpu += 1,
-                ComputeUnitType::GpuOpenCl | ComputeUnitType::GpuWgpu | ComputeUnitType::GpuVulkan => {
-                    stats.num_gpu += 1
-                }
+                ComputeUnitType::GpuOpenCl
+                | ComputeUnitType::GpuWgpu
+                | ComputeUnitType::GpuVulkan => stats.num_gpu += 1,
                 ComputeUnitType::Neuromorphic => stats.num_neuromorphic += 1,
                 ComputeUnitType::Custom(_) => stats.num_custom += 1,
             }
@@ -215,4 +219,3 @@ impl std::fmt::Display for RuntimeStats {
         Ok(())
     }
 }
-

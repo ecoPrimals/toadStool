@@ -164,34 +164,51 @@ impl ServiceDiscoveryConfig {
     }
 
     /// Create example configuration file
+    ///
+    /// **INFANT DISCOVERY**: This example uses placeholder URLs.
+    /// In production, services are discovered at runtime via capabilities.
+    /// See `primal_identity.rs` and `discovery_defaults.rs` for implementation.
     pub fn create_example() -> Self {
         let mut services = HashMap::new();
 
+        // NOTE: These are EXAMPLE URLs only. Production deployments use discovery.
         services.insert(
             "crypto".to_string(),
             ServiceConfig {
-                url: toadstool_common::constants::network::http_url(
-                    toadstool_common::constants::DEFAULT_HOSTNAME,
-                    toadstool_common::constants::BEARDOG_PORT,
-                ),
+                // Use environment variable or discovery in production:
+                // CRYPTO_SERVICE_URL or discover by Capability::Authentication
+                url: "http://localhost:6000".to_string(), // Example beardog local dev port
                 priority: 90,
-                enabled: true,
+                enabled: false, // Disabled by default - enable via discovery
                 health_check_interval: 30,
-                metadata: HashMap::new(),
+                metadata: {
+                    let mut meta = HashMap::new();
+                    meta.insert(
+                        "discovery_capability".to_string(),
+                        "Authentication::ServiceAuth".to_string(),
+                    );
+                    meta
+                },
             },
         );
 
         services.insert(
             "storage".to_string(),
             ServiceConfig {
-                url: toadstool_common::constants::network::http_url(
-                    "storage.local",
-                    toadstool_common::constants::NESTGATE_PORT,
-                ),
+                // Use environment variable or discovery in production:
+                // STORAGE_SERVICE_URL or discover by Capability::Storage
+                url: "http://storage.local:8000".to_string(), // Example nestgate local dev port
                 priority: 80,
-                enabled: true,
+                enabled: false, // Disabled by default - enable via discovery
                 health_check_interval: 60,
-                metadata: HashMap::new(),
+                metadata: {
+                    let mut meta = HashMap::new();
+                    meta.insert(
+                        "discovery_capability".to_string(),
+                        "Storage::ObjectStorage".to_string(),
+                    );
+                    meta
+                },
             },
         );
 

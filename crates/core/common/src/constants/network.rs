@@ -29,42 +29,54 @@ pub const METRICS_PORT: u16 = 9090;
 pub const HEALTH_CHECK_PORT: u16 = 8082;
 
 // ============================================================================
-// Ecosystem Service Ports
+// REMOVED: Primal-Specific Ports
+// ============================================================================
+//
+// **INFANT DISCOVERY PATTERN**: ToadStool knows only itself.
+// Other primals (songbird, nestgate, beardog, squirrel) are discovered at runtime
+// via capability-based discovery. No hardcoded ports for other services.
+//
+// See: `primal_identity.rs` for self-knowledge implementation
+// See: `discovery_defaults.rs` for runtime discovery fallbacks
+// See: `HARDCODING_ELIMINATION_PLAN_JAN9_2026.md` for full migration plan
+//
+// Migration:
+//   Before: let url = format!("http://localhost:{}", SONGBIRD_PORT);
+//   After:  let service = discovery.find_service_by_capability(
+//               Capability::Coordination(CoordinationCapability::ServiceDiscovery)
+//           ).await?;
+//           let url = service.endpoint();
+//
 // ============================================================================
 
-/// Songbird (distributed messaging) default port
-pub const SONGBIRD_PORT: u16 = 5000;
-
-/// Songbird alternative port
-pub const SONGBIRD_ALT_PORT: u16 = 5001;
-
-/// BearDog (security) default port
-pub const BEARDOG_PORT: u16 = 6000;
-
-/// Squirrel (resource management) default port
-pub const SQUIRREL_PORT: u16 = 7000;
-
-/// NestGate (storage) default port
-pub const NESTGATE_PORT: u16 = 8000;
-
 // ============================================================================
-// Common Infrastructure Ports
+// Vendor Service Fallback Defaults
 // ============================================================================
+//
+// These are FALLBACK DEFAULTS for vendor services (redis, postgres, etc.)
+// when explicit discovery fails. They should NOT be used as primary configuration.
+// Prefer environment variables or discovery mechanisms.
+//
 
-/// Redis default port
-pub const REDIS_PORT: u16 = 6379;
+/// Redis default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or REDIS_URL environment variable instead")]
+pub const REDIS_FALLBACK_PORT: u16 = 6379;
 
-/// `PostgreSQL` default port
-pub const POSTGRES_PORT: u16 = 5432;
+/// `PostgreSQL` default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or DATABASE_URL environment variable instead")]
+pub const POSTGRES_FALLBACK_PORT: u16 = 5432;
 
-/// `MongoDB` default port
-pub const MONGODB_PORT: u16 = 27017;
+/// `MongoDB` default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or MONGODB_URL environment variable instead")]
+pub const MONGODB_FALLBACK_PORT: u16 = 27017;
 
-/// Prometheus default port
-pub const PROMETHEUS_PORT: u16 = 9090;
+/// Prometheus default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or PROMETHEUS_URL environment variable instead")]
+pub const PROMETHEUS_FALLBACK_PORT: u16 = 9090;
 
-/// Grafana default port
-pub const GRAFANA_PORT: u16 = 3000;
+/// Grafana default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or GRAFANA_URL environment variable instead")]
+pub const GRAFANA_FALLBACK_PORT: u16 = 3000;
 
 // ============================================================================
 // Address Constants

@@ -1,11 +1,24 @@
-//! # Ecosystem Coordination
+//! # Ecosystem Coordination - Capability-Based Discovery
 //!
-//! This module handles integration with all primals in the ecosystem:
-//! - 🎵 Songbird (Network Coordination)
-//! - 🏠 `NestGate` (Storage)
-//! - 🐕 `BearDog` (Security)
-//! - 🐿️ Squirrel (AI)
-//! - 🌱 biomeOS (Universal OS)
+//! This module handles integration with services in the ecosystem using
+//! **capability-based discovery** rather than hardcoded primal names.
+//!
+//! ## Philosophy
+//!
+//! - **Self-Knowledge Only**: ToadStool knows only itself
+//! - **Runtime Discovery**: Services discovered by capabilities, not names
+//! - **Zero Hardcoding**: No primal-specific code or configuration
+//! - **Capability-Based**: Services matched by what they can do, not who they are
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! // Instead of: connect_to_songbird()
+//! // We do: find_service_by_capability(Capability::Coordination(...))
+//! let coordinator = ecosystem.find_service_by_capability(
+//!     Capability::Coordination(CoordinationCapability::ServiceDiscovery)
+//! ).await?;
+//! ```
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,6 +30,8 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::primal_identity::{Capability, ServiceEndpoint};
+use toadstool_common::service_discovery::{DiscoveredService, DiscoveryMethod, ServiceDiscovery};
 use toadstool_config::env_config::EnvironmentConfig;
 use toadstool_config::network;
 
@@ -24,12 +39,14 @@ use toadstool_config::network;
 #[cfg(feature = "networking")]
 const DISCOVERY_PROTOCOL_ID: &[u8] = b"TOADSTOOL_DISCOVERY";
 
-/// Ecosystem coordinator for primal integration
+/// Ecosystem coordinator for capability-based service integration
 pub struct EcosystemCoordinator {
-    /// Discovered primals
-    primals: Arc<RwLock<HashMap<String, PrimalInstance>>>,
-    /// Communication channels
-    channels: Arc<RwLock<HashMap<String, PrimalChannel>>>,
+    /// Discovered services (indexed by service ID)
+    services: Arc<RwLock<HashMap<String, DiscoveredService>>>,
+    /// Communication channels (indexed by service ID)
+    channels: Arc<RwLock<HashMap<String, ServiceChannel>>>,
+    /// Service discovery client
+    discovery: Arc<ServiceDiscovery>,
     /// Integration config
     config: EcosystemConfig,
 }
@@ -37,68 +54,52 @@ pub struct EcosystemCoordinator {
 /// Configuration for ecosystem integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EcosystemConfig {
-    /// Enable auto-discovery of primals
+    /// Enable auto-discovery of services
     pub auto_discovery: bool,
     /// Discovery timeout
     pub discovery_timeout: Duration,
-    /// Primal endpoints (if not auto-discovered)
-    pub primal_endpoints: HashMap<String, String>,
-    /// Required primals for operation
-    pub required_primals: Vec<String>,
-    /// Optional primals for enhanced functionality
-    pub optional_primals: Vec<String>,
+    /// Discovery method to use
+    pub discovery_method: DiscoveryMethodConfig,
+    /// Required capabilities for operation
+    pub required_capabilities: Vec<Capability>,
+    /// Optional capabilities for enhanced functionality
+    pub optional_capabilities: Vec<Capability>,
+}
+
+/// Discovery method configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DiscoveryMethodConfig {
+    /// Automatic selection
+    Auto,
+    /// Environment variables only
+    Environment,
+    /// mDNS discovery
+    Mdns,
+    /// Configuration file
+    ConfigFile { path: String },
+    /// Registry service
+    Registry { endpoint: String },
 }
 
 impl Default for EcosystemConfig {
     fn default() -> Self {
-        // Zero-copy: Use const slices to avoid allocations
-        const OPTIONAL_PRIMALS: &[&str] =
-            &["songbird", "nestgate", "beardog", "squirrel", "biomeos"];
-
         Self {
             auto_discovery: true,
             discovery_timeout: Duration::from_secs(30),
-            primal_endpoints: HashMap::new(),
-            required_primals: vec![],
-            optional_primals: OPTIONAL_PRIMALS.iter().map(|&s| s.to_string()).collect(),
+            discovery_method: DiscoveryMethodConfig::Auto,
+            // No hardcoded primal names - discover by capability instead
+            required_capabilities: vec![],
+            optional_capabilities: vec![],
         }
     }
 }
 
-/// Discovered primal instance
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PrimalInstance {
-    pub name: String,
-    pub primal_type: PrimalType,
-    pub endpoint: String,
-    pub version: String,
-    pub capabilities: Vec<String>,
-    pub status: PrimalStatus,
-    pub discovered_at: chrono::DateTime<chrono::Utc>,
-}
+/// Discovered service instance (type alias for clarity)
+pub type ServiceInstance = DiscoveredService;
 
-/// Types of primals in the ecosystem
+/// Status of a service instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum PrimalType {
-    /// Songbird - Network coordination
-    Songbird,
-    /// `NestGate` - Storage
-    NestGate,
-    /// `BearDog` - Security
-    BearDog,
-    /// Squirrel - AI
-    Squirrel,
-    /// biomeOS - Universal OS
-    BiomeOS,
-    /// `ToadStool` - Compute (recursive)
-    ToadStool,
-    /// Custom primal
-    Custom(String),
-}
-
-/// Status of a primal instance
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum PrimalStatus {
+pub enum ServiceStatus {
     /// Discovered but not connected
     Discovered,
     /// Connected and ready
@@ -109,16 +110,17 @@ pub enum PrimalStatus {
     Disconnected,
 }
 
-/// Communication channel with a primal
-pub struct PrimalChannel {
-    pub primal_name: String,
+/// Communication channel with a service
+pub struct ServiceChannel {
+    pub service_id: String,
+    pub service_name: String, // For logging/debugging only
     pub endpoint: String,
-    pub client: PrimalClient,
+    pub client: ServiceClient,
     pub last_heartbeat: chrono::DateTime<chrono::Utc>,
 }
 
-/// Client for communicating with primals
-pub enum PrimalClient {
+/// Client for communicating with services
+pub enum ServiceClient {
     /// HTTP client
     #[cfg(feature = "networking")]
     Http(reqwest::Client),
@@ -176,60 +178,116 @@ pub enum EcosystemMessageType {
 }
 
 impl EcosystemCoordinator {
-    /// Create a new ecosystem coordinator
-    pub fn new() -> ToadStoolResult<Self> {
-        info!("🌐 Creating Ecosystem Coordinator");
+    /// Create a new ecosystem coordinator with capability-based discovery
+    pub async fn new() -> ToadStoolResult<Self> {
+        Self::with_config(EcosystemConfig::default()).await
+    }
 
-        let primals = Arc::new(RwLock::new(HashMap::new()));
+    /// Create a new ecosystem coordinator with custom config
+    pub async fn with_config(config: EcosystemConfig) -> ToadStoolResult<Self> {
+        info!("🌐 Creating Ecosystem Coordinator (capability-based discovery)");
+
+        let services = Arc::new(RwLock::new(HashMap::new()));
         let channels = Arc::new(RwLock::new(HashMap::new()));
-        let config = EcosystemConfig::default();
+
+        // Initialize service discovery client
+        let discovery_method = match &config.discovery_method {
+            DiscoveryMethodConfig::Auto => DiscoveryMethod::Auto,
+            DiscoveryMethodConfig::Environment => DiscoveryMethod::Environment,
+            DiscoveryMethodConfig::Mdns => DiscoveryMethod::Mdns,
+            DiscoveryMethodConfig::ConfigFile { path } => DiscoveryMethod::ConfigFile {
+                path: path.clone(),
+            },
+            DiscoveryMethodConfig::Registry { endpoint } => DiscoveryMethod::Registry {
+                endpoint: endpoint.clone(),
+            },
+        };
+
+        let discovery = ServiceDiscovery::new(discovery_method)
+            .await
+            .map_err(|e| ToadStoolError::other(format!("Failed to initialize discovery: {e}")))?;
 
         Ok(Self {
-            primals,
+            services,
             channels,
+            discovery: Arc::new(discovery),
             config,
         })
     }
 
-    /// Discover primals in the ecosystem
-    pub async fn discover_primals(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
-        info!("🔍 Discovering ecosystem primals");
+    /// Discover services by capability
+    ///
+    /// This is the modern way to find services - by what they can do, not who they are.
+    pub async fn find_service_by_capability(
+        &self,
+        capability: Capability,
+    ) -> ToadStoolResult<DiscoveredService> {
+        info!("🔍 Finding service with capability: {:?}", capability);
+
+        let service = self
+            .discovery
+            .find_service_by_capability(capability)
+            .await
+            .map_err(|e| ToadStoolError::not_found(format!("No service found: {e}")))?;
+
+        // Store discovered service
+        let mut services = self.services.write().await;
+        services.insert(service.id.clone(), service.clone());
+
+        info!("✅ Found service: {} ({})", service.name, service.id);
+        Ok(service)
+    }
+
+    /// Discover all services (legacy compatibility method)
+    ///
+    /// **Modern Alternative**: Use `find_service_by_capability()` for specific needs.
+    pub async fn discover_services(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
+        info!("🔍 Discovering ecosystem services");
 
         let mut discovered = Vec::new();
 
         if self.config.auto_discovery {
-            // Auto-discover primals using various methods
-            discovered.extend(self.discover_via_multicast().await?);
+            // Try to discover services for each required capability
+            for capability in &self.config.required_capabilities {
+                match self.discovery.find_service_by_capability(capability.clone()).await {
+                    Ok(service) => {
+                        info!("✅ Found service for capability: {:?}", capability);
+                        discovered.push(service);
+                    }
+                    Err(e) => {
+                        warn!("❌ Required capability {:?} not found: {}", capability, e);
+                    }
+                }
+            }
 
-            // Legacy discovery methods (deprecated - will be replaced with capability-based discovery)
-            #[allow(deprecated)]
-            {
-                discovered.extend(self.discover_via_dns().await?);
-                discovered.extend(self.discover_via_local_scan().await?);
+            // Try optional capabilities (don't fail if not found)
+            for capability in &self.config.optional_capabilities {
+                if let Ok(service) = self.discovery.find_service_by_capability(capability.clone()).await {
+                    info!("✅ Found optional service for capability: {:?}", capability);
+                    discovered.push(service);
+                }
             }
         }
 
-        // Add configured endpoints
-        for (name, endpoint) in &self.config.primal_endpoints {
-            match self.discover_primal_at_endpoint(name, endpoint).await {
-                Ok(primal) => discovered.push(primal),
-                Err(e) => warn!("Failed to discover primal {} at {}: {}", name, endpoint, e),
-            }
+        // Store discovered services
+        let mut services = self.services.write().await;
+        for service in &discovered {
+            services.insert(service.id.clone(), service.clone());
         }
 
-        // Store discovered primals
-        let mut primals = self.primals.write().await;
-        for primal in &discovered {
-            primals.insert(primal.name.clone(), primal.clone());
-        }
-
-        info!("✅ Discovered {} primals", discovered.len());
+        info!("✅ Discovered {} services", discovered.len());
         Ok(discovered)
     }
 
-    /// Discover primals via multicast
-    async fn discover_via_multicast(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
-        debug!("🔍 Attempting multicast discovery of primals");
+    /// Discover services via multicast (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// This method is deprecated in favor of capability-based discovery.
+    /// Use `find_service_by_capability()` instead.
+    #[deprecated(since = "0.4.0", note = "Use capability-based discovery instead")]
+    #[allow(dead_code)]
+    async fn discover_via_multicast_legacy(&self) -> ToadStoolResult<Vec<ServiceInstance>> {
+        debug!("🔍 Attempting multicast discovery (LEGACY METHOD)");
 
         #[cfg(feature = "networking")]
         {
@@ -278,19 +336,19 @@ impl EcosystemCoordinator {
                             {
                                 if let Some(name) = primal_data.get("name").and_then(|v| v.as_str())
                                 {
-                                    let endpoint = format!("http://{}", addr.ip());
-                                    match self.discover_primal_at_endpoint(name, &endpoint).await {
-                                        Ok(primal) => {
-                                            discovered_primals.push(primal);
-                                            debug!("✅ Discovered primal via multicast: {}", name);
-                                        }
-                                        Err(e) => {
-                                            debug!(
-                                                "❌ Failed to validate multicast primal {}: {}",
-                                                name, e
-                                            );
-                                        }
-                                    }
+                            let endpoint = format!("http://{}", addr.ip());
+                            match self.discover_service_at_endpoint(&endpoint).await {
+                                Ok(service) => {
+                                    discovered_primals.push(service);
+                                    debug!("✅ Discovered service via multicast: {}", name);
+                                }
+                                Err(e) => {
+                                    debug!(
+                                        "❌ Failed to validate multicast service {}: {}",
+                                        name, e
+                                    );
+                                }
+                            }
                                 }
                             }
                         }
@@ -318,7 +376,7 @@ impl EcosystemCoordinator {
         }
     }
 
-    /// Discover primals via DNS (Legacy - uses hardcoded ports)
+    /// Discover services via DNS (Legacy - uses hardcoded ports)
     ///
     /// # ⚠️ Legacy Pattern
     /// This method is deprecated and uses hardcoded port assumptions.
@@ -327,7 +385,8 @@ impl EcosystemCoordinator {
         since = "0.3.0",
         note = "Use capability-based discovery methods instead of hardcoded DNS + port scanning"
     )]
-    async fn discover_via_dns(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
+    #[allow(dead_code)]
+    async fn discover_via_dns_legacy(&self) -> ToadStoolResult<Vec<ServiceInstance>> {
         info!("🔍 Discovering primals via DNS (legacy method)");
         warn!("⚠️  Using legacy DNS discovery with hardcoded ports - consider upgrading to capability-based discovery");
 
@@ -345,13 +404,12 @@ impl EcosystemCoordinator {
         for (name, dns_name) in dns_names {
             #[allow(deprecated)]
             match self
-                .discover_primal_at_endpoint(
-                    name,
+                .discover_service_at_endpoint(
                     &format!("http://{dns_name}:{}", network::get_songbird_port()),
                 )
                 .await
             {
-                Ok(primal) => discovered.push(primal),
+                Ok(service) => discovered.push(service),
                 Err(e) => debug!("DNS discovery failed for {}: {}", name, e),
             }
         }
@@ -360,7 +418,7 @@ impl EcosystemCoordinator {
         Ok(discovered)
     }
 
-    /// Discover primals via local network scan (Legacy - uses port scanning)
+    /// Discover services via local network scan (Legacy - uses port scanning)
     ///
     /// # ⚠️ Legacy Pattern
     /// This method performs port scanning which is:
@@ -373,7 +431,8 @@ impl EcosystemCoordinator {
         since = "0.3.0",
         note = "Port scanning is inefficient and intrusive. Use capability-based discovery instead."
     )]
-    async fn discover_via_local_scan(&self) -> ToadStoolResult<Vec<PrimalInstance>> {
+    #[allow(dead_code)]
+    async fn discover_via_local_scan_legacy(&self) -> ToadStoolResult<Vec<ServiceInstance>> {
         info!("🔍 Discovering primals via local network scan (legacy method)");
         warn!(
             "⚠️  Using legacy port scanning - this is inefficient and may trigger security alerts"
@@ -397,276 +456,59 @@ impl EcosystemCoordinator {
 
         for port in common_ports {
             let endpoint = format!("http://{localhost}:{port}");
-            if let Ok(primal) = self.discover_primal_at_endpoint("unknown", &endpoint).await {
-                discovered.push(primal)
+            if let Ok(service) = self.discover_service_at_endpoint(&endpoint).await {
+                discovered.push(service)
             } else {
                 // Ignore errors for local scan
             }
         }
 
-        info!("✅ Local scan found {} primals", discovered.len());
+        info!("✅ Local scan found {} services", discovered.len());
         Ok(discovered)
     }
 
-    /// Discover a primal at a specific endpoint
-    async fn discover_primal_at_endpoint(
-        &self,
-        name: &str,
-        endpoint: &str,
-    ) -> ToadStoolResult<PrimalInstance> {
-        debug!("🔍 Discovering primal {} at {}", name, endpoint);
+    // ========================================================================
+    // LEGACY API (Deprecated - kept for backward compatibility)
+    // ========================================================================
 
-        #[cfg(feature = "networking")]
-        {
-            let client = reqwest::Client::new();
-
-            // Try to get primal info
-            let info_url = format!("{endpoint}/info");
-            let response = client
-                .get(&info_url)
-                .timeout(Duration::from_secs(5))
-                .send()
-                .await
-                .map_err(|e| {
-                    ToadStoolError::network(format!("Failed to connect to {endpoint}: {e}"))
-                })?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::network(format!(
-                    "Non-success status from {}: {}",
-                    endpoint,
-                    response.status()
-                )));
-            }
-
-            let info: serde_json::Value = response.json().await.map_err(|e| {
-                ToadStoolError::parsing(format!("Failed to parse response from {endpoint}: {e}"))
-            })?;
-
-            // Parse primal information
-            // ✅ MODERNIZED: All unwraps replaced with safe defaults or error handling
-            let primal_name = info
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or(name)
-                .to_string();
-
-            // ✅ DEEP SOLUTION: Pattern matching with safe defaults
-            const UNKNOWN_TYPE: &str = "unknown";
-            let primal_type = info.get("type").and_then(|v| v.as_str()).map_or(
-                PrimalType::Custom(UNKNOWN_TYPE.to_string()),
-                |t| match t {
-                    "songbird" => PrimalType::Songbird,
-                    "nestgate" => PrimalType::NestGate,
-                    "beardog" => PrimalType::BearDog,
-                    "squirrel" => PrimalType::Squirrel,
-                    "biomeos" => PrimalType::BiomeOS,
-                    "toadstool" => PrimalType::ToadStool,
-                    other => PrimalType::Custom(other.to_string()),
-                },
-            );
-
-            // ✅ DEEP SOLUTION: Safe version extraction
-            const UNKNOWN_VERSION: &str = "unknown";
-            let version = info
-                .get("version")
-                .and_then(|v| v.as_str())
-                .unwrap_or(UNKNOWN_VERSION)
-                .to_string();
-
-            // ✅ DEEP SOLUTION: Safe array iteration with default
-            let capabilities = info
-                .get("capabilities")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str())
-                        .map(String::from)
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            // ✅ DEEP SOLUTION: Explicit string conversion for clarity
-            let primal = PrimalInstance {
-                name: primal_name,
-                primal_type,
-                endpoint: endpoint.to_string(),
-                version,
-                capabilities,
-                status: PrimalStatus::Discovered,
-                discovered_at: chrono::Utc::now(),
-            };
-
-            debug!("✅ Discovered primal: {:?}", primal);
-            Ok(primal)
-        }
-
-        #[cfg(not(feature = "networking"))]
-        {
-            // Create a mock primal instance when networking is disabled
-            // ✅ OPTIMIZED: Use into() and const for mock values
-            const MOCK: &str = "mock";
-            let primal = PrimalInstance {
-                name: name.into(),
-                primal_type: PrimalType::Custom(MOCK.into()),
-                endpoint: endpoint.into(),
-                version: MOCK.into(),
-                capabilities: vec![MOCK.into()],
-                status: PrimalStatus::Discovered,
-                discovered_at: chrono::Utc::now(),
-            };
-
-            debug!("✅ Mock primal created: {:?}", primal);
-            Ok(primal)
-        }
-    }
-
-    /// Integrate with discovered primals
-    pub async fn integrate_primals(&self, primals: Vec<PrimalInstance>) -> ToadStoolResult<()> {
-        info!("🔗 Integrating with {} primals", primals.len());
-
-        for primal in primals {
-            let primal_name = primal.name.clone();
-            match self.integrate_primal(primal).await {
-                Ok(()) => info!("✅ Integrated with {}", primal_name),
-                Err(e) => error!("❌ Failed to integrate with {}: {}", primal_name, e),
-            }
-        }
-
-        info!("✅ Primal integration complete");
+    /// Integrate with discovered primals (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// Use `integrate_services()` instead.
+    #[deprecated(since = "0.4.0", note = "Use integrate_services()")]
+    #[allow(dead_code)]
+    pub async fn integrate_primals_legacy(&self, _primals: Vec<ServiceInstance>) -> ToadStoolResult<()> {
+        warn!("⚠️  integrate_primals() is deprecated - use integrate_services() instead");
         Ok(())
     }
 
-    /// Integrate with a specific primal
-    async fn integrate_primal(&self, mut primal: PrimalInstance) -> ToadStoolResult<()> {
-        info!("🔗 Integrating with primal: {}", primal.name);
-
-        // Create communication channel
-        let channel = self.create_primal_channel(&primal)?;
-
-        // Test connection
-        match self.test_primal_connection(&channel).await {
-            Ok(()) => {
-                primal.status = PrimalStatus::Connected;
-                info!("✅ Successfully connected to {}", primal.name);
-            }
-            Err(e) => {
-                primal.status = PrimalStatus::Failed(e.to_string());
-                warn!("❌ Failed to connect to {}: {}", primal.name, e);
-            }
-        }
-
-        // Store channel
-        let mut channels = self.channels.write().await;
-        channels.insert(primal.name.clone(), channel);
-
-        // Update primal status
-        let mut primals = self.primals.write().await;
-        primals.insert(primal.name.clone(), primal);
-
-        Ok(())
-    }
-
-    /// Create communication channel with a primal
-    fn create_primal_channel(&self, primal: &PrimalInstance) -> ToadStoolResult<PrimalChannel> {
-        debug!("📡 Creating communication channel with {}", primal.name);
-
-        #[cfg(feature = "networking")]
-        let client = PrimalClient::Http(reqwest::Client::new());
-        #[cfg(not(feature = "networking"))]
-        let client = PrimalClient::Mock;
-
-        let channel = PrimalChannel {
-            primal_name: primal.name.clone(),
-            endpoint: primal.endpoint.clone(),
-            client,
-            last_heartbeat: chrono::Utc::now(),
-        };
-
-        Ok(channel)
-    }
-
-    /// Test connection to a primal
-    async fn test_primal_connection(&self, channel: &PrimalChannel) -> ToadStoolResult<()> {
-        debug!("🔍 Testing connection to {}", channel.primal_name);
-
-        match &channel.client {
-            #[cfg(feature = "networking")]
-            PrimalClient::Http(client) => {
-                let health_url = format!("{}/health", channel.endpoint);
-                let response = client
-                    .get(&health_url)
-                    .timeout(Duration::from_secs(5))
-                    .send()
-                    .await
-                    .map_err(|e| ToadStoolError::network(format!("Health check failed: {e}")))?;
-
-                if !response.status().is_success() {
-                    return Err(ToadStoolError::network(format!(
-                        "Health check returned: {}",
-                        response.status()
-                    )));
-                }
-
-                debug!("✅ Health check passed for {}", channel.primal_name);
-                Ok(())
-            }
-            #[cfg(not(feature = "networking"))]
-            PrimalClient::Mock => {
-                debug!("✅ Mock health check passed for {}", channel.primal_name);
-                Ok(())
-            }
-            #[cfg(feature = "websocket")]
-            PrimalClient::WebSocket(_) => {
-                // WebSocket health check - ping/pong
-                debug!("🔍 WebSocket health check for {}", channel.primal_name);
-                // For now, assume healthy if connection exists
-                Ok(())
-            }
-            #[cfg(feature = "networking")]
-            PrimalClient::TRpc(client) => {
-                // tRPC health check using HTTP POST to /trpc/health
-                let health_url = format!("{}/trpc/health", channel.endpoint);
-                let response = client
-                    .post(&health_url)
-                    .header("Content-Type", "application/json")
-                    .json(&serde_json::json!({"method": "health", "params": {}}))
-                    .timeout(Duration::from_secs(5))
-                    .send()
-                    .await
-                    .map_err(|e| {
-                        ToadStoolError::network(format!("TRPC health check failed: {e}"))
-                    })?;
-
-                if !response.status().is_success() {
-                    return Err(ToadStoolError::network(format!(
-                        "TRPC health check returned: {}",
-                        response.status()
-                    )));
-                }
-
-                debug!("✅ tRPC health check passed for {}", channel.primal_name);
-                Ok(())
-            }
-        }
-    }
-
-    /// Send message to a primal
+    /// Send message to a primal (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// Use capability-based messaging instead.
+    #[deprecated(since = "0.4.0", note = "Use capability-based messaging")]
     pub async fn send_message(
         &self,
         primal_name: &str,
         message: EcosystemMessage,
     ) -> ToadStoolResult<EcosystemMessage> {
-        debug!("📤 Sending message to {}", primal_name);
+        debug!("📤 Sending message to {} (LEGACY API)", primal_name);
+
+        // Try to find service by name (for backward compatibility)
+        let services = self.services.read().await;
+        let service = services
+            .values()
+            .find(|s| s.name == primal_name)
+            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {primal_name}")))?;
 
         let channels = self.channels.read().await;
         let channel = channels
-            .get(primal_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Primal not found: {primal_name}")))?;
+            .get(&service.id)
+            .ok_or_else(|| ToadStoolError::not_found(format!("Channel not found for: {primal_name}")))?;
 
         match &channel.client {
             #[cfg(feature = "networking")]
-            PrimalClient::Http(client) => {
+            ServiceClient::Http(client) => {
                 let message_url = format!("{}/message", channel.endpoint);
                 let response = client
                     .post(&message_url)
@@ -687,16 +529,15 @@ impl EcosystemCoordinator {
                     ToadStoolError::parsing(format!("Failed to parse response: {e}"))
                 })?;
 
-                debug!("✅ Message sent to {} via HTTP", primal_name);
+                debug!("✅ Message sent via HTTP");
                 Ok(response_message)
             }
             #[cfg(not(feature = "networking"))]
-            PrimalClient::Mock => {
-                debug!("📤 Mock message sent to {}", primal_name);
-                // Return a mock response
+            ServiceClient::Mock => {
+                debug!("📤 Mock message sent");
                 Ok(EcosystemMessage {
                     id: Uuid::new_v4(),
-                    from: "mock_primal".to_string(),
+                    from: "mock_service".to_string(),
                     to: message.from,
                     message_type: EcosystemMessageType::StatusUpdate,
                     payload: serde_json::json!({"status": "mock_response"}),
@@ -704,13 +545,11 @@ impl EcosystemCoordinator {
                 })
             }
             #[cfg(feature = "websocket")]
-            PrimalClient::WebSocket(_) => {
-                // WebSocket message sending
-                debug!("📤 Sending message to {} via WebSocket", primal_name);
-                // For now, return a placeholder response
+            ServiceClient::WebSocket(_) => {
+                debug!("📤 Sending message via WebSocket");
                 Ok(EcosystemMessage {
                     id: Uuid::new_v4(),
-                    from: primal_name.to_string(),
+                    from: channel.service_name.clone(),
                     to: message.from,
                     message_type: EcosystemMessageType::StatusUpdate,
                     payload: serde_json::json!({"status": "websocket_response"}),
@@ -718,7 +557,7 @@ impl EcosystemCoordinator {
                 })
             }
             #[cfg(feature = "networking")]
-            PrimalClient::TRpc(client) => {
+            ServiceClient::TRpc(client) => {
                 // tRPC message sending
                 debug!("📤 Sending message to {} via tRPC", primal_name);
                 let message_url = format!("{}/trpc/message", channel.endpoint);
@@ -747,38 +586,330 @@ impl EcosystemCoordinator {
                     ToadStoolError::parsing(format!("Failed to parse tRPC response: {e}"))
                 })?;
 
-                debug!("✅ Message sent to {} via tRPC", primal_name);
+                debug!("✅ Message sent via tRPC");
                 Ok(response_message)
             }
         }
     }
 
-    /// Get status of all primals
-    pub async fn get_primal_status(&self) -> ToadStoolResult<HashMap<String, PrimalStatus>> {
-        let primals = self.primals.read().await;
-        let status = primals
+    /// Get status of all primals (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// Use `get_service_statuses()` instead.
+    #[deprecated(since = "0.4.0", note = "Use get_service_statuses()")]
+    pub async fn get_primal_status(&self) -> ToadStoolResult<HashMap<String, ServiceStatus>> {
+        let services = self.services.read().await;
+        let status = services
             .iter()
-            .map(|(name, primal)| (name.clone(), primal.status.clone()))
+            .map(|(_id, service)| {
+                // For backward compat, use service name as key
+                let status = if service.healthy {
+                    ServiceStatus::Connected
+                } else {
+                    ServiceStatus::Disconnected
+                };
+                (service.name.clone(), status)
+            })
             .collect();
 
         Ok(status)
     }
 
-    /// Check if a primal is available
+    /// Check if a primal is available (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// Use `is_capability_available()` instead.
+    #[deprecated(since = "0.4.0", note = "Use is_capability_available()")]
     pub async fn is_primal_available(&self, primal_name: &str) -> bool {
-        let primals = self.primals.read().await;
-        primals
-            .get(primal_name)
-            .is_some_and(|p| p.status == PrimalStatus::Connected)
+        let services = self.services.read().await;
+        services
+            .values()
+            .any(|s| s.name == primal_name && s.healthy)
     }
 
-    /// Get primal capabilities
+    /// Get primal capabilities (LEGACY)
+    ///
+    /// # ⚠️ Deprecated
+    /// Use `get_service_capabilities()` instead.
+    #[deprecated(since = "0.4.0", note = "Use get_service_capabilities()")]
     pub async fn get_primal_capabilities(&self, primal_name: &str) -> ToadStoolResult<Vec<String>> {
-        let primals = self.primals.read().await;
-        let primal = primals
-            .get(primal_name)
-            .ok_or_else(|| ToadStoolError::not_found(format!("Primal not found: {primal_name}")))?;
+        // Forward to new method
+        let services = self.services.read().await;
+        let service = services
+            .values()
+            .find(|s| s.name == primal_name)
+            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {primal_name}")))?;
 
-        Ok(primal.capabilities.clone())
+        Ok(service
+            .capabilities
+            .iter()
+            .map(|c| format!("{:?}", c))
+            .collect())
+    }
+
+    // ========================================================================
+    // MODERN CAPABILITY-BASED API (Added v0.4.0+)
+    // ========================================================================
+
+    /// Get service capabilities by service ID
+    pub async fn get_service_capabilities(
+        &self,
+        service_id: &str,
+    ) -> ToadStoolResult<Vec<Capability>> {
+        let services = self.services.read().await;
+        let service = services
+            .get(service_id)
+            .ok_or_else(|| ToadStoolError::not_found(format!("Service not found: {service_id}")))?;
+
+        Ok(service.capabilities.clone())
+    }
+
+    /// Discover a service at a specific endpoint (modern version)
+    async fn discover_service_at_endpoint(
+        &self,
+        endpoint: &str,
+    ) -> ToadStoolResult<DiscoveredService> {
+        debug!("🔍 Discovering service at {}", endpoint);
+
+        #[cfg(feature = "networking")]
+        {
+            let client = reqwest::Client::new();
+            let info_url = format!("{endpoint}/info");
+            
+            let response = client
+                .get(&info_url)
+                .timeout(Duration::from_secs(5))
+                .send()
+                .await
+                .map_err(|e| {
+                    ToadStoolError::network(format!("Failed to connect to {endpoint}: {e}"))
+                })?;
+
+            if !response.status().is_success() {
+                return Err(ToadStoolError::network(format!(
+                    "Non-success status from {}: {}",
+                    endpoint,
+                    response.status()
+                )));
+            }
+
+            let info: serde_json::Value = response.json().await.map_err(|e| {
+                ToadStoolError::parsing(format!("Failed to parse response from {endpoint}: {e}"))
+            })?;
+
+            // Parse service information (capability-based)
+            let service_id = info
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
+            let service_name = info
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            let version = info
+                .get("version")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            // Parse capabilities (expect structured Capability enums)
+            let capabilities = info
+                .get("capabilities")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| serde_json::from_value(serde_json::Value::Array(arr.clone())).ok())
+                .unwrap_or_default();
+
+            // Parse endpoint to extract host and port
+            let (host, port) = if let Some(url) = endpoint.strip_prefix("http://") {
+                if let Some(port_idx) = url.rfind(':') {
+                    let host = &url[..port_idx];
+                    let port = url[port_idx + 1..].parse().unwrap_or(80);
+                    (host.to_string(), port)
+                } else {
+                    (url.to_string(), 80)
+                }
+            } else {
+                (endpoint.to_string(), 80)
+            };
+
+            let service = DiscoveredService {
+                id: service_id,
+                name: service_name,
+                version,
+                capabilities,
+                endpoints: vec![ServiceEndpoint::http(host, port)],
+                metadata: HashMap::new(),
+                discovered_at: std::time::SystemTime::now(),
+                last_seen: std::time::SystemTime::now(),
+                healthy: true,
+            };
+
+            debug!("✅ Discovered service: {:?}", service);
+            Ok(service)
+        }
+
+        #[cfg(not(feature = "networking"))]
+        {
+            // Mock service for testing
+            let service = DiscoveredService {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: "mock_service".to_string(),
+                version: "0.0.0".to_string(),
+                capabilities: vec![],
+                endpoints: vec![ServiceEndpoint::http("localhost", 8080)],
+                metadata: HashMap::new(),
+                discovered_at: std::time::SystemTime::now(),
+                last_seen: std::time::SystemTime::now(),
+                healthy: true,
+            };
+
+            debug!("✅ Mock service created: {:?}", service);
+            Ok(service)
+        }
+    }
+
+    /// Integrate with discovered services
+    pub async fn integrate_services(&self, services: Vec<DiscoveredService>) -> ToadStoolResult<()> {
+        info!("🔗 Integrating with {} services", services.len());
+
+        for service in services {
+            let service_id = service.id.clone();
+            match self.integrate_service(service).await {
+                Ok(()) => info!("✅ Integrated with service {}", service_id),
+                Err(e) => error!("❌ Failed to integrate with service {}: {}", service_id, e),
+            }
+        }
+
+        info!("✅ Service integration complete");
+        Ok(())
+    }
+
+    /// Integrate with a specific service
+    async fn integrate_service(&self, service: DiscoveredService) -> ToadStoolResult<()> {
+        info!("🔗 Integrating with service: {} ({})", service.name, service.id);
+
+        // Create communication channel
+        let channel = self.create_service_channel(&service)?;
+
+        // Test connection
+        match self.test_service_connection(&channel).await {
+            Ok(()) => {
+                info!("✅ Successfully connected to service {}", service.id);
+            }
+            Err(e) => {
+                warn!("❌ Failed to connect to service {}: {}", service.id, e);
+            }
+        }
+
+        // Store channel
+        let mut channels = self.channels.write().await;
+        channels.insert(service.id.clone(), channel);
+
+        // Store service
+        let mut services = self.services.write().await;
+        services.insert(service.id.clone(), service);
+
+        Ok(())
+    }
+
+    /// Create communication channel with a service
+    fn create_service_channel(&self, service: &DiscoveredService) -> ToadStoolResult<ServiceChannel> {
+        debug!("📡 Creating communication channel with service {}", service.id);
+
+        let endpoint = service
+            .primary_endpoint()
+            .map(|e| e.url())
+            .unwrap_or_else(|| "http://localhost".to_string());
+
+        #[cfg(feature = "networking")]
+        let client = ServiceClient::Http(reqwest::Client::new());
+        #[cfg(not(feature = "networking"))]
+        let client = ServiceClient::Mock;
+
+        let channel = ServiceChannel {
+            service_id: service.id.clone(),
+            service_name: service.name.clone(),
+            endpoint,
+            client,
+            last_heartbeat: chrono::Utc::now(),
+        };
+
+        Ok(channel)
+    }
+
+    /// Test connection to a service
+    async fn test_service_connection(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
+        debug!("🔍 Testing connection to service {}", channel.service_id);
+
+        match &channel.client {
+            #[cfg(feature = "networking")]
+            ServiceClient::Http(client) => {
+                let health_url = format!("{}/health", channel.endpoint);
+                let response = client
+                    .get(&health_url)
+                    .timeout(Duration::from_secs(5))
+                    .send()
+                    .await
+                    .map_err(|e| ToadStoolError::network(format!("Health check failed: {e}")))?;
+
+                if !response.status().is_success() {
+                    return Err(ToadStoolError::network(format!(
+                        "Health check returned: {}",
+                        response.status()
+                    )));
+                }
+
+                debug!("✅ Health check passed for service {}", channel.service_id);
+                Ok(())
+            }
+            #[cfg(not(feature = "networking"))]
+            ServiceClient::Mock => {
+                debug!("✅ Mock health check passed for service {}", channel.service_id);
+                Ok(())
+            }
+            #[cfg(feature = "websocket")]
+            ServiceClient::WebSocket(_) => {
+                debug!("🔍 WebSocket health check for service {}", channel.service_id);
+                Ok(())
+            }
+            #[cfg(feature = "networking")]
+            ServiceClient::TRpc(client) => {
+                let health_url = format!("{}/trpc/health", channel.endpoint);
+                let response = client
+                    .post(&health_url)
+                    .header("Content-Type", "application/json")
+                    .json(&serde_json::json!({"method": "health", "params": {}}))
+                    .timeout(Duration::from_secs(5))
+                    .send()
+                    .await
+                    .map_err(|e| ToadStoolError::network(format!("TRPC health check failed: {e}")))?;
+
+                if !response.status().is_success() {
+                    return Err(ToadStoolError::network(format!(
+                        "TRPC health check returned: {}",
+                        response.status()
+                    )));
+                }
+
+                debug!("✅ tRPC health check passed for service {}", channel.service_id);
+                Ok(())
+            }
+        }
+    }
+
+    /// Get all discovered services
+    pub async fn get_discovered_services(&self) -> Vec<DiscoveredService> {
+        let services = self.services.read().await;
+        services.values().cloned().collect()
+    }
+
+    /// Check if a capability is available in the ecosystem
+    pub async fn is_capability_available(&self, capability: &Capability) -> bool {
+        let services = self.services.read().await;
+        services.values().any(|s| s.has_capability(capability))
     }
 }

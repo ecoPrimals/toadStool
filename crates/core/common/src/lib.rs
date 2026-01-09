@@ -17,6 +17,7 @@ use uuid::Uuid;
 pub mod auth;
 pub mod config_bases;
 pub mod constants;
+pub mod discovery_defaults; // NEW: Fallback defaults for service discovery (infant pattern)
 pub mod error;
 pub mod error_codes;
 pub mod infant_discovery;
@@ -28,6 +29,7 @@ pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
 pub mod primal_identity; // NEW: Self-knowledge only architecture
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
 pub mod self_identity; // Self-aware primal identity and capability discovery
+pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
 
 // Re-export commonly used types
 pub use auth::{AuthCredentials, AuthType, ServiceAuthConfig};

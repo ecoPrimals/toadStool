@@ -97,9 +97,19 @@ async fn main() -> Result<()> {
         // Manual verification for first element: C[0,0] = 1*7 + 2*9 + 3*11 = 7 + 18 + 33 = 58
         let expected_00 = 1.0 * 7.0 + 2.0 * 9.0 + 3.0 * 11.0;
         println!("Verification:");
-        println!("  C[0,0] = A[0,:]·B[:,0] = 1*7 + 2*9 + 3*11 = {:.1}", expected_00);
+        println!(
+            "  C[0,0] = A[0,:]·B[:,0] = 1*7 + 2*9 + 3*11 = {:.1}",
+            expected_00
+        );
         println!("  Actual: {:.1}", c[0]);
-        println!("  Match: {} ✅", if (c[0] - expected_00).abs() < 1e-6 { "PASS" } else { "FAIL" });
+        println!(
+            "  Match: {} ✅",
+            if (c[0] - expected_00).abs() < 1e-6 {
+                "PASS"
+            } else {
+                "FAIL"
+            }
+        );
     }
 
     println!();
@@ -173,9 +183,15 @@ async fn main() -> Result<()> {
         }
 
         // Verify identity property
-        let all_match = matrix.iter().zip(c.iter()).all(|(a, b)| (a - b).abs() < 1e-6);
+        let all_match = matrix
+            .iter()
+            .zip(c.iter())
+            .all(|(a, b)| (a - b).abs() < 1e-6);
         println!();
-        println!("  Identity property verified: {} ✅", if all_match { "PASS" } else { "FAIL" });
+        println!(
+            "  Identity property verified: {} ✅",
+            if all_match { "PASS" } else { "FAIL" }
+        );
     }
 
     println!();
@@ -223,16 +239,26 @@ async fn main() -> Result<()> {
     if let WorkloadData::F32Matrix(c, c_rows, c_cols) = &large_result.data {
         println!("✅ Computation complete!");
         println!("  Output shape: ({} x {})", c_rows, c_cols);
-        println!("  First 4 values: [{:.4}, {:.4}, {:.4}, {:.4}]", c[0], c[1], c[2], c[3]);
-        println!("  Last 4 values:  [{:.4}, {:.4}, {:.4}, {:.4}]",
-            c[c.len() - 4], c[c.len() - 3], c[c.len() - 2], c[c.len() - 1]);
+        println!(
+            "  First 4 values: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            c[0], c[1], c[2], c[3]
+        );
+        println!(
+            "  Last 4 values:  [{:.4}, {:.4}, {:.4}, {:.4}]",
+            c[c.len() - 4],
+            c[c.len() - 3],
+            c[c.len() - 2],
+            c[c.len() - 1]
+        );
     }
 
     println!();
     println!("Executed on: {}", large_result.metadata.unit_name);
     println!("Duration:    {:?}", large_result.metadata.duration);
-    println!("  Throughput: ~{:.2} GFLOPS",
-        (2 * m * k * n) as f64 / large_result.metadata.duration.as_secs_f64() / 1e9);
+    println!(
+        "  Throughput: ~{:.2} GFLOPS",
+        (2 * m * k * n) as f64 / large_result.metadata.duration.as_secs_f64() / 1e9
+    );
     println!();
 
     // Demo 4: Non-Square (Attention Q·K^T pattern)
@@ -375,4 +401,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

@@ -51,13 +51,12 @@
 //! }
 //! ```
 
-pub mod types;
-pub mod runtime;
-pub mod capabilities;
 pub mod backends;
+pub mod capabilities;
+pub mod runtime;
+pub mod types;
 
-pub use types::*;
-pub use runtime::*;
-pub use capabilities::*;
 pub use backends::*;
-
+pub use capabilities::*;
+pub use runtime::*;
+pub use types::*;

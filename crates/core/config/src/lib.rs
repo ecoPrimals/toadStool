@@ -79,10 +79,7 @@ pub mod network {
     #[must_use]
     pub fn default_songbird_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
-        format!(
-            "http://{}:{}",
-            config.network.bind_address, 8080
-        )
+        format!("http://{}:{}", config.network.bind_address, 8080)
     }
 
     /// Generate default `BearDog` endpoint (fallback only)
@@ -95,10 +92,7 @@ pub mod network {
     #[must_use]
     pub fn default_beardog_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
-        format!(
-            "http://{}:{}",
-            config.network.bind_address, 8081
-        )
+        format!("http://{}:{}", config.network.bind_address, 8081)
     }
 
     /// Generate default `NestGate` endpoint (fallback only)
@@ -111,10 +105,7 @@ pub mod network {
     #[must_use]
     pub fn default_nestgate_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
-        format!(
-            "http://{}:{}",
-            config.network.bind_address, 8082
-        )
+        format!("http://{}:{}", config.network.bind_address, 8082)
     }
 
     /// Generate default Squirrel MCP endpoint (fallback only)
@@ -127,10 +118,7 @@ pub mod network {
     #[must_use]
     pub fn default_squirrel_endpoint() -> String {
         let config = crate::env_config::EnvironmentConfig::from_env();
-        format!(
-            "http://{}:{}",
-            config.network.bind_address, 8083
-        )
+        format!("http://{}:{}", config.network.bind_address, 8083)
     }
 
     /// Generate default `ToadStool` API endpoint (self-knowledge)

@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Vec(gelu_output) = &gelu_result.data {
         println!("GELU Output: {:?}", gelu_output);
-        
+
         // Compare with ReLU
         let relu_workload = Workload {
             operation: OperationType::ReLU,
@@ -120,8 +120,16 @@ async fn main() -> Result<()> {
             let zeros = output.iter().filter(|&&x| x == 0.0).count();
             let non_zeros = output.len() - zeros;
             println!("Dropout rate {:.1}: {:?}", dropout_rate, output);
-            println!("  → {} zeros, {} non-zeros (scaled by {:.2})",
-                zeros, non_zeros, if dropout_rate > 0.0 { 1.0 / (1.0 - dropout_rate) } else { 1.0 });
+            println!(
+                "  → {} zeros, {} non-zeros (scaled by {:.2})",
+                zeros,
+                non_zeros,
+                if dropout_rate > 0.0 {
+                    1.0 / (1.0 - dropout_rate)
+                } else {
+                    1.0
+                }
+            );
         }
     }
 
@@ -195,7 +203,7 @@ async fn main() -> Result<()> {
     println!();
 
     let comparison_input = vec![-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
-    
+
     println!("Input: {:?}", comparison_input);
     println!();
 
@@ -206,7 +214,9 @@ async fn main() -> Result<()> {
         num_operations: comparison_input.len(),
         required_memory: comparison_input.len() * std::mem::size_of::<f32>() * 2,
         input: WorkloadData::F32Vec(comparison_input.clone()),
-        params: WorkloadParams { params: HashMap::new() },
+        params: WorkloadParams {
+            params: HashMap::new(),
+        },
     };
     let relu_comp_result = runtime.execute_optimal(relu_comp).await?;
 
@@ -217,12 +227,15 @@ async fn main() -> Result<()> {
         num_operations: comparison_input.len(),
         required_memory: comparison_input.len() * std::mem::size_of::<f32>() * 2,
         input: WorkloadData::F32Vec(comparison_input.clone()),
-        params: WorkloadParams { params: HashMap::new() },
+        params: WorkloadParams {
+            params: HashMap::new(),
+        },
     };
     let gelu_comp_result = runtime.execute_optimal(gelu_comp).await?;
 
-    if let (WorkloadData::F32Vec(relu_out), WorkloadData::F32Vec(gelu_out)) = 
-        (&relu_comp_result.data, &gelu_comp_result.data) {
+    if let (WorkloadData::F32Vec(relu_out), WorkloadData::F32Vec(gelu_out)) =
+        (&relu_comp_result.data, &gelu_comp_result.data)
+    {
         println!("ReLU:  {:?}", relu_out);
         println!("GELU:  {:?}", gelu_out);
         println!();
@@ -295,4 +308,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

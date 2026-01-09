@@ -34,7 +34,7 @@ use super::workload_manager::WorkloadManager;
 pub struct ServerState {
     /// Server start time
     pub start_time: Instant,
-    
+
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
 }
@@ -53,7 +53,7 @@ pub async fn start_http_server(
     let app = create_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    
+
     info!("🌐 HTTP API server listening on {}", addr);
     info!("📊 Endpoints:");
     info!("   POST   /api/v1/workload/submit");
@@ -62,7 +62,7 @@ pub async fn start_http_server(
     info!("   GET    /api/v1/workloads");
     info!("   GET    /health");
     info!("   GET    /metrics");
-    
+
     // Use axum::serve for axum 0.7
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
@@ -77,16 +77,13 @@ fn create_router(state: ServerState) -> Router {
         // Health and metrics
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler))
-        
         // Workload API (v1)
         .route("/api/v1/workload/submit", post(submit_workload_handler))
         .route("/api/v1/workload/:id", get(get_workload_handler))
         .route("/api/v1/workload/:id", delete(delete_workload_handler))
         .route("/api/v1/workloads", get(list_workloads_handler))
-        
         // Add state
         .with_state(state)
-        
         // Add middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
@@ -101,7 +98,7 @@ fn create_router(state: ServerState) -> Router {
 async fn health_handler(State(state): State<ServerState>) -> impl IntoResponse {
     let uptime_secs = state.start_time.elapsed().as_secs();
     let active_workloads = state.workload_manager.active_workload_count().await;
-    
+
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -116,13 +113,13 @@ async fn health_handler(State(state): State<ServerState>) -> impl IntoResponse {
 async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse {
     // Get all workload IDs
     let workload_ids = state.workload_manager.list_workloads().await;
-    
+
     // Count by status
     let mut queued = 0;
     let mut running = 0;
     let mut completed = 0;
     let mut failed = 0;
-    
+
     for id in workload_ids {
         if let Some(status_resp) = state.workload_manager.get_workload_status(&id).await {
             match status_resp.status {
@@ -130,11 +127,11 @@ async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse 
                 WorkloadStatus::Running => running += 1,
                 WorkloadStatus::Completed => completed += 1,
                 WorkloadStatus::Failed => failed += 1,
-                WorkloadStatus::Cancelled => {}, // Don't count cancelled
+                WorkloadStatus::Cancelled => {} // Don't count cancelled
             }
         }
     }
-    
+
     let metrics = format!(
         "# HELP toadstool_daemon_uptime_seconds Daemon uptime in seconds\n\
          # TYPE toadstool_daemon_uptime_seconds counter\n\
@@ -157,7 +154,7 @@ async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse 
         failed,
         0 // Discovery via mDNS/environment (no hardcoded registry)
     );
-    
+
     (StatusCode::OK, metrics)
 }
 
@@ -167,17 +164,20 @@ async fn submit_workload_handler(
     State(state): State<ServerState>,
     Json(request): Json<SubmitWorkloadRequest>,
 ) -> Result<Json<SubmitWorkloadResponse>, ApiError> {
-    info!("📥 Received workload submission from: {}", request.requester);
-    
+    info!(
+        "📥 Received workload submission from: {}",
+        request.requester
+    );
+
     // Submit to workload manager
     let workload_id = state
         .workload_manager
         .submit_workload(request)
         .await
         .map_err(|e| ApiError::InternalError(format!("Failed to submit workload: {}", e)))?;
-    
+
     info!("✅ Workload queued: {}", workload_id);
-    
+
     Ok(Json(SubmitWorkloadResponse {
         workload_id,
         status: WorkloadStatus::Queued,
@@ -196,7 +196,7 @@ async fn get_workload_handler(
         .get_workload_status(&id)
         .await
         .ok_or_else(|| ApiError::NotFound(format!("Workload {} not found", id)))?;
-    
+
     Ok(Json(status))
 }
 
@@ -207,24 +207,22 @@ async fn delete_workload_handler(
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     info!("🗑️  Cancelling workload: {}", id);
-    
+
     state
         .workload_manager
         .cancel_workload(&id)
         .await
         .map_err(|e| ApiError::NotFound(format!("Workload {} not found: {}", id, e)))?;
-    
+
     info!("✅ Workload cancelled: {}", id);
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// List workloads handler
 #[cfg(feature = "daemon")]
-async fn list_workloads_handler(
-    State(state): State<ServerState>,
-) -> impl IntoResponse {
+async fn list_workloads_handler(State(state): State<ServerState>) -> impl IntoResponse {
     let workload_ids = state.workload_manager.list_workloads().await;
-    
+
     let mut summaries = Vec::new();
     for id in workload_ids {
         if let Some(status) = state.workload_manager.get_workload_status(&id).await {
@@ -237,7 +235,7 @@ async fn list_workloads_handler(
             });
         }
     }
-    
+
     Json(ListWorkloadsResponse {
         total: summaries.len(),
         workloads: summaries,
@@ -264,19 +262,17 @@ impl IntoResponse for ApiError {
         let (status, error, message) = match self {
             ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg),
-            ApiError::InternalError(msg) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_error",
-                msg,
-            ),
+            ApiError::InternalError(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", msg)
+            }
         };
-        
+
         let body = Json(ErrorResponse {
             error: error.to_string(),
             message,
             details: None,
         });
-        
+
         (status, body).into_response()
     }
 }
@@ -301,4 +297,3 @@ pub async fn start_http_server(
 ) -> anyhow::Result<()> {
     anyhow::bail!("Daemon mode requires the 'daemon' feature to be enabled")
 }
-

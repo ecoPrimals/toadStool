@@ -313,6 +313,7 @@ impl PrimalDiscoveryEngine {
             Capability::Coordination(_) => "orchestration".to_string(),
             Capability::Compute(_) => "compute".to_string(),
             Capability::Storage(_) => "storage".to_string(),
+            Capability::Crypto(_) => "crypto".to_string(),
             Capability::Authentication(_) => "authentication".to_string(),
             Capability::Discovery(_) => "discovery".to_string(),
             Capability::Custom { name, .. } => name.clone(),

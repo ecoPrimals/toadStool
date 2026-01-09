@@ -81,7 +81,14 @@ pub async fn start_daemon(
 ) -> Result<()> {
     info!("🍄 Starting ToadStool daemon mode...");
     info!("📍 Port: {}", port);
-    info!("🔗 Capability registry: {}", if register_with_biomeos { "enabled" } else { "disabled" });
+    info!(
+        "🔗 Capability registry: {}",
+        if register_with_biomeos {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
 
     // Load configuration
     let config = DaemonConfig::load(
@@ -91,7 +98,8 @@ pub async fn start_daemon(
         config_path,
         max_workloads,
         biomeos_socket,
-    ).await?;
+    )
+    .await?;
 
     // Start daemon server
     let daemon = DaemonServer::start(config).await?;
@@ -100,7 +108,7 @@ pub async fn start_daemon(
     info!("🌐 API: http://localhost:{}/api/v1", port);
     info!("📊 Health: http://localhost:{}/health", port);
     info!("📈 Metrics: http://localhost:{}/metrics", port);
-    
+
     if register_with_biomeos {
         info!("🔗 Registered with capability registry");
     } else {
@@ -112,4 +120,3 @@ pub async fn start_daemon(
 
     Ok(())
 }
-

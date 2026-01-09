@@ -39,7 +39,7 @@ impl WgpuComputeUnit {
         let (memory_capacity, compute_throughput, power_profile) = match info.device_type {
             wgpu::DeviceType::DiscreteGpu => (
                 16 * 1024 * 1024 * 1024, // 16 GB typical
-                10e12,                    // 10 TFLOPS
+                10e12,                   // 10 TFLOPS
                 PowerProfile::High,
             ),
             wgpu::DeviceType::IntegratedGpu => (
@@ -57,11 +57,7 @@ impl WgpuComputeUnit {
                 100e9,                  // 100 GFLOPS
                 PowerProfile::Low,
             ),
-            _ => (
-                4 * 1024 * 1024 * 1024,
-                1e12,
-                PowerProfile::Medium,
-            ),
+            _ => (4 * 1024 * 1024 * 1024, 1e12, PowerProfile::Medium),
         };
 
         let capabilities = Capabilities {
@@ -115,4 +111,3 @@ impl ComputeUnit for WgpuComputeUnit {
         ))
     }
 }
-

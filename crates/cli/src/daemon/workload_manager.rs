@@ -14,8 +14,10 @@ use tokio::sync::{RwLock, Semaphore};
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
+use super::api_types::{
+    ResourceUsage, SubmitWorkloadRequest, WorkloadStatus, WorkloadStatusResponse,
+};
 use crate::executor::BiomeExecutor;
-use super::api_types::{ResourceUsage, SubmitWorkloadRequest, WorkloadStatus, WorkloadStatusResponse};
 
 /// Workload metadata
 #[derive(Debug, Clone)]
@@ -23,22 +25,22 @@ use super::api_types::{ResourceUsage, SubmitWorkloadRequest, WorkloadStatus, Wor
 pub struct WorkloadMetadata {
     /// Workload ID
     pub id: String,
-    
+
     /// Requester identity
     pub requester: String,
-    
+
     /// Biome YAML content
     pub biome_yaml: String,
-    
+
     /// Environment variables
     pub environment: HashMap<String, String>,
-    
+
     /// Started at timestamp
     pub started_at: chrono::DateTime<chrono::Utc>,
-    
+
     /// Persistent workload (keep running)
     pub persistent: bool,
-    
+
     /// Timeout in seconds
     pub timeout_secs: u64,
 }
@@ -47,19 +49,19 @@ pub struct WorkloadMetadata {
 struct RunningWorkload {
     /// Metadata
     metadata: WorkloadMetadata,
-    
+
     /// Task handle
     _task_handle: JoinHandle<()>,
-    
+
     /// Current status
     status: Arc<RwLock<WorkloadStatus>>,
-    
+
     /// Exit code (if completed)
     exit_code: Arc<RwLock<Option<i32>>>,
-    
+
     /// Error message (if failed)
     error: Arc<RwLock<Option<String>>>,
-    
+
     /// Resource usage
     resource_usage: Arc<RwLock<Option<ResourceUsage>>>,
 }
@@ -71,13 +73,13 @@ pub struct WorkloadManager {
     /// Maximum concurrent workloads
     #[allow(dead_code)] // Used for future capacity checking
     max_concurrent: usize,
-    
+
     /// Semaphore for concurrency control
     semaphore: Arc<Semaphore>,
-    
+
     /// Active workloads
     workloads: Arc<RwLock<HashMap<String, RunningWorkload>>>,
-    
+
     /// BiomeExecutor for workload execution
     executor: Arc<BiomeExecutor>,
 }
@@ -85,12 +87,16 @@ pub struct WorkloadManager {
 impl WorkloadManager {
     /// Create a new workload manager
     pub async fn new(max_concurrent: usize) -> Result<Self> {
-        info!("📦 Initializing workload manager (max concurrent: {})", max_concurrent);
-        
+        info!(
+            "📦 Initializing workload manager (max concurrent: {})",
+            max_concurrent
+        );
+
         // Create BiomeExecutor
-        let executor = BiomeExecutor::new().await
+        let executor = BiomeExecutor::new()
+            .await
             .context("Failed to create BiomeExecutor")?;
-        
+
         Ok(Self {
             max_concurrent,
             semaphore: Arc::new(Semaphore::new(max_concurrent)),
@@ -98,18 +104,18 @@ impl WorkloadManager {
             executor: Arc::new(executor),
         })
     }
-    
+
     /// Submit a workload for execution
     ///
     /// Returns workload ID
-    pub async fn submit_workload(
-        &self,
-        request: SubmitWorkloadRequest,
-    ) -> Result<String> {
+    pub async fn submit_workload(&self, request: SubmitWorkloadRequest) -> Result<String> {
         let workload_id = uuid::Uuid::new_v4().to_string();
-        
-        info!("📥 Submitting workload {} from {}", workload_id, request.requester);
-        
+
+        info!(
+            "📥 Submitting workload {} from {}",
+            workload_id, request.requester
+        );
+
         // Create metadata
         let metadata = WorkloadMetadata {
             id: workload_id.clone(),
@@ -120,13 +126,13 @@ impl WorkloadManager {
             persistent: request.persistent,
             timeout_secs: request.timeout_secs.unwrap_or(3600),
         };
-        
+
         // Create status tracking
         let status = Arc::new(RwLock::new(WorkloadStatus::Queued));
         let exit_code = Arc::new(RwLock::new(None));
         let error_msg = Arc::new(RwLock::new(None));
         let resource_usage = Arc::new(RwLock::new(None));
-        
+
         // Clone for task
         let semaphore = self.semaphore.clone();
         let executor = self.executor.clone();
@@ -136,23 +142,23 @@ impl WorkloadManager {
         let exit_code_clone = exit_code.clone();
         let error_clone = error_msg.clone();
         let resource_clone = resource_usage.clone();
-        
+
         // Spawn workload execution task
         let task_handle = tokio::spawn(async move {
             // Wait for semaphore permit (concurrency control)
             let _permit = semaphore.acquire().await;
-            
+
             info!("🚀 Starting workload execution: {}", metadata_clone.id);
             *status_clone.write().await = WorkloadStatus::Running;
-            
+
             // Execute workload
-            match Self::execute_workload_internal(
-                &executor,
-                &metadata_clone,
-                &resource_clone,
-            ).await {
+            match Self::execute_workload_internal(&executor, &metadata_clone, &resource_clone).await
+            {
                 Ok(code) => {
-                    info!("✅ Workload {} completed with exit code {}", metadata_clone.id, code);
+                    info!(
+                        "✅ Workload {} completed with exit code {}",
+                        metadata_clone.id, code
+                    );
                     *status_clone.write().await = WorkloadStatus::Completed;
                     *exit_code_clone.write().await = Some(code);
                 }
@@ -162,7 +168,7 @@ impl WorkloadManager {
                     *error_clone.write().await = Some(e.to_string());
                 }
             }
-            
+
             // Remove from active workloads after completion (unless persistent)
             if !metadata_clone.persistent {
                 tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
@@ -170,7 +176,7 @@ impl WorkloadManager {
                 info!("🧹 Cleaned up workload: {}", metadata_clone.id);
             }
         });
-        
+
         // Store workload
         let workload = RunningWorkload {
             metadata: metadata.clone(),
@@ -180,12 +186,15 @@ impl WorkloadManager {
             error: error_msg,
             resource_usage,
         };
-        
-        self.workloads.write().await.insert(workload_id.clone(), workload);
-        
+
+        self.workloads
+            .write()
+            .await
+            .insert(workload_id.clone(), workload);
+
         Ok(workload_id)
     }
-    
+
     /// Execute workload using BiomeExecutor
     async fn execute_workload_internal(
         _executor: &BiomeExecutor,
@@ -193,25 +202,25 @@ impl WorkloadManager {
         resource_usage: &Arc<RwLock<Option<ResourceUsage>>>,
     ) -> Result<i32> {
         info!("🔧 Executing workload: {}", metadata.id);
-        
+
         // TODO: Parse biome.yaml and create manifest file
         // For Phase 3, we'll simulate execution
         // Phase 4 will add real execution with BiomeExecutor
-        
+
         // Write biome.yaml to temp file
         let temp_dir = std::env::temp_dir();
         let manifest_path = temp_dir.join(format!("workload-{}.yaml", metadata.id));
-        
+
         tokio::fs::write(&manifest_path, &metadata.biome_yaml)
             .await
             .context("Failed to write manifest file")?;
-        
+
         info!("📄 Manifest written to: {}", manifest_path.display());
-        
+
         // TODO Phase 4: Actually execute using executor.run_biome()
         // For now, simulate execution with a delay
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        
+
         // Simulate resource usage
         *resource_usage.write().await = Some(ResourceUsage {
             cpu_percent: 15.5,
@@ -219,32 +228,33 @@ impl WorkloadManager {
             gpu_percent: None,
             storage_bytes: Some(1024 * 1024 * 100), // 100 MB
         });
-        
+
         info!("✅ Workload {} completed", metadata.id);
-        
+
         // Clean up manifest file
         if let Err(e) = tokio::fs::remove_file(&manifest_path).await {
             warn!("⚠️  Failed to remove manifest file: {}", e);
         }
-        
+
         Ok(0) // Success
     }
-    
+
     /// Get workload status
     pub async fn get_workload_status(&self, workload_id: &str) -> Option<WorkloadStatusResponse> {
         let workloads = self.workloads.read().await;
         let workload = workloads.get(workload_id)?;
-        
+
         let status = *workload.status.read().await;
         let exit_code = *workload.exit_code.read().await;
         let error = workload.error.read().await.clone();
         let resource_usage = workload.resource_usage.read().await.clone();
-        
+
         Some(WorkloadStatusResponse {
             workload_id: workload_id.to_string(),
             status,
             started_at: Some(workload.metadata.started_at.to_rfc3339()),
-            completed_at: if status == WorkloadStatus::Completed || status == WorkloadStatus::Failed {
+            completed_at: if status == WorkloadStatus::Completed || status == WorkloadStatus::Failed
+            {
                 Some(chrono::Utc::now().to_rfc3339())
             } else {
                 None
@@ -254,19 +264,19 @@ impl WorkloadManager {
             resource_usage,
         })
     }
-    
+
     /// List all workloads
     pub async fn list_workloads(&self) -> Vec<String> {
         let workloads = self.workloads.read().await;
         workloads.keys().cloned().collect()
     }
-    
+
     /// Cancel a workload
     pub async fn cancel_workload(&self, workload_id: &str) -> Result<()> {
         info!("🛑 Cancelling workload: {}", workload_id);
-        
+
         let mut workloads = self.workloads.write().await;
-        
+
         if let Some(workload) = workloads.get(workload_id) {
             *workload.status.write().await = WorkloadStatus::Cancelled;
             // Task will be aborted when dropped
@@ -277,7 +287,7 @@ impl WorkloadManager {
             anyhow::bail!("Workload {} not found", workload_id)
         }
     }
-    
+
     /// Get active workload count
     pub async fn active_workload_count(&self) -> usize {
         let workloads = self.workloads.read().await;
@@ -298,7 +308,7 @@ mod tests {
     #[tokio::test]
     async fn test_submit_workload() {
         let manager = WorkloadManager::new(10).await.unwrap();
-        
+
         let request = SubmitWorkloadRequest {
             biome_yaml: "version: 1.0".to_string(),
             requester: "test".to_string(),
@@ -307,16 +317,16 @@ mod tests {
             timeout_secs: Some(60),
             persistent: false,
         };
-        
+
         let workload_id = manager.submit_workload(request).await;
         assert!(workload_id.is_ok());
-        
+
         let id = workload_id.unwrap();
         assert!(!id.is_empty());
-        
+
         // Give it a moment to process
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         // Should be able to get status
         let status = manager.get_workload_status(&id).await;
         assert!(status.is_some());
@@ -325,7 +335,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_workloads() {
         let manager = WorkloadManager::new(10).await.unwrap();
-        
+
         let request = SubmitWorkloadRequest {
             biome_yaml: "version: 1.0".to_string(),
             requester: "test".to_string(),
@@ -334,14 +344,13 @@ mod tests {
             timeout_secs: Some(60),
             persistent: false,
         };
-        
+
         manager.submit_workload(request.clone()).await.unwrap();
         manager.submit_workload(request).await.unwrap();
-        
+
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         let workloads = manager.list_workloads().await;
         assert_eq!(workloads.len(), 2);
     }
 }
-

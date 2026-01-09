@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     // Discover all available compute units
     println!("🔍 Discovering compute units...");
     let runtime = UniversalRuntime::discover().await?;
-    
+
     println!("✅ Found {} compute unit(s)", runtime.num_units());
     for unit in runtime.units() {
         println!(
@@ -41,11 +41,11 @@ async fn main() -> Result<()> {
 
     let vec_a = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let vec_b = vec![2.0, 3.0, 4.0, 5.0, 6.0];
-    
+
     println!("Vector A: {:?}", vec_a);
     println!("Vector B: {:?}", vec_b);
     println!();
-    
+
     let dot_workload = Workload {
         operation: OperationType::DotProduct,
         data_type: DataType::F32,
@@ -56,16 +56,23 @@ async fn main() -> Result<()> {
     };
 
     let dot_result = runtime.execute_optimal(dot_workload).await?;
-    
+
     if let WorkloadData::F32Vec(output) = dot_result.data {
         let result = output[0];
         // Manual verification: 1*2 + 2*3 + 3*4 + 4*5 + 5*6 = 2 + 6 + 12 + 20 + 30 = 70
         let expected = 70.0;
         println!("Result: {:.1}", result);
         println!("Expected: {:.1}", expected);
-        println!("Verification: {} ✅", if (result - expected).abs() < 0.001 { "PASS" } else { "FAIL" });
+        println!(
+            "Verification: {} ✅",
+            if (result - expected).abs() < 0.001 {
+                "PASS"
+            } else {
+                "FAIL"
+            }
+        );
     }
-    
+
     println!();
     println!("Executed on: {}", dot_result.metadata.unit_name);
     println!("Duration:    {:?}", dot_result.metadata.duration);
@@ -79,11 +86,11 @@ async fn main() -> Result<()> {
 
     let vec_c = vec![10.0, 20.0, 30.0, 40.0, 50.0];
     let vec_d = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    
+
     println!("Vector C: {:?}", vec_c);
     println!("Vector D: {:?}", vec_d);
     println!();
-    
+
     let elementwise_workload = Workload {
         operation: OperationType::ElementwiseBinary,
         data_type: DataType::F32,
@@ -94,15 +101,21 @@ async fn main() -> Result<()> {
     };
 
     let elementwise_result = runtime.execute_optimal(elementwise_workload).await?;
-    
+
     if let WorkloadData::F32Vec(output) = elementwise_result.data {
         println!("Result: {:?}", output);
         let expected: Vec<f32> = vec_c.iter().zip(&vec_d).map(|(a, b)| a + b).collect();
         println!("Expected: {:?}", expected);
-        let all_match = output.iter().zip(&expected).all(|(a, b)| (a - b).abs() < 0.001);
-        println!("Verification: {} ✅", if all_match { "PASS" } else { "FAIL" });
+        let all_match = output
+            .iter()
+            .zip(&expected)
+            .all(|(a, b)| (a - b).abs() < 0.001);
+        println!(
+            "Verification: {} ✅",
+            if all_match { "PASS" } else { "FAIL" }
+        );
     }
-    
+
     println!();
     println!("Executed on: {}", elementwise_result.metadata.unit_name);
     println!("Duration:    {:?}", elementwise_result.metadata.duration);
@@ -150,12 +163,10 @@ async fn main() -> Result<()> {
         let result = runtime.execute_optimal(workload).await?;
         println!(
             "  Size: {:>7} | Duration: {:>10.3?} | Unit: {}",
-            size,
-            result.metadata.duration,
-            result.metadata.unit_name
+            size, result.metadata.duration, result.metadata.unit_name
         );
     }
-    
+
     println!();
 
     // Pattern Observations
@@ -163,7 +174,7 @@ async fn main() -> Result<()> {
     println!("🎓 Pattern Observations (barraCUDA Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
-    
+
     println!("Dot Product:");
     println!("  • Parallelism: Map (element-wise multiply) + Reduce (sum)");
     println!("  • Pattern: Embarrassingly parallel map, then tree reduction");
@@ -172,7 +183,7 @@ async fn main() -> Result<()> {
     println!("  • Bottleneck: Memory bandwidth (simple operations)");
     println!("  • Insight: Composition of two patterns we already know!");
     println!();
-    
+
     println!("Elementwise Binary:");
     println!("  • Parallelism: 100% embarrassingly parallel");
     println!("  • Pattern: Same as Map, but with two inputs");
@@ -181,7 +192,7 @@ async fn main() -> Result<()> {
     println!("  • Memory pattern: Streaming (read A, read B, write C)");
     println!("  • Insight: Even simpler than Map (no complex function)");
     println!();
-    
+
     println!("Key Learning:");
     println!("  • Complex operations = composition of simple patterns");
     println!("  • Dot Product = Map + Reduce");
@@ -203,4 +214,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

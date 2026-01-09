@@ -32,10 +32,7 @@ async fn test_buffer_write_read_basic() {
     let mut buffer = memory.allocate(1024).await.expect("Failed to allocate");
 
     let data = vec![42u8; 100];
-    buffer
-        .write_async(0, &data)
-        .await
-        .expect("Failed to write");
+    buffer.write_async(0, &data).await.expect("Failed to write");
 
     let result = buffer.read_async(0, 100).await.expect("Failed to read");
     assert_eq!(data, result);
@@ -135,7 +132,10 @@ async fn test_zero_size_read() {
     let memory = create_test_memory().await;
     let buffer = memory.allocate(1024).await.expect("Failed to allocate");
 
-    let result = buffer.read_async(0, 0).await.expect("Zero read should work");
+    let result = buffer
+        .read_async(0, 0)
+        .await
+        .expect("Zero read should work");
     assert_eq!(result.len(), 0);
 }
 
@@ -380,7 +380,9 @@ async fn test_backend_name() {
 
 #[tokio::test]
 async fn test_automatic_backend_selection() {
-    let memory = UniversalUnifiedMemory::new().await.expect("Failed to create");
+    let memory = UniversalUnifiedMemory::new()
+        .await
+        .expect("Failed to create");
     let name = memory.backend_name();
 
     assert!(!name.is_empty());
@@ -402,7 +404,10 @@ async fn test_large_allocation() {
 
     // 16 MB allocation
     let size = 16 * 1024 * 1024;
-    let buffer = memory.allocate(size).await.expect("Large allocation failed");
+    let buffer = memory
+        .allocate(size)
+        .await
+        .expect("Large allocation failed");
 
     assert_eq!(buffer.size(), size);
 }
@@ -491,4 +496,3 @@ async fn test_buffer_reallocation_cycles() {
     let stats = memory.stats();
     assert_eq!(stats.deallocation_count, 20);
 }
-

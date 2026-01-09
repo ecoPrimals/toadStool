@@ -67,13 +67,13 @@ impl DaemonConfig {
         // Override with command-line arguments
         config.port = port;
         config.register_with_biomeos = register_with_biomeos;
-        
+
         if socket_path.is_some() {
             config.socket_path = socket_path;
         }
-        
+
         config.max_concurrent_workloads = max_workloads;
-        
+
         if biomeos_socket.is_some() {
             config.biomeos_socket = biomeos_socket;
         }
@@ -146,21 +146,20 @@ mod tests {
     #[tokio::test]
     async fn test_config_validation() {
         let mut config = DaemonConfig::default();
-        
+
         // Valid config
         assert!(config.validate().is_ok());
-        
+
         // Invalid port
         config.port = 80;
         assert!(config.validate().is_err());
-        
+
         // Invalid max workloads
         config.port = 8084;
         config.max_concurrent_workloads = 0;
         assert!(config.validate().is_err());
-        
+
         config.max_concurrent_workloads = 2000;
         assert!(config.validate().is_err());
     }
 }
-

@@ -61,7 +61,10 @@ async fn main() -> Result<()> {
             .iter()
             .zip(&expected)
             .all(|(a, b)| (a - b).abs() < 1e-6);
-        println!("Verification: {} ✅", if all_match { "PASS" } else { "FAIL" });
+        println!(
+            "Verification: {} ✅",
+            if all_match { "PASS" } else { "FAIL" }
+        );
     }
 
     println!();
@@ -144,11 +147,8 @@ async fn main() -> Result<()> {
 
         // Verify properties of LayerNorm
         let mean: f32 = output.iter().sum::<f32>() / output.len() as f32;
-        let variance: f32 = output
-            .iter()
-            .map(|&x| (x - mean) * (x - mean))
-            .sum::<f32>()
-            / output.len() as f32;
+        let variance: f32 =
+            output.iter().map(|&x| (x - mean) * (x - mean)).sum::<f32>() / output.len() as f32;
 
         println!("Properties:");
         println!("  Mean: {:.6} (should be ~0.0)", mean);
@@ -314,4 +314,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

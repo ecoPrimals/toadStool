@@ -23,13 +23,27 @@ pub mod common;
 // Cloud integration - universal cloud orchestration
 pub mod cloud;
 
-// Songbird integration - universal signal coordination
+// Coordination integration - vendor-agnostic service coordination (NEW)
+pub mod coordination_integration;
+
+// Songbird integration - universal signal coordination (DEPRECATED: use coordination_integration)
+#[deprecated(
+    since = "2.0.0",
+    note = "Use coordination_integration for vendor-agnostic coordination services"
+)]
 pub mod songbird_integration;
 
 // Crypto lock system - BearDog cryptographic access control
 pub mod crypto_lock;
 
-// BearDog integration - capability-based encryption services
+// Crypto integration - vendor-agnostic cryptographic services (NEW)
+pub mod crypto_integration;
+
+// BearDog integration - capability-based encryption services (DEPRECATED: use crypto_integration)
+#[deprecated(
+    since = "2.0.0",
+    note = "Use crypto_integration for vendor-agnostic crypto services"
+)]
 pub mod beardog_integration;
 
 // Substrate detection for universal compute platforms
@@ -91,6 +105,9 @@ pub use primal_capabilities::{
     Capability, CapabilityProvider, CapabilityRegistry, PrimalAdapter, SongbirdAdapter,
     WorkloadExecutor, WorkloadRequest, WorkloadResponse,
 };
+
+// Re-export deprecated songbird types for backward compatibility
+#[allow(deprecated)]
 pub use songbird_integration::{
     JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,
     SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
