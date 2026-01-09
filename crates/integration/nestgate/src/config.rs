@@ -29,7 +29,15 @@ pub struct NestGateConfig {
 
 impl Default for NestGateConfig {
     fn default() -> Self {
-        // Use environment-aware configuration for endpoint
+        // ⚠️ DEPRECATED: Use NestGateClient::discover() for production
+        // This fallback uses environment variables and is intended for:
+        // - Development and testing
+        // - Legacy compatibility
+        // - Explicit endpoint configuration
+        //
+        // Production code should use capability-based discovery:
+        //   let client = NestGateClient::discover().await?;
+        
         let port: u16 = std::env::var("TOADSTOOL_STORAGE_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
@@ -239,7 +247,8 @@ mod tests {
         assert!(!json.is_empty());
 
         // Test deserialization
-        let deserialized: NestGateConfig = serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: NestGateConfig =
+            serde_json::from_str(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.endpoint, config.endpoint);
         assert_eq!(deserialized.max_retries, config.max_retries);
     }
@@ -262,7 +271,11 @@ mod tests {
             replication_factor: 3,
             compression: CompressionType::Auto,
             encryption: EncryptionType::Default,
-            regions: vec!["eu-west".to_string(), "ap-south".to_string(), "us-central".to_string()],
+            regions: vec![
+                "eu-west".to_string(),
+                "ap-south".to_string(),
+                "us-central".to_string(),
+            ],
         };
 
         assert_eq!(prefs.regions.len(), 3);

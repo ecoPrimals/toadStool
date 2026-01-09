@@ -126,7 +126,10 @@ mod tests {
     #[test]
     fn test_initialization_error_display() {
         let error = ServerError::Initialization("failed to start".to_string());
-        assert_eq!(error.to_string(), "Server initialization failed: failed to start");
+        assert_eq!(
+            error.to_string(),
+            "Server initialization failed: failed to start"
+        );
     }
 
     #[test]
@@ -144,13 +147,19 @@ mod tests {
     #[test]
     fn test_authentication_error_display() {
         let error = ServerError::Authentication("invalid credentials".to_string());
-        assert_eq!(error.to_string(), "Authentication failed: invalid credentials");
+        assert_eq!(
+            error.to_string(),
+            "Authentication failed: invalid credentials"
+        );
     }
 
     #[test]
     fn test_authorization_error_display() {
         let error = ServerError::Authorization("insufficient permissions".to_string());
-        assert_eq!(error.to_string(), "Authorization failed: insufficient permissions");
+        assert_eq!(
+            error.to_string(),
+            "Authorization failed: insufficient permissions"
+        );
     }
 
     #[test]

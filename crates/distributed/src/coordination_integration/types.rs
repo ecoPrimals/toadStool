@@ -254,10 +254,6 @@ mod tests {
         let op = CoordinationOperation::DiscoverServices {
             capability: "compute".to_string(),
         };
-        assert!(matches!(
-            op,
-            CoordinationOperation::DiscoverServices { .. }
-        ));
+        assert!(matches!(op, CoordinationOperation::DiscoverServices { .. }));
     }
 }
-

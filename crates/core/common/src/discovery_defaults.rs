@@ -24,25 +24,24 @@ use std::time::Duration;
 pub struct DiscoveryConfig {
     /// Enable fallback to localhost defaults if discovery fails
     pub enable_localhost_fallback: bool,
-    
+
     /// Discovery timeout
     pub timeout: Duration,
-    
+
     /// Discovery retry attempts
     pub max_retries: u32,
-    
+
     /// Cache discovered services (TTL)
     pub cache_ttl: Duration,
-    
+
     /// Allow insecure connections in development
     pub allow_insecure: bool,
 }
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
-        let is_production = env::var("TOADSTOOL_ENV")
-            .unwrap_or_else(|_| "development".to_string())
-            == "production";
+        let is_production =
+            env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
 
         Self {
             // Only enable fallback in non-production
@@ -106,8 +105,7 @@ pub struct LocalhostFallbacks {
 impl Default for LocalhostFallbacks {
     fn default() -> Self {
         Self {
-            enabled: env::var("TOADSTOOL_ENV")
-                .unwrap_or_else(|_| "development".to_string())
+            enabled: env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string())
                 != "production",
         }
     }
@@ -151,19 +149,18 @@ impl LocalhostFallbacks {
 pub enum DiscoveryErrorStrategy {
     /// Fail fast - no fallbacks, error immediately
     FailFast,
-    
+
     /// Try fallback - use localhost defaults if discovery fails
     TryFallback,
-    
+
     /// Silent fallback - use fallback without logging errors
     SilentFallback,
 }
 
 impl Default for DiscoveryErrorStrategy {
     fn default() -> Self {
-        let is_production = env::var("TOADSTOOL_ENV")
-            .unwrap_or_else(|_| "development".to_string())
-            == "production";
+        let is_production =
+            env::var("TOADSTOOL_ENV").unwrap_or_else(|_| "development".to_string()) == "production";
 
         if is_production {
             Self::FailFast
@@ -217,7 +214,7 @@ mod tests {
     #[test]
     fn test_localhost_fallback_urls() {
         let fallbacks = LocalhostFallbacks { enabled: true };
-        
+
         assert_eq!(
             fallbacks.get_fallback_url("toadstool"),
             Some("http://localhost:8080".to_string())
@@ -226,16 +223,13 @@ mod tests {
             fallbacks.get_fallback_url("redis"),
             Some("redis://localhost:6379".to_string())
         );
-        assert_eq!(
-            fallbacks.get_fallback_url("unknown"),
-            None
-        );
+        assert_eq!(fallbacks.get_fallback_url("unknown"), None);
     }
 
     #[test]
     fn test_localhost_fallbacks_disabled() {
         let fallbacks = LocalhostFallbacks { enabled: false };
-        
+
         // Should return None when disabled
         assert_eq!(fallbacks.get_fallback_url("toadstool"), None);
         assert!(!fallbacks.should_use_fallback());
@@ -248,4 +242,3 @@ mod tests {
         assert_eq!(strategy, DiscoveryErrorStrategy::TryFallback);
     }
 }
-

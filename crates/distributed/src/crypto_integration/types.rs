@@ -224,4 +224,3 @@ mod tests {
         assert!(matches!(algo, EncryptionAlgorithm::Custom(_)));
     }
 }
-

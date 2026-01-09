@@ -89,18 +89,18 @@ impl CryptoServiceDiscovery {
             ServiceLocation::Local => services
                 .iter()
                 .filter(|s| {
-                    s.endpoints
-                        .iter()
-                        .any(|e| e.address.starts_with("127.") || e.address.starts_with("localhost"))
+                    s.endpoints.iter().any(|e| {
+                        e.address.starts_with("127.") || e.address.starts_with("localhost")
+                    })
                 })
                 .cloned()
                 .collect(),
             ServiceLocation::Network => services
                 .iter()
                 .filter(|s| {
-                    s.endpoints
-                        .iter()
-                        .any(|e| !e.address.starts_with("127.") && !e.address.starts_with("localhost"))
+                    s.endpoints.iter().any(|e| {
+                        !e.address.starts_with("127.") && !e.address.starts_with("localhost")
+                    })
                 })
                 .cloned()
                 .collect(),
@@ -243,14 +243,11 @@ impl CryptoServiceClient {
             }));
         }
 
-        response
-            .json::<KeyManagementResponse>()
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
-                })
+        response.json::<KeyManagementResponse>().await.map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: e.to_string(),
             })
+        })
     }
 
     /// Health check
@@ -330,4 +327,3 @@ mod tests {
         assert_ne!(ServiceLocation::Local, ServiceLocation::Network);
     }
 }
-

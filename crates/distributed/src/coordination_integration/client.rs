@@ -95,9 +95,9 @@ impl CoordinationDiscovery {
             ServiceLocation::Local => services
                 .iter()
                 .filter(|s| {
-                    s.endpoints
-                        .iter()
-                        .any(|e| e.address.starts_with("127.") || e.address.starts_with("localhost"))
+                    s.endpoints.iter().any(|e| {
+                        e.address.starts_with("127.") || e.address.starts_with("localhost")
+                    })
                 })
                 .cloned()
                 .collect(),
@@ -197,10 +197,7 @@ impl CoordinationClient {
     }
 
     /// Discover services by capability
-    pub async fn discover_services(
-        &self,
-        capability: &str,
-    ) -> ToadStoolResult<Vec<NodeInfo>> {
+    pub async fn discover_services(&self, capability: &str) -> ToadStoolResult<Vec<NodeInfo>> {
         let url = format!(
             "{}/api/v1/services/discover?capability={}",
             self.service_endpoint.url(),
@@ -270,7 +267,10 @@ impl CoordinationClient {
         &self,
         request: LoadBalancingRequest,
     ) -> ToadStoolResult<Vec<NodeInfo>> {
-        let url = format!("{}/api/v1/loadbalancing/advice", self.service_endpoint.url());
+        let url = format!(
+            "{}/api/v1/loadbalancing/advice",
+            self.service_endpoint.url()
+        );
 
         let response = self
             .http_client
@@ -412,4 +412,3 @@ mod tests {
         assert_ne!(ServiceLocation::Local, ServiceLocation::Network);
     }
 }
-

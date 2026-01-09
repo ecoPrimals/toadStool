@@ -237,7 +237,7 @@ impl ServiceDiscovery {
         services
             .into_iter()
             .next()
-            .ok_or_else(|| DiscoveryError::NoServiceFound { capability })
+            .ok_or(DiscoveryError::NoServiceFound { capability })
     }
 
     /// Discover services using configured method
@@ -250,7 +250,7 @@ impl ServiceDiscovery {
             DiscoveryMethod::Registry { endpoint } => self.discover_from_registry(endpoint).await,
             DiscoveryMethod::Multi(methods) => self.discover_multi(methods).await,
         }?;
-        
+
         Ok(services)
     }
 
@@ -393,9 +393,9 @@ impl ServiceDiscovery {
                 id: "fallback-toadstool".to_string(),
                 name: "toadstool".to_string(),
                 version: "dev".to_string(),
-                capabilities: vec![
-                    Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution),
-                ],
+                capabilities: vec![Capability::Compute(
+                    crate::primal_identity::ComputeCapability::NativeExecution,
+                )],
                 endpoints: vec![ServiceEndpoint::from_url_string(&url)?],
                 metadata: {
                     let mut meta = HashMap::new();
@@ -622,4 +622,3 @@ mod tests {
         assert_eq!(caps.len(), 3);
     }
 }
-

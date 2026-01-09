@@ -47,8 +47,8 @@ pub mod types;
 
 pub use client::{CoordinationClient, CoordinationDiscovery};
 pub use types::{
-    CoordinationRequest, CoordinationResponse, HealthCheckRequest, LoadBalancingRequest,
-    NodeInfo, ServiceRegistration,
+    CoordinationRequest, CoordinationResponse, HealthCheckRequest, LoadBalancingRequest, NodeInfo,
+    ServiceRegistration,
 };
 
 /// Coordination service discovery configuration
@@ -104,4 +104,3 @@ pub enum ServiceLocation {
     /// Any available
     Any,
 }
-

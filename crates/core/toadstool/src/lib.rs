@@ -65,9 +65,8 @@ pub mod workload;
 // pub use biomeos_integration::*; // Commented out to avoid ambiguous glob with toadstool_common::auth
 pub use ecosystem::{
     DiscoveryMethodConfig, EcosystemConfig, EcosystemCoordinator,
-    EcosystemMessage as EcosystemCoreMessage,
-    EcosystemMessageType as EcosystemCoreMessageType, ServiceChannel, ServiceClient,
-    ServiceInstance, ServiceStatus,
+    EcosystemMessage as EcosystemCoreMessage, EcosystemMessageType as EcosystemCoreMessageType,
+    ServiceChannel, ServiceClient, ServiceInstance, ServiceStatus,
 };
 pub use encryption::{
     CryptoCapability, CryptoProvider, CryptoProviderRegistry, EncryptedInput, EncryptedOutput,

@@ -45,9 +45,7 @@ pub mod client;
 pub mod types;
 
 pub use client::{CryptoServiceClient, CryptoServiceDiscovery};
-pub use types::{
-    CryptoRequest, CryptoResponse, EncryptionAlgorithm, KeyType, SecurityLevel,
-};
+pub use types::{CryptoRequest, CryptoResponse, EncryptionAlgorithm, KeyType, SecurityLevel};
 
 /// Crypto service discovery configuration
 ///
@@ -97,4 +95,3 @@ pub enum ServiceLocation {
     /// Any available
     Any,
 }
-
