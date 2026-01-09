@@ -49,8 +49,12 @@ async fn main() -> Result<()> {
 
     println!("Input batch ({}x{}):", batch_size, num_features);
     for i in 0..batch_size {
-        println!("  Sample {}: [{}, {}]",
-            i, batch[i * num_features], batch[i * num_features + 1]);
+        println!(
+            "  Sample {}: [{}, {}]",
+            i,
+            batch[i * num_features],
+            batch[i * num_features + 1]
+        );
     }
     println!();
 
@@ -80,8 +84,12 @@ async fn main() -> Result<()> {
     if let WorkloadData::F32Matrix(normalized, rows, cols) = &result.data {
         println!("Normalized batch ({}x{}):", rows, cols);
         for i in 0..*rows {
-            println!("  Sample {}: [{:>6.3}, {:>6.3}]",
-                i, normalized[i * cols], normalized[i * cols + 1]);
+            println!(
+                "  Sample {}: [{:>6.3}, {:>6.3}]",
+                i,
+                normalized[i * cols],
+                normalized[i * cols + 1]
+            );
         }
         println!();
 
@@ -89,16 +97,26 @@ async fn main() -> Result<()> {
         // std = sqrt((1^2 + 0^2 + 1^2) / 3) = sqrt(2/3) = 0.816, so 1/0.816 = 1.225
         let expected_0 = vec![-1.225, 0.0, 1.225];
         let feature_0: Vec<f32> = (0..*rows).map(|i| normalized[i * cols]).collect();
-        let match_0 = feature_0.iter().zip(expected_0.iter())
+        let match_0 = feature_0
+            .iter()
+            .zip(expected_0.iter())
             .all(|(a, b)| (a - b).abs() < 0.01);
-        println!("Feature 0 verification: {} ✅", if match_0 { "PASS" } else { "FAIL" });
+        println!(
+            "Feature 0 verification: {} ✅",
+            if match_0 { "PASS" } else { "FAIL" }
+        );
 
         // Verify: Feature 1 should be [-1.225, 0, 1.225] (approximately)
         let expected_1 = vec![-1.225, 0.0, 1.225];
         let feature_1: Vec<f32> = (0..*rows).map(|i| normalized[i * cols + 1]).collect();
-        let match_1 = feature_1.iter().zip(expected_1.iter())
+        let match_1 = feature_1
+            .iter()
+            .zip(expected_1.iter())
             .all(|(a, b)| (a - b).abs() < 0.01);
-        println!("Feature 1 verification: {} ✅", if match_1 { "PASS" } else { "FAIL" });
+        println!(
+            "Feature 1 verification: {} ✅",
+            if match_1 { "PASS" } else { "FAIL" }
+        );
     }
 
     println!();
@@ -132,8 +150,10 @@ async fn main() -> Result<()> {
         .collect();
 
     println!("Input shape: ({} x {})", batch_size, num_channels);
-    println!("First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
-        cnn_batch[0], cnn_batch[1], cnn_batch[2], cnn_batch[3]);
+    println!(
+        "First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
+        cnn_batch[0], cnn_batch[1], cnn_batch[2], cnn_batch[3]
+    );
     println!();
 
     let mut cnn_params = HashMap::new();
@@ -153,8 +173,10 @@ async fn main() -> Result<()> {
     if let WorkloadData::F32Matrix(normalized, rows, cols) = &cnn_result.data {
         println!("✅ Normalization complete!");
         println!("  Output shape: ({} x {})", rows, cols);
-        println!("  First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
-            normalized[0], normalized[1], normalized[2], normalized[3]);
+        println!(
+            "  First sample, first 4 channels: [{:.3}, {:.3}, {:.3}, {:.3}]",
+            normalized[0], normalized[1], normalized[2], normalized[3]
+        );
         println!();
 
         // Verify each channel has ~zero mean and ~unit variance
@@ -162,9 +184,8 @@ async fn main() -> Result<()> {
         for ch in [0, 15, 31, 63] {
             let values: Vec<f32> = (0..*rows).map(|r| normalized[r * cols + ch]).collect();
             let mean: f32 = values.iter().sum::<f32>() / values.len() as f32;
-            let variance: f32 = values.iter()
-                .map(|v| (v - mean).powi(2))
-                .sum::<f32>() / values.len() as f32;
+            let variance: f32 =
+                values.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
             let std_dev = variance.sqrt();
             println!("  Channel {}: mean={:.6}, std={:.6}", ch, mean, std_dev);
         }
@@ -200,8 +221,13 @@ async fn main() -> Result<()> {
 
     println!("Input ({}x{}):", batch_size, num_features);
     for i in 0..batch_size {
-        println!("  Sample {}: [{}, {}, {}]",
-            i, input[i * 3], input[i * 3 + 1], input[i * 3 + 2]);
+        println!(
+            "  Sample {}: [{}, {}, {}]",
+            i,
+            input[i * 3],
+            input[i * 3 + 1],
+            input[i * 3 + 2]
+        );
     }
     println!();
 
@@ -240,15 +266,25 @@ async fn main() -> Result<()> {
     {
         println!("BatchNorm output (normalizes ACROSS batch):");
         for i in 0..*bn_rows {
-            println!("  Sample {}: [{:>6.3}, {:>6.3}, {:>6.3}]",
-                i, bn_out[i * bn_cols], bn_out[i * bn_cols + 1], bn_out[i * bn_cols + 2]);
+            println!(
+                "  Sample {}: [{:>6.3}, {:>6.3}, {:>6.3}]",
+                i,
+                bn_out[i * bn_cols],
+                bn_out[i * bn_cols + 1],
+                bn_out[i * bn_cols + 2]
+            );
         }
         println!();
 
         println!("LayerNorm output (normalizes WITHIN sample):");
         for i in 0..batch_size {
-            println!("  Sample {}: [{:>6.3}, {:>6.3}, {:>6.3}]",
-                i, ln_out[i * 3], ln_out[i * 3 + 1], ln_out[i * 3 + 2]);
+            println!(
+                "  Sample {}: [{:>6.3}, {:>6.3}, {:>6.3}]",
+                i,
+                ln_out[i * 3],
+                ln_out[i * 3 + 1],
+                ln_out[i * 3 + 2]
+            );
         }
         println!();
 
@@ -368,4 +404,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

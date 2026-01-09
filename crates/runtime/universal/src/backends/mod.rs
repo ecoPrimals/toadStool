@@ -17,4 +17,3 @@ pub use opencl::OpenClComputeUnit;
 
 #[cfg(feature = "wgpu")]
 pub use wgpu_backend::WgpuComputeUnit;
-

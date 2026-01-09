@@ -194,7 +194,11 @@ async fn main() -> Result<()> {
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
 
-        println!("Predicted class: {} (confidence: {:.2}%)", predicted_class, max_prob * 100.0);
+        println!(
+            "Predicted class: {} (confidence: {:.2}%)",
+            predicted_class,
+            max_prob * 100.0
+        );
         println!("Expected class: 2 ✅");
     }
 
@@ -298,4 +302,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

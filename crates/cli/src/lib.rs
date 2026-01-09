@@ -251,9 +251,9 @@ pub enum Commands {
     },
 
     /// Start ToadStool as a daemon service (workload execution service)
-    /// 
+    ///
     /// Like the fungus: CLI = fruiting body (specialized), Daemon = mycelium (network-wide)
-    /// 
+    ///
     /// The daemon mode transforms ToadStool from a CLI tool into an ecosystem compute service:
     /// - HTTP API for workload submission
     /// - Auto-registration with biomeOS capability registry

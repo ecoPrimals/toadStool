@@ -13,22 +13,22 @@ pub const API_VERSION: &str = "v1";
 pub struct SubmitWorkloadRequest {
     /// biome.yaml manifest content
     pub biome_yaml: String,
-    
+
     /// Requester identity (primal name or external client ID)
     pub requester: String,
-    
+
     /// Environment variables
     #[serde(default)]
     pub environment: HashMap<String, String>,
-    
+
     /// Resource requirements (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<ResourceRequirements>,
-    
+
     /// Timeout in seconds (optional, defaults to 3600)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_secs: Option<u64>,
-    
+
     /// Whether this is a persistent workload (keep running)
     #[serde(default)]
     pub persistent: bool,
@@ -40,15 +40,15 @@ pub struct ResourceRequirements {
     /// CPU limit (cores)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cpu_limit: Option<f64>,
-    
+
     /// Memory limit (bytes)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_limit: Option<u64>,
-    
+
     /// GPU required
     #[serde(default)]
     pub gpu_required: bool,
-    
+
     /// Storage limit (bytes)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_limit: Option<u64>,
@@ -59,10 +59,10 @@ pub struct ResourceRequirements {
 pub struct SubmitWorkloadResponse {
     /// Workload ID (UUID)
     pub workload_id: String,
-    
+
     /// Status
     pub status: WorkloadStatus,
-    
+
     /// Message
     pub message: String,
 }
@@ -72,26 +72,26 @@ pub struct SubmitWorkloadResponse {
 pub struct WorkloadStatusResponse {
     /// Workload ID
     pub workload_id: String,
-    
+
     /// Status
     pub status: WorkloadStatus,
-    
+
     /// Started at (ISO 8601)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub started_at: Option<String>,
-    
+
     /// Completed at (ISO 8601)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,
-    
+
     /// Exit code (if completed)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
-    
+
     /// Error message (if failed)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
-    
+
     /// Resource usage
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource_usage: Option<ResourceUsage>,
@@ -102,7 +102,7 @@ pub struct WorkloadStatusResponse {
 pub struct ListWorkloadsResponse {
     /// Workloads
     pub workloads: Vec<WorkloadSummary>,
-    
+
     /// Total count
     pub total: usize,
 }
@@ -112,16 +112,16 @@ pub struct ListWorkloadsResponse {
 pub struct WorkloadSummary {
     /// Workload ID
     pub workload_id: String,
-    
+
     /// Status
     pub status: WorkloadStatus,
-    
+
     /// Requester
     pub requester: String,
-    
+
     /// Started at (ISO 8601)
     pub started_at: String,
-    
+
     /// Persistent
     pub persistent: bool,
 }
@@ -132,16 +132,16 @@ pub struct WorkloadSummary {
 pub enum WorkloadStatus {
     /// Queued, waiting to start
     Queued,
-    
+
     /// Running
     Running,
-    
+
     /// Completed successfully
     Completed,
-    
+
     /// Failed
     Failed,
-    
+
     /// Cancelled
     Cancelled,
 }
@@ -163,14 +163,14 @@ impl std::fmt::Display for WorkloadStatus {
 pub struct ResourceUsage {
     /// CPU usage (percent)
     pub cpu_percent: f64,
-    
+
     /// Memory usage (bytes)
     pub memory_bytes: u64,
-    
+
     /// GPU usage (percent, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gpu_percent: Option<f64>,
-    
+
     /// Storage used (bytes)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_bytes: Option<u64>,
@@ -181,16 +181,16 @@ pub struct ResourceUsage {
 pub struct HealthResponse {
     /// Status (always "ok" if responding)
     pub status: String,
-    
+
     /// Daemon version
     pub version: String,
-    
+
     /// Uptime in seconds
     pub uptime_secs: u64,
-    
+
     /// Active workloads count
     pub active_workloads: usize,
-    
+
     /// biomeOS connected
     pub biomeos_connected: bool,
 }
@@ -200,10 +200,10 @@ pub struct HealthResponse {
 pub struct ErrorResponse {
     /// Error code
     pub error: String,
-    
+
     /// Error message
     pub message: String,
-    
+
     /// Additional details (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<String>,
@@ -232,12 +232,11 @@ mod tests {
             timeout_secs: Some(3600),
             persistent: false,
         };
-        
+
         let json = serde_json::to_string(&req).unwrap();
         let parsed: SubmitWorkloadRequest = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed.biome_yaml, req.biome_yaml);
         assert_eq!(parsed.requester, req.requester);
     }
 }
-

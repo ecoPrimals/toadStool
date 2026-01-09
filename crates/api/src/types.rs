@@ -663,3 +663,7 @@ pub struct HealthCheck {
     pub message: Option<String>,
     pub duration_ms: u64,
 }
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod types_tests;

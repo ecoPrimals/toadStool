@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
     if let WorkloadData::F32Matrix(output, batch, rest) = &result.data {
         let out_size = rest / batch;
         let out_dim = (out_size as f32).sqrt() as usize; // Assuming square output
-        
+
         println!("Output (1×1×3×3) - stride=1, padding=0:");
         println!("  Input 5x5 → Output 3x3 (no padding)");
         for row in 0..out_dim {
@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
             println!("]");
         }
         println!();
-        
+
         println!("Identity kernel preserves center values! ✅");
         println!("Output[1,1] = Input[2,2] = 13.0");
     }
@@ -203,7 +203,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Matrix(output, _, rest) = &sobel_result.data {
         let out_dim = (*rest as f32).sqrt() as usize;
-        
+
         println!("Edge Detection Output (3x3):");
         for row in 0..out_dim {
             print!("  [");
@@ -216,7 +216,7 @@ async fn main() -> Result<()> {
             println!("]");
         }
         println!();
-        
+
         println!("High values = strong vertical edge detected! 🎯");
         println!("Column 2 (at edge) has highest response!");
     }
@@ -298,7 +298,7 @@ async fn main() -> Result<()> {
 
     if let WorkloadData::F32Matrix(output, _, rest) = &stride_result.data {
         let out_dim = (*rest as f32).sqrt() as usize;
-        
+
         println!("Output (2x2) - Input 4x4 → Output 2x2:");
         for row in 0..out_dim {
             print!("  [");
@@ -311,7 +311,7 @@ async fn main() -> Result<()> {
             println!("]");
         }
         println!();
-        
+
         println!("Stride=2 → Downsampled to 2x2 (quarter size)! ✅");
         println!("Each output is average of 2x2 input region");
     }
@@ -411,17 +411,17 @@ async fn main() -> Result<()> {
         println!("  Input: 1×3×3×3 (batch, channels, H, W)");
         println!("  Output: 1×2×2×2 (batch, out_channels, out_H, out_W)");
         println!();
-        
+
         println!("Output Channel 0 (red detector):");
         println!("  [{:>6.0}, {:>6.0}]", output[0], output[1]);
         println!("  [{:>6.0}, {:>6.0}]", output[2], output[3]);
         println!();
-        
+
         println!("Output Channel 1 (green detector):");
         println!("  [{:>6.0}, {:>6.0}]", output[4], output[5]);
         println!("  [{:>6.0}, {:>6.0}]", output[6], output[7]);
         println!();
-        
+
         println!("Each output channel responds to different input features! ✅");
     }
 
@@ -510,4 +510,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

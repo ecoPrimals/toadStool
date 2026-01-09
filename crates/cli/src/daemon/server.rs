@@ -12,9 +12,9 @@ use tokio::signal;
 use tracing::{info, warn};
 
 use super::config::DaemonConfig;
-use super::workload_manager::WorkloadManager;
 #[cfg(feature = "daemon")]
 use super::http_server;
+use super::workload_manager::WorkloadManager;
 
 /// Daemon server
 ///
@@ -26,7 +26,7 @@ use super::http_server;
 pub struct DaemonServer {
     /// Configuration
     config: DaemonConfig,
-    
+
     /// Workload manager
     workload_manager: Arc<WorkloadManager>,
 }
@@ -44,7 +44,7 @@ impl DaemonServer {
     /// 6. Begin heartbeat
     pub async fn start(config: DaemonConfig) -> Result<Self> {
         info!("🍄 Initializing ToadStool daemon server...");
-        
+
         // Announce capabilities via mDNS (if enabled)
         if config.register_with_biomeos {
             info!("📢 Announcing capabilities via mDNS/discovery");
@@ -55,68 +55,67 @@ impl DaemonServer {
         } else {
             info!("📍 Discovery disabled - running in standalone mode");
         }
-        
+
         // Create workload manager
         let workload_manager = WorkloadManager::new(config.max_concurrent_workloads).await?;
         info!("✅ Workload manager initialized");
-        
+
         // TODO Phase 4: Start resource monitor
         // TODO Phase 5: Start heartbeat loop
-        
+
         info!("✅ ToadStool daemon server initialized");
-        
+
         Ok(Self {
             config,
             workload_manager: Arc::new(workload_manager),
         })
     }
-    
-    
+
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
         info!("🚀 ToadStool daemon running on port {}", self.config.port);
         info!("📊 API: http://localhost:{}/api/v1", self.config.port);
         info!("💚 Health: http://localhost:{}/health", self.config.port);
-        
+
         // Start HTTP API server in background task
         #[cfg(feature = "daemon")]
         {
             let port = self.config.port;
             let manager = self.workload_manager.clone();
-            
+
             tokio::spawn(async move {
                 if let Err(e) = http_server::start_http_server(port, manager).await {
                     warn!("⚠️  HTTP server stopped: {e}");
                 }
             });
         }
-        
+
         #[cfg(not(feature = "daemon"))]
         {
             warn!("⚠️  Daemon feature not enabled - HTTP server disabled");
             info!("⏸️  Waiting for shutdown signal (Ctrl+C)");
         }
-        
+
         // Wait for shutdown signal
         signal::ctrl_c().await?;
-        
+
         info!("🛑 Shutdown signal received");
-        
+
         // Graceful shutdown
         self.shutdown().await?;
-        
+
         info!("👋 ToadStool daemon stopped");
         Ok(())
     }
-    
+
     /// Graceful shutdown
     async fn shutdown(&self) -> Result<()> {
         info!("🧹 Performing graceful shutdown...");
-        
+
         // TODO Phase 3: Stop all workloads
         // TODO Phase 2: Stop HTTP server
         // TODO: Unregister from biomeOS
-        
+
         info!("✅ Shutdown complete");
         Ok(())
     }
@@ -129,7 +128,7 @@ mod tests {
     #[tokio::test]
     async fn test_daemon_server_creation() {
         let config = DaemonConfig::default();
-        
+
         // Should be able to create daemon server
         let result = DaemonServer::start(config).await;
         assert!(result.is_ok());
@@ -139,11 +138,10 @@ mod tests {
     async fn test_daemon_server_with_biomeos() {
         let mut config = DaemonConfig::default();
         config.register_with_biomeos = true;
-        
+
         // Should handle biomeOS connection failure gracefully (may fail to connect, but should not crash)
         let result = DaemonServer::start(config).await;
         // Either succeeds or fails gracefully
         assert!(result.is_ok() || result.is_err());
     }
 }
-

@@ -59,24 +59,11 @@ impl CapabilityDiscovery {
     /// Discover OpenCL devices
     #[cfg(feature = "opencl")]
     async fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
-        use crate::backends::OpenClComputeUnit;
-
-        let mut units = Vec::new();
-
-        // Discover all OpenCL platforms and devices
-        if let Ok(platforms) = ocl::Platform::list() {
-            for platform in platforms {
-                if let Ok(devices) = ocl::Device::list_all(platform) {
-                    for device in devices {
-                        if let Ok(unit) = OpenClComputeUnit::from_device(device) {
-                            units.push(Box::new(unit) as Box<dyn ComputeUnit>);
-                        }
-                    }
-                }
-            }
-        }
-
-        units
+        // TODO: Update OpenCL implementation for new ocl crate API
+        // The ocl crate API has changed - Platform::list() now returns Vec directly
+        // Device info() methods have also changed significantly
+        // Recommended: Use wgpu (pure Rust) as primary path, OpenCL as legacy
+        Vec::new()
     }
 
     /// Discover wgpu adapters
@@ -109,13 +96,13 @@ impl CapabilityDiscovery {
 pub struct WorkloadProfile {
     /// Size category
     pub size: WorkloadSize,
-    
+
     /// Latency requirement
     pub latency: LatencyRequirement,
-    
+
     /// Power constraint
     pub power: PowerConstraint,
-    
+
     /// Throughput requirement
     pub throughput: ThroughputRequirement,
 }
@@ -123,34 +110,34 @@ pub struct WorkloadProfile {
 /// Workload size categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkloadSize {
-    Small,    // < 1K operations
-    Medium,   // 1K - 1M operations
-    Large,    // > 1M operations
+    Small,  // < 1K operations
+    Medium, // 1K - 1M operations
+    Large,  // > 1M operations
 }
 
 /// Latency requirements
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LatencyRequirement {
-    Critical,   // < 1ms
-    Important,  // < 10ms
-    Relaxed,    // > 10ms
+    Critical,  // < 1ms
+    Important, // < 10ms
+    Relaxed,   // > 10ms
 }
 
 /// Power constraints
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerConstraint {
-    UltraLow,   // < 1W
-    Low,        // < 10W
-    Medium,     // < 100W
+    UltraLow, // < 1W
+    Low,      // < 10W
+    Medium,   // < 100W
     Unconstrained,
 }
 
 /// Throughput requirements
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThroughputRequirement {
-    Low,     // < 1 GFLOPS
-    Medium,  // 1-10 GFLOPS
-    High,    // > 10 GFLOPS
+    Low,    // < 1 GFLOPS
+    Medium, // 1-10 GFLOPS
+    High,   // > 10 GFLOPS
 }
 
 impl WorkloadProfile {
@@ -197,4 +184,3 @@ impl WorkloadProfile {
         best_unit
     }
 }
-

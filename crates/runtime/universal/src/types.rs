@@ -162,7 +162,7 @@ impl fmt::Display for ComputeUnitType {
 pub struct Parallelism {
     /// Number of parallel units (cores, threads, etc.)
     pub num_units: usize,
-    
+
     /// Execution model
     pub model: ExecutionModel,
 }
@@ -464,4 +464,3 @@ impl Default for WorkloadBuilder {
         Self::new()
     }
 }
-

@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
     // Discover all available compute units
     println!("🔍 Discovering compute units...");
     let runtime = UniversalRuntime::discover().await?;
-    
+
     println!("✅ Found {} compute unit(s)", runtime.num_units());
     for unit in runtime.units() {
         println!(
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
 
     let filter_input = vec![-5.0, 3.0, -2.0, 8.0, -1.0, 0.0, 4.0, -7.0, 6.0, 2.0];
     println!("Input:  {:?}", filter_input);
-    
+
     let filter_workload = Workload {
         operation: OperationType::Filter,
         data_type: DataType::F32,
@@ -53,13 +53,16 @@ async fn main() -> Result<()> {
     };
 
     let filter_result = runtime.execute_optimal(filter_workload).await?;
-    
+
     if let WorkloadData::F32Vec(output) = filter_result.data {
         println!("Output: {:?}", output);
-        println!("Filtered {} elements → {} elements (predicate: x > 0)", 
-                 filter_input.len(), output.len());
+        println!(
+            "Filtered {} elements → {} elements (predicate: x > 0)",
+            filter_input.len(),
+            output.len()
+        );
     }
-    
+
     println!();
     println!("Executed on: {}", filter_result.metadata.unit_name);
     println!("Duration:    {:?}", filter_result.metadata.duration);
@@ -73,7 +76,7 @@ async fn main() -> Result<()> {
 
     let scan_input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
     println!("Input:  {:?}", scan_input);
-    
+
     let scan_workload = Workload {
         operation: OperationType::Scan,
         data_type: DataType::F32,
@@ -84,17 +87,20 @@ async fn main() -> Result<()> {
     };
 
     let scan_result = runtime.execute_optimal(scan_workload).await?;
-    
+
     if let WorkloadData::F32Vec(output) = scan_result.data {
         println!("Output: {:?}", output);
         println!("Cumulative sum computed: {} values", output.len());
-        
+
         // Verify correctness
         let expected_last = scan_input.iter().sum::<f32>();
         let actual_last = *output.last().unwrap();
-        println!("Expected final sum: {:.1}, Actual: {:.1} ✅", expected_last, actual_last);
+        println!(
+            "Expected final sum: {:.1}, Actual: {:.1} ✅",
+            expected_last, actual_last
+        );
     }
-    
+
     println!();
     println!("Executed on: {}", scan_result.metadata.unit_name);
     println!("Duration:    {:?}", scan_result.metadata.duration);
@@ -125,8 +131,12 @@ async fn main() -> Result<()> {
         WorkloadData::F32Vec(data) => data,
         _ => panic!("Unexpected result type"),
     };
-    
-    println!("After Filter: {:?} ({} elements)", filtered_data, filtered_data.len());
+
+    println!(
+        "After Filter: {:?} ({} elements)",
+        filtered_data,
+        filtered_data.len()
+    );
 
     // Step 2: Compute cumulative sum
     let scan_workload = Workload {
@@ -139,13 +149,13 @@ async fn main() -> Result<()> {
     };
 
     let scan_result = runtime.execute_optimal(scan_workload).await?;
-    
+
     if let WorkloadData::F32Vec(output) = scan_result.data {
         println!("After Scan:   {:?}", output);
         println!();
         println!("✅ Pipeline complete: Filter → Scan");
     }
-    
+
     println!();
 
     // Pattern Observations
@@ -153,7 +163,7 @@ async fn main() -> Result<()> {
     println!("🎓 Pattern Observations (barraCUDA Learning)");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
-    
+
     println!("Filter Operation:");
     println!("  • Parallelism: Embarrassingly parallel (each element independent)");
     println!("  • CPU: Rayon par_iter().filter() - excellent parallel");
@@ -161,7 +171,7 @@ async fn main() -> Result<()> {
     println!("  • Speedup: Moderate (memory bandwidth bound)");
     println!("  • Use Cases: Data cleaning, conditional selection");
     println!();
-    
+
     println!("Scan Operation:");
     println!("  • Parallelism: Inherently sequential (dependencies)");
     println!("  • CPU: Simple loop - actually efficient for moderate sizes");
@@ -169,7 +179,7 @@ async fn main() -> Result<()> {
     println!("  • Speedup: Variable (depends on size and algorithm)");
     println!("  • Use Cases: Prefix sums, cumulative stats, indexing");
     println!();
-    
+
     println!("Combined Pipeline:");
     println!("  • Current: Two separate kernel launches");
     println!("  • Opportunity: Kernel fusion (Filter+Scan in single pass)");
@@ -187,4 +197,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

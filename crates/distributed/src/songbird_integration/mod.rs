@@ -1,11 +1,15 @@
 //! # Songbird Integration - Universal Signal Coordination
 //!
+//! **DEPRECATED**: Use `coordination_integration` for vendor-agnostic coordination services.
+//!
 //! ToadStool's integration with Songbird, the universal signal coordinator.
 //! Songbird handles orchestration, load balancing, discovery, and broadcasting.
 //! ToadStool handles compute execution.
 //!
 //! When ToadStool needs to talk outside local (or even sometimes local), it uses Songbird.
 //! When massive jobs drop, ToadStool breaks them up and sends them via Songbird to hundreds of nodes.
+
+#![allow(deprecated)]
 
 pub mod broadcasting;
 pub mod capability_client; // ✅ Production-ready capability-based discovery client

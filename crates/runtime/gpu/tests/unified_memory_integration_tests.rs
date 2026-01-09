@@ -2,9 +2,7 @@
 //!
 //! These tests verify interactions between multiple components.
 
-use toadstool_runtime_gpu::unified_memory::{
-    BackendStrategy, BackendType, UniversalUnifiedMemory,
-};
+use toadstool_runtime_gpu::unified_memory::{BackendStrategy, BackendType, UniversalUnifiedMemory};
 
 async fn create_test_memory() -> UniversalUnifiedMemory {
     UniversalUnifiedMemory::with_strategy(BackendStrategy::Specific(BackendType::Cpu))
@@ -233,19 +231,13 @@ async fn test_double_buffering() {
 
         if frame % 2 == 0 {
             // Write to A, read from B
-            buffer_a
-                .write_async(0, &data)
-                .await
-                .expect("Write A");
+            buffer_a.write_async(0, &data).await.expect("Write A");
             if frame > 0 {
                 let _ = buffer_b.read_async(0, 1024).await.expect("Read B");
             }
         } else {
             // Write to B, read from A
-            buffer_b
-                .write_async(0, &data)
-                .await
-                .expect("Write B");
+            buffer_b.write_async(0, &data).await.expect("Write B");
             let _ = buffer_a.read_async(0, 1024).await.expect("Read A");
         }
     }
@@ -398,10 +390,7 @@ async fn test_image_processing_simulation() {
         .expect("Sync input to GPU");
 
     // Simulate GPU processing (read, process, write)
-    let data = input_buffer
-        .read_async(0, image_size)
-        .await
-        .expect("Read");
+    let data = input_buffer.read_async(0, image_size).await.expect("Read");
     let processed: Vec<u8> = data.iter().map(|&b| 255 - b).collect(); // Invert
 
     output_buffer
@@ -447,10 +436,7 @@ async fn test_batch_processing() {
     // Process batch
     for (i, buffer) in buffers.iter_mut().enumerate() {
         let data = vec![i as u8; 1024];
-        buffer
-            .write_async(0, &data)
-            .await
-            .expect("Write");
+        buffer.write_async(0, &data).await.expect("Write");
         buffer.sync_to_device().await.expect("Sync");
     }
 
@@ -460,4 +446,3 @@ async fn test_batch_processing() {
         assert!(data.iter().all(|&b| b == i as u8));
     }
 }
-

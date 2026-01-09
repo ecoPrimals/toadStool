@@ -3,7 +3,7 @@
 //! This demonstrates the core principle: CPU, GPU, neuromorphic - all
 //! are just different orders of the same parallel compute architecture.
 
-use toadstool_runtime_universal::{UniversalRuntime, WorkloadBuilder, OperationType, ParamValue};
+use toadstool_runtime_universal::{OperationType, ParamValue, UniversalRuntime, WorkloadBuilder};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,13 +29,15 @@ async fn main() -> anyhow::Result<()> {
         println!("Unit {}:", idx);
         println!("  Name: {}", unit.name());
         println!("  Type: {}", caps.unit_type);
-        println!("  Parallelism: {} units ({:?})", 
-            caps.parallelism.num_units,
-            caps.parallelism.model);
+        println!(
+            "  Parallelism: {} units ({:?})",
+            caps.parallelism.num_units, caps.parallelism.model
+        );
         println!("  Power: {:?}", caps.power_profile);
-        println!("  Latency: {} ms (deterministic: {})", 
-            caps.latency.typical_ms,
-            caps.latency.deterministic);
+        println!(
+            "  Latency: {} ms (deterministic: {})",
+            caps.latency.typical_ms, caps.latency.deterministic
+        );
         println!("  Memory: {:.2} GB", caps.memory_capacity as f64 / 1e9);
         println!("  Throughput: {:.2} GFLOPS", caps.compute_throughput / 1e9);
         println!("  Optimal batch: {} elements", caps.optimal_batch_size);
@@ -136,4 +138,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-

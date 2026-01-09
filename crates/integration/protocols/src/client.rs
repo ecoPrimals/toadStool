@@ -510,7 +510,9 @@ mod tests {
     }
 
     /// Helper function to create a test service info
-    #[allow(deprecated)] // Using deprecated constants during migration to capability-based discovery
+    ///
+    /// **Infant Discovery**: Uses test port, not hardcoded primal ports.
+    /// In production, use ServiceDiscovery to find services by capability.
     fn create_test_service(id: &str, name: &str, status: HealthStatus) -> ServiceInfo {
         ServiceInfo {
             id: id.to_string(),
@@ -520,7 +522,7 @@ mod tests {
                 id: format!("{}-endpoint", id),
                 transport: TransportType::Http,
                 address: defaults::network::LOCALHOST.to_string(),
-                port: defaults::network::SONGBIRD_PORT,
+                port: 9000, // Test port (not a hardcoded primal port)
                 path: Some("/".to_string()),
                 tls_enabled: false,
                 health_status: status.clone(),
