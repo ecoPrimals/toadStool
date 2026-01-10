@@ -86,12 +86,16 @@ pub mod state;
 pub mod tarpc_server;
 pub mod websocket;
 pub mod coordinator_executor; // NEW: Distributed coordinator integration
+pub mod manual_jsonrpc; // NEW: Pure manual JSON-RPC over Unix sockets
 
 // Re-export background services for tests
 pub use background::start_background_services;
 
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;
+
+// Re-export manual JSON-RPC server
+pub use manual_jsonrpc::ManualJsonRpcServer;
 
 /// Main `ToadStool` server implementation
 pub struct ToadStoolServer {
