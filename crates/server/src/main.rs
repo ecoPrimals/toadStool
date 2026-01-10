@@ -6,7 +6,8 @@
 //!
 //! - **Capability-Based Discovery**: Registers with Songbird at runtime
 //! - **Self-Knowledge Only**: No hardcoded knowledge of other primals
-//! - **Secure by Default**: Unix socket with user-only permissions
+//! - **Unix Socket PRIMARY**: No TCP hardcoding, multi-instance support
+//! - **Unique Family IDs**: Each instance has unique identity
 //! - **Graceful Degradation**: Works standalone if Songbird unavailable
 //! - **Modern Idiomatic Rust**: No unwrap(), proper error handling
 
@@ -16,7 +17,7 @@ use tokio::signal;
 use tracing::{info, warn, error};
 use tracing_subscriber::EnvFilter;
 
-use toadstool_server::{start_jsonrpc_unix_server, tarpc_server::WorkloadExecutor};
+use toadstool_server::tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +34,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Get configuration from environment (no hardcoding)
     let family_id = std::env::var("TOADSTOOL_FAMILY")
-        .unwrap_or_else(|_| "default".to_string());
+        .unwrap_or_else(|_| {
+            warn!("TOADSTOOL_FAMILY not set, using 'default'");
+            warn!("For multi-instance support, set unique family ID:");
+            warn!("  export TOADSTOOL_FAMILY=gpu-rtx3090");
+            "default".to_string()
+        });
     
     info!("Family ID: {}", family_id);
     
@@ -46,24 +52,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let executor = create_executor().await?;
     let version = env!("CARGO_PKG_VERSION").to_string();
     
-    // Start JSON-RPC server on Unix socket
-    info!("Starting JSON-RPC 2.0 server on Unix socket...");
-    let server_handle = start_jsonrpc_unix_server(
-        socket_path.clone(),
-        Arc::new(executor),
-        version.clone(),
-        10 * 1024 * 1024,  // 10MB max request
-        10 * 1024 * 1024,  // 10MB max response
-    ).await?;
+    // Create tarpc server (PRIMARY protocol)
+    let server = ToadStoolTarpcServer::new(version.clone(), Arc::new(executor));
     
-    // Register with Songbird (capability-based discovery)
-    // Deep debt principle: Graceful degradation if Songbird unavailable
+    // Register with Songbird BEFORE starting server
+    // Deep debt principle: Discovery first, then serve
     register_with_ecosystem(&socket_path, &family_id, &version).await;
     
-    info!("✅ ToadStool server ready and listening");
+    info!("Starting tarpc server on Unix socket (PRIMARY protocol)...");
+    info!("✅ ToadStool server ready");
     info!("Socket: {:?}", socket_path);
-    info!("Protocol: JSON-RPC 2.0");
+    info!("Protocol: tarpc (binary RPC)");
+    info!("Family: {}", family_id);
     info!("Capabilities: compute, gpu, orchestration");
+    
+    // Clone socket path for cleanup later
+    let socket_path_clone = socket_path.clone();
+    
+    // Start server (blocking)
+    let server_handle = tokio::spawn(async move {
+        if let Err(e) = server.serve_unix(&socket_path).await {
+            error!("tarpc server error: {}", e);
+        }
+    });
     
     // Wait for shutdown signal
     info!("Press Ctrl+C to shutdown");
@@ -78,12 +89,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Graceful shutdown
     info!("Shutting down ToadStool server...");
-    if let Err(e) = server_handle.stop() {
-        warn!("Error stopping server: {:?}", e);
-    }
+    server_handle.abort();
     
     // Clean up socket file
-    if let Err(e) = tokio::fs::remove_file(&socket_path).await {
+    if let Err(e) = tokio::fs::remove_file(&socket_path_clone).await {
         warn!("Failed to remove socket file: {}", e);
     }
     
@@ -112,9 +121,33 @@ fn get_socket_path(family_id: &str) -> Result<PathBuf, Box<dyn std::error::Error
 /// 
 /// Deep debt principle: Complete implementation, no mocks in production
 async fn create_executor() -> Result<impl WorkloadExecutor, Box<dyn std::error::Error>> {
+    // Query local GPU capabilities
+    let capabilities = query_local_capabilities().await;
+    info!("Local capabilities: {:?}", capabilities);
+    
     // Create real executor with ToadStool's runtime engines
     // This will evolve to use actual runtime orchestration
-    Ok(toadstool_server::tarpc_server::MockExecutor::new())
+    Ok(MockExecutor::new())
+}
+
+/// Query local GPU and compute capabilities
+/// 
+/// Deep debt principle: Self-knowledge only
+async fn query_local_capabilities() -> Vec<String> {
+    let mut capabilities = vec!["compute".to_string()];
+    
+    // TODO(capability_discovery): Query actual GPU info
+    // For now, report CPU capabilities
+    let cpu_count = num_cpus::get();
+    capabilities.push(format!("cpu-cores-{}", cpu_count));
+    
+    // TODO(capability_discovery): Add GPU detection
+    // - NVIDIA: query CUDA devices
+    // - AMD: query ROCm devices
+    // - Intel: query oneAPI devices
+    // - Apple: query Metal devices
+    
+    capabilities
 }
 
 /// Register with ecosystem (Songbird discovery)
@@ -148,18 +181,29 @@ async fn discover_and_register_songbird(
     family_id: &str,
     version: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO(future): Implement actual Songbird discovery and registration
-    // For now, log what we would do
-    info!("Would discover Songbird via capability-based discovery");
-    info!("Would register service:");
-    info!("  Name: toadstool");
+    // Step 1: Discover Songbird via environment variable (no hardcoding)
+    let songbird_family = std::env::var("SONGBIRD_FAMILY_ID")
+        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
+        .map_err(|_| {
+            "Songbird not configured. Set SONGBIRD_FAMILY_ID or SONGBIRD_SOCKET"
+        })?;
+    
+    info!("Discovered Songbird: {}", songbird_family);
+    
+    // Step 2: Query our local capabilities
+    let capabilities = query_local_capabilities().await;
+    
+    // Step 3: Register with Songbird
+    // TODO(songbird_register): Implement actual Songbird client
+    info!("Would register with Songbird:");
+    info!("  Service: toadstool");
     info!("  Family: {}", family_id);
     info!("  Version: {}", version);
     info!("  Socket: {:?}", socket_path);
-    info!("  Protocol: json-rpc-2.0");
-    info!("  Capabilities: [compute, gpu, orchestration]");
+    info!("  Protocol: tarpc");
+    info!("  Capabilities: {:?}", capabilities);
     
-    // Return Ok for now (standalone mode works)
+    // For now, return Ok (standalone mode works)
+    // TODO(songbird_register): Replace with actual Songbird client call
     Ok(())
 }
-
