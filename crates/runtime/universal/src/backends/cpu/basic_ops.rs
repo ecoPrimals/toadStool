@@ -152,7 +152,7 @@ mod tests {
             num_operations: 5,
             required_memory: 5 * 4,
         };
-        
+
         let result = execute_map(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output.len(), input.len());
@@ -175,7 +175,7 @@ mod tests {
             num_operations: 6,
             required_memory: 6 * 4,
         };
-        
+
         let result = execute_filter(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output.len(), 2); // 0.6 and 0.9
@@ -197,7 +197,7 @@ mod tests {
             num_operations: 5,
             required_memory: 5 * 4,
         };
-        
+
         let result = execute_reduce(workload).unwrap();
         if let WorkloadData::F32Vec(sums) = result {
             assert_eq!(sums.len(), 1);
@@ -216,9 +216,9 @@ mod tests {
             params: WorkloadParams::default(),
             data_type: DataType::F32,
             num_operations: 5,
-            required_memory: 5 * 4,  // 5 f32s
+            required_memory: 5 * 4, // 5 f32s
         };
-        
+
         let result = execute_scan(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![1.0, 3.0, 6.0, 10.0, 15.0]);
@@ -227,4 +227,3 @@ mod tests {
         }
     }
 }
-

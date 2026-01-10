@@ -513,10 +513,12 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // This module is deprecated, allow its tests
 mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_beardog_discovery_new() {
         let config = BearDogConfig::default();
         let discovery = BearDogDiscovery::new(config);
@@ -524,6 +526,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_beardog_client_new() {
         let config = BearDogConfig::default();
         let _client = BearDogClient::new(config);

@@ -15,6 +15,8 @@
 //! - SplittingStrategyType enum
 //! - DistributionAlgorithm enum
 
+#![allow(deprecated)]
+
 use toadstool_distributed::songbird_integration::*;
 
 // ============================================================================

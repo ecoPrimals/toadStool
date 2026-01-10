@@ -273,12 +273,12 @@ impl CryptoServiceClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toadstool_common::primal_identity::ServiceEndpoint;
+    use toadstool_common::primal_identity::{CryptoCapability, ServiceEndpoint};
 
-    #[test]
-    fn test_crypto_service_discovery_creation() {
+    #[tokio::test]
+    async fn test_crypto_service_discovery_creation() {
         let config = CryptoServiceConfig::default();
-        let discovery = CryptoServiceDiscovery::new(config);
+        let discovery = CryptoServiceDiscovery::new(config).await.expect("Failed to create discovery");
 
         assert!(!discovery.config.required_capabilities.is_empty());
     }
@@ -300,7 +300,7 @@ mod tests {
                 endpoints: vec![ServiceEndpoint::http("127.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
-                last_health_check: None,
+                last_seen: std::time::SystemTime::now(),
                 healthy: true,
             },
             DiscoveredService {
@@ -311,7 +311,7 @@ mod tests {
                 endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
-                last_health_check: None,
+                last_seen: std::time::SystemTime::now(),
                 healthy: true,
             },
         ];

@@ -383,7 +383,7 @@ mod tests {
                 endpoints: vec![ServiceEndpoint::http("127.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
-                last_health_check: None,
+                last_seen: std::time::SystemTime::now(),
                 healthy: true,
             },
             DiscoveredService {
@@ -396,7 +396,7 @@ mod tests {
                 endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
-                last_health_check: None,
+                last_seen: std::time::SystemTime::now(),
                 healthy: true,
             },
         ];

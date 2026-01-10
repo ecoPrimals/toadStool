@@ -6,6 +6,8 @@
 //! - Local resource management
 //! - Service registration and health reporting
 
+#![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
+
 // Core modules
 pub mod compatibility;
 pub mod core;

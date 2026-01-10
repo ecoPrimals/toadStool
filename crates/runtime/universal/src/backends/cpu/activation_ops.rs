@@ -29,7 +29,7 @@ use rayon::prelude::*;
 ///
 /// **Formula**: `f(x) = max(0, x)`
 /// **Pattern**: Element-wise max operation
-/// **Properties**: 
+/// **Properties**:
 /// - Zero-cost positive values (identity)
 /// - Sparse activation (many zeros)
 /// - Dead neurons possible (gradient = 0 for x < 0)
@@ -171,9 +171,11 @@ pub(super) fn execute_softmax(workload: Workload) -> Result<WorkloadData, Comput
             }
 
             // Step 1: Find max for numerical stability
-            let max = input.par_iter().copied().max_by(|a, b| {
-                a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-            }).unwrap_or(0.0);
+            let max = input
+                .par_iter()
+                .copied()
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or(0.0);
 
             // Step 2: Compute exp(x - max) for numerical stability
             let exp_values: Vec<f32> = input.par_iter().map(|&x| (x - max).exp()).collect();
@@ -191,9 +193,11 @@ pub(super) fn execute_softmax(workload: Workload) -> Result<WorkloadData, Comput
                 return Ok(WorkloadData::F64Vec(vec![]));
             }
 
-            let max = input.par_iter().copied().max_by(|a, b| {
-                a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-            }).unwrap_or(0.0);
+            let max = input
+                .par_iter()
+                .copied()
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or(0.0);
 
             let exp_values: Vec<f64> = input.par_iter().map(|&x| (x - max).exp()).collect();
             let sum: f64 = exp_values.par_iter().sum();
@@ -208,7 +212,7 @@ pub(super) fn execute_softmax(workload: Workload) -> Result<WorkloadData, Comput
 /// Execute Dropout - Stochastic Regularization
 ///
 /// **Pattern**: Random masking with compensation
-/// **Formula**: 
+/// **Formula**:
 /// - Training: `f(x) = x * mask / (1 - p)` where mask ~ Bernoulli(1 - p)
 /// - Inference: `f(x) = x` (identity)
 /// **Properties**:
@@ -237,7 +241,7 @@ mod tests {
             num_operations: 5,
             required_memory: 5 * 4,
         };
-        
+
         let result = execute_relu(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, input); // Positive values unchanged
@@ -257,7 +261,7 @@ mod tests {
             num_operations: 3,
             required_memory: 3 * 4,
         };
-        
+
         let result = execute_relu(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![0.0, 0.0, 0.0]); // Negative values zeroed
@@ -277,7 +281,7 @@ mod tests {
             num_operations: 3,
             required_memory: 3 * 4,
         };
-        
+
         let result = execute_relu(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![0.0, 2.0, 0.0, 4.0]);
@@ -297,7 +301,7 @@ mod tests {
             num_operations: 5,
             required_memory: 5 * 4,
         };
-        
+
         let result = execute_sigmoid(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             assert!((output[0] - 0.5).abs() < 1e-6); // sigmoid(0) = 0.5
@@ -317,7 +321,7 @@ mod tests {
             num_operations: 4,
             required_memory: 4 * 4,
         };
-        
+
         let result = execute_softmax(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             let sum: f32 = output.iter().sum();
@@ -338,7 +342,7 @@ mod tests {
             num_operations: 4,
             required_memory: 4 * 4,
         };
-        
+
         let result = execute_softmax(workload).unwrap();
         if let WorkloadData::F32Vec(output) = result {
             // Softmax preserves ordering
@@ -349,4 +353,3 @@ mod tests {
         }
     }
 }
-

@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Authentication type for service-to-service communication
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AuthType {
     /// No authentication
     #[default]
@@ -26,7 +25,6 @@ pub enum AuthType {
     /// Custom authentication scheme
     Custom(String),
 }
-
 
 /// Service authentication credentials
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
