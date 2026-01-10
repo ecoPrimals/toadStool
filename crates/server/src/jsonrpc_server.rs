@@ -307,12 +307,35 @@ pub async fn start_jsonrpc_server(
     Ok(handle)
 }
 
-/// Start JSON-RPC 2.0 server on Unix socket (for biomeOS integration)
-/// 
-/// Deep debt principle: Capability-based, no hardcoding
-/// - Socket path derived from XDG_RUNTIME_DIR
-/// - Proper permissions (user-only access)
-/// - Graceful cleanup of old sockets
+/// Start JSON-RPC server on Unix socket (fallback - deprecated for production)
+///
+/// # ⚠️ DEPRECATED - Use ManualJsonRpcServer instead
+///
+/// This function starts a JSON-RPC server but uses TCP with hardcoded port (127.0.0.1:9944)
+/// due to jsonrpsee library limitations. This violates deep debt principles.
+///
+/// **Modern Alternative**: Use `ManualJsonRpcServer::serve()` which supports Unix sockets.
+///
+/// ## Why Deprecated?
+///
+/// - Hardcoded TCP port `127.0.0.1:9944` (deep debt violation)
+/// - No multi-instance support (port conflicts)
+/// - jsonrpsee library limitation (doesn't support Unix sockets)
+///
+/// ## Migration Path
+///
+/// ```rust,ignore
+/// // Old (deprecated):
+/// start_jsonrpc_unix_server(socket_path, executor, version, max_req, max_resp).await?;
+///
+/// // New (recommended):
+/// let server = ManualJsonRpcServer::new(executor, version);
+/// server.serve(socket_path).await?;
+/// ```
+#[deprecated(
+    since = "2.2.0",
+    note = "Use ManualJsonRpcServer::serve() instead - supports Unix sockets, no TCP hardcoding"
+)]
 pub async fn start_jsonrpc_unix_server(
     socket_path: PathBuf,
     executor: Arc<dyn super::tarpc_server::WorkloadExecutor + Send + Sync>,
