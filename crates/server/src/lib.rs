@@ -78,6 +78,7 @@ pub mod handlers;
 pub mod jsonrpc_server;
 #[cfg(test)]
 pub mod mocks;
+pub mod songbird_client;  // Songbird registration client
 pub mod state;
 pub mod tarpc_server;
 pub mod websocket;
