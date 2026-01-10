@@ -18,6 +18,10 @@ use tracing::{info, warn, error};
 use tracing_subscriber::EnvFilter;
 
 use toadstool_server::tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
+use toadstool_server::songbird_client::{
+    SongbirdClient, SongbirdRegistration, ServiceLocation,
+    query_system_resources, build_capabilities,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -134,20 +138,8 @@ async fn create_executor() -> Result<impl WorkloadExecutor, Box<dyn std::error::
 /// 
 /// Deep debt principle: Self-knowledge only
 async fn query_local_capabilities() -> Vec<String> {
-    let mut capabilities = vec!["compute".to_string()];
-    
-    // TODO(capability_discovery): Query actual GPU info
-    // For now, report CPU capabilities
-    let cpu_count = num_cpus::get();
-    capabilities.push(format!("cpu-cores-{}", cpu_count));
-    
-    // TODO(capability_discovery): Add GPU detection
-    // - NVIDIA: query CUDA devices
-    // - AMD: query ROCm devices
-    // - Intel: query oneAPI devices
-    // - Apple: query Metal devices
-    
-    capabilities
+    let resources = query_system_resources();
+    build_capabilities(&resources)
 }
 
 /// Register with ecosystem (Songbird discovery)
@@ -181,29 +173,58 @@ async fn discover_and_register_songbird(
     family_id: &str,
     version: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Step 1: Discover Songbird via environment variable (no hardcoding)
-    let songbird_family = std::env::var("SONGBIRD_FAMILY_ID")
-        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
-        .map_err(|_| {
-            "Songbird not configured. Set SONGBIRD_FAMILY_ID or SONGBIRD_SOCKET"
-        })?;
+    // Step 1: Discover Songbird (no hardcoding)
+    let songbird = SongbirdClient::discover().await
+        .map_err(|e| format!("Failed to discover Songbird: {}", e))?;
     
-    info!("Discovered Songbird: {}", songbird_family);
+    info!("Discovered Songbird successfully");
     
-    // Step 2: Query our local capabilities
-    let capabilities = query_local_capabilities().await;
+    // Step 2: Query our local capabilities (self-knowledge)
+    let resources = query_system_resources();
+    let capabilities = build_capabilities(&resources);
     
-    // Step 3: Register with Songbird
-    // TODO(songbird_register): Implement actual Songbird client
-    info!("Would register with Songbird:");
-    info!("  Service: toadstool");
-    info!("  Family: {}", family_id);
-    info!("  Version: {}", version);
-    info!("  Socket: {:?}", socket_path);
-    info!("  Protocol: tarpc");
-    info!("  Capabilities: {:?}", capabilities);
+    info!("Local capabilities: {:?}", capabilities);
+    info!("System resources: {} CPU cores, {} MB memory",
+        resources.cpu_cores,
+        resources.total_memory_bytes / 1024 / 1024);
     
-    // For now, return Ok (standalone mode works)
-    // TODO(songbird_register): Replace with actual Songbird client call
+    // Step 3: Build registration
+    let registration = SongbirdRegistration {
+        service_id: format!("toadstool-{}", family_id),
+        service_name: "toadstool".to_string(),
+        family_id: family_id.to_string(),
+        version: version.to_string(),
+        capabilities,
+        location: ServiceLocation {
+            location_type: "unix-socket".to_string(),
+            path: socket_path.to_string_lossy().to_string(),
+            protocol: "tarpc".to_string(),
+        },
+        resources,
+        metadata: std::collections::HashMap::from([
+            ("platform".to_string(), std::env::consts::OS.to_string()),
+            ("arch".to_string(), std::env::consts::ARCH.to_string()),
+        ]),
+        ttl_seconds: 300,  // 5 minutes TTL
+    };
+    
+    // Step 4: Register with Songbird
+    songbird.register_service(registration).await
+        .map_err(|e| format!("Failed to register: {}", e))?;
+    
+    info!("✅ Registered with Songbird");
+    
+    // Step 5: Start heartbeat task
+    let service_id = format!("toadstool-{}", family_id);
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            if let Err(e) = songbird.heartbeat(&service_id).await {
+                warn!("Heartbeat failed: {}", e);
+            }
+        }
+    });
+    
     Ok(())
 }
