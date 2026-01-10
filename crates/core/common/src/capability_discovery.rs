@@ -33,7 +33,7 @@
 //!
 //! // Use the first available (or implement selection logic)
 //! if let Some(service) = crypto_services.first() {
-//!     println!("Found crypto service at: {}", service.endpoint);
+//!     println!("Found crypto service: {}", service.name);
 //!     // Connect and use...
 //! }
 //! # Ok(())
@@ -101,14 +101,13 @@ impl CapabilityDiscovery {
     ///     .find_by_capability(Capability::Crypto(CryptoCapability::Encryption))
     ///     .await?;
     ///
-    /// // Select based on criteria
+    /// // Select based on criteria (metadata can contain latency, trust info)
     /// let local_provider = providers.iter()
-    ///     .filter(|s| s.latency_ms < 10.0)
+    ///     .filter(|s| s.healthy)
     ///     .next();
     ///
-    /// let trusted_provider = providers.iter()
-    ///     .filter(|s| s.trust_level == "sovereign")
-    ///     .next();
+    /// let latest_version = providers.iter()
+    ///     .max_by(|a, b| a.version.cmp(&b.version));
     /// # Ok(())
     /// # }
     /// ```
@@ -173,15 +172,17 @@ impl CapabilityDiscovery {
 
         // For now, use the existing service discovery implementation
         use crate::service_discovery::DiscoveryMethod;
-        
+
         // ServiceDiscovery::new is async, so we need to run it in a blocking context
         // In production, this would be handled differently (e.g., async initialization)
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| DiscoveryError::InvalidConfig(format!("Failed to create runtime: {}", e)))?;
-        
-        let discovery = runtime.block_on(ServiceDiscovery::new(DiscoveryMethod::Auto))
+        let runtime = tokio::runtime::Runtime::new().map_err(|e| {
+            DiscoveryError::InvalidConfig(format!("Failed to create runtime: {}", e))
+        })?;
+
+        let discovery = runtime
+            .block_on(ServiceDiscovery::new(DiscoveryMethod::Auto))
             .map_err(|e| DiscoveryError::DiscoveryFailed(e.to_string()))?;
-        
+
         Ok(Box::new(discovery))
     }
 

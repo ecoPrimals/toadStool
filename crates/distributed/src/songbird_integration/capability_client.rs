@@ -292,10 +292,13 @@ pub struct ClientStats {
 }
 
 #[cfg(test)]
+#[cfg(test)]
+#[allow(deprecated)] // This module is deprecated, allow its tests
 mod tests {
     use super::*;
 
     #[tokio::test]
+    #[allow(deprecated)]
     async fn test_capability_discovery_pattern() {
         let discovery = Arc::new(DiscoveryEngine::new());
 

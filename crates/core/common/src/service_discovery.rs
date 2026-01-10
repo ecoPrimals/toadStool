@@ -28,8 +28,9 @@
 //!     .await?;
 //!
 //! // Connect to discovered service
-//! let endpoint = coordinator.primary_endpoint();
-//! println!("Coordinator at: {}", endpoint.url());
+//! if let Some(endpoint) = coordinator.primary_endpoint() {
+//!     println!("Coordinator at: {}", endpoint.url());
+//! }
 //! # Ok(())
 //! # }
 //! ```
@@ -325,11 +326,11 @@ impl ServiceDiscovery {
                 let service_name = key
                     .strip_prefix("TOADSTOOL_SERVICE_")
                     .and_then(|s| s.strip_suffix("_URL"))
-                    .unwrap_or("unknown");
+                    .unwrap_or("unknown"); // Safe: Always provides fallback
 
                 // Get capabilities from companion variable
                 let cap_key = format!("TOADSTOOL_SERVICE_{}_CAPABILITIES", service_name);
-                let capabilities_str = std::env::var(&cap_key).unwrap_or_default();
+                let capabilities_str = std::env::var(&cap_key).unwrap_or_default(); // Safe: Empty string on missing var
 
                 let service = DiscoveredService {
                     id: format!("env-{}", service_name.to_lowercase()),
@@ -521,12 +522,14 @@ impl ServiceEndpoint {
         let rest = parts[1];
 
         let host_port: Vec<&str> = rest.split(':').collect();
-        let address = host_port[0];
-        let port = host_port.get(1).and_then(|p| p.parse().ok()).unwrap_or(80);
+        let address = host_port.first().ok_or_else(|| DiscoveryError::InvalidResponse {
+            reason: format!("Missing host in URL: {}", url),
+        })?;
+        let port = host_port.get(1).and_then(|p| p.parse().ok()).unwrap_or(80); // Safe: Default port
 
         Ok(Self {
             protocol: protocol.to_string(),
-            address: address.to_string(),
+            address: (*address).to_string(),
             port,
             path: None,
             metadata: HashMap::new(),

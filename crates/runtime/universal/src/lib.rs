@@ -37,15 +37,14 @@
 //!     
 //!     println!("Available compute units: {}", runtime.num_units());
 //!     for unit in runtime.units() {
-//!         println!("  • {} - {} cores, {:?} profile",
-//!             unit.name(),
-//!             unit.parallelism(),
-//!             unit.power_profile());
+//!         println!("  • {}", unit.name());
 //!     }
 //!     
 //!     // Runtime selects optimal unit automatically
 //!     let input = vec![1.0f32; 10_000];
-//!     let result = runtime.execute_map(input, |x| x * 2.0 + 1.0).await?;
+//!     let result = runtime.execute_map_f32(input, |x| x * 2.0 + 1.0).await?;
+//!     
+//!     println!("Processed {} values", result.len());
 //!     
 //!     Ok(())
 //! }

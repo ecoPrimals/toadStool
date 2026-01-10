@@ -37,7 +37,7 @@ impl Default for NestGateConfig {
         //
         // Production code should use capability-based discovery:
         //   let client = NestGateClient::discover().await?;
-        
+
         let port: u16 = std::env::var("TOADSTOOL_STORAGE_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
@@ -46,10 +46,7 @@ impl Default for NestGateConfig {
                     .ok()
                     .and_then(|p| p.parse().ok())
             })
-            .unwrap_or_else(|| {
-                let config = toadstool_config::env_config::EnvironmentConfig::from_env();
-                config.network.nestgate_port
-            });
+            .unwrap_or(8080); // Default port when discovery not available
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 

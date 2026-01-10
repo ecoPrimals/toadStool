@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -8,15 +8,15 @@ use uuid::Uuid;
 use toadstool::{ExecutionRequest, ToadStoolResult};
 
 use super::config::{DistributedConfig, StandaloneConfig, ToadStoolCapabilities};
-use crate::songbird_integration::SongbirdConnection;
+use crate::coordination_integration::{CoordinationClient, CoordinationConfig, CoordinationDiscovery};
 
-/// Main distributed computing coordinator - simplified for Songbird integration
+/// Main distributed computing coordinator - uses capability-based coordination discovery
 pub struct DistributedCoordinator {
     #[allow(dead_code)]
     config: DistributedConfig,
     #[allow(dead_code)]
     capabilities: Arc<RwLock<ToadStoolCapabilities>>,
-    songbird_integration: Option<Arc<SongbirdConnection>>,
+    coordination_client: Option<Arc<CoordinationClient>>,
     standalone_executor: Arc<StandaloneExecutor>,
 }
 
@@ -41,7 +41,7 @@ impl DistributedCoordinator {
     ///
     /// Returns an error if:
     /// - Capability detection fails
-    /// - Songbird connection cannot be established (if enabled)
+    /// - Coordination service discovery fails (if enabled)
     /// - Configuration validation fails
     #[must_use = "DistributedCoordinator creation should be checked"]
     pub async fn new(config: DistributedConfig) -> ToadStoolResult<Self> {
@@ -53,70 +53,50 @@ impl DistributedCoordinator {
         // Create standalone executor
         let standalone_executor = Arc::new(StandaloneExecutor::new(config.standalone.clone())?);
 
-        // Create Songbird integration using capability discovery (not hardcoded endpoints)
-        let songbird_integration = if let Some(songbird_config) = &config.songbird_integration {
-            info!("Initializing Songbird integration");
+        // Create coordination client using capability-based discovery
+        let coordination_client = if config.songbird_integration.is_some() {
+            info!("Discovering coordination services via capability-based discovery");
 
-            // Convert to SongbirdConnectionConfig
-            let connection_config = crate::songbird_integration::SongbirdConnectionConfig {
-                endpoints: vec![songbird_config.endpoint.clone()],
-                protocol_config: crate::songbird_integration::ProtocolConfig {
-                    protocol: crate::songbird_integration::SongbirdProtocol::HTTP,
-                    http: crate::songbird_integration::HttpProtocolConfig {
-                        timeout_ms: 5000,
-                        max_retries: 3,
-                        headers: std::collections::HashMap::new(),
-                    },
-                    grpc: crate::songbird_integration::GrpcProtocolConfig {
-                        timeout_ms: 5000,
-                        max_message_size: 1024 * 1024,
-                        compression: false,
-                    },
-                    websocket: crate::songbird_integration::WebSocketProtocolConfig {
-                        ping_interval_ms: 30000,
-                        max_frame_size: 1024 * 1024,
-                        compression: false,
-                    },
-                    message_queue: crate::songbird_integration::MessageQueueProtocolConfig {
-                        queue_name: "toadstool".to_string(),
-                        exchange: "toadstool".to_string(),
-                        routing_key: "jobs".to_string(),
-                    },
-                },
-                auth_config: crate::songbird_integration::AuthConfig {
-                    auth_type: if songbird_config.auth_token.is_some() {
-                        crate::songbird_integration::AuthType::Bearer
-                    } else {
-                        crate::songbird_integration::AuthType::None
-                    },
-                    credentials: {
-                        use toadstool_common::auth::AuthCredentials;
-                        if let Some(token) = &songbird_config.auth_token {
-                            AuthCredentials::bearer(token.clone())
-                        } else {
-                            AuthCredentials::new()
-                        }
-                    },
-                },
-                pool: toadstool_common::config_bases::ConnectionPoolConfig {
-                    enabled: true,
-                    max_connections_per_host: 10,
-                    max_idle_connections: 5,
-                    idle_timeout: Duration::from_secs(300),
-                    connection_lifetime: Duration::from_secs(3600),
-                },
+            // Use new coordination_integration module (vendor-agnostic)
+            let coord_config = CoordinationConfig {
+                auto_discover: true,
+                discovery_timeout_ms: 5000,
+                preferred_location: crate::coordination_integration::ServiceLocation::Any,
+                fallback_enabled: true,
+                required_capabilities: vec![
+                    toadstool_common::primal_identity::CoordinationCapability::ServiceDiscovery,
+                    toadstool_common::primal_identity::CoordinationCapability::LoadBalancing,
+                ],
+                health_check_interval_secs: 30,
             };
 
-            let integration = SongbirdConnection::new(connection_config).await?;
-            Some(Arc::new(integration))
+            let discovery = CoordinationDiscovery::new(coord_config).await?;
+            
+            match discovery.discover().await {
+                Ok(services) if !services.is_empty() => {
+                    let service = &services[0];
+                    info!("Discovered coordination service: {}", service.name);
+                    let client = CoordinationClient::new(service)?;
+                    Some(Arc::new(client))
+                }
+                Ok(_) => {
+                    warn!("No coordination services found, operating in standalone mode");
+                    None
+                }
+                Err(e) => {
+                    warn!("Coordination service discovery failed, operating in standalone mode: {}", e);
+                    None
+                }
+            }
         } else {
+            info!("Coordination disabled, operating in standalone mode");
             None
         };
 
         Ok(Self {
             config,
             capabilities,
-            songbird_integration,
+            coordination_client,
             standalone_executor,
         })
     }
@@ -126,18 +106,19 @@ impl DistributedCoordinator {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Songbird integration fails to start
+    /// - Coordination service connection fails
     /// - Health reporting setup fails
     /// - Background tasks cannot be spawned
     #[must_use = "Coordinator start result should be checked"]
     pub async fn start(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("Starting distributed coordinator");
 
-        // Start Songbird integration if available
-        if let Some(_songbird) = &self.songbird_integration {
-            info!("Songbird integration initialized and ready");
-            // Note: SongbirdConnection doesn't have a start() method
-            // It's ready to use after construction
+        // Start coordination client if available
+        if let Some(_client) = &self.coordination_client {
+            info!("Coordination service initialized and ready");
+            // Note: CoordinationClient manages its own connection lifecycle
+        } else {
+            info!("Operating in standalone mode (no coordination service)");
         }
 
         // Start health reporting

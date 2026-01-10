@@ -174,8 +174,7 @@ pub struct ServiceEndpoint {
 }
 
 /// Health status of a discovered service
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum HealthStatus {
     /// Service is healthy and responding
     Healthy,
@@ -190,7 +189,6 @@ pub enum HealthStatus {
     #[default]
     Unknown,
 }
-
 
 /// Capability matcher for runtime discovery
 ///
