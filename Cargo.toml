@@ -77,7 +77,13 @@ regex = "1.10"
 config = "0.14"
 toml = "0.8"
 
-# HTTP and networking
+# RPC Protocols - PRIMARY (following Songbird pattern)
+# tarpc: High-performance binary RPC for primal-to-primal (Rust-to-Rust)
+tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-transport-json"] }
+# jsonrpsee: Universal JSON-RPC 2.0 for language-agnostic access
+jsonrpsee = { version = "0.21", features = ["server", "client", "macros"] }
+
+# HTTP and networking - FALLBACK (enabled but not primary)
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 hyper = { version = "0.14", features = ["full"] }
 axum = "0.7"

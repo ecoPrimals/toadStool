@@ -141,13 +141,27 @@ impl UnifiedBuffer {
     /// - Write would overflow buffer
     /// - Pointer is invalid
     pub async fn write_async(&mut self, offset: usize, data: &[u8]) -> ToadStoolResult<()> {
+        // Handle zero-length write
+        if data.is_empty() {
+            return Ok(());
+        }
+
         // Validate buffer is still valid
         if self.allocation.is_none() {
             return Err(ToadStoolError::runtime("Buffer has been freed"));
         }
 
-        // Validate bounds
-        if offset + data.len() > self.size {
+        // Validate size is not zero (defensive)
+        if self.size == 0 {
+            return Err(ToadStoolError::runtime("Buffer size is zero"));
+        }
+
+        // Validate bounds with overflow protection
+        let end_offset = offset
+            .checked_add(data.len())
+            .ok_or_else(|| ToadStoolError::runtime("Write offset + length would overflow"))?;
+
+        if end_offset > self.size {
             return Err(ToadStoolError::runtime(format!(
                 "Write would overflow buffer: offset={}, len={}, size={}",
                 offset,
@@ -156,23 +170,42 @@ impl UnifiedBuffer {
             )));
         }
 
-        // Validate pointer
+        // Validate pointer is not null
         if self.cpu_ptr.is_null() {
             return Err(ToadStoolError::runtime("CPU pointer is null"));
         }
 
+        // Validate pointer value (defensive check)
+        let ptr_value = self.cpu_ptr as usize;
+        if ptr_value == 0 {
+            return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
+        }
+
         // SAFETY:
-        // - Pointer validated above
-        // - Bounds checked above
+        // - Pointer validated above (not null, not zero)
+        // - Bounds checked above with overflow protection
         // - We have exclusive &mut self, so no concurrent access
+        // - cpu_ptr is valid for writes up to self.size (backend guarantees)
+        // - Source and destination do not overlap (source is stack/heap, dest is mapped memory)
         unsafe {
-            std::ptr::copy_nonoverlapping(data.as_ptr(), self.cpu_ptr.add(offset), data.len());
+            let src = data.as_ptr();
+            let dst = self.cpu_ptr.add(offset);
+            
+            // Debug assertions for development builds
+            debug_assert!(!src.is_null(), "Source pointer should never be null");
+            debug_assert!(!dst.is_null(), "Destination pointer should never be null");
+            debug_assert!(
+                (dst as usize).checked_add(data.len()).is_some(),
+                "Destination pointer arithmetic should not overflow"
+            );
+            
+            std::ptr::copy_nonoverlapping(src, dst, data.len());
         }
 
         // Update sync state
         *self.sync_state.write() = SyncState::CpuModified;
 
-        // Update metadata
+        // Update metadata (DashMap provides interior mutability)
         if let Some(mut metadata) = self.allocations.get_mut(&self.id) {
             metadata.record_access();
         }
@@ -201,36 +234,69 @@ impl UnifiedBuffer {
     /// - Read would overflow buffer
     /// - Pointer is invalid
     pub async fn read_async(&self, offset: usize, len: usize) -> ToadStoolResult<Vec<u8>> {
+        // Handle zero-length read
+        if len == 0 {
+            return Ok(Vec::new());
+        }
+
         // Validate buffer is still valid
         if self.allocation.is_none() {
             return Err(ToadStoolError::runtime("Buffer has been freed"));
         }
 
-        // Validate bounds
-        if offset + len > self.size {
+        // Validate size is not zero (defensive)
+        if self.size == 0 {
+            return Err(ToadStoolError::runtime("Buffer size is zero"));
+        }
+
+        // Validate bounds with overflow protection
+        let end_offset = offset
+            .checked_add(len)
+            .ok_or_else(|| ToadStoolError::runtime("Read offset + length would overflow"))?;
+
+        if end_offset > self.size {
             return Err(ToadStoolError::runtime(format!(
                 "Read would overflow buffer: offset={}, len={}, size={}",
                 offset, len, self.size
             )));
         }
 
-        // Validate pointer
+        // Validate pointer is not null
         if self.cpu_ptr.is_null() {
             return Err(ToadStoolError::runtime("CPU pointer is null"));
+        }
+
+        // Validate pointer value (defensive check)
+        let ptr_value = self.cpu_ptr as usize;
+        if ptr_value == 0 {
+            return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
 
         // Allocate output buffer
         let mut result = vec![0u8; len];
 
         // SAFETY:
-        // - Pointer validated above
-        // - Bounds checked above
-        // - We have &self, ensuring no concurrent writes
+        // - Pointer validated above (not null, not zero)
+        // - Bounds checked above with overflow protection
+        // - We have &self, ensuring no concurrent writes (mutation requires &mut)
+        // - cpu_ptr is valid for reads up to self.size (backend guarantees)
+        // - Source and destination do not overlap (source is mapped memory, dest is new Vec)
         unsafe {
-            std::ptr::copy_nonoverlapping(self.cpu_ptr.add(offset), result.as_mut_ptr(), len);
+            let src = self.cpu_ptr.add(offset);
+            let dst = result.as_mut_ptr();
+            
+            // Debug assertions for development builds
+            debug_assert!(!src.is_null(), "Source pointer should never be null");
+            debug_assert!(!dst.is_null(), "Destination pointer should never be null");
+            debug_assert!(
+                (src as usize).checked_add(len).is_some(),
+                "Source pointer arithmetic should not overflow"
+            );
+            
+            std::ptr::copy_nonoverlapping(src, dst, len);
         }
 
-        // Update metadata
+        // Update metadata (DashMap provides interior mutability)
         if let Some(mut metadata) = self.allocations.get_mut(&self.id) {
             metadata.record_access();
         }

@@ -278,7 +278,9 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_service_discovery_creation() {
         let config = CryptoServiceConfig::default();
-        let discovery = CryptoServiceDiscovery::new(config).await.expect("Failed to create discovery");
+        let discovery = CryptoServiceDiscovery::new(config)
+            .await
+            .expect("Failed to create discovery");
 
         assert!(!discovery.config.required_capabilities.is_empty());
     }
