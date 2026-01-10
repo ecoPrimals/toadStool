@@ -28,17 +28,30 @@ toadstool = { path = "../core/toadstool", features = ["networking"] }
 toadstool-config = { path = "../core/config" }
 toadstool-common = { path = "../core/common" }
 toadstool-distributed = { path = "../distributed" }
+toadstool-integration-protocols = { path = "../integration/protocols" }
 
 # HTTP server framework (optional)
 axum = { version = "0.7", features = ["ws"], optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
+# JSON-RPC server
+jsonrpsee = { version = "0.21", features = ["server", "macros"] }
+
+# tarpc for high-performance RPC
+tarpc = { version = "0.33", features = ["tokio1", "serde-transport", "serde-transport-json"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+tokio-serde = { version = "0.9", features = ["json"] }
+
+# Base64 encoding
+base64 = "0.22"
+
 # Async runtime and channels
 tokio = { version = "1.0", features = ["full"] }
 
 # Async utilities
 futures-util = "0.3"
+async-trait = "0.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -49,6 +62,7 @@ thiserror = "1.0"
 
 # Logging
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # UUID support
 uuid = { version = "1.0", features = ["v4", "serde"] }
@@ -56,10 +70,20 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
 
+# Unix socket support (libc for getuid)
+libc = "0.2"
+
+# CPU info
+num_cpus = "1.0"
+
 [features]
 default = ["api", "websocket"]
 api = ["axum", "tower", "tower-http"]
 websocket = ["axum/ws"]
+
+[[bin]]
+name = "toadstool-server"
+path = "src/main.rs"
 
 [dev-dependencies]
 tokio-test = "0.4"

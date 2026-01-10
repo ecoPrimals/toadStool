@@ -21,6 +21,7 @@ use toadstool::{
 // Sub-modules
 pub mod client;
 pub mod config;
+pub mod tarpc_service;
 pub mod transport;
 pub mod types;
 

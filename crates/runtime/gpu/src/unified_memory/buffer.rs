@@ -454,7 +454,9 @@ impl Drop for UnifiedBuffer {
             }
 
             // For now, we intentionally leak all allocations to avoid Drop-related crashes
-            // TODO: Implement proper async cleanup mechanism
+            // TODO(memory): Implement proper async cleanup mechanism
+            // Current: Intentionally leak to prevent SIGSEGV (OS reclaims on exit)
+            // See: SAFETY_AUDIT.md for defensive programming rationale
             // The OS will reclaim the memory when the process exits
             tracing::debug!(
                 "Buffer {} allocation intentionally leaked (Drop limitation)",
