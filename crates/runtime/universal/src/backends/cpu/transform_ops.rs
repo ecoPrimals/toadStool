@@ -8,7 +8,7 @@ use crate::types::*;
 
 #[inline]
 pub(super) fn execute_transpose(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation - extract from original cpu.rs
+    // TODO(future): Full implementation - extract from original cpu.rs
     // Pattern: Cache-friendly tiled transpose
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),

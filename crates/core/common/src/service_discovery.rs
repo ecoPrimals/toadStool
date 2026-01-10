@@ -354,7 +354,7 @@ impl ServiceDiscovery {
 
     /// Discover via mDNS (placeholder - needs implementation)
     async fn discover_via_mdns(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO: Implement mDNS discovery
+        // TODO(future): Implement mDNS discovery
         // This requires the mdns crate and proper service announcement
         debug!("mDNS discovery not yet implemented");
         Ok(Vec::new())
@@ -362,7 +362,7 @@ impl ServiceDiscovery {
 
     /// Discover from configuration file
     async fn discover_from_config(&self, _path: &str) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO: Implement config file discovery
+        // TODO(future): Implement config file discovery
         debug!("Config file discovery not yet implemented");
         Ok(Vec::new())
     }
@@ -372,7 +372,7 @@ impl ServiceDiscovery {
         &self,
         _endpoint: &str,
     ) -> DiscoveryResult<Vec<DiscoveredService>> {
-        // TODO: Implement registry discovery (Consul, etcd, etc.)
+        // TODO(future): Implement registry discovery (Consul, etcd, etc.)
         debug!("Registry discovery not yet implemented");
         Ok(Vec::new())
     }
@@ -487,7 +487,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
     }
 
     async fn announce_self(&self, _identity: &dyn PrimalIdentity) -> DiscoveryResult<()> {
-        // TODO: Implement service announcement
+        // TODO(future): Implement service announcement
         // This would announce via mDNS, registry, etc.
         Ok(())
     }

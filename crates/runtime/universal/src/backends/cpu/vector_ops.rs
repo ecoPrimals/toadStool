@@ -10,8 +10,9 @@ use crate::types::*;
 
 #[inline]
 pub(super) fn execute_dot_product(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation - extract from original cpu.rs
+    // TODO(future): Full implementation - extract from original cpu.rs
     // Pattern: parallel multiply-accumulate
+    // Current: CPU workloads use GPU fallback or external compute units
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
     ))
@@ -21,7 +22,7 @@ pub(super) fn execute_dot_product(_workload: Workload) -> Result<WorkloadData, C
 pub(super) fn execute_elementwise_binary(
     _workload: Workload,
 ) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation
+    // TODO(future): Full implementation
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
     ))
@@ -29,7 +30,7 @@ pub(super) fn execute_elementwise_binary(
 
 #[inline]
 pub(super) fn execute_gather(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation
+    // TODO(future): Full implementation
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
     ))
@@ -37,7 +38,7 @@ pub(super) fn execute_gather(_workload: Workload) -> Result<WorkloadData, Comput
 
 #[inline]
 pub(super) fn execute_scatter(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation
+    // TODO(future): Full implementation
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
     ))

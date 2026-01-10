@@ -59,6 +59,10 @@ pub use config::*;
 pub use errors::*;
 pub use state::*;
 
+// Re-export server functions for daemon
+pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
+pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
+
 #[cfg(test)]
 pub use mocks::*;
 
@@ -67,9 +71,11 @@ pub mod background;
 pub mod config;
 pub mod errors;
 pub mod handlers;
+pub mod jsonrpc_server;
 #[cfg(test)]
 pub mod mocks;
 pub mod state;
+pub mod tarpc_server;
 pub mod websocket;
 
 // Re-export background services for tests

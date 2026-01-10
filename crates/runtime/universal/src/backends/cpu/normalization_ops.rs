@@ -9,7 +9,7 @@ use crate::types::*;
 
 #[inline]
 pub(super) fn execute_layernorm(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation - extract from original cpu.rs
+    // TODO(future): Full implementation - extract from original cpu.rs
     // Pattern: mean → variance → normalize
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
@@ -18,7 +18,7 @@ pub(super) fn execute_layernorm(_workload: Workload) -> Result<WorkloadData, Com
 
 #[inline]
 pub(super) fn execute_batchnorm(_workload: Workload) -> Result<WorkloadData, ComputeError> {
-    // TODO: Full implementation
+    // TODO(future): Full implementation
     // Pattern: same as layernorm but different axis
     Err(ComputeError::ExecutionFailed(
         "Not yet migrated".to_string(),
