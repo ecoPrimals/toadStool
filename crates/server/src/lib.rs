@@ -85,9 +85,13 @@ pub mod songbird_client;  // Songbird registration client
 pub mod state;
 pub mod tarpc_server;
 pub mod websocket;
+pub mod coordinator_executor; // NEW: Distributed coordinator integration
 
 // Re-export background services for tests
 pub use background::start_background_services;
+
+// Re-export coordinator executor
+pub use coordinator_executor::CoordinatorExecutor;
 
 /// Main `ToadStool` server implementation
 pub struct ToadStoolServer {
