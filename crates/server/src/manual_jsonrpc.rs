@@ -264,7 +264,7 @@ impl ManualJsonRpcServer {
                     data: None,
                 },
                 id: request.id,
-            }).unwrap();
+            }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
         }
         
         // Route to method handler
@@ -282,7 +282,7 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap()
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
         }
     }
@@ -299,7 +299,7 @@ impl ManualJsonRpcServer {
             jsonrpc: "2.0".to_string(),
             result,
             id: request.id,
-        }).unwrap()
+        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
     }
     
     /// Handle version query
@@ -313,19 +313,20 @@ impl ManualJsonRpcServer {
             jsonrpc: "2.0".to_string(),
             result,
             id: request.id,
-        }).unwrap()
+        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
     }
     
     /// Handle capabilities query
     async fn handle_query_capabilities(&self, request: JsonRpcRequest) -> Value {
         match self.executor.query_capabilities().await {
             Ok(caps) => {
-                let result = serde_json::to_value(caps).unwrap();
+                let result = serde_json::to_value(caps)
+                    .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
                 serde_json::to_value(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     result,
                     id: request.id,
-                }).unwrap()
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
             Err(e) => {
                 serde_json::to_value(JsonRpcErrorResponse {
@@ -336,7 +337,7 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap()
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
         }
     }

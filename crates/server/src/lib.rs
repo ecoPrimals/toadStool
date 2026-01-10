@@ -60,15 +60,23 @@ pub use errors::*;
 pub use state::*;
 
 // Re-export server functions for daemon
+#[deprecated(since = "2.2.0", note = "Use ManualJsonRpcServer instead - no TCP hardcoding")]
+#[allow(deprecated)]
 pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
 pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, StandaloneExecutor};
 
 // Backward compatibility alias
+#[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
+#[allow(deprecated)]
 pub use tarpc_server::MockExecutor;
 
-// ⚠️ IMPORTANT: PRIMARY protocol is tarpc over Unix sockets
-// JSON-RPC over TCP is deprecated for production use (deep debt violation)
-// See tarpc_server::serve_unix() for correct implementation
+// ⚠️ IMPORTANT: Protocol Priority
+// 1. PRIMARY: tarpc over Unix sockets (binary RPC, high performance)
+// 2. UNIVERSAL: ManualJsonRpcServer over Unix sockets (text-based, compatible)
+// 3. DEPRECATED: JSON-RPC over TCP (hardcoded ports, deep debt violation)
+//
+// See tarpc_server::serve_unix() and manual_jsonrpc::ManualJsonRpcServer::serve()
+// for correct implementations.
 
 #[cfg(test)]
 pub use mocks::*;
