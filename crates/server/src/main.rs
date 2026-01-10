@@ -22,7 +22,7 @@ use toadstool_server::songbird_client::{
     SongbirdClient, SongbirdRegistration, ServiceLocation,
     query_system_resources, build_capabilities,
 };
-use toadstool_server::CoordinatorExecutor;
+use toadstool_server::{CoordinatorExecutor, ManualJsonRpcServer};
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
 #[tokio::main]
@@ -59,16 +59,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     
     // Create tarpc server (PRIMARY protocol)  
-    let server = ToadStoolTarpcServer::new(version.clone(), executor);
+    let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
     
-    // Register with Songbird BEFORE starting server
+    // Register with Songbird BEFORE starting servers
     // Deep debt principle: Discovery first, then serve
     register_with_ecosystem(&socket_path, &family_id, &version).await;
     
+    // Start manual JSON-RPC server on Unix socket (for universal compatibility)
+    info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");
+    let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
+    let jsonrpc_server = ManualJsonRpcServer::new(Arc::clone(&executor), version.clone());
+    let jsonrpc_socket_clone = jsonrpc_socket.clone();
+    tokio::spawn(async move {
+        if let Err(e) = jsonrpc_server.serve(jsonrpc_socket_clone).await {
+            error!("JSON-RPC server error: {}", e);
+        }
+    });
+    
     info!("Starting tarpc server on Unix socket (PRIMARY protocol)...");
     info!("✅ ToadStool server ready");
-    info!("Socket: {:?}", socket_path);
-    info!("Protocol: tarpc (binary RPC)");
+    info!("Socket (tarpc): {:?}", socket_path);
+    info!("Socket (JSON-RPC): {:?}", jsonrpc_socket);
+    info!("Protocol: tarpc (binary RPC, PRIMARY)");
+    info!("Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
     info!("Family: {}", family_id);
     info!("Capabilities: compute, gpu, orchestration");
     
@@ -97,9 +110,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Shutting down ToadStool server...");
     server_handle.abort();
     
-    // Clean up socket file
+    // Clean up socket files
     if let Err(e) = tokio::fs::remove_file(&socket_path_clone).await {
-        warn!("Failed to remove socket file: {}", e);
+        warn!("Failed to remove tarpc socket: {}", e);
+    }
+    let jsonrpc_socket = socket_path_clone.with_extension("jsonrpc.sock");
+    if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
+        warn!("Failed to remove JSON-RPC socket: {}", e);
     }
     
     info!("ToadStool server stopped");
