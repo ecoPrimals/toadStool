@@ -22,6 +22,8 @@ use toadstool_server::songbird_client::{
     SongbirdClient, SongbirdRegistration, ServiceLocation,
     query_system_resources, build_capabilities,
 };
+use toadstool_server::CoordinatorExecutor;
+use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,13 +53,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let socket_path = get_socket_path(&family_id)?;
     info!("Socket path: {:?}", socket_path);
     
-    // Create executor (workload handler)
+    // Create executor (workload handler) - now with distributed coordinator
     info!("Initializing compute executor...");
-    let executor = create_executor().await?;
+    let executor = create_executor(&family_id).await?;
     let version = env!("CARGO_PKG_VERSION").to_string();
     
-    // Create tarpc server (PRIMARY protocol)
-    let server = ToadStoolTarpcServer::new(version.clone(), Arc::new(executor));
+    // Create tarpc server (PRIMARY protocol)  
+    let server = ToadStoolTarpcServer::new(version.clone(), executor);
     
     // Register with Songbird BEFORE starting server
     // Deep debt principle: Discovery first, then serve
@@ -124,14 +126,52 @@ fn get_socket_path(family_id: &str) -> Result<PathBuf, Box<dyn std::error::Error
 /// Create real executor implementation
 /// 
 /// Deep debt principle: Complete implementation, no mocks in production
-async fn create_executor() -> Result<impl WorkloadExecutor, Box<dyn std::error::Error>> {
-    // Query local GPU capabilities
-    let capabilities = query_local_capabilities().await;
-    info!("Local capabilities: {:?}", capabilities);
+/// Now uses DistributedCoordinator for isomorphic/fractal coordination
+async fn create_executor(family_id: &str) -> Result<Arc<dyn WorkloadExecutor + Send + Sync>, Box<dyn std::error::Error>> {
+    info!("Creating executor with distributed coordinator (isomorphic/fractal)");
     
-    // Create real executor with ToadStool's runtime engines
-    // StandaloneExecutor queries real system resources (no hardcoding)
-    Ok(StandaloneExecutor::new())
+    // Check if we should use distributed mode (default) or standalone fallback
+    let use_distributed = std::env::var("TOADSTOOL_STANDALONE")
+        .map(|v| v != "1" && v.to_lowercase() != "true")
+        .unwrap_or(true); // Default to distributed
+    
+    if use_distributed {
+        info!("Initializing distributed coordinator mode");
+        
+        // Query local capabilities first
+        let capabilities = query_local_capabilities().await;
+        info!("Local capabilities: {:?}", capabilities);
+        
+        // Create distributed config
+        let config = DistributedConfig {
+            instance_id: format!("toadstool-{}", family_id),
+            standalone: StandaloneConfig {
+                max_concurrent_executions: 10,
+                default_timeout_secs: 300,
+                enable_job_queue: true,
+                max_queue_size: 100,
+            },
+            songbird_integration: Some(toadstool_distributed::SongbirdConfig {
+                endpoint: std::env::var("SONGBIRD_ENDPOINT")
+                    .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+                auth_token: std::env::var("SONGBIRD_AUTH_TOKEN").ok(),
+                health_reporting_interval_secs: 60,
+            }),
+        };
+        
+        // Create coordinator executor
+        let service_id = format!("toadstool-{}", family_id);
+        let executor = CoordinatorExecutor::new(config, service_id).await
+            .map_err(|e| format!("Failed to create coordinator executor: {}", e))?;
+        
+        info!("✅ Distributed coordinator executor ready");
+        Ok(Arc::new(executor))
+    } else {
+        info!("Using standalone executor (TOADSTOOL_STANDALONE=1)");
+        let capabilities = query_local_capabilities().await;
+        info!("Local capabilities: {:?}", capabilities);
+        Ok(Arc::new(StandaloneExecutor::new()))
+    }
 }
 
 /// Query local GPU and compute capabilities
