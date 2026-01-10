@@ -60,15 +60,69 @@ impl ToadStoolTarpcServer {
         }
     }
 
-    /// Start tarpc server on given address
+    /// Start tarpc server on Unix socket (PRIMARY transport)
     /// 
-    /// TODO(tarpc): Complete tarpc transport integration
-    /// The tarpc 0.33 API requires careful transport layer setup.
-    /// For now, JSON-RPC provides all needed functionality.
-    pub async fn serve(
+    /// Deep debt principle: No TCP hardcoding, use Unix sockets for multi-instance support
+    pub async fn serve_unix(
+        self,
+        socket_path: impl AsRef<std::path::Path>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use tokio::net::UnixListener;
+        use tarpc::server::{BaseChannel, Channel};
+        use tokio_serde::formats::Json;
+        
+        let socket_path = socket_path.as_ref();
+        
+        // Clean up old socket if exists
+        if socket_path.exists() {
+            info!("Removing old socket file: {:?}", socket_path);
+            std::fs::remove_file(socket_path)?;
+        }
+        
+        info!("tarpc server binding to Unix socket: {:?}", socket_path);
+        let listener = UnixListener::bind(socket_path)?;
+        
+        // Set permissions to user-only (0600)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(socket_path)?.permissions();
+            perms.set_mode(0o600); // Owner read+write only
+            std::fs::set_permissions(socket_path, perms)?;
+            info!("Set socket permissions to 0600 (user-only)");
+        }
+        
+        info!("✅ tarpc server listening on Unix socket: {:?}", socket_path);
+        
+        loop {
+            let (stream, _addr) = listener.accept().await?;
+            let server = self.clone();
+            
+            tokio::spawn(async move {
+                let framed = tokio_util::codec::LengthDelimitedCodec::builder()
+                    .new_framed(stream);
+                let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
+                
+                let channel = BaseChannel::with_defaults(transport);
+                channel.execute(server.serve()).await;
+            });
+        }
+    }
+    
+    /// Start tarpc server on TCP (DEBUG ONLY - not for production)
+    /// 
+    /// Deep debt violation: TCP with hardcoded ports breaks multi-instance support.
+    /// Use serve_unix() instead for production.
+    #[deprecated(
+        since = "2.2.0",
+        note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
+    )]
+    pub async fn serve_tcp_debug(
         self,
         addr: SocketAddr,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
+        warn!("⚠️  Use Unix sockets for production (serve_unix)");
         info!("tarpc server requested on: {} (not yet implemented)", addr);
         warn!("tarpc transport layer needs completion - use JSON-RPC for now");
         
@@ -76,7 +130,7 @@ impl ToadStoolTarpcServer {
         // This is blocked on tarpc 0.33 API complexity
         // JSON-RPC works for all current use cases
         
-        Err("tarpc server not yet fully implemented - use JSON-RPC".into())
+        Err("tarpc TCP server not implemented - use serve_unix() instead".into())
     }
 }
 

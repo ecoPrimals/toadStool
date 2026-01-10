@@ -63,6 +63,10 @@ pub use state::*;
 pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
 pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
 
+// ⚠️ IMPORTANT: PRIMARY protocol is tarpc over Unix sockets
+// JSON-RPC over TCP is deprecated for production use (deep debt violation)
+// See tarpc_server::serve_unix() for correct implementation
+
 #[cfg(test)]
 pub use mocks::*;
 
