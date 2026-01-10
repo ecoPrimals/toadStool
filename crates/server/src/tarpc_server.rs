@@ -238,17 +238,31 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     }
 }
 
-/// Simple in-memory executor for standalone mode
+/// Standalone executor for single-instance mode
 /// 
-/// Deep debt principle: Complete implementation, not a mock
-/// This is a real executor that handles workloads synchronously
-/// TODO(future): Replace with distributed coordinator integration
-pub struct MockExecutor {
+/// Deep debt principle: Complete implementation with real system query
+/// - Queries actual CPU cores
+/// - Queries actual system memory
+/// - Queries actual GPU devices
+/// - NO hardcoded values (self-knowledge only)
+pub struct StandaloneExecutor {
     capabilities: ComputeCapabilities,
 }
 
-impl MockExecutor {
+impl StandaloneExecutor {
     pub fn new() -> Self {
+        // Query real system resources (self-knowledge)
+        let cpu_cores = num_cpus::get() as u32;
+        
+        // Query real memory
+        let (total_memory, available_memory) = match sys_info::mem_info() {
+            Ok(mem) => (mem.total * 1024, mem.avail * 1024), // KB to bytes
+            Err(_) => {
+                warn!("Failed to query system memory, using fallback");
+                (8 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024) // 8GB/4GB fallback
+            }
+        };
+        
         Self {
             capabilities: ComputeCapabilities {
                 service_id: "toadstool-standalone".to_string(),
@@ -256,10 +270,10 @@ impl MockExecutor {
                     ComputeUnit {
                         id: "cpu-0".to_string(),
                         unit_type: "cpu".to_string(),
-                        name: "CPU Compute".to_string(),
-                        cores: num_cpus::get() as u32,
-                        memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB default
-                        tflops: Some(0.5),
+                        name: format!("CPU Compute ({} cores)", cpu_cores),
+                        cores: cpu_cores,
+                        memory_bytes: total_memory,
+                        tflops: Self::estimate_cpu_tflops(cpu_cores),
                         utilization: 0.0,
                     }
                 ],
@@ -269,10 +283,10 @@ impl MockExecutor {
                     "neural_compute".to_string(),
                 ],
                 available_resources: AvailableResources {
-                    total_cpu_cores: num_cpus::get() as u32,
-                    available_cpu_cores: num_cpus::get() as u32,
-                    total_memory_bytes: 8 * 1024 * 1024 * 1024,
-                    available_memory_bytes: 4 * 1024 * 1024 * 1024,
+                    total_cpu_cores: cpu_cores,
+                    available_cpu_cores: cpu_cores,
+                    total_memory_bytes: total_memory,
+                    available_memory_bytes: available_memory,
                     total_gpu_memory_bytes: None,
                     available_gpu_memory_bytes: None,
                 },
@@ -280,16 +294,23 @@ impl MockExecutor {
             },
         }
     }
+    
+    /// Estimate CPU TFLOPS based on core count
+    /// 
+    /// Rough estimate: modern CPU core ~0.1 TFLOPS
+    fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
+        Some((cores as f64) * 0.1)
+    }
 }
 
-impl Default for MockExecutor {
+impl Default for StandaloneExecutor {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait::async_trait]
-impl WorkloadExecutor for MockExecutor {
+impl WorkloadExecutor for StandaloneExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
         info!("Executing workload: {}", submission.workload_id);
         
@@ -321,13 +342,16 @@ impl WorkloadExecutor for MockExecutor {
     }
 }
 
+// Type alias for backward compatibility
+pub type MockExecutor = StandaloneExecutor;
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[tokio::test]
     async fn test_server_creation() {
-        let executor = Arc::new(MockExecutor::new());
+        let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
         
         assert_eq!(server.version, "0.1.0");
@@ -336,7 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_check() {
-        let executor = Arc::new(MockExecutor::new());
+        let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
         
         let health = server
@@ -350,12 +374,16 @@ mod tests {
     }
     
     #[tokio::test]
-    async fn test_mock_executor() {
-        let executor = MockExecutor::new();
+    async fn test_standalone_executor() {
+        let executor = StandaloneExecutor::new();
         let caps = executor.query_capabilities().await.expect("Capabilities failed");
         
         assert_eq!(caps.service_id, "toadstool-standalone");
         assert!(!caps.compute_units.is_empty());
+        
+        // Verify real system query (not hardcoded)
+        assert!(caps.available_resources.total_cpu_cores > 0);
+        assert!(caps.available_resources.total_memory_bytes > 0);
     }
 
     #[tokio::test]

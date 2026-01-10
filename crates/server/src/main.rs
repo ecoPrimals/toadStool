@@ -17,7 +17,7 @@ use tokio::signal;
 use tracing::{info, warn, error};
 use tracing_subscriber::EnvFilter;
 
-use toadstool_server::tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
+use toadstool_server::tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, StandaloneExecutor};
 use toadstool_server::songbird_client::{
     SongbirdClient, SongbirdRegistration, ServiceLocation,
     query_system_resources, build_capabilities,
@@ -130,8 +130,8 @@ async fn create_executor() -> Result<impl WorkloadExecutor, Box<dyn std::error::
     info!("Local capabilities: {:?}", capabilities);
     
     // Create real executor with ToadStool's runtime engines
-    // This will evolve to use actual runtime orchestration
-    Ok(MockExecutor::new())
+    // StandaloneExecutor queries real system resources (no hardcoding)
+    Ok(StandaloneExecutor::new())
 }
 
 /// Query local GPU and compute capabilities

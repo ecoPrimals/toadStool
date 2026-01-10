@@ -61,7 +61,10 @@ pub use state::*;
 
 // Re-export server functions for daemon
 pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
-pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, MockExecutor};
+pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, StandaloneExecutor};
+
+// Backward compatibility alias
+pub use tarpc_server::MockExecutor;
 
 // ⚠️ IMPORTANT: PRIMARY protocol is tarpc over Unix sockets
 // JSON-RPC over TCP is deprecated for production use (deep debt violation)

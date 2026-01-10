@@ -76,11 +76,11 @@ chrono = { version = "0.4", features = ["serde"] }
 # Unix socket support (libc for getuid)
 libc = "0.2"
 
-# CPU info
-num_cpus = "1.0"
-
 # System info (for memory query)
 sys-info = "0.9"
+
+# CPU info
+num_cpus = "1.0"
 
 [features]
 default = ["api", "websocket"]
