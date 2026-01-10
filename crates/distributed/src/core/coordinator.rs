@@ -8,7 +8,9 @@ use uuid::Uuid;
 use toadstool::{ExecutionRequest, ToadStoolResult};
 
 use super::config::{DistributedConfig, StandaloneConfig, ToadStoolCapabilities};
-use crate::coordination_integration::{CoordinationClient, CoordinationConfig, CoordinationDiscovery};
+use crate::coordination_integration::{
+    CoordinationClient, CoordinationConfig, CoordinationDiscovery,
+};
 
 /// Main distributed computing coordinator - uses capability-based coordination discovery
 pub struct DistributedCoordinator {
@@ -71,7 +73,7 @@ impl DistributedCoordinator {
             };
 
             let discovery = CoordinationDiscovery::new(coord_config).await?;
-            
+
             match discovery.discover().await {
                 Ok(services) if !services.is_empty() => {
                     let service = &services[0];
@@ -84,7 +86,10 @@ impl DistributedCoordinator {
                     None
                 }
                 Err(e) => {
-                    warn!("Coordination service discovery failed, operating in standalone mode: {}", e);
+                    warn!(
+                        "Coordination service discovery failed, operating in standalone mode: {}",
+                        e
+                    );
                     None
                 }
             }

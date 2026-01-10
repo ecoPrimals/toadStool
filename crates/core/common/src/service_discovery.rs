@@ -522,9 +522,11 @@ impl ServiceEndpoint {
         let rest = parts[1];
 
         let host_port: Vec<&str> = rest.split(':').collect();
-        let address = host_port.first().ok_or_else(|| DiscoveryError::InvalidResponse {
-            reason: format!("Missing host in URL: {}", url),
-        })?;
+        let address = host_port
+            .first()
+            .ok_or_else(|| DiscoveryError::InvalidResponse {
+                reason: format!("Missing host in URL: {}", url),
+            })?;
         let port = host_port.get(1).and_then(|p| p.parse().ok()).unwrap_or(80); // Safe: Default port
 
         Ok(Self {

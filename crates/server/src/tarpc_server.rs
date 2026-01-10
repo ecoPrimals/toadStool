@@ -1,0 +1,297 @@
+//! # ToadStool tarpc Server Implementation
+//!
+//! High-performance binary RPC server for primal-to-primal communication.
+//! Follows Songbird's architecture pattern.
+
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tarpc::{
+    context::Context,
+    server::{BaseChannel, Channel},
+    tokio_serde::formats::Json,
+};
+use tokio::sync::RwLock;
+use tracing::{error, info, warn};
+
+use crate::tarpc_service::{
+    ComputeCapabilities, ComputeUnit, AvailableResources, HealthStatus,
+    ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+    ExecutionMetrics,
+};
+
+/// tarpc server state
+pub struct ToadStoolTarpcServer {
+    /// Service start time
+    start_time: Instant,
+    /// Service version
+    version: String,
+    /// Active workloads
+    workloads: Arc<RwLock<std::collections::HashMap<String, WorkloadResult>>>,
+    /// Workload executor (real implementation, not mock)
+    executor: Arc<dyn WorkloadExecutor + Send + Sync>,
+}
+
+/// Workload executor trait (capability-based, not hardcoded)
+/// 
+/// Following principles:
+/// - Self-knowledge: knows only its own capabilities
+/// - Discovery: discovers other primals at runtime
+/// - Complete implementation: no mocks in production
+#[async_trait::async_trait]
+pub trait WorkloadExecutor {
+    /// Execute workload with given submission
+    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String>;
+    
+    /// Query this executor's capabilities (self-knowledge)
+    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String>;
+    
+    /// Cancel running workload
+    async fn cancel(&self, workload_id: &str) -> Result<(), String>;
+}
+
+impl ToadStoolTarpcServer {
+    /// Create new tarpc server with real executor
+    pub fn new(
+        version: String,
+        executor: Arc<dyn WorkloadExecutor + Send + Sync>,
+    ) -> Self {
+        Self {
+            start_time: Instant::now(),
+            version,
+            workloads: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            executor,
+        }
+    }
+
+    /// Start tarpc server on given address
+    pub async fn serve(
+        self,
+        addr: SocketAddr,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        info!("ToadStool tarpc server listening on: {}", addr);
+
+        loop {
+            let (stream, peer_addr) = listener.accept().await?;
+            info!("New tarpc connection from: {}", peer_addr);
+
+            let server = self.clone();
+            tokio::spawn(async move {
+                let transport = tarpc::serde_transport::new(
+                    tokio_util::codec::LengthDelimitedCodec::builder()
+                        .max_frame_length(16 * 1024 * 1024) // 16MB max frame
+                        .new_framed(stream),
+                    Json::default(),
+                );
+
+                let channel = BaseChannel::with_defaults(transport);
+                
+                if let Err(e) = channel.execute(server.serve()).await {
+                    error!("tarpc channel error from {}: {}", peer_addr, e);
+                }
+            });
+        }
+    }
+}
+
+// Clone implementation for spawning tasks
+impl Clone for ToadStoolTarpcServer {
+    fn clone(&self) -> Self {
+        Self {
+            start_time: self.start_time,
+            version: self.version.clone(),
+            workloads: Arc::clone(&self.workloads),
+            executor: Arc::clone(&self.executor),
+        }
+    }
+}
+
+/// Implement the tarpc service trait
+#[tarpc::server]
+impl ToadStoolComputeRpc for ToadStoolTarpcServer {
+    async fn submit_workload(
+        self,
+        _context: Context,
+        submission: WorkloadSubmission,
+    ) -> Result<WorkloadResult, String> {
+        info!("Submitting workload: {}", submission.workload_id);
+
+        // Execute via real executor (not mock)
+        let result = self.executor.execute(submission.clone()).await?;
+
+        // Store result
+        {
+            let mut workloads = self.workloads.write().await;
+            workloads.insert(submission.workload_id.clone(), result.clone());
+        }
+
+        Ok(result)
+    }
+
+    async fn query_status(
+        self,
+        _context: Context,
+        workload_id: String,
+    ) -> Result<WorkloadResult, String> {
+        let workloads = self.workloads.read().await;
+        workloads
+            .get(&workload_id)
+            .cloned()
+            .ok_or_else(|| format!("Workload not found: {}", workload_id))
+    }
+
+    async fn cancel_workload(
+        self,
+        _context: Context,
+        workload_id: String,
+    ) -> Result<(), String> {
+        self.executor.cancel(&workload_id).await?;
+
+        // Update status
+        let mut workloads = self.workloads.write().await;
+        if let Some(result) = workloads.get_mut(&workload_id) {
+            result.status = WorkloadStatus::Cancelled;
+        }
+
+        Ok(())
+    }
+
+    async fn list_workloads(
+        self,
+        _context: Context,
+        _filter: Option<std::collections::HashMap<String, String>>,
+    ) -> Result<Vec<WorkloadResult>, String> {
+        let workloads = self.workloads.read().await;
+        Ok(workloads.values().cloned().collect())
+    }
+
+    /// Query capabilities - SELF-KNOWLEDGE ONLY
+    /// 
+    /// Following the principle: "Primal code only has self knowledge
+    /// and discovers other primals at runtime"
+    async fn query_capabilities(
+        self,
+        _context: Context,
+    ) -> Result<ComputeCapabilities, String> {
+        // Query OUR capabilities only (not other primals)
+        self.executor.query_capabilities().await
+    }
+
+    async fn health_check(
+        self,
+        _context: Context,
+    ) -> Result<HealthStatus, String> {
+        let uptime = self.start_time.elapsed();
+        let workloads = self.workloads.read().await;
+        let active_count = workloads
+            .values()
+            .filter(|w| matches!(w.status, WorkloadStatus::Running | WorkloadStatus::Queued))
+            .count();
+
+        Ok(HealthStatus {
+            healthy: true,
+            version: self.version.clone(),
+            uptime_secs: uptime.as_secs(),
+            active_workloads: active_count as u32,
+            resource_utilization: 0.0, // TODO: Calculate from executor
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tarpc_service::{WorkloadPriority, ResourceRequirements};
+
+    /// Mock executor for testing only (isolated to tests)
+    struct MockExecutor;
+
+    #[async_trait::async_trait]
+    impl WorkloadExecutor for MockExecutor {
+        async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
+            Ok(WorkloadResult {
+                workload_id: submission.workload_id,
+                status: WorkloadStatus::Completed,
+                data: Some(vec![5, 6, 7, 8]),
+                error: None,
+                metrics: ExecutionMetrics {
+                    queued_duration_secs: 0.1,
+                    execution_duration_secs: 1.5,
+                    cpu_cores_used: 4,
+                    memory_used_bytes: 1024 * 1024,
+                    gpu_memory_used_bytes: None,
+                },
+            })
+        }
+
+        async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
+            Ok(ComputeCapabilities {
+                service_id: "test-toadstool".to_string(),
+                compute_units: vec![ComputeUnit {
+                    id: "test-cpu".to_string(),
+                    unit_type: "cpu".to_string(),
+                    name: "Test CPU".to_string(),
+                    cores: 8,
+                    memory_bytes: 16 * 1024 * 1024 * 1024,
+                    tflops: Some(1.0),
+                    utilization: 0.5,
+                }],
+                supported_workload_types: vec!["test".to_string()],
+                available_resources: AvailableResources {
+                    total_cpu_cores: 8,
+                    available_cpu_cores: 4,
+                    total_memory_bytes: 16 * 1024 * 1024 * 1024,
+                    available_memory_bytes: 8 * 1024 * 1024 * 1024,
+                    total_gpu_memory_bytes: None,
+                    available_gpu_memory_bytes: None,
+                },
+                metadata: std::collections::HashMap::new(),
+            })
+        }
+
+        async fn cancel(&self, _workload_id: &str) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_server_creation() {
+        let executor = Arc::new(MockExecutor);
+        let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
+        
+        assert_eq!(server.version, "0.1.0");
+        assert!(server.workloads.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_health_check() {
+        let executor = Arc::new(MockExecutor);
+        let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
+        
+        let health = server
+            .health_check(Context::current())
+            .await
+            .expect("Health check failed");
+        
+        assert!(health.healthy);
+        assert_eq!(health.version, "0.1.0");
+        assert_eq!(health.active_workloads, 0);
+    }
+
+    #[tokio::test]
+    async fn test_query_capabilities() {
+        let executor = Arc::new(MockExecutor);
+        let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
+        
+        let caps = server
+            .query_capabilities(Context::current())
+            .await
+            .expect("Capabilities query failed");
+        
+        assert_eq!(caps.service_id, "test-toadstool");
+        assert_eq!(caps.compute_units.len(), 1);
+        assert_eq!(caps.compute_units[0].cores, 8);
+    }
+}
+

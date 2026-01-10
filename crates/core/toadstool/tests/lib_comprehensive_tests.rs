@@ -196,8 +196,9 @@ fn test_resource_types_exported() {
 
 #[test]
 fn test_ecosystem_types_exported() {
-    // Verify ecosystem types are available
-    let _status = PrimalStatus::Connected;
+    // Note: PrimalStatus removed in favor of capability-based discovery
+    // Ecosystem types are now focused on capabilities rather than specific primals
+    let _ = std::any::type_name::<EcosystemConfig>();
 }
 
 #[test]
@@ -224,9 +225,9 @@ fn test_all_modules_accessible() {
 
 #[test]
 fn test_config_module_accessible() {
-    // config module should be re-exported
-    #[allow(deprecated)]
-    let _ = config::defaults::network::SONGBIRD_PORT;
+    // Note: SONGBIRD_PORT removed as part of capability-based, vendor-agnostic design
+    // Services discover each other at runtime rather than using hardcoded ports
+    let _ = std::any::type_name::<config::ToadStoolConfig>();
 }
 
 // ============================================================================
