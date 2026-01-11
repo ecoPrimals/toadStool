@@ -50,6 +50,10 @@ use tokio::net::{UnixListener, UnixStream};
 use tracing::{info, warn, error};
 
 use super::tarpc_server::WorkloadExecutor;
+use super::resource_estimator::ResourceEstimator;
+use super::resource_validator::ResourceValidator;
+use super::resource_optimizer::ResourceOptimizer;
+use super::graph_types::ExecutionGraph;
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,12 +101,21 @@ pub const INTERNAL_ERROR: i32 = -32603;
 pub struct ManualJsonRpcServer {
     executor: Arc<dyn WorkloadExecutor + Send + Sync>,
     version: String,
+    estimator: ResourceEstimator,
+    validator: ResourceValidator,
+    optimizer: ResourceOptimizer,
 }
 
 impl ManualJsonRpcServer {
     /// Create new manual JSON-RPC server
     pub fn new(executor: Arc<dyn WorkloadExecutor + Send + Sync>, version: String) -> Self {
-        Self { executor, version }
+        Self {
+            executor,
+            version,
+            estimator: ResourceEstimator::new(),
+            validator: ResourceValidator::new(),
+            optimizer: ResourceOptimizer::new(),
+        }
     }
     
     /// Start server on Unix socket
@@ -272,6 +285,10 @@ impl ManualJsonRpcServer {
             "toadstool.health" => self.handle_health(request).await,
             "toadstool.version" => self.handle_version(request).await,
             "toadstool.query_capabilities" => self.handle_query_capabilities(request).await,
+            // Collaborative Intelligence methods
+            "resources.estimate" => self.handle_resources_estimate(request).await,
+            "resources.validate_availability" => self.handle_resources_validate_availability(request).await,
+            "resources.suggest_optimizations" => self.handle_resources_suggest_optimizations(request).await,
             _ => {
                 // Method not found
                 serde_json::to_value(JsonRpcErrorResponse {
@@ -334,6 +351,189 @@ impl ManualJsonRpcServer {
                     error: JsonRpcError {
                         code: INTERNAL_ERROR,
                         message: format!("Failed to query capabilities: {}", e),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+        }
+    }
+    
+    /// Handle resources.estimate - Estimate resource requirements for a graph
+    ///
+    /// Request params: { "graph": ExecutionGraph }
+    /// Response: ResourceEstimate
+    async fn handle_resources_estimate(&self, request: JsonRpcRequest) -> Value {
+        // Parse params
+        let graph: ExecutionGraph = match request.params {
+            Some(params) => {
+                match serde_json::from_value(params.get("graph").cloned().unwrap_or(Value::Null)) {
+                    Ok(g) => g,
+                    Err(e) => {
+                        return serde_json::to_value(JsonRpcErrorResponse {
+                            jsonrpc: "2.0".to_string(),
+                            error: JsonRpcError {
+                                code: INVALID_PARAMS,
+                                message: format!("Invalid graph parameter: {}", e),
+                                data: None,
+                            },
+                            id: request.id,
+                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                    }
+                }
+            }
+            None => {
+                return serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INVALID_PARAMS,
+                        message: "Missing 'graph' parameter".to_string(),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+            }
+        };
+        
+        // Estimate resources
+        match self.estimator.estimate(&graph) {
+            Ok(estimate) => {
+                let result = serde_json::to_value(estimate)
+                    .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                serde_json::to_value(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result,
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+            Err(e) => {
+                serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INTERNAL_ERROR,
+                        message: format!("Estimation failed: {}", e),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+        }
+    }
+    
+    /// Handle resources.validate_availability - Check if system can execute graph
+    ///
+    /// Request params: { "graph": ExecutionGraph }
+    /// Response: AvailabilityResult
+    async fn handle_resources_validate_availability(&self, request: JsonRpcRequest) -> Value {
+        // Parse params
+        let graph: ExecutionGraph = match request.params {
+            Some(params) => {
+                match serde_json::from_value(params.get("graph").cloned().unwrap_or(Value::Null)) {
+                    Ok(g) => g,
+                    Err(e) => {
+                        return serde_json::to_value(JsonRpcErrorResponse {
+                            jsonrpc: "2.0".to_string(),
+                            error: JsonRpcError {
+                                code: INVALID_PARAMS,
+                                message: format!("Invalid graph parameter: {}", e),
+                                data: None,
+                            },
+                            id: request.id,
+                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                    }
+                }
+            }
+            None => {
+                return serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INVALID_PARAMS,
+                        message: "Missing 'graph' parameter".to_string(),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+            }
+        };
+        
+        // Validate availability
+        match self.validator.validate_availability(&graph).await {
+            Ok(result) => {
+                let result_value = serde_json::to_value(result)
+                    .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                serde_json::to_value(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: result_value,
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+            Err(e) => {
+                serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INTERNAL_ERROR,
+                        message: format!("Validation failed: {}", e),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+        }
+    }
+    
+    /// Handle resources.suggest_optimizations - Suggest optimizations for graph
+    ///
+    /// Request params: { "graph": ExecutionGraph }
+    /// Response: OptimizationSuggestions
+    async fn handle_resources_suggest_optimizations(&self, request: JsonRpcRequest) -> Value {
+        // Parse params
+        let graph: ExecutionGraph = match request.params {
+            Some(params) => {
+                match serde_json::from_value(params.get("graph").cloned().unwrap_or(Value::Null)) {
+                    Ok(g) => g,
+                    Err(e) => {
+                        return serde_json::to_value(JsonRpcErrorResponse {
+                            jsonrpc: "2.0".to_string(),
+                            error: JsonRpcError {
+                                code: INVALID_PARAMS,
+                                message: format!("Invalid graph parameter: {}", e),
+                                data: None,
+                            },
+                            id: request.id,
+                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                    }
+                }
+            }
+            None => {
+                return serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INVALID_PARAMS,
+                        message: "Missing 'graph' parameter".to_string(),
+                        data: None,
+                    },
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+            }
+        };
+        
+        // Suggest optimizations
+        match self.optimizer.suggest_optimizations(&graph).await {
+            Ok(suggestions) => {
+                let result = serde_json::to_value(suggestions)
+                    .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                serde_json::to_value(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result,
+                    id: request.id,
+                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+            }
+            Err(e) => {
+                serde_json::to_value(JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: INTERNAL_ERROR,
+                        message: format!("Optimization failed: {}", e),
                         data: None,
                     },
                     id: request.id,

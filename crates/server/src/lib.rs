@@ -95,6 +95,10 @@ pub mod tarpc_server;
 pub mod websocket;
 pub mod coordinator_executor; // NEW: Distributed coordinator integration
 pub mod manual_jsonrpc; // NEW: Pure manual JSON-RPC over Unix sockets
+pub mod graph_types; // NEW: Collaborative intelligence graph types
+pub mod resource_estimator; // NEW: Resource estimation for graphs
+pub mod resource_validator; // NEW: Resource validation for graphs
+pub mod resource_optimizer; // NEW: Resource optimization for graphs
 
 // Re-export background services for tests
 pub use background::start_background_services;
@@ -104,6 +108,15 @@ pub use coordinator_executor::CoordinatorExecutor;
 
 // Re-export manual JSON-RPC server
 pub use manual_jsonrpc::ManualJsonRpcServer;
+
+// Re-export Songbird client
+pub use songbird_client::{SongbirdClient, SongbirdRegistration, ServiceLocation, SystemResources};
+
+// Re-export collaborative intelligence types
+pub use graph_types::{ExecutionGraph, GraphNode, GraphEdge, NodeResourceRequirements, EdgeType, GraphValidationError};
+pub use resource_estimator::{ResourceEstimator, ResourceEstimate, NodeEstimate, EstimationError};
+pub use resource_validator::{ResourceValidator, AvailabilityResult, ResourceGap, SystemCapabilities, ValidationError};
+pub use resource_optimizer::{ResourceOptimizer, OptimizationSuggestions, Bottleneck, Opportunity, ImprovementEstimate};
 
 /// Main `ToadStool` server implementation
 pub struct ToadStoolServer {
