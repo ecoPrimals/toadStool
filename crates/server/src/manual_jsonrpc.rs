@@ -124,6 +124,13 @@ impl ManualJsonRpcServer {
     pub async fn serve(self, socket_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting manual JSON-RPC 2.0 server on Unix socket: {:?}", socket_path);
         
+        // Ensure parent directory exists (biomeOS requirement for custom socket paths)
+        if let Some(parent) = socket_path.parent() {
+            tokio::fs::create_dir_all(parent).await
+                .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
+            info!("Ensured JSON-RPC socket directory exists: {:?}", parent);
+        }
+        
         // Clean up old socket if it exists
         if socket_path.exists() {
             warn!("Removing old JSON-RPC socket: {:?}", socket_path);
