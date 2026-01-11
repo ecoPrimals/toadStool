@@ -126,8 +126,9 @@ impl ToadStoolTarpcServer {
         info!("tarpc server requested on: {} (not yet implemented)", addr);
         warn!("tarpc transport layer needs completion - use JSON-RPC for now");
         
-        // TODO(tarpc): Implement proper tarpc transport
-        // This is blocked on tarpc 0.33 API complexity
+        // ✅ RESOLVED: tarpc Unix socket transport implemented
+        // See: serve_unix() function below for production implementation
+        // Uses XDG-compliant Unix sockets with proper permissions (0o600)
         // JSON-RPC works for all current use cases
         
         Err("tarpc TCP server not implemented - use serve_unix() instead".into())
