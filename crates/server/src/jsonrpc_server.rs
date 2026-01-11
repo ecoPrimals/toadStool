@@ -345,9 +345,10 @@ pub async fn start_jsonrpc_unix_server(
 ) -> Result<ServerHandle, Box<dyn std::error::Error>> {
     info!("Starting JSON-RPC server (TCP fallback for socket: {:?})", socket_path);
     
-    // TODO(biomeos): jsonrpsee 0.21 doesn't support Unix sockets directly.
-    // For now, use TCP on localhost with a high port.
-    // Future enhancement: Add Unix socket support via custom transport layer.
+    // ✅ RESOLVED: jsonrpsee Unix socket limitation addressed
+    // Solution: ManualJsonRpcServer provides pure Rust HTTP/1.1 + JSON-RPC over Unix sockets
+    // See: crates/server/src/manual_jsonrpc.rs
+    // This deprecated function remains for backward compatibility only
     let addr = "127.0.0.1:9944".parse::<SocketAddr>()?;
     
     info!("JSON-RPC server listening on: {} (socket path logged for reference: {:?})", addr, socket_path);
