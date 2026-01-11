@@ -15,6 +15,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, MemoryRequirements, StorageRequirements, 
     GpuRequirements, NetworkRequirements,
@@ -199,6 +200,18 @@ enum Color {
 /// Each node represents a primal operation with resource requirements.
 /// Nodes are self-describing - they contain all information needed for
 /// resource estimation without external knowledge.
+///
+/// ## Modern Idiomatic Rust
+///
+/// Use builder pattern for ergonomic construction:
+/// ```rust,ignore
+/// let node = GraphNode::builder("my_node", "gpu_compute")
+///     .cpu(4.0)
+///     .memory_gb(8)
+///     .gpu_memory_gb(16)
+///     .duration_secs(60)
+///     .build();
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNode {
     /// Unique node identifier
@@ -206,17 +219,51 @@ pub struct GraphNode {
     
     /// Primal name (e.g., "toadstool", "squirrel", "nestgate")
     /// This is self-knowledge - the node knows which primal it needs
+    /// Defaults to "toadstool" if not specified
+    #[serde(default = "default_primal")]
     pub primal: String,
     
     /// Operation type (e.g., "gpu_compute", "cpu_compute", "storage")
     pub operation: String,
     
     /// Resource requirements for this node
+    #[serde(default)]
     pub requirements: NodeResourceRequirements,
+    
+    /// Estimated execution duration (type-safe)
+    /// Replaces duration_secs in metadata for better ergonomics
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_duration",
+        deserialize_with = "deserialize_duration"
+    )]
+    pub duration: Option<Duration>,
     
     /// Optional metadata (workload hints, model size, etc.)
     #[serde(default)]
     pub metadata: HashMap<String, String>,
+}
+
+fn default_primal() -> String {
+    "toadstool".to_string()
+}
+
+fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match duration {
+        Some(d) => serializer.serialize_u64(d.as_secs()),
+        None => serializer.serialize_none(),
+    }
+}
+
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let secs: Option<u64> = Option::deserialize(deserializer)?;
+    Ok(secs.map(Duration::from_secs))
 }
 
 /// Resource requirements for a graph node
@@ -259,6 +306,8 @@ pub struct GraphEdge {
     pub to: String,
     
     /// Edge type (data flow, control flow, or general dependency)
+    /// Defaults to Dependency if not specified
+    #[serde(default)]
     pub edge_type: EdgeType,
     
     /// Optional metadata
@@ -266,8 +315,41 @@ pub struct GraphEdge {
     pub metadata: HashMap<String, String>,
 }
 
+impl GraphEdge {
+    /// Create a simple dependency edge
+    pub fn new(from: impl Into<String>, to: impl Into<String>) -> Self {
+        Self {
+            from: from.into(),
+            to: to.into(),
+            edge_type: EdgeType::Dependency,
+            metadata: HashMap::new(),
+        }
+    }
+    
+    /// Create a data flow edge
+    pub fn data_flow(from: impl Into<String>, to: impl Into<String>) -> Self {
+        Self {
+            from: from.into(),
+            to: to.into(),
+            edge_type: EdgeType::DataFlow,
+            metadata: HashMap::new(),
+        }
+    }
+    
+    /// Create a control flow edge
+    pub fn control(from: impl Into<String>, to: impl Into<String>) -> Self {
+        Self {
+            from: from.into(),
+            to: to.into(),
+            edge_type: EdgeType::Control,
+            metadata: HashMap::new(),
+        }
+    }
+}
+
 /// Type of dependency edge
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EdgeType {
     /// Data flows from source to target (output → input)
     DataFlow,
@@ -277,6 +359,12 @@ pub enum EdgeType {
     
     /// General dependency - no specific semantics
     Dependency,
+}
+
+impl Default for EdgeType {
+    fn default() -> Self {
+        EdgeType::Dependency
+    }
 }
 
 /// Graph validation error
@@ -300,6 +388,284 @@ pub enum GraphValidationError {
     
     #[error("Cycle detected in graph: {}", .0.join(" -> "))]
     CycleDetected(Vec<String>),
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Builder Patterns - Modern Idiomatic Rust
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+impl GraphNode {
+    /// Create a builder for ergonomic node construction
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let node = GraphNode::builder("my_node", "gpu_compute")
+    ///     .cpu(4.0)
+    ///     .memory_gb(8)
+    ///     .gpu_memory_gb(16)
+    ///     .duration_secs(60)
+    ///     .build();
+    /// ```
+    pub fn builder(id: impl Into<String>, operation: impl Into<String>) -> GraphNodeBuilder {
+        GraphNodeBuilder::new(id, operation)
+    }
+    
+    /// Create a simple node with defaults
+    pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            primal: "toadstool".to_string(),
+            operation: operation.into(),
+            requirements: NodeResourceRequirements::default(),
+            duration: None,
+            metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for GraphNode with fluent API
+///
+/// Provides ergonomic construction of graph nodes with sensible defaults.
+pub struct GraphNodeBuilder {
+    id: String,
+    primal: String,
+    operation: String,
+    cpu_cores: Option<f64>,
+    memory_bytes: Option<u64>,
+    gpu_memory_bytes: Option<u64>,
+    storage_bytes: Option<u64>,
+    network_bandwidth_mbps: Option<u64>,
+    duration: Option<Duration>,
+    metadata: HashMap<String, String>,
+}
+
+impl GraphNodeBuilder {
+    /// Create a new builder
+    pub fn new(id: impl Into<String>, operation: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            primal: "toadstool".to_string(),
+            operation: operation.into(),
+            cpu_cores: None,
+            memory_bytes: None,
+            gpu_memory_bytes: None,
+            storage_bytes: None,
+            network_bandwidth_mbps: None,
+            duration: None,
+            metadata: HashMap::new(),
+        }
+    }
+    
+    /// Set the primal name
+    pub fn primal(mut self, primal: impl Into<String>) -> Self {
+        self.primal = primal.into();
+        self
+    }
+    
+    /// Set CPU requirements (in cores)
+    pub fn cpu(mut self, cores: f64) -> Self {
+        self.cpu_cores = Some(cores);
+        self
+    }
+    
+    /// Set memory requirements (in bytes)
+    pub fn memory(mut self, bytes: u64) -> Self {
+        self.memory_bytes = Some(bytes);
+        self
+    }
+    
+    /// Set memory requirements (in GB, for convenience)
+    pub fn memory_gb(mut self, gb: u64) -> Self {
+        self.memory_bytes = Some(gb * 1024 * 1024 * 1024);
+        self
+    }
+    
+    /// Set GPU memory requirements (in bytes)
+    pub fn gpu_memory(mut self, bytes: u64) -> Self {
+        self.gpu_memory_bytes = Some(bytes);
+        self
+    }
+    
+    /// Set GPU memory requirements (in GB, for convenience)
+    pub fn gpu_memory_gb(mut self, gb: u64) -> Self {
+        self.gpu_memory_bytes = Some(gb * 1024 * 1024 * 1024);
+        self
+    }
+    
+    /// Set storage requirements (in bytes)
+    pub fn storage(mut self, bytes: u64) -> Self {
+        self.storage_bytes = Some(bytes);
+        self
+    }
+    
+    /// Set storage requirements (in GB, for convenience)
+    pub fn storage_gb(mut self, gb: u64) -> Self {
+        self.storage_bytes = Some(gb * 1024 * 1024 * 1024);
+        self
+    }
+    
+    /// Set network bandwidth requirements (in Mbps)
+    pub fn network_bandwidth(mut self, mbps: u64) -> Self {
+        self.network_bandwidth_mbps = Some(mbps);
+        self
+    }
+    
+    /// Set estimated duration (as Duration)
+    pub fn duration(mut self, duration: Duration) -> Self {
+        self.duration = Some(duration);
+        self
+    }
+    
+    /// Set estimated duration (in seconds, for convenience)
+    pub fn duration_secs(mut self, secs: u64) -> Self {
+        self.duration = Some(Duration::from_secs(secs));
+        self
+    }
+    
+    /// Add metadata
+    pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+    
+    /// Build the GraphNode
+    pub fn build(self) -> GraphNode {
+        let mut requirements = NodeResourceRequirements::default();
+        
+        if let Some(cores) = self.cpu_cores {
+            requirements.cpu = Some(CpuRequirements {
+                min_cores: cores,
+                max_cores: None,
+                architecture: None,
+            });
+        }
+        
+        if let Some(bytes) = self.memory_bytes {
+            requirements.memory = Some(MemoryRequirements {
+                min_bytes: bytes,
+                max_bytes: None,
+            });
+        }
+        
+        if let Some(bytes) = self.gpu_memory_bytes {
+            requirements.gpu = Some(GpuRequirements {
+                min_units: 1,
+                max_units: None,
+                gpu_type: None,
+                min_memory_bytes: Some(bytes),
+            });
+        }
+        
+        if let Some(bytes) = self.storage_bytes {
+            requirements.storage = Some(StorageRequirements {
+                min_bytes: bytes,
+                max_bytes: None,
+                storage_type: None,
+            });
+        }
+        
+        if let Some(mbps) = self.network_bandwidth_mbps {
+            // Convert Mbps to bytes per second (Mbps * 125000)
+            let bytes_per_sec = mbps * 125000;
+            requirements.network = Some(NetworkRequirements {
+                min_bandwidth: Some(bytes_per_sec),
+                max_bandwidth: None,
+                max_latency_ms: None,
+            });
+        }
+        
+        GraphNode {
+            id: self.id,
+            primal: self.primal,
+            operation: self.operation,
+            requirements,
+            duration: self.duration,
+            metadata: self.metadata,
+        }
+    }
+}
+
+impl ExecutionGraph {
+    /// Create a builder for ergonomic graph construction
+    pub fn builder(id: impl Into<String>) -> ExecutionGraphBuilder {
+        ExecutionGraphBuilder::new(id)
+    }
+    
+    /// Create a simple graph
+    pub fn simple(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Builder for ExecutionGraph with fluent API
+pub struct ExecutionGraphBuilder {
+    id: String,
+    nodes: Vec<GraphNode>,
+    edges: Vec<GraphEdge>,
+    metadata: HashMap<String, String>,
+}
+
+impl ExecutionGraphBuilder {
+    /// Create a new builder
+    pub fn new(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            metadata: HashMap::new(),
+        }
+    }
+    
+    /// Add a node
+    pub fn node(mut self, node: GraphNode) -> Self {
+        self.nodes.push(node);
+        self
+    }
+    
+    /// Add multiple nodes
+    pub fn nodes(mut self, nodes: impl IntoIterator<Item = GraphNode>) -> Self {
+        self.nodes.extend(nodes);
+        self
+    }
+    
+    /// Add an edge
+    pub fn edge(mut self, edge: GraphEdge) -> Self {
+        self.edges.push(edge);
+        self
+    }
+    
+    /// Add a simple dependency edge
+    pub fn connect(mut self, from: impl Into<String>, to: impl Into<String>) -> Self {
+        self.edges.push(GraphEdge::new(from, to));
+        self
+    }
+    
+    /// Add multiple edges
+    pub fn edges(mut self, edges: impl IntoIterator<Item = GraphEdge>) -> Self {
+        self.edges.extend(edges);
+        self
+    }
+    
+    /// Add metadata
+    pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+    
+    /// Build the ExecutionGraph
+    pub fn build(self) -> ExecutionGraph {
+        ExecutionGraph {
+            id: self.id,
+            nodes: self.nodes,
+            edges: self.edges,
+            metadata: self.metadata,
+        }
+    }
 }
 
 #[cfg(test)]
