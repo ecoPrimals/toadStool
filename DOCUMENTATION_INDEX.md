@@ -1,7 +1,7 @@
 # 📚 ToadStool Documentation Index
 
 **Version**: 2.2.0  
-**Last Updated**: January 10, 2026  
+**Last Updated**: January 11, 2026  
 **Status**: Production Ready (Deep Debt 100% Compliant)
 
 ---
@@ -11,8 +11,7 @@
 ### Essential Docs
 - **[README.md](README.md)** - Project overview and quick start
 - **[START_HERE.md](START_HERE.md)** - Getting started guide (5 minutes)
-- **[STATUS.md](STATUS.md)** - Current status and metrics
-- **[FINAL_STATUS_JAN10_2026.md](FINAL_STATUS_JAN10_2026.md)** - Complete production guide
+- **[STATUS.md](STATUS.md)** - Current status, metrics, and roadmap
 
 ### Development
 - **[TESTING.md](TESTING.md)** - Testing guide and coverage
@@ -54,9 +53,10 @@ docs/
 │   └── ...
 │
 └── archive/                # Historical documents
-    ├── jan10_2026_session/
+    ├── jan11_2026_session/              # Latest: Deep debt audit + tests
+    ├── jan10_2026_session_phase2/       # Distributed coordinator + JSON-RPC
     ├── jan10_2026_session_final/
-    └── jan10_2026_session_phase2/
+    └── jan10_2026_session/
 ```
 
 ---
@@ -69,7 +69,7 @@ docs/
 3. [QUICK_START_GPU.md](QUICK_START_GPU.md) - GPU setup
 
 ### Developers
-1. [FINAL_STATUS_JAN10_2026.md](FINAL_STATUS_JAN10_2026.md) - Production guide
+1. [STATUS.md](STATUS.md) - Current status and production readiness
 2. [docs/reference/CONFIG_PATTERNS_GUIDE.md](docs/reference/CONFIG_PATTERNS_GUIDE.md) - Configuration
 3. [docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md](docs/reference/PRODUCTION_DEPLOYMENT_GUIDE.md) - Deployment
 4. [TESTING.md](TESTING.md) - Testing guide
