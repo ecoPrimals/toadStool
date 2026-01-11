@@ -3,12 +3,16 @@
 //! This module provides access to all E2E tests for the ToadStool platform.
 //! 
 //! Sprint 25: Added 10 real integration E2E tests that use actual ToadStool components
+//! January 11, 2026: Added 26 distributed coordinator + JSON-RPC E2E tests
 
 #[path = "e2e/full_system_tests.rs"]
 mod full_system_tests;
 
 #[path = "e2e/workload_lifecycle_e2e.rs"]
 mod workload_lifecycle_e2e;
+
+#[path = "e2e/distributed_jsonrpc_e2e.rs"]
+mod distributed_jsonrpc_e2e;
 
 // Sprint 25: Real E2E Integration Tests
 mod real_integration_tests {
