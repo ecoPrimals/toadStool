@@ -11,18 +11,38 @@
 ## 🚀 Quick Start
 
 ```bash
-# Single instance
+# Single instance (default configuration)
 export TOADSTOOL_FAMILY=default
 cargo run --release --bin toadstool-server
 
-# Multi-instance (fractal coordination)
-TOADSTOOL_FAMILY=gpu0 cargo run --release --bin toadstool-server &
-TOADSTOOL_FAMILY=gpu1 cargo run --release --bin toadstool-server &
+# Custom socket path (biomeOS atomic deployment)
+export TOADSTOOL_SOCKET=/tmp/my-custom-path.sock
+export TOADSTOOL_FAMILY=gpu0
+cargo run --release --bin toadstool-server
+
+# Multi-instance with node IDs (fractal coordination)
+TOADSTOOL_FAMILY=cluster0 TOADSTOOL_NODE_ID=node1 cargo run --release --bin toadstool-server &
+TOADSTOOL_FAMILY=cluster0 TOADSTOOL_NODE_ID=node2 cargo run --release --bin toadstool-server &
 
 # Test
 ./scripts/test-jsonrpc-unix.sh
 cargo test --workspace
 ```
+
+### Environment Variables
+
+| Variable | Purpose | Required | Default |
+|----------|---------|----------|---------|
+| `TOADSTOOL_SOCKET` | **Explicit socket path** (highest priority) | No | (uses 3-tier fallback) |
+| `TOADSTOOL_FAMILY` | Family ID for multi-instance support | No | `default` |
+| `TOADSTOOL_NODE_ID` | Node ID within a family | No | `default` |
+| `XDG_RUNTIME_DIR` | XDG runtime directory | No | `/run/user/<uid>` |
+| `TOADSTOOL_STANDALONE` | Disable distributed mode | No | `false` |
+
+**Socket Path Priority** (biomeOS standardized):
+1. `TOADSTOOL_SOCKET` - Absolute path override
+2. `XDG_RUNTIME_DIR/toadstool-<family>.sock` - Standard
+3. `/tmp/toadstool-<family>-<node>.sock` - Fallback
 
 ---
 
@@ -83,17 +103,29 @@ ToadStool is a **production-ready universal compute platform** that enables seam
 
 **1. tarpc (PRIMARY - Binary RPC)**
 - Transport: Unix sockets (XDG-compliant)
-- Socket: `/run/user/<uid>/toadstool-<family>.sock`
+- Socket: Determined by 3-tier fallback (see Environment Variables above)
+- Primary: `/run/user/<uid>/toadstool-<family>.sock`
 - Use: High-performance primal-to-primal communication
 
 **2. JSON-RPC 2.0 (UNIVERSAL - Text-based)**
 - Transport: Unix sockets (manual HTTP/1.1 parser)
-- Socket: `/run/user/<uid>/toadstool-<family>.jsonrpc.sock`
+- Socket: `<tarpc_socket>.jsonrpc.sock` (same base path + extension)
+- Primary: `/run/user/<uid>/toadstool-<family>.jsonrpc.sock`
 - Use: Universal language-agnostic access
 
 **3. TCP JSON-RPC (DEPRECATED)**
 - Status: ⚠️ Deprecated since 2.2.0
 - Migration: Use `ManualJsonRpcServer` instead
+
+**Socket Configuration** (biomeOS Standardized)
+- ✅ Supports `TOADSTOOL_SOCKET` environment variable override
+- ✅ Creates parent directories automatically (`create_dir_all`)
+- ✅ 3-tier fallback: env var → XDG → /tmp
+- ✅ Multi-instance support via `TOADSTOOL_NODE_ID`
+- ✅ Removes old socket files before binding
+- ✅ Sets 0600 permissions (user-only, secure)
+
+**Testing**: Run `./test_socket_config.sh` to verify all 6 socket configuration scenarios
 
 ---
 

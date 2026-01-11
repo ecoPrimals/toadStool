@@ -47,10 +47,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "default".to_string()
         });
     
-    info!("Family ID: {}", family_id);
+    let node_id = std::env::var("TOADSTOOL_NODE_ID")
+        .unwrap_or_else(|_| {
+            info!("TOADSTOOL_NODE_ID not set, using 'default'");
+            "default".to_string()
+        });
     
-    // Determine socket path using XDG standard
-    let socket_path = get_socket_path(&family_id)?;
+    info!("Family ID: {}", family_id);
+    info!("Node ID: {}", node_id);
+    
+    // Determine socket path using biomeOS-standardized 3-tier fallback
+    let socket_path = get_socket_path(&family_id, &node_id)?;
     info!("Socket path: {:?}", socket_path);
     
     // Create executor (workload handler) - now with distributed coordinator
@@ -123,21 +130,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Get socket path following XDG standard
+/// Get socket path following biomeOS-standardized 3-tier fallback
 /// 
-/// Deep debt principle: No hardcoding, use standard paths
-fn get_socket_path(family_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // Get UID for /run/user/<uid>/ (XDG standard)
-    let uid = unsafe { libc::getuid() };
+/// Deep debt principle: Agnostic, capability-based, runtime discovery
+/// 
+/// Priority order:
+/// 1. TOADSTOOL_SOCKET env var (absolute path override) - highest priority
+/// 2. XDG runtime directory (/run/user/<uid>/toadstool-<family>.sock)
+/// 3. /tmp fallback (/tmp/toadstool-<family>-<node>.sock) - last resort
+fn get_socket_path(family_id: &str, node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (biomeOS atomic deployment)
+    if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
+        info!("Using socket path from TOADSTOOL_SOCKET: {}", socket);
+        return Ok(PathBuf::from(socket));
+    }
     
-    // Try XDG_RUNTIME_DIR first (standard), fallback to /run/user/<uid>
+    // 2. XDG runtime directory (standard)
+    let uid = unsafe { libc::getuid() };
     let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
         .unwrap_or_else(|_| format!("/run/user/{}", uid));
     
-    let socket_path = PathBuf::from(runtime_dir)
+    let xdg_path = PathBuf::from(&runtime_dir)
         .join(format!("toadstool-{}.sock", family_id));
     
-    Ok(socket_path)
+    if PathBuf::from(&runtime_dir).exists() {
+        info!("Using XDG runtime directory: {}", runtime_dir);
+        return Ok(xdg_path);
+    }
+    
+    // 3. /tmp fallback (last resort, for containers/minimal systems)
+    let tmp_path = PathBuf::from("/tmp")
+        .join(format!("toadstool-{}-{}.sock", family_id, node_id));
+    
+    warn!("XDG runtime directory not found, falling back to /tmp");
+    warn!("Fallback socket path: {:?}", tmp_path);
+    Ok(tmp_path)
 }
 
 /// Create real executor implementation

@@ -73,6 +73,13 @@ impl ToadStoolTarpcServer {
         
         let socket_path = socket_path.as_ref();
         
+        // Ensure parent directory exists (biomeOS requirement for custom socket paths)
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
+            info!("Ensured socket directory exists: {:?}", parent);
+        }
+        
         // Clean up old socket if exists
         if socket_path.exists() {
             info!("Removing old socket file: {:?}", socket_path);
