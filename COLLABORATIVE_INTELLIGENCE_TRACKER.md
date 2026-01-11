@@ -38,45 +38,45 @@ Provide **3 JSON-RPC methods** for resource intelligence:
 
 ### Week 1: Core Implementation (20 hours)
 
-**Days 1-2: Graph Types + Estimation** (8 hours)
-- [ ] Create `crates/server/src/graph_types.rs`
-  - [ ] `ExecutionGraph` type
-  - [ ] `GraphNode` type
-  - [ ] `GraphEdge` type
-  - [ ] JSON serialization/deserialization
-  - [ ] Graph validation (detect cycles, validate structure)
-- [ ] Create `crates/server/src/resource_estimator.rs`
-  - [ ] Topological sort implementation
-  - [ ] Parallel stage identification
-  - [ ] Per-node resource estimation
-  - [ ] Resource aggregation logic
-  - [ ] Coordination overhead calculation
-- [ ] Unit tests for graph parsing
-- [ ] Unit tests for estimation logic
+**Days 1-2: Graph Types + Estimation** (8 hours) ✅ COMPLETE
+- [x] Create `crates/server/src/graph_types.rs`
+  - [x] `ExecutionGraph` type
+  - [x] `GraphNode` type
+  - [x] `GraphEdge` type
+  - [x] JSON serialization/deserialization
+  - [x] Graph validation (detect cycles, validate structure)
+- [x] Create `crates/server/src/resource_estimator.rs`
+  - [x] Topological sort implementation
+  - [x] Parallel stage identification
+  - [x] Per-node resource estimation
+  - [x] Resource aggregation logic
+  - [x] Coordination overhead calculation
+- [x] Unit tests for graph parsing
+- [x] Unit tests for estimation logic
 
-**Days 3-4: Validation + Optimization** (10 hours)
-- [ ] Create `crates/server/src/resource_validator.rs`
-  - [ ] System capacity query integration
-  - [ ] Resource comparison logic
-  - [ ] Gap calculation
-  - [ ] Warning generation (>80% utilization)
-- [ ] Create `crates/server/src/resource_optimizer.rs`
-  - [ ] Bottleneck detection
-  - [ ] Parallelization opportunity analysis
-  - [ ] GPU acceleration suggestions
-  - [ ] Memory optimization suggestions
-  - [ ] Confidence scoring
-- [ ] Unit tests for validation
-- [ ] Unit tests for optimization
+**Days 3-4: Validation + Optimization** (10 hours) ✅ COMPLETE
+- [x] Create `crates/server/src/resource_validator.rs`
+  - [x] System capacity query integration
+  - [x] Resource comparison logic
+  - [x] Gap calculation
+  - [x] Warning generation (>80% utilization)
+- [x] Create `crates/server/src/resource_optimizer.rs`
+  - [x] Bottleneck detection
+  - [x] Parallelization opportunity analysis
+  - [x] GPU acceleration suggestions
+  - [x] Memory optimization suggestions
+  - [x] Confidence scoring
+- [x] Unit tests for validation
+- [x] Unit tests for optimization
 
-**Day 5: JSON-RPC Integration** (2 hours)
-- [ ] Extend `crates/server/src/manual_jsonrpc.rs`
-  - [ ] Add `handle_estimate_resources()` method
-  - [ ] Add `handle_validate_availability()` method
-  - [ ] Add `handle_suggest_optimizations()` method
-  - [ ] Error handling for all methods
-- [ ] Update method routing
-- [ ] Basic integration test
+**Day 5: JSON-RPC Integration** (2 hours) ✅ COMPLETE
+- [x] Extend `crates/server/src/manual_jsonrpc.rs`
+  - [x] Add `handle_resources_estimate()` method
+  - [x] Add `handle_resources_validate_availability()` method
+  - [x] Add `handle_resources_suggest_optimizations()` method
+  - [x] Error handling for all methods
+- [x] Update method routing
+- [x] Basic integration test (67 unit tests passing)
 
 ### Week 2: Testing + Documentation (20 hours)
 
