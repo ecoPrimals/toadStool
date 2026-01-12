@@ -7,10 +7,10 @@
 //! - **Self-Knowledge**: Reports only local capabilities  
 //! - **Graceful Degradation**: Works standalone if Songbird unavailable
 
-use std::collections::HashMap;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn, debug};
+use std::collections::HashMap;
+use tracing::{debug, info, warn};
 
 /// Songbird registration request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,9 +30,9 @@ pub struct SongbirdRegistration {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceLocation {
     #[serde(rename = "type")]
-    pub location_type: String,  // "unix-socket"
+    pub location_type: String, // "unix-socket"
     pub path: String,
-    pub protocol: String,        // "tarpc"
+    pub protocol: String, // "tarpc"
 }
 
 /// System resources (self-knowledge)
@@ -49,7 +49,7 @@ pub struct SystemResources {
 pub struct GpuDevice {
     pub device_id: usize,
     pub name: String,
-    pub vendor: String,  // "nvidia", "amd", "intel", "apple"
+    pub vendor: String, // "nvidia", "amd", "intel", "apple"
     pub memory_bytes: u64,
     pub compute_capability: Option<String>,
 }
@@ -67,46 +67,43 @@ impl SongbirdClient {
     pub async fn discover() -> Result<Self, String> {
         // Try multiple discovery methods (no hardcoding)
         let endpoint = Self::discover_songbird_endpoint()?;
-        
+
         info!("Discovered Songbird at: {}", endpoint);
-        
+
         Ok(Self {
             endpoint,
             client: Client::new(),
         })
     }
-    
+
     /// Discover Songbird endpoint from environment
     fn discover_songbird_endpoint() -> Result<String, String> {
         // Method 1: Direct socket path
         if let Ok(socket) = std::env::var("SONGBIRD_SOCKET") {
             return Ok(format!("unix://{}", socket));
         }
-        
+
         // Method 2: Family ID (standard pattern)
         if let Ok(family) = std::env::var("SONGBIRD_FAMILY_ID") {
             let uid = unsafe { libc::getuid() };
-            let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-                .unwrap_or_else(|_| format!("/run/user/{}", uid));
+            let runtime_dir =
+                std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
             let socket = format!("{}/songbird-{}.sock", runtime_dir, family);
             return Ok(format!("unix://{}", socket));
         }
-        
+
         // Method 3: HTTP endpoint (for remote Songbird)
         if let Ok(endpoint) = std::env::var("SONGBIRD_ENDPOINT") {
             return Ok(endpoint);
         }
-        
+
         Err("Songbird not configured. Set SONGBIRD_FAMILY_ID, SONGBIRD_SOCKET, or SONGBIRD_ENDPOINT".to_string())
     }
-    
+
     /// Register service with Songbird
-    pub async fn register_service(
-        &self,
-        registration: SongbirdRegistration,
-    ) -> Result<(), String> {
+    pub async fn register_service(&self, registration: SongbirdRegistration) -> Result<(), String> {
         debug!("Registering with Songbird: {:?}", registration);
-        
+
         let url = if self.endpoint.starts_with("unix://") {
             // TODO: Implement Unix socket HTTP client
             // For now, log and return Ok (standalone mode)
@@ -115,25 +112,31 @@ impl SongbirdClient {
         } else {
             format!("{}/api/v1/services/register", self.endpoint)
         };
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .json(&registration)
             .send()
             .await
             .map_err(|e| format!("Failed to register with Songbird: {}", e))?;
-        
+
         if !response.status().is_success() {
             let status = response.status();
-            let body = response.text().await
+            let body = response
+                .text()
+                .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(format!("Songbird registration failed ({}): {}", status, body));
+            return Err(format!(
+                "Songbird registration failed ({}): {}",
+                status, body
+            ));
         }
-        
+
         info!("✅ Successfully registered with Songbird");
         Ok(())
     }
-    
+
     /// Send heartbeat to Songbird
     pub async fn heartbeat(&self, service_id: &str) -> Result<(), String> {
         let url = if self.endpoint.starts_with("unix://") {
@@ -142,17 +145,18 @@ impl SongbirdClient {
         } else {
             format!("{}/api/v1/services/{}/heartbeat", self.endpoint, service_id)
         };
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .send()
             .await
             .map_err(|e| format!("Failed to send heartbeat: {}", e))?;
-        
+
         if !response.status().is_success() {
             warn!("Heartbeat failed: {}", response.status());
         }
-        
+
         Ok(())
     }
 }
@@ -162,16 +166,16 @@ impl SongbirdClient {
 /// Deep debt principle: Self-knowledge only
 pub fn query_system_resources() -> SystemResources {
     let cpu_cores = num_cpus::get();
-    
+
     // Query memory
     let (total_memory, available_memory) = match sys_info::mem_info() {
         Ok(mem) => (mem.total * 1024, mem.avail * 1024), // Convert KB to bytes
         Err(_) => (0, 0),
     };
-    
+
     // Query GPU devices
     let gpu_devices = query_gpu_devices();
-    
+
     SystemResources {
         cpu_cores,
         total_memory_bytes: total_memory,
@@ -185,13 +189,13 @@ pub fn query_system_resources() -> SystemResources {
 /// Deep debt principle: No vendor lock-in, query all available GPUs
 fn query_gpu_devices() -> Vec<GpuDevice> {
     let devices = Vec::new();
-    
+
     // TODO(capability_discovery): Add GPU detection when features are enabled
     // - NVIDIA GPUs (CUDA): #[cfg(feature = "cuda")]
     // - AMD GPUs (ROCm): #[cfg(feature = "rocm")]
     // - Intel GPUs (OneAPI): #[cfg(feature = "oneapi")]
     // - Apple GPUs (Metal): #[cfg(target_os = "macos")]
-    
+
     devices
 }
 
@@ -204,16 +208,16 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
         "orchestration".to_string(),
         "tarpc".to_string(),
     ];
-    
+
     // CPU capabilities
     capabilities.push(format!("cpu-cores-{}", resources.cpu_cores));
-    
+
     // GPU capabilities
     for (i, gpu) in resources.gpu_devices.iter().enumerate() {
         capabilities.push(format!("gpu-{}", i));
         capabilities.push(format!("gpu-{}-{}", gpu.vendor, gpu.name));
     }
-    
+
     capabilities
 }
 
@@ -235,7 +239,7 @@ mod tests {
             available_memory_bytes: 8 * 1024 * 1024 * 1024,
             gpu_devices: vec![],
         };
-        
+
         let capabilities = build_capabilities(&resources);
         assert!(capabilities.contains(&"compute".to_string()));
         assert!(capabilities.contains(&"cpu-cores-8".to_string()));
@@ -250,4 +254,3 @@ mod tests {
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 }
-

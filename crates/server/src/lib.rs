@@ -60,10 +60,13 @@ pub use errors::*;
 pub use state::*;
 
 // Re-export server functions for daemon
-#[deprecated(since = "2.2.0", note = "Use ManualJsonRpcServer instead - no TCP hardcoding")]
+#[deprecated(
+    since = "2.2.0",
+    note = "Use ManualJsonRpcServer instead - no TCP hardcoding"
+)]
 #[allow(deprecated)]
 pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
-pub use tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, StandaloneExecutor};
+pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 // Backward compatibility alias
 #[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
@@ -84,21 +87,21 @@ pub use mocks::*;
 // Module declarations
 pub mod background;
 pub mod config;
+pub mod coordinator_executor; // NEW: Distributed coordinator integration
 pub mod errors;
+pub mod graph_types; // NEW: Collaborative intelligence graph types
 pub mod handlers;
 pub mod jsonrpc_server;
+pub mod manual_jsonrpc; // NEW: Pure manual JSON-RPC over Unix sockets
 #[cfg(test)]
 pub mod mocks;
-pub mod songbird_client;  // Songbird registration client
+pub mod resource_estimator; // NEW: Resource estimation for graphs
+pub mod resource_optimizer;
+pub mod resource_validator; // NEW: Resource validation for graphs
+pub mod songbird_client; // Songbird registration client
 pub mod state;
 pub mod tarpc_server;
-pub mod websocket;
-pub mod coordinator_executor; // NEW: Distributed coordinator integration
-pub mod manual_jsonrpc; // NEW: Pure manual JSON-RPC over Unix sockets
-pub mod graph_types; // NEW: Collaborative intelligence graph types
-pub mod resource_estimator; // NEW: Resource estimation for graphs
-pub mod resource_validator; // NEW: Resource validation for graphs
-pub mod resource_optimizer; // NEW: Resource optimization for graphs
+pub mod websocket; // NEW: Resource optimization for graphs
 
 // Re-export background services for tests
 pub use background::start_background_services;
@@ -110,13 +113,19 @@ pub use coordinator_executor::CoordinatorExecutor;
 pub use manual_jsonrpc::ManualJsonRpcServer;
 
 // Re-export Songbird client
-pub use songbird_client::{SongbirdClient, SongbirdRegistration, ServiceLocation, SystemResources};
+pub use songbird_client::{ServiceLocation, SongbirdClient, SongbirdRegistration, SystemResources};
 
 // Re-export collaborative intelligence types
-pub use graph_types::{ExecutionGraph, GraphNode, GraphEdge, NodeResourceRequirements, EdgeType, GraphValidationError};
-pub use resource_estimator::{ResourceEstimator, ResourceEstimate, NodeEstimate, EstimationError};
-pub use resource_validator::{ResourceValidator, AvailabilityResult, ResourceGap, SystemCapabilities, ValidationError};
-pub use resource_optimizer::{ResourceOptimizer, OptimizationSuggestions, Bottleneck, Opportunity, ImprovementEstimate};
+pub use graph_types::{
+    EdgeType, ExecutionGraph, GraphEdge, GraphNode, GraphValidationError, NodeResourceRequirements,
+};
+pub use resource_estimator::{EstimationError, NodeEstimate, ResourceEstimate, ResourceEstimator};
+pub use resource_optimizer::{
+    Bottleneck, ImprovementEstimate, Opportunity, OptimizationSuggestions, ResourceOptimizer,
+};
+pub use resource_validator::{
+    AvailabilityResult, ResourceGap, ResourceValidator, SystemCapabilities, ValidationError,
+};
 
 /// Main `ToadStool` server implementation
 pub struct ToadStoolServer {

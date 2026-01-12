@@ -228,7 +228,8 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
     }
 
     // ✅ MODERN: Single timeout for all operations, truly concurrent
-    timeout(Duration::from_secs(15), async {
+    // Increased timeout for coverage instrumentation overhead
+    timeout(Duration::from_secs(30), async {
         for handle in burst1_handles {
             handle.await??;
         }
@@ -248,7 +249,8 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
     }
 
     // ✅ MODERN: Single timeout for all burst 2 operations
-    timeout(Duration::from_secs(15), async {
+    // Increased timeout for coverage instrumentation overhead
+    timeout(Duration::from_secs(30), async {
         for handle in burst2_handles {
             handle.await??;
         }

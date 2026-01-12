@@ -165,8 +165,8 @@ impl ConsulDetector {
     /// Check if Consul is available
     async fn is_consul_available(&self) -> bool {
         // Check environment variable
-        let consul_addr = std::env::var("CONSUL_HTTP_ADDR")
-            .unwrap_or_else(|_| format!("http://{}:8500", crate::constants::DEFAULT_HOSTNAME));
+        // Deep Debt compliant: runtime discovery with env var override
+        let consul_addr = crate::constants::network::consul_http_addr();
 
         // Try to connect to Consul API
         match reqwest::Client::new()

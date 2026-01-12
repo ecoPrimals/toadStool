@@ -40,20 +40,20 @@
 //! }
 //! ```
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
-use super::tarpc_server::WorkloadExecutor;
-use super::resource_estimator::ResourceEstimator;
-use super::resource_validator::ResourceValidator;
-use super::resource_optimizer::ResourceOptimizer;
 use super::graph_types::ExecutionGraph;
+use super::resource_estimator::ResourceEstimator;
+use super::resource_optimizer::ResourceOptimizer;
+use super::resource_validator::ResourceValidator;
+use super::tarpc_server::WorkloadExecutor;
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,29 +117,33 @@ impl ManualJsonRpcServer {
             optimizer: ResourceOptimizer::new(),
         }
     }
-    
+
     /// Start server on Unix socket
     ///
     /// Deep debt principle: No hardcoding, Unix socket for multi-instance support
     pub async fn serve(self, socket_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Starting manual JSON-RPC 2.0 server on Unix socket: {:?}", socket_path);
-        
+        info!(
+            "Starting manual JSON-RPC 2.0 server on Unix socket: {:?}",
+            socket_path
+        );
+
         // Ensure parent directory exists (biomeOS requirement for custom socket paths)
         if let Some(parent) = socket_path.parent() {
-            tokio::fs::create_dir_all(parent).await
+            tokio::fs::create_dir_all(parent)
+                .await
                 .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
             info!("Ensured JSON-RPC socket directory exists: {:?}", parent);
         }
-        
+
         // Clean up old socket if it exists
         if socket_path.exists() {
             warn!("Removing old JSON-RPC socket: {:?}", socket_path);
             tokio::fs::remove_file(&socket_path).await?;
         }
-        
+
         // Bind to Unix socket
         let listener = UnixListener::bind(&socket_path)?;
-        
+
         // Set permissions to user-only (0600)
         #[cfg(unix)]
         {
@@ -149,11 +153,14 @@ impl ManualJsonRpcServer {
             std::fs::set_permissions(&socket_path, perms)?;
             info!("Set JSON-RPC socket permissions to 0600");
         }
-        
-        info!("✅ Manual JSON-RPC 2.0 server listening on: {:?}", socket_path);
-        
+
+        info!(
+            "✅ Manual JSON-RPC 2.0 server listening on: {:?}",
+            socket_path
+        );
+
         let server = Arc::new(self);
-        
+
         // Accept connections loop
         loop {
             match listener.accept().await {
@@ -171,15 +178,18 @@ impl ManualJsonRpcServer {
             }
         }
     }
-    
+
     /// Handle a single connection
-    async fn handle_connection(&self, stream: UnixStream) -> Result<(), Box<dyn std::error::Error>> {
+    async fn handle_connection(
+        &self,
+        stream: UnixStream,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
-        
+
         // Read HTTP request
         let (_headers, body) = self.read_http_request(&mut reader).await?;
-        
+
         // Parse JSON-RPC request
         let response_body = match serde_json::from_str::<JsonRpcRequest>(&body) {
             Ok(request) => {
@@ -201,13 +211,14 @@ impl ManualJsonRpcServer {
                 serde_json::to_string(&error_response)?
             }
         };
-        
+
         // Write HTTP response
-        self.write_http_response(&mut writer, &response_body).await?;
-        
+        self.write_http_response(&mut writer, &response_body)
+            .await?;
+
         Ok(())
     }
-    
+
     /// Read HTTP request (simple HTTP/1.1 parser)
     async fn read_http_request(
         &self,
@@ -215,10 +226,10 @@ impl ManualJsonRpcServer {
     ) -> Result<(HashMap<String, String>, String), Box<dyn std::error::Error>> {
         let mut headers = HashMap::new();
         let mut line = String::new();
-        
+
         // Read request line (e.g., "POST / HTTP/1.1")
         reader.read_line(&mut line).await?;
-        
+
         // Read headers
         loop {
             line.clear();
@@ -226,29 +237,26 @@ impl ManualJsonRpcServer {
             if n == 0 || line == "\r\n" || line == "\n" {
                 break; // End of headers
             }
-            
+
             // Parse header (Name: Value)
             if let Some((name, value)) = line.split_once(':') {
-                headers.insert(
-                    name.trim().to_lowercase(),
-                    value.trim().to_string(),
-                );
+                headers.insert(name.trim().to_lowercase(), value.trim().to_string());
             }
         }
-        
+
         // Read body (based on Content-Length)
         let content_length: usize = headers
             .get("content-length")
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
-        
+
         let mut body = vec![0u8; content_length];
         tokio::io::AsyncReadExt::read_exact(reader, &mut body).await?;
         let body = String::from_utf8(body)?;
-        
+
         Ok((headers, body))
     }
-    
+
     /// Write HTTP response
     async fn write_http_response(
         &self,
@@ -265,13 +273,13 @@ impl ManualJsonRpcServer {
             body.len(),
             body
         );
-        
+
         writer.write_all(response.as_bytes()).await?;
         writer.flush().await?;
-        
+
         Ok(())
     }
-    
+
     /// Handle JSON-RPC request
     async fn handle_jsonrpc_request(&self, request: JsonRpcRequest) -> Value {
         // Validate JSON-RPC version
@@ -284,9 +292,10 @@ impl ManualJsonRpcServer {
                     data: None,
                 },
                 id: request.id,
-            }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+            })
+            .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
         }
-        
+
         // Route to method handler
         match request.method.as_str() {
             "toadstool.health" => self.handle_health(request).await,
@@ -294,8 +303,12 @@ impl ManualJsonRpcServer {
             "toadstool.query_capabilities" => self.handle_query_capabilities(request).await,
             // Collaborative Intelligence methods
             "resources.estimate" => self.handle_resources_estimate(request).await,
-            "resources.validate_availability" => self.handle_resources_validate_availability(request).await,
-            "resources.suggest_optimizations" => self.handle_resources_suggest_optimizations(request).await,
+            "resources.validate_availability" => {
+                self.handle_resources_validate_availability(request).await
+            }
+            "resources.suggest_optimizations" => {
+                self.handle_resources_suggest_optimizations(request).await
+            }
             _ => {
                 // Method not found
                 serde_json::to_value(JsonRpcErrorResponse {
@@ -306,11 +319,12 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
         }
     }
-    
+
     /// Handle health check
     async fn handle_health(&self, request: JsonRpcRequest) -> Value {
         let result = serde_json::json!({
@@ -318,28 +332,30 @@ impl ManualJsonRpcServer {
             "service": "toadstool",
             "version": self.version,
         });
-        
+
         serde_json::to_value(JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result,
             id: request.id,
-        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+        })
+        .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
     }
-    
+
     /// Handle version query
     async fn handle_version(&self, request: JsonRpcRequest) -> Value {
         let result = serde_json::json!({
             "version": self.version,
             "protocol": "json-rpc-2.0",
         });
-        
+
         serde_json::to_value(JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result,
             id: request.id,
-        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+        })
+        .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
     }
-    
+
     /// Handle capabilities query
     async fn handle_query_capabilities(&self, request: JsonRpcRequest) -> Value {
         match self.executor.query_capabilities().await {
@@ -350,22 +366,22 @@ impl ManualJsonRpcServer {
                     jsonrpc: "2.0".to_string(),
                     result,
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
-            Err(e) => {
-                serde_json::to_value(JsonRpcErrorResponse {
-                    jsonrpc: "2.0".to_string(),
-                    error: JsonRpcError {
-                        code: INTERNAL_ERROR,
-                        message: format!("Failed to query capabilities: {}", e),
-                        data: None,
-                    },
-                    id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
-            }
+            Err(e) => serde_json::to_value(JsonRpcErrorResponse {
+                jsonrpc: "2.0".to_string(),
+                error: JsonRpcError {
+                    code: INTERNAL_ERROR,
+                    message: format!("Failed to query capabilities: {}", e),
+                    data: None,
+                },
+                id: request.id,
+            })
+            .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"})),
         }
     }
-    
+
     /// Handle resources.estimate - Estimate resource requirements for a graph
     ///
     /// Request params: { "graph": ExecutionGraph }
@@ -385,7 +401,8 @@ impl ManualJsonRpcServer {
                                 data: None,
                             },
                             id: request.id,
-                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                        })
+                        .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
                     }
                 }
             }
@@ -398,10 +415,11 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
             }
         };
-        
+
         // Estimate resources
         match self.estimator.estimate(&graph) {
             Ok(estimate) => {
@@ -411,22 +429,22 @@ impl ManualJsonRpcServer {
                     jsonrpc: "2.0".to_string(),
                     result,
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
-            Err(e) => {
-                serde_json::to_value(JsonRpcErrorResponse {
-                    jsonrpc: "2.0".to_string(),
-                    error: JsonRpcError {
-                        code: INTERNAL_ERROR,
-                        message: format!("Estimation failed: {}", e),
-                        data: None,
-                    },
-                    id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
-            }
+            Err(e) => serde_json::to_value(JsonRpcErrorResponse {
+                jsonrpc: "2.0".to_string(),
+                error: JsonRpcError {
+                    code: INTERNAL_ERROR,
+                    message: format!("Estimation failed: {}", e),
+                    data: None,
+                },
+                id: request.id,
+            })
+            .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"})),
         }
     }
-    
+
     /// Handle resources.validate_availability - Check if system can execute graph
     ///
     /// Request params: { "graph": ExecutionGraph }
@@ -446,7 +464,8 @@ impl ManualJsonRpcServer {
                                 data: None,
                             },
                             id: request.id,
-                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                        })
+                        .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
                     }
                 }
             }
@@ -459,10 +478,11 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
             }
         };
-        
+
         // Validate availability
         match self.validator.validate_availability(&graph).await {
             Ok(result) => {
@@ -472,22 +492,22 @@ impl ManualJsonRpcServer {
                     jsonrpc: "2.0".to_string(),
                     result: result_value,
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
-            Err(e) => {
-                serde_json::to_value(JsonRpcErrorResponse {
-                    jsonrpc: "2.0".to_string(),
-                    error: JsonRpcError {
-                        code: INTERNAL_ERROR,
-                        message: format!("Validation failed: {}", e),
-                        data: None,
-                    },
-                    id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
-            }
+            Err(e) => serde_json::to_value(JsonRpcErrorResponse {
+                jsonrpc: "2.0".to_string(),
+                error: JsonRpcError {
+                    code: INTERNAL_ERROR,
+                    message: format!("Validation failed: {}", e),
+                    data: None,
+                },
+                id: request.id,
+            })
+            .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"})),
         }
     }
-    
+
     /// Handle resources.suggest_optimizations - Suggest optimizations for graph
     ///
     /// Request params: { "graph": ExecutionGraph }
@@ -507,7 +527,8 @@ impl ManualJsonRpcServer {
                                 data: None,
                             },
                             id: request.id,
-                        }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                        })
+                        .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
                     }
                 }
             }
@@ -520,10 +541,11 @@ impl ManualJsonRpcServer {
                         data: None,
                     },
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}));
             }
         };
-        
+
         // Suggest optimizations
         match self.optimizer.suggest_optimizations(&graph).await {
             Ok(suggestions) => {
@@ -533,19 +555,19 @@ impl ManualJsonRpcServer {
                     jsonrpc: "2.0".to_string(),
                     result,
                     id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
+                })
+                .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
             }
-            Err(e) => {
-                serde_json::to_value(JsonRpcErrorResponse {
-                    jsonrpc: "2.0".to_string(),
-                    error: JsonRpcError {
-                        code: INTERNAL_ERROR,
-                        message: format!("Optimization failed: {}", e),
-                        data: None,
-                    },
-                    id: request.id,
-                }).unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"}))
-            }
+            Err(e) => serde_json::to_value(JsonRpcErrorResponse {
+                jsonrpc: "2.0".to_string(),
+                error: JsonRpcError {
+                    code: INTERNAL_ERROR,
+                    message: format!("Optimization failed: {}", e),
+                    data: None,
+                },
+                id: request.id,
+            })
+            .unwrap_or_else(|_| serde_json::json!({"error": "serialization failed"})),
         }
     }
 }
@@ -553,7 +575,7 @@ impl ManualJsonRpcServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_jsonrpc_request_parsing() {
         let json = r#"{"jsonrpc":"2.0","method":"test","id":1}"#;
@@ -561,7 +583,7 @@ mod tests {
         assert_eq!(request.jsonrpc, "2.0");
         assert_eq!(request.method, "test");
     }
-    
+
     #[test]
     fn test_jsonrpc_response_serialization() {
         let response = JsonRpcResponse {
@@ -574,4 +596,3 @@ mod tests {
         assert!(json.contains("result"));
     }
 }
-

@@ -12,20 +12,19 @@
 //! - **Capability-Based**: No hardcoded knowledge of other instances
 //! - **Graceful Degradation**: Falls back to standalone if no coordinator available
 
-use std::sync::Arc;
-use std::collections::HashMap;
-use std::time::Duration;
 use async_trait::async_trait;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::{info, warn};
 
-use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, WorkloadResult, WorkloadStatus, WorkloadSubmission,
-    ExecutionMetrics,
-};
-use toadstool_distributed::{DistributedCoordinator, DistributedConfig};
 use toadstool::{
-    ExecutionRequest, WorkloadSpec, RuntimeType, execution::ExecutionInput,
-    resources::ResourceRequirements, SecurityContext,
+    execution::ExecutionInput, resources::ResourceRequirements, ExecutionRequest, RuntimeType,
+    SecurityContext, WorkloadSpec,
+};
+use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
+use toadstool_integration_protocols::tarpc_service::{
+    ComputeCapabilities, ExecutionMetrics, WorkloadResult, WorkloadStatus, WorkloadSubmission,
 };
 
 use super::tarpc_server::WorkloadExecutor;
@@ -46,22 +45,25 @@ impl CoordinatorExecutor {
     ///
     /// Returns error if coordinator initialization fails
     pub async fn new(config: DistributedConfig, service_id: String) -> Result<Self, String> {
-        info!("Initializing coordinator executor for service: {}", service_id);
-        
+        info!(
+            "Initializing coordinator executor for service: {}",
+            service_id
+        );
+
         let coordinator = DistributedCoordinator::new(config)
             .await
             .map_err(|e| format!("Failed to create coordinator: {}", e))?;
-        
+
         let coordinator = Arc::new(coordinator);
-        
+
         // Start coordinator
         Arc::clone(&coordinator)
             .start()
             .await
             .map_err(|e| format!("Failed to start coordinator: {}", e))?;
-        
+
         info!("✅ Coordinator executor ready");
-        
+
         Ok(Self {
             coordinator,
             service_id,
@@ -72,19 +74,23 @@ impl CoordinatorExecutor {
 #[async_trait]
 impl WorkloadExecutor for CoordinatorExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        info!("Executing workload via coordinator: {}", submission.workload_id);
-        
+        info!(
+            "Executing workload via coordinator: {}",
+            submission.workload_id
+        );
+
         // Convert WorkloadSubmission to ExecutionRequest
         let request = convert_submission_to_request(submission.clone())?;
-        
+
         // Submit to coordinator (isomorphic/fractal routing)
-        let execution_id = self.coordinator
+        let execution_id = self
+            .coordinator
             .submit_execution(request)
             .await
             .map_err(|e| format!("Coordinator execution failed: {}", e))?;
-        
+
         info!("Workload submitted to coordinator: {}", execution_id);
-        
+
         // Return immediate result (async execution)
         Ok(WorkloadResult {
             workload_id: submission.workload_id,
@@ -100,13 +106,13 @@ impl WorkloadExecutor for CoordinatorExecutor {
             },
         })
     }
-    
+
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         info!("Querying coordinator capabilities (self-knowledge only)");
-        
+
         // Query local capabilities only (not other instances)
         // The coordinator will report what THIS instance can do
-        
+
         let cpu_cores = num_cpus::get() as u32;
         let (total_memory, available_memory) = if let Ok(mem_info) = sys_info::mem_info() {
             (mem_info.total as u64 * 1024, mem_info.avail as u64 * 1024)
@@ -114,7 +120,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
             warn!("Failed to get system memory info, using defaults");
             (8 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024)
         };
-        
+
         Ok(ComputeCapabilities {
             service_id: self.service_id.clone(),
             compute_units: vec![
@@ -126,7 +132,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
                     memory_bytes: total_memory,
                     tflops: Some((cpu_cores as f64) * 0.1),
                     utilization: 0.0,
-                }
+                },
             ],
             supported_workload_types: vec![
                 "cpu_compute".to_string(),
@@ -134,24 +140,25 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 "neural_compute".to_string(),
                 "distributed".to_string(),
             ],
-            available_resources: toadstool_integration_protocols::tarpc_service::AvailableResources {
-                total_cpu_cores: cpu_cores,
-                available_cpu_cores: cpu_cores,
-                total_memory_bytes: total_memory,
-                available_memory_bytes: available_memory,
-                total_gpu_memory_bytes: None,
-                available_gpu_memory_bytes: None,
-            },
+            available_resources:
+                toadstool_integration_protocols::tarpc_service::AvailableResources {
+                    total_cpu_cores: cpu_cores,
+                    available_cpu_cores: cpu_cores,
+                    total_memory_bytes: total_memory,
+                    available_memory_bytes: available_memory,
+                    total_gpu_memory_bytes: None,
+                    available_gpu_memory_bytes: None,
+                },
             metadata: std::collections::HashMap::from([
                 ("mode".to_string(), "distributed".to_string()),
                 ("coordinator".to_string(), "active".to_string()),
             ]),
         })
     }
-    
+
     async fn cancel(&self, workload_id: &str) -> Result<(), String> {
         info!("Cancelling workload via coordinator: {}", workload_id);
-        
+
         // TODO: Implement coordinator cancellation
         // For now, log and return success
         warn!("Coordinator cancellation not yet implemented");
@@ -162,7 +169,9 @@ impl WorkloadExecutor for CoordinatorExecutor {
 /// Convert WorkloadSubmission to ExecutionRequest
 ///
 /// Deep debt principle: Type conversion without hardcoding
-fn convert_submission_to_request(submission: WorkloadSubmission) -> Result<ExecutionRequest, String> {
+fn convert_submission_to_request(
+    submission: WorkloadSubmission,
+) -> Result<ExecutionRequest, String> {
     // Create workload spec from raw binary data
     let workload_spec = WorkloadSpec::Native {
         executable: toadstool::workload::ExecutableSource::Bytes {
@@ -173,12 +182,13 @@ fn convert_submission_to_request(submission: WorkloadSubmission) -> Result<Execu
         env_vars: submission.metadata, // metadata is HashMap, not Option
         user: None,
     };
-    
+
     // Extract timeout from requirements (ResourceRequirements has timeout_secs field)
-    let timeout = submission.requirements
+    let timeout = submission
+        .requirements
         .timeout_secs
         .map(Duration::from_secs);
-    
+
     Ok(ExecutionRequest {
         execution_id: uuid::Uuid::parse_str(&submission.workload_id)
             .unwrap_or_else(|_| uuid::Uuid::new_v4()),
@@ -209,13 +219,15 @@ fn parse_runtime_type(s: &str) -> RuntimeType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_runtime_type_parsing() {
         assert!(matches!(parse_runtime_type("native"), RuntimeType::Native));
         assert!(matches!(parse_runtime_type("wasm"), RuntimeType::Wasm));
         assert!(matches!(parse_runtime_type("gpu"), RuntimeType::Gpu));
-        assert!(matches!(parse_runtime_type("cpu_compute"), RuntimeType::Native));
+        assert!(matches!(
+            parse_runtime_type("cpu_compute"),
+            RuntimeType::Native
+        ));
     }
 }
-

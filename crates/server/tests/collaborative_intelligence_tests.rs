@@ -7,10 +7,10 @@
 //! These tests demonstrate the new builder pattern for ergonomic graph construction.
 
 use toadstool_server::{
-    graph_types::{ExecutionGraph, GraphNode, GraphEdge},
+    graph_types::{ExecutionGraph, GraphEdge, GraphNode},
     resource_estimator::ResourceEstimator,
-    resource_validator::ResourceValidator,
     resource_optimizer::ResourceOptimizer,
+    resource_validator::ResourceValidator,
 };
 
 /// Helper to create a graph node using the builder pattern
@@ -74,21 +74,42 @@ async fn test_sequential_workflow() {
     assert!(graph.validate().is_ok(), "Graph should be valid");
 
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
 
-    assert_eq!(estimate.max_parallelism, 1, "Sequential graph should have parallelism of 1");
-    assert_eq!(estimate.critical_path_length, 5, "Critical path should include all 5 nodes");
+    assert_eq!(
+        estimate.max_parallelism, 1,
+        "Sequential graph should have parallelism of 1"
+    );
+    assert_eq!(
+        estimate.critical_path_length, 5,
+        "Critical path should include all 5 nodes"
+    );
     assert_eq!(estimate.cpu_cores, 8, "Peak CPU should be node_d's 8 cores");
 
     let validator = ResourceValidator::new();
-    let availability = validator.validate_availability(&graph).await.expect("Validation should succeed");
-    
-    println!("Sequential workflow - Available: {}, Gaps: {}", availability.available, availability.gaps.len());
+    let availability = validator
+        .validate_availability(&graph)
+        .await
+        .expect("Validation should succeed");
+
+    println!(
+        "Sequential workflow - Available: {}, Gaps: {}",
+        availability.available,
+        availability.gaps.len()
+    );
 
     let optimizer = ResourceOptimizer::new();
-    let suggestions = optimizer.suggest_optimizations(&graph).await.expect("Optimization should succeed");
-    
-    println!("Sequential workflow suggestions: {}", suggestions.opportunities.len());
+    let suggestions = optimizer
+        .suggest_optimizations(&graph)
+        .await
+        .expect("Optimization should succeed");
+
+    println!(
+        "Sequential workflow suggestions: {}",
+        suggestions.opportunities.len()
+    );
 }
 
 /// Test parallel workflow (10+ nodes executing concurrently)
@@ -97,7 +118,13 @@ async fn test_parallel_workflow() {
     let mut nodes = vec![create_node("root", "prepare_data", 2.0, 1, 5)];
 
     for i in 0..10 {
-        nodes.push(create_node(&format!("worker_{}", i), "parallel_process", 4.0, 2, 30));
+        nodes.push(create_node(
+            &format!("worker_{}", i),
+            "parallel_process",
+            4.0,
+            2,
+            30,
+        ));
     }
 
     nodes.push(create_node("sink", "aggregate_results", 4.0, 5, 10));
@@ -118,16 +145,33 @@ async fn test_parallel_workflow() {
     assert!(graph.validate().is_ok(), "Graph should be valid");
 
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
 
-    assert_eq!(estimate.max_parallelism, 10, "Should have 10 parallel workers");
-    assert_eq!(estimate.critical_path_length, 3, "Critical path: root → worker → sink");
-    assert_eq!(estimate.cpu_cores, 40, "Peak CPU should be 10 workers * 4 cores");
+    assert_eq!(
+        estimate.max_parallelism, 10,
+        "Should have 10 parallel workers"
+    );
+    assert_eq!(
+        estimate.critical_path_length, 3,
+        "Critical path: root → worker → sink"
+    );
+    assert_eq!(
+        estimate.cpu_cores, 40,
+        "Peak CPU should be 10 workers * 4 cores"
+    );
 
     let optimizer = ResourceOptimizer::new();
-    let suggestions = optimizer.suggest_optimizations(&graph).await.expect("Optimization should succeed");
-    
-    println!("Parallel workflow suggestions: {}", suggestions.opportunities.len());
+    let suggestions = optimizer
+        .suggest_optimizations(&graph)
+        .await
+        .expect("Optimization should succeed");
+
+    println!(
+        "Parallel workflow suggestions: {}",
+        suggestions.opportunities.len()
+    );
 }
 
 /// Test diamond topology
@@ -153,14 +197,24 @@ async fn test_diamond_topology() {
     assert!(graph.validate().is_ok(), "Graph should be valid");
 
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
 
-    assert_eq!(estimate.max_parallelism, 2, "Should have 2 parallel branches");
+    assert_eq!(
+        estimate.max_parallelism, 2,
+        "Should have 2 parallel branches"
+    );
     assert_eq!(estimate.critical_path_length, 3, "Critical path: a → b → d");
-    assert_eq!(estimate.cpu_cores, 8, "Peak CPU should be 2 branches * 4 cores");
+    assert_eq!(
+        estimate.cpu_cores, 8,
+        "Peak CPU should be 2 branches * 4 cores"
+    );
 
-    println!("Diamond topology - Parallelism: {}, Critical path: {}", 
-             estimate.max_parallelism, estimate.critical_path_length);
+    println!(
+        "Diamond topology - Parallelism: {}, Critical path: {}",
+        estimate.max_parallelism, estimate.critical_path_length
+    );
 }
 
 /// Test large graph (100+ nodes)
@@ -199,18 +253,30 @@ async fn test_large_graph_performance() {
     // Test performance
     use std::time::Instant;
     let start = Instant::now();
-    
+
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
-    
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
+
     let duration = start.elapsed();
     println!("Large graph estimation took: {:?}", duration);
-    
-    // Performance target: < 100ms for 100+ node graph
-    assert!(duration.as_millis() < 100, "Estimation should complete in <100ms, took {:?}", duration);
 
-    assert_eq!(estimate.max_parallelism, 90, "Should have 90 parallel nodes at level 2");
-    assert_eq!(estimate.critical_path_length, 3, "Critical path: root → level1 → level2");
+    // Performance target: < 100ms for 100+ node graph
+    assert!(
+        duration.as_millis() < 100,
+        "Estimation should complete in <100ms, took {:?}",
+        duration
+    );
+
+    assert_eq!(
+        estimate.max_parallelism, 90,
+        "Should have 90 parallel nodes at level 2"
+    );
+    assert_eq!(
+        estimate.critical_path_length, 3,
+        "Critical path: root → level1 → level2"
+    );
 }
 
 /// Test GPU-accelerated workflow
@@ -231,24 +297,41 @@ async fn test_gpu_workflow() {
     };
 
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
 
-    assert_eq!(estimate.gpu_memory_bytes, 16 * 1024 * 1024 * 1024, "Should require 16GB GPU memory");
-    
+    assert_eq!(
+        estimate.gpu_memory_bytes,
+        16 * 1024 * 1024 * 1024,
+        "Should require 16GB GPU memory"
+    );
+
     let validator = ResourceValidator::new();
-    let availability = validator.validate_availability(&graph).await.expect("Validation should succeed");
-    
+    let availability = validator
+        .validate_availability(&graph)
+        .await
+        .expect("Validation should succeed");
+
     if !availability.available {
-        let gpu_gaps: Vec<_> = availability.gaps.iter()
+        let gpu_gaps: Vec<_> = availability
+            .gaps
+            .iter()
             .filter(|gap| gap.resource_type.contains("gpu"))
             .collect();
         println!("GPU gaps found: {}", gpu_gaps.len());
     }
 
     let optimizer = ResourceOptimizer::new();
-    let suggestions = optimizer.suggest_optimizations(&graph).await.expect("Optimization should succeed");
-    
-    println!("GPU workflow suggestions: {}", suggestions.opportunities.len());
+    let suggestions = optimizer
+        .suggest_optimizations(&graph)
+        .await
+        .expect("Optimization should succeed");
+
+    println!(
+        "GPU workflow suggestions: {}",
+        suggestions.opportunities.len()
+    );
 }
 
 /// Test cycle detection
@@ -301,12 +384,19 @@ async fn test_fork_join_pattern() {
     assert!(graph.validate().is_ok(), "Fork-join graph should be valid");
 
     let estimator = ResourceEstimator::new();
-    let estimate = estimator.estimate(&graph).expect("Estimation should succeed");
+    let estimate = estimator
+        .estimate(&graph)
+        .expect("Estimation should succeed");
 
     assert_eq!(estimate.max_parallelism, 3, "Should have 3 parallel tasks");
-    assert_eq!(estimate.critical_path_length, 3, "Critical path: a → c (longest) → e");
-    
-    println!("Fork-join - Parallelism: {}, Duration: {}s", 
-             estimate.max_parallelism, estimate.estimated_duration.as_secs());
-}
+    assert_eq!(
+        estimate.critical_path_length, 3,
+        "Critical path: a → c (longest) → e"
+    );
 
+    println!(
+        "Fork-join - Parallelism: {}, Duration: {}s",
+        estimate.max_parallelism,
+        estimate.estimated_duration.as_secs()
+    );
+}

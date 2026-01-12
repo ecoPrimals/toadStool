@@ -167,7 +167,7 @@ pub struct AvailableResources {
 }
 
 /// tarpc service definition for ToadStool compute operations
-/// 
+///
 /// This trait defines the RPC interface following Songbird's pattern:
 /// - Binary protocol for performance
 /// - Type-safe at compile time
@@ -182,9 +182,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `WorkloadResult` - Initial submission result with workload ID
-    async fn submit_workload(
-        submission: WorkloadSubmission,
-    ) -> Result<WorkloadResult, String>;
+    async fn submit_workload(submission: WorkloadSubmission) -> Result<WorkloadResult, String>;
 
     /// Query workload execution status
     ///
@@ -193,9 +191,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * `WorkloadResult` - Current execution status and results
-    async fn query_status(
-        workload_id: String,
-    ) -> Result<WorkloadResult, String>;
+    async fn query_status(workload_id: String) -> Result<WorkloadResult, String>;
 
     /// Cancel running workload
     ///
@@ -204,9 +200,7 @@ pub trait ToadStoolComputeRpc {
     ///
     /// # Returns
     /// * Success or error message
-    async fn cancel_workload(
-        workload_id: String,
-    ) -> Result<(), String>;
+    async fn cancel_workload(workload_id: String) -> Result<(), String>;
 
     /// List all workloads for a given filter
     ///
@@ -274,9 +268,9 @@ mod tests {
 
         // Verify serialization works
         let json = serde_json::to_string(&submission).expect("Serialization failed");
-        let deserialized: WorkloadSubmission = serde_json::from_str(&json)
-            .expect("Deserialization failed");
-        
+        let deserialized: WorkloadSubmission =
+            serde_json::from_str(&json).expect("Deserialization failed");
+
         assert_eq!(submission.workload_id, deserialized.workload_id);
     }
 
@@ -284,17 +278,15 @@ mod tests {
     fn test_compute_capabilities_structure() {
         let capabilities = ComputeCapabilities {
             service_id: "toadstool-1".to_string(),
-            compute_units: vec![
-                ComputeUnit {
-                    id: "cpu-0".to_string(),
-                    unit_type: "cpu".to_string(),
-                    name: "AMD Ryzen".to_string(),
-                    cores: 128,
-                    memory_bytes: 270 * 1024 * 1024 * 1024,
-                    tflops: Some(12.8),
-                    utilization: 0.25,
-                },
-            ],
+            compute_units: vec![ComputeUnit {
+                id: "cpu-0".to_string(),
+                unit_type: "cpu".to_string(),
+                name: "AMD Ryzen".to_string(),
+                cores: 128,
+                memory_bytes: 270 * 1024 * 1024 * 1024,
+                tflops: Some(12.8),
+                utilization: 0.25,
+            }],
             supported_workload_types: vec![
                 "cpu_compute".to_string(),
                 "gpu_compute".to_string(),
@@ -316,4 +308,3 @@ mod tests {
         assert_eq!(capabilities.compute_units[0].cores, 128);
     }
 }
-

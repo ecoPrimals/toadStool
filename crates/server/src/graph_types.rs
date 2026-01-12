@@ -17,8 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use toadstool::resources::{
-    CpuRequirements, MemoryRequirements, StorageRequirements, 
-    GpuRequirements, NetworkRequirements,
+    CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
 };
 
 /// Execution graph representing a complete workflow
@@ -29,13 +28,13 @@ use toadstool::resources::{
 pub struct ExecutionGraph {
     /// Unique graph identifier
     pub id: String,
-    
+
     /// Nodes in the graph (workload units)
     pub nodes: Vec<GraphNode>,
-    
+
     /// Edges connecting nodes (dependencies)
     pub edges: Vec<GraphEdge>,
-    
+
     /// Optional metadata (user-provided hints)
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -54,7 +53,7 @@ impl ExecutionGraph {
         if self.nodes.is_empty() {
             return Err(GraphValidationError::EmptyGraph);
         }
-        
+
         // Check for duplicate node IDs
         let mut seen_ids = HashSet::new();
         for node in &self.nodes {
@@ -62,7 +61,7 @@ impl ExecutionGraph {
                 return Err(GraphValidationError::DuplicateNodeId(node.id.clone()));
             }
         }
-        
+
         // Check that all edges reference valid nodes
         for edge in &self.edges {
             if !seen_ids.contains(&edge.from) {
@@ -79,19 +78,19 @@ impl ExecutionGraph {
                     reason: format!("Target node '{}' not found", edge.to),
                 });
             }
-            
+
             // Check for self-edges
             if edge.from == edge.to {
                 return Err(GraphValidationError::SelfEdge(edge.from.clone()));
             }
         }
-        
+
         // Check for cycles (use DFS-based cycle detection)
         self.check_for_cycles()?;
-        
+
         Ok(())
     }
-    
+
     /// Check for cycles in the graph using DFS
     fn check_for_cycles(&self) -> Result<(), GraphValidationError> {
         // Build adjacency list
@@ -100,17 +99,18 @@ impl ExecutionGraph {
             adj_list.insert(&node.id, Vec::new());
         }
         for edge in &self.edges {
-            adj_list.get_mut(edge.from.as_str())
+            adj_list
+                .get_mut(edge.from.as_str())
                 .unwrap_or_else(|| panic!("Node should exist"))
                 .push(&edge.to);
         }
-        
+
         // DFS with three colors: white (unvisited), gray (visiting), black (visited)
         let mut color: HashMap<&str, Color> = HashMap::new();
         for node in &self.nodes {
             color.insert(&node.id, Color::White);
         }
-        
+
         // Visit each unvisited node
         for node in &self.nodes {
             if color[node.id.as_str()] == Color::White {
@@ -119,10 +119,10 @@ impl ExecutionGraph {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// DFS visit for cycle detection
     fn dfs_visit<'a>(
         &self,
@@ -131,7 +131,7 @@ impl ExecutionGraph {
         color: &mut HashMap<&'a str, Color>,
     ) -> Result<(), Vec<String>> {
         color.insert(node, Color::Gray);
-        
+
         if let Some(neighbors) = adj_list.get(node) {
             for &neighbor in neighbors {
                 match color[neighbor] {
@@ -148,38 +148,40 @@ impl ExecutionGraph {
                 }
             }
         }
-        
+
         color.insert(node, Color::Black);
         Ok(())
     }
-    
+
     /// Get node by ID
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
         self.nodes.iter().find(|n| n.id == id)
     }
-    
+
     /// Get all nodes that depend on the given node
     pub fn get_dependents(&self, node_id: &str) -> Vec<&GraphNode> {
-        let dependent_ids: Vec<&str> = self.edges
+        let dependent_ids: Vec<&str> = self
+            .edges
             .iter()
             .filter(|e| e.from == node_id)
             .map(|e| e.to.as_str())
             .collect();
-        
+
         self.nodes
             .iter()
             .filter(|n| dependent_ids.contains(&n.id.as_str()))
             .collect()
     }
-    
+
     /// Get all nodes that this node depends on
     pub fn get_dependencies(&self, node_id: &str) -> Vec<&GraphNode> {
-        let dependency_ids: Vec<&str> = self.edges
+        let dependency_ids: Vec<&str> = self
+            .edges
             .iter()
             .filter(|e| e.to == node_id)
             .map(|e| e.from.as_str())
             .collect();
-        
+
         self.nodes
             .iter()
             .filter(|n| dependency_ids.contains(&n.id.as_str()))
@@ -216,20 +218,20 @@ enum Color {
 pub struct GraphNode {
     /// Unique node identifier
     pub id: String,
-    
+
     /// Primal name (e.g., "toadstool", "squirrel", "nestgate")
     /// This is self-knowledge - the node knows which primal it needs
     /// Defaults to "toadstool" if not specified
     #[serde(default = "default_primal")]
     pub primal: String,
-    
+
     /// Operation type (e.g., "gpu_compute", "cpu_compute", "storage")
     pub operation: String,
-    
+
     /// Resource requirements for this node
     #[serde(default)]
     pub requirements: NodeResourceRequirements,
-    
+
     /// Estimated execution duration (type-safe)
     /// Replaces duration_secs in metadata for better ergonomics
     #[serde(
@@ -238,7 +240,7 @@ pub struct GraphNode {
         deserialize_with = "deserialize_duration"
     )]
     pub duration: Option<Duration>,
-    
+
     /// Optional metadata (workload hints, model size, etc.)
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -275,19 +277,19 @@ pub struct NodeResourceRequirements {
     /// CPU requirements
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cpu: Option<CpuRequirements>,
-    
+
     /// Memory requirements
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memory: Option<MemoryRequirements>,
-    
+
     /// Storage requirements
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<StorageRequirements>,
-    
+
     /// GPU requirements
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gpu: Option<GpuRequirements>,
-    
+
     /// Network requirements
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<NetworkRequirements>,
@@ -301,15 +303,15 @@ pub struct NodeResourceRequirements {
 pub struct GraphEdge {
     /// Source node ID (dependency)
     pub from: String,
-    
+
     /// Target node ID (dependent)
     pub to: String,
-    
+
     /// Edge type (data flow, control flow, or general dependency)
     /// Defaults to Dependency if not specified
     #[serde(default)]
     pub edge_type: EdgeType,
-    
+
     /// Optional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -325,7 +327,7 @@ impl GraphEdge {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Create a data flow edge
     pub fn data_flow(from: impl Into<String>, to: impl Into<String>) -> Self {
         Self {
@@ -335,7 +337,7 @@ impl GraphEdge {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Create a control flow edge
     pub fn control(from: impl Into<String>, to: impl Into<String>) -> Self {
         Self {
@@ -353,10 +355,10 @@ impl GraphEdge {
 pub enum EdgeType {
     /// Data flows from source to target (output → input)
     DataFlow,
-    
+
     /// Control flow - target waits for source to complete
     Control,
-    
+
     /// General dependency - no specific semantics
     Dependency,
 }
@@ -372,20 +374,20 @@ impl Default for EdgeType {
 pub enum GraphValidationError {
     #[error("Graph is empty (no nodes)")]
     EmptyGraph,
-    
+
     #[error("Duplicate node ID: {0}")]
     DuplicateNodeId(String),
-    
+
     #[error("Invalid edge from '{from}' to '{to}': {reason}")]
     InvalidEdge {
         from: String,
         to: String,
         reason: String,
     },
-    
+
     #[error("Self-edge detected on node '{0}'")]
     SelfEdge(String),
-    
+
     #[error("Cycle detected in graph: {}", .0.join(" -> "))]
     CycleDetected(Vec<String>),
 }
@@ -409,7 +411,7 @@ impl GraphNode {
     pub fn builder(id: impl Into<String>, operation: impl Into<String>) -> GraphNodeBuilder {
         GraphNodeBuilder::new(id, operation)
     }
-    
+
     /// Create a simple node with defaults
     pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
@@ -455,83 +457,83 @@ impl GraphNodeBuilder {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Set the primal name
     pub fn primal(mut self, primal: impl Into<String>) -> Self {
         self.primal = primal.into();
         self
     }
-    
+
     /// Set CPU requirements (in cores)
     pub fn cpu(mut self, cores: f64) -> Self {
         self.cpu_cores = Some(cores);
         self
     }
-    
+
     /// Set memory requirements (in bytes)
     pub fn memory(mut self, bytes: u64) -> Self {
         self.memory_bytes = Some(bytes);
         self
     }
-    
+
     /// Set memory requirements (in GB, for convenience)
     pub fn memory_gb(mut self, gb: u64) -> Self {
         self.memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
-    
+
     /// Set GPU memory requirements (in bytes)
     pub fn gpu_memory(mut self, bytes: u64) -> Self {
         self.gpu_memory_bytes = Some(bytes);
         self
     }
-    
+
     /// Set GPU memory requirements (in GB, for convenience)
     pub fn gpu_memory_gb(mut self, gb: u64) -> Self {
         self.gpu_memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
-    
+
     /// Set storage requirements (in bytes)
     pub fn storage(mut self, bytes: u64) -> Self {
         self.storage_bytes = Some(bytes);
         self
     }
-    
+
     /// Set storage requirements (in GB, for convenience)
     pub fn storage_gb(mut self, gb: u64) -> Self {
         self.storage_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
-    
+
     /// Set network bandwidth requirements (in Mbps)
     pub fn network_bandwidth(mut self, mbps: u64) -> Self {
         self.network_bandwidth_mbps = Some(mbps);
         self
     }
-    
+
     /// Set estimated duration (as Duration)
     pub fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
-    
+
     /// Set estimated duration (in seconds, for convenience)
     pub fn duration_secs(mut self, secs: u64) -> Self {
         self.duration = Some(Duration::from_secs(secs));
         self
     }
-    
+
     /// Add metadata
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
-    
+
     /// Build the GraphNode
     pub fn build(self) -> GraphNode {
         let mut requirements = NodeResourceRequirements::default();
-        
+
         if let Some(cores) = self.cpu_cores {
             requirements.cpu = Some(CpuRequirements {
                 min_cores: cores,
@@ -539,14 +541,14 @@ impl GraphNodeBuilder {
                 architecture: None,
             });
         }
-        
+
         if let Some(bytes) = self.memory_bytes {
             requirements.memory = Some(MemoryRequirements {
                 min_bytes: bytes,
                 max_bytes: None,
             });
         }
-        
+
         if let Some(bytes) = self.gpu_memory_bytes {
             requirements.gpu = Some(GpuRequirements {
                 min_units: 1,
@@ -555,7 +557,7 @@ impl GraphNodeBuilder {
                 min_memory_bytes: Some(bytes),
             });
         }
-        
+
         if let Some(bytes) = self.storage_bytes {
             requirements.storage = Some(StorageRequirements {
                 min_bytes: bytes,
@@ -563,7 +565,7 @@ impl GraphNodeBuilder {
                 storage_type: None,
             });
         }
-        
+
         if let Some(mbps) = self.network_bandwidth_mbps {
             // Convert Mbps to bytes per second (Mbps * 125000)
             let bytes_per_sec = mbps * 125000;
@@ -573,13 +575,13 @@ impl GraphNodeBuilder {
                 max_latency_ms: None,
             });
         }
-        
+
         GraphNode {
             id: self.id,
             primal: self.primal,
             operation: self.operation,
-            requirements,
             duration: self.duration,
+            requirements,
             metadata: self.metadata,
         }
     }
@@ -590,7 +592,7 @@ impl ExecutionGraph {
     pub fn builder(id: impl Into<String>) -> ExecutionGraphBuilder {
         ExecutionGraphBuilder::new(id)
     }
-    
+
     /// Create a simple graph
     pub fn simple(id: impl Into<String>) -> Self {
         Self {
@@ -620,43 +622,43 @@ impl ExecutionGraphBuilder {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Add a node
     pub fn node(mut self, node: GraphNode) -> Self {
         self.nodes.push(node);
         self
     }
-    
+
     /// Add multiple nodes
     pub fn nodes(mut self, nodes: impl IntoIterator<Item = GraphNode>) -> Self {
         self.nodes.extend(nodes);
         self
     }
-    
+
     /// Add an edge
     pub fn edge(mut self, edge: GraphEdge) -> Self {
         self.edges.push(edge);
         self
     }
-    
+
     /// Add a simple dependency edge
     pub fn connect(mut self, from: impl Into<String>, to: impl Into<String>) -> Self {
         self.edges.push(GraphEdge::new(from, to));
         self
     }
-    
+
     /// Add multiple edges
     pub fn edges(mut self, edges: impl IntoIterator<Item = GraphEdge>) -> Self {
         self.edges.extend(edges);
         self
     }
-    
+
     /// Add metadata
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
-    
+
     /// Build the ExecutionGraph
     pub fn build(self) -> ExecutionGraph {
         ExecutionGraph {
@@ -671,7 +673,7 @@ impl ExecutionGraphBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_valid_graph() {
         let graph = ExecutionGraph {
@@ -681,6 +683,7 @@ mod tests {
                     id: "node-1".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "cpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -688,24 +691,23 @@ mod tests {
                     id: "node-2".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "gpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
             ],
-            edges: vec![
-                GraphEdge {
-                    from: "node-1".to_string(),
-                    to: "node-2".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-            ],
+            edges: vec![GraphEdge {
+                from: "node-1".to_string(),
+                to: "node-2".to_string(),
+                edge_type: EdgeType::DataFlow,
+                metadata: HashMap::new(),
+            }],
             metadata: HashMap::new(),
         };
-        
+
         assert!(graph.validate().is_ok());
     }
-    
+
     #[test]
     fn test_empty_graph() {
         let graph = ExecutionGraph {
@@ -714,13 +716,13 @@ mod tests {
             edges: vec![],
             metadata: HashMap::new(),
         };
-        
+
         assert!(matches!(
             graph.validate(),
             Err(GraphValidationError::EmptyGraph)
         ));
     }
-    
+
     #[test]
     fn test_duplicate_node_id() {
         let graph = ExecutionGraph {
@@ -730,6 +732,7 @@ mod tests {
                     id: "node-1".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "cpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -737,6 +740,7 @@ mod tests {
                     id: "node-1".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "gpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -744,13 +748,13 @@ mod tests {
             edges: vec![],
             metadata: HashMap::new(),
         };
-        
+
         assert!(matches!(
             graph.validate(),
             Err(GraphValidationError::DuplicateNodeId(_))
         ));
     }
-    
+
     #[test]
     fn test_cycle_detection() {
         let graph = ExecutionGraph {
@@ -760,6 +764,7 @@ mod tests {
                     id: "node-1".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "cpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -767,6 +772,7 @@ mod tests {
                     id: "node-2".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "gpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -787,43 +793,40 @@ mod tests {
             ],
             metadata: HashMap::new(),
         };
-        
+
         assert!(matches!(
             graph.validate(),
             Err(GraphValidationError::CycleDetected(_))
         ));
     }
-    
+
     #[test]
     fn test_self_edge() {
         let graph = ExecutionGraph {
             id: "test-graph".to_string(),
-            nodes: vec![
-                GraphNode {
-                    id: "node-1".to_string(),
-                    primal: "toadstool".to_string(),
-                    operation: "cpu_compute".to_string(),
-                    requirements: NodeResourceRequirements::default(),
-                    metadata: HashMap::new(),
-                },
-            ],
-            edges: vec![
-                GraphEdge {
-                    from: "node-1".to_string(),
-                    to: "node-1".to_string(),
-                    edge_type: EdgeType::DataFlow,
-                    metadata: HashMap::new(),
-                },
-            ],
+            nodes: vec![GraphNode {
+                id: "node-1".to_string(),
+                primal: "toadstool".to_string(),
+                operation: "cpu_compute".to_string(),
+                    duration: None,
+                requirements: NodeResourceRequirements::default(),
+                metadata: HashMap::new(),
+            }],
+            edges: vec![GraphEdge {
+                from: "node-1".to_string(),
+                to: "node-1".to_string(),
+                edge_type: EdgeType::DataFlow,
+                metadata: HashMap::new(),
+            }],
             metadata: HashMap::new(),
         };
-        
+
         assert!(matches!(
             graph.validate(),
             Err(GraphValidationError::SelfEdge(_))
         ));
     }
-    
+
     #[test]
     fn test_get_dependencies() {
         let graph = ExecutionGraph {
@@ -833,6 +836,7 @@ mod tests {
                     id: "node-1".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "cpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -840,6 +844,7 @@ mod tests {
                     id: "node-2".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "gpu_compute".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -847,6 +852,7 @@ mod tests {
                     id: "node-3".to_string(),
                     primal: "toadstool".to_string(),
                     operation: "storage".to_string(),
+                    duration: None,
                     requirements: NodeResourceRequirements::default(),
                     metadata: HashMap::new(),
                 },
@@ -867,11 +873,10 @@ mod tests {
             ],
             metadata: HashMap::new(),
         };
-        
+
         let deps = graph.get_dependencies("node-3");
         assert_eq!(deps.len(), 2);
         assert!(deps.iter().any(|n| n.id == "node-1"));
         assert!(deps.iter().any(|n| n.id == "node-2"));
     }
 }
-

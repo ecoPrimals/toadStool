@@ -190,7 +190,7 @@ impl UnifiedBuffer {
         unsafe {
             let src = data.as_ptr();
             let dst = self.cpu_ptr.add(offset);
-            
+
             // Debug assertions for development builds
             debug_assert!(!src.is_null(), "Source pointer should never be null");
             debug_assert!(!dst.is_null(), "Destination pointer should never be null");
@@ -198,7 +198,7 @@ impl UnifiedBuffer {
                 (dst as usize).checked_add(data.len()).is_some(),
                 "Destination pointer arithmetic should not overflow"
             );
-            
+
             std::ptr::copy_nonoverlapping(src, dst, data.len());
         }
 
@@ -284,7 +284,7 @@ impl UnifiedBuffer {
         unsafe {
             let src = self.cpu_ptr.add(offset);
             let dst = result.as_mut_ptr();
-            
+
             // Debug assertions for development builds
             debug_assert!(!src.is_null(), "Source pointer should never be null");
             debug_assert!(!dst.is_null(), "Destination pointer should never be null");
@@ -292,7 +292,7 @@ impl UnifiedBuffer {
                 (src as usize).checked_add(len).is_some(),
                 "Source pointer arithmetic should not overflow"
             );
-            
+
             std::ptr::copy_nonoverlapping(src, dst, len);
         }
 

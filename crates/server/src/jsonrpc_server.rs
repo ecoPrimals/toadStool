@@ -39,23 +39,22 @@
 //! }
 //! ```
 
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::Arc;
 use jsonrpsee::{
     core::async_trait,
     proc_macros::rpc,
     server::{Server, ServerHandle},
-    types::{ErrorObjectOwned, error::ErrorCode},
+    types::{error::ErrorCode, ErrorObjectOwned},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::info;
 
 use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, HealthStatus, WorkloadResult,
+    ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
     WorkloadSubmission as TarpcWorkloadSubmission,
-    WorkloadPriority, ResourceRequirements,
 };
 
 /// JSON-RPC server configuration
@@ -98,9 +97,10 @@ pub struct JsonWorkloadSubmission {
 impl JsonWorkloadSubmission {
     /// Convert to tarpc submission (decode base64)
     fn to_tarpc(&self) -> Result<TarpcWorkloadSubmission, String> {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
-        
-        let data = STANDARD.decode(&self.data)
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+        let data = STANDARD
+            .decode(&self.data)
             .map_err(|e| format!("Invalid base64 data: {}", e))?;
 
         Ok(TarpcWorkloadSubmission {
@@ -115,7 +115,7 @@ impl JsonWorkloadSubmission {
 }
 
 /// JSON-RPC 2.0 method definitions
-/// 
+///
 /// Following Songbird's pattern:
 /// - Namespace: "toadstool.*"
 /// - Self-describing via capabilities
@@ -131,17 +131,11 @@ pub trait ToadStoolJsonRpc {
 
     /// Query workload status
     #[method(name = "toadstool.query_status")]
-    async fn query_status(
-        &self,
-        workload_id: String,
-    ) -> Result<WorkloadResult, ErrorObjectOwned>;
+    async fn query_status(&self, workload_id: String) -> Result<WorkloadResult, ErrorObjectOwned>;
 
     /// Cancel workload
     #[method(name = "toadstool.cancel_workload")]
-    async fn cancel_workload(
-        &self,
-        workload_id: String,
-    ) -> Result<(), ErrorObjectOwned>;
+    async fn cancel_workload(&self, workload_id: String) -> Result<(), ErrorObjectOwned>;
 
     /// List workloads
     #[method(name = "toadstool.list_workloads")]
@@ -151,7 +145,7 @@ pub trait ToadStoolJsonRpc {
     ) -> Result<Vec<WorkloadResult>, ErrorObjectOwned>;
 
     /// Query capabilities (SELF-KNOWLEDGE)
-    /// 
+    ///
     /// This is how external clients discover what ToadStool can do.
     /// No hardcoded knowledge - runtime discovery!
     #[method(name = "toadstool.query_capabilities")]
@@ -199,27 +193,19 @@ impl ToadStoolJsonRpcServer for JsonRpcServerImpl {
         info!("JSON-RPC: submit_workload {}", submission.workload_id);
 
         // Convert and execute
-        let tarpc_submission = submission.to_tarpc()
-            .map_err(|e| ErrorObjectOwned::owned(
-                ErrorCode::InvalidParams.code(),
-                e,
-                None::<()>,
-            ))?;
+        let tarpc_submission = submission
+            .to_tarpc()
+            .map_err(|e| ErrorObjectOwned::owned(ErrorCode::InvalidParams.code(), e, None::<()>))?;
 
-        self.executor.execute(tarpc_submission).await
-            .map_err(|e| ErrorObjectOwned::owned(
-                ErrorCode::InternalError.code(),
-                e,
-                None::<()>,
-            ))
+        self.executor
+            .execute(tarpc_submission)
+            .await
+            .map_err(|e| ErrorObjectOwned::owned(ErrorCode::InternalError.code(), e, None::<()>))
     }
 
-    async fn query_status(
-        &self,
-        workload_id: String,
-    ) -> Result<WorkloadResult, ErrorObjectOwned> {
+    async fn query_status(&self, workload_id: String) -> Result<WorkloadResult, ErrorObjectOwned> {
         info!("JSON-RPC: query_status {}", workload_id);
-        
+
         // Implementation would query actual workload status
         Err(ErrorObjectOwned::owned(
             ErrorCode::MethodNotFound.code(),
@@ -228,18 +214,13 @@ impl ToadStoolJsonRpcServer for JsonRpcServerImpl {
         ))
     }
 
-    async fn cancel_workload(
-        &self,
-        workload_id: String,
-    ) -> Result<(), ErrorObjectOwned> {
+    async fn cancel_workload(&self, workload_id: String) -> Result<(), ErrorObjectOwned> {
         info!("JSON-RPC: cancel_workload {}", workload_id);
 
-        self.executor.cancel(&workload_id).await
-            .map_err(|e| ErrorObjectOwned::owned(
-                ErrorCode::InternalError.code(),
-                e,
-                None::<()>,
-            ))
+        self.executor
+            .cancel(&workload_id)
+            .await
+            .map_err(|e| ErrorObjectOwned::owned(ErrorCode::InternalError.code(), e, None::<()>))
     }
 
     async fn list_workloads(
@@ -247,7 +228,7 @@ impl ToadStoolJsonRpcServer for JsonRpcServerImpl {
         _filter: Option<HashMap<String, String>>,
     ) -> Result<Vec<WorkloadResult>, ErrorObjectOwned> {
         info!("JSON-RPC: list_workloads");
-        
+
         // Implementation would list actual workloads
         Ok(vec![])
     }
@@ -255,17 +236,15 @@ impl ToadStoolJsonRpcServer for JsonRpcServerImpl {
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, ErrorObjectOwned> {
         info!("JSON-RPC: query_capabilities (self-knowledge)");
 
-        self.executor.query_capabilities().await
-            .map_err(|e| ErrorObjectOwned::owned(
-                ErrorCode::InternalError.code(),
-                e,
-                None::<()>,
-            ))
+        self.executor
+            .query_capabilities()
+            .await
+            .map_err(|e| ErrorObjectOwned::owned(ErrorCode::InternalError.code(), e, None::<()>))
     }
 
     async fn health(&self) -> Result<HealthStatus, ErrorObjectOwned> {
         let uptime = self.start_time.elapsed();
-        
+
         Ok(HealthStatus {
             healthy: true,
             version: self.version.clone(),
@@ -302,7 +281,7 @@ pub async fn start_jsonrpc_server(
     let module = impl_server.into_rpc();
 
     let handle = server.start(module);
-    
+
     info!("JSON-RPC server started successfully");
     Ok(handle)
 }
@@ -343,29 +322,35 @@ pub async fn start_jsonrpc_unix_server(
     max_request_size: u32,
     max_response_size: u32,
 ) -> Result<ServerHandle, Box<dyn std::error::Error>> {
-    info!("Starting JSON-RPC server (TCP fallback for socket: {:?})", socket_path);
-    
+    info!(
+        "Starting JSON-RPC server (TCP fallback for socket: {:?})",
+        socket_path
+    );
+
     // ✅ RESOLVED: jsonrpsee Unix socket limitation addressed
     // Solution: ManualJsonRpcServer provides pure Rust HTTP/1.1 + JSON-RPC over Unix sockets
     // See: crates/server/src/manual_jsonrpc.rs
     // This deprecated function remains for backward compatibility only
     let addr = "127.0.0.1:9944".parse::<SocketAddr>()?;
-    
-    info!("JSON-RPC server listening on: {} (socket path logged for reference: {:?})", addr, socket_path);
-    
+
+    info!(
+        "JSON-RPC server listening on: {} (socket path logged for reference: {:?})",
+        addr, socket_path
+    );
+
     // Build JSON-RPC module
     let impl_server = JsonRpcServerImpl::new(executor, version);
     let module = impl_server.into_rpc();
-    
+
     // Create server with configuration
     let server = Server::builder()
         .max_request_body_size(max_request_size)
         .max_response_body_size(max_response_size)
         .build(addr)
         .await?;
-    
+
     let handle = server.start(module);
-    
+
     info!("JSON-RPC server ready at: {}", addr);
     Ok(handle)
 }
@@ -376,11 +361,11 @@ mod tests {
 
     #[test]
     fn test_json_workload_submission() {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
-        
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+
         let data = vec![1, 2, 3, 4];
         let encoded = STANDARD.encode(&data);
-        
+
         let submission = JsonWorkloadSubmission {
             workload_id: "work-123".to_string(),
             workload_type: "gpu_compute".to_string(),
@@ -406,4 +391,3 @@ mod tests {
         assert!(config.log_requests);
     }
 }
-
