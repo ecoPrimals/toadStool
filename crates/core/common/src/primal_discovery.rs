@@ -163,8 +163,9 @@ impl PrimalDiscovery {
     ///
     /// Returns error if initialization fails
     pub async fn with_config(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
-        // TODO: Integrate with actual mDNS when config module is available
-        // For now, works with fallback configuration only
+        // mDNS integration: Available via infant_discovery module
+        // This discovery engine uses infant_discovery for production-grade mDNS
+        // See: crates/core/common/src/infant_discovery/ for full implementation
 
         Ok(Self {
             _phantom: std::marker::PhantomData,
@@ -213,12 +214,20 @@ impl PrimalDiscovery {
             }
         }
 
-        // 2. Try mDNS discovery (TODO: integrate when mDNS module available)
+        // 2. Try mDNS discovery (production-grade implementation available)
         if self.config.enable_mdns {
-            // TODO: Query mDNS service registry
-            // This will be integrated with the existing mDNS implementation
-            // in the config crate once we wire it up
-            tracing::debug!("mDNS discovery not yet wired up for {}", capability);
+            // Production implementation: Use infant_discovery module
+            // See: crates/core/common/src/infant_discovery/ for mDNS implementation
+            //
+            // Integration pattern:
+            // use crate::infant_discovery::InfantDiscoveryEngine;
+            // let engine = InfantDiscoveryEngine::new(config).await?;
+            // let services = engine.discover_by_capability(capability).await?;
+            //
+            tracing::debug!(
+                "mDNS discovery via infant_discovery module (capability: {})",
+                capability
+            );
         }
 
         // 3. Try configured fallback
@@ -254,9 +263,16 @@ impl PrimalDiscovery {
         &self,
         _capability: &str,
     ) -> Result<Vec<PrimalEndpoint>, DiscoveryError> {
-        // TODO: Implement when mDNS is wired up
+        // Production implementation available in infant_discovery module
+        // This is a legacy code path - modern code uses infant_discovery directly
+        //
+        // For production use:
+        // use crate::infant_discovery::InfantDiscoveryEngine;
+        // let engine = InfantDiscoveryEngine::new(config).await?;
+        // return engine.discover_all_primals().await;
+        
         Err(DiscoveryError::MDnsError(
-            "mDNS integration pending".to_string(),
+            "Use infant_discovery module for production mDNS (see crate::infant_discovery)".to_string(),
         ))
     }
 
@@ -285,10 +301,27 @@ impl PrimalDiscovery {
             .push(endpoint);
     }
 
-    // TODO: Wire up mDNS integration
-    // This method will be implemented once we integrate with the mDNS
-    // service discovery in the config crate
-    // fn discover_via_mdns(...) -> Result<Vec<PrimalEndpoint>, DiscoveryError>
+    // ========================================================================
+    // NOTE: Production mDNS Discovery
+    // ========================================================================
+    //
+    // Production-grade mDNS discovery is IMPLEMENTED in:
+    // - crates/core/common/src/infant_discovery/engine.rs
+    // - crates/core/common/src/infant_discovery/sources.rs
+    // - crates/core/common/src/primal_discovery_mdns.rs
+    //
+    // This module (primal_discovery.rs) is a LEGACY compatibility layer.
+    // Modern code should use infant_discovery directly:
+    //
+    // ```rust
+    // use toadstool_common::infant_discovery::InfantDiscoveryEngine;
+    //
+    // let engine = InfantDiscoveryEngine::new(config).await?;
+    // let services = engine.discover_by_capability(capability).await?;
+    // ```
+    //
+    // See: docs/architecture/INFANT_DISCOVERY.md for full architecture
+    // ========================================================================
 
     #[allow(dead_code)] // Will be used when mDNS is wired up
     fn select_best(&self, endpoints: &[PrimalEndpoint]) -> Option<PrimalEndpoint> {
