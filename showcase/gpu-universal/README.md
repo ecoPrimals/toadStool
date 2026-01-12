@@ -17,7 +17,19 @@ A comprehensive demonstration that ToadStool's universal GPU abstraction:
 
 ## Quick Start
 
-### Run Locally (5 minutes)
+### NEW: Vendor-Agnostic Demo (5 minutes) ⭐
+
+```bash
+cd showcase/gpu-universal
+
+# Prove zero vendor lock-in
+# Runs SAME workload on AMD + NVIDIA + CPU
+./run-vendor-agnostic-demo.sh
+```
+
+**What it proves**: Same code, same accuracy, zero vendor lock-in across AMD, NVIDIA, and CPU!
+
+### Run Locally (Original Demos)
 
 ```bash
 cd showcase/gpu-universal
