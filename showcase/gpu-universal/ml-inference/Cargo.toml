@@ -16,6 +16,7 @@ tracing-subscriber = "0.3"
 
 # Real ML dependencies
 ndarray = "0.15"
+rayon = "1.8"
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -30,6 +31,7 @@ cudarc = { version = "0.11", optional = true }
 ocl = { version = "0.19", optional = true }
 ash = { version = "0.37", optional = true }
 wgpu = "0.19"
+pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 futures-intrusive = "0.5"
 
