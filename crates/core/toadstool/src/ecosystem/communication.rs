@@ -29,9 +29,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::sync::RwLock;
-use tracing::{debug, info};
 #[cfg(feature = "networking")]
 use tracing::warn;
+use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::service_discovery::DiscoveredService;

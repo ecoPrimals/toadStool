@@ -14,64 +14,64 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::signal;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
-use toadstool_server::tarpc_server::{ToadStoolTarpcServer, WorkloadExecutor, StandaloneExecutor};
-use toadstool_server::songbird_client::{
-    SongbirdClient, SongbirdRegistration, ServiceLocation,
-    query_system_resources, build_capabilities,
-};
-use toadstool_server::{CoordinatorExecutor, ManualJsonRpcServer};
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
+use toadstool_server::songbird_client::{
+    build_capabilities, query_system_resources, ServiceLocation, SongbirdClient,
+    SongbirdRegistration,
+};
+use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+use toadstool_server::{CoordinatorExecutor, ManualJsonRpcServer};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging with env filter support
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
-    
-    info!("🍄 ToadStool Universal Compute Server v{}", env!("CARGO_PKG_VERSION"));
+
+    info!(
+        "🍄 ToadStool Universal Compute Server v{}",
+        env!("CARGO_PKG_VERSION")
+    );
     info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
-    
+
     // Get configuration from environment (no hardcoding)
-    let family_id = std::env::var("TOADSTOOL_FAMILY")
-        .unwrap_or_else(|_| {
-            warn!("TOADSTOOL_FAMILY not set, using 'default'");
-            warn!("For multi-instance support, set unique family ID:");
-            warn!("  export TOADSTOOL_FAMILY=gpu-rtx3090");
-            "default".to_string()
-        });
-    
-    let node_id = std::env::var("TOADSTOOL_NODE_ID")
-        .unwrap_or_else(|_| {
-            info!("TOADSTOOL_NODE_ID not set, using 'default'");
-            "default".to_string()
-        });
-    
+    let family_id = std::env::var("TOADSTOOL_FAMILY").unwrap_or_else(|_| {
+        warn!("TOADSTOOL_FAMILY not set, using 'default'");
+        warn!("For multi-instance support, set unique family ID:");
+        warn!("  export TOADSTOOL_FAMILY=gpu-rtx3090");
+        "default".to_string()
+    });
+
+    let node_id = std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
+        info!("TOADSTOOL_NODE_ID not set, using 'default'");
+        "default".to_string()
+    });
+
     info!("Family ID: {}", family_id);
     info!("Node ID: {}", node_id);
-    
+
     // Determine socket path using biomeOS-standardized 3-tier fallback
     let socket_path = get_socket_path(&family_id, &node_id)?;
     info!("Socket path: {:?}", socket_path);
-    
+
     // Create executor (workload handler) - now with distributed coordinator
     info!("Initializing compute executor...");
     let executor = create_executor(&family_id).await?;
     let version = env!("CARGO_PKG_VERSION").to_string();
-    
-    // Create tarpc server (PRIMARY protocol)  
+
+    // Create tarpc server (PRIMARY protocol)
     let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
-    
+
     // Register with Songbird BEFORE starting servers
     // Deep debt principle: Discovery first, then serve
     register_with_ecosystem(&socket_path, &family_id, &version).await;
-    
+
     // Start manual JSON-RPC server on Unix socket (for universal compatibility)
     info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
@@ -82,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             error!("JSON-RPC server error: {}", e);
         }
     });
-    
+
     info!("Starting tarpc server on Unix socket (PRIMARY protocol)...");
     info!("✅ ToadStool server ready");
     info!("Socket (tarpc): {:?}", socket_path);
@@ -91,17 +91,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
     info!("Family: {}", family_id);
     info!("Capabilities: compute, gpu, orchestration");
-    
+
     // Clone socket path for cleanup later
     let socket_path_clone = socket_path.clone();
-    
+
     // Start server (blocking)
     let server_handle = tokio::spawn(async move {
         if let Err(e) = server.serve_unix(&socket_path).await {
             error!("tarpc server error: {}", e);
         }
     });
-    
+
     // Wait for shutdown signal
     info!("Press Ctrl+C to shutdown");
     match signal::ctrl_c().await {
@@ -112,11 +112,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             error!("Failed to listen for shutdown signal: {}", err);
         }
     }
-    
+
     // Graceful shutdown
     info!("Shutting down ToadStool server...");
     server_handle.abort();
-    
+
     // Clean up socket files
     if let Err(e) = tokio::fs::remove_file(&socket_path_clone).await {
         warn!("Failed to remove tarpc socket: {}", e);
@@ -125,15 +125,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
         warn!("Failed to remove JSON-RPC socket: {}", e);
     }
-    
+
     info!("ToadStool server stopped");
     Ok(())
 }
 
 /// Get socket path following biomeOS-standardized 3-tier fallback
-/// 
+///
 /// Deep debt principle: Agnostic, capability-based, runtime discovery
-/// 
+///
 /// Priority order:
 /// 1. TOADSTOOL_SOCKET env var (absolute path override) - highest priority
 /// 2. XDG runtime directory (/run/user/<uid>/toadstool-<family>.sock)
@@ -144,48 +144,48 @@ fn get_socket_path(family_id: &str, node_id: &str) -> Result<PathBuf, Box<dyn st
         info!("Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
     }
-    
+
     // 2. XDG runtime directory (standard)
     let uid = unsafe { libc::getuid() };
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| format!("/run/user/{}", uid));
-    
-    let xdg_path = PathBuf::from(&runtime_dir)
-        .join(format!("toadstool-{}.sock", family_id));
-    
+    let runtime_dir =
+        std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
+
+    let xdg_path = PathBuf::from(&runtime_dir).join(format!("toadstool-{}.sock", family_id));
+
     if PathBuf::from(&runtime_dir).exists() {
         info!("Using XDG runtime directory: {}", runtime_dir);
         return Ok(xdg_path);
     }
-    
+
     // 3. /tmp fallback (last resort, for containers/minimal systems)
-    let tmp_path = PathBuf::from("/tmp")
-        .join(format!("toadstool-{}-{}.sock", family_id, node_id));
-    
+    let tmp_path = PathBuf::from("/tmp").join(format!("toadstool-{}-{}.sock", family_id, node_id));
+
     warn!("XDG runtime directory not found, falling back to /tmp");
     warn!("Fallback socket path: {:?}", tmp_path);
     Ok(tmp_path)
 }
 
 /// Create real executor implementation
-/// 
+///
 /// Deep debt principle: Complete implementation, no mocks in production
 /// Now uses DistributedCoordinator for isomorphic/fractal coordination
-async fn create_executor(family_id: &str) -> Result<Arc<dyn WorkloadExecutor + Send + Sync>, Box<dyn std::error::Error>> {
+async fn create_executor(
+    family_id: &str,
+) -> Result<Arc<dyn WorkloadExecutor + Send + Sync>, Box<dyn std::error::Error>> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
-    
+
     // Check if we should use distributed mode (default) or standalone fallback
     let use_distributed = std::env::var("TOADSTOOL_STANDALONE")
         .map(|v| v != "1" && v.to_lowercase() != "true")
         .unwrap_or(true); // Default to distributed
-    
+
     if use_distributed {
         info!("Initializing distributed coordinator mode");
-        
+
         // Query local capabilities first
         let capabilities = query_local_capabilities().await;
         info!("Local capabilities: {:?}", capabilities);
-        
+
         // Create distributed config
         let config = DistributedConfig {
             instance_id: format!("toadstool-{}", family_id),
@@ -202,12 +202,13 @@ async fn create_executor(family_id: &str) -> Result<Arc<dyn WorkloadExecutor + S
                 health_reporting_interval_secs: 60,
             }),
         };
-        
+
         // Create coordinator executor
         let service_id = format!("toadstool-{}", family_id);
-        let executor = CoordinatorExecutor::new(config, service_id).await
+        let executor = CoordinatorExecutor::new(config, service_id)
+            .await
             .map_err(|e| format!("Failed to create coordinator executor: {}", e))?;
-        
+
         info!("✅ Distributed coordinator executor ready");
         Ok(Arc::new(executor))
     } else {
@@ -219,7 +220,7 @@ async fn create_executor(family_id: &str) -> Result<Arc<dyn WorkloadExecutor + S
 }
 
 /// Query local GPU and compute capabilities
-/// 
+///
 /// Deep debt principle: Self-knowledge only
 async fn query_local_capabilities() -> Vec<String> {
     let resources = query_system_resources();
@@ -227,15 +228,11 @@ async fn query_local_capabilities() -> Vec<String> {
 }
 
 /// Register with ecosystem (Songbird discovery)
-/// 
+///
 /// Deep debt principle: Capability-based, runtime discovery, graceful degradation
-async fn register_with_ecosystem(
-    socket_path: &PathBuf,
-    family_id: &str,
-    version: &str,
-) {
+async fn register_with_ecosystem(socket_path: &PathBuf, family_id: &str, version: &str) {
     info!("Attempting to register with ecosystem...");
-    
+
     // Try to discover Songbird via capability-based discovery
     // Deep debt principle: No hardcoded endpoints
     match discover_and_register_songbird(socket_path, family_id, version).await {
@@ -250,7 +247,7 @@ async fn register_with_ecosystem(
 }
 
 /// Discover Songbird and register our capabilities
-/// 
+///
 /// Deep debt principle: Capability-based discovery, no hardcoding
 async fn discover_and_register_songbird(
     socket_path: &PathBuf,
@@ -258,20 +255,23 @@ async fn discover_and_register_songbird(
     version: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Discover Songbird (no hardcoding)
-    let songbird = SongbirdClient::discover().await
+    let songbird = SongbirdClient::discover()
+        .await
         .map_err(|e| format!("Failed to discover Songbird: {}", e))?;
-    
+
     info!("Discovered Songbird successfully");
-    
+
     // Step 2: Query our local capabilities (self-knowledge)
     let resources = query_system_resources();
     let capabilities = build_capabilities(&resources);
-    
+
     info!("Local capabilities: {:?}", capabilities);
-    info!("System resources: {} CPU cores, {} MB memory",
+    info!(
+        "System resources: {} CPU cores, {} MB memory",
         resources.cpu_cores,
-        resources.total_memory_bytes / 1024 / 1024);
-    
+        resources.total_memory_bytes / 1024 / 1024
+    );
+
     // Step 3: Build registration
     let registration = SongbirdRegistration {
         service_id: format!("toadstool-{}", family_id),
@@ -289,15 +289,17 @@ async fn discover_and_register_songbird(
             ("platform".to_string(), std::env::consts::OS.to_string()),
             ("arch".to_string(), std::env::consts::ARCH.to_string()),
         ]),
-        ttl_seconds: 300,  // 5 minutes TTL
+        ttl_seconds: 300, // 5 minutes TTL
     };
-    
+
     // Step 4: Register with Songbird
-    songbird.register_service(registration).await
+    songbird
+        .register_service(registration)
+        .await
         .map_err(|e| format!("Failed to register: {}", e))?;
-    
+
     info!("✅ Registered with Songbird");
-    
+
     // Step 5: Start heartbeat task
     let service_id = format!("toadstool-{}", family_id);
     tokio::spawn(async move {
@@ -309,6 +311,6 @@ async fn discover_and_register_songbird(
             }
         }
     });
-    
+
     Ok(())
 }

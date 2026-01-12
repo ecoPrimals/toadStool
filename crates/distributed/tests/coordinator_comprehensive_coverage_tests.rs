@@ -1,5 +1,5 @@
 //! Comprehensive test coverage for distributed coordinator
-//! 
+//!
 //! This test suite expands coverage from 30% to 60%+ by testing:
 //! - Capability detection and initialization
 //! - Coordination client lifecycle
@@ -9,17 +9,22 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+use toadstool::{ExecutionRequest, SecurityContext, WorkloadSpec};
+use toadstool_distributed::core::{
+    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+};
 use tokio::time::sleep;
 use uuid::Uuid;
-use toadstool::{ExecutionRequest, WorkloadSpec, SecurityContext};
-use toadstool_distributed::core::{DistributedConfig, DistributedCoordinator, StandaloneConfig, SongbirdConfig};
 
 /// Test coordinator initialization with default config
 #[tokio::test]
 async fn test_coordinator_initialization_default() {
     let config = DistributedConfig::default();
     let result = DistributedCoordinator::new(config).await;
-    assert!(result.is_ok(), "Coordinator should initialize with default config");
+    assert!(
+        result.is_ok(),
+        "Coordinator should initialize with default config"
+    );
 }
 
 /// Test coordinator initialization with standalone mode
@@ -27,7 +32,7 @@ async fn test_coordinator_initialization_default() {
 async fn test_coordinator_standalone_mode() {
     let mut config = DistributedConfig::default();
     config.songbird_integration = None; // Force standalone
-    
+
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(coordinator.is_ok(), "Standalone mode should work");
 }
@@ -41,10 +46,10 @@ async fn test_coordinator_custom_standalone_config() {
         enable_job_queue: true,
         max_queue_size: 500,
     };
-    
+
     let mut config = DistributedConfig::default();
     config.standalone = standalone;
-    
+
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(coordinator.is_ok(), "Custom standalone config should work");
 }
@@ -60,7 +65,7 @@ async fn test_concurrent_coordinator_creation() {
             })
         })
         .collect();
-    
+
     for handle in handles {
         let result = handle.await.unwrap();
         assert!(result.is_ok(), "Concurrent creation should succeed");
@@ -76,10 +81,13 @@ async fn test_coordination_service_unavailable() {
         auth_token: None,
         health_reporting_interval_secs: 60,
     });
-    
+
     // Should fallback to standalone mode if discovery fails
     let coordinator = DistributedCoordinator::new(config).await;
-    assert!(coordinator.is_ok(), "Should fallback to standalone when coordination unavailable");
+    assert!(
+        coordinator.is_ok(),
+        "Should fallback to standalone when coordination unavailable"
+    );
 }
 
 /// Helper to create a valid execution request
@@ -103,9 +111,9 @@ fn create_execution_request() -> ExecutionRequest {
 async fn test_execution_request_basic() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let request = create_execution_request();
-    
+
     // Submit execution
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Execution submission should succeed");
@@ -116,7 +124,7 @@ async fn test_execution_request_basic() {
 async fn test_sequential_executions() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
-    
+
     for _ in 0..3 {
         let request = create_execution_request();
         let result = coordinator.submit_execution(request).await;
@@ -130,7 +138,7 @@ async fn test_sequential_executions() {
 async fn test_concurrent_executions() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
-    
+
     let handles: Vec<_> = (0..3)
         .map(|_| {
             let coord = Arc::clone(&coordinator);
@@ -140,7 +148,7 @@ async fn test_concurrent_executions() {
             })
         })
         .collect();
-    
+
     for handle in handles {
         let result = handle.await.unwrap();
         assert!(result.is_ok(), "Concurrent execution should succeed");
@@ -152,13 +160,17 @@ async fn test_concurrent_executions() {
 async fn test_execution_timeouts() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     for timeout_secs in &[1, 60, 300] {
         let mut request = create_execution_request();
         request.timeout = Some(Duration::from_secs(*timeout_secs));
-        
+
         let result = coordinator.submit_execution(request).await;
-        assert!(result.is_ok(), "Execution with timeout {} should succeed", timeout_secs);
+        assert!(
+            result.is_ok(),
+            "Execution with timeout {} should succeed",
+            timeout_secs
+        );
     }
 }
 
@@ -167,10 +179,10 @@ async fn test_execution_timeouts() {
 async fn test_execution_short_timeout() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let mut request = create_execution_request();
     request.timeout = Some(Duration::from_secs(1)); // Very short timeout
-    
+
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Short timeout execution should be accepted");
 }
@@ -180,7 +192,7 @@ async fn test_execution_short_timeout() {
 async fn test_coordinator_start() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
-    
+
     let result = coordinator.start().await;
     assert!(result.is_ok(), "Coordinator should start successfully");
 }
@@ -216,7 +228,7 @@ async fn test_configuration_combinations() {
             }),
         },
     ];
-    
+
     for config in configs {
         let result = DistributedCoordinator::new(config).await;
         assert!(result.is_ok(), "All config combinations should work");
@@ -236,15 +248,15 @@ async fn test_at_capacity_rejection() {
         },
         songbird_integration: None,
     };
-    
+
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     // Submit up to capacity
     for _ in 0..2 {
         let request = create_execution_request();
         let _ = coordinator.submit_execution(request).await;
     }
-    
+
     // This should potentially hit capacity limits
     let request = create_execution_request();
     let _result = coordinator.submit_execution(request).await;
@@ -256,7 +268,7 @@ async fn test_at_capacity_rejection() {
 async fn test_memory_safety_under_load() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
-    
+
     // Create many short-lived executions
     let handles: Vec<_> = (0..10)
         .map(|_| {
@@ -269,11 +281,11 @@ async fn test_memory_safety_under_load() {
             })
         })
         .collect();
-    
+
     for handle in handles {
         let _ = handle.await;
     }
-    
+
     // If we get here without panic/crash, memory safety is maintained
 }
 
@@ -282,14 +294,14 @@ async fn test_memory_safety_under_load() {
 async fn test_graceful_shutdown() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     // Start an execution
     let request = create_execution_request();
     let _ = coordinator.submit_execution(request).await;
-    
+
     // Drop coordinator (simulates shutdown)
     drop(coordinator);
-    
+
     // Test passes if no panic during drop
 }
 
@@ -306,9 +318,9 @@ async fn test_job_queue_enabled() {
         },
         songbird_integration: None,
     };
-    
+
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     for _ in 0..5 {
         let request = create_execution_request();
         let result = coordinator.submit_execution(request).await;
@@ -329,9 +341,9 @@ async fn test_job_queue_disabled() {
         },
         songbird_integration: None,
     };
-    
+
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let request = create_execution_request();
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Direct execution should succeed");
@@ -342,10 +354,13 @@ async fn test_job_queue_disabled() {
 async fn test_execution_with_metadata() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let mut request = create_execution_request();
-    request.input_data.metadata.insert("key".to_string(), "value".to_string());
-    
+    request
+        .input_data
+        .metadata
+        .insert("key".to_string(), "value".to_string());
+
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Execution with metadata should succeed");
 }
@@ -354,17 +369,17 @@ async fn test_execution_with_metadata() {
 #[tokio::test]
 async fn test_execution_with_callback() {
     use toadstool::execution::{CallbackConfig, CallbackEvent};
-    
+
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let mut request = create_execution_request();
     request.callback_config = Some(CallbackConfig {
         url: "http://localhost:8080/callback".to_string(),
         auth_token: None,
         events: vec![CallbackEvent::Completed],
     });
-    
+
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Execution with callback should succeed");
 }
@@ -374,10 +389,12 @@ async fn test_execution_with_callback() {
 async fn test_execution_with_environment() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let mut request = create_execution_request();
-    request.environment.insert("TEST_VAR".to_string(), "test_value".to_string());
-    
+    request
+        .environment
+        .insert("TEST_VAR".to_string(), "test_value".to_string());
+
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Execution with env vars should succeed");
 }
@@ -399,7 +416,7 @@ async fn test_songbird_with_auth() {
             health_reporting_interval_secs: 30,
         }),
     };
-    
+
     let result = DistributedCoordinator::new(config).await;
     // Should handle auth configuration gracefully
     assert!(result.is_ok());
@@ -422,7 +439,7 @@ async fn test_songbird_without_auth() {
             health_reporting_interval_secs: 60,
         }),
     };
-    
+
     let result = DistributedCoordinator::new(config).await;
     assert!(result.is_ok());
 }
@@ -433,7 +450,7 @@ async fn test_long_instance_id() {
     let long_id = "instance-".to_string() + &"a".repeat(500);
     let mut config = DistributedConfig::default();
     config.instance_id = long_id;
-    
+
     let result = DistributedCoordinator::new(config).await;
     assert!(result.is_ok(), "Long instance ID should be handled");
 }
@@ -444,7 +461,7 @@ async fn test_special_characters_instance_id() {
     let special_id = "instance-特殊文字-émojis-🚀".to_string();
     let mut config = DistributedConfig::default();
     config.instance_id = special_id;
-    
+
     let result = DistributedCoordinator::new(config).await;
     assert!(result.is_ok(), "UTF-8 instance ID should be handled");
 }
@@ -454,14 +471,14 @@ async fn test_special_characters_instance_id() {
 async fn test_transient_failure_recovery() {
     let config = DistributedConfig::default();
     let coordinator = Arc::new(DistributedCoordinator::new(config).await.unwrap());
-    
+
     // Simulate multiple attempts
     for _ in 0..3 {
         let request = create_execution_request();
         let _ = coordinator.submit_execution(request).await;
         sleep(Duration::from_millis(50)).await;
     }
-    
+
     // Test resilience
 }
 
@@ -470,10 +487,10 @@ async fn test_transient_failure_recovery() {
 async fn test_zerocopy_request_handling() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     // Create request
     let request = create_execution_request();
-    
+
     // Test that request can be moved (not cloned)
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok());
@@ -486,11 +503,11 @@ async fn test_full_lifecycle() {
     let config = DistributedConfig::default();
     let coordinator1 = Arc::new(DistributedCoordinator::new(config).await.unwrap());
     let coordinator2 = Arc::clone(&coordinator1);
-    
+
     // Start
     let start_result = coordinator1.start().await;
     assert!(start_result.is_ok());
-    
+
     // Submit work with the second reference
     let request = create_execution_request();
     let exec_result = coordinator2.submit_execution(request).await;
@@ -505,7 +522,7 @@ fn test_default_implementations() {
     assert_eq!(config.standalone.max_concurrent_executions, 10);
     assert_eq!(config.standalone.default_timeout_secs, 3600);
     assert!(config.songbird_integration.is_none());
-    
+
     let request = ExecutionRequest::default();
     assert_eq!(request.timeout, Some(Duration::from_secs(300)));
     assert!(request.environment.is_empty());
@@ -515,13 +532,13 @@ fn test_default_implementations() {
 #[tokio::test]
 async fn test_execution_with_runtime_hint() {
     use toadstool::RuntimeType;
-    
+
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let mut request = create_execution_request();
     request.runtime_hint = Some(RuntimeType::Native);
-    
+
     let result = coordinator.submit_execution(request).await;
     assert!(result.is_ok(), "Execution with runtime hint should succeed");
 }
@@ -531,25 +548,39 @@ async fn test_execution_with_runtime_hint() {
 async fn test_execution_with_encryption() {
     let config = DistributedConfig::default();
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    
+
     let request = create_execution_request();
     // Would set encryption_config here if we had a test config available
-    
+
     let result = coordinator.submit_execution(request).await;
-    assert!(result.is_ok(), "Execution with encryption config should succeed");
+    assert!(
+        result.is_ok(),
+        "Execution with encryption config should succeed"
+    );
 }
 
 /// Test multiple coordinators running concurrently
 #[tokio::test]
 async fn test_multiple_coordinators() {
-    let coordinator1 = Arc::new(DistributedCoordinator::new(DistributedConfig::default()).await.unwrap());
-    let coordinator2 = Arc::new(DistributedCoordinator::new(DistributedConfig::default()).await.unwrap());
-    
+    let coordinator1 = Arc::new(
+        DistributedCoordinator::new(DistributedConfig::default())
+            .await
+            .unwrap(),
+    );
+    let coordinator2 = Arc::new(
+        DistributedCoordinator::new(DistributedConfig::default())
+            .await
+            .unwrap(),
+    );
+
     // Submit to both coordinators concurrently
     let (result1, result2) = tokio::join!(
         coordinator1.submit_execution(create_execution_request()),
         coordinator2.submit_execution(create_execution_request())
     );
-    
-    assert!(result1.is_ok() && result2.is_ok(), "Multiple coordinators should work independently");
+
+    assert!(
+        result1.is_ok() && result2.is_ok(),
+        "Multiple coordinators should work independently"
+    );
 }

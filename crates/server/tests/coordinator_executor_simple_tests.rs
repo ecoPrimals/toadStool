@@ -2,17 +2,15 @@
 //!
 //! Tests basic functionality of the distributed coordinator integration.
 
-use toadstool_server::CoordinatorExecutor;
-use toadstool_server::tarpc_server::WorkloadExecutor;
-use toadstool_integration_protocols::tarpc_service::{
-    ResourceRequirements, WorkloadSubmission,
-};
 use toadstool_distributed::DistributedConfig;
+use toadstool_integration_protocols::tarpc_service::{ResourceRequirements, WorkloadSubmission};
+use toadstool_server::tarpc_server::WorkloadExecutor;
+use toadstool_server::CoordinatorExecutor;
 
 /// Helper to create a test workload submission
 fn create_test_submission(workload_type: &str) -> WorkloadSubmission {
     use toadstool_integration_protocols::tarpc_service::WorkloadPriority;
-    
+
     WorkloadSubmission {
         workload_id: uuid::Uuid::new_v4().to_string(),
         workload_type: workload_type.to_string(),
@@ -31,7 +29,7 @@ fn create_test_submission(workload_type: &str) -> WorkloadSubmission {
 /// Helper to create a test config
 fn create_test_config() -> DistributedConfig {
     use toadstool_distributed::core::StandaloneConfig;
-    
+
     DistributedConfig {
         instance_id: "test-instance".to_string(),
         standalone: StandaloneConfig {
@@ -48,7 +46,10 @@ fn create_test_config() -> DistributedConfig {
 async fn test_coordinator_executor_creation() {
     let config = create_test_config();
     let result = CoordinatorExecutor::new(config, "test-service".to_string()).await;
-    assert!(result.is_ok(), "Should create coordinator executor successfully");
+    assert!(
+        result.is_ok(),
+        "Should create coordinator executor successfully"
+    );
 }
 
 #[tokio::test]
@@ -57,10 +58,10 @@ async fn test_coordinator_executor_cpu_workload() {
     let executor = CoordinatorExecutor::new(config, "test-service".to_string())
         .await
         .expect("Should create executor");
-    
+
     let submission = create_test_submission("cpu_compute");
     let result = executor.execute(submission).await;
-    
+
     assert!(result.is_ok(), "CPU workload should execute successfully");
 }
 
@@ -70,7 +71,7 @@ async fn test_coordinator_executor_query_capabilities() {
     let executor = CoordinatorExecutor::new(config, "test-service".to_string())
         .await
         .expect("Should create executor");
-    
+
     let result = executor.query_capabilities().await;
     assert!(result.is_ok(), "Should query capabilities successfully");
 }
@@ -81,7 +82,7 @@ async fn test_coordinator_executor_multiple_workloads() {
     let executor = CoordinatorExecutor::new(config, "test-service".to_string())
         .await
         .expect("Should create executor");
-    
+
     // Submit multiple workloads
     for _ in 0..3 {
         let submission = create_test_submission("cpu_compute");
@@ -96,16 +97,15 @@ async fn test_coordinator_executor_cancel() {
     let executor = CoordinatorExecutor::new(config, "test-service".to_string())
         .await
         .expect("Should create executor");
-    
+
     let submission = create_test_submission("cpu_compute");
     let workload_id = submission.workload_id.clone();
-    
+
     // Execute workload
     let result = executor.execute(submission).await;
     assert!(result.is_ok(), "Workload should execute");
-    
+
     // Cancel workload
     let cancel_result = executor.cancel(&workload_id).await;
     assert!(cancel_result.is_ok(), "Should be able to cancel workload");
 }
-

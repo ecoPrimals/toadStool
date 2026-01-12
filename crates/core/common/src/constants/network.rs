@@ -78,6 +78,14 @@ pub const PROMETHEUS_FALLBACK_PORT: u16 = 9090;
 #[deprecated(note = "Use discovery or GRAFANA_URL environment variable instead")]
 pub const GRAFANA_FALLBACK_PORT: u16 = 3000;
 
+/// Consul default fallback port (prefer discovery or CONSUL_HTTP_ADDR environment variable)
+#[deprecated(note = "Use discovery or CONSUL_HTTP_ADDR environment variable instead")]
+pub const CONSUL_FALLBACK_PORT: u16 = 8500;
+
+/// etcd default fallback port (prefer discovery or environment variable)
+#[deprecated(note = "Use discovery or ETCD_ENDPOINTS environment variable instead")]
+pub const ETCD_FALLBACK_PORT: u16 = 2379;
+
 // ============================================================================
 // Address Constants
 // ============================================================================
@@ -151,4 +159,46 @@ pub fn default_http_url() -> String {
 #[must_use]
 pub fn default_https_url() -> String {
     https_url(LOCALHOST_IPV4, DEFAULT_HTTPS_PORT)
+}
+
+// ============================================================================
+// Service Discovery URL Helpers (Deep Debt Compliant)
+// ============================================================================
+
+/// Get Consul HTTP address from environment or default
+///
+/// Priority:
+/// 1. CONSUL_HTTP_ADDR environment variable (full URL)
+/// 2. CONSUL_HOST + CONSUL_PORT environment variables
+/// 3. Fallback to localhost:8500
+#[must_use]
+#[allow(deprecated)]
+pub fn consul_http_addr() -> String {
+    std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
+        let host = std::env::var("CONSUL_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
+        let port = std::env::var("CONSUL_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(CONSUL_FALLBACK_PORT);
+        http_url(&host, port)
+    })
+}
+
+/// Get etcd endpoints from environment or default
+///
+/// Priority:
+/// 1. ETCD_ENDPOINTS environment variable (comma-separated URLs)
+/// 2. ETCD_HOST + ETCD_PORT environment variables
+/// 3. Fallback to localhost:2379
+#[must_use]
+#[allow(deprecated)]
+pub fn etcd_endpoints() -> String {
+    std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
+        let host = std::env::var("ETCD_HOST").unwrap_or_else(|_| DEFAULT_HOSTNAME.to_string());
+        let port = std::env::var("ETCD_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(ETCD_FALLBACK_PORT);
+        http_url(&host, port)
+    })
 }

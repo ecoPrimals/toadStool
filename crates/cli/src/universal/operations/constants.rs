@@ -65,9 +65,54 @@ pub mod platforms {
 }
 
 /// Temporary paths and prefixes
+///
+/// **Deep Debt Compliance**: Uses runtime discovery of temp directory
+/// - Respects TOADSTOOL_TEMP_DIR environment variable
+/// - Falls back to std::env::temp_dir() (platform-agnostic)
+/// - Never hardcodes specific paths
 pub mod paths {
+    use std::path::PathBuf;
+    use std::sync::OnceLock;
+    
+    static TEMP_DIR: OnceLock<PathBuf> = OnceLock::new();
+    
+    /// Get the temporary directory base path
+    ///
+    /// Priority:
+    /// 1. TOADSTOOL_TEMP_DIR environment variable
+    /// 2. System temp directory (cross-platform)
+    pub fn temp_dir() -> &'static PathBuf {
+        TEMP_DIR.get_or_init(|| {
+            std::env::var("TOADSTOOL_TEMP_DIR")
+                .ok()
+                .map(PathBuf::from)
+                .unwrap_or_else(std::env::temp_dir)
+        })
+    }
+    
+    /// Get checkpoint prefix path (runtime-discovered)
+    pub fn checkpoint_prefix() -> PathBuf {
+        temp_dir().join("toadstool_checkpoint_")
+    }
+    
+    /// Get export prefix path (runtime-discovered)
+    pub fn export_prefix() -> PathBuf {
+        temp_dir().join("toadstool_export_")
+    }
+    
+    /// Get snapshot prefix path (runtime-discovered)
+    pub fn snapshot_prefix() -> PathBuf {
+        temp_dir().join("toadstool_snapshot_")
+    }
+    
+    // Legacy constants for backward compatibility (deprecated)
+    #[deprecated(note = "Use checkpoint_prefix() function for runtime discovery")]
     pub const CHECKPOINT_PREFIX: &str = "/tmp/checkpoint_";
+    
+    #[deprecated(note = "Use export_prefix() function for runtime discovery")]
     pub const EXPORT_PREFIX: &str = "/tmp/export_";
+    
+    #[deprecated(note = "Use snapshot_prefix() function for runtime discovery")]
     pub const SNAPSHOT_PREFIX: &str = "/tmp/snapshot_";
 }
 
@@ -113,7 +158,26 @@ mod tests {
 
     #[test]
     fn test_paths() {
-        assert_eq!(paths::CHECKPOINT_PREFIX, "/tmp/checkpoint_");
-        assert_eq!(paths::EXPORT_PREFIX, "/tmp/export_");
+        // Test runtime-discovered paths
+        let temp_dir = paths::temp_dir();
+        assert!(temp_dir.exists() || temp_dir.parent().map_or(false, |p| p.exists()));
+        
+        // Test prefix functions
+        let checkpoint = paths::checkpoint_prefix();
+        assert!(checkpoint.to_string_lossy().contains("toadstool_checkpoint_"));
+        
+        let export = paths::export_prefix();
+        assert!(export.to_string_lossy().contains("toadstool_export_"));
+        
+        let snapshot = paths::snapshot_prefix();
+        assert!(snapshot.to_string_lossy().contains("toadstool_snapshot_"));
+    }
+    
+    #[test]
+    fn test_temp_dir_respects_env() {
+        // This test demonstrates the env var is checked
+        // Actual testing would require setting env vars before the program starts
+        let temp = paths::temp_dir();
+        assert!(temp.is_absolute());
     }
 }

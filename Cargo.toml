@@ -102,7 +102,9 @@ wasmer = "4.2"
 wasi-common = "18.0"
 
 # Python integration (preparing for Squirrel MCP integration)
-pyo3 = { version = "0.20", features = ["auto-initialize", "extension-module"] }
+# NOTE: Python 3.13 requires: export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+# Waiting for pyo3-asyncio to support pyo3 0.22+
+pyo3 = { version = "0.20", features = ["auto-initialize", "extension-module", "abi3-py38"] }
 pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
 
 # Security and sandboxing

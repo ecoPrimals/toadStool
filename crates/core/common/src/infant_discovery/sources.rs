@@ -285,10 +285,8 @@ impl EndpointSource for ServiceMeshSource {
         Box::pin(async move {
             match mesh_type {
                 ServiceMeshType::Consul => {
-                    // Query Consul API for service
-                    let consul_addr = std::env::var("CONSUL_HTTP_ADDR").unwrap_or_else(|_| {
-                        format!("http://{}:8500", crate::constants::DEFAULT_HOSTNAME)
-                    });
+                    // Query Consul API for service (Deep Debt compliant: runtime discovery)
+                    let consul_addr = crate::constants::network::consul_http_addr();
 
                     let url = format!("{consul_addr}/v1/catalog/service/{service}");
 
@@ -328,10 +326,8 @@ impl EndpointSource for ServiceMeshSource {
                 ServiceMeshType::Etcd => {
                     use base64::Engine;
 
-                    // Query etcd for service key
-                    let etcd_addr = std::env::var("ETCD_ENDPOINTS").unwrap_or_else(|_| {
-                        format!("http://{}:2379", crate::constants::DEFAULT_HOSTNAME)
-                    });
+                    // Query etcd for service key (Deep Debt compliant: runtime discovery)
+                    let etcd_addr = crate::constants::network::etcd_endpoints();
 
                     let key = format!("/services/{service}");
                     let url = format!("{etcd_addr}/v3/kv/range");

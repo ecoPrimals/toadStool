@@ -11,9 +11,8 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, ComputeUnit, AvailableResources, HealthStatus,
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
     ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
-    ExecutionMetrics,
 };
 
 /// tarpc server state
@@ -29,7 +28,7 @@ pub struct ToadStoolTarpcServer {
 }
 
 /// Workload executor trait (capability-based, not hardcoded)
-/// 
+///
 /// Following principles:
 /// - Self-knowledge: knows only its own capabilities
 /// - Discovery: discovers other primals at runtime
@@ -38,20 +37,17 @@ pub struct ToadStoolTarpcServer {
 pub trait WorkloadExecutor {
     /// Execute workload with given submission
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String>;
-    
+
     /// Query this executor's capabilities (self-knowledge)
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String>;
-    
+
     /// Cancel running workload
     async fn cancel(&self, workload_id: &str) -> Result<(), String>;
 }
 
 impl ToadStoolTarpcServer {
     /// Create new tarpc server with real executor
-    pub fn new(
-        version: String,
-        executor: Arc<dyn WorkloadExecutor + Send + Sync>,
-    ) -> Self {
+    pub fn new(version: String, executor: Arc<dyn WorkloadExecutor + Send + Sync>) -> Self {
         Self {
             start_time: Instant::now(),
             version,
@@ -61,34 +57,34 @@ impl ToadStoolTarpcServer {
     }
 
     /// Start tarpc server on Unix socket (PRIMARY transport)
-    /// 
+    ///
     /// Deep debt principle: No TCP hardcoding, use Unix sockets for multi-instance support
     pub async fn serve_unix(
         self,
         socket_path: impl AsRef<std::path::Path>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        use tokio::net::UnixListener;
         use tarpc::server::{BaseChannel, Channel};
+        use tokio::net::UnixListener;
         use tokio_serde::formats::Json;
-        
+
         let socket_path = socket_path.as_ref();
-        
+
         // Ensure parent directory exists (biomeOS requirement for custom socket paths)
         if let Some(parent) = socket_path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Failed to create socket directory {:?}: {}", parent, e))?;
             info!("Ensured socket directory exists: {:?}", parent);
         }
-        
+
         // Clean up old socket if exists
         if socket_path.exists() {
             info!("Removing old socket file: {:?}", socket_path);
             std::fs::remove_file(socket_path)?;
         }
-        
+
         info!("tarpc server binding to Unix socket: {:?}", socket_path);
         let listener = UnixListener::bind(socket_path)?;
-        
+
         // Set permissions to user-only (0600)
         #[cfg(unix)]
         {
@@ -98,46 +94,45 @@ impl ToadStoolTarpcServer {
             std::fs::set_permissions(socket_path, perms)?;
             info!("Set socket permissions to 0600 (user-only)");
         }
-        
-        info!("✅ tarpc server listening on Unix socket: {:?}", socket_path);
-        
+
+        info!(
+            "✅ tarpc server listening on Unix socket: {:?}",
+            socket_path
+        );
+
         loop {
             let (stream, _addr) = listener.accept().await?;
             let server = self.clone();
-            
+
             tokio::spawn(async move {
-                let framed = tokio_util::codec::LengthDelimitedCodec::builder()
-                    .new_framed(stream);
+                let framed = tokio_util::codec::LengthDelimitedCodec::builder().new_framed(stream);
                 let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
-                
+
                 let channel = BaseChannel::with_defaults(transport);
                 channel.execute(server.serve()).await;
             });
         }
     }
-    
+
     /// Start tarpc server on TCP (DEBUG ONLY - not for production)
-    /// 
+    ///
     /// Deep debt violation: TCP with hardcoded ports breaks multi-instance support.
     /// Use serve_unix() instead for production.
     #[deprecated(
         since = "2.2.0",
         note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
     )]
-    pub async fn serve_tcp_debug(
-        self,
-        addr: SocketAddr,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn serve_tcp_debug(self, addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
         info!("tarpc server requested on: {} (not yet implemented)", addr);
         warn!("tarpc transport layer needs completion - use JSON-RPC for now");
-        
+
         // ✅ RESOLVED: tarpc Unix socket transport implemented
         // See: serve_unix() function below for production implementation
         // Uses XDG-compliant Unix sockets with proper permissions (0o600)
         // JSON-RPC works for all current use cases
-        
+
         Err("tarpc TCP server not implemented - use serve_unix() instead".into())
     }
 }
@@ -188,11 +183,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
             .ok_or_else(|| format!("Workload not found: {}", workload_id))
     }
 
-    async fn cancel_workload(
-        self,
-        _context: Context,
-        workload_id: String,
-    ) -> Result<(), String> {
+    async fn cancel_workload(self, _context: Context, workload_id: String) -> Result<(), String> {
         self.executor.cancel(&workload_id).await?;
 
         // Update status
@@ -214,21 +205,15 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     }
 
     /// Query capabilities - SELF-KNOWLEDGE ONLY
-    /// 
+    ///
     /// Following the principle: "Primal code only has self knowledge
     /// and discovers other primals at runtime"
-    async fn query_capabilities(
-        self,
-        _context: Context,
-    ) -> Result<ComputeCapabilities, String> {
+    async fn query_capabilities(self, _context: Context) -> Result<ComputeCapabilities, String> {
         // Query OUR capabilities only (not other primals)
         self.executor.query_capabilities().await
     }
 
-    async fn health_check(
-        self,
-        _context: Context,
-    ) -> Result<HealthStatus, String> {
+    async fn health_check(self, _context: Context) -> Result<HealthStatus, String> {
         let uptime = self.start_time.elapsed();
         let workloads = self.workloads.read().await;
         let active_count = workloads
@@ -247,7 +232,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 }
 
 /// Standalone executor for single-instance mode
-/// 
+///
 /// Deep debt principle: Complete implementation with real system query
 /// - Queries actual CPU cores
 /// - Queries actual system memory
@@ -261,7 +246,7 @@ impl StandaloneExecutor {
     pub fn new() -> Self {
         // Query real system resources (self-knowledge)
         let cpu_cores = num_cpus::get() as u32;
-        
+
         // Query real memory
         let (total_memory, available_memory) = match sys_info::mem_info() {
             Ok(mem) => (mem.total * 1024, mem.avail * 1024), // KB to bytes
@@ -270,21 +255,19 @@ impl StandaloneExecutor {
                 (8 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024) // 8GB/4GB fallback
             }
         };
-        
+
         Self {
             capabilities: ComputeCapabilities {
                 service_id: "toadstool-standalone".to_string(),
-                compute_units: vec![
-                    ComputeUnit {
-                        id: "cpu-0".to_string(),
-                        unit_type: "cpu".to_string(),
-                        name: format!("CPU Compute ({} cores)", cpu_cores),
-                        cores: cpu_cores,
-                        memory_bytes: total_memory,
-                        tflops: Self::estimate_cpu_tflops(cpu_cores),
-                        utilization: 0.0,
-                    }
-                ],
+                compute_units: vec![ComputeUnit {
+                    id: "cpu-0".to_string(),
+                    unit_type: "cpu".to_string(),
+                    name: format!("CPU Compute ({} cores)", cpu_cores),
+                    cores: cpu_cores,
+                    memory_bytes: total_memory,
+                    tflops: Self::estimate_cpu_tflops(cpu_cores),
+                    utilization: 0.0,
+                }],
                 supported_workload_types: vec![
                     "cpu_compute".to_string(),
                     "gpu_compute".to_string(),
@@ -302,9 +285,9 @@ impl StandaloneExecutor {
             },
         }
     }
-    
+
     /// Estimate CPU TFLOPS based on core count
-    /// 
+    ///
     /// Rough estimate: modern CPU core ~0.1 TFLOPS
     fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
         Some((cores as f64) * 0.1)
@@ -321,10 +304,10 @@ impl Default for StandaloneExecutor {
 impl WorkloadExecutor for StandaloneExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
         info!("Executing workload: {}", submission.workload_id);
-        
+
         // Simulate execution
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         Ok(WorkloadResult {
             workload_id: submission.workload_id,
             status: WorkloadStatus::Completed,
@@ -339,11 +322,11 @@ impl WorkloadExecutor for StandaloneExecutor {
             },
         })
     }
-    
+
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         Ok(self.capabilities.clone())
     }
-    
+
     async fn cancel(&self, workload_id: &str) -> Result<(), String> {
         warn!("Cancel requested for workload: {}", workload_id);
         Ok(())
@@ -361,7 +344,7 @@ mod tests {
     async fn test_server_creation() {
         let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
-        
+
         assert_eq!(server.version, "0.1.0");
         assert!(server.workloads.read().await.is_empty());
     }
@@ -370,25 +353,28 @@ mod tests {
     async fn test_health_check() {
         let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
-        
+
         let health = server
             .health_check(Context::current())
             .await
             .expect("Health check failed");
-        
+
         assert!(health.healthy);
         assert_eq!(health.version, "0.1.0");
         assert_eq!(health.active_workloads, 0);
     }
-    
+
     #[tokio::test]
     async fn test_standalone_executor() {
         let executor = StandaloneExecutor::new();
-        let caps = executor.query_capabilities().await.expect("Capabilities failed");
-        
+        let caps = executor
+            .query_capabilities()
+            .await
+            .expect("Capabilities failed");
+
         assert_eq!(caps.service_id, "toadstool-standalone");
         assert!(!caps.compute_units.is_empty());
-        
+
         // Verify real system query (not hardcoded)
         assert!(caps.available_resources.total_cpu_cores > 0);
         assert!(caps.available_resources.total_memory_bytes > 0);
@@ -398,14 +384,13 @@ mod tests {
     async fn test_query_capabilities() {
         let executor = Arc::new(MockExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
-        
+
         let caps = server
             .query_capabilities(Context::current())
             .await
             .expect("Capabilities query failed");
-        
+
         assert_eq!(caps.service_id, "toadstool-standalone");
         assert!(!caps.compute_units.is_empty());
     }
 }
-
