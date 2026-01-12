@@ -4,7 +4,7 @@
 //! Modern, idiomatic Rust with proper error handling.
 
 use anyhow::Result;
-#[cfg(any(feature = "cuda", feature = "vulkan"))]
+#[cfg(any(feature = "vulkan"))]
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::fmt;
