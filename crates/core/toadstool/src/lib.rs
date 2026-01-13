@@ -41,6 +41,8 @@
 
 pub mod biomeos_integration;
 pub mod byob;
+pub mod composition_constraints;
+pub mod composition_engine;
 pub mod deployment_layer;
 pub mod discovery;
 pub mod ecosystem;
