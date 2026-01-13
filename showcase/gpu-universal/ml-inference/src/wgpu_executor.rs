@@ -1474,6 +1474,264 @@ impl WgpuExecutor {
         self.execute_simple_compute(&shader, &bind_group_layout, &bind_group, size, &output_buffer).await
     }
     
+    /// Execute gather: indirect read with indices
+    /// 
+    /// CUDA equivalent: `thrust::gather`
+    /// Use cases: Embedding lookup, sparse access, graph neural networks
+    pub async fn execute_gather(
+        &self,
+        source: &[f32],
+        indices: &[u32],
+    ) -> Result<Vec<f32>> {
+        let num_elements = indices.len();
+        let source_size = source.len();
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Gather Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/gather.wgsl").into()),
+        });
+        
+        let source_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Source"),
+            contents: bytemuck::cast_slice(source),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let indices_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Indices"),
+            contents: bytemuck::cast_slice(indices),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Output"),
+            size: (num_elements * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct GatherParams {
+            num_elements: u32,
+            source_size: u32,
+        }
+        
+        let params = GatherParams {
+            num_elements: num_elements as u32,
+            source_size: source_size as u32,
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Gather Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Gather Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: source_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        self.execute_simple_compute(&shader, &bind_group_layout, &bind_group, num_elements, &output_buffer).await
+    }
+    
+    /// Execute dropout: regularization with random masking
+    /// 
+    /// CUDA equivalent: `cudnn::Dropout`
+    /// Use cases: Regularization, preventing overfitting
+    pub async fn execute_dropout(
+        &self,
+        input: &[f32],
+        dropout_prob: f32,
+        training: bool,
+        seed: Option<u64>,
+    ) -> Result<Vec<f32>> {
+        let size = input.len();
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Dropout Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/dropout.wgsl").into()),
+        });
+        
+        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Input"),
+            contents: bytemuck::cast_slice(input),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Output"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        
+        let mask_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Mask"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct DropoutParams {
+            size: u32,
+            dropout_prob: f32,
+            training: u32,
+            seed: u32,
+        }
+        
+        let params = DropoutParams {
+            size: size as u32,
+            dropout_prob,
+            training: if training { 1 } else { 0 },
+            seed: seed.unwrap_or(12345) as u32,
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Dropout Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dropout Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: mask_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        self.execute_simple_compute(&shader, &bind_group_layout, &bind_group, size, &output_buffer).await
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -1768,6 +2026,54 @@ mod tests {
         for (out, exp) in result.iter().zip(expected.iter()) {
             assert!((out - exp).abs() < 1e-3);
         }
+    }
+    
+    #[tokio::test]
+    async fn test_gather() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        let source = vec![10.0, 20.0, 30.0, 40.0, 50.0];
+        let indices = vec![0, 2, 4, 1, 3];
+        
+        let result = executor.execute_gather(&source, &indices).await.unwrap();
+        
+        let expected = vec![10.0, 30.0, 50.0, 20.0, 40.0];
+        for (out, exp) in result.iter().zip(expected.iter()) {
+            assert!((out - exp).abs() < 1e-5);
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_dropout_inference() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let result = executor.execute_dropout(&input, 0.5, false, None).await.unwrap();
+        
+        // In inference mode, dropout should not modify input
+        for (out, inp) in result.iter().zip(input.iter()) {
+            assert!((out - inp).abs() < 1e-5);
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_dropout_training() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        let input = vec![1.0; 1000];  // Large input for statistical testing
+        let result = executor.execute_dropout(&input, 0.5, true, Some(42)).await.unwrap();
+        
+        // In training mode with 0.5 dropout, roughly half should be zeroed
+        let zero_count = result.iter().filter(|&&x| x == 0.0).count();
+        let non_zero_count = result.iter().filter(|&&x| x != 0.0).count();
+        
+        // Should be roughly 50/50 (allow 40-60% range for randomness)
+        assert!(zero_count > 400 && zero_count < 600, "Zero count: {}", zero_count);
+        assert!(non_zero_count > 400 && non_zero_count < 600);
+        
+        // Non-zero values should be scaled by 1/(1-p) = 2.0
+        let avg_non_zero = result.iter().filter(|&&x| x != 0.0).sum::<f32>() / non_zero_count as f32;
+        assert!((avg_non_zero - 2.0).abs() < 0.2, "Avg non-zero: {}", avg_non_zero);
     }
 }
 
