@@ -167,12 +167,18 @@ lto = true
  
 # Pedantic clippy enabled for improved code quality
 [workspace.lints.clippy]
+# PEDANTIC MODE - Production-grade code quality
 pedantic = { level = "warn", priority = -1 }
 
-# Allow certain pedantic lints for now (to be addressed in future sprints)
-missing-panics-doc = "allow"
-module-name-repetitions = "allow" 
-cast-precision-loss = "allow"
-cast-possible-truncation = "allow"
-cast-sign-loss = "allow"
-cast-possible-wrap = "allow"
+# Allow reasonable exceptions for production code
+missing_errors_doc = "allow"       # Too verbose for every Result
+missing_panics_doc = "allow"       # Most panics are obvious
+module_name_repetitions = "allow"  # Common in domain modeling
+must_use_candidate = "allow"       # Too noisy for builders
+doc_markdown = "allow"             # Too strict about backticks
+wildcard_imports = "allow"         # Useful for test prelude
+uninlined_format_args = "allow"    # Sometimes clearer explicit
+cast_precision_loss = "allow"      # Explicit casts are intentional
+cast_possible_truncation = "allow" # Explicit casts are intentional
+cast_sign_loss = "allow"           # Explicit casts are intentional
+cast_possible_wrap = "allow"       # Explicit casts are intentional

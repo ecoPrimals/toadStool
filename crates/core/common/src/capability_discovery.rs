@@ -68,11 +68,15 @@ impl CapabilityDiscovery {
     /// - mDNS/DNS-SD (if on local network)
     /// - Environment variables (always available)
     pub fn new() -> Result<Self, DiscoveryError> {
-        Self::with_config(DiscoveryConfig::default())
+        Self::with_config(&DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
-    pub fn with_config(config: DiscoveryConfig) -> Result<Self, DiscoveryError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError` if the tokio runtime cannot be created
+    pub fn with_config(config: &DiscoveryConfig) -> Result<Self, DiscoveryError> {
         // Detect and initialize appropriate discovery backend
         let discovery = Self::detect_discovery_backend()?;
 
@@ -129,7 +133,7 @@ impl CapabilityDiscovery {
                 // Fallback for development
                 self.try_localhost_fallback(&capability).await
             }
-            Ok(_) => Err(DiscoveryError::NoServicesFound(format!("{:?}", capability))),
+            Ok(_) => Err(DiscoveryError::NoServicesFound(format!("{capability:?}"))),
             Err(e) => Err(DiscoveryError::DiscoveryFailed(e.to_string())),
         }
     }
@@ -176,7 +180,7 @@ impl CapabilityDiscovery {
         // ServiceDiscovery::new is async, so we need to run it in a blocking context
         // In production, this would be handled differently (e.g., async initialization)
         let runtime = tokio::runtime::Runtime::new().map_err(|e| {
-            DiscoveryError::InvalidConfig(format!("Failed to create runtime: {}", e))
+            DiscoveryError::InvalidConfig(format!("Failed to create runtime: {e}"))
         })?;
 
         let discovery = runtime
