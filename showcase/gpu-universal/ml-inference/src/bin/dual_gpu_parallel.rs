@@ -5,6 +5,7 @@
 
 use anyhow::{Context, Result};
 use ml_inference_showcase::{gpu_selector::*, mnist::MnistDataset, network::SimpleNetwork, BenchmarkStats};
+#[allow(unused_imports)]
 use ndarray::{Array1, Array2};
 use std::collections::HashSet;
 use std::time::Instant;
@@ -187,11 +188,19 @@ async fn run_dual_gpu_parallel(
     let network1 = network.clone();
     let network2 = network.clone();
     
+    // Pre-collect samples to avoid lifetime issues with tokio::spawn
+    let samples1: Vec<(ndarray::Array1<f32>, u8)> = (0..split_point)
+        .map(|i| test_data.get(i).expect("Failed to get sample"))
+        .collect();
+    
+    let samples2: Vec<(ndarray::Array1<f32>, u8)> = (split_point..num_samples)
+        .map(|i| test_data.get(i).expect("Failed to get sample"))
+        .collect();
+    
     // Create tasks for parallel execution
     let task1 = tokio::spawn(async move {
         let mut correct = 0;
-        for i in 0..split_point {
-            let (image, label) = test_data.get(i).expect("Failed to get sample");
+        for (i, (image, label)) in samples1.into_iter().enumerate() {
             let output = network1.forward_cpu(&image).expect("Forward failed");
             let (predicted, _) = network1.predict(&output);
             
@@ -209,8 +218,7 @@ async fn run_dual_gpu_parallel(
     
     let task2 = tokio::spawn(async move {
         let mut correct = 0;
-        for i in split_point..num_samples {
-            let (image, label) = test_data.get(i).expect("Failed to get sample");
+        for (i, (image, label)) in samples2.into_iter().enumerate() {
             let output = network2.forward_cpu(&image).expect("Forward failed");
             let (predicted, _) = network2.predict(&output);
             
