@@ -60,6 +60,24 @@ pub struct BatchNormConfig {
     pub running_var: Vec<f32>,   // Pre-computed variance
 }
 
+/// MaxPool2D configuration
+#[derive(Debug, Clone, Copy)]
+pub struct Pool2DConfig {
+    pub kernel_size: (usize, usize),  // (height, width)
+    pub stride: (usize, usize),       // (height, width)
+    pub padding: (usize, usize),      // (height, width)
+}
+
+impl Default for Pool2DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: (2, 2),
+            stride: (2, 2),
+            padding: (0, 0),
+        }
+    }
+}
+
 /// Pure Rust GPU executor using wgpu (WebGPU)
 /// 
 /// No FFI, no unsafe code - just modern idiomatic Rust!
@@ -2769,6 +2787,207 @@ impl WgpuExecutor {
         Ok(result)
     }
     
+    /// Execute MaxPool2D: 2D max pooling operation
+    /// 
+    /// CUDA equivalent: `cudnnPoolingForward(CUDNN_POOLING_MAX)`
+    /// Use cases: Spatial downsampling, translation invariance, feature extraction
+    /// 
+    /// Deep Debt compliant: Full GPU execution, single pass
+    pub async fn execute_maxpool2d(
+        &self,
+        input: &[f32],
+        batch_size: usize,
+        channels: usize,
+        input_height: usize,
+        input_width: usize,
+        config: Pool2DConfig,
+    ) -> Result<Vec<f32>> {
+        let input_size = batch_size * channels * input_height * input_width;
+        anyhow::ensure!(
+            input.len() == input_size,
+            "MaxPool2D: input size {} must equal batch_size * channels * height * width = {}",
+            input.len(),
+            input_size
+        );
+        
+        // Calculate output dimensions
+        let output_height = (input_height + 2 * config.padding.0 - config.kernel_size.0) / config.stride.0 + 1;
+        let output_width = (input_width + 2 * config.padding.1 - config.kernel_size.1) / config.stride.1 + 1;
+        let output_size = batch_size * channels * output_height * output_width;
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("MaxPool2D Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/maxpool2d.wgsl").into()),
+        });
+        
+        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MaxPool2D Input"),
+            contents: bytemuck::cast_slice(input),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("MaxPool2D Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct MaxPool2DParams {
+            batch_size: u32,
+            channels: u32,
+            input_height: u32,
+            input_width: u32,
+            output_height: u32,
+            output_width: u32,
+            kernel_h: u32,
+            kernel_w: u32,
+            stride_h: u32,
+            stride_w: u32,
+            padding_h: u32,
+            padding_w: u32,
+        }
+        
+        let params = MaxPool2DParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            input_height: input_height as u32,
+            input_width: input_width as u32,
+            output_height: output_height as u32,
+            output_width: output_width as u32,
+            kernel_h: config.kernel_size.0 as u32,
+            kernel_w: config.kernel_size.1 as u32,
+            stride_h: config.stride.0 as u32,
+            stride_w: config.stride.1 as u32,
+            padding_h: config.padding.0 as u32,
+            padding_w: config.padding.1 as u32,
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MaxPool2D Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("MaxPool2D Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("MaxPool2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("MaxPool2D Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        
+        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("MaxPool2D Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+        
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("MaxPool2D Staging"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            
+            // Dispatch with 2D workgroup layout (16x16 threads per workgroup)
+            let workgroups_x = (output_width as u32 + 15) / 16;
+            let workgroups_y = (output_height as u32 + 15) / 16;
+            let workgroups_z = (batch_size * channels) as u32;
+            
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+        
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (output_size * std::mem::size_of::<f32>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+        
+        // Read results
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver.receive().await.context("Failed to map buffer")??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+        
+        drop(data);
+        staging_buffer.unmap();
+        
+        Ok(result)
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -3362,6 +3581,114 @@ mod tests {
         
         assert_eq!(result.len(), 8);
         assert!(result.iter().all(|&v| v.is_finite()));
+    }
+    
+    #[tokio::test]
+    async fn test_maxpool2d_basic() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // 1 batch, 1 channel, 4x4 input
+        // Input: [[1,2,3,4],
+        //         [5,6,7,8],
+        //         [9,10,11,12],
+        //         [13,14,15,16]]
+        let input = vec![
+            1.0, 2.0, 3.0, 4.0,
+            5.0, 6.0, 7.0, 8.0,
+            9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0,
+        ];
+        
+        let config = Pool2DConfig {
+            kernel_size: (2, 2),
+            stride: (2, 2),
+            padding: (0, 0),
+        };
+        
+        let result = executor.execute_maxpool2d(
+            &input,
+            1,  // batch_size
+            1,  // channels
+            4,  // input_height
+            4,  // input_width
+            config
+        ).await.unwrap();
+        
+        // Output should be 2x2: [[6,8], [14,16]]
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 6.0);  // max of [1,2,5,6]
+        assert_eq!(result[1], 8.0);  // max of [3,4,7,8]
+        assert_eq!(result[2], 14.0); // max of [9,10,13,14]
+        assert_eq!(result[3], 16.0); // max of [11,12,15,16]
+    }
+    
+    #[tokio::test]
+    async fn test_maxpool2d_with_stride() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // 1 batch, 1 channel, 3x3 input
+        let input = vec![
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        ];
+        
+        let config = Pool2DConfig {
+            kernel_size: (2, 2),
+            stride: (1, 1),  // Stride 1 (overlapping windows)
+            padding: (0, 0),
+        };
+        
+        let result = executor.execute_maxpool2d(
+            &input,
+            1,  // batch_size
+            1,  // channels
+            3,  // input_height
+            3,  // input_width
+            config
+        ).await.unwrap();
+        
+        // Output should be 2x2: [[5,6], [8,9]]
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 5.0);  // max of [1,2,4,5]
+        assert_eq!(result[1], 6.0);  // max of [2,3,5,6]
+        assert_eq!(result[2], 8.0);  // max of [4,5,7,8]
+        assert_eq!(result[3], 9.0);  // max of [5,6,8,9]
+    }
+    
+    #[tokio::test]
+    async fn test_maxpool2d_multiple_channels() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // 1 batch, 2 channels, 2x2 input each
+        let input = vec![
+            // Channel 0
+            1.0, 2.0,
+            3.0, 4.0,
+            // Channel 1
+            5.0, 6.0,
+            7.0, 8.0,
+        ];
+        
+        let config = Pool2DConfig {
+            kernel_size: (2, 2),
+            stride: (2, 2),
+            padding: (0, 0),
+        };
+        
+        let result = executor.execute_maxpool2d(
+            &input,
+            1,  // batch_size
+            2,  // channels
+            2,  // input_height
+            2,  // input_width
+            config
+        ).await.unwrap();
+        
+        // Output: 1x1 per channel
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], 4.0);  // max of channel 0
+        assert_eq!(result[1], 8.0);  // max of channel 1
     }
 }
 
