@@ -146,3 +146,10 @@ showcase/**/datasets/cifar-*
 showcase/**/datasets/imagenet-*
 showcase/**/datasets/mnist-*
 zluda-external/
+
+# Build artifacts (CRITICAL - must not be committed!)
+**/target/
+**/*.timestamp
+**/*.rlib
+**/*.rmeta
+
