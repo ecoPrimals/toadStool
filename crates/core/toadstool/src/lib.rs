@@ -47,6 +47,7 @@ pub mod ecosystem;
 pub mod encryption;
 pub mod error;
 pub mod execution;
+pub mod fractal_integration;
 pub mod layer_adaptation;
 pub mod os_layer;
 pub mod performance_hardening;
