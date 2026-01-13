@@ -34,6 +34,14 @@ pub enum MapOp {
     Reciprocal = 4,
 }
 
+/// Scan operations (for prefix sum/scan)
+#[derive(Debug, Clone, Copy)]
+pub enum ScanOp {
+    Sum = 0,
+    Max = 1,
+    Min = 2,
+}
+
 /// Pure Rust GPU executor using wgpu (WebGPU)
 /// 
 /// No FFI, no unsafe code - just modern idiomatic Rust!
@@ -1973,6 +1981,179 @@ impl WgpuExecutor {
         Ok(result)
     }
     
+    /// Execute scan (prefix sum): work-efficient parallel scan
+    /// 
+    /// CUDA equivalent: `thrust::scan`, `cub::DeviceScan`
+    /// Algorithm: Blelloch up-sweep/down-sweep in shared memory
+    /// Use cases: Cumulative sums, stream compaction, allocation
+    /// 
+    /// NOTE: Current implementation handles up to 512 elements per workgroup
+    /// For larger arrays, use hierarchical scan (future implementation)
+    pub async fn execute_scan(
+        &self,
+        input: &[f32],
+        operation: ScanOp,
+        exclusive: bool,
+    ) -> Result<Vec<f32>> {
+        let size = input.len();
+        
+        // Validate size (current implementation: single workgroup, max 512 elements)
+        anyhow::ensure!(
+            size <= 512,
+            "Scan currently supports up to 512 elements. Input size: {}. \
+             For larger arrays, hierarchical scan will be implemented.",
+            size
+        );
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Scan Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/scan.wgsl").into()),
+        });
+        
+        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Input"),
+            contents: bytemuck::cast_slice(input),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Output"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct ScanParams {
+            size: u32,
+            operation: u32,
+            exclusive: u32,
+        }
+        
+        let params = ScanParams {
+            size: size as u32,
+            operation: operation as u32,
+            exclusive: if exclusive { 1 } else { 0 },
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Scan Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Scan Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Scan Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        
+        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Scan Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+        
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Staging"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // Single workgroup for arrays up to 512 elements
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+        
+        // Read results
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver.receive().await.context("Failed to map buffer")??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+        
+        drop(data);
+        staging_buffer.unmap();
+        
+        Ok(result)
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -2337,6 +2518,62 @@ mod tests {
         for i in 0..result.len()-1 {
             assert!(result[i] < result[i+1]);
         }
+    }
+    
+    #[tokio::test]
+    async fn test_scan_inclusive_sum() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let result = executor.execute_scan(&input, ScanOp::Sum, false).await.unwrap();
+        
+        // Inclusive scan: [1, 3, 6, 10, 15]
+        let expected = vec![1.0, 3.0, 6.0, 10.0, 15.0];
+        for (out, exp) in result.iter().zip(expected.iter()) {
+            assert!((out - exp).abs() < 1e-5, "Got {}, expected {}", out, exp);
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_scan_exclusive_sum() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let result = executor.execute_scan(&input, ScanOp::Sum, true).await.unwrap();
+        
+        // Exclusive scan: [0, 1, 3, 6, 10]
+        let expected = vec![0.0, 1.0, 3.0, 6.0, 10.0];
+        for (out, exp) in result.iter().zip(expected.iter()) {
+            assert!((out - exp).abs() < 1e-5, "Got {}, expected {}", out, exp);
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_scan_large_array() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Test with 512 elements (maximum for single workgroup)
+        let input = vec![1.0; 512];
+        let result = executor.execute_scan(&input, ScanOp::Sum, false).await.unwrap();
+        
+        // Each element should be cumulative count
+        for (i, &val) in result.iter().enumerate() {
+            let expected = (i + 1) as f32;
+            assert!((val - expected).abs() < 1e-3, "At index {}: got {}, expected {}", i, val, expected);
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_scan_size_limit() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Test that exceeding 512 elements returns proper error
+        let input = vec![1.0; 513];
+        let result = executor.execute_scan(&input, ScanOp::Sum, false).await;
+        
+        assert!(result.is_err(), "Should error for >512 elements");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("512"), "Error should mention size limit");
     }
 }
 
