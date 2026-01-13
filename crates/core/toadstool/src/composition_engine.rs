@@ -456,6 +456,12 @@ impl CompositionEngine {
             }
         };
 
+        // EVOLUTION FIX: If any hard constraint fails, overall score is 0.0
+        // regardless of soft constraints. The workload is infeasible.
+        if hard_score == 0.0 {
+            return 0.0;
+        }
+
         // Soft constraints: average satisfaction
         let soft_score = {
             let soft_results: Vec<_> = request
@@ -473,6 +479,7 @@ impl CompositionEngine {
         };
 
         // Overall: 70% weight on hard constraints, 30% on soft
+        // (only reached if all hard constraints pass)
         (hard_score * 0.7) + (soft_score * 0.3)
     }
 
