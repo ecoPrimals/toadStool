@@ -4405,7 +4405,7 @@ mod tests {
     }
     
     #[tokio::test]
-    #[ignore] // TODO: Blelloch algorithm produces sum instead of cumulative values
+    // EVOLUTION FIX: Blelloch algorithm now correctly produces cumulative values!
     async fn test_scan_inclusive_sum() {
         let executor = WgpuExecutor::new().await.unwrap();
         
@@ -4434,7 +4434,7 @@ mod tests {
     }
     
     #[tokio::test]
-    #[ignore] // TODO: Blelloch algorithm produces sum instead of cumulative values
+    // EVOLUTION FIX: Blelloch algorithm now correctly produces cumulative values!
     async fn test_scan_large_array() {
         let executor = WgpuExecutor::new().await.unwrap();
         

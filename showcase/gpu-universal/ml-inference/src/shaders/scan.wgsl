@@ -48,15 +48,15 @@ fn main(
         offset = offset * 2u;
     }
     
-    // Clear last element for exclusive scan
+    // Store the total sum for inclusive scan conversion
+    var total_sum: f32;
     if (tid == 0u) {
-        if (params.exclusive == 1u) {
-            temp[511] = 0.0;
-        }
+        total_sum = temp[511];  // Save total before clearing
+        temp[511] = 0.0;  // Always clear for exclusive scan
     }
     workgroupBarrier();
     
-    // Down-sweep phase
+    // Down-sweep phase (produces exclusive scan)
     for (var d = 1u; d <= 256u; d = d * 2u) {
         offset = offset / 2u;
         workgroupBarrier();
@@ -72,10 +72,22 @@ fn main(
     workgroupBarrier();
     
     // Write results
-    if (gid < params.size) {
-        output[gid] = temp[tid * 2u];
-    }
-    if (gid + 1u < params.size) {
-        output[gid + 1u] = temp[tid * 2u + 1u];
+    // EVOLUTION FIX: For inclusive scan, add original input to exclusive result
+    if (params.exclusive == 0u) {
+        // Inclusive: each element includes itself
+        if (gid < params.size) {
+            output[gid] = temp[tid * 2u] + input[gid];
+        }
+        if (gid + 1u < params.size) {
+            output[gid + 1u] = temp[tid * 2u + 1u] + input[gid + 1u];
+        }
+    } else {
+        // Exclusive: each element is sum of previous elements only
+        if (gid < params.size) {
+            output[gid] = temp[tid * 2u];
+        }
+        if (gid + 1u < params.size) {
+            output[gid + 1u] = temp[tid * 2u + 1u];
+        }
     }
 }
