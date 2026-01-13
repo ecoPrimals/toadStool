@@ -14,6 +14,13 @@
 - **[START_HERE.md](START_HERE.md)** - 5-minute getting started guide
 - **[STATUS.md](STATUS.md)** - Current verified status, metrics, and roadmap
 
+### barraCUDA - GPU Framework 🦈
+
+- **[BARRACUDA_MISSION.md](BARRACUDA_MISSION.md)** - Pure Rust GPU framework vision & roadmap
+- **[BARRACUDA_EXECUTIVE_SUMMARY.md](BARRACUDA_EXECUTIVE_SUMMARY.md)** - Business case & ROI
+- **[specs/BARRACUDA_PURE_RUST_TENSOR_OPS.md](specs/BARRACUDA_PURE_RUST_TENSOR_OPS.md)** - Technical specification
+- **[showcase/gpu-universal/](showcase/gpu-universal/)** - Implementation & showcases
+
 ### Evolution Reports (January 12, 2026) ⭐
 
 **Complete audit and evolution from B+ (87/100) to A (94/100) in one day**
@@ -100,6 +107,7 @@
 │   └── DAEMON_MODE_USER_GUIDE.md
 │
 ├── archive/                   - Historical documents
+│   ├── jan12_2026_barracuda_session/  - barraCUDA development (Deep Debt)
 │   ├── jan11_2026_session/            - Deep debt audit + tests
 │   ├── jan10_2026_session_phase2/     - Distributed coordinator
 │   ├── jan10_2026_session_final/      - TCP cleanup
@@ -136,6 +144,7 @@
 1. **[START_HERE.md](START_HERE.md)** - 5-minute quick start ⭐
 2. **[README.md](README.md)** - Complete overview
 3. **[ULTIMATE_SUMMARY_JAN12_2026.md](ULTIMATE_SUMMARY_JAN12_2026.md)** - Evolution summary
+4. **[BARRACUDA_MISSION.md](BARRACUDA_MISSION.md)** - GPU framework (NEW 🦈)
 
 ### Developers (Week 1)
 

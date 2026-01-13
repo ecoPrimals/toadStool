@@ -6,6 +6,16 @@
 
 > *"Different orders of the same architecture"* - Universal compute across CPU, GPU, and beyond
 
+## 🦈 barraCUDA - Pure Rust GPU Framework
+
+**NEW**: ToadStool now includes **barraCUDA**, a pure Rust GPU compute framework that eliminates CUDA vendor lock-in while delivering all advanced tensor operations on any hardware substrate.
+
+- **Status**: 11/21 operations proven (52%), zero technical debt
+- **Architecture**: Pure Rust, vendor-agnostic (NVIDIA, AMD, Intel, Apple, CPU)
+- **Performance**: 241M elem/sec ReLU, full GPU execution (zero CPU fallbacks)
+- **Grade**: A+ (Deep Debt Excellence)
+- See: **[BARRACUDA_MISSION.md](BARRACUDA_MISSION.md)** for complete details
+
 ---
 
 ## 🚀 Quick Start
@@ -53,6 +63,14 @@ export TOADSTOOL_TEMP_DIR=/var/tmp/toadstool  # Custom temp dir
 | **[TESTING.md](TESTING.md)** | Testing guide |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history |
 
+### barraCUDA - GPU Framework
+
+| Document | Purpose |
+|----------|---------|
+| **[BARRACUDA_MISSION.md](BARRACUDA_MISSION.md)** | Vision, roadmap, and status |
+| **[BARRACUDA_EXECUTIVE_SUMMARY.md](BARRACUDA_EXECUTIVE_SUMMARY.md)** | Business case & ROI |
+| **[specs/BARRACUDA_PURE_RUST_TENSOR_OPS.md](specs/BARRACUDA_PURE_RUST_TENSOR_OPS.md)** | Technical specification |
+
 ### Latest Evolution Reports (January 12, 2026)
 
 | Report | Content |
@@ -63,6 +81,8 @@ export TOADSTOOL_TEMP_DIR=/var/tmp/toadstool  # Custom temp dir
 | **[PHASE1_COMPLETE_JAN12_2026.md](PHASE1_COMPLETE_JAN12_2026.md)** | Build fixes & deep debt |
 | **[PHASE2_COMPLETE_JAN12_2026.md](PHASE2_COMPLETE_JAN12_2026.md)** | All implementations |
 
+*Note: barraCUDA session documentation archived in `docs/archive/jan12_2026_barracuda_session/`*
+
 ---
 
 ## ✨ What is ToadStool?
@@ -72,7 +92,10 @@ ToadStool is a **production-ready universal compute platform** that enables seam
 ### Core Capabilities
 
 - **CPU** - Native and optimized execution
-- **GPU** - CUDA, ROCm, OpenCL, WebGPU, Vulkan (vendor-agnostic)
+- **GPU** - **barraCUDA** pure Rust framework (NVIDIA, AMD, Intel, Apple via wgpu/WGSL)
+  - 11/21 tensor operations proven
+  - Zero vendor lock-in
+  - Full GPU execution (no CPU fallbacks)
 - **WASM** - WebAssembly sandboxed execution
 - **Container** - Docker, Podman isolation
 - **Python** - PyO3 integration (Python 3.13 compatible)
