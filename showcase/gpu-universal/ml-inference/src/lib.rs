@@ -16,10 +16,9 @@ pub mod network;
 pub mod vulkan_executor;
 
 // Optional modules (not all showcases use these)
-// Commented out until implemented
-// pub mod cpu_inference;
-// pub mod gpu_inference;
-// pub mod training;
+pub mod cpu_inference;
+pub mod gpu_inference;
+pub mod training;
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
