@@ -50,6 +50,16 @@ pub struct NormConfig {
     pub beta: Option<Vec<f32>>,   // Shift (default: all 0s)
 }
 
+/// BatchNorm configuration with pre-computed statistics
+#[derive(Debug, Clone)]
+pub struct BatchNormConfig {
+    pub epsilon: f32,
+    pub gamma: Vec<f32>,  // Scale (learned parameter)
+    pub beta: Vec<f32>,   // Shift (learned parameter)
+    pub running_mean: Vec<f32>,  // Pre-computed mean
+    pub running_var: Vec<f32>,   // Pre-computed variance
+}
+
 /// Pure Rust GPU executor using wgpu (WebGPU)
 /// 
 /// No FFI, no unsafe code - just modern idiomatic Rust!
@@ -2476,6 +2486,289 @@ impl WgpuExecutor {
         Ok(result)
     }
     
+    /// Execute BatchNorm: Single-pass normalization with pre-computed statistics
+    /// 
+    /// CUDA equivalent: `cudnnBatchNormalizationForward`
+    /// Formula: output = (input - running_mean) / sqrt(running_var + epsilon) * gamma + beta
+    /// Use cases: CNN normalization, accelerating training convergence
+    /// 
+    /// Deep Debt compliant: Full GPU execution, single pass
+    pub async fn execute_batchnorm(
+        &self,
+        input: &[f32],
+        batch_size: usize,
+        channels: usize,
+        spatial_size: usize,  // H * W for 2D, or total spatial dimensions
+        config: BatchNormConfig,
+    ) -> Result<Vec<f32>> {
+        let total_size = batch_size * channels * spatial_size;
+        
+        anyhow::ensure!(
+            input.len() == total_size,
+            "BatchNorm: input size {} must equal batch_size * channels * spatial_size = {}",
+            input.len(),
+            total_size
+        );
+        anyhow::ensure!(
+            config.gamma.len() == channels,
+            "BatchNorm: gamma size {} must equal channels {}",
+            config.gamma.len(),
+            channels
+        );
+        anyhow::ensure!(
+            config.beta.len() == channels,
+            "BatchNorm: beta size {} must equal channels {}",
+            config.beta.len(),
+            channels
+        );
+        anyhow::ensure!(
+            config.running_mean.len() == channels,
+            "BatchNorm: running_mean size {} must equal channels {}",
+            config.running_mean.len(),
+            channels
+        );
+        anyhow::ensure!(
+            config.running_var.len() == channels,
+            "BatchNorm: running_var size {} must equal channels {}",
+            config.running_var.len(),
+            channels
+        );
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("BatchNorm Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/batchnorm.wgsl").into()),
+        });
+        
+        // Create buffers
+        let input_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Input"),
+            contents: bytemuck::cast_slice(input),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let gamma_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Gamma"),
+            contents: bytemuck::cast_slice(&config.gamma),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let beta_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Beta"),
+            contents: bytemuck::cast_slice(&config.beta),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let mean_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Mean"),
+            contents: bytemuck::cast_slice(&config.running_mean),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let var_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Var"),
+            contents: bytemuck::cast_slice(&config.running_var),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchNorm Output"),
+            size: (total_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct BatchNormParams {
+            batch_size: u32,
+            channels: u32,
+            spatial_size: u32,
+            epsilon: f32,
+            training: u32,  // 0 for inference (using running stats)
+        }
+        
+        let params = BatchNormParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            spatial_size: spatial_size as u32,
+            epsilon: config.epsilon,
+            training: 0,  // Inference mode (using pre-computed stats)
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchNorm Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        // Create bind group layout
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("BatchNorm Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BatchNorm Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: gamma_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: beta_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: mean_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: var_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("BatchNorm Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        
+        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("BatchNorm Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+        
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BatchNorm Staging"),
+            size: (total_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((total_size as u32 + 255) / 256, 1, 1);
+        }
+        
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (total_size * std::mem::size_of::<f32>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+        
+        // Read results
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver.receive().await.context("Failed to map buffer")??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+        
+        drop(data);
+        staging_buffer.unmap();
+        
+        Ok(result)
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -2968,6 +3261,107 @@ mod tests {
         // Mean should be close to 0
         let mean: f32 = result.iter().sum::<f32>() / result.len() as f32;
         assert!(mean.abs() < 1e-4, "Mean should be ~0");
+    }
+    
+    #[tokio::test]
+    async fn test_batchnorm_basic() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Simple case: 1 batch, 2 channels, 2x2 spatial
+        // Input: channel 0 = [1,2,3,4], channel 1 = [5,6,7,8]
+        let input = vec![
+            1.0, 2.0, 3.0, 4.0,  // channel 0
+            5.0, 6.0, 7.0, 8.0,  // channel 1
+        ];
+        
+        let config = BatchNormConfig {
+            epsilon: 1e-5,
+            gamma: vec![1.0, 1.0],  // No scaling
+            beta: vec![0.0, 0.0],   // No shift
+            running_mean: vec![2.5, 6.5],  // Mean of each channel
+            running_var: vec![1.25, 1.25],  // Variance of each channel
+        };
+        
+        let result = executor.execute_batchnorm(
+            &input,
+            1,  // batch_size
+            2,  // channels
+            4,  // spatial_size (2x2)
+            config
+        ).await.unwrap();
+        
+        assert_eq!(result.len(), 8);
+        
+        // All values should be normalized
+        assert!(result.iter().all(|&v| v.is_finite()), "All values should be finite");
+    }
+    
+    #[tokio::test]
+    async fn test_batchnorm_with_scale_shift() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // 1 batch, 1 channel, 4 spatial elements
+        let input = vec![1.0, 2.0, 3.0, 4.0];
+        
+        let config = BatchNormConfig {
+            epsilon: 1e-5,
+            gamma: vec![2.0],  // Scale by 2
+            beta: vec![1.0],   // Shift by 1
+            running_mean: vec![2.5],  // Mean
+            running_var: vec![1.25],  // Variance
+        };
+        
+        let result = executor.execute_batchnorm(
+            &input,
+            1,  // batch_size
+            1,  // channels
+            4,  // spatial_size
+            config
+        ).await.unwrap();
+        
+        assert_eq!(result.len(), 4);
+        
+        // Values should be normalized, scaled by 2, then shifted by 1
+        assert!(result.iter().all(|&v| v.is_finite()));
+        
+        // All values should be different (scaled and shifted)
+        assert!(result[0] < result[1]);
+        assert!(result[1] < result[2]);
+        assert!(result[2] < result[3]);
+    }
+    
+    #[tokio::test]
+    async fn test_batchnorm_multiple_batches() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // 2 batches, 2 channels, 2 spatial elements each
+        let input = vec![
+            // Batch 0
+            1.0, 2.0,  // channel 0
+            3.0, 4.0,  // channel 1
+            // Batch 1
+            5.0, 6.0,  // channel 0
+            7.0, 8.0,  // channel 1
+        ];
+        
+        let config = BatchNormConfig {
+            epsilon: 1e-5,
+            gamma: vec![1.0, 1.0],
+            beta: vec![0.0, 0.0],
+            running_mean: vec![3.0, 5.0],
+            running_var: vec![2.0, 2.0],
+        };
+        
+        let result = executor.execute_batchnorm(
+            &input,
+            2,  // batch_size
+            2,  // channels
+            2,  // spatial_size
+            config
+        ).await.unwrap();
+        
+        assert_eq!(result.len(), 8);
+        assert!(result.iter().all(|&v| v.is_finite()));
     }
 }
 
