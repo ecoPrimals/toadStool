@@ -13,6 +13,10 @@ struct Params {
 }
 @group(0) @binding(4) var<uniform> params: Params;
 
+// Shared memory for reductions (must be at module scope)
+var<workgroup> shared_max: array<f32, 256>;
+var<workgroup> shared_sum: array<f32, 256>;
+
 // Pass 1: Find max value
 @compute @workgroup_size(256)
 fn find_max(
@@ -23,25 +27,24 @@ fn find_max(
     let tid = local_id.x;
     let gid = global_id.x;
     
-    var<workgroup> shared_data: array<f32, 256>;
     
     var value: f32 = -3.402823e+38;  // -FLT_MAX
     if (gid < params.size) {
         value = input[gid];
     }
-    shared_data[tid] = value;
+    shared_max[tid] = value;
     workgroupBarrier();
     
     // Tree reduction
     for (var stride = 128u; stride > 0u; stride = stride / 2u) {
         if (tid < stride) {
-            shared_data[tid] = max(shared_data[tid], shared_data[tid + stride]);
+            shared_max[tid] = max(shared_max[tid], shared_max[tid + stride]);
         }
         workgroupBarrier();
     }
     
     if (tid == 0u) {
-        max_val[workgroup_id.x] = shared_data[0];
+        max_val[workgroup_id.x] = shared_max[0];
     }
 }
 
@@ -55,8 +58,6 @@ fn compute_exp_sum(
     let tid = local_id.x;
     let gid = global_id.x;
     
-    var<workgroup> shared_data: array<f32, 256>;
-    
     // Assume max_val[0] contains the global max (computed on CPU or via multi-pass)
     let global_max = max_val[0];
     
@@ -66,19 +67,19 @@ fn compute_exp_sum(
         output[gid] = exp_val;  // Store exp values
         value = exp_val;
     }
-    shared_data[tid] = value;
+    shared_sum[tid] = value;
     workgroupBarrier();
     
     // Tree reduction for sum
     for (var stride = 128u; stride > 0u; stride = stride / 2u) {
         if (tid < stride) {
-            shared_data[tid] = shared_data[tid] + shared_data[tid + stride];
+            shared_sum[tid] = shared_sum[tid] + shared_sum[tid + stride];
         }
         workgroupBarrier();
     }
     
     if (tid == 0u) {
-        sum_val[workgroup_id.x] = shared_data[0];
+        sum_val[workgroup_id.x] = shared_sum[0];
     }
 }
 
