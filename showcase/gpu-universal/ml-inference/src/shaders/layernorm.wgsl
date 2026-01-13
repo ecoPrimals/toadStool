@@ -15,6 +15,9 @@ struct Params {
 }
 @group(0) @binding(5) var<uniform> params: Params;
 
+var<workgroup> shared_sum: array<f32, 256>;
+var<workgroup> shared_sum_sq: array<f32, 256>;
+
 // Pass 1: Compute mean and variance using Welford's online algorithm
 @compute @workgroup_size(256)
 fn compute_stats(
@@ -24,9 +27,6 @@ fn compute_stats(
 ) {
     let tid = local_id.x;
     let gid = global_id.x;
-    
-    var<workgroup> shared_sum: array<f32, 256>;
-    var<workgroup> shared_sum_sq: array<f32, 256>;
     
     // Load and compute local statistics
     var value: f32 = 0.0;
