@@ -51,6 +51,7 @@ pub mod error;
 pub mod execution;
 pub mod fractal_integration;
 pub mod layer_adaptation;
+pub mod multi_workload_compositor;
 pub mod os_layer;
 pub mod performance_hardening;
 pub mod production_hardening;
