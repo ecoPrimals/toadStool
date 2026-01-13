@@ -111,6 +111,28 @@ pub struct GroupNormConfig {
     pub beta: Vec<f32>,   // Shift (per channel)
 }
 
+/// Adam optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct AdamConfig {
+    pub learning_rate: f32,
+    pub beta1: f32,         // First moment decay (default: 0.9)
+    pub beta2: f32,         // Second moment decay (default: 0.999)
+    pub epsilon: f32,       // Numerical stability (default: 1e-8)
+    pub weight_decay: f32,  // L2 regularization (default: 0.0)
+}
+
+impl Default for AdamConfig {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            weight_decay: 0.0,
+        }
+    }
+}
+
 /// Pure Rust GPU executor using wgpu (WebGPU)
 /// 
 /// No FFI, no unsafe code - just modern idiomatic Rust!
@@ -3730,6 +3752,292 @@ impl WgpuExecutor {
         Ok(result)
     }
     
+    /// Execute Adam Optimizer Step: Adaptive moment estimation
+    /// 
+    /// CUDA equivalent: Custom Adam kernels or cuDNN optimizers
+    /// Formula: Adaptive learning rate with momentum and RMSprop
+    /// Use cases: Deep learning training, state-of-the-art optimization
+    /// 
+    /// This is a stateful optimizer. The caller must maintain `m` and `v` buffers
+    /// across training steps. They are updated in-place on the GPU.
+    /// 
+    /// Deep Debt compliant: Full GPU execution, single pass
+    pub async fn execute_adam_step(
+        &self,
+        gradients: &[f32],      // Input gradients for this step
+        params: &mut Vec<f32>,  // Model parameters (updated in-place)
+        m: &mut Vec<f32>,       // First moment buffer (updated in-place)
+        v: &mut Vec<f32>,       // Second moment buffer (updated in-place)
+        step: usize,            // Current training step (1-indexed)
+        config: AdamConfig,
+    ) -> Result<()> {
+        let num_params = params.len();
+        
+        anyhow::ensure!(
+            gradients.len() == num_params,
+            "Adam: gradients size {} must equal params size {}",
+            gradients.len(),
+            num_params
+        );
+        anyhow::ensure!(
+            m.len() == num_params,
+            "Adam: m buffer size {} must equal params size {}",
+            m.len(),
+            num_params
+        );
+        anyhow::ensure!(
+            v.len() == num_params,
+            "Adam: v buffer size {} must equal params size {}",
+            v.len(),
+            num_params
+        );
+        anyhow::ensure!(
+            step > 0,
+            "Adam: step must be >= 1 (got {})",
+            step
+        );
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Adam Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/adam.wgsl").into()),
+        });
+        
+        // Create buffers
+        let gradients_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Adam Gradients"),
+            contents: bytemuck::cast_slice(gradients),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Adam Params"),
+            contents: bytemuck::cast_slice(params.as_slice()),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        
+        let m_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Adam M"),
+            contents: bytemuck::cast_slice(m.as_slice()),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        
+        let v_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Adam V"),
+            contents: bytemuck::cast_slice(v.as_slice()),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct AdamParams {
+            num_params: u32,
+            learning_rate: f32,
+            beta1: f32,
+            beta2: f32,
+            epsilon: f32,
+            weight_decay: f32,
+            step: u32,
+        }
+        
+        let adam_params = AdamParams {
+            num_params: num_params as u32,
+            learning_rate: config.learning_rate,
+            beta1: config.beta1,
+            beta2: config.beta2,
+            epsilon: config.epsilon,
+            weight_decay: config.weight_decay,
+            step: step as u32,
+        };
+        
+        let params_uniform_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Adam Params Uniform"),
+            contents: bytemuck::bytes_of(&adam_params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Adam Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Adam Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: gradients_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: m_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: v_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_uniform_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Adam Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        
+        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Adam Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+        
+        // Staging buffers to read back updated values
+        let params_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Adam Params Staging"),
+            size: (num_params * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let m_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Adam M Staging"),
+            size: (num_params * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let v_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Adam V Staging"),
+            size: (num_params * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        
+        // Execute Adam update
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((num_params as u32 + 255) / 256, 1, 1);
+        }
+        
+        // Copy results back to staging buffers
+        encoder.copy_buffer_to_buffer(&params_buffer, 0, &params_staging, 0, (num_params * std::mem::size_of::<f32>()) as u64);
+        encoder.copy_buffer_to_buffer(&m_buffer, 0, &m_staging, 0, (num_params * std::mem::size_of::<f32>()) as u64);
+        encoder.copy_buffer_to_buffer(&v_buffer, 0, &v_staging, 0, (num_params * std::mem::size_of::<f32>()) as u64);
+        
+        self.queue.submit(Some(encoder.finish()));
+        
+        // Read back updated parameters
+        let params_slice = params_staging.slice(..);
+        let (sender1, receiver1) = futures_intrusive::channel::shared::oneshot_channel();
+        params_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender1.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver1.receive().await.context("Failed to map params buffer")??;
+        
+        let params_data = params_slice.get_mapped_range();
+        params.copy_from_slice(bytemuck::cast_slice(&params_data));
+        drop(params_data);
+        params_staging.unmap();
+        
+        // Read back updated m
+        let m_slice = m_staging.slice(..);
+        let (sender2, receiver2) = futures_intrusive::channel::shared::oneshot_channel();
+        m_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender2.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver2.receive().await.context("Failed to map m buffer")??;
+        
+        let m_data = m_slice.get_mapped_range();
+        m.copy_from_slice(bytemuck::cast_slice(&m_data));
+        drop(m_data);
+        m_staging.unmap();
+        
+        // Read back updated v
+        let v_slice = v_staging.slice(..);
+        let (sender3, receiver3) = futures_intrusive::channel::shared::oneshot_channel();
+        v_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender3.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver3.receive().await.context("Failed to map v buffer")??;
+        
+        let v_data = v_slice.get_mapped_range();
+        v.copy_from_slice(bytemuck::cast_slice(&v_data));
+        drop(v_data);
+        v_staging.unmap();
+        
+        Ok(())
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -4709,6 +5017,97 @@ mod tests {
         
         assert_eq!(result.len(), 16);
         assert!(result.iter().all(|&v| v.is_finite()));
+    }
+    
+    #[tokio::test]
+    async fn test_adam_basic() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Simple case: 4 parameters with constant gradients
+        let gradients = vec![1.0, 2.0, 3.0, 4.0];
+        let mut params = vec![10.0, 20.0, 30.0, 40.0];
+        let mut m = vec![0.0, 0.0, 0.0, 0.0];  // Initialize momentum to zero
+        let mut v = vec![0.0, 0.0, 0.0, 0.0];  // Initialize velocity to zero
+        
+        let config = AdamConfig::default();
+        
+        executor.execute_adam_step(
+            &gradients,
+            &mut params,
+            &mut m,
+            &mut v,
+            1,  // step = 1
+            config
+        ).await.unwrap();
+        
+        // Parameters should have been updated (decreased since gradients are positive)
+        assert!(params[0] < 10.0, "params[0] should decrease");
+        assert!(params[1] < 20.0, "params[1] should decrease");
+        assert!(params[2] < 30.0, "params[2] should decrease");
+        assert!(params[3] < 40.0, "params[3] should decrease");
+        
+        // Momentum and velocity should be non-zero after first step
+        assert!(m.iter().any(|&x| x != 0.0), "Momentum should be updated");
+        assert!(v.iter().any(|&x| x != 0.0), "Velocity should be updated");
+    }
+    
+    #[tokio::test]
+    async fn test_adam_multiple_steps() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Test momentum across multiple steps
+        let gradients = vec![1.0, 1.0, 1.0];
+        let mut params = vec![10.0, 10.0, 10.0];
+        let mut m = vec![0.0, 0.0, 0.0];
+        let mut v = vec![0.0, 0.0, 0.0];
+        
+        let config = AdamConfig {
+            learning_rate: 0.01,
+            ..Default::default()
+        };
+        
+        let initial_params = params.clone();
+        
+        // Step 1
+        executor.execute_adam_step(&gradients, &mut params, &mut m, &mut v, 1, config).await.unwrap();
+        let step1_params = params.clone();
+        
+        // Step 2
+        executor.execute_adam_step(&gradients, &mut params, &mut m, &mut v, 2, config).await.unwrap();
+        let step2_params = params.clone();
+        
+        // Parameters should continue decreasing
+        assert!(step1_params[0] < initial_params[0]);
+        assert!(step2_params[0] < step1_params[0]);
+        
+        // Momentum should be building up
+        assert!(m[0] > 0.0, "Momentum should accumulate");
+        assert!(v[0] > 0.0, "Velocity should accumulate");
+    }
+    
+    #[tokio::test]
+    async fn test_adam_weight_decay() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Test L2 regularization (weight decay)
+        let gradients = vec![0.0, 0.0];  // Zero gradients
+        let mut params = vec![10.0, 20.0];
+        let mut m = vec![0.0, 0.0];
+        let mut v = vec![0.0, 0.0];
+        
+        let config = AdamConfig {
+            learning_rate: 0.01,
+            weight_decay: 0.1,  // Enable weight decay
+            ..Default::default()
+        };
+        
+        let initial_params = params.clone();
+        
+        executor.execute_adam_step(&gradients, &mut params, &mut m, &mut v, 1, config).await.unwrap();
+        
+        // Even with zero gradients, weight decay should decrease parameters
+        assert!(params[0] < initial_params[0], "Weight decay should reduce params");
+        assert!(params[1] < initial_params[1], "Weight decay should reduce params");
     }
 }
 
