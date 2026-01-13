@@ -6,9 +6,12 @@
 //! - Matrix multiply + ReLU + Softmax (17.3x verified)
 
 use anyhow::Result;
-use ml_inference_showcase::{
-    gpu_selector::{GpuBackend, GpuSelector},
-};
+use ml_inference_showcase::gpu_selector::GpuSelector;
+
+#[cfg(feature = "opencl")]
+use ml_inference_showcase::gpu_selector::GpuBackend;
+
+#[cfg(feature = "opencl")]
 use std::time::Instant;
 
 #[cfg(feature = "opencl")]
@@ -130,6 +133,7 @@ fn main() -> Result<()> {
 }
 
 // CPU reference implementation for Conv2D
+#[cfg(feature = "opencl")]
 fn run_conv2d_cpu(input: &[f32], weights: &[f32], bias: &[f32]) -> Vec<f32> {
     let batch_size = 1;
     let in_channels = 3;

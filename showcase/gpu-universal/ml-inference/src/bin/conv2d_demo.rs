@@ -6,11 +6,17 @@
 //! - Performance comparison (CPU vs GPU)
 //!
 //! Modern, idiomatic Rust with zero technical debt
+//!
+//! NOTE: Requires opencl feature flag
 
+#[cfg(feature = "opencl")]
 use anyhow::Result;
+#[cfg(feature = "opencl")]
 use ml_inference_showcase::conv2d_kernels::{Conv2DExecutor, Conv2DParams, conv2d_cpu};
+#[cfg(feature = "opencl")]
 use std::time::Instant;
 
+#[cfg(feature = "opencl")]
 fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║  Conv2D GPU Showcase - Convolutional Neural Networks        ║");
@@ -175,3 +181,13 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "opencl"))]
+fn main() {
+    println!("╔══════════════════════════════════════════════════════════════╗");
+    println!("║  Conv2D GPU Showcase - OpenCL Feature Required              ║");
+    println!("╚══════════════════════════════════════════════════════════════╝");
+    println!();
+    println!("This demo requires the 'opencl' feature flag.");
+    println!("Build with: cargo build --features opencl");
+    println!();
+}

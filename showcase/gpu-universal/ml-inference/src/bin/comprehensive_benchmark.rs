@@ -9,9 +9,13 @@
 use anyhow::Result;
 use ml_inference_showcase::{
     cnn::LeNet5,
-    gpu_selector::{GpuBackend, GpuInfo, GpuSelector},
+    gpu_selector::{GpuInfo, GpuSelector},
     mnist::MnistDataset,
 };
+
+#[allow(unused_imports)]
+#[cfg(feature = "opencl")]
+use ml_inference_showcase::gpu_selector::GpuBackend;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
@@ -34,6 +38,7 @@ pub struct BenchmarkResult {
 }
 
 impl BenchmarkResult {
+    #[allow(dead_code)]
     fn new(
         name: &str,
         gpu: &GpuInfo,
@@ -82,7 +87,7 @@ fn main() -> Result<()> {
 
     // Discover all GPUs
     println!("🔍 Discovering GPUs...");
-    let gpus = match GpuSelector::discover_all() {
+    let _gpus = match GpuSelector::discover_all() {
         Ok(gpus) => {
             println!("✓ Found {} GPU(s):", gpus.len());
             for (idx, gpu) in gpus.iter().enumerate() {
