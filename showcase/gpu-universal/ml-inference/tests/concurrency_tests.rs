@@ -78,12 +78,12 @@ async fn test_interleaved_operation_types() {
         ex2.execute_sigmoid(&input).await.unwrap()
     }));
     
-    // Task 3: Reduce
+    // Task 3: Reduce (returns f32, not Vec<f32>)
     let ex3 = Arc::clone(&executor);
-    handles.push(tokio::spawn(async move {
+    let reduce_handle = tokio::spawn(async move {
         let input = vec![1.0; 100];
         ex3.execute_reduce(&input, ReduceOp::Sum).await.unwrap()
-    }));
+    });
     
     // Task 4: Elementwise
     let ex4 = Arc::clone(&executor);
@@ -93,10 +93,13 @@ async fn test_interleaved_operation_types() {
         ex4.execute_elementwise_binary(&a, &b, BinaryOp::Add).await.unwrap()
     }));
     
-    // Wait for all
+    // Wait for all (vec handles)
     for handle in handles {
         let _result = handle.await.unwrap();
     }
+    
+    // Wait for reduce (scalar)
+    let _reduce_result = reduce_handle.await.unwrap();
     
     println!("Interleaved operations: All types completed successfully");
 }
@@ -271,10 +274,11 @@ async fn test_operation_mix_stress() {
         }));
     }
     
-    // 4x Reduce
+    // 4x Reduce (returns f32, not Vec<f32>)
+    let mut reduce_handles = vec![];
     for _ in 0..4 {
         let ex = Arc::clone(&executor);
-        handles.push(tokio::spawn(async move {
+        reduce_handles.push(tokio::spawn(async move {
             let input = vec![1.0; 1000];
             ex.execute_reduce(&input, ReduceOp::Sum).await.unwrap()
         }));
@@ -289,8 +293,13 @@ async fn test_operation_mix_stress() {
         }));
     }
     
-    // Wait for all (15 tasks total)
+    // Wait for all vec operations
     for handle in handles {
+        let _result = handle.await.unwrap();
+    }
+    
+    // Wait for all reduce operations (scalar)
+    for handle in reduce_handles {
         let _result = handle.await.unwrap();
     }
     
