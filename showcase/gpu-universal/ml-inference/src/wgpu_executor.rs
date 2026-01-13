@@ -2988,6 +2988,202 @@ impl WgpuExecutor {
         Ok(result)
     }
     
+    /// Execute Scatter: Indirect write operation with index array
+    /// 
+    /// CUDA equivalent: `thrust::scatter`
+    /// Operation: dest[indices[i]] = source[i] for each i
+    /// Use cases: Sparse updates, gradient accumulation, graph neural networks
+    /// 
+    /// Note: Uses atomic operations for thread safety. If multiple threads write
+    /// to the same index, the last write wins (atomicStore behavior).
+    /// For accumulation, use a different operation or pre-aggregate on CPU.
+    /// 
+    /// Deep Debt compliant: Full GPU execution with atomic safety
+    pub async fn execute_scatter(
+        &self,
+        source: &[f32],
+        indices: &[u32],
+        dest_size: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            source.len() == indices.len(),
+            "Scatter: source length {} must equal indices length {}",
+            source.len(),
+            indices.len()
+        );
+        
+        let num_elements = source.len();
+        
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Scatter Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/scatter.wgsl").into()),
+        });
+        
+        let source_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scatter Source"),
+            contents: bytemuck::cast_slice(source),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        let indices_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scatter Indices"),
+            contents: bytemuck::cast_slice(indices),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        
+        // Destination buffer: initialize with zeros (converted to i32 for atomic operations)
+        let dest_zeros: Vec<i32> = vec![0i32; dest_size];
+        let dest_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scatter Dest"),
+            contents: bytemuck::cast_slice(&dest_zeros),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        });
+        
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct ScatterParams {
+            num_elements: u32,
+            dest_size: u32,
+        }
+        
+        let params = ScatterParams {
+            num_elements: num_elements as u32,
+            dest_size: dest_size as u32,
+        };
+        
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scatter Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Scatter Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Scatter Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: source_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: dest_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Scatter Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        
+        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Scatter Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+        
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Scatter Staging"),
+            size: (dest_size * std::mem::size_of::<i32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((num_elements as u32 + 255) / 256, 1, 1);
+        }
+        
+        encoder.copy_buffer_to_buffer(
+            &dest_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (dest_size * std::mem::size_of::<i32>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+        
+        // Read results (as i32, then convert back to f32)
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).unwrap();
+        });
+        
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver.receive().await.context("Failed to map buffer")??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let i32_result: Vec<i32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buffer.unmap();
+        
+        // Convert i32 back to f32 (bitcast)
+        let result: Vec<f32> = i32_result.iter().map(|&x| f32::from_bits(x as u32)).collect();
+        
+        Ok(result)
+    }
+    
     // Helper methods to reduce boilerplate
     
     fn create_simple_bind_group_layout(&self, num_bindings: u32) -> wgpu::BindGroupLayout {
@@ -3689,6 +3885,65 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], 4.0);  // max of channel 0
         assert_eq!(result[1], 8.0);  // max of channel 1
+    }
+    
+    #[tokio::test]
+    async fn test_scatter_basic() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Scatter [10, 20, 30, 40] to indices [0, 2, 1, 3]
+        let source = vec![10.0, 20.0, 30.0, 40.0];
+        let indices = vec![0, 2, 1, 3];
+        let dest_size = 4;
+        
+        let result = executor.execute_scatter(&source, &indices, dest_size).await.unwrap();
+        
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 10.0);  // source[0] -> dest[0]
+        assert_eq!(result[1], 30.0);  // source[2] -> dest[1]
+        assert_eq!(result[2], 20.0);  // source[1] -> dest[2]
+        assert_eq!(result[3], 40.0);  // source[3] -> dest[3]
+    }
+    
+    #[tokio::test]
+    async fn test_scatter_sparse() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Scatter to sparse locations (larger dest array)
+        let source = vec![100.0, 200.0, 300.0];
+        let indices = vec![0, 5, 9];
+        let dest_size = 10;
+        
+        let result = executor.execute_scatter(&source, &indices, dest_size).await.unwrap();
+        
+        assert_eq!(result.len(), 10);
+        assert_eq!(result[0], 100.0);
+        assert_eq!(result[5], 200.0);
+        assert_eq!(result[9], 300.0);
+        
+        // Other elements should be 0.0 (default initialization)
+        assert_eq!(result[1], 0.0);
+        assert_eq!(result[2], 0.0);
+        assert_eq!(result[3], 0.0);
+    }
+    
+    #[tokio::test]
+    async fn test_scatter_overlapping() {
+        let executor = WgpuExecutor::new().await.unwrap();
+        
+        // Multiple writes to same index (last write wins)
+        let source = vec![10.0, 20.0, 30.0];
+        let indices = vec![0, 0, 0];  // All write to index 0
+        let dest_size = 2;
+        
+        let result = executor.execute_scatter(&source, &indices, dest_size).await.unwrap();
+        
+        assert_eq!(result.len(), 2);
+        // One of the values should be written (atomic behavior, last write wins)
+        // Due to atomic operations, the exact value depends on execution order
+        // but it should be one of the source values
+        assert!(result[0] == 10.0 || result[0] == 20.0 || result[0] == 30.0);
+        assert_eq!(result[1], 0.0);  // Untouched
     }
 }
 
