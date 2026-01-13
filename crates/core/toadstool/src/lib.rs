@@ -41,11 +41,13 @@
 
 pub mod biomeos_integration;
 pub mod byob;
+pub mod deployment_layer;
 pub mod discovery;
 pub mod ecosystem;
 pub mod encryption;
 pub mod error;
 pub mod execution;
+pub mod layer_adaptation;
 pub mod os_layer;
 pub mod performance_hardening;
 pub mod production_hardening;
