@@ -30,7 +30,7 @@ reqwest = { version = "0.11", features = ["blocking"] }
 cudarc = { version = "0.11", optional = true }
 ocl = { version = "0.19", optional = true }
 ash = { version = "0.37", optional = true }
-wgpu = "0.19"
+wgpu = "22"  # Match workspace version to prevent duplicate symbol errors
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 futures-intrusive = "0.5"

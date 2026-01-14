@@ -173,6 +173,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "find_max",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         let exp_sum_pipeline =
@@ -182,6 +184,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "exp_and_sum",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         let normalize_pipeline =
@@ -191,6 +195,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "normalize",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         // Execute three-pass algorithm
@@ -434,6 +440,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "compute_stats",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         let finalize_stats =
@@ -443,6 +451,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "finalize_stats",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         let normalize =
@@ -452,6 +462,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "normalize",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         // Execute three-pass algorithm

@@ -121,6 +121,8 @@ impl WgpuExecutor {
                     layout: Some(&pipeline_layout),
                     module: &shader,
                     entry_point: "compute_loss",
+                    compilation_options: Default::default(),
+                    cache: None,
                 });
 
         let workgroups = self.calculate_workgroups(batch_size, 256);
