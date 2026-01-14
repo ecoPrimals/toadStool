@@ -3,7 +3,7 @@
 //! ReLU, Sigmoid, Tanh, Softmax, etc.
 //! Modern idiomatic Rust with eliminated boilerplate.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use super::executor::WgpuExecutor;
 

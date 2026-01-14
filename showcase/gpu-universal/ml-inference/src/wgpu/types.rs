@@ -129,3 +129,57 @@ impl Default for AdamConfig {
         }
     }
 }
+
+/// SGD (Stochastic Gradient Descent) optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct SgdConfig {
+    pub learning_rate: f32,
+    pub momentum: f32,     // 0.0 for no momentum, typically 0.9
+    pub weight_decay: f32, // L2 regularization (default: 0.0)
+    pub dampening: f32,    // Dampening for momentum (default: 0.0)
+}
+
+impl Default for SgdConfig {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.01,
+            momentum: 0.0,
+            weight_decay: 0.0,
+            dampening: 0.0,
+        }
+    }
+}
+
+/// RMSprop optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct RmspropConfig {
+    pub learning_rate: f32,
+    pub alpha: f32,        // Decay rate (default: 0.99)
+    pub epsilon: f32,      // Numerical stability (default: 1e-8)
+    pub weight_decay: f32, // L2 regularization (default: 0.0)
+}
+
+impl Default for RmspropConfig {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.01,
+            alpha: 0.99,
+            epsilon: 1e-8,
+            weight_decay: 0.0,
+        }
+    }
+}
+
+/// Regression loss configuration (MSE, MAE, etc.)
+#[derive(Debug, Clone, Copy)]
+pub struct RegressionLossConfig {
+    pub reduction: LossReduction,
+}
+
+impl Default for RegressionLossConfig {
+    fn default() -> Self {
+        Self {
+            reduction: LossReduction::Mean,
+        }
+    }
+}
