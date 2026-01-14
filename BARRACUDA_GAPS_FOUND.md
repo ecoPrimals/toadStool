@@ -315,3 +315,33 @@ This document serves as a **gap database** showing:
 🦈 **"Testing reveals truth. Gaps are opportunities. Evolution is continuous."** 🦈
 
 **Next Update**: After fixes applied and tests re-run
+
+### Gap #26: Softmax Entry Point Mismatch ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `normalization.rs:186`  
+**Symptom**: `Unable to find entry point 'exp_and_sum'`  
+**Root Cause**: Shader has `compute_exp_sum` but code expects `exp_and_sum`  
+**Fix**: Changed entry point to `"compute_exp_sum"`  
+**Status**: ✅ FIXED - Softmax now passes all tests
+
+### Gap #27: LayerNorm Incomplete Multi-Pass Algorithm ⚠️ PARTIAL
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `normalization.rs` + `layernorm.wgsl`  
+**Symptom**: Entry point `finalize_stats` not found; incorrect normalization results  
+**Root Cause**: Shader missing third pass to finalize statistics from multiple workgroups  
+**Impact**: LayerNorm produces incorrect results (mean = -1.6 instead of ~0)  
+**Fix Needed**: Either:
+  1. Add `finalize_stats` shader pass for proper reduction, OR
+  2. Rewrite shader to use two-pass algorithm with CPU finalization  
+**Status**: ⚠️ PARTIAL - Needs proper multi-pass implementation  
+**Priority**: HIGH - LayerNorm is critical for transformers
+
+### Gap #28: GroupNorm Entry Point Missing ⚠️ NEEDS FIX
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `normalization.rs:911`  
+**Symptom**: `Unable to find entry point 'main'`  
+**Root Cause**: Using `create_simple_pipeline()` which expects "main", but shader has multi-pass design with `compute_stats` and `normalize`  
+**Fix Needed**: Implement proper multi-pass pipeline like other normalizations  
+**Status**: ⚠️ NEEDS FIX - GroupNorm not functional  
+**Priority**: MEDIUM - Less critical than LayerNorm
+
