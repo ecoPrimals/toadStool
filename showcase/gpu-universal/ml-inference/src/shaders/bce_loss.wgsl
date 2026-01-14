@@ -28,13 +28,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
+    let targ = targets[idx];
     
     // Clamp predictions to [epsilon, 1-epsilon] to prevent log(0)
     let pred_clamped = clamp(pred, params.epsilon, 1.0 - params.epsilon);
     
     // Compute BCE: -[t * log(p) + (1 - t) * log(1 - p)]
-    let loss = -(target * log(pred_clamped) + (1.0 - target) * log(1.0 - pred_clamped));
+    let loss = -(targ * log(pred_clamped) + (1.0 - targ) * log(1.0 - pred_clamped));
     
     output[idx] = loss;
 }

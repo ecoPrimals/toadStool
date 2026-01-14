@@ -22,7 +22,7 @@ struct Params {
     epsilon: f32,         // Numerical stability
     reduction_mode: u32,  // 0=mean, 1=sum, 2=none
     size: u32,
-    _padding: [u32; 3],
+    _padding: vec3<u32>,
 }
 
 @compute @workgroup_size(256)
@@ -33,7 +33,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
+    let targ = targets[idx];
     
     // Clamp predictions for numerical stability
     let pred_clamped = clamp(pred, params.epsilon, 1.0 - params.epsilon);
@@ -42,7 +42,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // For binary: FL = -alpha * (1 - p_t)^gamma * log(p_t)
     // where p_t = p if target=1, else (1-p)
     var p_t: f32;
-    if target > 0.5 {
+    if targ > 0.5 {
         p_t = pred_clamped;
     } else {
         p_t = 1.0 - pred_clamped;

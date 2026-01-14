@@ -266,8 +266,8 @@ impl WgpuExecutor {
         let output_buffer = self.create_output_buffer(size, "LeakyReLU Output");
         let staging_buffer = self.create_staging_buffer(size, "LeakyReLU Staging");
 
-        // Create params buffer
-        let params = [negative_slope, 0.0, 0.0, 0.0]; // Pad to 16 bytes
+        // Create params buffer (aligned to 32 bytes for WGSL struct)
+        let params = [negative_slope, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // Pad to 32 bytes
         let params_buffer = self.create_uniform_buffer(&params, "LeakyReLU Params");
 
         // Create bind group layout with params
@@ -362,8 +362,8 @@ impl WgpuExecutor {
         let output_buffer = self.create_output_buffer(size, "ELU Output");
         let staging_buffer = self.create_staging_buffer(size, "ELU Staging");
 
-        // Create params buffer
-        let params = [alpha, 0.0, 0.0, 0.0]; // Pad to 16 bytes
+        // Create params buffer (aligned to 32 bytes for WGSL struct)
+        let params = [alpha, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // Pad to 32 bytes
         let params_buffer = self.create_uniform_buffer(&params, "ELU Params");
 
         // Create bind group layout with params

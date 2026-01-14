@@ -57,11 +57,10 @@ async fn test_swish_fp32_precision() {
     // Swish(0) = 0
     assert!(result[2].abs() < FP32_TOLERANCE, "Swish(0) should be 0, got {}", result[2]);
     
-    // Swish is smooth and monotonic for this range
-    for i in 0..result.len()-1 {
-        assert!(result[i] <= result[i+1] + FP32_TOLERANCE,
-            "Swish should be approximately monotonic in this range");
-    }
+    // Swish/SiLU is NON-MONOTONIC (has a small dip around x ≈ -1.278)
+    // Just verify general increasing trend and proper behavior
+    assert!(result[0] < result[4], "Swish(-2.0) < Swish(2.0)");
+    assert!(result[2] < result[4], "Swish(0.0) < Swish(2.0)");
     
     println!("✅ Swish/SiLU precision test passed");
 }
@@ -176,14 +175,12 @@ async fn test_mish_fp32_precision() {
     assert_eq!(result.len(), input.len());
     assert!(result.iter().all(|&x| x.is_finite()));
     
-    // Mish is smooth and approximately monotonic
-    for i in 0..result.len()-1 {
-        assert!(result[i] <= result[i+1] + FP32_TOLERANCE_RELAXED,
-            "Mish should be approximately monotonic");
-    }
-    
-    // Mish(0) should be close to 0
-    assert!(result[2].abs() < 0.1, "Mish(0) should be small, got {}", result[2]);
+    // Mish is ALSO NON-MONOTONIC (has a dip from -2 to -1)
+    // Reference: Mish(-2) = -0.253, Mish(-1) = -0.303 (decreases!)
+    // Just verify it's working and producing correct general behavior
+    assert!(result[2].abs() < 0.1, "Mish(0) should be ~0, got {}", result[2]);
+    assert!(result[0] > result[1], "Mish has characteristic dip: Mish(-2) > Mish(-1)");
+    assert!(result[1] < result[3], "Mish eventually increases: Mish(-1) < Mish(1)");
     
     println!("✅ Mish precision test passed");
 }
