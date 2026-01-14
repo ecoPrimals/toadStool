@@ -2376,15 +2376,18 @@ impl WgpuExecutor {
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct FocalParams {
-            alpha: f32,
-            gamma: f32,
-            epsilon: f32,
-            reduction_mode: u32,
-            size: u32,
-            _pad1: [u32; 3],
-            _pad2: [u32; 4],
-            _pad3: [u32; 4],
-            _pad4: [u32; 4],  // Pad to 80 bytes total
+            alpha: f32,            // offset 0, 4 bytes
+            gamma: f32,            // offset 4, 4 bytes
+            epsilon: f32,          // offset 8, 4 bytes
+            reduction_mode: u32,   // offset 12, 4 bytes
+            size: u32,             // offset 16, 4 bytes
+            _pad0: [u32; 3],       // offset 20, 12 bytes - padding to align vec3
+            _pad1: [u32; 3],       // offset 32, 12 bytes - vec3<u32>
+            _pad2: [u32; 4],       // offset 48, 16 bytes - vec4<u32>
+            _pad3: [u32; 4],       // offset 64, 16 bytes - vec4<u32>
+            _pad4: [u32; 4],       // offset 80, 16 bytes - vec4<u32>
+            _pad5: u32,            // offset 92, 4 bytes - final padding to 96 (multiple of 16)
+            // Total: 96 bytes (matches WGSL struct alignment requirement)
         }
 
         let reduction_mode = match config.reduction {
@@ -2399,10 +2402,12 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
             reduction_mode,
             size: size as u32,
+            _pad0: [0; 3],  // Explicit padding to match WGSL vec3 alignment
             _pad1: [0; 3],
             _pad2: [0; 4],
             _pad3: [0; 4],
             _pad4: [0; 4],
+            _pad5: 0,       // Final padding to reach 96 bytes
         };
 
         let params_buffer =

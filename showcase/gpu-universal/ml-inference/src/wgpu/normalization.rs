@@ -450,7 +450,7 @@ impl WgpuExecutor {
                     label: Some("LayerNorm Finalize Stats"),
                     layout: Some(&pipeline_layout),
                     module: &shader,
-                    entry_point: "compute_stats",  // Note: Using compute_stats as placeholder, this pass may be unnecessary
+                    entry_point: "finalize_stats",
                     compilation_options: Default::default(),
                     cache: None,
                 });
