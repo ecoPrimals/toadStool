@@ -27,10 +27,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
+    let targ = targets[idx];  // 'target' is reserved in WGSL
     
     // Compute squared error
-    let diff = pred - target;
+    let diff = pred - targ;
     let squared_error = diff * diff;
     
     // Apply reduction based on mode

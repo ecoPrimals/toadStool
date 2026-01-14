@@ -27,10 +27,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
+    let targ = targets[idx];
     
     // Compute absolute error
-    let abs_error = abs(pred - target);
+    let abs_error = abs(pred - targ);
     
     // Apply reduction based on mode
     if params.reduction_mode == 2u {  // None: per-element

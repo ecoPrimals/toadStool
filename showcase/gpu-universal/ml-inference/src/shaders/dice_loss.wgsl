@@ -16,7 +16,7 @@
 @group(0) @binding(3) var<uniform> params: Params;
 
 struct Params {
-    smooth: f32,          // Smoothing factor to avoid division by zero, typically 1.0
+    smoothing: f32,          // Smoothing factor to avoid division by zero, typically 1.0
     reduction_mode: u32,  // 0=mean, 1=sum, 2=none
     batch_size: u32,
     elements_per_sample: u32,
@@ -54,7 +54,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>,
         let idx = base_idx + local_idx + i * threads_per_workgroup;
         if idx < base_idx + params.elements_per_sample {
             let pred = predictions[idx];
-            let target = targets[idx];
+            let targ = targets[idx];
             
             shared_intersection[local_idx] = shared_intersection[local_idx] + pred * target;
             shared_pred_sum[local_idx] = shared_pred_sum[local_idx] + pred;
@@ -81,7 +81,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>,
         let target_sum = shared_target_sum[0];
         
         // Dice coefficient
-        let dice = (2.0 * intersection + params.smooth) / (pred_sum + target_sum + params.smooth);
+        let dice = (2.0 * intersection + params.smoothing) / (pred_sum + target_sum + params.smoothing);
         
         // Dice loss = 1 - dice_coefficient
         output[batch_idx] = 1.0 - dice;

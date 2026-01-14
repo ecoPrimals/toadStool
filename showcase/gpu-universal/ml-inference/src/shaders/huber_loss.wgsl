@@ -27,8 +27,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
-    let diff = abs(pred - target);
+    let targ = targets[idx];
+    let diff = abs(pred - targ);
     
     // Compute Huber loss
     var loss: f32;

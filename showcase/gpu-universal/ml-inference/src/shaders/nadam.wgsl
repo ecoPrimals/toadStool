@@ -27,7 +27,7 @@ struct Params {
     epsilon: f32,         // Numerical stability, typically 1e-8
     weight_decay: f32,    // L2 regularization
     step: u32,            // Current step number
-    _padding: [u32; 2],
+    _padding: vec2<u32>,  // Explicit padding for alignment
 }
 
 @compute @workgroup_size(256)
