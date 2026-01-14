@@ -666,4 +666,167 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, output_size).await
     }
+
+    /// Execute Split: Split tensor into two parts (inverse of Concat)
+    ///
+    /// Splits input at specified point into two output tensors.
+    /// Essential for multi-path networks and dynamic routing.
+    ///
+    /// Deep Debt: Split point determined at runtime.
+    ///
+    /// Use cases: Multi-path networks, separate feature groups, dynamic routing.
+    pub async fn execute_split(
+        &self,
+        input: &[f32],
+        split_point: usize,
+    ) -> Result<(Vec<f32>, Vec<f32>)> {
+        anyhow::ensure!(!input.is_empty(), "Split: input cannot be empty");
+        anyhow::ensure!(split_point > 0 && split_point < input.len(), "Split: invalid split point");
+
+        let total_size = input.len();
+        let size1 = split_point;
+        let size2 = total_size - split_point;
+
+        let shader_source = include_str!("../shaders/split.wgsl");
+
+        // Create buffers
+        let input_buffer = self.create_input_buffer(input, "Split Input");
+        let output1_buffer = self.create_output_buffer(size1, "Split Output1");
+        let output2_buffer = self.create_output_buffer(size2, "Split Output2");
+        let staging1_buffer = self.create_staging_buffer(size1, "Split Staging1");
+        let staging2_buffer = self.create_staging_buffer(size2, "Split Staging2");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct SplitParams {
+            total_size: u32,
+            split_point: u32,
+            _pad: u32,
+            _pad2: u32,
+        }
+
+        let params = SplitParams {
+            total_size: total_size as u32,
+            split_point: split_point as u32,
+            _pad: 0,
+            _pad2: 0,
+        };
+
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Split Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Split Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Split Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output1_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output2_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Split", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(total_size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Split");
+
+        encoder.copy_buffer_to_buffer(&output1_buffer, 0, &staging1_buffer, 0, (size1 * std::mem::size_of::<f32>()) as u64);
+        encoder.copy_buffer_to_buffer(&output2_buffer, 0, &staging2_buffer, 0, (size2 * std::mem::size_of::<f32>()) as u64);
+
+        self.queue.submit(Some(encoder.finish()));
+
+        let output1 = self.read_buffer(&staging1_buffer, size1).await?;
+        let output2 = self.read_buffer(&staging2_buffer, size2).await?;
+
+        Ok((output1, output2))
+    }
+
+    /// Execute Squeeze: Remove singleton dimensions
+    ///
+    /// Removes dimensions of size 1 from tensor shape (data unchanged).
+    /// Essential for dimension cleanup and shape normalization.
+    ///
+    /// Deep Debt: Shape manipulation at runtime.
+    ///
+    /// Use cases: Remove broadcast dimensions, shape normalization, dimension cleanup.
+    pub async fn execute_squeeze(&self, input: &[f32]) -> Result<Vec<f32>> {
+        // Squeeze is a metadata operation - data unchanged, just shape
+        // Return a copy of the input data
+        Ok(input.to_vec())
+    }
+
+    /// Execute Unsqueeze: Add singleton dimensions
+    ///
+    /// Adds dimensions of size 1 to tensor shape (data unchanged).
+    /// Essential for broadcasting and dimension expansion.
+    ///
+    /// Deep Debt: Shape manipulation at runtime.
+    ///
+    /// Use cases: Broadcasting preparation, dimension expansion, tensor alignment.
+    pub async fn execute_unsqueeze(&self, input: &[f32]) -> Result<Vec<f32>> {
+        // Unsqueeze is a metadata operation - data unchanged, just shape
+        // Return a copy of the input data
+        Ok(input.to_vec())
+    }
 }
