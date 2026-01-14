@@ -153,6 +153,293 @@ impl WgpuExecutor {
         self.read_buffer(&staging_buffer, size).await
     }
 
-    // NOTE: Softmax, Dropout, and other complex activations would go here
-    // Following the same pattern but with their specific logic
+    /// Execute GELU (Gaussian Error Linear Unit) activation
+    ///
+    /// GELU(x) = x * Φ(x) where Φ is the cumulative distribution function
+    /// Used extensively in BERT, GPT, and modern transformers.
+    ///
+    /// Deep Debt: Runtime activation computation, no hardcoded values.
+    pub async fn execute_gelu(&self, input: &[f32]) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/gelu.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "GELU Input");
+        let output_buffer = self.create_output_buffer(size, "GELU Output");
+        let staging_buffer = self.create_staging_buffer(size, "GELU Staging");
+
+        let bind_group_layout = self.create_binary_bind_group_layout("GELU Bind Group Layout");
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GELU Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "GELU", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "GELU");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
+
+    /// Execute Swish / SiLU (Sigmoid Linear Unit) activation
+    ///
+    /// Swish(x) = x * sigmoid(x)
+    /// Used in EfficientNet, MobileNetV3, and modern architectures.
+    /// Self-gated activation with smooth, non-monotonic behavior.
+    pub async fn execute_swish(&self, input: &[f32]) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/swish.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "Swish Input");
+        let output_buffer = self.create_output_buffer(size, "Swish Output");
+        let staging_buffer = self.create_staging_buffer(size, "Swish Staging");
+
+        let bind_group_layout = self.create_binary_bind_group_layout("Swish Bind Group Layout");
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Swish Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Swish", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Swish");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
+
+    /// Execute LeakyReLU activation: max(α*x, x)
+    ///
+    /// Addresses dying ReLU problem by allowing small negative slope.
+    /// Widely used in GANs and deep networks.
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `negative_slope` - Slope for negative values (typically 0.01)
+    pub async fn execute_leaky_relu(
+        &self,
+        input: &[f32],
+        negative_slope: f32,
+    ) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/leaky_relu.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "LeakyReLU Input");
+        let output_buffer = self.create_output_buffer(size, "LeakyReLU Output");
+        let staging_buffer = self.create_staging_buffer(size, "LeakyReLU Staging");
+
+        // Create params buffer
+        let params = [negative_slope, 0.0, 0.0, 0.0]; // Pad to 16 bytes
+        let params_buffer = self.create_uniform_buffer(&params, "LeakyReLU Params");
+
+        // Create bind group layout with params
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("LeakyReLU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("LeakyReLU Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "LeakyReLU", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LeakyReLU");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
+
+    /// Execute ELU (Exponential Linear Unit) activation
+    ///
+    /// ELU(x) = x if x > 0, else α * (exp(x) - 1)
+    /// Smooth negative part, reduces bias shift effect.
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `alpha` - Scale for negative values (typically 1.0)
+    pub async fn execute_elu(&self, input: &[f32], alpha: f32) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/elu.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "ELU Input");
+        let output_buffer = self.create_output_buffer(size, "ELU Output");
+        let staging_buffer = self.create_staging_buffer(size, "ELU Staging");
+
+        // Create params buffer
+        let params = [alpha, 0.0, 0.0, 0.0]; // Pad to 16 bytes
+        let params_buffer = self.create_uniform_buffer(&params, "ELU Params");
+
+        // Create bind group layout with params
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ELU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ELU Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "ELU", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "ELU");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
+
+    // NOTE: Additional activations (SELU, HardSwish, Mish, etc.) can be added
+    // following the same modern async/await pattern with eliminated boilerplate
 }
