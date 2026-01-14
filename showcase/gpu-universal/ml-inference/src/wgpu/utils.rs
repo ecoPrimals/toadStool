@@ -41,10 +41,22 @@ impl WgpuExecutor {
         })
     }
 
+    /// Create uniform buffer from data (safe helper)
+    ///
+    /// Deep Debt: No hardcoded buffer sizes, determined at runtime.
+    pub(crate) fn create_uniform_buffer(&self, data: &[f32], label: &str) -> wgpu::Buffer {
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            })
+    }
+
     /// Read buffer results (async, safe, modern Rust)
     ///
     /// Idiomatic async/await pattern instead of callback-based.
-    pub(crate) async fn read_buffer(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<f32>> {
+    pub(crate) async fn read_buffer(&self, buffer: &wgpu::Buffer, _size: usize) -> Result<Vec<f32>> {
         let buffer_slice = buffer.slice(..);
         let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
 
