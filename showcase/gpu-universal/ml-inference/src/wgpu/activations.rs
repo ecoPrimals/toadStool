@@ -440,6 +440,106 @@ impl WgpuExecutor {
         self.read_buffer(&staging_buffer, size).await
     }
 
-    // NOTE: Additional activations (SELU, HardSwish, Mish, etc.) can be added
-    // following the same modern async/await pattern with eliminated boilerplate
+    /// Execute SELU (Scaled Exponential Linear Unit) activation
+    ///
+    /// Self-normalizing activation function for deep neural networks.
+    /// Automatically pushes activations towards zero mean and unit variance.
+    ///
+    /// SELU(x) = scale * x                      if x > 0
+    ///         = scale * alpha * (exp(x) - 1)   if x <= 0
+    ///
+    /// Uses proven constants: alpha ≈ 1.673, scale ≈ 1.051
+    /// Used in: Self-Normalizing Neural Networks (SNNs)
+    ///
+    /// Deep Debt: No hardcoded values except mathematically proven constants.
+    pub async fn execute_selu(&self, input: &[f32]) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/selu.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "SELU Input");
+        let output_buffer = self.create_output_buffer(size, "SELU Output");
+        let staging_buffer = self.create_staging_buffer(size, "SELU Staging");
+
+        let bind_group_layout = self.create_binary_bind_group_layout("SELU Bind Group Layout");
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SELU Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "SELU", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "SELU");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
+
+    /// Execute HardSwish activation
+    ///
+    /// Efficient approximation of Swish/SiLU for mobile and edge devices.
+    /// HardSwish(x) = x * ReLU6(x + 3) / 6
+    ///
+    /// Faster than Swish (no sigmoid), optimized for inference on resource-constrained devices.
+    /// Used in: MobileNetV3, EfficientNet-Lite
+    ///
+    /// Deep Debt: Runtime computation, mobile-friendly implementation.
+    pub async fn execute_hardswish(&self, input: &[f32]) -> Result<Vec<f32>> {
+        let size = input.len();
+        let shader_source = include_str!("../shaders/hardswish.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "HardSwish Input");
+        let output_buffer = self.create_output_buffer(size, "HardSwish Output");
+        let staging_buffer = self.create_staging_buffer(size, "HardSwish Staging");
+
+        let bind_group_layout = self.create_binary_bind_group_layout("HardSwish Bind Group Layout");
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("HardSwish Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "HardSwish", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "HardSwish");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, size).await
+    }
 }

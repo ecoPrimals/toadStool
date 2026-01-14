@@ -176,4 +176,262 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, out_size).await
     }
+
+    /// Execute Global Average Pooling
+    ///
+    /// Reduces spatial dimensions (H x W) to 1x1 by averaging across all locations.
+    /// Output shape: [batch, channels, 1, 1]
+    ///
+    /// Used in: Modern CNNs (ResNet, EfficientNet) to replace FC layers.
+    /// Benefits: Reduces parameters, increases spatial invariance.
+    ///
+    /// Deep Debt: All dimensions determined at runtime, vendor-agnostic GPU execution.
+    pub async fn execute_global_avg_pool(
+        &self,
+        input: &[f32],
+        batch: usize,
+        channels: usize,
+        height: usize,
+        width: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            input.len() == batch * channels * height * width,
+            "GlobalAvgPool: input size must match batch * channels * height * width"
+        );
+
+        let out_size = batch * channels;
+        let shader_source = include_str!("../shaders/global_avgpool.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "GlobalAvgPool Input");
+        let output_buffer = self.create_output_buffer(out_size, "GlobalAvgPool Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "GlobalAvgPool Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct GlobalPoolParams {
+            batch_size: u32,
+            channels: u32,
+            height: u32,
+            width: u32,
+        }
+
+        let params = GlobalPoolParams {
+            batch_size: batch as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("GlobalAvgPool Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GlobalAvgPool Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GlobalAvgPool Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "GlobalAvgPool", &bind_group_layout);
+
+        let workgroups = self.calculate_workgroups(out_size, 256);
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "GlobalAvgPool");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
+
+    /// Execute Global Max Pooling
+    ///
+    /// Reduces spatial dimensions (H x W) to 1x1 by taking maximum across all locations.
+    /// Output shape: [batch, channels, 1, 1]
+    ///
+    /// Used in: CNNs for classification, attention mechanisms.
+    /// Benefits: Captures most salient features, reduces overfitting.
+    ///
+    /// Deep Debt: All dimensions determined at runtime, vendor-agnostic GPU execution.
+    pub async fn execute_global_max_pool(
+        &self,
+        input: &[f32],
+        batch: usize,
+        channels: usize,
+        height: usize,
+        width: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            input.len() == batch * channels * height * width,
+            "GlobalMaxPool: input size must match batch * channels * height * width"
+        );
+
+        let out_size = batch * channels;
+        let shader_source = include_str!("../shaders/global_maxpool.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "GlobalMaxPool Input");
+        let output_buffer = self.create_output_buffer(out_size, "GlobalMaxPool Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "GlobalMaxPool Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct GlobalPoolParams {
+            batch_size: u32,
+            channels: u32,
+            height: u32,
+            width: u32,
+        }
+
+        let params = GlobalPoolParams {
+            batch_size: batch as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("GlobalMaxPool Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GlobalMaxPool Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GlobalMaxPool Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "GlobalMaxPool", &bind_group_layout);
+
+        let workgroups = self.calculate_workgroups(out_size, 256);
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "GlobalMaxPool");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
 }

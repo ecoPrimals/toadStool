@@ -951,4 +951,548 @@ impl WgpuExecutor {
 
         Ok(loss)
     }
+
+    /// Execute RMSprop (Root Mean Square Propagation) optimizer step
+    ///
+    /// Adaptive learning rate optimizer that addresses AdaGrad's diminishing learning rates.
+    /// Maintains moving average of squared gradients for per-parameter adaptive rates.
+    ///
+    /// # Arguments
+    /// * `weights` - Current weights (mutable, updated in-place)
+    /// * `gradients` - Computed gradients
+    /// * `square_avg` - Running average of squared gradients (mutable)
+    /// * `config` - RMSprop configuration
+    ///
+    /// Deep Debt: All hyperparameters configured at runtime.
+    pub async fn execute_rmsprop(
+        &self,
+        weights: &mut [f32],
+        gradients: &[f32],
+        square_avg: &mut [f32],
+        config: RmspropConfig,
+    ) -> Result<()> {
+        let num_params = weights.len();
+        anyhow::ensure!(
+            gradients.len() == num_params,
+            "RMSprop: gradients length must match weights length"
+        );
+        anyhow::ensure!(
+            square_avg.len() == num_params,
+            "RMSprop: square_avg length must match weights length"
+        );
+
+        let shader_source = include_str!("../shaders/rmsprop.wgsl");
+
+        // Create buffers
+        let weights_buffer = self.create_input_buffer(weights, "RMSprop Weights");
+        let gradients_buffer = self.create_input_buffer(gradients, "RMSprop Gradients");
+        let sq_avg_in_buffer = self.create_input_buffer(square_avg, "RMSprop SqAvg In");
+        let weights_out_buffer = self.create_output_buffer(num_params, "RMSprop Weights Out");
+        let sq_avg_out_buffer = self.create_output_buffer(num_params, "RMSprop SqAvg Out");
+
+        // Staging buffers for readback
+        let weights_staging = self.create_staging_buffer(num_params, "RMSprop Weights Staging");
+        let sq_avg_staging = self.create_staging_buffer(num_params, "RMSprop SqAvg Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct RmspropParams {
+            learning_rate: f32,
+            alpha: f32,
+            epsilon: f32,
+            weight_decay: f32,
+        }
+
+        let params = RmspropParams {
+            learning_rate: config.learning_rate,
+            alpha: config.alpha,
+            epsilon: config.epsilon,
+            weight_decay: config.weight_decay,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("RMSprop Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        // Create bind group layout
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("RMSprop Layout"),
+                    entries: &[
+                        // Weights (read-only)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Gradients (read-only)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Square average in (read-only)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Weights out (read-write)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Square average out (read-write)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Params (uniform)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RMSprop Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: weights_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: gradients_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: sq_avg_in_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: weights_out_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: sq_avg_out_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline
+        let pipeline = self.create_simple_pipeline(shader_source, "RMSprop", &bind_group_layout);
+
+        // Execute
+        let workgroups = self.calculate_workgroups(num_params, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "RMSprop");
+
+        // Copy outputs to staging
+        encoder.copy_buffer_to_buffer(
+            &weights_out_buffer,
+            0,
+            &weights_staging,
+            0,
+            (num_params * std::mem::size_of::<f32>()) as u64,
+        );
+        encoder.copy_buffer_to_buffer(
+            &sq_avg_out_buffer,
+            0,
+            &sq_avg_staging,
+            0,
+            (num_params * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+
+        // Read back updated weights
+        let weights_slice = weights_staging.slice(..);
+        let (sender1, receiver1) = futures_intrusive::channel::shared::oneshot_channel();
+        weights_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender1.send(result).ok();
+        });
+
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver1
+            .receive()
+            .await
+            .ok_or_else(|| anyhow::anyhow!("Failed to receive weights buffer mapping"))?
+            .context("Failed to map weights buffer")?;
+
+        let weights_data = weights_slice.get_mapped_range();
+        weights.copy_from_slice(bytemuck::cast_slice(&weights_data));
+        drop(weights_data);
+        weights_staging.unmap();
+
+        // Read back updated square average
+        let sq_avg_slice = sq_avg_staging.slice(..);
+        let (sender2, receiver2) = futures_intrusive::channel::shared::oneshot_channel();
+        sq_avg_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender2.send(result).ok();
+        });
+
+        self.device.poll(wgpu::Maintain::Wait);
+        receiver2
+            .receive()
+            .await
+            .ok_or_else(|| anyhow::anyhow!("Failed to receive square_avg buffer mapping"))?
+            .context("Failed to map square_avg buffer")?;
+
+        let sq_avg_data = sq_avg_slice.get_mapped_range();
+        square_avg.copy_from_slice(bytemuck::cast_slice(&sq_avg_data));
+        drop(sq_avg_data);
+        sq_avg_staging.unmap();
+
+        Ok(())
+    }
+
+    /// Execute Huber Loss (Smooth L1 Loss)
+    ///
+    /// Robust regression loss less sensitive to outliers than MSE.
+    /// Combines quadratic loss (for small errors) with linear loss (for large errors).
+    ///
+    /// Used in: Robust regression, DQN reinforcement learning
+    ///
+    /// Deep Debt: Delta threshold and reduction mode configured at runtime.
+    pub async fn execute_huber_loss(
+        &self,
+        predictions: &[f32],
+        targets: &[f32],
+        config: HuberLossConfig,
+    ) -> Result<f32> {
+        let size = predictions.len();
+        anyhow::ensure!(
+            targets.len() == size,
+            "Huber: targets length must match predictions length"
+        );
+
+        let shader_source = include_str!("../shaders/huber_loss.wgsl");
+
+        let predictions_buffer = self.create_input_buffer(predictions, "Huber Predictions");
+        let targets_buffer = self.create_input_buffer(targets, "Huber Targets");
+        let output_buffer = self.create_output_buffer(size, "Huber Output");
+        let staging_buffer = self.create_staging_buffer(size, "Huber Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct HuberParams {
+            delta: f32,
+            reduction_mode: u32,
+            size: u32,
+            _padding: u32,
+        }
+
+        let reduction_mode = match config.reduction {
+            LossReduction::Mean => 0,
+            LossReduction::Sum => 1,
+            LossReduction::None => 2,
+        };
+
+        let params = HuberParams {
+            delta: config.delta,
+            reduction_mode,
+            size: size as u32,
+            _padding: 0,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Huber Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Huber Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Huber Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: predictions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: targets_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Huber", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Huber");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+
+        let losses = self.read_buffer(&staging_buffer, size).await?;
+
+        let loss = match config.reduction {
+            LossReduction::Mean => losses.iter().sum::<f32>() / size as f32,
+            LossReduction::Sum => losses.iter().sum::<f32>(),
+            LossReduction::None => return Ok(losses[0]),
+        };
+
+        Ok(loss)
+    }
+
+    /// Execute BCE (Binary Cross Entropy) Loss
+    ///
+    /// Binary classification loss function.
+    /// BCE(p, t) = -[t * log(p) + (1 - t) * log(1 - p)]
+    ///
+    /// Used in: Binary classification, multi-label classification, GANs
+    ///
+    /// Deep Debt: Epsilon and reduction mode configured at runtime.
+    pub async fn execute_bce_loss(
+        &self,
+        predictions: &[f32],
+        targets: &[f32],
+        config: BceLossConfig,
+    ) -> Result<f32> {
+        let size = predictions.len();
+        anyhow::ensure!(
+            targets.len() == size,
+            "BCE: targets length must match predictions length"
+        );
+
+        let shader_source = include_str!("../shaders/bce_loss.wgsl");
+
+        let predictions_buffer = self.create_input_buffer(predictions, "BCE Predictions");
+        let targets_buffer = self.create_input_buffer(targets, "BCE Targets");
+        let output_buffer = self.create_output_buffer(size, "BCE Output");
+        let staging_buffer = self.create_staging_buffer(size, "BCE Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct BceParams {
+            epsilon: f32,
+            reduction_mode: u32,
+            size: u32,
+            _padding: u32,
+        }
+
+        let reduction_mode = match config.reduction {
+            LossReduction::Mean => 0,
+            LossReduction::Sum => 1,
+            LossReduction::None => 2,
+        };
+
+        let params = BceParams {
+            epsilon: config.epsilon,
+            reduction_mode,
+            size: size as u32,
+            _padding: 0,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("BCE Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("BCE Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BCE Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: predictions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: targets_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "BCE", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "BCE");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+
+        let losses = self.read_buffer(&staging_buffer, size).await?;
+
+        let loss = match config.reduction {
+            LossReduction::Mean => losses.iter().sum::<f32>() / size as f32,
+            LossReduction::Sum => losses.iter().sum::<f32>(),
+            LossReduction::None => return Ok(losses[0]),
+        };
+
+        Ok(loss)
+    }
 }

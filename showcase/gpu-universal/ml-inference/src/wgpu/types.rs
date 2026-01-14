@@ -183,3 +183,35 @@ impl Default for RegressionLossConfig {
         }
     }
 }
+
+/// Huber loss configuration (robust regression)
+#[derive(Debug, Clone, Copy)]
+pub struct HuberLossConfig {
+    pub delta: f32,        // Threshold for switching from quadratic to linear
+    pub reduction: LossReduction,
+}
+
+impl Default for HuberLossConfig {
+    fn default() -> Self {
+        Self {
+            delta: 1.0,
+            reduction: LossReduction::Mean,
+        }
+    }
+}
+
+/// BCE (Binary Cross Entropy) loss configuration
+#[derive(Debug, Clone, Copy)]
+pub struct BceLossConfig {
+    pub epsilon: f32, // Small constant to prevent log(0)
+    pub reduction: LossReduction,
+}
+
+impl Default for BceLossConfig {
+    fn default() -> Self {
+        Self {
+            epsilon: 1e-7,
+            reduction: LossReduction::Mean,
+        }
+    }
+}
