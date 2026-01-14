@@ -2335,7 +2335,10 @@ impl WgpuExecutor {
             epsilon: f32,
             reduction_mode: u32,
             size: u32,
-            _padding: [u32; 3],
+            _pad1: [u32; 3],
+            _pad2: [u32; 4],
+            _pad3: [u32; 4],
+            _pad4: [u32; 4],  // Pad to 80 bytes total
         }
 
         let reduction_mode = match config.reduction {
@@ -2350,7 +2353,10 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
             reduction_mode,
             size: size as u32,
-            _padding: [0; 3],
+            _pad1: [0; 3],
+            _pad2: [0; 4],
+            _pad3: [0; 4],
+            _pad4: [0; 4],
         };
 
         let params_buffer =

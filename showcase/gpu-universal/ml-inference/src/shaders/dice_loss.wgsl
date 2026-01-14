@@ -56,9 +56,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>,
             let pred = predictions[idx];
             let targ = targets[idx];
             
-            shared_intersection[local_idx] = shared_intersection[local_idx] + pred * target;
+            shared_intersection[local_idx] = shared_intersection[local_idx] + pred * targ;
             shared_pred_sum[local_idx] = shared_pred_sum[local_idx] + pred;
-            shared_target_sum[local_idx] = shared_target_sum[local_idx] + target;
+            shared_target_sum[local_idx] = shared_target_sum[local_idx] + targ;
         }
     }
     
