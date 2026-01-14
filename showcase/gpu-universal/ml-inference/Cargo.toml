@@ -97,3 +97,7 @@ path = "src/bin/cross_gpu_inference.rs"
 [[bench]]
 name = "simple_benchmarks"
 harness = false
+
+[[bench]]
+name = "layernorm_comparison"
+harness = false
