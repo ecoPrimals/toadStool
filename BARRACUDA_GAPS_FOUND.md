@@ -336,14 +336,18 @@ This document serves as a **gap database** showing:
 **Status**: ⚠️ PARTIAL - Needs proper multi-pass implementation  
 **Priority**: HIGH - LayerNorm is critical for transformers
 
-### Gap #28: GroupNorm Entry Point Missing ⚠️ NEEDS FIX
+### Gap #28: GroupNorm Entry Point Missing ✅ FIXED
 **Discovered**: Jan 14, 2026 - Testing session  
-**Location**: `normalization.rs:911`  
+**Location**: `normalization.rs:910-914`  
 **Symptom**: `Unable to find entry point 'main'`  
 **Root Cause**: Using `create_simple_pipeline()` which expects "main", but shader has multi-pass design with `compute_stats` and `normalize`  
-**Fix Needed**: Implement proper multi-pass pipeline like other normalizations  
-**Status**: ⚠️ NEEDS FIX - GroupNorm not functional  
-**Priority**: MEDIUM - Less critical than LayerNorm
+**Fix**: Implemented proper two-pass pipeline:
+  - Pass 1: `compute_stats` entry point (one workgroup per group)
+  - Pass 2: `normalize` entry point (parallel across all elements)  
+**Status**: ✅ FIXED - GroupNorm now passes all tests  
+**Time to Fix**: < 10 minutes  
+**Priority**: MEDIUM - Less critical than LayerNorm  
+**Learning**: Multi-pass shaders need explicit pipeline creation for each pass
 
 
 ### Gap #29: MaxPool2D Struct Field Order Mismatch ✅ FIXED
