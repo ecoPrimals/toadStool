@@ -48,7 +48,10 @@ async fn test_matmul_fp32_precision() {
     // [4*7+5*9+6*11, 4*8+5*10+6*12] = [139, 154]
     let expected = vec![58.0, 64.0, 139.0, 154.0];
     
-    let result = executor.execute_matmul(&a, &b, 2, 3, 2).await.unwrap();
+    // MatMul(m, n, k): A[m, k] @ B[k, n] = C[m, n]
+    // A is [2, 3], B is [3, 2], result is [2, 2]
+    // So: m=2, n=2, k=3
+    let result = executor.execute_matmul(&a, &b, 2, 2, 3).await.unwrap();
     
     for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
         let error = (out - exp).abs();
