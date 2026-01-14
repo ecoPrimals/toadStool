@@ -907,11 +907,75 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "GroupNorm", &bind_group_layout);
-        let workgroups = self.calculate_workgroups(total_size, 256);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "GroupNorm");
+        // Create pipelines for multi-pass algorithm
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("GroupNorm Shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
+
+        let pipeline_layout =
+            self.device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GroupNorm Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        // Two passes: compute_stats, then normalize
+        let compute_stats_pipeline =
+            self.device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GroupNorm Compute Stats"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "compute_stats",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+
+        let normalize_pipeline =
+            self.device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GroupNorm Normalize"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "normalize",
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+
+        // Execute two-pass algorithm
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GroupNorm Encoder"),
+            });
+
+        // Pass 1: Compute group statistics
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GroupNorm Compute Stats"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&compute_stats_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // One workgroup per group
+            pass.dispatch_workgroups(1, 1, total_groups as u32);
+        }
+
+        // Pass 2: Normalize using computed statistics
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GroupNorm Normalize"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&normalize_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let workgroups = self.calculate_workgroups(total_size, 256);
+            pass.dispatch_workgroups(workgroups as u32, 1, 1);
+        }
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,
