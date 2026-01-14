@@ -1,6 +1,6 @@
 //! Basic tensor operations
 //!
-//! MatMul, Vector Addition, Binary Operations, etc.
+//! MatMul, BatchMatMul, Vector Addition, Binary Operations, etc.
 //! Core building blocks for neural networks.
 
 use anyhow::Result;
@@ -9,6 +9,160 @@ use wgpu::util::DeviceExt;
 use super::{executor::WgpuExecutor, types::BinaryOp};
 
 impl WgpuExecutor {
+    /// Execute BatchMatMul: Batched Matrix Multiplication
+    ///
+    /// Performs batched matrix multiplication: [batch, m, k] @ [batch, k, n] = [batch, m, n]
+    /// Critical for transformer attention: efficient multi-head attention computation.
+    ///
+    /// Deep Debt: All dimensions runtime-configured.
+    ///
+    /// Use cases: Transformer attention, batched linear layers, parallel matrix ops.
+    pub async fn execute_batch_matmul(
+        &self,
+        a: &[f32],
+        b: &[f32],
+        batch_size: usize,
+        m: usize,
+        n: usize,
+        k: usize,
+    ) -> Result<Vec<f32>> {
+        let a_size = batch_size * m * k;
+        let b_size = batch_size * k * n;
+        let out_size = batch_size * m * n;
+
+        anyhow::ensure!(a.len() == a_size, "BatchMatMul: A size mismatch");
+        anyhow::ensure!(b.len() == b_size, "BatchMatMul: B size mismatch");
+
+        let shader_source = include_str!("../shaders/batch_matmul.wgsl");
+
+        let a_buffer = self.create_input_buffer(a, "BatchMatMul A");
+        let b_buffer = self.create_input_buffer(b, "BatchMatMul B");
+        let output_buffer = self.create_output_buffer(out_size, "BatchMatMul Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "BatchMatMul Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct BatchMatMulParams {
+            batch_size: u32,
+            m: u32,
+            n: u32,
+            k: u32,
+        }
+
+        let params = BatchMatMulParams {
+            batch_size: batch_size as u32,
+            m: m as u32,
+            n: n as u32,
+            k: k as u32,
+        };
+
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BatchMatMul Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("BatchMatMul Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BatchMatMul Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: a_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: b_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "BatchMatMul", &bind_group_layout);
+
+        let workgroup_x = (n + 15) / 16;
+        let workgroup_y = (m + 15) / 16;
+        let workgroup_z = batch_size;
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("BatchMatMul Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("BatchMatMul Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroup_x as u32, workgroup_y as u32, workgroup_z as u32);
+        }
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
+
     /// Execute matrix multiplication: C = A * B
     ///
     /// Modern idiomatic Rust with safe buffer handling.
