@@ -3,7 +3,7 @@
 //! Dropout and other regularization techniques for training.
 //! Prevents overfitting and improves generalization.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::executor::WgpuExecutor;

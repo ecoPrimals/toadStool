@@ -3,7 +3,7 @@
 //! MatMul, Vector Addition, Binary Operations, etc.
 //! Core building blocks for neural networks.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::{executor::WgpuExecutor, types::BinaryOp};

@@ -3,7 +3,7 @@
 //! MaxPool2D and other pooling operations for CNNs.
 //! Downsampling with spatial reduction.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::{executor::WgpuExecutor, types::Pool2DConfig};

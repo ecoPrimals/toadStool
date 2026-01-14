@@ -49,6 +49,12 @@ pub enum GpuBackend {
     WebGPU,
     /// AMD ROCm/HIP (AMD native)
     ROCm,
+    /// Metal (Apple GPU API)
+    Metal,
+    /// DirectX 12 (Windows GPU API)
+    Dx12,
+    /// OpenGL (legacy cross-platform)
+    OpenGl,
 }
 
 impl fmt::Display for GpuBackend {
@@ -59,6 +65,9 @@ impl fmt::Display for GpuBackend {
             Self::Vulkan => write!(f, "Vulkan"),
             Self::WebGPU => write!(f, "WebGPU"),
             Self::ROCm => write!(f, "ROCm"),
+            Self::Metal => write!(f, "Metal"),
+            Self::Dx12 => write!(f, "DirectX 12"),
+            Self::OpenGl => write!(f, "OpenGL"),
         }
     }
 }
@@ -152,8 +161,11 @@ impl GpuSelector {
         match backend {
             GpuBackend::Cuda => 5,    // NVIDIA native
             GpuBackend::ROCm => 4,    // AMD native
-            GpuBackend::OpenCL => 3,  // Cross-vendor
-            GpuBackend::Vulkan => 2,  // Modern cross-vendor
+            GpuBackend::Vulkan => 3,  // Modern cross-vendor
+            GpuBackend::Metal => 3,   // Apple native
+            GpuBackend::Dx12 => 3,    // Windows native
+            GpuBackend::OpenCL => 2,  // Cross-vendor
+            GpuBackend::OpenGl => 1,  // Legacy
             GpuBackend::WebGPU => 1,  // Most portable
         }
     }
