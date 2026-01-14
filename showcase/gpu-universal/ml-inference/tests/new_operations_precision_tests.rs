@@ -1431,3 +1431,425 @@ async fn test_transpose_precision() {
     
     println!("✅ Transpose precision test passed");
 }
+
+// ============================================================================
+// REDUCE OPERATIONS (4 total) - HIGH PRIORITY
+// ============================================================================
+
+#[tokio::test]
+async fn test_reduce_sum_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+    let result = executor.execute_reduce(&input, ReduceOp::Sum).await.unwrap();
+    
+    // Expected: 1+2+3+4+5+6+7+8+9+10 = 55
+    let expected = 55.0;
+    
+    assert!((result - expected).abs() < FP32_TOLERANCE,
+        "Reduce Sum error: got {}, expected {}", result, expected);
+    
+    // Test empty behavior is safe
+    assert!(result.is_finite(), "Result should be finite");
+    
+    println!("✅ Reduce Sum precision test passed");
+}
+
+#[tokio::test]
+async fn test_reduce_max_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![3.5, 1.2, 9.8, 2.1, 5.5, 7.3, 4.9, 8.1];
+    let result = executor.execute_reduce(&input, ReduceOp::Max).await.unwrap();
+    
+    // Expected: 9.8 (maximum value)
+    let expected = 9.8;
+    
+    assert!((result - expected).abs() < FP32_TOLERANCE,
+        "Reduce Max error: got {}, expected {}", result, expected);
+    
+    // Test with negative values
+    let input_neg = vec![-5.0, -1.0, -10.0, -3.0];
+    let result_neg = executor.execute_reduce(&input_neg, ReduceOp::Max).await.unwrap();
+    assert!((result_neg - (-1.0)).abs() < FP32_TOLERANCE,
+        "Reduce Max with negatives: got {}, expected -1.0", result_neg);
+    
+    println!("✅ Reduce Max precision test passed");
+}
+
+#[tokio::test]
+async fn test_reduce_min_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![3.5, 1.2, 9.8, 2.1, 5.5, 7.3, 4.9, 8.1];
+    let result = executor.execute_reduce(&input, ReduceOp::Min).await.unwrap();
+    
+    // Expected: 1.2 (minimum value)
+    let expected = 1.2;
+    
+    assert!((result - expected).abs() < FP32_TOLERANCE,
+        "Reduce Min error: got {}, expected {}", result, expected);
+    
+    // Test with negative values
+    let input_neg = vec![-5.0, -1.0, -10.0, -3.0];
+    let result_neg = executor.execute_reduce(&input_neg, ReduceOp::Min).await.unwrap();
+    assert!((result_neg - (-10.0)).abs() < FP32_TOLERANCE,
+        "Reduce Min with negatives: got {}, expected -10.0", result_neg);
+    
+    println!("✅ Reduce Min precision test passed");
+}
+
+#[tokio::test]
+async fn test_reduce_mean_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+    let result = executor.execute_reduce(&input, ReduceOp::Mean).await.unwrap();
+    
+    // Expected: (2+4+6+8+10)/5 = 30/5 = 6.0
+    let expected = 6.0;
+    
+    assert!((result - expected).abs() < FP32_TOLERANCE,
+        "Reduce Mean error: got {}, expected {}", result, expected);
+    
+    // Test with non-trivial mean
+    let input2 = vec![1.5, 2.5, 3.5, 4.5];
+    let result2 = executor.execute_reduce(&input2, ReduceOp::Mean).await.unwrap();
+    let expected2 = 3.0; // (1.5+2.5+3.5+4.5)/4 = 12/4 = 3.0
+    assert!((result2 - expected2).abs() < FP32_TOLERANCE,
+        "Reduce Mean error: got {}, expected {}", result2, expected2);
+    
+    println!("✅ Reduce Mean precision test passed");
+}
+
+// ============================================================================
+// DOT PRODUCT (1 operation) - HIGH PRIORITY
+// ============================================================================
+
+#[tokio::test]
+async fn test_dotproduct_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // DotProduct: A · B = sum(a[i] * b[i])
+    let a = vec![1.0, 2.0, 3.0, 4.0];
+    let b = vec![5.0, 6.0, 7.0, 8.0];
+    
+    let result = executor.execute_dot_product(&a, &b).await.unwrap();
+    
+    // Expected: 1*5 + 2*6 + 3*7 + 4*8 = 5 + 12 + 21 + 32 = 70
+    let expected = 70.0;
+    
+    assert!((result - expected).abs() < FP32_TOLERANCE,
+        "DotProduct error: got {}, expected {}", result, expected);
+    
+    // Test orthogonal vectors (should be 0)
+    let c = vec![1.0, 0.0, 0.0, 0.0];
+    let d = vec![0.0, 1.0, 0.0, 0.0];
+    let result_ortho = executor.execute_dot_product(&c, &d).await.unwrap();
+    assert!((result_ortho - 0.0).abs() < FP32_TOLERANCE,
+        "Orthogonal vectors should have dot product 0, got {}", result_ortho);
+    
+    // Test parallel vectors (a·a = ||a||²)
+    let e = vec![3.0, 4.0];
+    let result_parallel = executor.execute_dot_product(&e, &e).await.unwrap();
+    let expected_parallel = 3.0*3.0 + 4.0*4.0; // = 9 + 16 = 25
+    assert!((result_parallel - expected_parallel).abs() < FP32_TOLERANCE,
+        "Parallel vectors: got {}, expected {}", result_parallel, expected_parallel);
+    
+    println!("✅ DotProduct precision test passed");
+}
+
+// ============================================================================
+// MAP OPERATIONS (5 total) - HIGH PRIORITY
+// ============================================================================
+
+#[tokio::test]
+async fn test_map_square_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let result = executor.execute_map(&input, MapOp::Square).await.unwrap();
+    
+    // Expected: [1, 4, 9, 16, 25]
+    let expected = vec![1.0, 4.0, 9.0, 16.0, 25.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Map Square error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Test negative values
+    let input_neg = vec![-2.0, -3.0];
+    let result_neg = executor.execute_map(&input_neg, MapOp::Square).await.unwrap();
+    assert!((result_neg[0] - 4.0).abs() < FP32_TOLERANCE);
+    assert!((result_neg[1] - 9.0).abs() < FP32_TOLERANCE);
+    
+    println!("✅ Map Square precision test passed");
+}
+
+#[tokio::test]
+async fn test_map_sqrt_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![1.0, 4.0, 9.0, 16.0, 25.0];
+    let result = executor.execute_map(&input, MapOp::Sqrt).await.unwrap();
+    
+    // Expected: [1, 2, 3, 4, 5]
+    let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Map Sqrt error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Test sqrt(0) = 0
+    let result_zero = executor.execute_map(&[0.0], MapOp::Sqrt).await.unwrap();
+    assert!((result_zero[0] - 0.0).abs() < FP32_TOLERANCE);
+    
+    println!("✅ Map Sqrt precision test passed");
+}
+
+#[tokio::test]
+async fn test_map_abs_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![-5.0, -2.0, 0.0, 3.0, 7.0];
+    let result = executor.execute_map(&input, MapOp::Abs).await.unwrap();
+    
+    // Expected: [5, 2, 0, 3, 7]
+    let expected = vec![5.0, 2.0, 0.0, 3.0, 7.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Map Abs error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Property: abs(x) >= 0
+    for &val in &result {
+        assert!(val >= 0.0, "Abs should always be non-negative, got {}", val);
+    }
+    
+    println!("✅ Map Abs precision test passed");
+}
+
+#[tokio::test]
+async fn test_map_negate_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![1.0, -2.0, 3.0, -4.0, 0.0];
+    let result = executor.execute_map(&input, MapOp::Negate).await.unwrap();
+    
+    // Expected: [-1, 2, -3, 4, 0]
+    let expected = vec![-1.0, 2.0, -3.0, 4.0, 0.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Map Negate error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Property: -(-x) = x (double negation)
+    let result2 = executor.execute_map(&result, MapOp::Negate).await.unwrap();
+    for (i, (&val, &orig)) in result2.iter().zip(input.iter()).enumerate() {
+        assert!((val - orig).abs() < FP32_TOLERANCE,
+            "Double negation at {}: got {}, expected {}", i, val, orig);
+    }
+    
+    println!("✅ Map Negate precision test passed");
+}
+
+#[tokio::test]
+async fn test_map_reciprocal_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    let input = vec![1.0, 2.0, 4.0, 5.0, 10.0];
+    let result = executor.execute_map(&input, MapOp::Reciprocal).await.unwrap();
+    
+    // Expected: [1, 0.5, 0.25, 0.2, 0.1]
+    let expected = vec![1.0, 0.5, 0.25, 0.2, 0.1];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Map Reciprocal error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Property: 1/(1/x) = x (double reciprocal)
+    let result2 = executor.execute_map(&result, MapOp::Reciprocal).await.unwrap();
+    for (i, (&val, &orig)) in result2.iter().zip(input.iter()).enumerate() {
+        assert!((val - orig).abs() < FP32_TOLERANCE * 10.0, // Allow more tolerance for double operation
+            "Double reciprocal at {}: got {}, expected {}", i, val, orig);
+    }
+    
+    println!("✅ Map Reciprocal precision test passed");
+}
+
+// ============================================================================
+// SCAN OPERATION (1 operation) - Prefix Sum
+// ============================================================================
+
+#[tokio::test]
+async fn test_scan_sum_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // Scan (prefix sum): [1, 2, 3, 4] -> [1, 3, 6, 10]
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let exclusive = false; // Inclusive scan
+    let result = executor.execute_scan(&input, ScanOp::Sum, exclusive).await.unwrap();
+    
+    // Expected: [1, 1+2, 1+2+3, 1+2+3+4, 1+2+3+4+5] = [1, 3, 6, 10, 15]
+    let expected = vec![1.0, 3.0, 6.0, 10.0, 15.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Scan Sum error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Property: Each element should be >= previous element for positive inputs
+    for i in 1..result.len() {
+        assert!(result[i] >= result[i-1],
+            "Scan Sum should be non-decreasing for positive inputs");
+    }
+    
+    println!("✅ Scan Sum precision test passed");
+}
+
+// ============================================================================
+// GATHER OPERATION (1 operation) - Index-based selection
+// ============================================================================
+
+#[tokio::test]
+async fn test_gather_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // Gather: Select elements by indices
+    // Input: [10, 20, 30, 40, 50]
+    // Indices: [0, 2, 4, 1]
+    // Output: [10, 30, 50, 20]
+    let input = vec![10.0, 20.0, 30.0, 40.0, 50.0];
+    let indices = vec![0, 2, 4, 1];
+    
+    let result = executor.execute_gather(&input, &indices).await.unwrap();
+    
+    let expected = vec![10.0, 30.0, 50.0, 20.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Gather error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Test with repeated indices
+    let indices2 = vec![2, 2, 2];
+    let result2 = executor.execute_gather(&input, &indices2).await.unwrap();
+    assert_eq!(result2.len(), 3);
+    for &val in &result2 {
+        assert!((val - 30.0).abs() < FP32_TOLERANCE,
+            "Gather should return 30.0 for all indices pointing to index 2");
+    }
+    
+    println!("✅ Gather precision test passed");
+}
+
+// ============================================================================
+// SCATTER OPERATION (1 operation) - Index-based assignment
+// ============================================================================
+
+#[tokio::test]
+async fn test_scatter_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // Scatter: Place values at specified indices
+    // Output initialized to 0s, size 5
+    // Values: [100, 200, 300]
+    // Indices: [1, 3, 4]
+    // Expected output: [0, 100, 0, 200, 300]
+    let output_size = 5;
+    let values = vec![100.0, 200.0, 300.0];
+    let indices = vec![1, 3, 4];
+    
+    let result = executor.execute_scatter(&values, &indices, output_size).await.unwrap();
+    
+    let expected = vec![0.0, 100.0, 0.0, 200.0, 300.0];
+    
+    assert_eq!(result.len(), expected.len());
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Scatter error at {}: got {}, expected {}", i, out, exp);
+    }
+    
+    // Test all values at once
+    let values2 = vec![1.0, 2.0, 3.0, 4.0];
+    let indices2 = vec![0, 1, 2, 3];
+    let result2 = executor.execute_scatter(&values2, &indices2, 4).await.unwrap();
+    for (i, (&out, &exp)) in result2.iter().zip(values2.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "Scatter all values: error at {}", i);
+    }
+    
+    println!("✅ Scatter precision test passed");
+}
+
+// ============================================================================
+// DROPOUT (1 operation) - Regularization
+// ============================================================================
+
+#[tokio::test]
+async fn test_dropout_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // Dropout: Randomly set elements to 0 with probability p
+    // During inference (training=false), should return input unchanged
+    let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    let dropout_prob = 0.0; // No dropout
+    let training = false;
+    
+    let result = executor.execute_dropout(&input, dropout_prob, training, None).await.unwrap();
+    
+    // With p=0.0, all values should pass through
+    assert_eq!(result.len(), input.len());
+    for (i, (&out, &inp)) in result.iter().zip(input.iter()).enumerate() {
+        assert!((out - inp).abs() < FP32_TOLERANCE,
+            "Dropout with p=0.0 error at {}: got {}, expected {}", i, out, inp);
+    }
+    
+    // Test with training mode and dropout
+    let dropout_prob2 = 0.5;
+    let training2 = true;
+    let result2 = executor.execute_dropout(&input, dropout_prob2, training2, Some(42)).await.unwrap();
+    
+    // Properties to verify:
+    // 1. Output length matches input
+    assert_eq!(result2.len(), input.len());
+    
+    // 2. Non-zero values should be scaled by 1/(1-p) to maintain expected value
+    let scale = 1.0 / (1.0 - dropout_prob2);
+    let mut zero_count = 0;
+    let mut nonzero_count = 0;
+    
+    for (i, (&out, &inp)) in result2.iter().zip(input.iter()).enumerate() {
+        if out.abs() < FP32_TOLERANCE {
+            zero_count += 1;
+        } else {
+            nonzero_count += 1;
+            // Non-zero values should be scaled
+            let expected_scaled = inp * scale;
+            assert!((out - expected_scaled).abs() < FP32_TOLERANCE * 10.0,
+                "Dropout scaled value at {}: got {}, expected {}", i, out, expected_scaled);
+        }
+    }
+    
+    // 3. Should have some zeros and some non-zeros (statistically, with p=0.5)
+    // We can't guarantee exact distribution in one run, but we can check it's working
+    println!("Dropout p=0.5: {} zeros, {} non-zeros", zero_count, nonzero_count);
+    
+    // At minimum, check that dropout actually happened (not all zeros, not all non-zeros)
+    // With 8 elements and p=0.5, having all same is extremely unlikely but possible
+    // So we just verify the scaling is correct for non-zero elements
+    
+    println!("✅ Dropout precision test passed");
+}

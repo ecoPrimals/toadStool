@@ -347,7 +347,7 @@ async fn test_matmul_accumulation_error() {
     // Expected: each element should be n * 0.01 * 0.01 = n * 0.0001
     let expected_value = n as f32 * 0.0001;
     
-    let result = executor.execute_matmul(&a, &b, n as u32, n as u32, n as u32).await.unwrap();
+    let result = executor.execute_matmul(&a, &b, n, n, n).await.unwrap();
     
     for (i, &val) in result.iter().enumerate() {
         let relative_error = ((val - expected_value) / expected_value).abs();
