@@ -81,11 +81,19 @@ impl Default for RuntimeConfig {
 
 impl SecureEnclaveRuntime {
     /// Create a new secure enclave runtime with default configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns error if memory allocation for key store fails
     pub fn new() -> Result<Self> {
         Self::with_config(RuntimeConfig::default())
     }
 
     /// Create a new secure enclave runtime with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns error if memory allocation for key store fails
     pub fn with_config(config: RuntimeConfig) -> Result<Self> {
         let key_store = EphemeralKeyStore::new()?;
 
@@ -111,6 +119,10 @@ impl SecureEnclaveRuntime {
     /// Store an encryption key in the ephemeral key store
     ///
     /// Keys are automatically wiped when the runtime is dropped
+    ///
+    /// # Errors
+    ///
+    /// Returns error if key exceeds maximum size or memory allocation fails
     pub fn store_key(&mut self, key: &[u8]) -> Result<()> {
         let result = self.key_store.store_key(key);
 

@@ -114,7 +114,7 @@ detect-apple = []
 # 2027+: Drop CUDA, go full WebGPU (true vendor agnosticism)
 
 # Additional features (independent)
-spirv-support = ["spirv"]
+spirv = ["dep:spirv"]
 jit = ["cranelift-jit", "wasmtime"]
 testing = []
 

@@ -2,7 +2,7 @@
 //!
 //! Provides memory regions that are:
 //! - **Locked**: Cannot be swapped to disk (mlock)
-//! - **Protected**: Cannot appear in core dumps (madvise MADV_DONTDUMP)
+//! - **Protected**: Cannot appear in core dumps (madvise `MADV_DONTDUMP`)
 //! - **Wiped**: Explicitly zeroed before deallocation
 //! - **Aligned**: Page-aligned for optimal performance
 //!
@@ -102,7 +102,7 @@ impl IsolatedMemoryRegion {
 
         // Create layout (page-aligned)
         let layout = Layout::from_size_align(aligned_size, PAGE_SIZE)
-            .map_err(|e| Error::memory_allocation(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| Error::memory_allocation(format!("Invalid layout: {e}")))?;
 
         // SAFETY: Layout is valid (non-zero size, power-of-2 alignment)
         let ptr = unsafe { alloc(layout) };
@@ -139,7 +139,7 @@ impl IsolatedMemoryRegion {
         #[cfg(target_os = "linux")]
         unsafe {
             if libc::madvise(
-                ptr.as_ptr() as *mut libc::c_void,
+                ptr.as_ptr().cast::<libc::c_void>(),
                 aligned_size,
                 libc::MADV_DONTDUMP,
             ) != 0
@@ -176,6 +176,7 @@ impl IsolatedMemoryRegion {
     /// - Returns a slice with lifetime tied to &self
     /// - Memory is valid for the lifetime of the struct
     /// - No concurrent mutable access (enforced by Rust)
+    #[must_use]
     pub fn as_slice(&self) -> &[u8] {
         // SAFETY:
         // - ptr is valid (allocated and not yet freed)

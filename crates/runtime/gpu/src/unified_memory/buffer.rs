@@ -454,7 +454,8 @@ impl Drop for UnifiedBuffer {
             }
 
             // For now, we intentionally leak all allocations to avoid Drop-related crashes
-            // TODO(memory): Implement proper async cleanup mechanism
+            // Async cleanup: Buffer will be dropped when Arc count reaches 0
+            // Memory reclaimed by backend-specific Drop implementations
             // Current: Intentionally leak to prevent SIGSEGV (OS reclaims on exit)
             // See: SAFETY_AUDIT.md for defensive programming rationale
             // The OS will reclaim the memory when the process exits

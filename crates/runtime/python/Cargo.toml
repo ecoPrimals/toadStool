@@ -61,7 +61,7 @@ tempfile = { workspace = true }
 default = ["python-subprocess"]
 python-subprocess = []
 python-embedded = []
-ai-ml-support = []
+ai-ml = []
 squirrel-preparation = []
 
 [build-dependencies]

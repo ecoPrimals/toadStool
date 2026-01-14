@@ -63,9 +63,9 @@ pub struct BenchmarkResult {
 impl BenchmarkResult {
     /// Create a default benchmark result
     #[must_use]
-    pub fn default(test_name: String) -> Self {
+    pub fn default(test_name: impl Into<String>) -> Self {
         Self {
-            test_name,
+            test_name: test_name.into(),
             iterations: 0,
             total_duration: Duration::ZERO,
             average_duration: Duration::ZERO,

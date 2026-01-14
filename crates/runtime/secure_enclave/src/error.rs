@@ -119,6 +119,7 @@ impl Error {
     }
 
     /// Create an invalid layout error
+    #[must_use]
     pub fn invalid_layout(size: usize, alignment: usize) -> Self {
         Self::InvalidLayout { size, alignment }
     }

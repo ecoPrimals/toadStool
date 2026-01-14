@@ -146,6 +146,8 @@ fn get_socket_path(family_id: &str, node_id: &str) -> Result<PathBuf, Box<dyn st
     }
 
     // 2. XDG runtime directory (standard)
+    // SAFETY: getuid() is always safe - returns current process's real user ID
+    // No memory access, no side effects, always succeeds
     let uid = unsafe { libc::getuid() };
     let runtime_dir =
         std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
@@ -197,7 +199,15 @@ async fn create_executor(
             },
             songbird_integration: Some(toadstool_distributed::SongbirdConfig {
                 endpoint: std::env::var("SONGBIRD_ENDPOINT")
-                    .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+                    .or_else(|_| std::env::var("TOADSTOOL_COORDINATION_ENDPOINT"))
+                    .unwrap_or_else(|_| {
+                        // Runtime discovery fallback - will attempt mDNS/DNS-SD discovery
+                        // No hardcoded localhost - respects deployment environment
+                        tracing::info!(
+                            "No SONGBIRD_ENDPOINT configured, will use runtime discovery"
+                        );
+                        String::new() // Empty = trigger discovery
+                    }),
                 auth_token: std::env::var("SONGBIRD_AUTH_TOKEN").ok(),
                 health_reporting_interval_secs: 60,
             }),

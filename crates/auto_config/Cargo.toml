@@ -59,6 +59,6 @@ tempfile = { workspace = true }
 
 [features]
 default = []
-gpu-support = []
+gpu = []
 ml-optimization = []
 enterprise-features = [] 

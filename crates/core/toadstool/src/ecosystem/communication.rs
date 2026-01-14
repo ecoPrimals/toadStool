@@ -126,7 +126,7 @@ impl CommunicationManager {
             ServiceClient::WebSocket(_ws) => {
                 debug!("📤 Sending via WebSocket");
                 // TODO(future): Implement WebSocket message sending for realtime updates
-                Err(ToadStoolError::not_implemented(
+                Err(ToadStoolError::runtime(
                     "WebSocket messaging not yet implemented",
                 ))
             }

@@ -144,14 +144,29 @@ async fn test_impossible_stack() {
     assert_eq!(plan.placements.len(), 4);
 
     // Should be ordered by priority
-    assert_eq!(plan.placements[0].request.priority, ConstraintPriority::Critical);
-    assert_eq!(plan.placements[1].request.priority, ConstraintPriority::High);
-    assert_eq!(plan.placements[2].request.priority, ConstraintPriority::Normal);
-    assert_eq!(plan.placements[3].request.priority, ConstraintPriority::Background);
+    assert_eq!(
+        plan.placements[0].request.priority,
+        ConstraintPriority::Critical
+    );
+    assert_eq!(
+        plan.placements[1].request.priority,
+        ConstraintPriority::High
+    );
+    assert_eq!(
+        plan.placements[2].request.priority,
+        ConstraintPriority::Normal
+    );
+    assert_eq!(
+        plan.placements[3].request.priority,
+        ConstraintPriority::Background
+    );
 
     // At least some should be feasible (depends on system)
     let feasible_count = plan.feasible_placements().len();
-    assert!(feasible_count >= 1, "At least one workload should be feasible");
+    assert!(
+        feasible_count >= 1,
+        "At least one workload should be feasible"
+    );
 
     // Average score should be reasonable
     let avg_score = plan.average_score();
@@ -202,7 +217,7 @@ async fn test_resource_utilization_tracking() {
 
     // Should have resource utilization info
     let util = &plan.resource_utilization;
-    
+
     assert!(util.memory_gb_total > 0.0);
     assert!(util.cpu_cores_total > 0);
 
@@ -289,8 +304,8 @@ async fn test_composition_plan_statistics() {
     let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
     // Add mix of feasible and potentially infeasible workloads
-    let feasible = CompositionRequest::new("feasible")
-        .with_constraint(Constraint::min_memory_gb(0.1));
+    let feasible =
+        CompositionRequest::new("feasible").with_constraint(Constraint::min_memory_gb(0.1));
 
     let might_fail = CompositionRequest::new("might_fail")
         .with_constraint(Constraint::requires_gpu())
@@ -330,12 +345,11 @@ async fn test_empty_composition_valid() {
 async fn test_custom_constraints() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
-    let workload = CompositionRequest::new("custom")
-        .with_constraint(Constraint::Custom {
-            name: "needs_akida".to_string(),
-            hard: true,
-            value: "true".to_string(),
-        });
+    let workload = CompositionRequest::new("custom").with_constraint(Constraint::Custom {
+        name: "needs_akida".to_string(),
+        hard: true,
+        value: "true".to_string(),
+    });
 
     let eval = engine.evaluate(&workload).await.unwrap();
 

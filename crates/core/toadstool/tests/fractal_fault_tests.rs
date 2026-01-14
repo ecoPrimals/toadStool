@@ -161,8 +161,8 @@ async fn test_negative_constraint_values() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
     // Negative memory (should still evaluate)
-    let req = CompositionRequest::new("negative-mem")
-        .with_constraint(Constraint::min_memory_gb(-1.0));
+    let req =
+        CompositionRequest::new("negative-mem").with_constraint(Constraint::min_memory_gb(-1.0));
 
     let result = engine.evaluate(&req).await;
     assert!(result.is_ok()); // Should not panic
@@ -243,11 +243,9 @@ async fn test_duplicate_workload_names() {
     let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
     // Add same workload name twice
-    let req1 = CompositionRequest::new("duplicate")
-        .with_constraint(Constraint::min_memory_gb(1.0));
+    let req1 = CompositionRequest::new("duplicate").with_constraint(Constraint::min_memory_gb(1.0));
 
-    let req2 = CompositionRequest::new("duplicate")
-        .with_constraint(Constraint::min_memory_gb(2.0));
+    let req2 = CompositionRequest::new("duplicate").with_constraint(Constraint::min_memory_gb(2.0));
 
     compositor.add_request(req1);
     compositor.add_request(req2);
@@ -263,8 +261,7 @@ async fn test_duplicate_workload_names() {
 async fn test_clear_and_readd_workloads() {
     let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
-    let req = CompositionRequest::new("test")
-        .with_constraint(Constraint::min_memory_gb(1.0));
+    let req = CompositionRequest::new("test").with_constraint(Constraint::min_memory_gb(1.0));
 
     compositor.add_request(req.clone());
     assert_eq!(compositor.request_count(), 1);
@@ -346,7 +343,10 @@ async fn test_migration_stats_tracking() {
 
     let final_stats = coordinator.stats().await;
     assert_eq!(final_stats.total_migrations, initial_migrations + 1);
-    assert_eq!(final_stats.successful_migrations, initial_stats.successful_migrations + 1);
+    assert_eq!(
+        final_stats.successful_migrations,
+        initial_stats.successful_migrations + 1
+    );
 }
 
 /// Test: Workload location persistence
@@ -364,7 +364,9 @@ async fn test_workload_location_persistence() {
         .track_workload("persistent-workload".to_string(), location.clone())
         .await;
 
-    let retrieved = coordinator.get_workload_location("persistent-workload").await;
+    let retrieved = coordinator
+        .get_workload_location("persistent-workload")
+        .await;
     assert!(retrieved.is_some());
 }
 

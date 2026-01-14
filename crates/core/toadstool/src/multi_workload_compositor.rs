@@ -40,7 +40,7 @@
 //! let plan = compositor.compose().await?;
 //!
 //! for placement in &plan.placements {
-//!     println!("{}: {} (score: {})", 
+//!     println!("{}: {} (score: {})",
 //!         placement.request.name,
 //!         if placement.is_feasible { "✅ Feasible" } else { "❌ Infeasible" },
 //!         placement.score
@@ -136,7 +136,7 @@ impl MultiWorkloadCompositor {
 
         for request in &sorted_requests {
             let evaluation = self.engine.evaluate(request).await?;
-            
+
             let placement = WorkloadPlacement {
                 request: request.clone(),
                 evaluation: evaluation.clone(),
@@ -247,15 +247,24 @@ impl MultiWorkloadCompositor {
     /// Check if two workloads would conflict for resources
     fn would_conflict(&self, req1: &CompositionRequest, req2: &CompositionRequest) -> bool {
         // Both require GPU
-        let both_need_gpu = req1.constraints.iter().any(|c| matches!(c, Constraint::RequiresGPU))
-            && req2.constraints.iter().any(|c| matches!(c, Constraint::RequiresGPU));
+        let both_need_gpu = req1
+            .constraints
+            .iter()
+            .any(|c| matches!(c, Constraint::RequiresGPU))
+            && req2
+                .constraints
+                .iter()
+                .any(|c| matches!(c, Constraint::RequiresGPU));
 
         // Add more conflict checks as needed
         both_need_gpu
     }
 
     /// Calculate overall resource utilization
-    fn calculate_resource_utilization(&self, placements: &[WorkloadPlacement]) -> ResourceUtilization {
+    fn calculate_resource_utilization(
+        &self,
+        placements: &[WorkloadPlacement],
+    ) -> ResourceUtilization {
         let mut gpu_used = 0.0;
         let mut memory_gb_used = 0.0;
         let mut cpu_cores_used = 0;
@@ -515,8 +524,8 @@ mod tests {
     async fn test_single_workload_composition() {
         let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
-        let request = CompositionRequest::new("test")
-            .with_constraint(Constraint::min_memory_gb(0.1));
+        let request =
+            CompositionRequest::new("test").with_constraint(Constraint::min_memory_gb(0.1));
 
         compositor.add_request(request);
 
@@ -544,7 +553,7 @@ mod tests {
         let plan = compositor.compose().await.unwrap();
 
         assert_eq!(plan.placements.len(), 2);
-        
+
         // Both should be feasible (low requirements)
         assert_eq!(plan.feasible_placements().len(), 2);
         assert!(plan.overall_feasibility);
@@ -554,14 +563,13 @@ mod tests {
     async fn test_priority_ordering() {
         let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
-        let critical = CompositionRequest::new("critical")
-            .with_priority(ConstraintPriority::Critical);
+        let critical =
+            CompositionRequest::new("critical").with_priority(ConstraintPriority::Critical);
 
-        let background = CompositionRequest::new("background")
-            .with_priority(ConstraintPriority::Background);
+        let background =
+            CompositionRequest::new("background").with_priority(ConstraintPriority::Background);
 
-        let high = CompositionRequest::new("high")
-            .with_priority(ConstraintPriority::High);
+        let high = CompositionRequest::new("high").with_priority(ConstraintPriority::High);
 
         // Add in random order
         compositor.add_request(background);
@@ -597,10 +605,8 @@ mod tests {
     async fn test_plan_statistics() {
         let mut compositor = MultiWorkloadCompositor::from_runtime().await.unwrap();
 
-        let req1 = CompositionRequest::new("test1")
-            .with_constraint(Constraint::min_memory_gb(0.1));
-        let req2 = CompositionRequest::new("test2")
-            .with_constraint(Constraint::prefer_local());
+        let req1 = CompositionRequest::new("test1").with_constraint(Constraint::min_memory_gb(0.1));
+        let req2 = CompositionRequest::new("test2").with_constraint(Constraint::prefer_local());
 
         compositor.add_request(req1);
         compositor.add_request(req2);

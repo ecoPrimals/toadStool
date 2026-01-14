@@ -242,7 +242,7 @@ impl MigrationCoordinator {
 
         // For now, simple logic: if local is struggling and we have cloud, recommend cloud
         // In full implementation, this would evaluate each provider/region combination
-        
+
         let has_cost_constraint = constraints
             .iter()
             .any(|c| matches!(c, Constraint::MaxCostPerHour(_) | Constraint::MinimizeCost));
@@ -320,10 +320,7 @@ impl MigrationCoordinator {
     }
 
     /// Migrate workload based on recommendation
-    pub async fn migrate_workload(
-        &self,
-        workload_id: &str,
-    ) -> ToadStoolResult<WorkloadLocation> {
+    pub async fn migrate_workload(&self, workload_id: &str) -> ToadStoolResult<WorkloadLocation> {
         info!("🚀 Migrating workload: {}", workload_id);
 
         let start = std::time::Instant::now();
@@ -427,7 +424,9 @@ mod tests {
 
         let constraints = vec![Constraint::requires_gpu(), Constraint::max_latency_ms(100)];
 
-        let recommendation = coordinator.should_migrate("test-workload", &constraints).await;
+        let recommendation = coordinator
+            .should_migrate("test-workload", &constraints)
+            .await;
         assert!(recommendation.is_ok());
 
         let rec = recommendation.unwrap();

@@ -39,7 +39,7 @@ use crate::self_identity::SelfIdentity;
 use crate::{ToadStoolError, ToadStoolResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Fractal-aware runtime
 ///
@@ -77,7 +77,9 @@ impl FractalRuntime {
 
         // Step 1: Detect deployment layer
         let mut detector = LayerDetector::new();
-        let layer = detector.detect().await
+        let layer = detector
+            .detect()
+            .await
             .map_err(|e| ToadStoolError::runtime(format!("Layer detection failed: {}", e)))?;
 
         info!("📍 Deployment layer detected: {}", layer);
@@ -86,14 +88,20 @@ impl FractalRuntime {
         let adapter = LayerCapabilityAdapter::new(layer.clone());
         let capabilities = adapter.get_adapted_capabilities();
 
-        debug!("✅ Capabilities adapted for layer: {:?}", capabilities.metadata.layer);
+        debug!(
+            "✅ Capabilities adapted for layer: {:?}",
+            capabilities.metadata.layer
+        );
         debug!("   GPU Access: {:?}", capabilities.compute.gpu_access);
         debug!("   Storage Type: {:?}", capabilities.storage.storage_type);
-        debug!("   Network Access: {:?}", capabilities.network.network_access);
+        debug!(
+            "   Network Access: {:?}",
+            capabilities.network.network_access
+        );
 
         // Step 3: Create self-identity with adapted capabilities
         let mut identity = SelfIdentity::new();
-        
+
         // Enhance identity with layer-adapted capabilities
         Self::enhance_identity_with_layer_capabilities(&mut identity, &capabilities);
 
@@ -113,10 +121,10 @@ impl FractalRuntime {
     ) {
         // Add layer-adapted capabilities to identity
         // This makes them discoverable by other primals
-        
+
         use crate::self_identity::Capability;
         use std::collections::HashMap;
-        
+
         // Add compute capabilities
         for cap_name in capabilities.to_capability_list() {
             let capability = Capability {
@@ -125,8 +133,10 @@ impl FractalRuntime {
                 features: vec![],
                 characteristics: {
                     let mut chars = HashMap::new();
-                    chars.insert("deployment_layer".to_string(), 
-                        capabilities.metadata.layer.clone());
+                    chars.insert(
+                        "deployment_layer".to_string(),
+                        capabilities.metadata.layer.clone(),
+                    );
                     if let Some(host_os) = &capabilities.metadata.host_os {
                         chars.insert("host_os".to_string(), host_os.clone());
                     }
@@ -136,15 +146,17 @@ impl FractalRuntime {
                     chars
                 },
             };
-            
+
             // Add if not already present
             if !identity.capabilities.iter().any(|c| c.name == cap_name) {
                 identity.capabilities.push(capability);
             }
         }
 
-        debug!("Enhanced identity with {} layer-adapted capabilities", 
-            capabilities.to_capability_list().len());
+        debug!(
+            "Enhanced identity with {} layer-adapted capabilities",
+            capabilities.to_capability_list().len()
+        );
     }
 
     /// Get deployment layer
@@ -206,10 +218,16 @@ pub enum BarracudaIntegration {
     Direct { note: String },
 
     /// GPU via host OS (middleware layer)
-    ViaHost { note: String, host_os: Option<String> },
+    ViaHost {
+        note: String,
+        host_os: Option<String>,
+    },
 
     /// GPU via cloud APIs (cloud layer)
-    ViaCloud { note: String, provider: Option<String> },
+    ViaCloud {
+        note: String,
+        provider: Option<String>,
+    },
 
     /// No GPU access (CPU fallback)
     None { note: String },
@@ -255,8 +273,10 @@ impl FractalServiceAdvertiser {
 
         info!("📢 Advertising fractal-aware service...");
         debug!("   Layer: {}", self.runtime.layer);
-        debug!("   Capabilities: {} exposed", 
-            self.runtime.capabilities.to_capability_list().len());
+        debug!(
+            "   Capabilities: {} exposed",
+            self.runtime.capabilities.to_capability_list().len()
+        );
 
         // Integration point with existing discovery system
         // The identity already has layer-adapted capabilities added
@@ -317,7 +337,7 @@ mod tests {
         if let Ok(runtime) = runtime {
             let runtime = Arc::new(runtime);
             let advertiser = FractalServiceAdvertiser::new(Arc::clone(&runtime));
-            
+
             // Should be able to advertise
             let result = advertiser.advertise().await;
             assert!(result.is_ok());

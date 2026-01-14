@@ -98,7 +98,10 @@ impl CompositionEngine {
     /// Evaluate a composition request
     ///
     /// Returns detailed evaluation showing which constraints are satisfied.
-    pub async fn evaluate(&self, request: &CompositionRequest) -> ToadStoolResult<ConstraintEvaluation> {
+    pub async fn evaluate(
+        &self,
+        request: &CompositionRequest,
+    ) -> ToadStoolResult<ConstraintEvaluation> {
         let start = std::time::Instant::now();
 
         info!("🔍 Evaluating composition request: {}", request);
@@ -136,7 +139,10 @@ impl CompositionEngine {
         self.update_stats(&evaluation, duration_ms).await;
 
         if evaluation.is_feasible {
-            info!("✅ Request '{}' is FEASIBLE (score: {:.2})", request.name, overall_score);
+            info!(
+                "✅ Request '{}' is FEASIBLE (score: {:.2})",
+                request.name, overall_score
+            );
         } else {
             info!("❌ Request '{}' is INFEASIBLE", request.name);
         }
@@ -371,7 +377,10 @@ impl CompositionEngine {
             }
 
             Constraint::Custom { name, hard, value } => {
-                debug!("Custom constraint '{}' = '{}' (hard: {})", name, value, hard);
+                debug!(
+                    "Custom constraint '{}' = '{}' (hard: {})",
+                    name, value, hard
+                );
                 // For now, assume custom constraints are satisfied
                 // In a real implementation, this would call a plugin system
                 ConstraintSatisfaction::Satisfied
@@ -401,9 +410,9 @@ impl CompositionEngine {
         use crate::layer_adaptation::NetworkAccess;
 
         match self.capabilities.network.network_access {
-            NetworkAccess::Direct => 100.0,        // High-speed local network
-            NetworkAccess::HostNamespace => 40.0,  // Container networking
-            NetworkAccess::CloudVPC => 10.0,       // Cloud network
+            NetworkAccess::Direct => 100.0,       // High-speed local network
+            NetworkAccess::HostNamespace => 40.0, // Container networking
+            NetworkAccess::CloudVPC => 10.0,      // Cloud network
         }
     }
 
@@ -525,8 +534,8 @@ mod tests {
     async fn test_gpu_constraint_evaluation() {
         let engine = CompositionEngine::from_runtime().await.unwrap();
 
-        let request = CompositionRequest::new("test_gpu")
-            .with_constraint(Constraint::requires_gpu());
+        let request =
+            CompositionRequest::new("test_gpu").with_constraint(Constraint::requires_gpu());
 
         let eval = engine.evaluate(&request).await.unwrap();
 
@@ -561,8 +570,8 @@ mod tests {
         let engine = CompositionEngine::from_runtime().await.unwrap();
 
         // Request very small memory (should always succeed)
-        let request = CompositionRequest::new("test_memory")
-            .with_constraint(Constraint::min_memory_gb(0.1));
+        let request =
+            CompositionRequest::new("test_memory").with_constraint(Constraint::min_memory_gb(0.1));
 
         let eval = engine.evaluate(&request).await.unwrap();
         assert!(eval.is_feasible);

@@ -73,9 +73,9 @@ pub mod platforms {
 pub mod paths {
     use std::path::PathBuf;
     use std::sync::OnceLock;
-    
+
     static TEMP_DIR: OnceLock<PathBuf> = OnceLock::new();
-    
+
     /// Get the temporary directory base path
     ///
     /// Priority:
@@ -89,29 +89,29 @@ pub mod paths {
                 .unwrap_or_else(std::env::temp_dir)
         })
     }
-    
+
     /// Get checkpoint prefix path (runtime-discovered)
     pub fn checkpoint_prefix() -> PathBuf {
         temp_dir().join("toadstool_checkpoint_")
     }
-    
+
     /// Get export prefix path (runtime-discovered)
     pub fn export_prefix() -> PathBuf {
         temp_dir().join("toadstool_export_")
     }
-    
+
     /// Get snapshot prefix path (runtime-discovered)
     pub fn snapshot_prefix() -> PathBuf {
         temp_dir().join("toadstool_snapshot_")
     }
-    
+
     // Legacy constants for backward compatibility (deprecated)
     #[deprecated(note = "Use checkpoint_prefix() function for runtime discovery")]
     pub const CHECKPOINT_PREFIX: &str = "/tmp/checkpoint_";
-    
+
     #[deprecated(note = "Use export_prefix() function for runtime discovery")]
     pub const EXPORT_PREFIX: &str = "/tmp/export_";
-    
+
     #[deprecated(note = "Use snapshot_prefix() function for runtime discovery")]
     pub const SNAPSHOT_PREFIX: &str = "/tmp/snapshot_";
 }
@@ -161,18 +161,20 @@ mod tests {
         // Test runtime-discovered paths
         let temp_dir = paths::temp_dir();
         assert!(temp_dir.exists() || temp_dir.parent().map_or(false, |p| p.exists()));
-        
+
         // Test prefix functions
         let checkpoint = paths::checkpoint_prefix();
-        assert!(checkpoint.to_string_lossy().contains("toadstool_checkpoint_"));
-        
+        assert!(checkpoint
+            .to_string_lossy()
+            .contains("toadstool_checkpoint_"));
+
         let export = paths::export_prefix();
         assert!(export.to_string_lossy().contains("toadstool_export_"));
-        
+
         let snapshot = paths::snapshot_prefix();
         assert!(snapshot.to_string_lossy().contains("toadstool_snapshot_"));
     }
-    
+
     #[test]
     fn test_temp_dir_respects_env() {
         // This test demonstrates the env var is checked

@@ -33,8 +33,8 @@ impl LegacyNetworkManager {
         }
     }
     
-    pub fn add_protocol(&mut self, name: String, protocol: LegacyNetworkProtocol) {
-        self.protocols.insert(name, protocol);
+    pub fn add_protocol(&mut self, name: impl Into<String>, protocol: LegacyNetworkProtocol) {
+        self.protocols.insert(name.into(), protocol);
     }
     
     pub fn get_protocols(&self) -> &HashMap<String, LegacyNetworkProtocol> {

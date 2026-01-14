@@ -32,9 +32,9 @@ pub struct BenchmarkContext {
 impl BenchmarkContext {
     /// Create a new benchmark context
     #[must_use]
-    pub fn new(test_name: String) -> Self {
+    pub fn new(test_name: impl Into<String>) -> Self {
         Self {
-            test_name,
+            test_name: test_name.into(),
             start_time: Instant::now(),
             iteration_times: Vec::new(),
             resource_monitor: ResourceMonitor::new(),

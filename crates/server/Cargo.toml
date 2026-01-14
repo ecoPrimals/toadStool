@@ -82,10 +82,15 @@ sys-info = "0.9"
 # CPU info
 num_cpus = "1.0"
 
+# GPU detection via barraCUDA (vendor-agnostic)
+wgpu = { version = "22", optional = true }
+futures = "0.3"
+
 [features]
-default = ["api", "websocket"]
+default = ["api", "websocket", "gpu-discovery"]
 api = ["axum", "tower", "tower-http"]
 websocket = ["axum/ws"]
+gpu-discovery = ["wgpu"]
 
 [[bin]]
 name = "toadstool-server"

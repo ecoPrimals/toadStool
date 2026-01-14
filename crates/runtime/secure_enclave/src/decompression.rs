@@ -36,6 +36,8 @@ pub struct DecompressionStats {
 
 impl DecompressionStats {
     /// Calculate statistics
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)] // Intentional: statistics use f64 for calculations
     pub fn new(compressed_size: usize, decompressed_size: usize, duration_micros: u64) -> Self {
         let compression_ratio = if decompressed_size > 0 {
             compressed_size as f64 / decompressed_size as f64
@@ -97,6 +99,10 @@ impl DecompressionStats {
 /// println!("Ratio: {:.2}", stats.compression_ratio);
 /// println!("Speed: {:.2} MB/s", stats.throughput_mbps);
 /// ```
+///
+/// # Errors
+///
+/// Returns error if decompression fails or memory allocation fails.
 pub fn decompress_isolated(
     compressed: &[u8],
     algorithm: CompressionAlgorithm,
@@ -127,6 +133,8 @@ pub fn decompress_isolated(
     // Copy decompressed data into isolated memory
     memory.as_mut_slice().copy_from_slice(&decompressed);
 
+    #[allow(clippy::cast_possible_truncation)]
+    // Intentional: duration saturates at u64::MAX (>500k years)
     let duration_micros = start.elapsed().as_micros() as u64;
 
     let stats = DecompressionStats::new(compressed.len(), decompressed.len(), duration_micros);
@@ -145,7 +153,7 @@ pub fn decompress_isolated(
 /// Decompress using Zstandard
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>> {
     zstd::decode_all(compressed)
-        .map_err(|e| Error::decompression(format!("Zstd decompression failed: {}", e)))
+        .map_err(|e| Error::decompression(format!("Zstd decompression failed: {e}")))
 }
 
 /// Decompress using LZ4
@@ -155,7 +163,7 @@ fn decompress_lz4(compressed: &[u8]) -> Result<Vec<u8>> {
     const MAX_DECOMPRESSED_SIZE: i32 = 10 * 1024 * 1024;
 
     lz4::block::decompress(compressed, Some(MAX_DECOMPRESSED_SIZE))
-        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {}", e)))
+        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {e}")))
 }
 
 #[cfg(test)]

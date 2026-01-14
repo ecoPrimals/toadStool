@@ -37,6 +37,7 @@ pub enum AuditEventType {
 
 impl AuditEventType {
     /// Get string representation
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::MemoryAllocated => "memory_allocated",
@@ -81,10 +82,14 @@ impl AuditEvent {
         details: String,
         prev_hash: Option<Hash>,
     ) -> Self {
+        // Use saturating conversion to handle potential overflow (years 2262+)
+        #[allow(clippy::cast_possible_truncation)]
+        // Intentional: saturates at u64::MAX for far future timestamps
         let timestamp_micros = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
-            .as_micros() as u64;
+            .as_micros()
+            .min(u128::from(u64::MAX)) as u64;
 
         // Compute event hash (includes previous hash for chain integrity)
         let event_hash =
@@ -131,6 +136,7 @@ impl AuditEvent {
     }
 
     /// Verify event integrity
+    #[must_use]
     pub fn verify(&self) -> bool {
         let computed_hash = Self::compute_hash(
             self.sequence,
@@ -156,6 +162,7 @@ pub struct AuditLogger {
 
 impl AuditLogger {
     /// Create a new audit logger
+    #[must_use]
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
@@ -173,6 +180,10 @@ impl AuditLogger {
     /// # Returns
     ///
     /// Returns the sequence number of the logged event
+    ///
+    /// # Errors
+    ///
+    /// Currently infallible, but returns Result for future error handling.
     ///
     /// # Example
     ///
@@ -197,6 +208,7 @@ impl AuditLogger {
     }
 
     /// Get all audit events
+    #[must_use]
     pub fn events(&self) -> &[AuditEvent] {
         &self.events
     }
@@ -208,9 +220,9 @@ impl AuditLogger {
     /// 2. Chain integrity (each event references previous)
     /// 3. Sequence numbers are monotonic
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// Returns `Ok(())` if log is valid, `Err` if tampering detected
+    /// Returns error if tampering detected (invalid hashes, broken chain, or sequence issues).
     pub fn verify_integrity(&self) -> Result<()> {
         if self.events.is_empty() {
             return Ok(());
@@ -437,7 +449,7 @@ mod tests {
         // Log 1000 events
         for i in 0..1000 {
             logger
-                .log(AuditEventType::MemoryAllocated, format!("event {}", i))
+                .log(AuditEventType::MemoryAllocated, format!("event {i}"))
                 .unwrap();
         }
 

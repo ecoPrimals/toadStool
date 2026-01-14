@@ -27,7 +27,8 @@ pub mod primal_capabilities; // Migration helper (deprecated)
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
 pub mod primal_discovery_complete; // NEW: Complete capability-based discovery with mDNS
 pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
-pub mod primal_identity; // NEW: Self-knowledge only architecture
+pub mod primal_identity;
+pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
