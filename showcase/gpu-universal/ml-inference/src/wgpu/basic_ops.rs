@@ -1149,4 +1149,237 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, out_size).await
     }
+
+    /// Execute TransposedConv2D: Transposed 2D Convolution (Deconvolution/Upsampling)
+    ///
+    /// Performs learnable upsampling via transposed convolution.
+    /// Essential for U-Net decoder, image super-resolution, GANs.
+    ///
+    /// Deep Debt: All dimensions runtime-configured, zero hardcoding.
+    ///
+    /// Use cases: U-Net upsampling, semantic segmentation decoders, GANs.
+    pub async fn execute_transposed_conv2d(
+        &self,
+        input: &[f32],
+        weights: &[f32],
+        bias: &[f32],
+        batch: usize,
+        in_channels: usize,
+        out_channels: usize,
+        input_height: usize,
+        input_width: usize,
+        config: super::types::TransposedConv2DConfig,
+    ) -> Result<Vec<f32>> {
+        // Calculate output dimensions for transposed convolution
+        // output_size = (input_size - 1) * stride - 2 * padding + kernel_size + output_padding
+        let output_height = (input_height - 1) * config.stride.0 - 2 * config.padding.0
+            + config.kernel_size.0
+            + config.output_padding.0;
+        let output_width = (input_width - 1) * config.stride.1 - 2 * config.padding.1
+            + config.kernel_size.1
+            + config.output_padding.1;
+
+        let input_size = batch * in_channels * input_height * input_width;
+        let weight_size = in_channels * out_channels * config.kernel_size.0 * config.kernel_size.1;
+        let out_size = batch * out_channels * output_height * output_width;
+
+        anyhow::ensure!(
+            input.len() == input_size,
+            "TransposedConv2D: input size mismatch"
+        );
+        anyhow::ensure!(
+            weights.len() == weight_size,
+            "TransposedConv2D: weights size mismatch"
+        );
+        anyhow::ensure!(
+            bias.len() == out_channels,
+            "TransposedConv2D: bias size mismatch"
+        );
+
+        let shader_source = include_str!("../shaders/transposed_conv2d.wgsl");
+
+        // Create buffers
+        let input_buffer = self.create_input_buffer(input, "TransposedConv2D Input");
+        let weight_buffer = self.create_input_buffer(weights, "TransposedConv2D Weights");
+        let bias_buffer = self.create_input_buffer(bias, "TransposedConv2D Bias");
+        let output_buffer = self.create_output_buffer(out_size, "TransposedConv2D Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "TransposedConv2D Staging");
+
+        // Parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct TransposedConv2DParams {
+            batch_size: u32,
+            in_channels: u32,
+            out_channels: u32,
+            input_h: u32,
+            input_w: u32,
+            output_h: u32,
+            output_w: u32,
+            kernel_h: u32,
+            kernel_w: u32,
+            stride_h: u32,
+            stride_w: u32,
+            padding_h: u32,
+            padding_w: u32,
+            output_padding_h: u32,
+            output_padding_w: u32,
+            _pad: u32,
+        }
+
+        let params = TransposedConv2DParams {
+            batch_size: batch as u32,
+            in_channels: in_channels as u32,
+            out_channels: out_channels as u32,
+            input_h: input_height as u32,
+            input_w: input_width as u32,
+            output_h: output_height as u32,
+            output_w: output_width as u32,
+            kernel_h: config.kernel_size.0 as u32,
+            kernel_w: config.kernel_size.1 as u32,
+            stride_h: config.stride.0 as u32,
+            stride_w: config.stride.1 as u32,
+            padding_h: config.padding.0 as u32,
+            padding_w: config.padding.1 as u32,
+            output_padding_h: config.output_padding.0 as u32,
+            output_padding_w: config.output_padding.1 as u32,
+            _pad: 0,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("TransposedConv2D Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        // Create bind group layout
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("TransposedConv2D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("TransposedConv2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: weight_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: bias_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(
+            shader_source,
+            "TransposedConv2D",
+            &bind_group_layout,
+        );
+
+        // Dispatch with 2D workgroups + output channels
+        let workgroup_x = (output_width + 15) / 16;
+        let workgroup_y = (output_height + 15) / 16;
+        let workgroup_z = out_channels;
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("TransposedConv2D Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("TransposedConv2D Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(
+                workgroup_x as u32,
+                workgroup_y as u32,
+                workgroup_z as u32,
+            );
+        }
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
 }

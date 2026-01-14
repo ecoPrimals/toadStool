@@ -467,4 +467,161 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, size).await
     }
+
+    /// Execute Embedding: Lookup table for token embeddings
+    ///
+    /// Maps integer indices to dense vectors from embedding table.
+    /// Essential for NLP: word embeddings, positional encodings.
+    ///
+    /// Deep Debt: Vocab size and embedding dim runtime-configured.
+    ///
+    /// Use cases: Word2Vec, BERT embeddings, positional encodings, token representations.
+    pub async fn execute_embedding(
+        &self,
+        indices: &[u32],
+        weight: &[f32],
+        batch_size: usize,
+        seq_length: usize,
+        embedding_dim: usize,
+        vocab_size: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(!indices.is_empty(), "Embedding: indices cannot be empty");
+        anyhow::ensure!(!weight.is_empty(), "Embedding: weight cannot be empty");
+        anyhow::ensure!(
+            indices.len() == batch_size * seq_length,
+            "Embedding: indices size must be batch_size * seq_length"
+        );
+        anyhow::ensure!(
+            weight.len() == vocab_size * embedding_dim,
+            "Embedding: weight size must be vocab_size * embedding_dim"
+        );
+
+        let output_size = batch_size * seq_length * embedding_dim;
+        let shader_source = include_str!("../shaders/embedding.wgsl");
+
+        // Create buffers - note: indices are u32, not f32
+        let indices_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Embedding Indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+
+        let weight_buffer = self.create_input_buffer(weight, "Embedding Weight");
+        let output_buffer = self.create_output_buffer(output_size, "Embedding Output");
+        let staging_buffer = self.create_staging_buffer(output_size, "Embedding Staging");
+
+        // Parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct EmbeddingParams {
+            batch_size: u32,
+            seq_length: u32,
+            embedding_dim: u32,
+            vocab_size: u32,
+        }
+
+        let params = EmbeddingParams {
+            batch_size: batch_size as u32,
+            seq_length: seq_length as u32,
+            embedding_dim: embedding_dim as u32,
+            vocab_size: vocab_size as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Embedding Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        // Create bind group layout
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Embedding Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Embedding Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: weight_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Embedding", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(batch_size * seq_length, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Embedding");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (output_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, output_size).await
+    }
 }

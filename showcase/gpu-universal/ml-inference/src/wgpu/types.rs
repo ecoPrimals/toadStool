@@ -97,6 +97,26 @@ impl Default for Conv2DConfig {
     }
 }
 
+/// TransposedConv2D configuration (deconvolution/upsampling)
+#[derive(Debug, Clone, Copy)]
+pub struct TransposedConv2DConfig {
+    pub kernel_size: (usize, usize),       // (height, width)
+    pub stride: (usize, usize),            // (height, width)
+    pub padding: (usize, usize),           // (height, width)
+    pub output_padding: (usize, usize),    // (height, width) - controls output size
+}
+
+impl Default for TransposedConv2DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: (2, 2),
+            stride: (2, 2),
+            padding: (0, 0),
+            output_padding: (0, 0),
+        }
+    }
+}
+
 /// DepthwiseConv2D configuration
 #[derive(Debug, Clone, Copy)]
 pub struct DepthwiseConv2DConfig {
