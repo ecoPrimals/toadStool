@@ -117,6 +117,26 @@ impl Default for TransposedConv2DConfig {
     }
 }
 
+/// Conv3D configuration (3D convolution for video/medical imaging)
+#[derive(Debug, Clone, Copy)]
+pub struct Conv3DConfig {
+    pub kernel_size: (usize, usize, usize),  // (depth, height, width)
+    pub stride: (usize, usize, usize),       // (depth, height, width)
+    pub padding: (usize, usize, usize),      // (depth, height, width)
+    pub dilation: (usize, usize, usize),     // (depth, height, width)
+}
+
+impl Default for Conv3DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: (3, 3, 3),
+            stride: (1, 1, 1),
+            padding: (0, 0, 0),
+            dilation: (1, 1, 1),
+        }
+    }
+}
+
 /// DepthwiseConv2D configuration
 #[derive(Debug, Clone, Copy)]
 pub struct DepthwiseConv2DConfig {
