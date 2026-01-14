@@ -30,7 +30,9 @@ async fn test_simple_training_step() {
     ];
     
     // Forward: MatMul
-    let hidden = executor.execute_matmul(&input, &weights1, 1, 4, 3).await.unwrap();
+    // input[1, 4] @ weights1[4, 3] = hidden[1, 3]
+    // MatMul(m, n, k): m=1, n=3, k=4
+    let hidden = executor.execute_matmul(&input, &weights1, 1, 3, 4).await.unwrap();
     assert_eq!(hidden.len(), 3);
     
     // Activation: ReLU
@@ -44,7 +46,9 @@ async fn test_simple_training_step() {
         0.7, 0.8,
     ];
     
-    let logits = executor.execute_matmul(&activated, &weights2, 1, 3, 2).await.unwrap();
+    // activated[1, 3] @ weights2[3, 2] = logits[1, 2]
+    // MatMul(m, n, k): m=1, n=2, k=3
+    let logits = executor.execute_matmul(&activated, &weights2, 1, 2, 3).await.unwrap();
     assert_eq!(logits.len(), 2);
     
     // Softmax for probabilities

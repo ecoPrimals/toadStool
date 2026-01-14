@@ -66,7 +66,8 @@ async fn test_matmul_random_dimensions() {
         let a: Vec<f32> = (0..m*k).map(|_| rng.gen_range(-1.0..1.0)).collect();
         let b: Vec<f32> = (0..k*n).map(|_| rng.gen_range(-1.0..1.0)).collect();
         
-        let result = executor.execute_matmul(&a, &b, m, k, n).await.unwrap();
+        // MatMul signature: (m, n, k) where A is [m, k], B is [k, n], result is [m, n]
+        let result = executor.execute_matmul(&a, &b, m, n, k).await.unwrap();
         assert_eq!(result.len(), m * n);
     }
 }
