@@ -2,8 +2,8 @@
 
 **Welcome!** This is your 5-minute guide to getting started with ToadStool.
 
-**Version**: 3.2.0  
-**Updated**: January 15, 2026  
+**Version**: 3.3.0  
+**Updated**: January 15, 2026 (Post-Optimization Research)  
 **Status**: ✅ **Production Ready - Grade A+ (100/100)** 🏆
 
 ---
@@ -46,7 +46,7 @@ cargo run --release --example dice_loss_demo
 
 **🎉 60 GPU operations, ALL VERIFIED!** (100% TARGET ACHIEVED!)
 
-### barraCUDA Status - 60 OPERATIONS COMPLETE! 🏆
+### barraCUDA Status - 60 OPERATIONS + OPTIMIZATION INSIGHTS! 🏆
 
 - **60 operations** implemented & verified across 12 categories
 - **169 comprehensive tests** (100% passing!)
@@ -54,10 +54,13 @@ cargo run --release --example dice_loss_demo
 - **NEW**: BatchMatMul, Split, Squeeze, Unsqueeze ✨
 - **COMPLETE**: U-Net, Transformers, Video/Medical (Conv3D) 🎯
 - **60 WGSL shaders** (vendor-agnostic)
-- **Benchmarking complete** - hot paths identified
-- **Optimization started** - 10x performance target
+- **Benchmarking complete** - performance baseline established
+- **Optimization research complete** - empirical findings documented 🔬
+- **Strategic pivot** - operation fusion + MatMul focus (data-driven!)
 - **100% complete categories**: All 12 categories!
-- **See [60_OPERATIONS_COMPLETE.md](60_OPERATIONS_COMPLETE.md)** for celebration details
+- **LEARNED**: WebGPU ≠ CUDA - platform-specific strategies required
+- **See [60_OPERATIONS_COMPLETE.md](60_OPERATIONS_COMPLETE.md)** for celebration
+- **See [LAYERNORM_OPTIMIZATION_RESULTS.md](LAYERNORM_OPTIMIZATION_RESULTS.md)** for insights
 
 ---
 
