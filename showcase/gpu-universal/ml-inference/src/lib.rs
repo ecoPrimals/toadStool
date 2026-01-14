@@ -7,7 +7,14 @@ pub mod gpu_kernels;
 #[cfg(feature = "opencl")]
 pub mod conv2d_kernels;
 pub mod cnn;
-pub mod wgpu_executor;
+
+// Modern modular WGPU implementation (part of barraCUDA)
+pub mod wgpu;
+
+// Legacy compatibility re-export (will be deprecated)
+// TODO: Remove after tests migrated to new API
+pub use wgpu as wgpu_executor;
+
 pub mod gpu_selector;
 pub mod mnist;
 pub mod network;

@@ -56,7 +56,8 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # ============================================================================
 # CRITICAL: wgpu must be the same version across all crates to prevent
 # duplicate symbol errors during linking (wgpu_core symbols)
-wgpu = "0.19"
+# barraCUDA framework uses wgpu for vendor-agnostic GPU compute
+wgpu = "22"
 
 
 # Core dependencies

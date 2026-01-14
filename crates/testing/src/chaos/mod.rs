@@ -143,8 +143,8 @@ impl SystemState {
     }
 
     /// Set a metric value
-    pub fn set_metric(&mut self, name: String, value: f64) {
-        self.metrics.insert(name, value);
+    pub fn set_metric(&mut self, name: impl Into<String>, value: f64) {
+        self.metrics.insert(name.into(), value);
     }
 }
 

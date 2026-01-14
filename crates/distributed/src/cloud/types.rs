@@ -231,12 +231,12 @@ impl MultiCloudAvailability {
         }
     }
 
-    pub fn add_provider(&mut self, name: String, availability: AvailabilityInfo) {
-        self.providers.insert(name, availability);
+    pub fn add_provider(&mut self, name: impl Into<String>, availability: AvailabilityInfo) {
+        self.providers.insert(name.into(), availability);
     }
 
-    pub fn mark_provider_unavailable(&mut self, name: String) {
-        self.unavailable_providers.push(name);
+    pub fn mark_provider_unavailable(&mut self, name: impl Into<String>) {
+        self.unavailable_providers.push(name.into());
     }
 }
 

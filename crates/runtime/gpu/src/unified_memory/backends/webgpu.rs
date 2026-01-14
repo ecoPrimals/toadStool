@@ -109,6 +109,7 @@ impl WebGpuBackend {
                     label: Some("ToadStool Unified Memory Device"),
                     required_features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                     required_limits: wgpu::Limits::default(),
+                    memory_hints: wgpu::MemoryHints::default(),
                 },
                 None, // No trace path
             )

@@ -161,6 +161,7 @@ impl ParallelComputeFramework for WebGpuFramework {
                                 )),
                                 required_features: wgpu::Features::empty(),
                                 required_limits: wgpu::Limits::default(),
+                                memory_hints: wgpu::MemoryHints::default(),
                             },
                             None,
                         )

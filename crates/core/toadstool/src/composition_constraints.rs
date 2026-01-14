@@ -219,7 +219,9 @@ impl fmt::Display for Constraint {
             Self::MaxLatencyMs(ms) => write!(f, "MaxLatency: {}ms [HARD]", ms),
             Self::PreferredLatencyMs(ms) => write!(f, "PreferredLatency: {}ms [SOFT]", ms),
             Self::MinBandwidthGbps(gbps) => write!(f, "MinBandwidth: {}Gbps [HARD]", gbps),
-            Self::PreferredBandwidthGbps(gbps) => write!(f, "PreferredBandwidth: {}Gbps [SOFT]", gbps),
+            Self::PreferredBandwidthGbps(gbps) => {
+                write!(f, "PreferredBandwidth: {}Gbps [SOFT]", gbps)
+            }
             Self::RequiresCapability(cap) => write!(f, "RequiresCap: {} [HARD]", cap),
             Self::PrefersCapability(cap) => write!(f, "PrefersCap: {} [SOFT]", cap),
             Self::MustBeLocal => write!(f, "MustBeLocal [HARD]"),
@@ -230,7 +232,13 @@ impl fmt::Display for Constraint {
             Self::MaxCostPerHour(cost) => write!(f, "MaxCost: ${}/hr [HARD]", cost),
             Self::MinimizeCost => write!(f, "MinimizeCost [SOFT]"),
             Self::Custom { name, hard, value } => {
-                write!(f, "Custom({}={})[{}]", name, value, if *hard { "HARD" } else { "SOFT" })
+                write!(
+                    f,
+                    "Custom({}={})[{}]",
+                    name,
+                    value,
+                    if *hard { "HARD" } else { "SOFT" }
+                )
             }
         }
     }
@@ -416,7 +424,8 @@ impl ConstraintEvaluation {
 
     /// Get soft constraint satisfaction score (0.0-1.0)
     pub fn soft_constraint_score(&self) -> f64 {
-        let soft_results: Vec<_> = self.request
+        let soft_results: Vec<_> = self
+            .request
             .soft_constraints()
             .iter()
             .filter_map(|c| self.results.get(c.name()))
@@ -463,7 +472,10 @@ mod tests {
         assert_eq!(request.name, "test");
         assert_eq!(request.constraints.len(), 2);
         assert_eq!(request.priority, ConstraintPriority::High);
-        assert_eq!(request.metadata.get("workload_type"), Some(&"gaming".to_string()));
+        assert_eq!(
+            request.metadata.get("workload_type"),
+            Some(&"gaming".to_string())
+        );
 
         let (hard, soft) = request.constraint_count();
         assert_eq!(hard, 1);

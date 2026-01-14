@@ -25,14 +25,16 @@ impl CapabilityDiscovery {
             units.push(cpu);
         }
 
-        // Discover GPU (OpenCL)
+        // Discover GPU (OpenCL) - DEPRECATED, use wgpu instead
+        // OpenCL support is legacy - kept for compatibility but returns empty Vec
         #[cfg(feature = "opencl")]
         {
+            #[allow(deprecated)]
             units.extend(Self::discover_opencl().await);
         }
 
         // Discover GPU (wgpu)
-        #[cfg(feature = "wgpu")]
+        #[cfg(feature = "wgpu-backend")]
         {
             units.extend(Self::discover_wgpu().await);
         }
@@ -57,17 +59,30 @@ impl CapabilityDiscovery {
     }
 
     /// Discover OpenCL devices
+    ///
+    /// **DEPRECATED**: OpenCL support is legacy. Use wgpu (barraCUDA) instead.
+    ///
+    /// **Why Deprecated**:
+    /// - OpenCL requires C bindings (FFI complexity)
+    /// - ocl crate API has breaking changes
+    /// - wgpu provides pure Rust alternative
+    /// - wgpu is vendor-agnostic (NVIDIA, AMD, Intel, Apple)
+    /// - barraCUDA framework built on wgpu
+    ///
+    /// **Migration**: Use `discover_wgpu()` for GPU compute
     #[cfg(feature = "opencl")]
+    #[deprecated(
+        since = "3.0.0",
+        note = "Use wgpu (barraCUDA) instead - pure Rust, vendor-agnostic"
+    )]
     async fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
-        // TODO: Update OpenCL implementation for new ocl crate API
-        // The ocl crate API has changed - Platform::list() now returns Vec directly
-        // Device info() methods have also changed significantly
-        // Recommended: Use wgpu (pure Rust) as primary path, OpenCL as legacy
+        // Returning empty Vec - OpenCL discovery deprecated in favor of wgpu
+        // Applications should use discover_wgpu() for GPU compute
         Vec::new()
     }
 
     /// Discover wgpu adapters
-    #[cfg(feature = "wgpu")]
+    #[cfg(feature = "wgpu-backend")]
     async fn discover_wgpu() -> Vec<Box<dyn ComputeUnit>> {
         use crate::backends::WgpuComputeUnit;
 

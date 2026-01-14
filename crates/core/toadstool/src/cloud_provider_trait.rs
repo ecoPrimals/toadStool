@@ -48,11 +48,7 @@ pub trait CloudProvider: Send + Sync {
     /// Deploy a workload to this provider
     ///
     /// Returns instance/deployment ID
-    async fn deploy_workload(
-        &self,
-        workload_id: &str,
-        region: &str,
-    ) -> Result<String, CloudError>;
+    async fn deploy_workload(&self, workload_id: &str, region: &str) -> Result<String, CloudError>;
 
     /// Migrate workload from another location
     async fn migrate_workload(

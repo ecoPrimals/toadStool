@@ -85,6 +85,8 @@ impl SongbirdClient {
 
         // Method 2: Family ID (standard pattern)
         if let Ok(family) = std::env::var("SONGBIRD_FAMILY_ID") {
+            // SAFETY: getuid() is always safe - it just reads process state
+            // Consider: Using `nix` crate for safer wrapper
             let uid = unsafe { libc::getuid() };
             let runtime_dir =
                 std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
@@ -117,7 +119,7 @@ impl SongbirdClient {
                 registration.service_id,
                 registration.capabilities.len()
             );
-            
+
             // Deep debt principle: Graceful degradation
             // ToadStool works standalone, Songbird is optional enhancement
             return Ok(());

@@ -217,7 +217,9 @@ impl PluginManager {
     /// Register a plugin from manifest
     pub fn register_plugin(&mut self, manifest: PluginManifest) -> Result<(), PluginError> {
         if !self.config.enabled {
-            return Err(PluginError::ConfigError("Plugin system disabled".to_string()));
+            return Err(PluginError::ConfigError(
+                "Plugin system disabled".to_string(),
+            ));
         }
 
         // Check limits
@@ -240,14 +242,19 @@ impl PluginManager {
 
         self.plugins.insert(manifest.name.clone(), plugin_info);
 
-        info!("📦 Registered plugin: {} v{}", manifest.name, manifest.version);
+        info!(
+            "📦 Registered plugin: {} v{}",
+            manifest.name, manifest.version
+        );
 
         Ok(())
     }
 
     /// Load a plugin
     pub fn load_plugin(&mut self, name: &str) -> Result<(), PluginError> {
-        let plugin = self.plugins.get_mut(name)
+        let plugin = self
+            .plugins
+            .get_mut(name)
             .ok_or_else(|| PluginError::NotFound(name.to_string()))?;
 
         // Update state
@@ -270,7 +277,9 @@ impl PluginManager {
 
     /// Unload a plugin
     pub fn unload_plugin(&mut self, name: &str) -> Result<(), PluginError> {
-        let plugin = self.plugins.get_mut(name)
+        let plugin = self
+            .plugins
+            .get_mut(name)
             .ok_or_else(|| PluginError::NotFound(name.to_string()))?;
 
         // In a real implementation, this would:
@@ -320,15 +329,21 @@ impl PluginManager {
         }
 
         if manifest.version.is_empty() {
-            return Err(PluginError::InvalidManifest("version is required".to_string()));
+            return Err(PluginError::InvalidManifest(
+                "version is required".to_string(),
+            ));
         }
 
         if manifest.plugin_type.is_empty() {
-            return Err(PluginError::InvalidManifest("plugin_type is required".to_string()));
+            return Err(PluginError::InvalidManifest(
+                "plugin_type is required".to_string(),
+            ));
         }
 
         if manifest.entry_point.is_empty() {
-            return Err(PluginError::InvalidManifest("entry_point is required".to_string()));
+            return Err(PluginError::InvalidManifest(
+                "entry_point is required".to_string(),
+            ));
         }
 
         // Check if plugin already registered
@@ -425,8 +440,8 @@ impl<T> TypedPluginRegistry<T> {
     }
 
     /// Register a plugin
-    pub fn register(&mut self, name: String, plugin: T) {
-        self.plugins.insert(name, plugin);
+    pub fn register(&mut self, name: impl Into<String>, plugin: T) {
+        self.plugins.insert(name.into(), plugin);
     }
 
     /// Get plugin by name
@@ -440,8 +455,11 @@ impl<T> TypedPluginRegistry<T> {
     }
 
     /// List available plugins
-    pub fn list(&self) -> Vec<String> {
-        self.plugins.keys().cloned().collect()
+    ///
+    /// Returns plugin names as string slices to avoid unnecessary cloning.
+    /// Callsites that need owned strings can collect: `list().map(String::from)`
+    pub fn list(&self) -> Vec<&str> {
+        self.plugins.keys().map(String::as_str).collect()
     }
 
     /// Check if plugin exists
@@ -564,8 +582,12 @@ mod tests {
 
         let mut manager = PluginManager::with_config(config);
 
-        manager.register_plugin(create_test_manifest("plugin1")).unwrap();
-        manager.register_plugin(create_test_manifest("plugin2")).unwrap();
+        manager
+            .register_plugin(create_test_manifest("plugin1"))
+            .unwrap();
+        manager
+            .register_plugin(create_test_manifest("plugin2"))
+            .unwrap();
 
         let result = manager.register_plugin(create_test_manifest("plugin3"));
         assert!(result.is_err());

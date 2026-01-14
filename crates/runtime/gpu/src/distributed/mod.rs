@@ -166,7 +166,7 @@ impl DistributedGpuScheduler {
 
         // Add tower information
         stats.total_towers = self.tower_manager.tower_count().await;
-        
+
         // Active towers = towers with recent heartbeat (last 60 seconds)
         // In production, would track health checks; for now assume all active
         stats.active_towers = stats.total_towers;
@@ -238,7 +238,7 @@ impl DistributedGpuScheduler {
                 let endpoint = self.tower_manager.get_tower_endpoint(&tower_id).await;
                 tokio::spawn(async move {
                     if let Some(ep) = endpoint {
-                        // TODO: Actual remote execution via HTTP/gRPC
+                        // Remote execution via HTTP (Deep Debt: discovered endpoint)
                         Self::execute_remote_http(&ep.address, workload_clone).await
                     } else {
                         Err(ToadStoolError::runtime("Tower endpoint not found"))
@@ -284,14 +284,14 @@ impl DistributedGpuScheduler {
             "Data-parallel execution requested (chunk_size: {}), falling back to local",
             chunk_size
         );
-        
+
         // Graceful degradation: execute locally
         // Production would:
         // 1. Split workload.inputs into chunks of chunk_size
         // 2. Select towers via tower_manager.select_multiple_towers()
         // 3. Execute chunks in parallel across towers
         // 4. Aggregate results from all chunks
-        
+
         self.execute_local(workload).await
     }
 
@@ -322,14 +322,14 @@ impl DistributedGpuScheduler {
             "Pipeline execution requested ({} stages), falling back to local",
             stages.len()
         );
-        
+
         // Graceful degradation: execute locally
         // Production would:
         // for stage in stages {
         //     let tower = self.tower_manager.select_by_capability(&stage).await?;
         //     result = self.execute_stage_on_tower(&tower, result).await?;
         // }
-        
+
         self.execute_local(workload).await
     }
 

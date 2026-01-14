@@ -808,7 +808,7 @@ mod tests {
                 id: "node-1".to_string(),
                 primal: "toadstool".to_string(),
                 operation: "cpu_compute".to_string(),
-                    duration: None,
+                duration: None,
                 requirements: NodeResourceRequirements::default(),
                 metadata: HashMap::new(),
             }],

@@ -270,9 +270,10 @@ impl PrimalDiscovery {
         // use crate::infant_discovery::InfantDiscoveryEngine;
         // let engine = InfantDiscoveryEngine::new(config).await?;
         // return engine.discover_all_primals().await;
-        
+
         Err(DiscoveryError::MDnsError(
-            "Use infant_discovery module for production mDNS (see crate::infant_discovery)".to_string(),
+            "Use infant_discovery module for production mDNS (see crate::infant_discovery)"
+                .to_string(),
         ))
     }
 

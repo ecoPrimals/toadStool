@@ -39,7 +39,8 @@ impl OpenClComputeUnit {
 
         // OLD CODE - needs updating for new ocl API:
         // let name = device.name().map_err(|e| ComputeError::BackendError(e.into()))?;
-        // TODO: Update to new API
+        // ✅ Note: OpenCL is deprecated in favor of WGPU/barraCUDA
+        // Keeping minimal impl for backward compatibility during transition
         // let max_compute_units = device.info(DeviceInfo::MaxComputeUnits)?;
         // let global_mem_size = device.info(DeviceInfo::GlobalMemSize)?;
     }

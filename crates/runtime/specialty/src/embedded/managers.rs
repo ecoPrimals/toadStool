@@ -65,8 +65,8 @@ impl PeripheralManager {
     }
 
     /// Add a peripheral configuration
-    pub fn add_peripheral(&mut self, name: String, config: PeripheralConfig) {
-        self.peripherals.insert(name, config);
+    pub fn add_peripheral(&mut self, name: impl Into<String>, config: PeripheralConfig) {
+        self.peripherals.insert(name.into(), config);
     }
 
     /// Get a peripheral configuration

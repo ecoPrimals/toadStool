@@ -157,7 +157,13 @@ impl DeploymentLayer {
     /// Check if we have direct hardware access
     pub fn has_direct_hardware_access(&self) -> bool {
         matches!(self, Self::BareMetalOS)
-            || matches!(self, Self::VMLayer { gpu_passthrough: true, .. })
+            || matches!(
+                self,
+                Self::VMLayer {
+                    gpu_passthrough: true,
+                    ..
+                }
+            )
     }
 }
 
@@ -219,9 +225,7 @@ pub struct LayerDetector {
 impl LayerDetector {
     /// Create a new layer detector
     pub fn new() -> Self {
-        Self {
-            cached_layer: None,
-        }
+        Self { cached_layer: None }
     }
 
     /// Detect the current deployment layer
@@ -399,15 +403,100 @@ impl LayerDetector {
     }
 
     /// Detect service layer (providing to guest OS)
+    ///
+    /// **Deep Debt**: Runtime detection of managed guests, no hardcoding
     async fn detect_service_layer(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
-        // Check for guest VMs or containers we're managing
-        // This is a placeholder - real implementation would check for:
-        // - Running QEMU/KVM instances
-        // - Active container orchestration
-        // - Service discovery showing guest OS connections
+        let mut guest_os = Vec::new();
 
-        // TODO: Implement actual guest OS detection
+        // Strategy 1: Check for running QEMU/KVM instances
+        if self.check_qemu_running().await {
+            guest_os.push("QEMU/KVM guests".to_string());
+        }
+
+        // Strategy 2: Check for active Docker containers
+        if self.check_docker_running().await {
+            guest_os.push("Docker containers".to_string());
+        }
+
+        // Strategy 3: Check for Kubernetes/container orchestration
+        if self.check_kubernetes_running().await {
+            guest_os.push("Kubernetes pods".to_string());
+        }
+
+        // Return ServiceLayer if we're managing any guests
+        if !guest_os.is_empty() {
+            return Ok(Some(DeploymentLayer::ServiceLayer { guest_os }));
+        }
+
+        // No guests detected
         Ok(None)
+    }
+
+    /// Check if QEMU/KVM is running with guests
+    async fn check_qemu_running(&self) -> bool {
+        // Check for qemu processes
+        if let Ok(output) = tokio::process::Command::new("pgrep")
+            .arg("-x")
+            .arg("qemu-system-x86_64")
+            .output()
+            .await
+        {
+            return output.status.success() && !output.stdout.is_empty();
+        }
+
+        // Alternative: Check /dev/kvm usage
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(_) = tokio::fs::metadata("/dev/kvm").await {
+                // KVM device exists, check if actively used
+                if let Ok(output) = tokio::process::Command::new("lsof")
+                    .arg("/dev/kvm")
+                    .output()
+                    .await
+                {
+                    return output.status.success() && !output.stdout.is_empty();
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Check if Docker is running with containers
+    async fn check_docker_running(&self) -> bool {
+        // Check for Docker daemon and active containers
+        if let Ok(output) = tokio::process::Command::new("docker")
+            .arg("ps")
+            .arg("-q")
+            .output()
+            .await
+        {
+            return output.status.success() && !output.stdout.is_empty();
+        }
+
+        false
+    }
+
+    /// Check if Kubernetes is running
+    async fn check_kubernetes_running(&self) -> bool {
+        // Check for kubelet process (indicates K8s node)
+        if let Ok(output) = tokio::process::Command::new("pgrep")
+            .arg("-x")
+            .arg("kubelet")
+            .output()
+            .await
+        {
+            if output.status.success() && !output.stdout.is_empty() {
+                return true;
+            }
+        }
+
+        // Alternative: Check for K8s manifest directory
+        if let Ok(_) = tokio::fs::metadata("/etc/kubernetes/manifests").await {
+            return true;
+        }
+
+        false
     }
 
     /// Read container ID from cgroup
@@ -443,8 +532,7 @@ impl LayerDetector {
 
     /// Get AWS region
     async fn get_aws_region(&self) -> Result<String, DetectionError> {
-        let resp =
-            reqwest::get("http://169.254.169.254/latest/meta-data/placement/region").await?;
+        let resp = reqwest::get("http://169.254.169.254/latest/meta-data/placement/region").await?;
         Ok(resp.text().await?)
     }
 
@@ -470,7 +558,11 @@ impl LayerDetector {
             .await?;
         let machine_type = resp.text().await?;
         // Extract just the machine type (remove project/zone prefix)
-        Ok(machine_type.split('/').last().unwrap_or(&machine_type).to_string())
+        Ok(machine_type
+            .split('/')
+            .last()
+            .unwrap_or(&machine_type)
+            .to_string())
     }
 
     /// Get GCP region
@@ -511,9 +603,7 @@ impl LayerDetector {
     /// Get Azure region
     async fn get_azure_region(&self) -> Result<String, DetectionError> {
         let resp = reqwest::Client::new()
-            .get(
-                "http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01",
-            )
+            .get("http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01")
             .header("Metadata", "true")
             .send()
             .await?;

@@ -34,9 +34,9 @@ where
 {
     /// Create a new invariant property
     #[must_use]
-    pub fn new(name: String, predicate: F) -> Self {
+    pub fn new(name: impl Into<String>, predicate: F) -> Self {
         Self {
-            _name: name,
+            _name: name.into(),
             predicate,
             _phantom: std::marker::PhantomData,
         }
@@ -72,9 +72,9 @@ where
 {
     /// Create a new round-trip property
     #[must_use]
-    pub fn new(name: String, encode: F1, decode: F2) -> Self {
+    pub fn new(name: impl Into<String>, encode: F1, decode: F2) -> Self {
         Self {
-            _name: name,
+            _name: name.into(),
             encode,
             decode,
             _phantom: std::marker::PhantomData,

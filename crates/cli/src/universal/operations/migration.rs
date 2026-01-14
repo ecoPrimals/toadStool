@@ -237,10 +237,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
             // Use runtime-discovered temp directory (Deep Debt compliant)
             data_path: {
                 let mut path = super::constants::paths::checkpoint_prefix();
-                path.set_file_name(format!(
-                    "toadstool_checkpoint_{}",
-                    uuid::Uuid::new_v4()
-                ));
+                path.set_file_name(format!("toadstool_checkpoint_{}", uuid::Uuid::new_v4()));
                 path
             },
         })
@@ -281,10 +278,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
             // Use runtime-discovered temp directory (Deep Debt compliant)
             export_path: {
                 let mut path = super::constants::paths::export_prefix();
-                path.set_file_name(format!(
-                    "toadstool_export_{}",
-                    uuid::Uuid::new_v4()
-                ));
+                path.set_file_name(format!("toadstool_export_{}", uuid::Uuid::new_v4()));
                 path
             },
             metadata: std::collections::HashMap::new(),

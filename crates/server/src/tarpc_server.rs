@@ -10,6 +10,9 @@ use tarpc::context::Context;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
+// For resource utilization calculation
+use num_cpus;
+
 use toadstool_integration_protocols::tarpc_service::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
     ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
@@ -25,6 +28,48 @@ pub struct ToadStoolTarpcServer {
     workloads: Arc<RwLock<std::collections::HashMap<String, WorkloadResult>>>,
     /// Workload executor (real implementation, not mock)
     executor: Arc<dyn WorkloadExecutor + Send + Sync>,
+}
+
+impl ToadStoolTarpcServer {
+    /// Calculate current resource utilization
+    ///
+    /// **Deep Debt Compliance**:
+    /// - Queries real system state (no hardcoding)
+    /// - Returns 0.0-1.0 utilization percentage
+    /// - Graceful degradation on query failure
+    async fn calculate_resource_utilization(&self) -> f32 {
+        let active_count = self.workloads.read().await.len();
+        let max_capacity = num_cpus::get() * 4; // ~4 workloads per core
+
+        let base_utilization = if max_capacity > 0 {
+            (active_count as f32) / (max_capacity as f32)
+        } else {
+            0.0
+        };
+
+        // Factor in system load (Deep Debt: runtime query)
+        let system_load = Self::query_system_load();
+        let load_factor = system_load.unwrap_or(0.5);
+
+        // Combined utilization (capped at 1.0)
+        (base_utilization * 0.7 + load_factor * 0.3).min(1.0)
+    }
+
+    /// Query system load average (runtime discovery)
+    fn query_system_load() -> Option<f32> {
+        #[cfg(unix)]
+        {
+            if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg") {
+                if let Some(first) = loadavg.split_whitespace().next() {
+                    if let Ok(load) = first.parse::<f32>() {
+                        let cpu_count = num_cpus::get() as f32;
+                        return Some((load / cpu_count).min(1.0));
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 /// Workload executor trait (capability-based, not hardcoded)
@@ -226,7 +271,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
             version: self.version.clone(),
             uptime_secs: uptime.as_secs(),
             active_workloads: active_count as u32,
-            resource_utilization: 0.0, // TODO: Calculate from executor
+            resource_utilization: self.calculate_resource_utilization().await,
         })
     }
 }

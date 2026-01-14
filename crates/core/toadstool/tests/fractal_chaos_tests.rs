@@ -46,20 +46,18 @@ async fn test_extreme_memory_values() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
     // Zero memory
-    let req = CompositionRequest::new("zero-mem")
-        .with_constraint(Constraint::min_memory_gb(0.0));
+    let req = CompositionRequest::new("zero-mem").with_constraint(Constraint::min_memory_gb(0.0));
     let eval = engine.evaluate(&req).await.unwrap();
     assert!(eval.is_feasible); // 0 memory should be OK
 
     // Tiny memory
-    let req = CompositionRequest::new("tiny-mem")
-        .with_constraint(Constraint::min_memory_gb(0.001));
+    let req = CompositionRequest::new("tiny-mem").with_constraint(Constraint::min_memory_gb(0.001));
     let eval = engine.evaluate(&req).await.unwrap();
     assert!(eval.is_feasible);
 
     // Huge memory (impossible)
-    let req = CompositionRequest::new("huge-mem")
-        .with_constraint(Constraint::min_memory_gb(999999.0));
+    let req =
+        CompositionRequest::new("huge-mem").with_constraint(Constraint::min_memory_gb(999999.0));
     let _eval = engine.evaluate(&req).await.unwrap();
     assert!(!_eval.is_feasible); // Should be infeasible
 }
@@ -70,14 +68,12 @@ async fn test_extreme_cpu_values() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
     // Zero cores
-    let req = CompositionRequest::new("zero-cpu")
-        .with_constraint(Constraint::min_cpu_cores(0));
+    let req = CompositionRequest::new("zero-cpu").with_constraint(Constraint::min_cpu_cores(0));
     let eval = engine.evaluate(&req).await.unwrap();
     assert!(eval.is_feasible);
 
     // One core
-    let req = CompositionRequest::new("one-cpu")
-        .with_constraint(Constraint::min_cpu_cores(1));
+    let req = CompositionRequest::new("one-cpu").with_constraint(Constraint::min_cpu_cores(1));
     let eval = engine.evaluate(&req).await.unwrap();
     assert!(eval.is_feasible);
 
@@ -94,20 +90,20 @@ async fn test_extreme_latency_values() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
     // Zero latency (impossible in reality)
-    let req = CompositionRequest::new("zero-latency")
-        .with_constraint(Constraint::max_latency_ms(0));
+    let req =
+        CompositionRequest::new("zero-latency").with_constraint(Constraint::max_latency_ms(0));
     let _eval = engine.evaluate(&req).await.unwrap();
     // May or may not be feasible depending on layer
 
     // Ultra-low latency
-    let req = CompositionRequest::new("ultra-low-latency")
-        .with_constraint(Constraint::max_latency_ms(1));
+    let req =
+        CompositionRequest::new("ultra-low-latency").with_constraint(Constraint::max_latency_ms(1));
     let _eval = engine.evaluate(&req).await.unwrap();
     // Should evaluate without panic
 
     // Very high latency (always feasible)
-    let req = CompositionRequest::new("high-latency")
-        .with_constraint(Constraint::max_latency_ms(100000));
+    let req =
+        CompositionRequest::new("high-latency").with_constraint(Constraint::max_latency_ms(100000));
     let eval = engine.evaluate(&req).await.unwrap();
     assert!(eval.is_feasible);
 }
@@ -204,8 +200,7 @@ async fn test_all_soft_constraints() {
 async fn test_rapid_evaluations() {
     let engine = CompositionEngine::from_runtime().await.unwrap();
 
-    let req = CompositionRequest::new("rapid")
-        .with_constraint(Constraint::min_memory_gb(1.0));
+    let req = CompositionRequest::new("rapid").with_constraint(Constraint::min_memory_gb(1.0));
 
     // 100 rapid evaluations
     for _ in 0..100 {
@@ -318,7 +313,9 @@ async fn test_migration_extreme_constraints() {
         Constraint::must_be_local(),
     ];
 
-    let result = coordinator.should_migrate("extreme-workload", &constraints).await;
+    let result = coordinator
+        .should_migrate("extreme-workload", &constraints)
+        .await;
     assert!(result.is_ok());
 
     let recommendation = result.unwrap();
@@ -370,8 +367,7 @@ async fn test_custom_constraints_chaos() {
             value: format!("value-{}", i),
         };
 
-        let req = CompositionRequest::new(format!("custom-chaos-{}", i))
-            .with_constraint(custom);
+        let req = CompositionRequest::new(format!("custom-chaos-{}", i)).with_constraint(custom);
 
         let result = engine.evaluate(&req).await;
         assert!(result.is_ok());

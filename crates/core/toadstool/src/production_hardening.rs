@@ -80,7 +80,7 @@ pub struct CircuitBreaker {
 impl CircuitBreaker {
     /// Create new circuit breaker
     #[must_use]
-    pub fn new(service_name: String, config: CircuitBreakerConfig) -> Self {
+    pub fn new(service_name: impl Into<String>, config: CircuitBreakerConfig) -> Self {
         let half_open_permits = config.half_open_max_requests as usize;
 
         Self {
@@ -90,7 +90,7 @@ impl CircuitBreaker {
             success_count: Arc::new(RwLock::new(0)),
             last_failure_time: Arc::new(RwLock::new(None)),
             half_open_semaphore: Arc::new(Semaphore::new(half_open_permits)),
-            service_name,
+            service_name: service_name.into(),
         }
     }
 
