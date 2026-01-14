@@ -35,6 +35,9 @@ pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 futures-intrusive = "0.5"
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
 [features]
 default = []
 cuda = ["cudarc", "toadstool-runtime-gpu/cuda"]
@@ -90,3 +93,7 @@ path = "src/bin/amd_vs_nvidia.rs"
 [[bin]]
 name = "cross-gpu-inference"
 path = "src/bin/cross_gpu_inference.rs"
+
+[[bench]]
+name = "simple_benchmarks"
+harness = false

@@ -1,0 +1,183 @@
+    Finished `bench` profile [optimized] target(s) in 0.20s
+     Running benches/simple_benchmarks.rs (target/release/deps/simple_benchmarks-8cbd63e91996291f)
+Gnuplot not found, using plotters backend
+Benchmarking MatMul/32x32
+Benchmarking MatMul/32x32: Warming up for 3.0000 s
+Benchmarking MatMul/32x32: Collecting 10 samples in estimated 5.0281 s (990 iterations)
+Benchmarking MatMul/32x32: Analyzing
+MatMul/32x32            time:   [5.0517 ms 5.1650 ms 5.3337 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+Benchmarking MatMul/64x64
+Benchmarking MatMul/64x64: Warming up for 3.0000 s
+Benchmarking MatMul/64x64: Collecting 10 samples in estimated 5.0634 s (1045 iterations)
+Benchmarking MatMul/64x64: Analyzing
+MatMul/64x64            time:   [4.8910 ms 4.9097 ms 4.9250 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking MatMul/128x128
+Benchmarking MatMul/128x128: Warming up for 3.0000 s
+Benchmarking MatMul/128x128: Collecting 10 samples in estimated 5.2744 s (1045 iterations)
+Benchmarking MatMul/128x128: Analyzing
+MatMul/128x128          time:   [4.9520 ms 5.0375 ms 5.1581 ms]
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) low severe
+Benchmarking MatMul/256x256
+Benchmarking MatMul/256x256: Warming up for 3.0000 s
+Benchmarking MatMul/256x256: Collecting 10 samples in estimated 5.1030 s (990 iterations)
+Benchmarking MatMul/256x256: Analyzing
+MatMul/256x256          time:   [5.1521 ms 5.1676 ms 5.1902 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking MatMul/512x512
+Benchmarking MatMul/512x512: Warming up for 3.0000 s
+Benchmarking MatMul/512x512: Collecting 10 samples in estimated 5.1030 s (825 iterations)
+Benchmarking MatMul/512x512: Analyzing
+MatMul/512x512          time:   [6.0234 ms 6.0832 ms 6.1186 ms]
+Benchmarking MatMul/1024x1024
+Benchmarking MatMul/1024x1024: Warming up for 3.0000 s
+Benchmarking MatMul/1024x1024: Collecting 10 samples in estimated 5.0534 s (495 iterations)
+Benchmarking MatMul/1024x1024: Analyzing
+MatMul/1024x1024        time:   [10.107 ms 10.136 ms 10.154 ms]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low mild
+  1 (10.00%) high mild
+
+Benchmarking BatchMatMul/8_heads_64seq
+Benchmarking BatchMatMul/8_heads_64seq: Warming up for 3.0000 s
+Benchmarking BatchMatMul/8_heads_64seq: Collecting 10 samples in estimated 5.0395 s (990 iterations)
+Benchmarking BatchMatMul/8_heads_64seq: Analyzing
+BatchMatMul/8_heads_64seq
+                        time:   [4.9829 ms 5.0304 ms 5.0584 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+Benchmarking BatchMatMul/12_heads_128seq
+Benchmarking BatchMatMul/12_heads_128seq: Warming up for 3.0000 s
+Benchmarking BatchMatMul/12_heads_128seq: Collecting 10 samples in estimated 5.1108 s (880 iterations)
+Benchmarking BatchMatMul/12_heads_128seq: Analyzing
+BatchMatMul/12_heads_128seq
+                        time:   [5.7860 ms 5.7981 ms 5.8200 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+Benchmarking BatchMatMul/16_heads_256seq
+Benchmarking BatchMatMul/16_heads_256seq: Warming up for 3.0000 s
+Benchmarking BatchMatMul/16_heads_256seq: Collecting 10 samples in estimated 5.2021 s (550 iterations)
+Benchmarking BatchMatMul/16_heads_256seq: Analyzing
+BatchMatMul/16_heads_256seq
+                        time:   [9.3953 ms 9.4281 ms 9.4523 ms]
+
+Benchmarking ReLU_1k
+Benchmarking ReLU_1k: Warming up for 3.0000 s
+Benchmarking ReLU_1k: Collecting 10 samples in estimated 5.2180 s (1155 iterations)
+Benchmarking ReLU_1k: Analyzing
+ReLU_1k                 time:   [4.7899 ms 4.8458 ms 4.8890 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) low mild
+
+Benchmarking GELU_1k
+Benchmarking GELU_1k: Warming up for 3.0000 s
+Benchmarking GELU_1k: Collecting 10 samples in estimated 5.0663 s (1045 iterations)
+Benchmarking GELU_1k: Analyzing
+GELU_1k                 time:   [4.9055 ms 4.9144 ms 4.9202 ms]
+Found 2 outliers among 10 measurements (20.00%)
+  1 (10.00%) low severe
+  1 (10.00%) low mild
+
+Benchmarking Sigmoid_1k
+Benchmarking Sigmoid_1k: Warming up for 3.0000 s
+Benchmarking Sigmoid_1k: Collecting 10 samples in estimated 5.0529 s (1045 iterations)
+Benchmarking Sigmoid_1k: Analyzing
+Sigmoid_1k              time:   [4.7387 ms 4.7574 ms 4.7787 ms]
+
+Benchmarking ReLU_64k
+Benchmarking ReLU_64k: Warming up for 3.0000 s
+Benchmarking ReLU_64k: Collecting 10 samples in estimated 5.1815 s (1045 iterations)
+Benchmarking ReLU_64k: Analyzing
+ReLU_64k                time:   [4.9648 ms 4.9820 ms 4.9980 ms]
+
+Benchmarking GELU_64k
+Benchmarking GELU_64k: Warming up for 3.0000 s
+Benchmarking GELU_64k: Collecting 10 samples in estimated 5.0236 s (990 iterations)
+Benchmarking GELU_64k: Analyzing
+GELU_64k                time:   [5.0740 ms 5.0951 ms 5.1166 ms]
+
+Benchmarking Sigmoid_64k
+Benchmarking Sigmoid_64k: Warming up for 3.0000 s
+Benchmarking Sigmoid_64k: Collecting 10 samples in estimated 5.2689 s (1045 iterations)
+Benchmarking Sigmoid_64k: Analyzing
+Sigmoid_64k             time:   [5.0173 ms 5.0270 ms 5.0425 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking ReLU_1m
+Benchmarking ReLU_1m: Warming up for 3.0000 s
+Benchmarking ReLU_1m: Collecting 10 samples in estimated 5.4431 s (660 iterations)
+Benchmarking ReLU_1m: Analyzing
+ReLU_1m                 time:   [7.9491 ms 8.0442 ms 8.1015 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking GELU_1m
+Benchmarking GELU_1m: Warming up for 3.0000 s
+Benchmarking GELU_1m: Collecting 10 samples in estimated 5.0588 s (660 iterations)
+Benchmarking GELU_1m: Analyzing
+GELU_1m                 time:   [7.6260 ms 7.7339 ms 7.8698 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking Sigmoid_1m
+Benchmarking Sigmoid_1m: Warming up for 3.0000 s
+Benchmarking Sigmoid_1m: Collecting 10 samples in estimated 5.2684 s (660 iterations)
+Benchmarking Sigmoid_1m: Analyzing
+Sigmoid_1m              time:   [8.0271 ms 8.0521 ms 8.0720 ms]
+
+Benchmarking LayerNorm/bert_512x768
+Benchmarking LayerNorm/bert_512x768: Warming up for 3.0000 s
+Benchmarking LayerNorm/bert_512x768: Collecting 10 samples in estimated 5.2709 s (605 iterations)
+Benchmarking LayerNorm/bert_512x768: Analyzing
+LayerNorm/bert_512x768  time:   [8.6745 ms 8.6850 ms 8.6976 ms]
+Benchmarking LayerNorm/gpt2_1024x1024
+Benchmarking LayerNorm/gpt2_1024x1024: Warming up for 3.0000 s
+Benchmarking LayerNorm/gpt2_1024x1024: Collecting 10 samples in estimated 5.5742 s (440 iterations)
+Benchmarking LayerNorm/gpt2_1024x1024: Analyzing
+LayerNorm/gpt2_1024x1024
+                        time:   [12.485 ms 13.329 ms 13.874 ms]
+Found 2 outliers among 10 measurements (20.00%)
+  2 (20.00%) high severe
+Benchmarking LayerNorm/llama_2048x4096
+Benchmarking LayerNorm/llama_2048x4096: Warming up for 3.0000 s
+
+Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 6.5s or enable flat sampling.
+Benchmarking LayerNorm/llama_2048x4096: Collecting 10 samples in estimated 6.5457 s (55 iterations)
+Benchmarking LayerNorm/llama_2048x4096: Analyzing
+LayerNorm/llama_2048x4096
+                        time:   [118.00 ms 118.85 ms 120.01 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high severe
+
+Benchmarking Concat_1024
+Benchmarking Concat_1024: Warming up for 3.0000 s
+Benchmarking Concat_1024: Collecting 10 samples in estimated 5.0945 s (1045 iterations)
+Benchmarking Concat_1024: Analyzing
+Concat_1024             time:   [4.9092 ms 4.9951 ms 5.0910 ms]
+Found 1 outliers among 10 measurements (10.00%)
+  1 (10.00%) high mild
+
+Benchmarking Concat_65536
+Benchmarking Concat_65536: Warming up for 3.0000 s
+Benchmarking Concat_65536: Collecting 10 samples in estimated 5.2460 s (990 iterations)
+Benchmarking Concat_65536: Analyzing
+Concat_65536            time:   [5.2085 ms 5.2304 ms 5.2492 ms]
+
+Benchmarking Concat_1048576
+Benchmarking Concat_1048576: Warming up for 3.0000 s
+Benchmarking Concat_1048576: Collecting 10 samples in estimated 5.6313 s (385 iterations)
+Benchmarking Concat_1048576: Analyzing
+Concat_1048576          time:   [13.873 ms 13.936 ms 14.013 ms]
+
+Benchmarking Slice_1m
+Benchmarking Slice_1m: Warming up for 3.0000 s
+Benchmarking Slice_1m: Collecting 10 samples in estimated 5.4931 s (550 iterations)
+Benchmarking Slice_1m: Analyzing
+Slice_1m                time:   [9.8187 ms 9.8883 ms 10.039 ms]
+
