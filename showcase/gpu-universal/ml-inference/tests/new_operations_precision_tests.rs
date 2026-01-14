@@ -352,6 +352,55 @@ async fn test_all_activations_consistency() {
 // OPTIMIZERS (6 total)
 // ============================================================================
 
+// Core Optimizer (Untested - HIGHEST PRIORITY)
+
+#[tokio::test]
+async fn test_adam_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // Adam: Adaptive Moment Estimation (most popular optimizer)
+    let mut params = vec![1.0, 2.0, 3.0, 4.0];
+    let grads = vec![0.1, 0.2, 0.3, 0.4];
+    let mut m = vec![0.0; 4];  // First moment estimate
+    let mut v = vec![0.0; 4];  // Second moment estimate
+    let step = 1;
+    
+    let config = AdamConfig {
+        learning_rate: 0.001,
+        beta1: 0.9,
+        beta2: 0.999,
+        epsilon: 1e-8,
+        weight_decay: 0.0,
+    };
+    
+    let initial_params = params.clone();
+    
+    executor.execute_adam_step(&grads, &mut params, &mut m, &mut v, step, config)
+        .await.unwrap();
+    
+    // Parameters should decrease with positive gradients
+    for i in 0..4 {
+        assert!(params[i] < initial_params[i],
+            "Adam params[{}] should decrease: {} -> {}", i, initial_params[i], params[i]);
+    }
+    
+    // First moment (m) should be updated (moving average of gradients)
+    assert!(m.iter().all(|&val| val > 0.0), "First moment (m) should be positive");
+    
+    // Second moment (v) should be updated (moving average of squared gradients)
+    assert!(v.iter().all(|&val| val > 0.0), "Second moment (v) should be positive");
+    
+    // Verify bias correction is working (step 1)
+    // m after step 1: m = beta1 * 0 + (1 - beta1) * grad = 0.1 * grad
+    // Expected m[0] ≈ 0.1 * 0.1 = 0.01
+    assert!((m[0] - 0.01).abs() < FP32_TOLERANCE_RELAXED,
+        "First moment should be ≈ 0.01, got {}", m[0]);
+    
+    println!("✅ Adam optimizer precision test passed");
+}
+
+// Other Optimizers (Already Tested)
+
 #[tokio::test]
 async fn test_sgd_momentum_precision() {
     let executor = WgpuExecutor::new().await.unwrap();
@@ -669,6 +718,51 @@ async fn test_dice_loss_precision() {
 // ============================================================================
 // POOLING (6 total)
 // ============================================================================
+
+// Standard Pooling (Untested - HIGH PRIORITY)
+
+#[tokio::test]
+async fn test_maxpool2d_precision() {
+    let executor = WgpuExecutor::new().await.unwrap();
+    
+    // MaxPool2D: 2D max pooling with kernel, stride, padding
+    // Input: 1 batch, 1 channel, 4x4 spatial
+    let input = vec![
+        1.0, 2.0, 3.0, 4.0,
+        5.0, 6.0, 7.0, 8.0,
+        9.0, 10.0, 11.0, 12.0,
+        13.0, 14.0, 15.0, 16.0,
+    ];
+    
+    let config = Pool2DConfig {
+        kernel_size: (2, 2),
+        stride: (2, 2),
+        padding: (0, 0),
+    };
+    
+    // Output should be 2x2 (4x4 -> 2x2 with kernel=2, stride=2)
+    let result = executor.execute_max_pool_2d(&input, 1, 1, 4, 4, config)
+        .await.unwrap();
+    
+    // Expected: max of each 2x2 window
+    // Top-left: max(1,2,5,6) = 6
+    // Top-right: max(3,4,7,8) = 8
+    // Bottom-left: max(9,10,13,14) = 14
+    // Bottom-right: max(11,12,15,16) = 16
+    let expected = vec![6.0, 8.0, 14.0, 16.0];
+    
+    assert_eq!(result.len(), 4);
+    for (i, (&out, &exp)) in result.iter().zip(expected.iter()).enumerate() {
+        assert!((out - exp).abs() < FP32_TOLERANCE,
+            "MaxPool2D error at index {}: got {}, expected {}", i, out, exp);
+    }
+    
+    println!("✅ MaxPool2D precision test passed");
+}
+
+// Note: AvgPool2D not yet implemented (would be Gap #29)
+
+// Advanced Pooling (Already Tested)
 
 #[tokio::test]
 async fn test_global_avg_pool_precision() {

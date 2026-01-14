@@ -47,33 +47,33 @@ impl WgpuExecutor {
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct MaxPool2DParams {
-            batch: u32,
+            batch_size: u32,
             channels: u32,
-            height: u32,
-            width: u32,
+            input_height: u32,
+            input_width: u32,
+            output_height: u32,
+            output_width: u32,
             kernel_h: u32,
             kernel_w: u32,
             stride_h: u32,
             stride_w: u32,
-            pad_h: u32,
-            pad_w: u32,
-            out_height: u32,
-            out_width: u32,
+            padding_h: u32,
+            padding_w: u32,
         }
 
         let params = MaxPool2DParams {
-            batch: batch as u32,
+            batch_size: batch as u32,
             channels: channels as u32,
-            height: height as u32,
-            width: width as u32,
+            input_height: height as u32,
+            input_width: width as u32,
+            output_height: out_height as u32,
+            output_width: out_width as u32,
             kernel_h: kernel_h as u32,
             kernel_w: kernel_w as u32,
             stride_h: stride_h as u32,
             stride_w: stride_w as u32,
-            pad_h: pad_h as u32,
-            pad_w: pad_w as u32,
-            out_height: out_height as u32,
-            out_width: out_width as u32,
+            padding_h: pad_h as u32,
+            padding_w: pad_w as u32,
         };
 
         let params_buffer =
