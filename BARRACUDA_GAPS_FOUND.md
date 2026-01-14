@@ -358,3 +358,41 @@ This document serves as a **gap database** showing:
 **Status**: ✅ FIXED - MaxPool2D now passes all tests  
 **Learning**: CRITICAL to match struct layouts exactly between Rust and WGSL
 
+
+### Gap #30: CrossEntropy Bind Group Mismatch ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `training.rs:76`  
+**Symptom**: "Number of bindings in bind group descriptor (4) does not match ... (2)"  
+**Root Cause**: Used `create_binary_bind_group_layout` (2 bindings) but CrossEntropy needs 4 bindings (predictions, targets, losses, params)  
+**Fix**: Created custom 4-binding layout for CrossEntropy  
+**Status**: ✅ FIXED - CrossEntropy now passes all tests  
+**Learning**: Don't reuse simple helpers for complex operations
+
+### Gap #31: Conv2D Not Implemented 📋 NOT IMPLEMENTED  
+**Discovered**: Jan 14, 2026 - Testing session  
+**Status**: Operation not yet implemented  
+**Priority**: HIGH - Most common convolution operation  
+**Note**: Conv1D and DepthwiseConv2D exist, but standard Conv2D missing
+
+### Gap #32: Add Operation Missing Alpha Parameter ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `add.wgsl`  
+**Symptom**: Add returns `a[i] + b[i]` instead of `alpha * a[i] + b[i]`  
+**Root Cause**: Shader implements simple add, but Rust code expects SAXPY (alpha * x + y)
+  - Rust creates alpha param buffer and binds at binding 3
+  - WGSL shader has no binding 3 and ignores alpha  
+**Fix Needed**: Update shader to accept params at binding 3 and use alpha  
+**Status**: ⚠️ NEEDS FIX - Currently ignoring alpha parameter  
+**Priority**: MEDIUM - Affects all scaled additions
+
+### Gap #33: MatMul Parameter Order Mismatch ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `matmul.wgsl` + `basic_ops.rs`  
+**Symptom**: MatMul returns incorrect results (got 27, expected 58)  
+**Root Cause**: Under investigation - likely struct field order mismatch  
+**Status**: ⚠️ INVESTIGATING  
+**Priority**: HIGH - Matrix multiplication is fundamental
+
+**Fix for Gap #32**: Added alpha parameter to add.wgsl shader at binding 3
+**Fix for Gap #33**: Corrected Rust parameter order from [m, n, k] to [m, k, n] to match WGSL struct
+

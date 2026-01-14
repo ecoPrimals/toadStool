@@ -30,7 +30,8 @@ impl WgpuExecutor {
         let staging_buffer = self.create_staging_buffer(m * n, "MatMul Staging");
 
         // Create params buffer (dimensions - runtime configuration, not hardcoded!)
-        let params = [m as u32, n as u32, k as u32, 0]; // Pad to 16 bytes
+        // WGSL struct order: M, K, N (must match shader exactly!)
+        let params = [m as u32, k as u32, n as u32, 0]; // Pad to 16 bytes
         let params_buffer =
             self.device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
