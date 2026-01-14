@@ -57,6 +57,44 @@ pub struct BatchNormConfig {
     pub running_var: Vec<f32>,  // Pre-computed variance
 }
 
+/// Conv1D configuration
+#[derive(Debug, Clone, Copy)]
+pub struct Conv1DConfig {
+    pub kernel_size: usize,
+    pub stride: usize,
+    pub padding: usize,
+    pub dilation: usize,
+}
+
+impl Default for Conv1DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: 3,
+            stride: 1,
+            padding: 0,
+            dilation: 1,
+        }
+    }
+}
+
+/// DepthwiseConv2D configuration
+#[derive(Debug, Clone, Copy)]
+pub struct DepthwiseConv2DConfig {
+    pub kernel_size: (usize, usize), // (height, width)
+    pub stride: (usize, usize),      // (height, width)
+    pub padding: (usize, usize),     // (height, width)
+}
+
+impl Default for DepthwiseConv2DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: (3, 3),
+            stride: (1, 1),
+            padding: (1, 1),
+        }
+    }
+}
+
 /// MaxPool2D configuration
 #[derive(Debug, Clone, Copy)]
 pub struct Pool2DConfig {
@@ -106,6 +144,21 @@ pub struct GroupNormConfig {
     pub epsilon: f32,
     pub gamma: Vec<f32>, // Scale (per channel)
     pub beta: Vec<f32>,  // Shift (per channel)
+}
+
+/// InstanceNorm configuration
+#[derive(Debug, Clone)]
+pub struct InstanceNormConfig {
+    pub epsilon: f32,
+    pub gamma: Vec<f32>, // Scale (per channel)
+    pub beta: Vec<f32>,  // Shift (per channel)
+}
+
+/// RMSNorm configuration
+#[derive(Debug, Clone)]
+pub struct RmsNormConfig {
+    pub epsilon: f32,
+    pub gamma: Vec<f32>, // Scale parameters
 }
 
 /// Adam optimizer configuration
