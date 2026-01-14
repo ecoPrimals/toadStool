@@ -44,6 +44,7 @@ pub use executor::{GpuCapabilities, WgpuExecutor};
 pub(crate) mod activations;
 pub(crate) mod advanced_ops;
 pub(crate) mod basic_ops;
+pub(crate) mod data_ops;
 mod executor;
 pub(crate) mod normalization;
 pub(crate) mod pooling;
