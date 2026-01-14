@@ -54,7 +54,53 @@ fn compute_stats(
     }
 }
 
-// Pass 2: Normalize
+// Pass 2: Finalize statistics (reduce partial sums to final mean/variance)
+@compute @workgroup_size(256)
+fn finalize_stats(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+) {
+    let tid = local_id.x;
+    
+    // Load partial sums from multiple workgroups
+    var local_sum = 0.0;
+    var local_sum_sq = 0.0;
+    
+    // Each thread loads one partial sum
+    let num_partials = arrayLength(&stats) / 2u;
+    if (tid < num_partials) {
+        local_sum = stats[tid * 2u];
+        local_sum_sq = stats[tid * 2u + 1u];
+    }
+    shared_sum[tid] = local_sum;
+    shared_sum_sq[tid] = local_sum_sq;
+    workgroupBarrier();
+    
+    // Tree reduction to sum all partials
+    for (var stride = 128u; stride > 0u; stride = stride / 2u) {
+        if (tid < stride && (tid + stride) < num_partials) {
+            shared_sum[tid] = shared_sum[tid] + shared_sum[tid + stride];
+            shared_sum_sq[tid] = shared_sum_sq[tid] + shared_sum_sq[tid + stride];
+        }
+        workgroupBarrier();
+    }
+    
+    // Thread 0 computes final mean and variance
+    if (tid == 0u) {
+        let total_sum = shared_sum[0];
+        let total_sum_sq = shared_sum_sq[0];
+        let n = f32(params.size);
+        
+        let mean = total_sum / n;
+        let variance = (total_sum_sq / n) - (mean * mean);
+        
+        // Store final stats at beginning of buffer
+        stats[0] = mean;
+        stats[1] = variance;
+    }
+}
+
+// Pass 3: Normalize
 @compute @workgroup_size(256)
 fn normalize(
     @builtin(global_invocation_id) global_id: vec3<u32>,
@@ -62,7 +108,7 @@ fn normalize(
     let gid = global_id.x;
     
     if (gid < params.size) {
-        // Assume stats[0] = mean, stats[1] = variance (computed on CPU or multi-pass)
+        // Final mean and variance are now in stats[0] and stats[1]
         let mean = stats[0];
         let variance = stats[1];
         
