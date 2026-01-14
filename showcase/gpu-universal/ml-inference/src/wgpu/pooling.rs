@@ -434,4 +434,306 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, out_size).await
     }
+
+    /// Execute Adaptive Average Pooling 2D
+    ///
+    /// Pools input to a specific output size regardless of input dimensions.
+    /// Automatically computes kernel and stride to produce desired output size.
+    ///
+    /// Used in: Classification networks, SPPNet, PSPNet, variable input sizes.
+    /// Benefits: Network can handle any input size, produces fixed output.
+    ///
+    /// Deep Debt: All dimensions determined at runtime, fully adaptive.
+    pub async fn execute_adaptive_avg_pool_2d(
+        &self,
+        input: &[f32],
+        batch: usize,
+        channels: usize,
+        in_height: usize,
+        in_width: usize,
+        out_height: usize,
+        out_width: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            input.len() == batch * channels * in_height * in_width,
+            "AdaptiveAvgPool2D: input size mismatch"
+        );
+
+        let out_size = batch * channels * out_height * out_width;
+        let shader_source = include_str!("../shaders/adaptive_avgpool2d.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "AdaptiveAvgPool2D Input");
+        let output_buffer = self.create_output_buffer(out_size, "AdaptiveAvgPool2D Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "AdaptiveAvgPool2D Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct AdaptivePoolParams {
+            batch: u32,
+            channels: u32,
+            in_height: u32,
+            in_width: u32,
+            out_height: u32,
+            out_width: u32,
+        }
+
+        let params = AdaptivePoolParams {
+            batch: batch as u32,
+            channels: channels as u32,
+            in_height: in_height as u32,
+            in_width: in_width as u32,
+            out_height: out_height as u32,
+            out_width: out_width as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("AdaptiveAvgPool2D Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("AdaptiveAvgPool2D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("AdaptiveAvgPool2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "AdaptiveAvgPool2D", &bind_group_layout);
+
+        let workgroups_x = (out_width as u32 + 15) / 16;
+        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_z = (batch * channels) as u32;
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("AdaptiveAvgPool2D Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("AdaptiveAvgPool2D Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
+
+    /// Execute Adaptive Max Pooling 2D
+    ///
+    /// Pools input to a specific output size using maximum operation.
+    /// Automatically computes pooling regions to produce desired output size.
+    ///
+    /// Used in: Classification, SPPNet, flexible architectures.
+    /// Benefits: Variable input sizes, captures most salient features.
+    ///
+    /// Deep Debt: All dimensions determined at runtime, fully adaptive.
+    pub async fn execute_adaptive_max_pool_2d(
+        &self,
+        input: &[f32],
+        batch: usize,
+        channels: usize,
+        in_height: usize,
+        in_width: usize,
+        out_height: usize,
+        out_width: usize,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            input.len() == batch * channels * in_height * in_width,
+            "AdaptiveMaxPool2D: input size mismatch"
+        );
+
+        let out_size = batch * channels * out_height * out_width;
+        let shader_source = include_str!("../shaders/adaptive_maxpool2d.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "AdaptiveMaxPool2D Input");
+        let output_buffer = self.create_output_buffer(out_size, "AdaptiveMaxPool2D Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "AdaptiveMaxPool2D Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct AdaptivePoolParams {
+            batch: u32,
+            channels: u32,
+            in_height: u32,
+            in_width: u32,
+            out_height: u32,
+            out_width: u32,
+        }
+
+        let params = AdaptivePoolParams {
+            batch: batch as u32,
+            channels: channels as u32,
+            in_height: in_height as u32,
+            in_width: in_width as u32,
+            out_height: out_height as u32,
+            out_width: out_width as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("AdaptiveMaxPool2D Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("AdaptiveMaxPool2D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("AdaptiveMaxPool2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "AdaptiveMaxPool2D", &bind_group_layout);
+
+        let workgroups_x = (out_width as u32 + 15) / 16;
+        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_z = (batch * channels) as u32;
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("AdaptiveMaxPool2D Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("AdaptiveMaxPool2D Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
 }
