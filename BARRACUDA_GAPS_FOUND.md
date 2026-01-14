@@ -396,3 +396,29 @@ This document serves as a **gap database** showing:
 **Fix for Gap #32**: Added alpha parameter to add.wgsl shader at binding 3
 **Fix for Gap #33**: Corrected Rust parameter order from [m, n, k] to [m, k, n] to match WGSL struct
 
+### Gap #34: Gather and Scatter Bind Group Layout Mismatch ⚠️ INVESTIGATING
+**Discovered**: Jan 14, 2026 - Testing session (evening)  
+**Location**: `advanced_ops.rs:59 and advanced_ops.rs:185`  
+**Symptom**: "Number of bindings in bind group descriptor (4) does not match ... (2)"  
+**Root Cause**: Both Gather and Scatter use `create_binary_bind_group_layout` (2 bindings) but actually need 4 bindings  
+  - Binding 0: Source/Input (read-only storage)
+  - Binding 1: Indices or Output (storage)  
+  - Binding 2: Output or Dest (storage)
+  - Binding 3: Params (uniform)  
+**Fix Needed**: Create custom 4-binding layouts for both operations  
+**Status**: ✅ FIXED - Gather working, Scatter needs additional fix  
+**Priority**: MEDIUM - Data operations important for embeddings
+
+### Gap #35: Scatter Type Conversion (i32 -> f32) ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session (evening)  
+**Location**: `advanced_ops.rs:319`  
+**Symptom**: Scatter returns garbage values (1120403500 instead of 100)  
+**Root Cause**: Scatter stores f32 values as i32 bit patterns for atomic operations, but converts back using cast (`x as f32`) instead of bit reinterpretation
+  - f32(100.0) has bit pattern 0x42C80000 = i32(1120403456)
+  - Reading as i32 and casting gives 1120403456.0, not 100.0
+  - Need to use `f32::from_bits(x as u32)` to reinterpret bits  
+**Fix**: Changed `x as f32` to `f32::from_bits(x as u32)` in result mapping  
+**Status**: ✅ FIXED  
+**Priority**: HIGH - Scatter is fundamental for sparse operations  
+**Learning**: When using atomic operations with reinterpreted types, always use bit reinterpretation (from_bits/to_bits), not casts
+
