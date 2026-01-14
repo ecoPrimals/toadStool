@@ -3,13 +3,12 @@
 **Welcome!** This is your 5-minute guide to getting started with ToadStool.
 
 **Version**: 3.0.0  
-**Updated**: January 14, 2026 (Evening)  
-**Status**: ✅ **Production Ready** - **Grade A (93/100)** 🏆  
-**Latest**: Evolution session complete - exceptional code quality validated!
+**Updated**: January 14, 2026  
+**Status**: ✅ **Production Ready - Grade A (93/100)** 🏆
 
 ---
 
-## ⚡ Quick Start (3 commands)
+## ⚡ Quick Start (3 Commands)
 
 ```bash
 # 1. Setup environment
@@ -68,17 +67,23 @@ Server will:
 
 ## 📚 What's Next?
 
-### Learn the Basics
+### Learn the Basics (30 minutes)
 
-**5 minutes**: Read [README.md](README.md) - Project overview  
-**10 minutes**: Check [STATUS.md](STATUS.md) - Current status and metrics  
-**15 minutes**: Explore [TESTING.md](TESTING.md) - Testing guide
+| Time | Document | What You'll Learn |
+|------|----------|-------------------|
+| **5 min** | [README.md](README.md) | Project overview, architecture, features |
+| **5 min** | [STATUS.md](STATUS.md) | Current status, metrics, achievements |
+| **10 min** | [TESTING.md](TESTING.md) | Testing guide, coverage reports |
+| **10 min** | [DOCUMENTATION.md](DOCUMENTATION.md) | Complete documentation index |
 
-### Try Advanced Features
+### Try Specialized Features
 
-**GPU Compute**: [QUICK_START_GPU.md](QUICK_START_GPU.md) - barraCUDA guide  
-**Encryption**: [QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md) - Secure enclaves  
-**Architecture**: [docs/architecture/](docs/architecture/) - System design
+| Feature | Guide | Time |
+|---------|-------|------|
+| **GPU Compute** | [QUICK_START_GPU.md](QUICK_START_GPU.md) | 15 min |
+| **Encryption** | [QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md) | 10 min |
+| **Integration** | [PRIMAL_INTEGRATION_GUIDE.md](PRIMAL_INTEGRATION_GUIDE.md) | 20 min |
+| **Code Quality** | [PEDANTIC_MODE.md](PEDANTIC_MODE.md) | 10 min |
 
 ### Explore Examples
 
@@ -101,25 +106,28 @@ cargo run --release --example container_runtime
 
 ### Production-Ready Architecture
 
-✅ **Modular Design**: 12-file GPU framework, clean separation  
-✅ **Deep Debt Compliant**: 99.5% (runtime discovery, no hardcoding)  
-✅ **Vendor-Agnostic**: Works with NVIDIA, AMD, Intel, Apple GPUs  
-✅ **Cross-Platform**: Linux, macOS, Windows  
-✅ **100% File Size Compliance**: All files < 1000 lines  
+✅ **Modular Design** - 12-file GPU framework, clean separation  
+✅ **Deep Debt Compliant** - 96% (runtime discovery, no hardcoding)  
+✅ **Vendor-Agnostic** - Works with NVIDIA, AMD, Intel, Apple GPUs  
+✅ **Cross-Platform** - Linux, macOS, Windows  
+✅ **100% File Size Compliance** - All files < 1000 lines  
+✅ **Comprehensive Testing** - 75.55% coverage, 100 tests passing
 
 ### barraCUDA GPU Framework
 
-✅ **21 Operations**: Activations, Basic Ops, Normalization, Reductions, Regularization, Pooling, Advanced, Training  
-✅ **Pure Rust**: No C/C++ dependencies  
-✅ **Helper Utilities**: 70% boilerplate reduction  
-✅ **Tested**: Unit tests for all operations  
+✅ **21 Operations** - Complete ML/AI operation set  
+✅ **Pure Rust** - No C/C++ dependencies  
+✅ **Helper Utilities** - 70% boilerplate reduction  
+✅ **Tested** - Unit tests for all operations  
+✅ **Documented** - Clear examples and guides
 
 ### Distributed Execution
 
-✅ **Peer-to-Peer**: No central coordinator required  
-✅ **Auto-Discovery**: Finds services via environment, mDNS, K8s  
-✅ **Workload Migration**: Move work between nodes  
-✅ **Health Monitoring**: Real-time resource tracking  
+✅ **Peer-to-Peer** - No central coordinator required  
+✅ **Auto-Discovery** - Finds services via environment, mDNS, K8s  
+✅ **Workload Migration** - Move work between nodes  
+✅ **Health Monitoring** - Real-time resource tracking  
+✅ **Graceful Degradation** - Works optimally with available resources
 
 ---
 
@@ -151,6 +159,8 @@ cargo run --release --example container_runtime
 │  (Discovered at runtime)                │
 └─────────────────────────────────────────┘
 ```
+
+**Key Principle**: Everything discovered at runtime, nothing hardcoded.
 
 ---
 
@@ -210,14 +220,14 @@ kubectl scale deployment toadstool --replicas=10
 
 ToadStool follows **8 Deep Debt Principles**:
 
-1. **No Hardcoding**: All config discovered at runtime
-2. **Self-Knowledge**: Each component knows only itself  
-3. **Runtime Discovery**: Finds other services/resources dynamically
-4. **Vendor-Agnostic**: Works with any GPU/cloud/container
-5. **Cross-Platform**: Linux, macOS, Windows
-6. **Graceful Degradation**: Works optimally with available resources
-7. **Pure Rust**: Memory-safe, maintainable
-8. **Well-Tested**: Comprehensive test coverage
+1. **No Hardcoding** - All config discovered at runtime
+2. **Self-Knowledge** - Each component knows only itself
+3. **Runtime Discovery** - Finds other services/resources dynamically
+4. **Vendor-Agnostic** - Works with any GPU/cloud/container
+5. **Cross-Platform** - Linux, macOS, Windows
+6. **Graceful Degradation** - Works optimally with available resources
+7. **Pure Rust** - Memory-safe, maintainable
+8. **Well-Tested** - Comprehensive test coverage
 
 **Example**: GPU detection discovers ANY GPU vendor at runtime:
 
@@ -229,22 +239,24 @@ for gpu in gpus {
 }
 ```
 
+**See [PRIMAL_INTEGRATION_GUIDE.md](PRIMAL_INTEGRATION_GUIDE.md) for complete integration patterns.**
+
 ---
 
 ## 📊 Current Status
 
-**Grade**: **A (93/100)** 🎉  
-**Achievement**: **+8 points in single day** (Jan 14, 2026)
+**Grade**: **A (93/100)** 🎉
 
 | Metric | Value | Status |
 |--------|-------|--------|
 | **File Size Compliance** | 100% | ✅ All < 1000 lines |
 | **Build Success** | 100% | ✅ All packages compile |
 | **Format Clean** | 100% | ✅ cargo fmt perfect |
-| **Deep Debt** | 99.5% | ✅ Excellent |
-| **Test Coverage** | 52% | 🎯 Target: 90% |
+| **Deep Debt** | 96% | ✅ Excellent |
+| **Test Coverage** | 75.55% | ✅ Good |
+| **Tests Passing** | 100 | ✅ Zero failures |
 
-**Path to A+ (95/100)**: Just 2 more points (2-3 weeks)
+**Path to A+ (96/100)**: Just 3 more points (2-3 weeks)
 
 ---
 
@@ -252,11 +264,12 @@ for gpu in gpus {
 
 ### Documentation
 
-- **[README.md](README.md)**: Complete project overview
-- **[STATUS.md](STATUS.md)**: Detailed status and metrics
-- **[TESTING.md](TESTING.md)**: Testing guide and coverage
-- **[docs/](docs/)**: Architecture and guides
-- **[specs/](specs/)**: Technical specifications
+- **[README.md](README.md)** - Complete project overview
+- **[STATUS.md](STATUS.md)** - Detailed status and metrics
+- **[TESTING.md](TESTING.md)** - Testing guide and coverage
+- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Complete index ⭐
+- **[docs/architecture/](docs/architecture/)** - Architecture guides
+- **[specs/](specs/)** - Technical specifications
 
 ### Examples
 
@@ -333,15 +346,32 @@ cargo run --release --example universal_cpu_fallback
 
 ---
 
-## 🎯 Next Steps
+## 🎯 Your Learning Path
 
-1. ✅ **Read README** - Understand the project
-2. ✅ **Build & Test** - Verify everything works
-3. ✅ **Try Examples** - See ToadStool in action
-4. 🎯 **Check STATUS** - See current metrics
-5. 🎯 **Explore Docs** - Deep dive into architecture
-6. 🎯 **Run Server** - Deploy your first node
-7. 🎯 **Submit Workload** - Execute distributed compute
+### Beginner (1 hour)
+
+1. ✅ **Quick Start** - This document (5 min)
+2. ✅ **Build & Test** - Verify everything works (10 min)
+3. ✅ **Try GPU Demos** - Run barraCUDA examples (15 min)
+4. ✅ **Read README** - Understand the project (15 min)
+5. ✅ **Check STATUS** - See current metrics (10 min)
+6. ✅ **Browse Examples** - Explore code samples (15 min)
+
+### Intermediate (3 hours)
+
+7. 🎯 **Architecture** - Read docs/architecture/ (30 min)
+8. 🎯 **Integration** - PRIMAL_INTEGRATION_GUIDE.md (30 min)
+9. 🎯 **Testing** - TESTING.md (20 min)
+10. 🎯 **GPU Deep Dive** - QUICK_START_GPU.md (30 min)
+11. 🎯 **Code Quality** - PEDANTIC_MODE.md (15 min)
+12. 🎯 **Run Server** - Deploy your first node (45 min)
+
+### Advanced (Full Day)
+
+13. 🎯 **Specs** - Read specs/ directory (2 hours)
+14. 🎯 **Codebase** - Explore crates/ (2 hours)
+15. 🎯 **Testing** - Write tests (2 hours)
+16. 🎯 **Integration** - Integrate with primals (2 hours)
 
 ---
 
@@ -354,3 +384,5 @@ cargo run --release --example universal_cpu_fallback
 ---
 
 *"Different orders of the same architecture - composed at runtime, not compile time."*
+
+**Next**: Read [README.md](README.md) or explore [DOCUMENTATION.md](DOCUMENTATION.md)
