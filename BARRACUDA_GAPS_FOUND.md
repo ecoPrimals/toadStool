@@ -345,3 +345,16 @@ This document serves as a **gap database** showing:
 **Status**: ⚠️ NEEDS FIX - GroupNorm not functional  
 **Priority**: MEDIUM - Less critical than LayerNorm
 
+
+### Gap #29: MaxPool2D Struct Field Order Mismatch ✅ FIXED
+**Discovered**: Jan 14, 2026 - Testing session  
+**Location**: `pooling.rs:49-77`  
+**Symptom**: MaxPool2D returns -FLT_MAX (uninitialized) for all outputs  
+**Root Cause**: Rust struct field order doesn't match WGSL struct field order
+  - Rust: batch, channels, height, width, kernel_h, kernel_w, stride_h, stride_w, pad_h, pad_w, out_height, out_width
+  - WGSL: batch_size, channels, input_height, input_width, output_height, output_width, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w
+  - Result: Kernel/stride values read as output dims, output dims read as padding, completely breaking logic  
+**Fix**: Reordered Rust struct fields to match WGSL exactly  
+**Status**: ✅ FIXED - MaxPool2D now passes all tests  
+**Learning**: CRITICAL to match struct layouts exactly between Rust and WGSL
+
