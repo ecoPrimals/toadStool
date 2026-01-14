@@ -736,4 +736,152 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, out_size).await
     }
+
+    /// Execute AvgPool2D: 2D average pooling operation
+    ///
+    /// Downsamples spatial dimensions by computing average value in each window.
+    /// Complementary to MaxPool2D - used when averaging is preferred over max.
+    ///
+    /// Deep Debt: All dimensions (kernel, stride, padding) determined at runtime.
+    pub async fn execute_avg_pool_2d(
+        &self,
+        input: &[f32],
+        batch: usize,
+        channels: usize,
+        height: usize,
+        width: usize,
+        config: Pool2DConfig,
+    ) -> Result<Vec<f32>> {
+        anyhow::ensure!(
+            input.len() == batch * channels * height * width,
+            "AvgPool2D: input size must match batch * channels * height * width"
+        );
+
+        let (kernel_h, kernel_w) = config.kernel_size;
+        let (stride_h, stride_w) = config.stride;
+        let (pad_h, pad_w) = config.padding;
+
+        // Calculate output dimensions
+        let out_height = (height + 2 * pad_h - kernel_h) / stride_h + 1;
+        let out_width = (width + 2 * pad_w - kernel_w) / stride_w + 1;
+        let out_size = batch * channels * out_height * out_width;
+
+        let shader_source = include_str!("../shaders/avgpool2d.wgsl");
+
+        let input_buffer = self.create_input_buffer(input, "AvgPool2D Input");
+        let output_buffer = self.create_output_buffer(out_size, "AvgPool2D Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "AvgPool2D Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct AvgPool2DParams {
+            batch_size: u32,
+            channels: u32,
+            input_height: u32,
+            input_width: u32,
+            output_height: u32,
+            output_width: u32,
+            kernel_h: u32,
+            kernel_w: u32,
+            stride_h: u32,
+            stride_w: u32,
+            padding_h: u32,
+            padding_w: u32,
+        }
+
+        let params = AvgPool2DParams {
+            batch_size: batch as u32,
+            channels: channels as u32,
+            input_height: height as u32,
+            input_width: width as u32,
+            output_height: out_height as u32,
+            output_width: out_width as u32,
+            kernel_h: kernel_h as u32,
+            kernel_w: kernel_w as u32,
+            stride_h: stride_h as u32,
+            stride_w: stride_w as u32,
+            padding_h: pad_h as u32,
+            padding_w: pad_w as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("AvgPool2D Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("AvgPool2D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("AvgPool2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "AvgPool2D", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(out_size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "AvgPool2D");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
 }

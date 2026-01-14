@@ -77,6 +77,26 @@ impl Default for Conv1DConfig {
     }
 }
 
+/// Conv2D configuration (standard 2D convolution)
+#[derive(Debug, Clone, Copy)]
+pub struct Conv2DConfig {
+    pub kernel_size: (usize, usize), // (height, width)
+    pub stride: (usize, usize),      // (height, width)
+    pub padding: (usize, usize),     // (height, width)
+    pub dilation: (usize, usize),    // (height, width) - for dilated/atrous convolutions
+}
+
+impl Default for Conv2DConfig {
+    fn default() -> Self {
+        Self {
+            kernel_size: (3, 3),
+            stride: (1, 1),
+            padding: (0, 0),
+            dilation: (1, 1),
+        }
+    }
+}
+
 /// DepthwiseConv2D configuration
 #[derive(Debug, Clone, Copy)]
 pub struct DepthwiseConv2DConfig {

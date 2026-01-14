@@ -924,4 +924,229 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
         self.read_buffer(&staging_buffer, out_size).await
     }
+
+    /// Execute Conv2D: Standard 2D convolution
+    ///
+    /// The fundamental building block for CNNs (ResNet, VGG, etc.).
+    /// Applies learned filters across spatial dimensions to extract features.
+    ///
+    /// Deep Debt: All dimensions (filters, stride, padding) determined at runtime.
+    /// No hardcoding, fully configurable per-invocation.
+    ///
+    /// Use cases: Feature extraction in ResNet, VGG, YOLO, etc.
+    pub async fn execute_conv2d(
+        &self,
+        input: &[f32],
+        weights: &[f32],
+        bias: &[f32],
+        batch: usize,
+        in_channels: usize,
+        out_channels: usize,
+        input_height: usize,
+        input_width: usize,
+        config: super::types::Conv2DConfig,
+    ) -> Result<Vec<f32>> {
+        let (kernel_h, kernel_w) = config.kernel_size;
+        let (stride_h, stride_w) = config.stride;
+        let (pad_h, pad_w) = config.padding;
+        let (dilation_h, dilation_w) = config.dilation;
+
+        // Calculate output dimensions (Deep Debt: computed at runtime!)
+        let out_height =
+            (input_height + 2 * pad_h - dilation_h * (kernel_h - 1) - 1) / stride_h + 1;
+        let out_width = (input_width + 2 * pad_w - dilation_w * (kernel_w - 1) - 1) / stride_w + 1;
+
+        anyhow::ensure!(
+            input.len() == batch * in_channels * input_height * input_width,
+            "Conv2D: input size mismatch"
+        );
+        anyhow::ensure!(
+            weights.len() == out_channels * in_channels * kernel_h * kernel_w,
+            "Conv2D: weight size must be out_channels * in_channels * kernel_h * kernel_w"
+        );
+        anyhow::ensure!(
+            bias.len() == out_channels,
+            "Conv2D: bias size must match out_channels"
+        );
+
+        let out_size = batch * out_channels * out_height * out_width;
+        let shader_source = include_str!("../shaders/conv2d.wgsl");
+
+        // Create buffers
+        let input_buffer = self.create_input_buffer(input, "Conv2D Input");
+        let weight_buffer = self.create_input_buffer(weights, "Conv2D Weight");
+        let bias_buffer = self.create_input_buffer(bias, "Conv2D Bias");
+        let output_buffer = self.create_output_buffer(out_size, "Conv2D Output");
+        let staging_buffer = self.create_staging_buffer(out_size, "Conv2D Staging");
+
+        // Parameters struct matching WGSL
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Conv2DParams {
+            batch_size: u32,
+            in_channels: u32,
+            out_channels: u32,
+            input_h: u32,
+            input_w: u32,
+            output_h: u32,
+            output_w: u32,
+            kernel_h: u32,
+            kernel_w: u32,
+            stride_h: u32,
+            stride_w: u32,
+            padding_h: u32,
+            padding_w: u32,
+            dilation_h: u32,
+            dilation_w: u32,
+            _pad: u32, // Padding to 64 bytes (16 * 4)
+        }
+
+        let params = Conv2DParams {
+            batch_size: batch as u32,
+            in_channels: in_channels as u32,
+            out_channels: out_channels as u32,
+            input_h: input_height as u32,
+            input_w: input_width as u32,
+            output_h: out_height as u32,
+            output_w: out_width as u32,
+            kernel_h: kernel_h as u32,
+            kernel_w: kernel_w as u32,
+            stride_h: stride_h as u32,
+            stride_w: stride_w as u32,
+            padding_h: pad_h as u32,
+            padding_w: pad_w as u32,
+            dilation_h: dilation_h as u32,
+            dilation_w: dilation_w as u32,
+            _pad: 0,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Conv2D Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        // Create bind group layout
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Conv2D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Conv2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: weight_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: bias_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Conv2D", &bind_group_layout);
+
+        // Dispatch with 2D workgroups for spatial dimensions
+        // Each workgroup handles 16x16 output pixels
+        let workgroup_x = (out_width + 15) / 16;
+        let workgroup_y = (out_height + 15) / 16;
+        let workgroup_z = out_channels;
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Conv2D Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Conv2D Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(workgroup_x as u32, workgroup_y as u32, workgroup_z as u32);
+        }
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (out_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+        self.read_buffer(&staging_buffer, out_size).await
+    }
 }
