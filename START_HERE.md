@@ -31,17 +31,28 @@ cargo test --workspace
 # Navigate to GPU showcase
 cd showcase/gpu-universal/ml-inference
 
-# Run ReLU activation demo
-cargo run --release --example relu_demo
+# Modern transformer activation (GELU)
+cargo run --release --example gelu_demo
 
 # Run matrix multiplication
 cargo run --release --example matmul_demo
 
-# Try training with Adam optimizer
-cargo run --release --example adam_optimizer
+# Advanced optimizer (NAdam)
+cargo run --release --example nadam_demo
+
+# Segmentation loss (Dice)
+cargo run --release --example dice_loss_demo
 ```
 
-**🎉 All 21 GPU operations ready to use!**
+**🎉 60 GPU operations ready to use!** (40% CUDA parity)
+
+### barraCUDA Status
+
+- **60 operations** across 8+ categories
+- **54 WGSL shaders** (vendor-agnostic)
+- **95% Phase 2 complete** (60/63 target)
+- **Complete suites**: Activations (10), Losses (7), Pooling (6)
+- **See [BARRACUDA_DAY_ONE_COMPLETE.md](BARRACUDA_DAY_ONE_COMPLETE.md)** for details
 
 ---
 
@@ -115,9 +126,12 @@ cargo run --release --example container_runtime
 
 ### barraCUDA GPU Framework
 
-✅ **21 Operations** - Complete ML/AI operation set  
+✅ **60 Operations** - Growing ML/AI operation set  
+✅ **40% CUDA Parity** - 60/150 operations complete  
 ✅ **Pure Rust** - No C/C++ dependencies  
+✅ **Full Async/Await** - Modern concurrency throughout  
 ✅ **Helper Utilities** - 70% boilerplate reduction  
+✅ **Complete Suites** - Activations, Losses, Pooling  
 ✅ **Tested** - Unit tests for all operations  
 ✅ **Documented** - Clear examples and guides
 
