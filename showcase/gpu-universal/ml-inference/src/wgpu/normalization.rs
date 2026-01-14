@@ -3,7 +3,7 @@
 //! Softmax, LayerNorm, BatchNorm, GroupNorm, etc.
 //! Complex multi-pass GPU operations for neural network normalization.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::{executor::WgpuExecutor, types::*};

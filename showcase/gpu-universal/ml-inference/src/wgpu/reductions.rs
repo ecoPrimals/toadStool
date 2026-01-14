@@ -3,7 +3,7 @@
 //! Reduce, DotProduct, and other operations that reduce tensors to scalars.
 //! Efficient parallel reduction using GPU workgroups.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use super::{executor::WgpuExecutor, types::*};

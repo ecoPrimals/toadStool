@@ -93,7 +93,7 @@ impl WgpuExecutor {
     /// Get detailed GPU capabilities (Deep Debt: self-knowledge only)
     pub fn capabilities(&self) -> GpuCapabilities {
         GpuCapabilities {
-            vendor: self.adapter_info.vendor,
+            vendor: self.adapter_info.vendor as usize,
             name: self.adapter_info.name.clone(),
             backend: self.adapter_info.backend.to_str().to_string(),
             device_type: format!("{:?}", self.adapter_info.device_type),
