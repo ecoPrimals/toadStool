@@ -2296,4 +2296,322 @@ impl WgpuExecutor {
 
         Ok(())
     }
+
+    /// Execute Focal Loss
+    ///
+    /// Addresses class imbalance by down-weighting easy examples.
+    /// FocalLoss = -alpha * (1 - p_t)^gamma * log(p_t)
+    ///
+    /// Used in: RetinaNet, object detection with severe class imbalance.
+    /// Benefits: Focuses training on hard examples, improves rare class detection.
+    ///
+    /// Deep Debt: Alpha and gamma configured at runtime.
+    pub async fn execute_focal_loss(
+        &self,
+        predictions: &[f32],
+        targets: &[f32],
+        config: FocalLossConfig,
+    ) -> Result<f32> {
+        let size = predictions.len();
+        anyhow::ensure!(
+            targets.len() == size,
+            "Focal: targets length must match predictions length"
+        );
+
+        let shader_source = include_str!("../shaders/focal_loss.wgsl");
+
+        let predictions_buffer = self.create_input_buffer(predictions, "Focal Predictions");
+        let targets_buffer = self.create_input_buffer(targets, "Focal Targets");
+        let output_buffer = self.create_output_buffer(size, "Focal Output");
+        let staging_buffer = self.create_staging_buffer(size, "Focal Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct FocalParams {
+            alpha: f32,
+            gamma: f32,
+            epsilon: f32,
+            reduction_mode: u32,
+            size: u32,
+            _padding: [u32; 3],
+        }
+
+        let reduction_mode = match config.reduction {
+            LossReduction::Mean => 0,
+            LossReduction::Sum => 1,
+            LossReduction::None => 2,
+        };
+
+        let params = FocalParams {
+            alpha: config.alpha,
+            gamma: config.gamma,
+            epsilon: config.epsilon,
+            reduction_mode,
+            size: size as u32,
+            _padding: [0; 3],
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Focal Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Focal Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Focal Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: predictions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: targets_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Focal", &bind_group_layout);
+        let workgroups = self.calculate_workgroups(size, 256);
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Focal");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+
+        let losses = self.read_buffer(&staging_buffer, size).await?;
+
+        let loss = match config.reduction {
+            LossReduction::Mean => losses.iter().sum::<f32>() / size as f32,
+            LossReduction::Sum => losses.iter().sum::<f32>(),
+            LossReduction::None => return Ok(losses[0]),
+        };
+
+        Ok(loss)
+    }
+
+    /// Execute Dice Loss (F1 Loss)
+    ///
+    /// Measures overlap between predicted and target segmentation masks.
+    /// DiceLoss = 1 - (2 * |X ∩ Y|) / (|X| + |Y|)
+    ///
+    /// Used in: Medical image segmentation, semantic segmentation.
+    /// Benefits: Handles class imbalance, directly optimizes IoU-like metric.
+    ///
+    /// Deep Debt: Smooth factor configured at runtime.
+    pub async fn execute_dice_loss(
+        &self,
+        predictions: &[f32],
+        targets: &[f32],
+        batch_size: usize,
+        elements_per_sample: usize,
+        config: DiceLossConfig,
+    ) -> Result<f32> {
+        let total_size = batch_size * elements_per_sample;
+        anyhow::ensure!(
+            predictions.len() == total_size,
+            "Dice: predictions size must match batch_size * elements_per_sample"
+        );
+        anyhow::ensure!(
+            targets.len() == total_size,
+            "Dice: targets size must match batch_size * elements_per_sample"
+        );
+
+        let shader_source = include_str!("../shaders/dice_loss.wgsl");
+
+        let predictions_buffer = self.create_input_buffer(predictions, "Dice Predictions");
+        let targets_buffer = self.create_input_buffer(targets, "Dice Targets");
+        let output_buffer = self.create_output_buffer(batch_size, "Dice Output");
+        let staging_buffer = self.create_staging_buffer(batch_size, "Dice Staging");
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct DiceParams {
+            smooth: f32,
+            reduction_mode: u32,
+            batch_size: u32,
+            elements_per_sample: u32,
+        }
+
+        let reduction_mode = match config.reduction {
+            LossReduction::Mean => 0,
+            LossReduction::Sum => 1,
+            LossReduction::None => 2,
+        };
+
+        let params = DiceParams {
+            smooth: config.smooth,
+            reduction_mode,
+            batch_size: batch_size as u32,
+            elements_per_sample: elements_per_sample as u32,
+        };
+
+        let params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Dice Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
+
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Dice Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dice Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: predictions_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: targets_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pipeline = self.create_simple_pipeline(shader_source, "Dice", &bind_group_layout);
+        let workgroups = batch_size as u32;
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Dice");
+
+        encoder.copy_buffer_to_buffer(
+            &output_buffer,
+            0,
+            &staging_buffer,
+            0,
+            (batch_size * std::mem::size_of::<f32>()) as u64,
+        );
+
+        self.queue.submit(Some(encoder.finish()));
+
+        let losses = self.read_buffer(&staging_buffer, batch_size).await?;
+
+        let loss = match config.reduction {
+            LossReduction::Mean => losses.iter().sum::<f32>() / batch_size as f32,
+            LossReduction::Sum => losses.iter().sum::<f32>(),
+            LossReduction::None => return Ok(losses[0]),
+        };
+
+        Ok(loss)
+    }
 }

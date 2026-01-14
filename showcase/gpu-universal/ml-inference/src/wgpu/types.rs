@@ -326,3 +326,39 @@ impl Default for BceLossConfig {
         }
     }
 }
+
+/// Focal loss configuration (for class imbalance in object detection)
+#[derive(Debug, Clone, Copy)]
+pub struct FocalLossConfig {
+    pub alpha: f32,    // Balancing factor, typically 0.25
+    pub gamma: f32,    // Focusing parameter, typically 2.0
+    pub epsilon: f32,  // Numerical stability
+    pub reduction: LossReduction,
+}
+
+impl Default for FocalLossConfig {
+    fn default() -> Self {
+        Self {
+            alpha: 0.25,
+            gamma: 2.0,
+            epsilon: 1e-7,
+            reduction: LossReduction::Mean,
+        }
+    }
+}
+
+/// Dice loss configuration (for segmentation tasks)
+#[derive(Debug, Clone, Copy)]
+pub struct DiceLossConfig {
+    pub smooth: f32,  // Smoothing factor, typically 1.0
+    pub reduction: LossReduction,
+}
+
+impl Default for DiceLossConfig {
+    fn default() -> Self {
+        Self {
+            smooth: 1.0,
+            reduction: LossReduction::Mean,
+        }
+    }
+}
