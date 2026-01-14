@@ -223,6 +223,64 @@ impl Default for RmspropConfig {
     }
 }
 
+/// AdaGrad optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct AdagradConfig {
+    pub learning_rate: f32,
+    pub epsilon: f32,      // Numerical stability (default: 1e-8)
+    pub weight_decay: f32, // L2 regularization (default: 0.0)
+}
+
+impl Default for AdagradConfig {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.01,
+            epsilon: 1e-8,
+            weight_decay: 0.0,
+        }
+    }
+}
+
+/// NAdam optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct NadamConfig {
+    pub learning_rate: f32,
+    pub beta1: f32,        // First moment decay (default: 0.9)
+    pub beta2: f32,        // Second moment decay (default: 0.999)
+    pub epsilon: f32,      // Numerical stability (default: 1e-8)
+    pub weight_decay: f32, // L2 regularization (default: 0.0)
+}
+
+impl Default for NadamConfig {
+    fn default() -> Self {
+        Self {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            weight_decay: 0.0,
+        }
+    }
+}
+
+/// AdaDelta optimizer configuration
+#[derive(Debug, Clone, Copy)]
+pub struct AdadeltaConfig {
+    pub rho: f32,          // Decay rate (default: 0.95)
+    pub epsilon: f32,      // Numerical stability (default: 1e-6)
+    pub weight_decay: f32, // L2 regularization (default: 0.0)
+}
+
+impl Default for AdadeltaConfig {
+    fn default() -> Self {
+        Self {
+            rho: 0.95,
+            epsilon: 1e-6,
+            weight_decay: 0.0,
+        }
+    }
+}
+
 /// Regression loss configuration (MSE, MAE, etc.)
 #[derive(Debug, Clone, Copy)]
 pub struct RegressionLossConfig {
