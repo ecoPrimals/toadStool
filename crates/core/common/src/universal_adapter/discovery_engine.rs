@@ -12,8 +12,8 @@ use async_trait::async_trait;
 use std::collections::HashSet;
 use std::time::Duration;
 
+use super::capability_types::{CapabilityInfo, HealthStatus, ServiceEndpoint};
 use crate::{ToadStoolError, ToadStoolResult};
-use super::capability_types::{CapabilityInfo, ServiceEndpoint, HealthStatus};
 
 /// Discovery engine that finds capability providers
 pub struct DiscoveryEngine {
@@ -149,23 +149,23 @@ impl EnvironmentSource {
         if url.starts_with("http://") || url.starts_with("https://") {
             Ok(ServiceEndpoint::Http(url.to_string()))
         } else if url.starts_with("unix://") {
-            let path = url.strip_prefix("unix://").ok_or_else(|| {
-                ToadStoolError::validation("Invalid unix socket URL".to_string())
-            })?;
+            let path = url
+                .strip_prefix("unix://")
+                .ok_or_else(|| ToadStoolError::validation("Invalid unix socket URL".to_string()))?;
             Ok(ServiceEndpoint::UnixSocket(path.into()))
         } else if url.starts_with("tcp://") {
-            let addr = url.strip_prefix("tcp://").ok_or_else(|| {
-                ToadStoolError::validation("Invalid TCP URL".to_string())
-            })?;
+            let addr = url
+                .strip_prefix("tcp://")
+                .ok_or_else(|| ToadStoolError::validation("Invalid TCP URL".to_string()))?;
             let parts: Vec<&str> = addr.split(':').collect();
             if parts.len() != 2 {
                 return Err(ToadStoolError::validation(
                     "TCP URL must be tcp://host:port".to_string(),
                 ));
             }
-            let port = parts[1].parse().map_err(|_| {
-                ToadStoolError::validation("Invalid port number".to_string())
-            })?;
+            let port = parts[1]
+                .parse()
+                .map_err(|_| ToadStoolError::validation("Invalid port number".to_string()))?;
             Ok(ServiceEndpoint::Tcp {
                 host: parts[0].to_string(),
                 port,
@@ -321,12 +321,15 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         std::env::set_var("TOADSTOOL_SECURITY_PROVIDER", "http://localhost:9000");
-        
+
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
-        
-        assert!(!providers.is_empty(), "Should find at least one provider from env");
-        
+
+        assert!(
+            !providers.is_empty(),
+            "Should find at least one provider from env"
+        );
+
         std::env::remove_var("TOADSTOOL_SECURITY_PROVIDER");
     }
 

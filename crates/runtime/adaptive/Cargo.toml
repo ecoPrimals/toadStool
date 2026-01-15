@@ -2,6 +2,9 @@
 name = "toadstool-runtime-adaptive"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+keywords = ["gpu", "optimization", "adaptive", "performance", "runtime"]
+categories = ["algorithms", "hardware-support", "science"]
 authors = ["ToadStool Team"]
 license = "MIT OR Apache-2.0"
 description = "Adaptive optimization system for barraCUDA GPU operations"

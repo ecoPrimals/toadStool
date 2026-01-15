@@ -134,7 +134,7 @@ pub struct EndpointConfig {
 impl Default for EndpointConfig {
     fn default() -> Self {
         let config = crate::env_config::EnvironmentConfig::from_env();
-        
+
         // ✅ DEEP DEBT EVOLUTION: Capability-based discovery instead of hardcoded endpoints
         // Check environment variables first, then fall back to localhost defaults
         let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL")
@@ -145,7 +145,7 @@ impl Default for EndpointConfig {
             .unwrap_or_else(|_| format!("http://{}:8082", config.network.bind_address));
         let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL")
             .unwrap_or_else(|_| format!("http://{}:6000", config.network.bind_address));
-        
+
         Self {
             // Capability-based endpoints - discovered via environment
             #[allow(deprecated)]

@@ -24,35 +24,35 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CapabilityDependency {
     /// Security capabilities (encryption, signing, key management)
-    /// 
+    ///
     /// Could be satisfied by: beardog, HSM, cloud KMS, local keyring, etc.
     Security,
-    
+
     /// Storage capabilities (persistence, compression, versioning)
     ///
     /// Could be satisfied by: nestgate, S3, Azure Blob, local filesystem, etc.
     Storage,
-    
+
     /// Coordination capabilities (service mesh, discovery, orchestration)
     ///
     /// Could be satisfied by: songbird, kubernetes, consul, etcd, etc.
     Coordination,
-    
+
     /// AI/ML capabilities (inference, training, natural language)
     ///
     /// Could be satisfied by: squirrel, OpenAI, local models, Hugging Face, etc.
     Intelligence,
-    
+
     /// Compute capabilities (CPU, GPU, specialized hardware)
     ///
     /// Could be satisfied by: local compute, cloud instances, edge devices, etc.
     Compute,
-    
+
     /// Monitoring capabilities (metrics, logging, tracing)
     ///
     /// Could be satisfied by: Prometheus, Grafana, Datadog, etc.
     Monitoring,
-    
+
     /// Networking capabilities (routing, tunneling, VPN)
     ///
     /// Could be satisfied by: Envoy, Istio, Cilium, etc.
@@ -85,7 +85,7 @@ impl CapabilityDependency {
         }
         .to_string()
     }
-    
+
     /// Get human-readable description
     pub fn description(&self) -> &'static str {
         match self {
@@ -110,7 +110,7 @@ pub mod capabilities {
         pub const PKI: &str = "capability:pki";
         pub const AUDIT: &str = "capability:security:audit";
     }
-    
+
     /// Storage capability features
     pub mod storage {
         pub const PERSISTENCE: &str = "capability:storage:persistence";
@@ -119,7 +119,7 @@ pub mod capabilities {
         pub const BACKUP: &str = "capability:storage:backup";
         pub const REPLICATION: &str = "capability:storage:replication";
     }
-    
+
     /// Coordination capability features
     pub mod coordination {
         pub const SERVICE_MESH: &str = "capability:coordination:service-mesh";
@@ -127,7 +127,7 @@ pub mod capabilities {
         pub const LOAD_BALANCING: &str = "capability:coordination:load-balancing";
         pub const HEALTH_CHECK: &str = "capability:coordination:health-check";
     }
-    
+
     /// Intelligence capability features
     pub mod intelligence {
         pub const INFERENCE: &str = "capability:intelligence:inference";
@@ -155,8 +155,14 @@ mod tests {
 
     #[test]
     fn test_capability_features() {
-        assert_eq!(capabilities::security::ENCRYPTION, "capability:security:encryption");
-        assert_eq!(capabilities::storage::COMPRESSION, "capability:storage:compression");
+        assert_eq!(
+            capabilities::security::ENCRYPTION,
+            "capability:security:encryption"
+        );
+        assert_eq!(
+            capabilities::storage::COMPRESSION,
+            "capability:storage:compression"
+        );
     }
 
     #[test]

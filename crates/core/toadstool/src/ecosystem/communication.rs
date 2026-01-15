@@ -88,7 +88,8 @@ impl CommunicationManager {
         // Store channel
         let mut channels = self.channels.write().await;
         // ✅ OPTIMIZED: Use Entry API - avoid double clone
-        channels.entry(service.id.clone())
+        channels
+            .entry(service.id.clone())
             .or_insert_with(|| channel.clone());
 
         info!("✅ Channel created for service: {}", service.name);

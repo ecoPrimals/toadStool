@@ -38,12 +38,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![deny(
-    missing_docs,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic
-)]
+#![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![warn(clippy::pedantic, clippy::cargo)]
 #![allow(clippy::module_name_repetitions, clippy::missing_errors_doc)]
 
@@ -53,7 +48,7 @@ mod types;
 
 pub use discovery::EntropyClient;
 pub use seed::{EphemeralSeed, SeedQuality};
-pub use types::{EntropySource, EntropyMixing};
+pub use types::{EntropyMixing, EntropySource};
 
 use anyhow::Result;
 

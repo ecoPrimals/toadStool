@@ -34,17 +34,8 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![deny(
-    missing_docs,
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic
-)]
-#![warn(
-    clippy::pedantic,
-    clippy::cargo,
-    clippy::nursery
-)]
+#![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![warn(clippy::pedantic, clippy::cargo, clippy::nursery)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
@@ -121,10 +112,7 @@ impl AdaptiveExecutor {
         let profiler = RuntimeProfiler::new(fingerprint.clone()).await?;
 
         // Create selector with cache
-        let selector = ConfigSelector::new(
-            Arc::clone(&cache),
-            FallbackStrategy::Conservative,
-        );
+        let selector = ConfigSelector::new(Arc::clone(&cache), FallbackStrategy::Conservative);
 
         // Check if we need to profile
         let needs_profiling = {
@@ -165,11 +153,7 @@ impl AdaptiveExecutor {
             OpType::Add,
         ];
 
-        let size_classes = vec![
-            SizeClass::Small,
-            SizeClass::Medium,
-            SizeClass::Large,
-        ];
+        let size_classes = vec![SizeClass::Small, SizeClass::Medium, SizeClass::Large];
 
         let workgroup_candidates = vec![32, 64, 128, 256];
 
@@ -177,11 +161,7 @@ impl AdaptiveExecutor {
             tracing::debug!("Profiling {:?}...", op_type);
 
             let profile = profiler
-                .profile_operation(
-                    op_type,
-                    &size_classes,
-                    &workgroup_candidates,
-                )
+                .profile_operation(op_type, &size_classes, &workgroup_candidates)
                 .await?;
 
             // Update cache with results

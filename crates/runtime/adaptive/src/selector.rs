@@ -98,7 +98,9 @@ impl ConfigSelector {
         }
 
         // Fallback to strategy
-        let fallback = self.fallback_strategy.fallback_workgroup(op_type, input_size);
+        let fallback = self
+            .fallback_strategy
+            .fallback_workgroup(op_type, input_size);
         tracing::trace!(
             "Using fallback workgroup {} for {:?} (size: {})",
             fallback,
@@ -121,7 +123,9 @@ impl ConfigSelector {
             }
         }
 
-        let fallback = self.fallback_strategy.fallback_workgroup(op_type, input_size);
+        let fallback = self
+            .fallback_strategy
+            .fallback_workgroup(op_type, input_size);
         WorkgroupSelection {
             workgroup_size: fallback,
             source: SelectionSource::Fallback,
@@ -176,8 +180,10 @@ mod tests {
         let aggressive = FallbackStrategy::Aggressive;
 
         // Conservative is smaller
-        assert!(conservative.fallback_workgroup(OpType::MatMul, 1000)
-            < aggressive.fallback_workgroup(OpType::MatMul, 1000));
+        assert!(
+            conservative.fallback_workgroup(OpType::MatMul, 1000)
+                < aggressive.fallback_workgroup(OpType::MatMul, 1000)
+        );
     }
 
     #[test]

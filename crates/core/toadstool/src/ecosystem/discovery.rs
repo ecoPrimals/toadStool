@@ -200,7 +200,8 @@ impl DiscoveryManager {
     async fn add_to_cache(&self, service: DiscoveredService, capability_key: Option<String>) {
         let mut cache = self.cache.write().await;
         // ✅ OPTIMIZED: Use Entry API - only clone if not already cached
-        cache.entry(service.id.clone())
+        cache
+            .entry(service.id.clone())
             .or_insert_with(|| service.clone());
 
         if let Some(cap_key) = capability_key {

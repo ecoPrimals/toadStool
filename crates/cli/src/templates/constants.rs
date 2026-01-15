@@ -35,27 +35,27 @@ pub mod template_names {
 pub mod service_names {
     /// Jupyter notebook service (third-party, not a primal)
     pub const JUPYTER: &str = "jupyter";
-    
+
     /// PostgreSQL database (third-party, not a primal)
     pub const POSTGRES: &str = "postgres";
-    
+
     /// Redis cache (third-party, not a primal)
     pub const REDIS: &str = "redis";
-    
+
     /// ⚠️ DEPRECATED: Use capability "storage" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"storage\") instead of hardcoding \"nestgate\""
     )]
     pub const NESTGATE: &str = "nestgate";
-    
+
     /// ⚠️ DEPRECATED: Use capability "security" instead
     #[deprecated(
         since = "0.4.0",
         note = "Use capability-based discovery: discover_capability(\"security\") instead of hardcoding \"beardog\""
     )]
     pub const BEARDOG: &str = "beardog";
-    
+
     /// ⚠️ DEPRECATED: Use capability "coordination" instead
     #[deprecated(
         since = "0.4.0",

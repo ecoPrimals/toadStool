@@ -470,7 +470,8 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
             let mut cache = self.cache.write().await;
             // ✅ OPTIMIZED: Use Entry API - only clone if entry doesn't exist
             for service in &services {
-                cache.entry(service.id.clone())
+                cache
+                    .entry(service.id.clone())
                     .or_insert_with(|| service.clone());
             }
         }
