@@ -61,7 +61,7 @@ impl WgpuExecutor {
 
         // Enumerate all adapters (returns Vec already)
         let adapters = instance.enumerate_adapters(backends);
-        
+
         // Find matching adapter
         let adapter = adapters
             .into_iter()
@@ -94,8 +94,7 @@ impl WgpuExecutor {
     /// Create executor with AMD GPU (for research/testing)
     pub async fn new_amd() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
-            info.name.to_lowercase().contains("amd") || 
-            info.name.to_lowercase().contains("radeon")
+            info.name.to_lowercase().contains("amd") || info.name.to_lowercase().contains("radeon")
         })
         .await
         .context("No AMD GPU found")
@@ -104,8 +103,8 @@ impl WgpuExecutor {
     /// Create executor with NVIDIA GPU (for research/testing)
     pub async fn new_nvidia() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
-            info.name.to_lowercase().contains("nvidia") || 
-            info.name.to_lowercase().contains("geforce")
+            info.name.to_lowercase().contains("nvidia")
+                || info.name.to_lowercase().contains("geforce")
         })
         .await
         .context("No NVIDIA GPU found")
@@ -117,9 +116,9 @@ impl WgpuExecutor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-        
+
         let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-        
+
         adapters
             .iter()
             .map(|adapter: &wgpu::Adapter| {

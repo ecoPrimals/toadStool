@@ -86,7 +86,7 @@ impl MatrixInverse {
 
         // Create augmented matrix [A | I]
         let mut augmented = vec![0.0f32; n * (2 * n)];
-        
+
         for i in 0..n {
             for j in 0..n {
                 augmented[i * (2 * n) + j] = matrix[i * n + j];
@@ -100,7 +100,7 @@ impl MatrixInverse {
             // Find pivot (largest absolute value in column)
             let mut pivot_row = col;
             let mut max_val = augmented[col * (2 * n) + col].abs();
-            
+
             for row in (col + 1)..n {
                 let val = augmented[row * (2 * n) + col].abs();
                 if val > max_val {
@@ -110,10 +110,7 @@ impl MatrixInverse {
             }
 
             // Check for singular matrix
-            anyhow::ensure!(
-                max_val > 1e-10,
-                "Matrix is singular or nearly singular"
-            );
+            anyhow::ensure!(max_val > 1e-10, "Matrix is singular or nearly singular");
 
             // Swap rows if needed
             if pivot_row != col {
@@ -246,7 +243,7 @@ impl MatrixDeterminant {
             // Find pivot
             let mut pivot_row = col;
             let mut max_val = a[col * n + col].abs();
-            
+
             for row in (col + 1)..n {
                 let val = a[row * n + col].abs();
                 if val > max_val {
@@ -471,7 +468,8 @@ impl SVD {
         }
 
         // Find dominant eigenvector of A^T A (this is v)
-        let (eigenvalue, v) = EigenDecomposition::compute_dominant(&ata, n, max_iterations, tolerance)?;
+        let (eigenvalue, v) =
+            EigenDecomposition::compute_dominant(&ata, n, max_iterations, tolerance)?;
 
         // Singular value is sqrt(eigenvalue)
         let sigma = eigenvalue.sqrt();
@@ -514,7 +512,7 @@ impl SVD {
     /// Approximated matrix (m×n)
     pub fn reconstruct(sigma: f32, u: &[f32], v: &[f32], m: usize, n: usize) -> Vec<f32> {
         let mut result = vec![0.0f32; m * n];
-        
+
         for i in 0..m {
             for j in 0..n {
                 result[i * n + j] = sigma * u[i] * v[j];
@@ -531,13 +529,10 @@ mod tests {
 
     #[test]
     fn test_matrix_inverse_2x2() {
-        let matrix = vec![
-            4.0, 7.0,
-            2.0, 6.0,
-        ];
-        
+        let matrix = vec![4.0, 7.0, 2.0, 6.0];
+
         let inverse = MatrixInverse::compute(&matrix, 2).unwrap();
-        
+
         // Expected: [0.6, -0.7, -0.2, 0.4]
         assert!((inverse[0] - 0.6).abs() < 0.01);
         assert!((inverse[1] - (-0.7)).abs() < 0.01);
@@ -550,42 +545,31 @@ mod tests {
 
     #[test]
     fn test_matrix_inverse_3x3() {
-        let matrix = vec![
-            1.0, 2.0, 3.0,
-            0.0, 1.0, 4.0,
-            5.0, 6.0, 0.0,
-        ];
-        
+        let matrix = vec![1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0];
+
         let result = MatrixInverse::compute(&matrix, 3);
         assert!(result.is_ok());
-        
+
         let inverse = result.unwrap();
         assert!(MatrixInverse::verify(&matrix, &inverse, 3, 0.01));
     }
 
     #[test]
     fn test_determinant_2x2() {
-        let matrix = vec![
-            4.0, 7.0,
-            2.0, 6.0,
-        ];
-        
+        let matrix = vec![4.0, 7.0, 2.0, 6.0];
+
         let det = MatrixDeterminant::compute(&matrix, 2).unwrap();
-        
+
         // Expected: 4*6 - 7*2 = 24 - 14 = 10
         assert!((det - 10.0).abs() < 0.01);
     }
 
     #[test]
     fn test_determinant_3x3() {
-        let matrix = vec![
-            1.0, 2.0, 3.0,
-            0.0, 1.0, 4.0,
-            5.0, 6.0, 0.0,
-        ];
-        
+        let matrix = vec![1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0];
+
         let det = MatrixDeterminant::compute(&matrix, 3).unwrap();
-        
+
         // Expected: 1*(1*0 - 4*6) - 2*(0*0 - 4*5) + 3*(0*6 - 1*5)
         // = 1*(-24) - 2*(-20) + 3*(-5) = -24 + 40 - 15 = 1
         assert!((det - 1.0).abs() < 0.01);
@@ -593,29 +577,23 @@ mod tests {
 
     #[test]
     fn test_determinant_singular() {
-        let matrix = vec![
-            1.0, 2.0,
-            2.0, 4.0,
-        ];
-        
+        let matrix = vec![1.0, 2.0, 2.0, 4.0];
+
         let det = MatrixDeterminant::compute(&matrix, 2).unwrap();
-        
+
         // Singular matrix has zero determinant
         assert!(det.abs() < 0.01);
     }
 
     #[test]
     fn test_eigen_decomposition() {
-        let matrix = vec![
-            4.0, 1.0,
-            2.0, 3.0,
-        ];
-        
+        let matrix = vec![4.0, 1.0, 2.0, 3.0];
+
         let result = EigenDecomposition::compute_dominant(&matrix, 2, 100, 1e-6);
         assert!(result.is_ok());
-        
+
         let (eigenvalue, eigenvector) = result.unwrap();
-        
+
         // Verify: A * v = λ * v
         let mut av = vec![0.0f32; 2];
         for i in 0..2 {
@@ -625,7 +603,7 @@ mod tests {
             }
             av[i] = sum;
         }
-        
+
         // Check if A*v ≈ λ*v
         for i in 0..2 {
             let expected = eigenvalue * eigenvector[i];
@@ -635,25 +613,21 @@ mod tests {
 
     #[test]
     fn test_svd_compute() {
-        let matrix = vec![
-            3.0, 1.0,
-            2.0, 1.0,
-            1.0, 0.0,
-        ];
-        
+        let matrix = vec![3.0, 1.0, 2.0, 1.0, 1.0, 0.0];
+
         let result = SVD::compute_dominant(&matrix, 3, 2, 100, 1e-6);
         assert!(result.is_ok());
-        
+
         let (sigma, u, v) = result.unwrap();
-        
+
         assert!(sigma > 0.0, "Singular value should be positive");
         assert_eq!(u.len(), 3, "Left singular vector size");
         assert_eq!(v.len(), 2, "Right singular vector size");
-        
+
         // Verify u is normalized
         let u_norm: f32 = u.iter().map(|x| x * x).sum::<f32>().sqrt();
         assert!((u_norm - 1.0).abs() < 0.01, "u should be normalized");
-        
+
         // Verify v is normalized
         let v_norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
         assert!((v_norm - 1.0).abs() < 0.01, "v should be normalized");
@@ -661,19 +635,15 @@ mod tests {
 
     #[test]
     fn test_svd_reconstruction() {
-        let matrix = vec![
-            3.0, 1.0,
-            2.0, 1.0,
-            1.0, 0.0,
-        ];
-        
+        let matrix = vec![3.0, 1.0, 2.0, 1.0, 1.0, 0.0];
+
         let (sigma, u, v) = SVD::compute_dominant(&matrix, 3, 2, 100, 1e-6).unwrap();
-        
+
         // Reconstruct using dominant singular value
         let reconstructed = SVD::reconstruct(sigma, &u, &v, 3, 2);
-        
+
         assert_eq!(reconstructed.len(), 6);
-        
+
         // Reconstructed should be close to original (rank-1 approximation)
         // This is a low-rank approximation, so not exact
         // Just verify dimensions and reasonable values

@@ -3,9 +3,9 @@
 //! Discovers available GPUs and provides capability-based selection.
 //! Modern, idiomatic Rust with proper error handling.
 
-use anyhow::Result;
 #[cfg(any(feature = "vulkan"))]
 use anyhow::Context;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -113,9 +113,11 @@ impl GpuSelector {
         // Sort by compute capability (descending)
         let mut sorted_gpus = gpus;
         sorted_gpus.sort_by(|a, b| {
-            b.compute_units
-                .cmp(&a.compute_units)
-                .then_with(|| b.memory_gb.partial_cmp(&a.memory_gb).unwrap_or(std::cmp::Ordering::Equal))
+            b.compute_units.cmp(&a.compute_units).then_with(|| {
+                b.memory_gb
+                    .partial_cmp(&a.memory_gb)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
         });
 
         if sorted_gpus.is_empty() {
@@ -137,7 +139,7 @@ impl GpuSelector {
 
         for gpu in gpus {
             let key = (gpu.vendor.clone(), gpu.name.clone());
-            
+
             let should_replace = match gpu_map.get(&key) {
                 None => true,
                 Some(existing) => {
@@ -159,14 +161,14 @@ impl GpuSelector {
     /// Higher number = higher priority (native > portable)
     fn backend_priority(backend: &GpuBackend) -> u8 {
         match backend {
-            GpuBackend::Cuda => 5,    // NVIDIA native
-            GpuBackend::ROCm => 4,    // AMD native
-            GpuBackend::Vulkan => 3,  // Modern cross-vendor
-            GpuBackend::Metal => 3,   // Apple native
-            GpuBackend::Dx12 => 3,    // Windows native
-            GpuBackend::OpenCL => 2,  // Cross-vendor
-            GpuBackend::OpenGl => 1,  // Legacy
-            GpuBackend::WebGPU => 1,  // Most portable
+            GpuBackend::Cuda => 5,   // NVIDIA native
+            GpuBackend::ROCm => 4,   // AMD native
+            GpuBackend::Vulkan => 3, // Modern cross-vendor
+            GpuBackend::Metal => 3,  // Apple native
+            GpuBackend::Dx12 => 3,   // Windows native
+            GpuBackend::OpenCL => 2, // Cross-vendor
+            GpuBackend::OpenGl => 1, // Legacy
+            GpuBackend::WebGPU => 1, // Most portable
         }
     }
 
@@ -176,8 +178,7 @@ impl GpuSelector {
         use anyhow::Context;
         use cudarc::driver::CudaDevice;
 
-        let device_count = CudaDevice::count()
-            .context("Failed to query CUDA device count")?;
+        let device_count = CudaDevice::count().context("Failed to query CUDA device count")?;
 
         if device_count == 0 {
             return Ok(Vec::new());
@@ -192,22 +193,22 @@ impl GpuSelector {
                     // Note: cudarc 0.11 wraps device in Arc and doesn't expose property query methods
                     // For now, use descriptive naming. Full property query requires unsafe CUDA API calls.
                     // This is a known limitation - see ToadStool's cuda_impl.rs for full implementation.
-                    
+
                     let info = GpuInfo {
                         vendor: "NVIDIA".to_string(),
                         name: format!("CUDA Device {} (via CUDA API)", i),
-                        memory_gb: 0.0, // Query not exposed by cudarc wrapper
+                        memory_gb: 0.0,   // Query not exposed by cudarc wrapper
                         compute_units: 0, // Query not exposed by cudarc wrapper
                         backend: GpuBackend::Cuda,
                         device_index,
                     };
-                    
+
                     tracing::info!(
                         "Discovered CUDA GPU: {} (device ordinal: {})",
                         info.name,
                         device_index
                     );
-                    
+
                     gpus.push(info);
                 }
                 Err(e) => {
@@ -246,22 +247,24 @@ impl GpuSelector {
                             let vendor = device.vendor().unwrap_or_else(|_| "Unknown".to_string());
 
                             // Get compute units
-                            let compute_units = if let Ok(ocl::core::DeviceInfoResult::MaxComputeUnits(cu)) =
-                                device.info(ocl::core::DeviceInfo::MaxComputeUnits)
-                            {
-                                cu
-                            } else {
-                                1
-                            };
+                            let compute_units =
+                                if let Ok(ocl::core::DeviceInfoResult::MaxComputeUnits(cu)) =
+                                    device.info(ocl::core::DeviceInfo::MaxComputeUnits)
+                                {
+                                    cu
+                                } else {
+                                    1
+                                };
 
                             // Get memory
-                            let memory_bytes = if let Ok(ocl::core::DeviceInfoResult::GlobalMemSize(mem)) =
-                                device.info(ocl::core::DeviceInfo::GlobalMemSize)
-                            {
-                                mem
-                            } else {
-                                0
-                            };
+                            let memory_bytes =
+                                if let Ok(ocl::core::DeviceInfoResult::GlobalMemSize(mem)) =
+                                    device.info(ocl::core::DeviceInfo::GlobalMemSize)
+                                {
+                                    mem
+                                } else {
+                                    0
+                                };
                             let memory_gb = memory_bytes as f32 / (1024.0 * 1024.0 * 1024.0);
 
                             let info = GpuInfo {
@@ -389,23 +392,23 @@ impl GpuSelector {
             let runtime = tokio::runtime::Runtime::new()?;
             runtime.block_on(Self::discover_webgpu_async())?
         };
-        
+
         Ok(gpus)
     }
-    
+
     /// Async WebGPU discovery implementation
     async fn discover_webgpu_async() -> Result<Vec<GpuInfo>> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(), // ALL vendors
             ..Default::default()
         });
-        
+
         let adapters = instance.enumerate_adapters(wgpu::Backends::all());
         let mut gpu_infos = Vec::new();
-        
+
         for (idx, adapter) in adapters.iter().enumerate() {
             let info = adapter.get_info();
-            
+
             // Only include discrete/integrated GPUs (not CPU/virtual)
             if matches!(
                 info.device_type,
@@ -418,7 +421,7 @@ impl GpuSelector {
                     wgpu::Backend::Gl => GpuBackend::OpenGl,
                     _ => continue, // Skip unsupported backends
                 };
-                
+
                 let vendor = if info.name.contains("NVIDIA") {
                     "NVIDIA"
                 } else if info.name.contains("AMD") || info.name.contains("Radeon") {
@@ -430,18 +433,18 @@ impl GpuSelector {
                 } else {
                     "Unknown"
                 };
-                
+
                 gpu_infos.push(GpuInfo {
                     vendor: vendor.to_string(),
                     name: info.name.clone(),
-                    memory_gb: 0.0, // WebGPU doesn't expose memory info
+                    memory_gb: 0.0,   // WebGPU doesn't expose memory info
                     compute_units: 0, // Not exposed by WebGPU
                     backend,
                     device_index: idx,
                 });
             }
         }
-        
+
         Ok(gpu_infos)
     }
 
@@ -452,8 +455,7 @@ impl GpuSelector {
             .find(|gpu| gpu.vendor.contains("NVIDIA") && gpu.backend == GpuBackend::Cuda)
             .or_else(|| {
                 // Fallback to OpenCL
-                gpus.iter()
-                    .find(|gpu| gpu.vendor.contains("NVIDIA"))
+                gpus.iter().find(|gpu| gpu.vendor.contains("NVIDIA"))
             })
     }
 
@@ -464,14 +466,16 @@ impl GpuSelector {
             .find(|gpu| gpu.vendor.contains("AMD") && gpu.backend == GpuBackend::ROCm)
             .or_else(|| {
                 // Fallback to Vulkan (works well on AMD via Mesa RADV)
-                gpus.iter()
-                    .find(|gpu| (gpu.vendor.contains("AMD") || gpu.vendor.contains("Advanced Micro Devices")) 
-                        && gpu.backend == GpuBackend::Vulkan)
+                gpus.iter().find(|gpu| {
+                    (gpu.vendor.contains("AMD") || gpu.vendor.contains("Advanced Micro Devices"))
+                        && gpu.backend == GpuBackend::Vulkan
+                })
             })
             .or_else(|| {
                 // Last resort: OpenCL
-                gpus.iter()
-                    .find(|gpu| gpu.vendor.contains("AMD") || gpu.vendor.contains("Advanced Micro Devices"))
+                gpus.iter().find(|gpu| {
+                    gpu.vendor.contains("AMD") || gpu.vendor.contains("Advanced Micro Devices")
+                })
             })
     }
 
@@ -554,4 +558,3 @@ mod tests {
         assert!(amd.unwrap().vendor.contains("AMD"));
     }
 }
-

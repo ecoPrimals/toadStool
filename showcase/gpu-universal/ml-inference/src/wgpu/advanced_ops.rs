@@ -15,22 +15,20 @@ impl WgpuExecutor {
     /// Essential for embedding lookups and sparse access patterns.
     ///
     /// Deep Debt: Indices determined at runtime, no fixed access patterns.
-    pub async fn execute_gather(
-        &self,
-        source: &[f32],
-        indices: &[u32],
-    ) -> Result<Vec<f32>> {
+    pub async fn execute_gather(&self, source: &[f32], indices: &[u32]) -> Result<Vec<f32>> {
         let num_elements = indices.len();
         let source_size = source.len();
 
         let shader_source = include_str!("../shaders/gather.wgsl");
 
         let source_buffer = self.create_input_buffer(source, "Gather Source");
-        let indices_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Gather Indices"),
-            contents: bytemuck::cast_slice(indices),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let indices_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Gather Indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
         let output_buffer = self.create_output_buffer(num_elements, "Gather Output");
         let staging_buffer = self.create_staging_buffer(num_elements, "Gather Staging");
 
@@ -48,13 +46,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Gather Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Gather Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Custom 4-binding layout for Gather (source, indices, output, params)
         let bind_group_layout =
@@ -128,11 +126,9 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "Gather", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "Gather", &bind_group_layout);
         let workgroups = self.calculate_workgroups(num_elements, 256);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Gather");
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Gather");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,
@@ -167,21 +163,23 @@ impl WgpuExecutor {
         let shader_source = include_str!("../shaders/scatter.wgsl");
 
         let source_buffer = self.create_input_buffer(source, "Scatter Source");
-        let indices_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Scatter Indices"),
-            contents: bytemuck::cast_slice(indices),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let indices_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Scatter Indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         // Destination buffer: initialize with zeros (i32 for atomic operations)
         let dest_zeros: Vec<i32> = vec![0i32; dest_size];
-        let dest_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Scatter Dest"),
-                    contents: bytemuck::cast_slice(&dest_zeros),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                });
+        let dest_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Scatter Dest"),
+                contents: bytemuck::cast_slice(&dest_zeros),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
 
         let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Scatter Staging"),
@@ -204,13 +202,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Scatter Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Scatter Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Custom 4-binding layout for Scatter (source, indices, dest, params)
         let bind_group_layout =
@@ -284,11 +282,9 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "Scatter", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "Scatter", &bind_group_layout);
         let workgroups = self.calculate_workgroups(num_elements, 256);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Scatter");
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Scatter");
 
         encoder.copy_buffer_to_buffer(
             &dest_buffer,
@@ -317,7 +313,10 @@ impl WgpuExecutor {
         let data = buffer_slice.get_mapped_range();
         let i32_values: &[i32] = bytemuck::cast_slice(&data);
         // Reinterpret i32 bits as f32 (not cast - scatter stores f32 bit patterns as i32 for atomics)
-        let result: Vec<f32> = i32_values.iter().map(|&x| f32::from_bits(x as u32)).collect();
+        let result: Vec<f32> = i32_values
+            .iter()
+            .map(|&x| f32::from_bits(x as u32))
+            .collect();
 
         drop(data);
         staging_buffer.unmap();
@@ -372,13 +371,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Scan Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Scan Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -529,13 +528,13 @@ impl WgpuExecutor {
             vocab_size: vocab_size as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Embedding Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Embedding Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -611,7 +610,8 @@ impl WgpuExecutor {
 
         let pipeline = self.create_simple_pipeline(shader_source, "Embedding", &bind_group_layout);
         let workgroups = self.calculate_workgroups(batch_size * seq_length, 256);
-        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Embedding");
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Embedding");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,

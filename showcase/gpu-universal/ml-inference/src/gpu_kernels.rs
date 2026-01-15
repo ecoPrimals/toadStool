@@ -9,9 +9,9 @@
 
 #![allow(unused_imports)]
 
-use anyhow::Result;
 #[cfg(feature = "opencl")]
 use anyhow::Context;
+use anyhow::Result;
 #[cfg(feature = "opencl")]
 use ocl::{Buffer, Context as OclContext, Device, Kernel, Platform, Program, Queue};
 #[cfg(feature = "opencl")]
@@ -220,43 +220,43 @@ impl OpenCLExecutor {
     /// Create new OpenCL executor for neural network inference
     pub fn new(device: &ocl::Device) -> Result<Self> {
         use anyhow::Context;
-        
+
         let context = ocl::Context::builder()
             .devices(*device)
             .build()
             .context("Failed to create OpenCL context")?;
-        
-        let queue = ocl::Queue::new(&context, *device, None)
-            .context("Failed to create OpenCL queue")?;
-        
+
+        let queue =
+            ocl::Queue::new(&context, *device, None).context("Failed to create OpenCL queue")?;
+
         let program = ocl::Program::builder()
             .src(OPENCL_NN_KERNEL)
             .devices(*device)
             .build(&context)
             .context("Failed to build OpenCL program")?;
-        
+
         Ok(Self {
             _context: context,
             queue,
             program,
         })
     }
-    
+
     /// Execute neural network forward pass on GPU
     ///
     /// Layer 1: input (batch, 784) @ w1 (784, 128) + b1 (128,) -> ReLU -> hidden (batch, 128)
     /// Layer 2: hidden (batch, 128) @ w2 (128, 10) + b2 (10,) -> softmax -> output (batch, 10)
     pub fn forward_pass(
         &self,
-        input: &[f32],        // (batch, 784)
-        w1: &[f32],           // (784, 128)
-        b1: &[f32],           // (128,)
-        w2: &[f32],           // (128, 10)
-        b2: &[f32],           // (10,)
+        input: &[f32], // (batch, 784)
+        w1: &[f32],    // (784, 128)
+        b1: &[f32],    // (128,)
+        w2: &[f32],    // (128, 10)
+        b2: &[f32],    // (10,)
         batch_size: usize,
     ) -> Result<Vec<f32>> {
         use anyhow::Context;
-        
+
         // Create GPU buffers
         let input_buf = ocl::Buffer::builder()
             .queue(self.queue.clone())
@@ -264,48 +264,48 @@ impl OpenCLExecutor {
             .copy_host_slice(input)
             .build()
             .context("Failed to create input buffer")?;
-        
+
         let w1_buf = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(784 * 128)
             .copy_host_slice(w1)
             .build()
             .context("Failed to create w1 buffer")?;
-        
+
         let b1_buf = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(128)
             .copy_host_slice(b1)
             .build()
             .context("Failed to create b1 buffer")?;
-        
+
         let w2_buf = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(128 * 10)
             .copy_host_slice(w2)
             .build()
             .context("Failed to create w2 buffer")?;
-        
+
         let b2_buf = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(10)
             .copy_host_slice(b2)
             .build()
             .context("Failed to create b2 buffer")?;
-        
+
         // Intermediate buffers
         let hidden_buf: ocl::Buffer<f32> = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(batch_size * 128)
             .build()
             .context("Failed to create hidden buffer")?;
-        
+
         let output_buf: ocl::Buffer<f32> = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(batch_size * 10)
             .build()
             .context("Failed to create output buffer")?;
-        
+
         // Layer 1: input @ w1 + b1 -> ReLU -> hidden
         let kernel1 = ocl::Kernel::builder()
             .program(&self.program)
@@ -321,18 +321,18 @@ impl OpenCLExecutor {
             .arg(128i32)
             .build()
             .context("Failed to build layer1 kernel")?;
-        
+
         unsafe {
             kernel1.enq().context("Failed to execute layer1")?;
         }
-        
+
         // Layer 2: hidden @ w2 (no bias/activation in kernel, will add after)
         let z2_buf: ocl::Buffer<f32> = ocl::Buffer::builder()
             .queue(self.queue.clone())
             .len(batch_size * 10)
             .build()
             .context("Failed to create z2 buffer")?;
-        
+
         let kernel2 = ocl::Kernel::builder()
             .program(&self.program)
             .name("matmul")
@@ -346,11 +346,11 @@ impl OpenCLExecutor {
             .arg(10i32)
             .build()
             .context("Failed to build layer2 matmul kernel")?;
-        
+
         unsafe {
             kernel2.enq().context("Failed to execute layer2 matmul")?;
         }
-        
+
         // Add bias
         let kernel_bias = ocl::Kernel::builder()
             .program(&self.program)
@@ -364,11 +364,11 @@ impl OpenCLExecutor {
             .arg(10i32)
             .build()
             .context("Failed to build add_bias kernel")?;
-        
+
         unsafe {
             kernel_bias.enq().context("Failed to execute add_bias")?;
         }
-        
+
         // Softmax
         let kernel_softmax = ocl::Kernel::builder()
             .program(&self.program)
@@ -381,16 +381,18 @@ impl OpenCLExecutor {
             .arg(10i32)
             .build()
             .context("Failed to build softmax kernel")?;
-        
+
         unsafe {
             kernel_softmax.enq().context("Failed to execute softmax")?;
         }
-        
+
         // Read results back
         let mut output = vec![0.0f32; batch_size * 10];
-        output_buf.read(&mut output).enq()
+        output_buf
+            .read(&mut output)
+            .enq()
             .context("Failed to read output from GPU")?;
-        
+
         Ok(output)
     }
 }
@@ -421,4 +423,3 @@ mod tests {
         assert!(CUDA_NN_KERNEL.contains("extern \"C\""));
     }
 }
-

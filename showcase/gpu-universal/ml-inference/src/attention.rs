@@ -67,7 +67,9 @@ impl ScaledDotProductAttention {
     pub async fn new(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Result<Self> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Scaled Dot-Product Attention Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("attention_scaled_dot_product.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("attention_scaled_dot_product.wgsl").into(),
+            ),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -212,7 +214,7 @@ impl ScaledDotProductAttention {
         // Validate dimensions
         let expected_qk_size = (batch * seq_len * d_k) as usize;
         let expected_v_size = (batch * seq_len * d_v) as usize;
-        
+
         anyhow::ensure!(
             query.len() == expected_qk_size,
             "Query size mismatch: expected {}, got {}",
@@ -233,23 +235,29 @@ impl ScaledDotProductAttention {
         );
 
         // Create GPU buffers
-        let query_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Query Buffer"),
-            contents: bytemuck::cast_slice(query),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let query_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Query Buffer"),
+                contents: bytemuck::cast_slice(query),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
-        let key_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Key Buffer"),
-            contents: bytemuck::cast_slice(key),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let key_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Key Buffer"),
+                contents: bytemuck::cast_slice(key),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
-        let value_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Value Buffer"),
-            contents: bytemuck::cast_slice(value),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let value_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Value Buffer"),
+                contents: bytemuck::cast_slice(value),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Mask buffer (use dummy if not provided)
         let mask_data: Vec<f32> = if let Some(m) = mask {
@@ -257,11 +265,13 @@ impl ScaledDotProductAttention {
         } else {
             vec![1.0f32; (batch * seq_len * seq_len) as usize]
         };
-        let mask_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Mask Buffer"),
-            contents: bytemuck::cast_slice(&mask_data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let mask_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Mask Buffer"),
+                contents: bytemuck::cast_slice(&mask_data),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Output buffers
         let output_size = (batch * seq_len * d_v) as u64 * 4; // f32 = 4 bytes
@@ -282,11 +292,13 @@ impl ScaledDotProductAttention {
 
         // Config buffer
         let config_data = [batch, seq_len, d_k, d_v];
-        let config_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Config Buffer"),
-            contents: bytemuck::cast_slice(&config_data),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let config_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Config Buffer"),
+                contents: bytemuck::cast_slice(&config_data),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -325,9 +337,11 @@ impl ScaledDotProductAttention {
         });
 
         // Execute compute pass
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Attention Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Attention Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -336,7 +350,7 @@ impl ScaledDotProductAttention {
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch: one workgroup per (batch, sequence_position)
             let workgroup_size = 256;
             let num_workgroups = ((batch * seq_len) + workgroup_size - 1) / workgroup_size;
@@ -359,7 +373,13 @@ impl ScaledDotProductAttention {
         });
 
         encoder.copy_buffer_to_buffer(&output_buffer, 0, &output_staging, 0, output_size);
-        encoder.copy_buffer_to_buffer(&attention_weights_buffer, 0, &weights_staging, 0, attention_weights_size);
+        encoder.copy_buffer_to_buffer(
+            &attention_weights_buffer,
+            0,
+            &weights_staging,
+            0,
+            attention_weights_size,
+        );
 
         self.queue.submit(Some(encoder.finish()));
 
@@ -367,8 +387,10 @@ impl ScaledDotProductAttention {
         let output_slice = output_staging.slice(..);
         let weights_slice = weights_staging.slice(..);
 
-        let (output_sender, output_receiver) = futures_intrusive::channel::shared::oneshot_channel();
-        let (weights_sender, weights_receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        let (output_sender, output_receiver) =
+            futures_intrusive::channel::shared::oneshot_channel();
+        let (weights_sender, weights_receiver) =
+            futures_intrusive::channel::shared::oneshot_channel();
 
         output_slice.map_async(wgpu::MapMode::Read, move |result| {
             output_sender.send(result).ok();
@@ -379,10 +401,14 @@ impl ScaledDotProductAttention {
 
         self.device.poll(wgpu::Maintain::Wait);
 
-        output_receiver.receive().await
+        output_receiver
+            .receive()
+            .await
             .context("Failed to map output buffer")?
             .context("Output buffer mapping failed")?;
-        weights_receiver.receive().await
+        weights_receiver
+            .receive()
+            .await
             .context("Failed to map weights buffer")?
             .context("Weights buffer mapping failed")?;
 
@@ -453,7 +479,9 @@ mod tests {
                 let key = vec![1.0f32; (batch * seq_len * d_k) as usize];
                 let value = vec![1.0f32; (batch * seq_len * d_v) as usize];
 
-                let result = attention.execute(&query, &key, &value, None, batch, seq_len, d_k, d_v).await;
+                let result = attention
+                    .execute(&query, &key, &value, None, batch, seq_len, d_k, d_v)
+                    .await;
                 assert!(result.is_ok(), "Attention execution failed");
 
                 if let Ok((output, weights)) = result {
@@ -500,8 +528,8 @@ pub struct MultiHeadAttention {
     queue: Arc<wgpu::Queue>,
     num_heads: u32,
     d_model: u32,
-    d_k: u32,  // d_model / num_heads
-    d_v: u32,  // d_model / num_heads
+    d_k: u32, // d_model / num_heads
+    d_v: u32, // d_model / num_heads
     attention: ScaledDotProductAttention,
 }
 
@@ -537,10 +565,8 @@ impl MultiHeadAttention {
         let d_v = d_model / num_heads;
 
         // Create underlying scaled dot-product attention
-        let attention = ScaledDotProductAttention::new(
-            Arc::clone(&device),
-            Arc::clone(&queue),
-        ).await?;
+        let attention =
+            ScaledDotProductAttention::new(Arc::clone(&device), Arc::clone(&queue)).await?;
 
         Ok(Self {
             device,
@@ -619,16 +645,19 @@ impl MultiHeadAttention {
 
         // Step 3: Scaled dot-product attention for each head
         let batch_heads = batch * self.num_heads;
-        let (head_output, _weights) = self.attention.execute(
-            &q_heads,
-            &k_heads,
-            &v_heads,
-            mask,
-            batch_heads,
-            seq_len,
-            self.d_k,
-            self.d_v,
-        ).await?;
+        let (head_output, _weights) = self
+            .attention
+            .execute(
+                &q_heads,
+                &k_heads,
+                &v_heads,
+                mask,
+                batch_heads,
+                seq_len,
+                self.d_k,
+                self.d_v,
+            )
+            .await?;
 
         // Step 4: Concatenate heads
         // [batch * num_heads, seq_len, d_v] → [batch, seq_len, d_model]
@@ -679,8 +708,10 @@ impl MultiHeadAttention {
             for s in 0..seq_len {
                 for h in 0..self.num_heads {
                     for d in 0..self.d_k {
-                        let input_idx = ((b * seq_len + s) * self.d_model + h * self.d_k + d) as usize;
-                        let output_idx = (((b * self.num_heads + h) * seq_len + s) * self.d_k + d) as usize;
+                        let input_idx =
+                            ((b * seq_len + s) * self.d_model + h * self.d_k + d) as usize;
+                        let output_idx =
+                            (((b * self.num_heads + h) * seq_len + s) * self.d_k + d) as usize;
                         output[output_idx] = input[input_idx];
                     }
                 }
@@ -698,8 +729,10 @@ impl MultiHeadAttention {
             for s in 0..seq_len {
                 for h in 0..self.num_heads {
                     for d in 0..self.d_v {
-                        let input_idx = (((b * self.num_heads + h) * seq_len + s) * self.d_v + d) as usize;
-                        let output_idx = ((b * seq_len + s) * self.d_model + h * self.d_v + d) as usize;
+                        let input_idx =
+                            (((b * self.num_heads + h) * seq_len + s) * self.d_v + d) as usize;
+                        let output_idx =
+                            ((b * seq_len + s) * self.d_model + h * self.d_v + d) as usize;
                         output[output_idx] = input[input_idx];
                     }
                 }
@@ -774,16 +807,16 @@ mod multi_head_attention_tests {
                 let query = vec![1.0f32; (batch * seq_len * d_model) as usize];
                 let key = vec![1.0f32; (batch * seq_len * d_model) as usize];
                 let value = vec![1.0f32; (batch * seq_len * d_model) as usize];
-                
+
                 // Identity weights (simplified)
                 let weights = vec![0.0f32; (d_model * d_model) as usize];
 
-                let result = mha.execute(
-                    &query, &key, &value,
-                    &weights, &weights, &weights, &weights,
-                    None,
-                    batch, seq_len
-                ).await;
+                let result = mha
+                    .execute(
+                        &query, &key, &value, &weights, &weights, &weights, &weights, None, batch,
+                        seq_len,
+                    )
+                    .await;
 
                 assert!(result.is_ok(), "Multi-head attention execution failed");
 
@@ -1166,7 +1199,11 @@ impl FlashAttention {
     /// # Returns
     ///
     /// FlashAttention operation
-    pub async fn new(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>, block_size: u32) -> Result<Self> {
+    pub async fn new(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        block_size: u32,
+    ) -> Result<Self> {
         Ok(Self {
             device,
             queue,
@@ -1230,7 +1267,8 @@ impl FlashAttention {
                     let kv_end = (kv_start + self.block_size).min(seq_len);
 
                     // Compute scores for this block: Q_block @ K_block^T
-                    let mut block_scores = vec![0.0f32; ((q_end - q_start) * (kv_end - kv_start)) as usize];
+                    let mut block_scores =
+                        vec![0.0f32; ((q_end - q_start) * (kv_end - kv_start)) as usize];
 
                     for (q_local, q_global) in (q_start..q_end).enumerate() {
                         for (kv_local, kv_global) in (kv_start..kv_end).enumerate() {
@@ -1252,7 +1290,8 @@ impl FlashAttention {
                         // Find max in current block
                         let mut block_max = f32::NEG_INFINITY;
                         for kv_local in 0..((kv_end - kv_start) as usize) {
-                            let score = block_scores[q_local * (kv_end - kv_start) as usize + kv_local];
+                            let score =
+                                block_scores[q_local * (kv_end - kv_start) as usize + kv_local];
                             block_max = block_max.max(score);
                         }
 
@@ -1270,7 +1309,8 @@ impl FlashAttention {
 
                         // Add contribution from current block
                         for kv_local in 0..((kv_end - kv_start) as usize) {
-                            let score = block_scores[q_local * (kv_end - kv_start) as usize + kv_local];
+                            let score =
+                                block_scores[q_local * (kv_end - kv_start) as usize + kv_local];
                             let exp_score = (score - new_max).exp();
                             sum_exp[q_local] += exp_score;
 
@@ -1358,7 +1398,9 @@ mod flash_attention_tests {
                 let key = vec![1.0f32; (batch * seq_len * d_k) as usize];
                 let value = vec![1.0f32; (batch * seq_len * d_v) as usize];
 
-                let result = flash.execute(&query, &key, &value, None, batch, seq_len, d_k, d_v).await;
+                let result = flash
+                    .execute(&query, &key, &value, None, batch, seq_len, d_k, d_v)
+                    .await;
                 assert!(result.is_ok(), "FlashAttention execution failed");
 
                 if let Ok(output) = result {
@@ -1388,16 +1430,26 @@ mod flash_attention_tests {
                     let key = vec![0.5f32; (batch * seq_len * d_k) as usize];
                     let value = vec![1.0f32; (batch * seq_len * d_v) as usize];
 
-                    let flash_result = flash.execute(&query, &key, &value, None, batch, seq_len, d_k, d_v).await;
-                    let std_result = standard.execute(&query, &key, &value, None, batch, seq_len, d_k, d_v).await;
+                    let flash_result = flash
+                        .execute(&query, &key, &value, None, batch, seq_len, d_k, d_v)
+                        .await;
+                    let std_result = standard
+                        .execute(&query, &key, &value, None, batch, seq_len, d_k, d_v)
+                        .await;
 
                     if let (Ok(flash_out), Ok((std_out, _))) = (flash_result, std_result) {
                         // Check outputs are close (allowing for numerical differences)
-                        let max_diff: f32 = flash_out.iter().zip(std_out.iter())
+                        let max_diff: f32 = flash_out
+                            .iter()
+                            .zip(std_out.iter())
                             .map(|(a, b)| (a - b).abs())
                             .fold(0.0f32, f32::max);
-                        
-                        assert!(max_diff < 0.01, "FlashAttention differs from standard by {}", max_diff);
+
+                        assert!(
+                            max_diff < 0.01,
+                            "FlashAttention differs from standard by {}",
+                            max_diff
+                        );
                     }
                 }
             }

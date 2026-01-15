@@ -8,17 +8,11 @@
 //! All operations running on GPU
 
 use anyhow::Result;
-use ml_inference_showcase::{
-    cnn::LeNet5,
-    mnist::MnistDataset,
-};
+use ml_inference_showcase::{cnn::LeNet5, mnist::MnistDataset};
 use std::time::Instant;
 
 #[cfg(feature = "opencl")]
-use ml_inference_showcase::{
-    conv2d_kernels::Conv2DExecutor,
-    gpu_kernels::OpenCLExecutor,
-};
+use ml_inference_showcase::{conv2d_kernels::Conv2DExecutor, gpu_kernels::OpenCLExecutor};
 
 fn main() -> Result<()> {
     println!("╔══════════════════════════════════════════════════════════════╗");
@@ -40,7 +34,7 @@ fn main() -> Result<()> {
     let network = LeNet5::new();
     println!("✓ Network initialized");
     println!();
-    
+
     println!("Architecture:");
     println!("  Input: 1x28x28 (784 pixels)");
     println!("  Conv1: 1→6 filters (5x5), ReLU, MaxPool(2x2) → 6x12x12");
@@ -55,42 +49,52 @@ fn main() -> Result<()> {
     // Test on small batch
     let batch_size = 16;
     let num_batches = 10;
-    
+
     println!("═══ CPU Inference ═══");
-    println!("Testing {} batches of {} samples...", num_batches, batch_size);
-    
+    println!(
+        "Testing {} batches of {} samples...",
+        num_batches, batch_size
+    );
+
     let cpu_start = Instant::now();
     let mut cpu_correct = 0;
-    
+
     for batch_idx in 0..num_batches {
         let start_idx = batch_idx * batch_size;
-        let (images, labels) = test_data.batch(start_idx, batch_size)
+        let (images, labels) = test_data
+            .batch(start_idx, batch_size)
             .ok_or_else(|| anyhow::anyhow!("Failed to get batch"))?;
-        
+
         let predictions = network.forward_cpu(&images)?;
-        cpu_correct += (network.accuracy(&predictions, labels.as_slice().unwrap()) * batch_size as f32) as usize;
+        cpu_correct += (network.accuracy(&predictions, labels.as_slice().unwrap())
+            * batch_size as f32) as usize;
     }
-    
+
     let cpu_time = cpu_start.elapsed();
     let cpu_accuracy = cpu_correct as f32 / (num_batches * batch_size) as f32;
-    
+
     println!("  Time:     {:.2} ms", cpu_time.as_millis());
-    println!("  Accuracy: {:.1}% (with random weights)", cpu_accuracy * 100.0);
-    println!("  Throughput: {:.0} img/sec", 
-             (num_batches * batch_size) as f64 / cpu_time.as_secs_f64());
+    println!(
+        "  Accuracy: {:.1}% (with random weights)",
+        cpu_accuracy * 100.0
+    );
+    println!(
+        "  Throughput: {:.0} img/sec",
+        (num_batches * batch_size) as f64 / cpu_time.as_secs_f64()
+    );
     println!();
 
     // GPU Inference (OpenCL)
     #[cfg(feature = "opencl")]
     {
         use ocl::{Device, Platform};
-        
+
         println!("═══ GPU Inference (OpenCL) ═══");
-        
+
         // Find GPU device
         let platforms = Platform::list();
         let mut gpu_device = None;
-        
+
         for platform in platforms {
             if let Ok(devices) = Device::list_all(platform) {
                 for device in devices {
@@ -107,92 +111,107 @@ fn main() -> Result<()> {
                 }
             }
         }
-        
+
         match gpu_device {
             Some(device) => match (Conv2DExecutor::new(), OpenCLExecutor::new(&device)) {
-            (Ok(conv_executor), Ok(opencl_executor)) => {
-                println!("✓ GPU executors initialized");
-                println!();
-                
-                // Warmup run
-                let (warmup_images, _) = test_data.batch(0, batch_size)
-                    .ok_or_else(|| anyhow::anyhow!("Failed to get warmup batch"))?;
-                let _ = network.forward_gpu(&warmup_images, &conv_executor, &opencl_executor);
-                
-                println!("Testing {} batches of {} samples...", num_batches, batch_size);
-                
-                let gpu_start = Instant::now();
-                let mut gpu_correct = 0;
-                
-                for batch_idx in 0..num_batches {
-                    let start_idx = batch_idx * batch_size;
-                    let (images, labels) = test_data.batch(start_idx, batch_size)
-                        .ok_or_else(|| anyhow::anyhow!("Failed to get batch"))?;
-                    
-                    let predictions = network.forward_gpu(
-                        &images,
-                        &conv_executor,
-                        &opencl_executor,
-                    )?;
-                    
-                    gpu_correct += (network.accuracy(&predictions, labels.as_slice().unwrap()) * batch_size as f32) as usize;
+                (Ok(conv_executor), Ok(opencl_executor)) => {
+                    println!("✓ GPU executors initialized");
+                    println!();
+
+                    // Warmup run
+                    let (warmup_images, _) = test_data
+                        .batch(0, batch_size)
+                        .ok_or_else(|| anyhow::anyhow!("Failed to get warmup batch"))?;
+                    let _ = network.forward_gpu(&warmup_images, &conv_executor, &opencl_executor);
+
+                    println!(
+                        "Testing {} batches of {} samples...",
+                        num_batches, batch_size
+                    );
+
+                    let gpu_start = Instant::now();
+                    let mut gpu_correct = 0;
+
+                    for batch_idx in 0..num_batches {
+                        let start_idx = batch_idx * batch_size;
+                        let (images, labels) = test_data
+                            .batch(start_idx, batch_size)
+                            .ok_or_else(|| anyhow::anyhow!("Failed to get batch"))?;
+
+                        let predictions =
+                            network.forward_gpu(&images, &conv_executor, &opencl_executor)?;
+
+                        gpu_correct += (network.accuracy(&predictions, labels.as_slice().unwrap())
+                            * batch_size as f32) as usize;
+                    }
+
+                    let gpu_time = gpu_start.elapsed();
+                    let gpu_accuracy = gpu_correct as f32 / (num_batches * batch_size) as f32;
+
+                    println!("  Time:     {:.2} ms", gpu_time.as_millis());
+                    println!(
+                        "  Accuracy: {:.1}% (with random weights)",
+                        gpu_accuracy * 100.0
+                    );
+                    println!(
+                        "  Throughput: {:.0} img/sec",
+                        (num_batches * batch_size) as f64 / gpu_time.as_secs_f64()
+                    );
+                    println!();
+
+                    // Performance comparison
+                    println!("═══ Performance ═══");
+                    let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
+                    println!(
+                        "  CPU:     {:.2} ms ({:.0} img/sec)",
+                        cpu_time.as_millis(),
+                        (num_batches * batch_size) as f64 / cpu_time.as_secs_f64()
+                    );
+                    println!(
+                        "  GPU:     {:.2} ms ({:.0} img/sec)",
+                        gpu_time.as_millis(),
+                        (num_batches * batch_size) as f64 / gpu_time.as_secs_f64()
+                    );
+                    println!("  Speedup: {:.2}x", speedup);
+                    println!();
+
+                    if speedup > 1.0 {
+                        println!("  Result: ✅ GPU is {:.1}x faster", speedup);
+                    } else {
+                        println!("  Result: ⚠️  CPU faster (small batch, overhead dominates)");
+                    }
+                    println!();
+
+                    // Correctness check
+                    println!("═══ Correctness ═══");
+                    let (test_images, _test_labels) = test_data
+                        .batch(0, 4)
+                        .ok_or_else(|| anyhow::anyhow!("Failed to get test batch"))?;
+
+                    let cpu_pred = network.forward_cpu(&test_images)?;
+                    let gpu_pred =
+                        network.forward_gpu(&test_images, &conv_executor, &opencl_executor)?;
+
+                    let max_diff = cpu_pred
+                        .iter()
+                        .zip(gpu_pred.iter())
+                        .map(|(c, g)| (c - g).abs())
+                        .fold(0.0f32, f32::max);
+
+                    println!("  Max difference: {:.6}", max_diff);
+                    if max_diff < 0.01 {
+                        println!("  Result: ✅ PASS (CPU and GPU match)");
+                    } else {
+                        println!("  Result: ❌ FAIL (significant difference)");
+                    }
+                    println!();
                 }
-                
-                let gpu_time = gpu_start.elapsed();
-                let gpu_accuracy = gpu_correct as f32 / (num_batches * batch_size) as f32;
-                
-                println!("  Time:     {:.2} ms", gpu_time.as_millis());
-                println!("  Accuracy: {:.1}% (with random weights)", gpu_accuracy * 100.0);
-                println!("  Throughput: {:.0} img/sec", 
-                         (num_batches * batch_size) as f64 / gpu_time.as_secs_f64());
-                println!();
-                
-                // Performance comparison
-                println!("═══ Performance ═══");
-                let speedup = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
-                println!("  CPU:     {:.2} ms ({:.0} img/sec)", 
-                         cpu_time.as_millis(),
-                         (num_batches * batch_size) as f64 / cpu_time.as_secs_f64());
-                println!("  GPU:     {:.2} ms ({:.0} img/sec)", 
-                         gpu_time.as_millis(),
-                         (num_batches * batch_size) as f64 / gpu_time.as_secs_f64());
-                println!("  Speedup: {:.2}x", speedup);
-                println!();
-                
-                if speedup > 1.0 {
-                    println!("  Result: ✅ GPU is {:.1}x faster", speedup);
-                } else {
-                    println!("  Result: ⚠️  CPU faster (small batch, overhead dominates)");
+                (Err(e), _) | (_, Err(e)) => {
+                    println!("  Error initializing GPU: {}", e);
+                    println!("  Note: OpenCL device may not be available");
+                    println!();
                 }
-                println!();
-                
-                // Correctness check
-                println!("═══ Correctness ═══");
-                let (test_images, _test_labels) = test_data.batch(0, 4)
-                    .ok_or_else(|| anyhow::anyhow!("Failed to get test batch"))?;
-                
-                let cpu_pred = network.forward_cpu(&test_images)?;
-                let gpu_pred = network.forward_gpu(&test_images, &conv_executor, &opencl_executor)?;
-                
-                let max_diff = cpu_pred.iter()
-                    .zip(gpu_pred.iter())
-                    .map(|(c, g)| (c - g).abs())
-                    .fold(0.0f32, f32::max);
-                
-                println!("  Max difference: {:.6}", max_diff);
-                if max_diff < 0.01 {
-                    println!("  Result: ✅ PASS (CPU and GPU match)");
-                } else {
-                    println!("  Result: ❌ FAIL (significant difference)");
-                }
-                println!();
-            }
-            (Err(e), _) | (_, Err(e)) => {
-                println!("  Error initializing GPU: {}", e);
-                println!("  Note: OpenCL device may not be available");
-                println!();
-            }
-            }
+            },
             None => {
                 println!("  No GPU device found");
                 println!();
@@ -224,4 +243,3 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-

@@ -56,7 +56,11 @@ impl WgpuExecutor {
     /// Read buffer results (async, safe, modern Rust)
     ///
     /// Idiomatic async/await pattern instead of callback-based.
-    pub(crate) async fn read_buffer(&self, buffer: &wgpu::Buffer, _size: usize) -> Result<Vec<f32>> {
+    pub(crate) async fn read_buffer(
+        &self,
+        buffer: &wgpu::Buffer,
+        _size: usize,
+    ) -> Result<Vec<f32>> {
         let buffer_slice = buffer.slice(..);
         let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
 
@@ -101,13 +105,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some(&format!("{} Pipeline Layout", shader_label)),
-                    bind_group_layouts: &[bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(&format!("{} Pipeline Layout", shader_label)),
+                bind_group_layouts: &[bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         self.device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

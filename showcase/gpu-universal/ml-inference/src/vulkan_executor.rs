@@ -32,16 +32,16 @@ pub struct VulkanExecutor {
     compute_queue: vk::Queue,
     #[allow(dead_code)]
     compute_queue_family: u32,
-    
+
     // Compute resources
     command_pool: vk::CommandPool,
     descriptor_pool: vk::DescriptorPool,
-    
+
     // Shaders and pipelines
     matrix_multiply_pipeline: Option<ComputePipeline>,
     relu_pipeline: Option<ComputePipeline>,
     softmax_pipeline: Option<ComputePipeline>,
-    
+
     // Device properties
     device_name: String,
     #[allow(dead_code)]
@@ -66,8 +66,7 @@ impl VulkanExecutor {
     pub fn new(device_index: usize) -> Result<Self> {
         unsafe {
             // Load Vulkan
-            let entry = ash::Entry::load()
-                .context("Failed to load Vulkan library")?;
+            let entry = ash::Entry::load().context("Failed to load Vulkan library")?;
 
             // Create instance
             let app_name = std::ffi::CString::new("ToadStool ML Inference").unwrap();
@@ -93,13 +92,16 @@ impl VulkanExecutor {
                 .context("Failed to enumerate Vulkan devices")?;
 
             if device_index >= physical_devices.len() {
-                anyhow::bail!("Device index {} out of range (found {} devices)", 
-                             device_index, physical_devices.len());
+                anyhow::bail!(
+                    "Device index {} out of range (found {} devices)",
+                    device_index,
+                    physical_devices.len()
+                );
             }
 
             let physical_device = physical_devices[device_index];
             let device_properties = instance.get_physical_device_properties(physical_device);
-            
+
             let device_name = CStr::from_ptr(device_properties.device_name.as_ptr())
                 .to_string_lossy()
                 .to_string();
@@ -107,7 +109,8 @@ impl VulkanExecutor {
             tracing::info!("🎮 Initializing Vulkan on: {}", device_name);
 
             // Find compute queue family
-            let queue_families = instance.get_physical_device_queue_family_properties(physical_device);
+            let queue_families =
+                instance.get_physical_device_queue_family_properties(physical_device);
             let compute_queue_family = queue_families
                 .iter()
                 .enumerate()
@@ -148,12 +151,10 @@ impl VulkanExecutor {
                 .context("Failed to create command pool")?;
 
             // Create descriptor pool
-            let pool_sizes = [
-                vk::DescriptorPoolSize {
-                    ty: vk::DescriptorType::STORAGE_BUFFER,
-                    descriptor_count: 1000,
-                },
-            ];
+            let pool_sizes = [vk::DescriptorPoolSize {
+                ty: vk::DescriptorType::STORAGE_BUFFER,
+                descriptor_count: 1000,
+            }];
 
             let descriptor_pool_info = vk::DescriptorPoolCreateInfo {
                 max_sets: 100,
@@ -191,7 +192,11 @@ impl VulkanExecutor {
 
     /// Create buffer on GPU
     #[allow(dead_code)]
-    unsafe fn create_buffer(&self, size: vk::DeviceSize, usage: vk::BufferUsageFlags) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+    unsafe fn create_buffer(
+        &self,
+        size: vk::DeviceSize,
+        usage: vk::BufferUsageFlags,
+    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
         // Create buffer
         let buffer_info = vk::BufferCreateInfo {
             size,
@@ -200,7 +205,8 @@ impl VulkanExecutor {
             ..Default::default()
         };
 
-        let buffer = self.device
+        let buffer = self
+            .device
             .create_buffer(&buffer_info, None)
             .context("Failed to create buffer")?;
 
@@ -208,12 +214,18 @@ impl VulkanExecutor {
         let mem_requirements = self.device.get_buffer_memory_requirements(buffer);
 
         // Find memory type (HOST_VISIBLE | HOST_COHERENT for easy CPU access)
-        let memory_properties = self.instance.get_physical_device_memory_properties(self.physical_device);
+        let memory_properties = self
+            .instance
+            .get_physical_device_memory_properties(self.physical_device);
         let memory_type_index = (0..memory_properties.memory_type_count)
             .find(|&i| {
                 let suitable = (mem_requirements.memory_type_bits & (1 << i)) != 0;
                 let properties = memory_properties.memory_types[i as usize].property_flags;
-                suitable && properties.contains(vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT)
+                suitable
+                    && properties.contains(
+                        vk::MemoryPropertyFlags::HOST_VISIBLE
+                            | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    )
             })
             .context("Failed to find suitable memory type")?;
 
@@ -224,7 +236,8 @@ impl VulkanExecutor {
             ..Default::default()
         };
 
-        let memory = self.device
+        let memory = self
+            .device
             .allocate_memory(&alloc_info, None)
             .context("Failed to allocate memory")?;
 
@@ -240,15 +253,16 @@ impl VulkanExecutor {
     #[allow(dead_code)]
     unsafe fn write_buffer<T: Copy>(&self, memory: vk::DeviceMemory, data: &[T]) -> Result<()> {
         let size = std::mem::size_of_val(data) as vk::DeviceSize;
-        
-        let ptr = self.device
+
+        let ptr = self
+            .device
             .map_memory(memory, 0, size, vk::MemoryMapFlags::empty())
             .context("Failed to map memory")?;
 
         std::ptr::copy_nonoverlapping(data.as_ptr(), ptr as *mut T, data.len());
-        
+
         self.device.unmap_memory(memory);
-        
+
         Ok(())
     }
 
@@ -256,15 +270,16 @@ impl VulkanExecutor {
     #[allow(dead_code)]
     unsafe fn read_buffer<T: Copy>(&self, memory: vk::DeviceMemory, data: &mut [T]) -> Result<()> {
         let size = std::mem::size_of_val(data) as vk::DeviceSize;
-        
-        let ptr = self.device
+
+        let ptr = self
+            .device
             .map_memory(memory, 0, size, vk::MemoryMapFlags::empty())
             .context("Failed to map memory")?;
 
         std::ptr::copy_nonoverlapping(ptr as *const T, data.as_mut_ptr(), data.len());
-        
+
         self.device.unmap_memory(memory);
-        
+
         Ok(())
     }
 
@@ -279,11 +294,18 @@ impl VulkanExecutor {
     ///
     /// # Returns
     /// Result matrix C (M x N)
-    pub fn matrix_multiply(&self, a: &[f32], b: &[f32], m: usize, k: usize, n: usize) -> Result<Vec<f32>> {
+    pub fn matrix_multiply(
+        &self,
+        a: &[f32],
+        b: &[f32],
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> Result<Vec<f32>> {
         // For now, return CPU fallback
         // TODO: Implement Vulkan execution after shader compilation is set up
         let mut c = vec![0.0f32; m * n];
-        
+
         for i in 0..m {
             for j in 0..n {
                 let mut sum = 0.0;
@@ -293,7 +315,7 @@ impl VulkanExecutor {
                 c[i * n + j] = sum;
             }
         }
-        
+
         Ok(c)
     }
 
@@ -312,19 +334,19 @@ impl VulkanExecutor {
         if data.is_empty() {
             return Ok(());
         }
-        
+
         let max_val = data.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
         let mut sum = 0.0;
-        
+
         for x in data.iter_mut() {
             *x = (*x - max_val).exp();
             sum += *x;
         }
-        
+
         for x in data.iter_mut() {
             *x /= sum;
         }
-        
+
         Ok(())
     }
 
@@ -340,27 +362,37 @@ impl Drop for VulkanExecutor {
             // Clean up pipelines
             if let Some(pipeline) = &self.matrix_multiply_pipeline {
                 self.device.destroy_pipeline(pipeline.pipeline, None);
-                self.device.destroy_pipeline_layout(pipeline.pipeline_layout, None);
-                self.device.destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
-                self.device.destroy_shader_module(pipeline.shader_module, None);
+                self.device
+                    .destroy_pipeline_layout(pipeline.pipeline_layout, None);
+                self.device
+                    .destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
+                self.device
+                    .destroy_shader_module(pipeline.shader_module, None);
             }
-            
+
             if let Some(pipeline) = &self.relu_pipeline {
                 self.device.destroy_pipeline(pipeline.pipeline, None);
-                self.device.destroy_pipeline_layout(pipeline.pipeline_layout, None);
-                self.device.destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
-                self.device.destroy_shader_module(pipeline.shader_module, None);
+                self.device
+                    .destroy_pipeline_layout(pipeline.pipeline_layout, None);
+                self.device
+                    .destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
+                self.device
+                    .destroy_shader_module(pipeline.shader_module, None);
             }
-            
+
             if let Some(pipeline) = &self.softmax_pipeline {
                 self.device.destroy_pipeline(pipeline.pipeline, None);
-                self.device.destroy_pipeline_layout(pipeline.pipeline_layout, None);
-                self.device.destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
-                self.device.destroy_shader_module(pipeline.shader_module, None);
+                self.device
+                    .destroy_pipeline_layout(pipeline.pipeline_layout, None);
+                self.device
+                    .destroy_descriptor_set_layout(pipeline.descriptor_set_layout, None);
+                self.device
+                    .destroy_shader_module(pipeline.shader_module, None);
             }
-            
+
             // Clean up core resources
-            self.device.destroy_descriptor_pool(self.descriptor_pool, None);
+            self.device
+                .destroy_descriptor_pool(self.descriptor_pool, None);
             self.device.destroy_command_pool(self.command_pool, None);
             self.device.destroy_device(None);
             self.instance.destroy_instance(None);
@@ -389,7 +421,7 @@ mod tests {
     fn test_matrix_multiply_cpu_fallback() {
         let a = vec![1.0, 2.0, 3.0, 4.0]; // 2x2
         let b = vec![5.0, 6.0, 7.0, 8.0]; // 2x2
-        
+
         if let Ok(executor) = VulkanExecutor::new(0) {
             let c = executor.matrix_multiply(&a, &b, 2, 2, 2).unwrap();
             // Expected: [19, 22, 43, 50]
@@ -400,4 +432,3 @@ mod tests {
         }
     }
 }
-

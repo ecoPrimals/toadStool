@@ -50,13 +50,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Reduce Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Reduce Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -116,8 +116,7 @@ impl WgpuExecutor {
         });
 
         let pipeline = self.create_simple_pipeline(shader_source, "Reduce", &bind_group_layout);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Reduce");
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Reduce");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,
@@ -130,7 +129,9 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
 
         // Read partial results and perform final reduction on CPU
-        let partial_results = self.read_buffer(&staging_buffer, workgroups as usize).await?;
+        let partial_results = self
+            .read_buffer(&staging_buffer, workgroups as usize)
+            .await?;
 
         // Final reduction on CPU (small array)
         let result = match operation {
@@ -157,7 +158,10 @@ impl WgpuExecutor {
     /// Deep Debt: Vector sizes determined at runtime.
     /// Efficient parallel multiply-reduce operation.
     pub async fn execute_dot_product(&self, a: &[f32], b: &[f32]) -> Result<f32> {
-        anyhow::ensure!(a.len() == b.len(), "Vectors must have same length for dot product");
+        anyhow::ensure!(
+            a.len() == b.len(),
+            "Vectors must have same length for dot product"
+        );
         let size = a.len();
         let workgroups = self.calculate_workgroups(size, 256).max(1);
 
@@ -192,13 +196,13 @@ impl WgpuExecutor {
             _padding: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("DotProduct Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("DotProduct Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -271,8 +275,7 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "DotProduct", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "DotProduct", &bind_group_layout);
         let mut encoder =
             self.execute_compute_pass(&pipeline, &bind_group, workgroups, "DotProduct");
 
@@ -287,7 +290,9 @@ impl WgpuExecutor {
         self.queue.submit(Some(encoder.finish()));
 
         // Read partial sums and compute final dot product
-        let partial_sums = self.read_buffer(&staging_buffer, workgroups as usize).await?;
+        let partial_sums = self
+            .read_buffer(&staging_buffer, workgroups as usize)
+            .await?;
         Ok(partial_sums.iter().sum())
     }
 
@@ -316,13 +321,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Map Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Map Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device

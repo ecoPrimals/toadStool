@@ -114,10 +114,7 @@ impl BatchNormalization {
             total_size,
             input.len()
         );
-        anyhow::ensure!(
-            gamma.len() == channels,
-            "Gamma size must equal channels"
-        );
+        anyhow::ensure!(gamma.len() == channels, "Gamma size must equal channels");
         anyhow::ensure!(beta.len() == channels, "Beta size must equal channels");
 
         let mut output = vec![0.0f32; total_size];
@@ -218,7 +215,8 @@ impl BatchNormalization {
         batch_var: &[f32],
     ) {
         for i in 0..running_mean.len() {
-            running_mean[i] = (1.0 - self.momentum) * running_mean[i] + self.momentum * batch_mean[i];
+            running_mean[i] =
+                (1.0 - self.momentum) * running_mean[i] + self.momentum * batch_mean[i];
             running_var[i] = (1.0 - self.momentum) * running_var[i] + self.momentum * batch_var[i];
         }
     }
@@ -288,10 +286,7 @@ impl LayerNormalization {
         batch_size: usize,
         features: usize,
     ) -> Result<Vec<f32>> {
-        anyhow::ensure!(
-            input.len() == batch_size * features,
-            "Input size mismatch"
-        );
+        anyhow::ensure!(input.len() == batch_size * features, "Input size mismatch");
         anyhow::ensure!(gamma.len() == features, "Gamma size mismatch");
         anyhow::ensure!(beta.len() == features, "Beta size mismatch");
 
@@ -305,11 +300,8 @@ impl LayerNormalization {
 
             // Compute mean and variance for this sample
             let mean: f32 = sample.iter().sum::<f32>() / features as f32;
-            let variance: f32 = sample
-                .iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f32>()
-                / features as f32;
+            let variance: f32 =
+                sample.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / features as f32;
 
             let std_dev = (variance + self.epsilon).sqrt();
 
@@ -562,20 +554,20 @@ mod tests {
     #[test]
     fn test_batch_norm_train() {
         let bn = BatchNormalization::new(1e-5, 0.1);
-        
+
         // Simple 2×2×1×2 input (batch=2, channels=2, spatial=2)
         let input = vec![
-            1.0, 2.0,  // batch 0, channel 0
-            3.0, 4.0,  // batch 0, channel 1
-            5.0, 6.0,  // batch 1, channel 0
-            7.0, 8.0,  // batch 1, channel 1
+            1.0, 2.0, // batch 0, channel 0
+            3.0, 4.0, // batch 0, channel 1
+            5.0, 6.0, // batch 1, channel 0
+            7.0, 8.0, // batch 1, channel 1
         ];
         let gamma = vec![1.0, 1.0];
         let beta = vec![0.0, 0.0];
 
         let result = bn.forward_train(&input, &gamma, &beta, 2, 2, 2);
         assert!(result.is_ok());
-        
+
         let (output, mean, var) = result.unwrap();
         assert_eq!(output.len(), 8);
         assert_eq!(mean.len(), 2);
@@ -590,18 +582,18 @@ mod tests {
     #[test]
     fn test_layer_norm() {
         let ln = LayerNormalization::new(1e-5);
-        
+
         // 2 samples, 4 features each
         let input = vec![
-            1.0, 2.0, 3.0, 4.0,  // sample 0
-            5.0, 6.0, 7.0, 8.0,  // sample 1
+            1.0, 2.0, 3.0, 4.0, // sample 0
+            5.0, 6.0, 7.0, 8.0, // sample 1
         ];
         let gamma = vec![1.0, 1.0, 1.0, 1.0];
         let beta = vec![0.0, 0.0, 0.0, 0.0];
 
         let result = ln.forward(&input, &gamma, &beta, 2, 4);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.len(), 8);
 
@@ -613,18 +605,18 @@ mod tests {
     #[test]
     fn test_instance_norm() {
         let inst_norm = InstanceNormalization::new(1e-5);
-        
+
         // 1 batch, 2 channels, 2 spatial
         let input = vec![
-            1.0, 2.0,  // channel 0
-            3.0, 4.0,  // channel 1
+            1.0, 2.0, // channel 0
+            3.0, 4.0, // channel 1
         ];
         let gamma = vec![1.0, 1.0];
         let beta = vec![0.0, 0.0];
 
         let result = inst_norm.forward(&input, &gamma, &beta, 1, 2, 2);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.len(), 4);
 
@@ -637,20 +629,20 @@ mod tests {
     #[test]
     fn test_group_norm() {
         let gn = GroupNormalization::new(2, 1e-5);
-        
+
         // 1 batch, 4 channels (2 groups), 2 spatial
         let input = vec![
-            1.0, 2.0,  // channel 0 (group 0)
-            3.0, 4.0,  // channel 1 (group 0)
-            5.0, 6.0,  // channel 2 (group 1)
-            7.0, 8.0,  // channel 3 (group 1)
+            1.0, 2.0, // channel 0 (group 0)
+            3.0, 4.0, // channel 1 (group 0)
+            5.0, 6.0, // channel 2 (group 1)
+            7.0, 8.0, // channel 3 (group 1)
         ];
         let gamma = vec![1.0, 1.0, 1.0, 1.0];
         let beta = vec![0.0, 0.0, 0.0, 0.0];
 
         let result = gn.forward(&input, &gamma, &beta, 1, 4, 2);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.len(), 8);
     }
@@ -658,25 +650,17 @@ mod tests {
     #[test]
     fn test_batch_norm_inference() {
         let bn = BatchNormalization::new(1e-5, 0.1);
-        
+
         let input = vec![1.0, 2.0, 3.0, 4.0];
         let gamma = vec![1.0, 1.0];
         let beta = vec![0.0, 0.0];
         let running_mean = vec![2.5, 2.5];
         let running_var = vec![1.25, 1.25];
 
-        let result = bn.forward_inference(
-            &input,
-            &gamma,
-            &beta,
-            &running_mean,
-            &running_var,
-            2,
-            2,
-            1,
-        );
+        let result =
+            bn.forward_inference(&input, &gamma, &beta, &running_mean, &running_var, 2, 2, 1);
         assert!(result.is_ok());
-        
+
         let output = result.unwrap();
         assert_eq!(output.len(), 4);
     }
@@ -684,14 +668,14 @@ mod tests {
     #[test]
     fn test_normalization_preserves_scale() {
         let ln = LayerNormalization::new(1e-5);
-        
+
         // Scale test: gamma=2, beta=1
         let input = vec![1.0, 2.0, 3.0, 4.0];
         let gamma = vec![2.0, 2.0, 2.0, 2.0];
         let beta = vec![1.0, 1.0, 1.0, 1.0];
 
         let output = ln.forward(&input, &gamma, &beta, 1, 4).unwrap();
-        
+
         // Mean should be ≈ 1 (shifted by beta)
         let mean: f32 = output.iter().sum::<f32>() / 4.0;
         assert!((mean - 1.0).abs() < 0.01, "Mean should be shifted to beta");
@@ -700,13 +684,16 @@ mod tests {
     #[test]
     fn test_group_norm_channels_divisibility() {
         let gn = GroupNormalization::new(3, 1e-5);
-        
+
         // 5 channels not divisible by 3 groups
         let input = vec![0.0; 5 * 2];
         let gamma = vec![1.0; 5];
         let beta = vec![0.0; 5];
 
         let result = gn.forward(&input, &gamma, &beta, 1, 5, 2);
-        assert!(result.is_err(), "Should fail when channels not divisible by groups");
+        assert!(
+            result.is_err(),
+            "Should fail when channels not divisible by groups"
+        );
     }
 }

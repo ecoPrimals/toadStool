@@ -23,7 +23,7 @@
 //! ```rust,ignore
 //! // Capability-based discovery (no hardcoding!)
 //! let entropy = discover_entropy().await?;  // Finds bearDog OR system entropy
-//! 
+//!
 //! // Request with preferences
 //! let seed = entropy.generate_seed_with_request(SeedRequest {
 //!     source: EntropySource::Mixed,  // Prefer human-mixed
@@ -115,7 +115,7 @@ impl RandomUniform {
         // Note: beardog-integration feature currently not enabled in Cargo.toml
         // This code demonstrates the capability-based discovery pattern
         // Uncomment when beardog integration is fully configured
-        
+
         // #[cfg(feature = "beardog-integration")]
         // {
         //     use toadstool_integration_beardog::{discover_entropy, SeedRequest, EntropySource, EntropyMixing};
@@ -171,8 +171,7 @@ impl RandomUniform {
         // Convert seed to u64 for PCG
         let seed_u64 = if seed.len() >= 8 {
             u64::from_le_bytes([
-                seed[0], seed[1], seed[2], seed[3],
-                seed[4], seed[5], seed[6], seed[7],
+                seed[0], seed[1], seed[2], seed[3], seed[4], seed[5], seed[6], seed[7],
             ])
         } else {
             // Pad with zeros if seed too short
@@ -188,8 +187,10 @@ impl RandomUniform {
         for _ in 0..count {
             // PCG algorithm (Permuted Congruential Generator)
             let oldstate = rng_state;
-            rng_state = oldstate.wrapping_mul(6364136223846793005u64).wrapping_add(1442695040888963407u64);
-            
+            rng_state = oldstate
+                .wrapping_mul(6364136223846793005u64)
+                .wrapping_add(1442695040888963407u64);
+
             let xorshifted = (((oldstate >> 18) ^ oldstate) >> 27) as u32;
             let rot = (oldstate >> 59) as u32;
             let random_u32 = xorshifted.rotate_right(rot);
@@ -295,9 +296,14 @@ impl RandomNormal {
     /// # Returns
     ///
     /// Vector of normally distributed random floats with specified μ and σ
-    pub async fn generate_with_params(&self, count: usize, mean: f32, std_dev: f32) -> Result<Vec<f32>> {
+    pub async fn generate_with_params(
+        &self,
+        count: usize,
+        mean: f32,
+        std_dev: f32,
+    ) -> Result<Vec<f32>> {
         let standard_normal = self.generate(count).await?;
-        
+
         // Transform: X = μ + σ * Z (where Z ~ N(0,1))
         let transformed: Vec<f32> = standard_normal
             .iter()
@@ -439,7 +445,8 @@ mod tests {
         assert!((mean - 0.5).abs() < 0.05, "Mean too far from 0.5: {}", mean);
 
         // Check variance ≈ 1/12 ≈ 0.0833
-        let variance: f32 = values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
+        let variance: f32 =
+            values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
         let expected_variance = 1.0 / 12.0;
         assert!(
             (variance - expected_variance).abs() < 0.02,
@@ -470,7 +477,8 @@ mod tests {
         assert!((mean - 0.0).abs() < 0.05, "Mean too far from 0.0: {}", mean);
 
         // Check std_dev ≈ 1.0
-        let variance: f32 = values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
+        let variance: f32 =
+            values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
         let std_dev = variance.sqrt();
         assert!(
             (std_dev - 1.0).abs() < 0.05,
@@ -486,7 +494,10 @@ mod tests {
 
         let mean_target = 5.0;
         let std_dev_target = 2.0;
-        let values = rng.generate_with_params(10000, mean_target, std_dev_target).await.unwrap();
+        let values = rng
+            .generate_with_params(10000, mean_target, std_dev_target)
+            .await
+            .unwrap();
 
         // Check mean ≈ 5.0
         let mean: f32 = values.iter().sum::<f32>() / values.len() as f32;
@@ -498,7 +509,8 @@ mod tests {
         );
 
         // Check std_dev ≈ 2.0
-        let variance: f32 = values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
+        let variance: f32 =
+            values.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
         let std_dev = variance.sqrt();
         assert!(
             (std_dev - std_dev_target).abs() < 0.1,
@@ -548,7 +560,10 @@ mod tests {
         let rng = RandomBernoulli::new(device, queue).await.unwrap();
 
         let dropout_rate = 0.3;
-        let mask = rng.generate_dropout_mask(10000, dropout_rate).await.unwrap();
+        let mask = rng
+            .generate_dropout_mask(10000, dropout_rate)
+            .await
+            .unwrap();
 
         // Check proportion of 0s (dropped) ≈ dropout_rate
         let zeros_count = mask.iter().filter(|&&v| v == 0.0).count();

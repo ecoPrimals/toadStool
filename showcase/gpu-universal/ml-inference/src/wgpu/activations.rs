@@ -94,8 +94,7 @@ impl WgpuExecutor {
 
         let pipeline = self.create_simple_pipeline(shader_source, "Sigmoid", &bind_group_layout);
         let workgroups = self.calculate_workgroups(size, 256);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Sigmoid");
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Sigmoid");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,
@@ -254,11 +253,7 @@ impl WgpuExecutor {
     /// # Arguments
     /// * `input` - Input tensor
     /// * `negative_slope` - Slope for negative values (typically 0.01)
-    pub async fn execute_leaky_relu(
-        &self,
-        input: &[f32],
-        negative_slope: f32,
-    ) -> Result<Vec<f32>> {
+    pub async fn execute_leaky_relu(&self, input: &[f32], negative_slope: f32) -> Result<Vec<f32>> {
         let size = input.len();
         let shader_source = include_str!("../shaders/leaky_relu.wgsl");
 
@@ -328,8 +323,7 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "LeakyReLU", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "LeakyReLU", &bind_group_layout);
         let workgroups = self.calculate_workgroups(size, 256);
         let mut encoder =
             self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LeakyReLU");
@@ -529,7 +523,8 @@ impl WgpuExecutor {
 
         let pipeline = self.create_simple_pipeline(shader_source, "HardSwish", &bind_group_layout);
         let workgroups = self.calculate_workgroups(size, 256);
-        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "HardSwish");
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "HardSwish");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,

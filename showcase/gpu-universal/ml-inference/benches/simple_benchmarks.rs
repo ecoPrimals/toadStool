@@ -2,7 +2,7 @@
 //!
 //! Focuses on the most critical operations to identify optimization opportunities.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use ml_inference_showcase::wgpu::*;
 use tokio::runtime::Runtime;
 
@@ -12,7 +12,7 @@ fn bench_matmul(c: &mut Criterion) {
     let executor = rt.block_on(WgpuExecutor::new()).unwrap();
 
     let mut group = c.benchmark_group("MatMul");
-    
+
     let configs = vec![
         ("32x32", 32),
         ("64x64", 64),
@@ -26,11 +26,21 @@ fn bench_matmul(c: &mut Criterion) {
         let a: Vec<f32> = vec![1.0; size * size];
         let b: Vec<f32> = vec![1.0; size * size];
 
-        group.bench_with_input(BenchmarkId::from_parameter(name), &size, |bencher, &size| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_matmul(black_box(&a), black_box(&b), size, size, size))
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::from_parameter(name),
+            &size,
+            |bencher, &size| {
+                bencher.iter(|| {
+                    rt.block_on(executor.execute_matmul(
+                        black_box(&a),
+                        black_box(&b),
+                        size,
+                        size,
+                        size,
+                    ))
+                });
+            },
+        );
     }
 
     group.finish();
@@ -55,7 +65,14 @@ fn bench_batch_matmul(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::from_parameter(name), &name, |bencher, _| {
             bencher.iter(|| {
-                rt.block_on(executor.execute_batch_matmul(black_box(&a), black_box(&b), batch, size, size, size))
+                rt.block_on(executor.execute_batch_matmul(
+                    black_box(&a),
+                    black_box(&b),
+                    batch,
+                    size,
+                    size,
+                    size,
+                ))
             });
         });
     }
@@ -75,23 +92,17 @@ fn bench_activations(c: &mut Criterion) {
 
         // ReLU
         c.bench_function(&format!("ReLU_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_relu(black_box(&input)))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_relu(black_box(&input))));
         });
 
         // GELU
         c.bench_function(&format!("GELU_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_gelu(black_box(&input)))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_gelu(black_box(&input))));
         });
 
         // Sigmoid
         c.bench_function(&format!("Sigmoid_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_sigmoid(black_box(&input)))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_sigmoid(black_box(&input))));
         });
     }
 }
@@ -119,10 +130,7 @@ fn bench_layernorm(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::from_parameter(name), &name, |bencher, _| {
             bencher.iter(|| {
-                rt.block_on(executor.execute_layernorm(
-                    black_box(&input),
-                    config.clone()
-                ))
+                rt.block_on(executor.execute_layernorm(black_box(&input), config.clone()))
             });
         });
     }
@@ -137,24 +145,20 @@ fn bench_data_ops(c: &mut Criterion) {
 
     // Concat
     let sizes = vec![1024, 65536, 1048576];
-    
+
     for size in sizes {
         let a: Vec<f32> = vec![1.0; size];
         let b: Vec<f32> = vec![2.0; size];
 
         c.bench_function(&format!("Concat_{}", size), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_concat(black_box(&a), black_box(&b)))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_concat(black_box(&a), black_box(&b))));
         });
     }
 
     // Slice
     let input: Vec<f32> = vec![1.0; 1048576];
     c.bench_function("Slice_1m", |bencher| {
-        bencher.iter(|| {
-            rt.block_on(executor.execute_slice(black_box(&input), 0, 524288))
-        });
+        bencher.iter(|| rt.block_on(executor.execute_slice(black_box(&input), 0, 524288)));
     });
 }
 

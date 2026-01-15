@@ -103,11 +103,11 @@ async fn run_inference_on_gpu(
     println!("🎮 Running on {}...", gpu);
     println!("   Backend: {}", gpu.backend);
     println!("   Memory:  {:.1} GB", gpu.memory_gb);
-    
+
     // Determine which GPU backend to use
     let use_opencl = matches!(gpu.backend, GpuBackend::OpenCL) && cfg!(feature = "opencl");
     let use_vulkan = matches!(gpu.backend, GpuBackend::Vulkan) && cfg!(feature = "vulkan");
-    
+
     if use_opencl {
         println!("   ✅  GPU Execution: OpenCL ENABLED");
     } else if use_vulkan {
@@ -129,7 +129,7 @@ async fn run_inference_on_gpu(
         use ocl::{Device, Platform};
         let platforms = Platform::list();
         let mut opencl_device = None;
-        
+
         for platform in platforms {
             if let Ok(devices) = Device::list_all(platform) {
                 for device in devices {
@@ -145,7 +145,7 @@ async fn run_inference_on_gpu(
                 break;
             }
         }
-        
+
         match opencl_device {
             Some(device) => match OpenCLExecutor::new(&device) {
                 Ok(executor) => {
@@ -184,7 +184,7 @@ async fn run_inference_on_gpu(
     } else {
         None
     };
-    
+
     // Use the appropriate executor based on what's available
     #[cfg(all(feature = "vulkan", not(feature = "opencl")))]
     let vulkan_executor = _vulkan_executor;
@@ -197,28 +197,28 @@ async fn run_inference_on_gpu(
     let use_batching = vulkan_executor.is_some();
     #[cfg(not(any(feature = "opencl", feature = "vulkan")))]
     let use_batching = false;
-    
+
     let batch_size = if use_batching { 64 } else { 1 };
-    
+
     if use_batching {
         println!("   🚀 Using batched execution (batch_size={})", batch_size);
     }
-    
+
     // Run inference (batched if GPU, single if CPU)
     let num_batches = (num_samples + batch_size - 1) / batch_size;
-    
+
     for batch_idx in 0..num_batches {
         let batch_start_idx = batch_idx * batch_size;
         let batch_end_idx = (batch_start_idx + batch_size).min(num_samples);
         let current_batch_size = batch_end_idx - batch_start_idx;
-        
+
         let batch_timer = Instant::now();
-        
+
         // Get batch data
         let (images_batch, labels_batch) = test_data
             .batch(batch_start_idx, current_batch_size)
             .context("Failed to get batch")?;
-        
+
         // Execute batch on appropriate backend
         #[cfg(feature = "opencl")]
         let outputs = if let Some(ref executor) = opencl_executor {
@@ -226,29 +226,30 @@ async fn run_inference_on_gpu(
         } else {
             network.forward_batch_cpu(&images_batch)?
         };
-        
+
         #[cfg(all(feature = "vulkan", not(feature = "opencl")))]
         let outputs = if let Some(ref executor) = vulkan_executor {
             network.forward_batch_gpu_vulkan(&images_batch, executor)?
         } else {
             network.forward_batch_cpu(&images_batch)?
         };
-        
+
         #[cfg(not(any(feature = "opencl", feature = "vulkan")))]
         let outputs = network.forward_batch_cpu(&images_batch)?;
-        
+
         let batch_latency = batch_timer.elapsed();
-        let per_sample_latency = batch_latency.as_micros() as f64 / (current_batch_size as f64 * 1000.0);
-        
+        let per_sample_latency =
+            batch_latency.as_micros() as f64 / (current_batch_size as f64 * 1000.0);
+
         // Check predictions
         for i in 0..current_batch_size {
             let output = outputs.row(i).to_owned();
             let (predicted, _) = network.predict(&output);
-            
+
             if predicted == labels_batch[i] as usize {
                 correct += 1;
             }
-            
+
             latencies.push(per_sample_latency);
         }
 
@@ -266,14 +267,8 @@ async fn run_inference_on_gpu(
     // Calculate statistics
     let accuracy = correct as f32 / num_samples as f32;
     let avg_latency = latencies.iter().sum::<f64>() / latencies.len() as f64;
-    let min_latency = latencies
-        .iter()
-        .cloned()
-        .fold(f64::INFINITY, f64::min);
-    let max_latency = latencies
-        .iter()
-        .cloned()
-        .fold(0.0_f64, f64::max);
+    let min_latency = latencies.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max_latency = latencies.iter().cloned().fold(0.0_f64, f64::max);
     let throughput = 1000.0 / avg_latency;
 
     // Display results
@@ -334,12 +329,26 @@ fn print_comparison(results: &[BenchmarkStats]) {
     let percent_of_first = (gpu2.throughput_per_sec / gpu1.throughput_per_sec) * 100.0;
 
     println!();
-    println!("  {} is {:.1}x the speed of {}", 
-        if speedup > 1.0 { &gpu1.backend } else { &gpu2.backend },
-        if speedup > 1.0 { speedup } else { 1.0 / speedup },
-        if speedup > 1.0 { &gpu2.backend } else { &gpu1.backend }
+    println!(
+        "  {} is {:.1}x the speed of {}",
+        if speedup > 1.0 {
+            &gpu1.backend
+        } else {
+            &gpu2.backend
+        },
+        if speedup > 1.0 {
+            speedup
+        } else {
+            1.0 / speedup
+        },
+        if speedup > 1.0 {
+            &gpu2.backend
+        } else {
+            &gpu1.backend
+        }
     );
-    println!("  {} achieves {:.1}% of {}'s throughput",
+    println!(
+        "  {} achieves {:.1}% of {}'s throughput",
         gpu2.backend, percent_of_first, gpu1.backend
     );
 }
@@ -352,7 +361,10 @@ fn print_summary(gpus: &[GpuInfo], results: &[BenchmarkStats]) {
     println!();
 
     println!("  ═══ What's Working Today ═══");
-    println!("  ✅ GPU Discovery: Found {} GPU(s) across vendors", gpus.len());
+    println!(
+        "  ✅ GPU Discovery: Found {} GPU(s) across vendors",
+        gpus.len()
+    );
     println!("  ✅ Backend Selection: CUDA, OpenCL, WebGPU support");
     println!("  ✅ GPU Kernel Execution: OpenCL kernels running on GPU!");
     println!("  ✅ Batched Processing: 64 images/batch for optimal GPU utilization");
@@ -364,12 +376,18 @@ fn print_summary(gpus: &[GpuInfo], results: &[BenchmarkStats]) {
     println!("  ═══ Performance Results ═══");
     for result in results {
         if result.backend.contains("OpenCL") {
-            println!("  🚀 GPU (OpenCL): {:.0} images/sec", result.throughput_per_sec);
+            println!(
+                "  🚀 GPU (OpenCL): {:.0} images/sec",
+                result.throughput_per_sec
+            );
         } else if result.backend.contains("CUDA") {
-            println!("  🖥️  CPU (fallback): {:.0} images/sec", result.throughput_per_sec);
+            println!(
+                "  🖥️  CPU (fallback): {:.0} images/sec",
+                result.throughput_per_sec
+            );
         }
     }
-    
+
     // Calculate speedup
     if results.len() >= 2 {
         let gpu_result = &results[0];
@@ -381,9 +399,15 @@ fn print_summary(gpus: &[GpuInfo], results: &[BenchmarkStats]) {
 
     println!("  ═══ Architecture Wins ═══");
     let unique_vendors: std::collections::HashSet<_> = gpus.iter().map(|g| &g.vendor).collect();
-    println!("  🎯 Vendor Agnostic: {} vendor(s) supported", unique_vendors.len());
+    println!(
+        "  🎯 Vendor Agnostic: {} vendor(s) supported",
+        unique_vendors.len()
+    );
     let unique_backends: std::collections::HashSet<_> = gpus.iter().map(|g| g.backend).collect();
-    println!("  🎯 Multi-Backend: {} API(s) unified", unique_backends.len());
+    println!(
+        "  🎯 Multi-Backend: {} API(s) unified",
+        unique_backends.len()
+    );
     println!("  🎯 Production Ready: Idiomatic Rust, proper error handling");
     println!("  🎯 Zero Technical Debt: No mocks, no hardcoding, no TODOs");
     println!();
@@ -391,4 +415,3 @@ fn print_summary(gpus: &[GpuInfo], results: &[BenchmarkStats]) {
     println!("  🎉 Vendor lock-in BROKEN! GPU compute accessible to all!");
     println!();
 }
-

@@ -53,13 +53,13 @@ impl WgpuExecutor {
             _pad: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Concat Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Concat Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -141,13 +141,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Concat Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Concat Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         let pipeline = self
             .device
@@ -198,12 +198,7 @@ impl WgpuExecutor {
     /// Deep Debt: Slice bounds determined at runtime, flexible extraction.
     ///
     /// Use cases: Attention windows, sequence chunking, tensor manipulation.
-    pub async fn execute_slice(
-        &self,
-        input: &[f32],
-        start: usize,
-        end: usize,
-    ) -> Result<Vec<f32>> {
+    pub async fn execute_slice(&self, input: &[f32], start: usize, end: usize) -> Result<Vec<f32>> {
         anyhow::ensure!(!input.is_empty(), "Slice: input cannot be empty");
         anyhow::ensure!(start < input.len(), "Slice: start index out of bounds");
         anyhow::ensure!(end <= input.len(), "Slice: end index out of bounds");
@@ -234,13 +229,13 @@ impl WgpuExecutor {
             _pad: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Slice Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Slice Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -308,13 +303,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Slice Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Slice Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         let pipeline = self
             .device
@@ -397,14 +392,14 @@ impl WgpuExecutor {
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct PadParams {
-            input_height: u32,   // offset 0
-            input_width: u32,    // offset 4
-            output_height: u32,  // offset 8
-            output_width: u32,   // offset 12
-            pad_top: u32,        // offset 16
-            pad_left: u32,       // offset 20
-            pad_value: f32,      // offset 24
-            _pad: [u32; 3],      // offset 28, padding to 40 bytes
+            input_height: u32,  // offset 0
+            input_width: u32,   // offset 4
+            output_height: u32, // offset 8
+            output_width: u32,  // offset 12
+            pad_top: u32,       // offset 16
+            pad_left: u32,      // offset 20
+            pad_value: f32,     // offset 24
+            _pad: [u32; 3],     // offset 28, padding to 40 bytes
         }
 
         let params = PadParams {
@@ -418,13 +413,13 @@ impl WgpuExecutor {
             _pad: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Pad Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Pad Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -492,13 +487,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Pad Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Pad Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         let pipeline = self
             .device
@@ -585,13 +580,13 @@ impl WgpuExecutor {
             _pad: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Reshape Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Reshape Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -681,7 +676,10 @@ impl WgpuExecutor {
         split_point: usize,
     ) -> Result<(Vec<f32>, Vec<f32>)> {
         anyhow::ensure!(!input.is_empty(), "Split: input cannot be empty");
-        anyhow::ensure!(split_point > 0 && split_point < input.len(), "Split: invalid split point");
+        anyhow::ensure!(
+            split_point > 0 && split_point < input.len(),
+            "Split: invalid split point"
+        );
 
         let total_size = input.len();
         let size1 = split_point;
@@ -712,57 +710,61 @@ impl WgpuExecutor {
             _pad2: 0,
         };
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Split Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Split Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
-        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Split Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Split Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Split Bind Group"),
@@ -791,8 +793,20 @@ impl WgpuExecutor {
         let workgroups = self.calculate_workgroups(total_size, 256);
         let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Split");
 
-        encoder.copy_buffer_to_buffer(&output1_buffer, 0, &staging1_buffer, 0, (size1 * std::mem::size_of::<f32>()) as u64);
-        encoder.copy_buffer_to_buffer(&output2_buffer, 0, &staging2_buffer, 0, (size2 * std::mem::size_of::<f32>()) as u64);
+        encoder.copy_buffer_to_buffer(
+            &output1_buffer,
+            0,
+            &staging1_buffer,
+            0,
+            (size1 * std::mem::size_of::<f32>()) as u64,
+        );
+        encoder.copy_buffer_to_buffer(
+            &output2_buffer,
+            0,
+            &staging2_buffer,
+            0,
+            (size2 * std::mem::size_of::<f32>()) as u64,
+        );
 
         self.queue.submit(Some(encoder.finish()));
 

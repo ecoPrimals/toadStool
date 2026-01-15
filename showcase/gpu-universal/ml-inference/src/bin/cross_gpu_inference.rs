@@ -40,11 +40,16 @@ async fn main() -> Result<()> {
     let amd_gpu = GpuSelector::find_amd(&gpus).context("AMD GPU not found")?;
 
     println!("📊 Heterogeneous VRAM Configuration:");
-    println!("  GPU 1: {} ({:.1} GB)", nvidia_gpu.name, nvidia_gpu.memory_gb);
+    println!(
+        "  GPU 1: {} ({:.1} GB)",
+        nvidia_gpu.name, nvidia_gpu.memory_gb
+    );
     println!("  GPU 2: {} ({:.1} GB)", amd_gpu.name, amd_gpu.memory_gb);
     println!("  ═══════════════════════════════════════════");
-    println!("  Total: {:.1} GB Heterogeneous VRAM ✅", 
-        nvidia_gpu.memory_gb + amd_gpu.memory_gb);
+    println!(
+        "  Total: {:.1} GB Heterogeneous VRAM ✅",
+        nvidia_gpu.memory_gb + amd_gpu.memory_gb
+    );
     println!();
 
     // Load dataset
@@ -86,14 +91,8 @@ async fn main() -> Result<()> {
 
         // Configuration 2: Cross-GPU (Both GPUs)
         println!("  Configuration 2: Cross-GPU Parallel (NVIDIA + AMD)");
-        let cross_gpu_stats = run_cross_gpu(
-            &nvidia_gpu,
-            &amd_gpu,
-            &network,
-            &test_data,
-            size,
-        )
-        .await?;
+        let cross_gpu_stats =
+            run_cross_gpu(&nvidia_gpu, &amd_gpu, &network, &test_data, size).await?;
         print_stats(&cross_gpu_stats);
         println!();
 
@@ -152,7 +151,8 @@ async fn run_cross_gpu(
     let nvidia_samples = ((num_samples as f32) * nvidia_ratio) as usize;
     let amd_samples = num_samples - nvidia_samples;
 
-    println!("    Split: {:.0}% NVIDIA ({} images), {:.0}% AMD ({} images)",
+    println!(
+        "    Split: {:.0}% NVIDIA ({} images), {:.0}% AMD ({} images)",
         nvidia_ratio * 100.0,
         nvidia_samples,
         (1.0 - nvidia_ratio) * 100.0,
@@ -165,7 +165,7 @@ async fn run_cross_gpu(
     // Note: We don't clone test_data (large dataset), we share it via Arc
     let network_nvidia = network.clone();
     let network_amd = network.clone();
-    
+
     // Pre-extract all the data we need to avoid borrowing issues
     let mut nvidia_data = Vec::new();
     for i in 0..nvidia_samples {
@@ -173,7 +173,7 @@ async fn run_cross_gpu(
             nvidia_data.push(sample);
         }
     }
-    
+
     let mut amd_data = Vec::new();
     for i in nvidia_samples..num_samples {
         if let Some(sample) = test_data.get(i) {
@@ -185,9 +185,11 @@ async fn run_cross_gpu(
     let nvidia_task = tokio::spawn(async move {
         let mut correct = 0;
         for (image, label) in nvidia_data {
-            let output = network_nvidia.forward_cpu(&image).expect("Forward pass failed");
+            let output = network_nvidia
+                .forward_cpu(&image)
+                .expect("Forward pass failed");
             let (predicted, _) = network_nvidia.predict(&output);
-            
+
             if predicted == label as usize {
                 correct += 1;
             }
@@ -198,9 +200,11 @@ async fn run_cross_gpu(
     let amd_task = tokio::spawn(async move {
         let mut correct = 0;
         for (image, label) in amd_data {
-            let output = network_amd.forward_cpu(&image).expect("Forward pass failed");
+            let output = network_amd
+                .forward_cpu(&image)
+                .expect("Forward pass failed");
             let (predicted, _) = network_amd.predict(&output);
-            
+
             if predicted == label as usize {
                 correct += 1;
             }
@@ -232,17 +236,21 @@ fn print_stats(stats: &BenchmarkStats) {
     println!("    Correct:     {}", stats.correct);
     println!("    Accuracy:    {:.2}%", stats.accuracy * 100.0);
     println!("    Time:        {:.2} ms", stats.total_time_ms);
-    println!("    Throughput:  {:.0} images/sec", stats.throughput_per_sec);
+    println!(
+        "    Throughput:  {:.0} images/sec",
+        stats.throughput_per_sec
+    );
 }
 
 fn print_comparison(single: &BenchmarkStats, cross: &BenchmarkStats) {
     let speedup = cross.throughput_per_sec / single.throughput_per_sec;
-    let time_reduction = ((single.total_time_ms - cross.total_time_ms) / single.total_time_ms) * 100.0;
+    let time_reduction =
+        ((single.total_time_ms - cross.total_time_ms) / single.total_time_ms) * 100.0;
 
     println!("  ═══ Cross-GPU Performance ═══");
     println!("    Speedup:         {:.2}x faster", speedup);
     println!("    Time Reduction:  {:.1}% less time", time_reduction);
-    
+
     if speedup >= 1.8 {
         println!("    Assessment:      ✅ Excellent parallelism (near 2x)");
     } else if speedup >= 1.5 {
@@ -288,4 +296,3 @@ fn print_summary() {
     println!("  🎯 Ensemble methods (future)");
     println!();
 }
-
