@@ -134,17 +134,28 @@ pub struct EndpointConfig {
 impl Default for EndpointConfig {
     fn default() -> Self {
         let config = crate::env_config::EnvironmentConfig::from_env();
+        
+        // ✅ DEEP DEBT EVOLUTION: Capability-based discovery instead of hardcoded endpoints
+        // Check environment variables first, then fall back to localhost defaults
+        let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL")
+            .unwrap_or_else(|_| format!("http://{}:8080", config.network.bind_address));
+        let beardog = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL")
+            .unwrap_or_else(|_| format!("http://{}:8081", config.network.bind_address));
+        let nestgate = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL")
+            .unwrap_or_else(|_| format!("http://{}:8082", config.network.bind_address));
+        let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL")
+            .unwrap_or_else(|_| format!("http://{}:6000", config.network.bind_address));
+        
         Self {
-            // Legacy fallback endpoints - only used when discovery is unavailable
-            // These will be removed in a future version
+            // Capability-based endpoints - discovered via environment
             #[allow(deprecated)]
-            songbird: network::default_songbird_endpoint(),
+            songbird,
             #[allow(deprecated)]
-            beardog: network::default_beardog_endpoint(),
+            beardog,
             #[allow(deprecated)]
-            nestgate: network::default_nestgate_endpoint(),
+            nestgate,
             #[allow(deprecated)]
-            squirrel: network::default_squirrel_endpoint(),
+            squirrel,
             // Self-knowledge endpoints (still valid)
             federation: format!(
                 "http://{}:{}",
