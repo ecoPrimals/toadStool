@@ -34,13 +34,11 @@ fn attention_bias(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let j = remainder % config.seq_len;
     
     // Determine bias index (shared across batch or per-batch)
-    let bias_idx = if (arrayLength(&bias) == config.seq_len * config.seq_len) {
-        // Shared bias
-        i * config.seq_len + j
-    } else {
-        // Per-batch bias
-        idx
-    };
+    // ✅ Use select() instead of if-expression for WGSL compatibility
+    let bias_len = arrayLength(&bias);
+    let shared_bias_len = config.seq_len * config.seq_len;
+    let is_shared = bias_len == shared_bias_len;
+    let bias_idx = select(idx, i * config.seq_len + j, is_shared);
     
     // Add bias to scores
     output[idx] = scores[idx] + bias[bias_idx];
