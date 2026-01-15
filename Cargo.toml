@@ -11,6 +11,7 @@ members = [
     "crates/cli",
     "crates/client",
     "crates/server",
+    "crates/integration/beardog",     # NEW: bearDog entropy integration (Jan 15, 2026)
     "crates/integration/nestgate",
     "crates/integration/primals",
     "crates/integration/protocols", 
