@@ -40,13 +40,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
 
-    // Get configuration from environment (no hardcoding)
-    let family_id = std::env::var("TOADSTOOL_FAMILY").unwrap_or_else(|_| {
-        warn!("TOADSTOOL_FAMILY not set, using 'default'");
-        warn!("For multi-instance support, set unique family ID:");
-        warn!("  export TOADSTOOL_FAMILY=gpu-rtx3090");
-        "default".to_string()
-    });
+    // Get configuration from environment (TRUE PRIMAL standard)
+    // Priority: TOADSTOOL_FAMILY_ID > TOADSTOOL_FAMILY > BIOMEOS_FAMILY_ID > default
+    let family_id = std::env::var("TOADSTOOL_FAMILY_ID")
+        .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
+        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+        .unwrap_or_else(|_| {
+            warn!("No family ID environment variables set, using 'default'");
+            warn!("For multi-instance support, set one of:");
+            warn!("  export TOADSTOOL_FAMILY_ID=nat0 (primal-specific)");
+            warn!("  export BIOMEOS_FAMILY_ID=nat0 (orchestrator-provided)");
+            "default".to_string()
+        });
 
     let node_id = std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
         info!("TOADSTOOL_NODE_ID not set, using 'default'");
@@ -130,22 +135,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Get socket path following biomeOS-standardized 3-tier fallback
+/// Get socket path following biomeOS-standardized fallback
 ///
 /// Deep debt principle: Agnostic, capability-based, runtime discovery
 ///
-/// Priority order:
-/// 1. TOADSTOOL_SOCKET env var (absolute path override) - highest priority
-/// 2. XDG runtime directory (/run/user/<uid>/toadstool-<family>.sock)
-/// 3. /tmp fallback (/tmp/toadstool-<family>-<node>.sock) - last resort
-fn get_socket_path(family_id: &str, node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (biomeOS atomic deployment)
+/// Priority order (TRUE PRIMAL standard):
+/// 1. TOADSTOOL_SOCKET env var (primal-specific absolute path) - highest priority
+/// 2. BIOMEOS_SOCKET_PATH env var (orchestrator-provided generic path)
+/// 3. XDG runtime directory (/run/user/<uid>/toadstool-<family>.sock) - user mode
+/// 4. /tmp fallback (/tmp/toadstool-<family>.sock) - system mode
+fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (primal-specific)
     if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
         info!("Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
     }
 
-    // 2. XDG runtime directory (standard)
+    // 2. BIOMEOS_SOCKET_PATH: Generic orchestrator-provided path
+    if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
+        info!("Using socket path from BIOMEOS_SOCKET_PATH: {}", socket);
+        return Ok(PathBuf::from(socket));
+    }
+
+    // 3. XDG runtime directory (standard for user-mode deployments)
     // SAFETY: getuid() is always safe - returns current process's real user ID
     // No memory access, no side effects, always succeeds
     let uid = unsafe { libc::getuid() };
@@ -159,11 +171,11 @@ fn get_socket_path(family_id: &str, node_id: &str) -> Result<PathBuf, Box<dyn st
         return Ok(xdg_path);
     }
 
-    // 3. /tmp fallback (last resort, for containers/minimal systems)
-    let tmp_path = PathBuf::from("/tmp").join(format!("toadstool-{}-{}.sock", family_id, node_id));
+    // 4. /tmp fallback (system-wide deployments, containers, minimal systems)
+    let tmp_path = PathBuf::from("/tmp").join(format!("toadstool-{}.sock", family_id));
 
-    warn!("XDG runtime directory not found, falling back to /tmp");
-    warn!("Fallback socket path: {:?}", tmp_path);
+    info!("Using /tmp fallback for system-wide deployment");
+    info!("Socket path: {:?}", tmp_path);
     Ok(tmp_path)
 }
 
