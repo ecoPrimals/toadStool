@@ -15,7 +15,9 @@ use toadstool_common::{NetworkError, ToadStoolError, ToadStoolResult};
 
 use super::types::{
     BearDogCapability, BearDogEndpoint, EncryptionRequest, EncryptionResponse,
-    KeyManagementRequest, KeyManagementResponse,
+    KeyManagementRequest, KeyManagementResponse, PermissionResponse, RevocationRequest,
+    SignatureRequest, SignatureResponse, ValidationResponse, VerificationRequest,
+    VerificationResponse,
 };
 use super::{BearDogConfig, ServiceLocation};
 
@@ -314,6 +316,197 @@ impl BearDogClient {
         response.json::<KeyManagementResponse>().await.map_err(|e| {
             ToadStoolError::network(format!("Failed to parse BearDog response: {}", e))
         })
+    }
+
+    /// Sign data using BearDog
+    pub async fn sign(&self, data: &[u8]) -> ToadStoolResult<SignatureResponse> {
+        let endpoint = self.discovery.get_best_endpoint().await?;
+
+        let url = format!(
+            "{}://{}:{}/api/v1/sign",
+            endpoint.protocol,
+            endpoint.address.ip(),
+            endpoint.address.port()
+        );
+
+        let request = SignatureRequest {
+            request_id: uuid::Uuid::new_v4(),
+            data: data.to_vec(),
+            key_id: None,
+            algorithm: None,
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("BearDog sign request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(ToadStoolError::network(format!(
+                "BearDog sign returned error: {}",
+                response.status()
+            )));
+        }
+
+        response.json::<SignatureResponse>().await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to parse BearDog sign response: {}", e))
+        })
+    }
+
+    /// Verify signature using BearDog
+    pub async fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        public_key_id: &str,
+    ) -> ToadStoolResult<bool> {
+        let endpoint = self.discovery.get_best_endpoint().await?;
+
+        let url = format!(
+            "{}://{}:{}/api/v1/verify",
+            endpoint.protocol,
+            endpoint.address.ip(),
+            endpoint.address.port()
+        );
+
+        let request = VerificationRequest {
+            request_id: uuid::Uuid::new_v4(),
+            data: data.to_vec(),
+            signature: signature.to_vec(),
+            public_key_id: public_key_id.to_string(),
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("BearDog verify request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(ToadStoolError::network(format!(
+                "BearDog verify returned error: {}",
+                response.status()
+            )));
+        }
+
+        let result: VerificationResponse = response.json().await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to parse BearDog verify response: {}", e))
+        })?;
+
+        Ok(result.valid)
+    }
+
+    /// Create permission using BearDog
+    pub async fn create_permission(
+        &self,
+        request: &crate::security_provider::PermissionRequest,
+    ) -> ToadStoolResult<PermissionResponse> {
+        let endpoint = self.discovery.get_best_endpoint().await?;
+
+        let url = format!(
+            "{}://{}:{}/api/v1/permissions",
+            endpoint.protocol,
+            endpoint.address.ip(),
+            endpoint.address.port()
+        );
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(request)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("BearDog permission request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(ToadStoolError::network(format!(
+                "BearDog permission returned error: {}",
+                response.status()
+            )));
+        }
+
+        response.json::<PermissionResponse>().await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to parse BearDog permission response: {}", e))
+        })
+    }
+
+    /// Validate permission using BearDog
+    pub async fn validate_permission(
+        &self,
+        permission: &crate::security_provider::SecurityPermission,
+    ) -> ToadStoolResult<bool> {
+        let endpoint = self.discovery.get_best_endpoint().await?;
+
+        let url = format!(
+            "{}://{}:{}/api/v1/permissions/validate",
+            endpoint.protocol,
+            endpoint.address.ip(),
+            endpoint.address.port()
+        );
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(permission)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("BearDog validate request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(ToadStoolError::network(format!(
+                "BearDog validate returned error: {}",
+                response.status()
+            )));
+        }
+
+        let result: ValidationResponse = response.json().await.map_err(|e| {
+            ToadStoolError::network(format!("Failed to parse BearDog validate response: {}", e))
+        })?;
+
+        Ok(result.valid)
+    }
+
+    /// Revoke permission using BearDog
+    pub async fn revoke_permission(
+        &self,
+        permission_id: &uuid::Uuid,
+        reason: &str,
+    ) -> ToadStoolResult<()> {
+        let endpoint = self.discovery.get_best_endpoint().await?;
+
+        let url = format!(
+            "{}://{}:{}/api/v1/permissions/{}/revoke",
+            endpoint.protocol,
+            endpoint.address.ip(),
+            endpoint.address.port(),
+            permission_id
+        );
+
+        let request = RevocationRequest {
+            reason: reason.to_string(),
+        };
+
+        let response = self
+            .http_client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("BearDog revoke request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(ToadStoolError::network(format!(
+                "BearDog revoke returned error: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
     }
 
     /// Check health of BearDog services

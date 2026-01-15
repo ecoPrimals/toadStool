@@ -137,17 +137,41 @@ impl SecurityProvider for BearDogSecurityProvider {
         data: &[u8],
         _options: Option<EncryptionOptions>,
     ) -> ToadStoolResult<EncryptionResult> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to encrypt once available
-        // For now, return placeholder
+        // Use BearDog client to encrypt
+        use crate::beardog_integration::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
+        
+        let request = EncryptionRequest {
+            request_id: uuid::Uuid::new_v4(),
+            operation: EncryptionOperation::Encrypt,
+            data: data.to_vec(),
+            key_id: None,
+            algorithm: Some("AES-256-GCM".to_string()),
+            security_level: SecurityLevel::Standard,
+        };
+        
+        let response = client.encrypt(request).await?;
+        
+        // Extract IV and auth tag from metadata
+        let metadata_obj = response.metadata.as_object();
+        let iv = metadata_obj
+            .and_then(|m| m.get("iv"))
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
+        
+        let auth_tag = metadata_obj
+            .and_then(|m| m.get("auth_tag"))
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
+        
         Ok(EncryptionResult {
-            ciphertext: data.to_vec(), // Placeholder: not actually encrypted
-            iv: Some(vec![0; 16]),
-            auth_tag: Some(vec![0; 16]),
+            ciphertext: response.data,
+            iv,
+            auth_tag,
             metadata: EncryptionMetadata {
-                algorithm: "AES-256-GCM".to_string(),
-                key_id: "beardog-key-placeholder".to_string(),
+                algorithm: response.algorithm,
+                key_id: response.key_id,
                 encrypted_at: std::time::SystemTime::now(),
             },
         })
@@ -158,12 +182,24 @@ impl SecurityProvider for BearDogSecurityProvider {
         ciphertext: &[u8],
         metadata: &EncryptionMetadata,
     ) -> ToadStoolResult<DecryptionResult> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to decrypt once available
-        // For now, return placeholder
+        // Use BearDog client to decrypt
+        use crate::beardog_integration::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
+        
+        let request = EncryptionRequest {
+            request_id: uuid::Uuid::new_v4(),
+            operation: EncryptionOperation::Decrypt,
+            data: ciphertext.to_vec(),
+            key_id: Some(metadata.key_id.clone()),
+            algorithm: Some(metadata.algorithm.clone()),
+            security_level: SecurityLevel::Standard,
+        };
+        
+        let response = client.decrypt(request).await?;
+        
         Ok(DecryptionResult {
-            plaintext: ciphertext.to_vec(), // Placeholder: not actually decrypted
+            plaintext: response.data,
             metadata: DecryptionMetadata {
                 key_id: metadata.key_id.clone(),
                 decrypted_at: std::time::SystemTime::now(),
@@ -173,55 +209,62 @@ impl SecurityProvider for BearDogSecurityProvider {
 
     async fn sign(
         &self,
-        _data: &[u8],
+        data: &[u8],
         _options: Option<SigningOptions>,
     ) -> ToadStoolResult<SignatureResult> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to sign once available
-        // For now, return placeholder
+        // Use BearDog client to sign
+        let response = client.sign(data).await?;
+        
         Ok(SignatureResult {
-            signature: vec![0xDE, 0xAD, 0xBE, 0xEF], // Placeholder signature
-            algorithm: SignatureAlgorithm::EcdsaP256,
-            key_id: "beardog-signing-key-placeholder".to_string(),
+            signature: response.signature,
+            algorithm: SignatureAlgorithm::EcdsaP256, // BearDog default
+            key_id: response.key_id,
             signed_at: std::time::SystemTime::now(),
         })
     }
 
     async fn verify(
         &self,
-        _data: &[u8],
-        _signature: &[u8],
-        _public_key_id: &str,
+        data: &[u8],
+        signature: &[u8],
+        public_key_id: &str,
     ) -> ToadStoolResult<VerificationResult> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to verify once available
-        // For now, return placeholder
-        Ok(VerificationResult::Valid)
+        // Use BearDog client to verify
+        let is_valid = client.verify(data, signature, public_key_id).await?;
+        
+        Ok(if is_valid {
+            VerificationResult::Valid
+        } else {
+            VerificationResult::Invalid
+        })
     }
 
     async fn create_permission(
         &self,
         request: PermissionRequest,
     ) -> ToadStoolResult<SecurityPermission> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to create permission once available
-        // For now, return placeholder
+        // Use BearDog client to create permission
+        let response = client.create_permission(&request).await?;
+        
         let now = std::time::SystemTime::now();
         
         Ok(SecurityPermission {
-            permission_id: uuid::Uuid::new_v4(),
+            permission_id: response.permission_id,
             holder_id: request.requester_id,
             target: request.target,
             scope: request.scope,
             valid_from: now,
             valid_until: now + request.validity_duration,
             proof: SecurityProof {
-                signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
+                signature: response.proof,
                 algorithm: SignatureAlgorithm::EcdsaP256,
-                public_key_id: "beardog-permission-key-placeholder".to_string(),
+                public_key_id: "beardog-permission-key".to_string(),
                 signed_at: now,
             },
             provider_metadata: self.metadata.clone(),
@@ -230,23 +273,29 @@ impl SecurityProvider for BearDogSecurityProvider {
 
     async fn validate_permission(
         &self,
-        _permission: &SecurityPermission,
+        permission: &SecurityPermission,
     ) -> ToadStoolResult<PermissionValidationResult> {
-        let _client = self.get_client().await?;
+        let client = self.get_client().await?;
         
-        // TODO: Use BearDog client to validate once available
-        // For now, return placeholder
-        Ok(PermissionValidationResult::Valid)
+        // Use BearDog client to validate
+        let is_valid = client.validate_permission(permission).await?;
+        
+        Ok(if is_valid {
+            PermissionValidationResult::Valid
+        } else {
+            PermissionValidationResult::InvalidSignature
+        })
     }
 
     async fn revoke_permission(
         &self,
-        _permission_id: &uuid::Uuid,
-        _reason: &str,
+        permission_id: &uuid::Uuid,
+        reason: &str,
     ) -> ToadStoolResult<()> {
-        // TODO: Use BearDog client to revoke once available
-        // For now, no-op
-        Ok(())
+        let client = self.get_client().await?;
+        
+        // Use BearDog client to revoke
+        client.revoke_permission(permission_id, reason).await
     }
 
     async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {

@@ -166,3 +166,100 @@ pub enum KeyOperationResult {
     /// Operation failed
     Error { message: String },
 }
+
+/// Signature request to BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignatureRequest {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Data to sign
+    pub data: Vec<u8>,
+
+    /// Key identifier (if using existing key)
+    pub key_id: Option<String>,
+
+    /// Algorithm preference
+    pub algorithm: Option<String>,
+}
+
+/// Signature response from BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignatureResponse {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Signature data
+    pub signature: Vec<u8>,
+
+    /// Key used
+    pub key_id: String,
+
+    /// Algorithm used
+    pub algorithm: String,
+}
+
+/// Verification request to BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationRequest {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Original data
+    pub data: Vec<u8>,
+
+    /// Signature to verify
+    pub signature: Vec<u8>,
+
+    /// Public key identifier
+    pub public_key_id: String,
+}
+
+/// Verification response from BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationResponse {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Whether signature is valid
+    pub valid: bool,
+
+    /// Verification details (optional)
+    pub details: Option<String>,
+}
+
+/// Permission response from BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionResponse {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Permission identifier
+    pub permission_id: Uuid,
+
+    /// Cryptographic proof
+    pub proof: Vec<u8>,
+
+    /// Metadata
+    pub metadata: serde_json::Value,
+}
+
+/// Validation response from BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationResponse {
+    /// Request identifier
+    pub request_id: Uuid,
+
+    /// Whether permission is valid
+    pub valid: bool,
+
+    /// Validation details (optional)
+    pub details: Option<String>,
+}
+
+/// Revocation request to BearDog
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RevocationRequest {
+    /// Reason for revocation
+    pub reason: String,
+}
