@@ -1,0 +1,35 @@
+[package]
+name = "toadstool-integration-beardog"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team"]
+license = "MIT OR Apache-2.0"
+description = "bearDog entropy integration for high-quality random number generation"
+repository = "https://github.com/ecoPrimals/toadStool"
+
+[dependencies]
+# Core dependencies
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+
+# ToadStool core
+toadstool-common = { path = "../../core/common" }
+
+# HTTP client for bearDog discovery/communication
+reqwest = { version = "0.11", features = ["json"] }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+
+[features]
+default = []
+
+# Testing features
+testing = []
+mock-beardog = []  # Mock bearDog for testing without real service
