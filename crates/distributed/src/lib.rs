@@ -35,8 +35,11 @@ pub mod coordination_integration;
 )]
 pub mod songbird_integration;
 
-// Crypto lock system - BearDog cryptographic access control
+// Crypto lock system - primal-agnostic cryptographic access control
 pub mod crypto_lock;
+
+// Security provider abstraction - ANY primal can implement (NEW: Phase 1B)
+pub mod security_provider;
 
 // Crypto integration - vendor-agnostic cryptographic services (NEW)
 pub mod crypto_integration;

@@ -1,0 +1,57 @@
+//! Security Provider Abstraction
+//!
+//! Generic security provider interface that ANY primal or service can implement.
+//! BearDog is just ONE implementation - HSM, KMS, local keyring all possible.
+//!
+//! ## Philosophy: "Security Provider, Not BearDog"
+//!
+//! Code requests "security capability" via Universal Adapter.
+//! Runtime discovers WHO provides it (beardog, HSM, KMS, etc.).
+//! This module defines WHAT a security provider can do, not WHO provides it.
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ **No hardcoding**: Generic trait, no primal names
+//! - ✅ **Capability-based**: Request by features, not by provider name
+//! - ✅ **Runtime discovery**: Use Universal Adapter to find provider
+//! - ✅ **Pluggable**: Any implementation works
+//! - ✅ **Testable**: Mock providers for testing
+//!
+//! ## Usage
+//!
+//! ```rust,no_run
+//! use toadstool_distributed::security_provider::*;
+//! use toadstool_common::universal_adapter::*;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Discover security provider via Universal Adapter
+//! let adapter = UniversalAdapter::new().await?;
+//! let handle = adapter.request_capability(
+//!     CapabilityType::Security {
+//!         features: vec![SecurityFeature::Encryption],
+//!         min_trust_level: TrustLevel::High,
+//!     }
+//! ).await?;
+//!
+//! // Get provider instance (discovered at runtime!)
+//! let provider = SecurityProviderFactory::create_from_handle(&handle).await?;
+//!
+//! // Use provider (don't care who provides it!)
+//! let encrypted = provider.encrypt(b"sensitive data").await?;
+//! # Ok(())
+//! # }
+//! ```
+
+pub mod types;
+pub mod provider;
+pub mod factory;
+
+// BearDog implementation will be migrated in future commit
+// TODO: Move beardog_integration/ to security_provider/beardog_impl/
+
+pub use types::*;
+pub use provider::*;
+pub use factory::*;
+
+// BearDog implementation will be added in future commit
+// TODO: Migrate beardog_integration/ to security_provider/beardog_impl/
