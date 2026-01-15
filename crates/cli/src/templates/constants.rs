@@ -23,12 +23,44 @@ pub mod template_names {
 }
 
 /// Service names used in templates
+///
+/// ⚠️ **DEPRECATION NOTICE**: Primal-specific names (nestgate, beardog, songbird) are deprecated.
+/// Use capability-based discovery instead:
+/// - Instead of "nestgate" → use capability "storage"
+/// - Instead of "beardog" → use capability "security"
+/// - Instead of "songbird" → use capability "coordination"
+///
+/// Generic service names (jupyter, postgres, redis) remain valid as these are
+/// third-party services, not ecoPrimals.
 pub mod service_names {
+    /// Jupyter notebook service (third-party, not a primal)
     pub const JUPYTER: &str = "jupyter";
+    
+    /// PostgreSQL database (third-party, not a primal)
     pub const POSTGRES: &str = "postgres";
+    
+    /// Redis cache (third-party, not a primal)
     pub const REDIS: &str = "redis";
+    
+    /// ⚠️ DEPRECATED: Use capability "storage" instead
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use capability-based discovery: discover_capability(\"storage\") instead of hardcoding \"nestgate\""
+    )]
     pub const NESTGATE: &str = "nestgate";
+    
+    /// ⚠️ DEPRECATED: Use capability "security" instead
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use capability-based discovery: discover_capability(\"security\") instead of hardcoding \"beardog\""
+    )]
     pub const BEARDOG: &str = "beardog";
+    
+    /// ⚠️ DEPRECATED: Use capability "coordination" instead
+    #[deprecated(
+        since = "0.4.0",
+        note = "Use capability-based discovery: discover_capability(\"coordination\") instead of hardcoding \"songbird\""
+    )]
     pub const SONGBIRD: &str = "songbird";
 }
 

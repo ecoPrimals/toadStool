@@ -101,12 +101,14 @@ impl ZeroConfigDeployment {
     pub(crate) async fn generate_security_config(&self) -> Result<SecurityConfig> {
         debug!("Generating security configuration");
 
-        let beardog_enabled = self.ecosystem_services.beardog.is_some();
+        // ✅ DEEP DEBT: Check for security CAPABILITY, not specific primal
+        let security_provider_available = self.ecosystem_services.beardog.is_some()
+            || std::env::var("TOADSTOOL_SECURITY_PROVIDER").is_ok();
 
         Ok(SecurityConfig {
             level: "standard".to_string(),
             isolation: "process".to_string(),
-            beardog_enabled,
+            beardog_enabled: security_provider_available, // Renamed from beardog_enabled
             crypto_policies: vec!["default".to_string()],
         })
     }
@@ -115,17 +117,25 @@ impl ZeroConfigDeployment {
     pub(crate) async fn generate_network_config(&self) -> Result<NetworkConfig> {
         debug!("Generating network configuration");
 
-        let songbird_enabled = self.ecosystem_services.songbird.is_some();
+        // ✅ DEEP DEBT: Check for coordination CAPABILITY, not specific primal
+        let coordination_provider_available = self.ecosystem_services.songbird.is_some()
+            || std::env::var("TOADSTOOL_COORDINATION_PROVIDER").is_ok();
+
+        // ✅ DEEP DEBT: Dynamic port allocation, not hardcoded 8080
+        let host_port = std::env::var("TOADSTOOL_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080); // Fallback only
 
         Ok(NetworkConfig {
             mode: "bridge".to_string(),
             port_mappings: vec![PortMapping {
-                host_port: 8080,
-                container_port: 8080,
+                host_port,
+                container_port: host_port,
                 protocol: "tcp".to_string(),
             }],
             dns_servers: vec!["8.8.8.8".to_string(), "8.8.4.4".to_string()],
-            songbird_enabled,
+            songbird_enabled: coordination_provider_available,
         })
     }
 
@@ -133,18 +143,20 @@ impl ZeroConfigDeployment {
     pub(crate) async fn generate_storage_config(&self) -> Result<StorageConfig> {
         debug!("Generating storage configuration");
 
-        let nestgate_enabled = self.ecosystem_services.nestgate.is_some();
+        // ✅ DEEP DEBT: Check for storage CAPABILITY, not specific primal
+        let storage_provider_available = self.ecosystem_services.nestgate.is_some()
+            || std::env::var("TOADSTOOL_STORAGE_PROVIDER").is_ok();
 
         Ok(StorageConfig {
             backend: "local".to_string(),
-            nestgate_enabled,
+            nestgate_enabled: storage_provider_available, // Capability-based check
             volumes: vec![VolumeConfig {
                 name: "data".to_string(),
                 size: "10GB".to_string(),
                 mount_point: "/data".to_string(),
                 read_only: false,
             }],
-            backup_enabled: nestgate_enabled,
+            backup_enabled: storage_provider_available,
         })
     }
 }
