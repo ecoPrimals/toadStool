@@ -44,7 +44,6 @@
 
 mod communication;
 mod discovery;
-mod legacy;
 mod management;
 mod types;
 
@@ -56,10 +55,6 @@ pub use types::{
     DiscoveryMethodConfig, EcosystemConfig, EcosystemConfigBuilder, EcosystemMessage,
     EcosystemMessageType, ServiceChannel, ServiceClient, ServiceInstance, ServiceStatus,
 };
-
-// Legacy exports (deprecated)
-#[allow(deprecated)]
-pub use legacy::{LegacyDiscovery, LegacyPrimalStatus};
 
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -45,9 +45,10 @@ path = "complete_system_integration_demo.rs"
 name = "cooperative_network_demo"
 path = "cooperative_network_demo.rs"
 
-[[bin]]
-name = "crypto_lock_demo"
-path = "crypto_lock_demo.rs"
+# [[bin]]
+# name = "crypto_lock_demo"
+# path = "crypto_lock_demo.rs"
+# OUTDATED: Example needs update for Phase 1B security_provider types
 
 [[bin]]
 name = "capability_discovery_demo"
