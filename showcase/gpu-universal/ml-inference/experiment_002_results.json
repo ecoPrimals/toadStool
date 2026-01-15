@@ -1,0 +1,242 @@
+[
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 32,
+    "mean_us": 5505.1,
+    "median_us": 5537.0,
+    "std_dev_us": 191.8120897591645,
+    "min_us": 5181.0,
+    "max_us": 5819.0
+  },
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 64,
+    "mean_us": 5475.0,
+    "median_us": 5491.0,
+    "std_dev_us": 140.7274750083374,
+    "min_us": 5255.0,
+    "max_us": 5776.0
+  },
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 128,
+    "mean_us": 5444.8,
+    "median_us": 5426.0,
+    "std_dev_us": 140.7841531486331,
+    "min_us": 5240.0,
+    "max_us": 5682.0
+  },
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 256,
+    "mean_us": 5611.0,
+    "median_us": 5641.0,
+    "std_dev_us": 250.86605545146554,
+    "min_us": 5308.0,
+    "max_us": 5972.0
+  },
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 512,
+    "mean_us": 5670.8,
+    "median_us": 5735.0,
+    "std_dev_us": 194.125846925247,
+    "min_us": 5388.0,
+    "max_us": 6009.0
+  },
+  {
+    "tensor_size": 131072,
+    "tensor_name": "128K",
+    "workgroup_size": 1024,
+    "mean_us": 5670.1,
+    "median_us": 5663.0,
+    "std_dev_us": 208.92499983380534,
+    "min_us": 5402.0,
+    "max_us": 6068.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 32,
+    "mean_us": 7823.8,
+    "median_us": 7779.0,
+    "std_dev_us": 177.6843643468196,
+    "min_us": 7634.0,
+    "max_us": 8243.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 64,
+    "mean_us": 7844.3,
+    "median_us": 7755.0,
+    "std_dev_us": 210.4271053516316,
+    "min_us": 7661.0,
+    "max_us": 8275.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 128,
+    "mean_us": 8028.9,
+    "median_us": 7921.0,
+    "std_dev_us": 475.2474092512236,
+    "min_us": 7554.0,
+    "max_us": 9201.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 256,
+    "mean_us": 8002.7,
+    "median_us": 8033.0,
+    "std_dev_us": 280.7913618487736,
+    "min_us": 7610.0,
+    "max_us": 8628.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 512,
+    "mean_us": 8625.5,
+    "median_us": 7995.0,
+    "std_dev_us": 1522.101854527336,
+    "min_us": 7767.0,
+    "max_us": 12518.0
+  },
+  {
+    "tensor_size": 393216,
+    "tensor_name": "384K_BERT",
+    "workgroup_size": 1024,
+    "mean_us": 8075.5,
+    "median_us": 8009.0,
+    "std_dev_us": 283.03876844779484,
+    "min_us": 7832.0,
+    "max_us": 8816.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 32,
+    "mean_us": 19396.0,
+    "median_us": 19298.0,
+    "std_dev_us": 456.58004044563023,
+    "min_us": 18899.0,
+    "max_us": 20212.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 64,
+    "mean_us": 19674.1,
+    "median_us": 19310.0,
+    "std_dev_us": 930.5833833318394,
+    "min_us": 18986.0,
+    "max_us": 22131.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 128,
+    "mean_us": 20481.1,
+    "median_us": 20535.0,
+    "std_dev_us": 217.88042082247267,
+    "min_us": 20155.0,
+    "max_us": 20827.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 256,
+    "mean_us": 20656.6,
+    "median_us": 20502.0,
+    "std_dev_us": 999.3132308407276,
+    "min_us": 19969.0,
+    "max_us": 23383.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 512,
+    "mean_us": 19700.9,
+    "median_us": 19837.0,
+    "std_dev_us": 361.0972322119225,
+    "min_us": 19157.0,
+    "max_us": 20264.0
+  },
+  {
+    "tensor_size": 1048576,
+    "tensor_name": "1M_GPT2",
+    "workgroup_size": 1024,
+    "mean_us": 19366.4,
+    "median_us": 19351.0,
+    "std_dev_us": 276.1723294531071,
+    "min_us": 19047.0,
+    "max_us": 19974.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 32,
+    "mean_us": 122720.5,
+    "median_us": 122734.0,
+    "std_dev_us": 1849.8946066075105,
+    "min_us": 120611.0,
+    "max_us": 127244.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 64,
+    "mean_us": 123509.0,
+    "median_us": 123502.0,
+    "std_dev_us": 1861.2312531702712,
+    "min_us": 120820.0,
+    "max_us": 127257.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 128,
+    "mean_us": 122011.5,
+    "median_us": 122025.0,
+    "std_dev_us": 783.4383262970424,
+    "min_us": 120950.0,
+    "max_us": 123150.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 256,
+    "mean_us": 120774.5,
+    "median_us": 121544.0,
+    "std_dev_us": 1796.7484366055378,
+    "min_us": 118483.0,
+    "max_us": 123836.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 512,
+    "mean_us": 120116.0,
+    "median_us": 121494.0,
+    "std_dev_us": 2095.1451288899084,
+    "min_us": 117133.0,
+    "max_us": 122997.0
+  },
+  {
+    "tensor_size": 8388608,
+    "tensor_name": "8M_LLaMA",
+    "workgroup_size": 1024,
+    "mean_us": 121432.4,
+    "median_us": 121249.0,
+    "std_dev_us": 1634.8047929679897,
+    "min_us": 120016.0,
+    "max_us": 125378.0
+  }
+]
