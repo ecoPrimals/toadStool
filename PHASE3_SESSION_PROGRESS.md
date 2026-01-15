@@ -10,9 +10,9 @@
 
 ### **Target**: 11 large files (>860 lines)
 
-**Completed**: **2/11 files (18%)**  
-**Remaining**: **9/11 files (82%)**  
-**Files >860 lines**: **19** (down from 21, 10% reduction)
+**Completed**: **3/11 files (27%)**  
+**Remaining**: **8/11 files (73%)**  
+**Files >860 lines**: **18** (down from 21, 14% reduction)
 
 ---
 
@@ -67,6 +67,29 @@ crypto_lock/
 
 **Tests**: ✅ 1,021 passed, 0 failed  
 **Documentation**: `PHASE3_CRYPTO_LOCK_REFACTORING_COMPLETE.md`
+
+---
+
+### **3. intelligent.rs → Pipeline-Based Modules** ✅
+
+**Original**: 936 lines, ~20 types (1 file)  
+**Result**: 960 lines, 5 pipeline modules  
+**Strategy**: Pipeline-based (detection → analysis → generation → validation)  
+**Largest module**: 250 lines (analysis.rs)  
+**Reduction**: **-73% from original** (936 → 250 max)
+
+**Modules Created**:
+```
+intelligent/
+├── mod.rs (236 lines)         ← Pipeline orchestration
+├── detection.rs (209 lines)   ← Stage 1: Platform detection
+├── analysis.rs (250 lines)    ← Stage 2: Usage learning
+├── generation.rs (214 lines)  ← Stage 3: Config generation
+└── validation.rs (51 lines)   ← Stage 4: Config validation
+```
+
+**Tests**: ✅ 1,015 passed, 0 failed  
+**Documentation**: (included in session progress)
 
 ---
 
