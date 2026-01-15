@@ -10,17 +10,17 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 use super::cache::PermissionCache;
 use super::permissions::{
-    BearDogCryptoPermission, DelegationChain, DelegationRequest, DelegationScope, DelegationStatus,
+    SecurityProviderPermission, DelegationChain, DelegationRequest, DelegationScope, DelegationStatus,
     ExpiringPermission, ExternalTarget, PermissionHolder, PermissionScope, PermissionStatus,
 };
-use super::validation::{BearDogPermissionValidator, PermissionValidationResult};
+use super::validation::{SecurityPermissionValidator, PermissionValidationResult};
 
 /// `ToadStool` Crypto Lock Manager - enforces cryptographic access control
 pub struct ToadStoolCryptoLock {
     /// `BearDog` crypto permission validator
-    permission_validator: BearDogPermissionValidator,
+    permission_validator: SecurityPermissionValidator,
     /// Active permissions for external integrations
-    active_permissions: HashMap<ExternalTarget, BearDogCryptoPermission>,
+    active_permissions: HashMap<ExternalTarget, SecurityProviderPermission>,
     /// Permission cache for performance
     permission_cache: PermissionCache,
     /// Access control policies
@@ -32,7 +32,7 @@ impl ToadStoolCryptoLock {
     pub async fn new() -> ToadStoolResult<Self> {
         info!("🔐 Initializing ToadStool crypto lock system");
 
-        let permission_validator = BearDogPermissionValidator::new().await?;
+        let permission_validator = SecurityPermissionValidator::new().await?;
         let active_permissions = HashMap::new();
         let permission_cache = PermissionCache::new();
         let access_policies = AccessPolicies;
@@ -58,7 +58,7 @@ impl ToadStoolCryptoLock {
     fn enable_pure_rust_ecosystem(&self) -> ToadStoolResult<()> {
         info!("🔓 Pure Rust ecosystem always unlocked (no crypto needed)");
         // Pure Rust ecosystem doesn't need crypto permissions
-        // ToadStool, BearDog, NestGate, Songbird always work
+        // All ecoPrimals always work together (toadstool, security, storage, coordination)
         Ok(())
     }
 
@@ -100,7 +100,7 @@ impl ToadStoolCryptoLock {
             );
 
             return Ok(AccessResult::Denied {
-                reason: "No BearDog crypto permission for external integration".to_string(),
+                reason: "No security provider crypto permission for external integration".to_string(),
                 how_to_get_access: self.get_access_instructions(target),
             });
         }
@@ -143,8 +143,8 @@ impl ToadStoolCryptoLock {
                 );
 
                 Ok(AccessResult::Denied {
-                    reason: "Invalid BearDog crypto permission signature".to_string(),
-                    how_to_get_access: "Contact BearDog support for permission verification"
+                    reason: "Invalid security provider permission signature".to_string(),
+                    how_to_get_access: "Contact security provider for permission verification"
                         .to_string(),
                 })
             }
@@ -161,7 +161,7 @@ impl ToadStoolCryptoLock {
                 error!("🚫 Crypto permission revoked for target: {:?}", target);
 
                 Ok(AccessResult::Denied {
-                    reason: "BearDog crypto permission revoked".to_string(),
+                    reason: "Security provider permission revoked".to_string(),
                     how_to_get_access: "Contact permission issuer for resolution".to_string(),
                 })
             }
@@ -171,10 +171,10 @@ impl ToadStoolCryptoLock {
     /// Install a `BearDog` crypto permission
     pub async fn install_crypto_permission(
         &mut self,
-        permission: BearDogCryptoPermission,
+        permission: SecurityProviderPermission,
     ) -> ToadStoolResult<()> {
         info!(
-            "📥 Installing BearDog crypto permission: {}",
+            "📥 Installing security provider permission: {}",
             permission.permission_id
         );
 
@@ -214,7 +214,7 @@ impl ToadStoolCryptoLock {
             PermissionValidationResult::Expired => {
                 error!("⏰ Crypto permission expired, rejecting");
                 Err(ToadStoolError::security(
-                    "BearDog crypto permission expired",
+                    "Security provider permission expired",
                 ))
             }
             PermissionValidationResult::Revoked => {
@@ -246,7 +246,7 @@ impl ToadStoolCryptoLock {
         self.validate_delegation_request(&base_permission, &delegation_scope)
             .await?;
 
-        // Create delegation request (would be processed by BearDog)
+        // Create delegation request (would be processed by security provider)
         let delegation_request = DelegationRequest {
             request_id: Uuid::new_v4(),
             base_permission_id: base_permission.permission_id,
@@ -340,7 +340,7 @@ impl ToadStoolCryptoLock {
                 // Check if tool declares itself as a known primal type
                 const ECOSYSTEM_PRIMALS: &[&str] = &[
                     "primal:toadstool",
-                    "primal:beardog",
+                    "primal:security",     // generic, not hardcoded primal name
                     "primal:nestgate",
                     "primal:songbird",
                     "primal:squirrel",
@@ -363,8 +363,8 @@ impl ToadStoolCryptoLock {
     async fn find_permissions_for_target(
         &self,
         target: &ExternalTarget,
-    ) -> ToadStoolResult<Vec<BearDogCryptoPermission>> {
-        let permissions: Vec<BearDogCryptoPermission> = self
+    ) -> ToadStoolResult<Vec<SecurityProviderPermission>> {
+        let permissions: Vec<SecurityProviderPermission> = self
             .active_permissions
             .iter()
             .filter(|(t, _)| *t == target)
@@ -376,8 +376,8 @@ impl ToadStoolCryptoLock {
 
     fn select_best_permission(
         &self,
-        permissions: &[BearDogCryptoPermission],
-    ) -> ToadStoolResult<BearDogCryptoPermission> {
+        permissions: &[SecurityProviderPermission],
+    ) -> ToadStoolResult<SecurityProviderPermission> {
         // Select permission with longest validity and best scope
         permissions
             .iter()
@@ -388,7 +388,7 @@ impl ToadStoolCryptoLock {
 
     const fn calculate_permission_level(
         &self,
-        permission: &BearDogCryptoPermission,
+        permission: &SecurityProviderPermission,
     ) -> PermissionLevel {
         // Calculate permission level based on scope
         if permission.scope.feature_restrictions.is_empty() {
@@ -420,15 +420,15 @@ impl ToadStoolCryptoLock {
     fn get_access_instructions(&self, target: &ExternalTarget) -> String {
         match target {
             ExternalTarget::CloudProvider { provider, .. } => {
-                format!("Get BearDog crypto permission for {provider:?} cloud provider")
+                format!("Get security provider permission for {provider:?} cloud provider")
             }
             ExternalTarget::ContainerPlatform { platform, .. } => {
                 format!("Get BearDog crypto permission for {platform:?} container platform")
             }
             ExternalTarget::ExternalTool { tool_name, .. } => {
-                format!("Get BearDog crypto permission for {tool_name} external tool")
+                format!("Get security provider permission for {tool_name} external tool")
             }
-            _ => "Get appropriate BearDog crypto permission for this external integration"
+            _ => "Get appropriate security provider permission for this external integration"
                 .to_string(),
         }
     }
@@ -459,7 +459,7 @@ impl ToadStoolCryptoLock {
         &self,
         _holder: &PermissionHolder,
         target: &ExternalTarget,
-    ) -> ToadStoolResult<BearDogCryptoPermission> {
+    ) -> ToadStoolResult<SecurityProviderPermission> {
         self.active_permissions
             .get(target)
             .cloned()
@@ -468,7 +468,7 @@ impl ToadStoolCryptoLock {
 
     async fn validate_delegation_request(
         &self,
-        _permission: &BearDogCryptoPermission,
+        _permission: &SecurityProviderPermission,
         _scope: &DelegationScope,
     ) -> ToadStoolResult<()> {
         // Validate that the delegation scope is within the original permission scope

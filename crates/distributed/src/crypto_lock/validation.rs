@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use toadstool::error::ToadStoolResult;
 
-use super::permissions::BearDogCryptoPermission;
+use super::permissions::SecurityProviderPermission;
 
 /// `BearDog` Permission Validator - validates crypto permissions
-pub struct BearDogPermissionValidator {
-    /// `BearDog` public keys for permission verification
-    _beardog_public_keys: HashMap<String, BearDogPublicKey>,
+pub struct SecurityPermissionValidator {
+    /// Security provider public keys for permission verification
+    _security_provider_keys: HashMap<String, SecurityPublicKey>,
     /// Cryptographic signature validator
     _crypto_validator: CryptoValidator,
     /// Permission delegation chain validator
@@ -21,10 +21,10 @@ pub struct BearDogPermissionValidator {
     _revocation_list: PermissionRevocationList,
 }
 
-impl BearDogPermissionValidator {
+impl SecurityPermissionValidator {
     pub async fn new() -> ToadStoolResult<Self> {
         Ok(Self {
-            _beardog_public_keys: HashMap::new(),
+            _security_provider_keys: HashMap::new(),
             _crypto_validator: CryptoValidator::new(),
             _delegation_validator: DelegationValidator::new(),
             _revocation_list: PermissionRevocationList::new(),
@@ -33,7 +33,7 @@ impl BearDogPermissionValidator {
 
     pub async fn validate_permission(
         &self,
-        _permission: &BearDogCryptoPermission,
+        _permission: &SecurityProviderPermission,
     ) -> ToadStoolResult<PermissionValidationResult> {
         // Validate crypto signature
         // Check time bounds
@@ -43,16 +43,16 @@ impl BearDogPermissionValidator {
 
     pub async fn validate_delegation_proof(
         &self,
-        _proof: &BearDogCryptoProof,
+        _proof: &SecurityProof,
     ) -> ToadStoolResult<()> {
         // Validate delegation proof
         Ok(())
     }
 }
 
-/// `BearDog` cryptographic proof
+/// Security provider cryptographic proof
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogCryptoProof {
+pub struct SecurityProof {
     /// Cryptographic signature
     pub signature: Vec<u8>,
     /// Signature algorithm used
@@ -148,5 +148,5 @@ impl PermissionRevocationList {
     }
 }
 
-/// `BearDog` public key
-pub struct BearDogPublicKey;
+/// Security provider public key
+pub struct SecurityPublicKey;
