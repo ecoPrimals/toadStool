@@ -356,7 +356,8 @@ impl ConfigBuilder {
 
         // Generate the final configuration
         let config = auto_config
-            .generate_optimal_config(hardware, platform_config, ecosystem, usage_hints)
+            .config_generator
+            .generate_optimal_config(&hardware, &platform_config, &ecosystem, &usage_hints)
             .await?;
 
         info!("✅ Custom configuration build complete");
