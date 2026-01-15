@@ -211,7 +211,8 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         // ✅ OPTIMIZED: Use Entry API - avoid double clone in RPC hot path
         {
             let mut workloads = self.workloads.write().await;
-            workloads.entry(submission.workload_id.clone())
+            workloads
+                .entry(submission.workload_id.clone())
                 .or_insert_with(|| result.clone());
         }
 

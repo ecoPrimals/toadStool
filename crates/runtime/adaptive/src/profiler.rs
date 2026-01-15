@@ -58,7 +58,10 @@ impl RuntimeProfiler {
     /// Create profiler with custom config
     #[must_use]
     pub fn with_config(fingerprint: GpuFingerprint, config: ProfilingConfig) -> Self {
-        Self { fingerprint, config }
+        Self {
+            fingerprint,
+            config,
+        }
     }
 
     /// Profile a specific operation
@@ -111,13 +114,12 @@ impl RuntimeProfiler {
 
         for &workgroup_size in candidates {
             // Run benchmark
-            match self.benchmark_workgroup(op_type, size, workgroup_size).await {
+            match self
+                .benchmark_workgroup(op_type, size, workgroup_size)
+                .await
+            {
                 Ok(avg_time_us) => {
-                    tracing::trace!(
-                        "  Workgroup {}: {:.2} µs",
-                        workgroup_size,
-                        avg_time_us
-                    );
+                    tracing::trace!("  Workgroup {}: {:.2} µs", workgroup_size, avg_time_us);
 
                     if avg_time_us < best_time {
                         best_time = avg_time_us;
@@ -125,11 +127,7 @@ impl RuntimeProfiler {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "  Workgroup {} failed: {}",
-                        workgroup_size,
-                        e
-                    );
+                    tracing::warn!("  Workgroup {} failed: {}", workgroup_size, e);
                     continue;
                 }
             }
@@ -163,9 +161,12 @@ impl RuntimeProfiler {
 
             // Simulate GPU operation
             // Real implementation: await executor.execute_operation(...)
-            tokio::time::sleep(Duration::from_micros(
-                Self::simulate_gpu_time(op_type, size, workgroup_size)
-            )).await;
+            tokio::time::sleep(Duration::from_micros(Self::simulate_gpu_time(
+                op_type,
+                size,
+                workgroup_size,
+            )))
+            .await;
 
             let elapsed = start.elapsed();
             measurements.push(elapsed.as_micros() as f64);
@@ -222,11 +223,7 @@ impl RuntimeProfiler {
             OpType::Add,
         ];
 
-        let size_classes = vec![
-            SizeClass::Small,
-            SizeClass::Medium,
-            SizeClass::Large,
-        ];
+        let size_classes = vec![SizeClass::Small, SizeClass::Medium, SizeClass::Large];
 
         let workgroup_candidates = vec![32, 64, 128, 256];
 

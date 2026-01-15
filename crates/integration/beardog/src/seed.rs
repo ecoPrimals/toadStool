@@ -147,12 +147,7 @@ mod tests {
         let quality = SeedQuality::new(0.95, 0.9, 0.8);
         let mixing = EntropyMixing::beardog_standard();
 
-        let seed = EphemeralSeed::new(
-            seed_data.clone(),
-            EntropySource::Mixed,
-            mixing,
-            quality,
-        );
+        let seed = EphemeralSeed::new(seed_data.clone(), EntropySource::Mixed, mixing, quality);
 
         assert!(seed.is_valid());
         assert!(seed.is_fresh());

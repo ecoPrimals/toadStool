@@ -115,7 +115,7 @@ impl EntropyClient {
             .build()?;
 
         let response = client
-            .get(format!("{}/health", url))
+            .get(format!("{url}/health"))
             .send()
             .await
             .context("Failed to probe service")?;
@@ -187,7 +187,7 @@ impl EntropyClient {
         let endpoint = self.endpoint.as_ref()
             .context("No endpoint available")?;
 
-        let url = format!("{}/api/v1/entropy/seed", endpoint);
+        let url = format!("{endpoint}/api/v1/entropy/seed");
 
         let response = self.client
             .post(&url)

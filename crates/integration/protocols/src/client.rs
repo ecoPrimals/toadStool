@@ -54,7 +54,8 @@ impl ProtocolClient {
         // ✅ OPTIMIZED: Use Entry API - avoid double clone on registration
         {
             let mut services = self.services.write().await;
-            services.entry(service_info.id.clone())
+            services
+                .entry(service_info.id.clone())
                 .or_insert_with(|| service_info.clone());
         }
 
@@ -109,7 +110,8 @@ impl ProtocolClient {
             {
                 let mut services = self.services.write().await;
                 for service in &discovered_services {
-                    services.entry(service.id.clone())
+                    services
+                        .entry(service.id.clone())
                         .or_insert_with(|| service.clone());
                 }
             }

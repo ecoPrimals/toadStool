@@ -2,6 +2,9 @@
 name = "toadstool-integration-beardog"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+keywords = ["entropy", "rng", "beardog", "capability-discovery", "deep-debt"]
+categories = ["cryptography", "algorithms"]
 authors = ["ToadStool Team"]
 license = "MIT OR Apache-2.0"
 description = "bearDog entropy integration for high-quality random number generation"

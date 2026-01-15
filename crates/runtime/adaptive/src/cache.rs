@@ -114,11 +114,10 @@ impl OptimizationCache {
 
         if cache_path.exists() {
             // Load existing cache
-            let contents = fs::read_to_string(&cache_path)
-                .context("Failed to read cache file")?;
+            let contents = fs::read_to_string(&cache_path).context("Failed to read cache file")?;
 
-            let mut cache: Self = serde_json::from_str(&contents)
-                .context("Failed to parse cache file")?;
+            let mut cache: Self =
+                serde_json::from_str(&contents).context("Failed to parse cache file")?;
 
             // Verify cache is for this GPU
             if cache.gpu_fingerprint.cache_key() != gpu.cache_key() {
@@ -162,20 +161,16 @@ impl OptimizationCache {
 
         // Ensure directory exists
         if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent)
-                .context("Failed to create cache directory")?;
+            fs::create_dir_all(parent).context("Failed to create cache directory")?;
         }
 
         // Serialize to JSON
-        let contents = serde_json::to_string_pretty(self)
-            .context("Failed to serialize cache")?;
+        let contents = serde_json::to_string_pretty(self).context("Failed to serialize cache")?;
 
         // Write atomically (write to temp, then rename)
         let temp_path = cache_path.with_extension("tmp");
-        fs::write(&temp_path, contents)
-            .context("Failed to write cache file")?;
-        fs::rename(temp_path, cache_path)
-            .context("Failed to rename cache file")?;
+        fs::write(&temp_path, contents).context("Failed to write cache file")?;
+        fs::rename(temp_path, cache_path).context("Failed to rename cache file")?;
 
         Ok(())
     }
@@ -187,8 +182,7 @@ impl OptimizationCache {
     /// - macOS: ~/Library/Caches/barracuda/
     /// - Windows: %LOCALAPPDATA%\barracuda\
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf> {
-        let cache_dir = dirs::cache_dir()
-            .context("Failed to find cache directory")?;
+        let cache_dir = dirs::cache_dir().context("Failed to find cache directory")?;
 
         let barracuda_cache = cache_dir.join("barracuda");
         let filename = format!("optimization_{}.json", gpu.cache_key());
@@ -200,9 +194,7 @@ impl OptimizationCache {
     #[must_use]
     pub fn get_optimal(&self, op_type: OpType, size: usize) -> Option<&WorkgroupConfig> {
         let size_class = SizeClass::from_size(size);
-        self.profiles
-            .get(&op_type)?
-            .get_config(size_class)
+        self.profiles.get(&op_type)?.get_config(size_class)
     }
 
     /// Add operation profile
@@ -221,7 +213,8 @@ impl OptimizationCache {
     ) {
         let size_class = SizeClass::from_size(size);
 
-        let profile = self.profiles
+        let profile = self
+            .profiles
             .entry(op_type)
             .or_insert_with(|| OperationProfile::new(op_type));
 
@@ -235,10 +228,7 @@ impl OptimizationCache {
             }
         } else {
             // Add new config
-            profile.add_config(
-                size_class,
-                WorkgroupConfig::new(workgroup, performance_us),
-            );
+            profile.add_config(size_class, WorkgroupConfig::new(workgroup, performance_us));
         }
 
         self.last_updated = Utc::now();
@@ -255,7 +245,8 @@ impl OptimizationCache {
         }
 
         // Remove empty profiles
-        self.profiles.retain(|_, profile| !profile.size_configs.is_empty());
+        self.profiles
+            .retain(|_, profile| !profile.size_configs.is_empty());
 
         self.last_updated = Utc::now();
     }
@@ -346,7 +337,10 @@ mod tests {
         // Low-confidence entries should be removed
         // (May still have medium size class)
         let has_stale = cache.profiles.values().any(|profile| {
-            profile.size_configs.values().any(|config| config.confidence < 0.5)
+            profile
+                .size_configs
+                .values()
+                .any(|config| config.confidence < 0.5)
         });
         assert!(!has_stale);
     }

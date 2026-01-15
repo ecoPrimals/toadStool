@@ -41,48 +41,48 @@
 pub mod capabilities {
     /// Security capabilities (encryption, signing, key management)
     pub const SECURITY: &str = "security";
-    
+
     /// Storage capabilities (persistence, compression, versioning)
     pub const STORAGE: &str = "storage";
-    
+
     /// Coordination capabilities (service mesh, discovery, orchestration)
     pub const COORDINATION: &str = "coordination";
-    
+
     /// AI/ML capabilities (inference, training, natural language)
     pub const INTELLIGENCE: &str = "intelligence";
-    
+
     /// Compute capabilities (CPU, GPU, specialized hardware)
     pub const COMPUTE: &str = "compute";
-    
+
     /// Monitoring capabilities (metrics, logging, tracing)
     pub const MONITORING: &str = "monitoring";
-    
+
     /// Networking capabilities (routing, tunneling, VPN)
     pub const NETWORKING: &str = "networking";
-    
+
     // Specific capability features
-    
+
     /// Encryption capability
     pub const ENCRYPTION: &str = "encryption";
-    
+
     /// Digital signing capability
     pub const SIGNING: &str = "signing";
-    
+
     /// Key management capability
     pub const KEY_MANAGEMENT: &str = "key-management";
-    
+
     /// Public Key Infrastructure
     pub const PKI: &str = "pki";
-    
+
     /// Audit logging capability
     pub const AUDIT: &str = "audit";
-    
+
     /// Data persistence capability
     pub const PERSISTENCE: &str = "persistence";
-    
+
     /// Data compression capability
     pub const COMPRESSION: &str = "compression";
-    
+
     /// Version control capability
     pub const VERSIONING: &str = "versioning";
 }
@@ -91,28 +91,28 @@ pub mod capabilities {
 pub mod protocols {
     /// HTTP protocol
     pub const HTTP: &str = "http";
-    
+
     /// HTTPS protocol
     pub const HTTPS: &str = "https";
-    
+
     /// gRPC protocol
     pub const GRPC: &str = "grpc";
-    
+
     /// WebSocket protocol
     pub const WEBSOCKET: &str = "websocket";
-    
+
     /// Secure WebSocket protocol
     pub const WSS: &str = "wss";
-    
+
     /// JSON-RPC protocol
     pub const JSONRPC: &str = "jsonrpc";
-    
+
     /// TCP protocol
     pub const TCP: &str = "tcp";
-    
+
     /// UDP protocol
     pub const UDP: &str = "udp";
-    
+
     /// Unix domain socket
     pub const UNIX: &str = "unix";
 }
@@ -141,19 +141,19 @@ pub mod primals {
     /// Beardog security service identifier
     /// **DEPRECATED**: Use `capabilities::SECURITY` instead
     pub const BEARDOG: &str = "beardog";
-    
+
     /// Songbird coordination service identifier
     /// **DEPRECATED**: Use `capabilities::COORDINATION` instead
     pub const SONGBIRD: &str = "songbird";
-    
+
     /// Nestgate storage service identifier
     /// **DEPRECATED**: Use `capabilities::STORAGE` instead
     pub const NESTGATE: &str = "nestgate";
-    
+
     /// Squirrel AI service identifier
     /// **DEPRECATED**: Use `capabilities::INTELLIGENCE` instead
     pub const SQUIRREL: &str = "squirrel";
-    
+
     /// ToadStool compute service identifier
     pub const TOADSTOOL: &str = "toadstool";
 }
