@@ -23,8 +23,7 @@
 //! - DeepLab (dilated convolutions for segmentation)
 //! - Real-time inference (mobile/edge devices)
 
-use anyhow::{Context, Result};
-use std::sync::Arc;
+use anyhow::Result;
 
 /// Dilated Convolution 2D (Atrous Convolution)
 ///

@@ -494,7 +494,9 @@ mod tests {
 /// - Memory: O(num_heads · seq_len²)
 /// - Parallelized across heads
 pub struct MultiHeadAttention {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     num_heads: u32,
     d_model: u32,
@@ -875,7 +877,9 @@ impl CausalMask {
 /// attention_weights = softmax(scores_biased)
 /// ```
 pub struct AttentionBias {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     _pipeline: wgpu::ComputePipeline,
     _bind_group_layout: wgpu::BindGroupLayout,
@@ -1143,7 +1147,9 @@ mod causal_and_bias_tests {
 /// "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
 /// (Dao et al., 2022)
 pub struct FlashAttention {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     block_size: u32,
 }
