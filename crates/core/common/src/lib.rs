@@ -22,6 +22,7 @@ pub mod discovery_defaults; // NEW: Fallback defaults for service discovery (inf
 pub mod error;
 pub mod error_codes;
 pub mod infant_discovery;
+pub mod interned_strings; // NEW: Zero-allocation string constants
 pub mod modern_utils;
 pub mod primal_capabilities; // Migration helper (deprecated)
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
