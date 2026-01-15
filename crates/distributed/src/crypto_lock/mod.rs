@@ -2,11 +2,13 @@
 //!
 //! Cryptographic access control for external integrations:
 //! - 🔓 Pure Rust ecosystem: Always unlocked, no crypto needed
-//! - 🔐 External integrations: Require `BearDog` crypto permissions
-//! - 🐻 `BearDog` controls all access: Crypto keys and permissions
+//! - 🔐 External integrations: Require security provider crypto permissions
+//! - 🔒 Security provider controls all access: Crypto keys and permissions
 //! - 🚫 No phone home: Pure cryptographic proof system
-//! - 🤝 Delegatable: People can lend access through `BearDog`
+//! - 🤝 Delegatable: People can lend access through security provider
 //! - 🎯 Granular: Fine-grained permission control
+//!
+//! **Deep Debt**: Security provider discovered via Universal Adapter (no hardcoded primal names)
 //!
 //! ## Architecture
 //!

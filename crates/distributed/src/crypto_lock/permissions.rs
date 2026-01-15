@@ -5,11 +5,11 @@ use std::time::{Duration, SystemTime};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::validation::{BearDogCryptoProof, VerificationLevel};
+use super::validation::{SecurityProof, VerificationLevel};
 
 /// `BearDog` Crypto Permission - cryptographic proof of access rights
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogCryptoPermission {
+pub struct SecurityProviderPermission {
     /// Permission ID
     pub permission_id: Uuid,
     /// Permission holder (who has access)
@@ -21,8 +21,8 @@ pub struct BearDogCryptoPermission {
     /// Valid time range
     pub valid_from: SystemTime,
     pub valid_until: SystemTime,
-    /// `BearDog` cryptographic proof
-    pub crypto_proof: BearDogCryptoProof,
+    /// Security provider cryptographic proof
+    pub crypto_proof: SecurityProof,
     /// Delegation chain (if this was delegated)
     pub delegation_chain: Option<DelegationChain>,
     /// Permission metadata
@@ -135,7 +135,7 @@ pub struct Delegation {
     /// Scope of delegated permission
     pub delegated_scope: DelegationScope,
     /// Cryptographic proof of delegation
-    pub delegation_proof: BearDogCryptoProof,
+    pub delegation_proof: SecurityProof,
 }
 
 /// Organization types

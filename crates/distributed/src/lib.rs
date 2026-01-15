@@ -99,7 +99,7 @@ pub use universal::substrate::{
 // Re-export existing modules with specific types
 pub use cloud::{AWSCredentials, AzureCredentials, CloudProvider, GCPCredentials};
 pub use crypto_lock::{
-    AccessPolicies, BearDogCryptoPermission, BearDogPermissionValidator, CryptoValidator,
+    AccessPolicies, SecurityProviderPermission, SecurityPermissionValidator, CryptoValidator,
     DelegationValidator, ExternalTarget, PermissionHolder, PermissionRevocationList,
     ToadStoolCryptoLock,
 };
