@@ -28,12 +28,13 @@ pub mod cpu_inference;
 pub mod gpu_inference;
 pub mod training;
 
-// barraCUDA GPU operations (Week 3-7)
+// barraCUDA GPU operations (Week 3-8)
 pub mod attention;
 pub mod recurrent;
 pub mod advanced_conv;
 pub mod quantization;
 pub mod random;
+pub mod advanced_linear;
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
