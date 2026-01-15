@@ -51,9 +51,11 @@ impl ProtocolClient {
         info!("Registering service: {}", service_info.id);
 
         // Store service information
+        // ✅ OPTIMIZED: Use Entry API - avoid double clone on registration
         {
             let mut services = self.services.write().await;
-            services.insert(service_info.id.clone(), service_info.clone());
+            services.entry(service_info.id.clone())
+                .or_insert_with(|| service_info.clone());
         }
 
         // Register with discovery service if configured
@@ -103,10 +105,12 @@ impl ProtocolClient {
                 .await?;
 
             // Cache discovered services
+            // ✅ OPTIMIZED: Use Entry API for bulk discovery caching
             {
                 let mut services = self.services.write().await;
                 for service in &discovered_services {
-                    services.insert(service.id.clone(), service.clone());
+                    services.entry(service.id.clone())
+                        .or_insert_with(|| service.clone());
                 }
             }
 
