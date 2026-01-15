@@ -655,7 +655,8 @@ async fn test_intelligent_autoconfig_generate_optimal_config_high_end() {
     };
 
     let result = config
-        .generate_optimal_config(hardware, platform, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform, &ecosystem, &usage_hints)
         .await;
 
     assert!(result.is_ok());
@@ -719,7 +720,8 @@ async fn test_intelligent_autoconfig_generate_optimal_config_low_end() {
     let usage_hints = UsageHints::default();
 
     let result = config
-        .generate_optimal_config(hardware, platform, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform, &ecosystem, &usage_hints)
         .await;
 
     assert!(result.is_ok());
@@ -795,7 +797,8 @@ async fn test_config_validation_valid() {
     let usage_hints = UsageHints::default();
 
     let result = config
-        .generate_optimal_config(hardware, platform, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform, &ecosystem, &usage_hints)
         .await;
 
     assert!(result.is_ok());

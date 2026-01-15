@@ -5,7 +5,7 @@
 //!
 //! Philosophy: "Discover, don't assume. Runtime, not compile-time."
 
-use std::net::{TcpListener, SocketAddr};
+use std::net::{SocketAddr, TcpListener};
 use std::ops::Range;
 
 /// Result type for port discovery operations
@@ -16,10 +16,10 @@ pub type PortResult<T> = Result<T, PortError>;
 pub enum PortError {
     #[error("Failed to bind to port {port}: {reason}")]
     BindFailed { port: u16, reason: String },
-    
+
     #[error("No available ports found in range")]
     NoAvailablePorts,
-    
+
     #[error("Failed to get local address: {0}")]
     AddressError(String),
 }
@@ -167,7 +167,7 @@ mod tests {
         assert!(port.is_ok());
         let port = port.unwrap();
         assert!(port >= 1024); // Unprivileged
-        // port is u16, so always < 65536
+                               // port is u16, so always < 65536
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
         assert!(ports.is_ok());
         let ports = ports.unwrap();
         assert_eq!(ports.len(), 3);
-        
+
         // All should be in valid range
         for port in &ports {
             assert!(*port >= 1024);
@@ -189,7 +189,7 @@ mod tests {
         // Port 80 typically requires privileges
         let discovery = RuntimePortDiscovery::new();
         let port = discovery.discover_port(Some(80));
-        
+
         // Should succeed by finding alternative
         assert!(port.is_ok());
         let port = port.unwrap();
@@ -198,9 +198,8 @@ mod tests {
 
     #[test]
     fn test_range_based_discovery() {
-        let discovery = RuntimePortDiscovery::new()
-            .with_range(9000..9100);
-        
+        let discovery = RuntimePortDiscovery::new().with_range(9000..9100);
+
         let port = discovery.discover_port(None);
         assert!(port.is_ok());
         let port = port.unwrap();
@@ -211,11 +210,11 @@ mod tests {
     #[test]
     fn test_is_port_available() {
         let discovery = RuntimePortDiscovery::new();
-        
+
         // Bind to a port
         let port = discovery.discover_port(None).unwrap();
         let _listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
-        
+
         // Port should now be unavailable
         assert!(!discovery.is_port_available(port));
     }

@@ -50,18 +50,10 @@ impl SecurityProviderFactory {
     ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
         // Inspect endpoint to determine provider type
         match handle.endpoint() {
-            ServiceEndpoint::Http(url) => {
-                Self::create_http_provider(url).await
-            }
-            ServiceEndpoint::UnixSocket(path) => {
-                Self::create_unix_socket_provider(path).await
-            }
-            ServiceEndpoint::Tcp { host, port } => {
-                Self::create_tcp_provider(host, *port).await
-            }
-            ServiceEndpoint::InProcess => {
-                Self::create_in_process_provider().await
-            }
+            ServiceEndpoint::Http(url) => Self::create_http_provider(url).await,
+            ServiceEndpoint::UnixSocket(path) => Self::create_unix_socket_provider(path).await,
+            ServiceEndpoint::Tcp { host, port } => Self::create_tcp_provider(host, *port).await,
+            ServiceEndpoint::InProcess => Self::create_in_process_provider().await,
             ServiceEndpoint::Custom { protocol, address } => {
                 Self::create_custom_provider(protocol, address).await
             }
@@ -102,7 +94,7 @@ impl SecurityProviderFactory {
     /// Create in-process provider
     async fn create_in_process_provider() -> ToadStoolResult<Arc<dyn SecurityProvider>> {
         // For in-process, we can try to instantiate providers directly
-        
+
         // ✅ COMPLETED: BearDog SecurityProvider fully implemented (Phase 1B)
         // Try BearDog implementation first
         use crate::security_provider::beardog_impl::BearDogSecurityProvider;
@@ -112,7 +104,7 @@ impl SecurityProviderFactory {
                 // BearDog not available, try other providers
             }
         }
-        
+
         // TODO(future): Try LocalKeyringProvider
         // TODO(future): Try SoftwareHSMProvider
 
@@ -164,7 +156,7 @@ pub async fn discover_security_provider(
 
     // Discover security capability via Universal Adapter
     let adapter = UniversalAdapter::new().await?;
-    
+
     let handle = adapter
         .request_capability(CapabilityType::Security {
             features,
@@ -195,11 +187,11 @@ mod tests {
     #[tokio::test]
     async fn test_mock_provider_usage() {
         let provider = SecurityProviderFactory::create_mock();
-        
+
         // Test basic operations
         let caps = provider.capabilities().await.unwrap();
         assert!(!caps.is_empty());
-        
+
         let health = provider.health_check().await.unwrap();
         assert_eq!(health, super::super::provider::ProviderHealth::Healthy);
     }
@@ -207,7 +199,7 @@ mod tests {
     #[tokio::test]
     async fn test_http_provider_not_implemented() {
         use toadstool_common::universal_adapter::*;
-        
+
         let handle = CapabilityHandle::new(
             CapabilityInfo {
                 provider_id: "test".to_string(),

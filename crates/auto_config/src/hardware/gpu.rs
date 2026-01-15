@@ -135,9 +135,7 @@ fn get_nvidia_compute_capability(gpu_name: &str) -> String {
     // Simplified mapping of GPU names to compute capabilities
     if gpu_name.contains("RTX 40") || gpu_name.contains("4090") || gpu_name.contains("4080") {
         "8.9".to_string()
-    } else if gpu_name.contains("RTX 30")
-        || gpu_name.contains("3090")
-        || gpu_name.contains("3080")
+    } else if gpu_name.contains("RTX 30") || gpu_name.contains("3090") || gpu_name.contains("3080")
     {
         "8.6".to_string()
     } else if gpu_name.contains("RTX 20")
@@ -148,9 +146,7 @@ fn get_nvidia_compute_capability(gpu_name: &str) -> String {
         || gpu_name.contains("1650")
     {
         "7.5".to_string()
-    } else if gpu_name.contains("GTX 10")
-        || gpu_name.contains("1080")
-        || gpu_name.contains("1070")
+    } else if gpu_name.contains("GTX 10") || gpu_name.contains("1080") || gpu_name.contains("1070")
     {
         "6.1".to_string()
     } else {

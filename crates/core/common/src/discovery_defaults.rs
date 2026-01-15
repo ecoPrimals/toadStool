@@ -121,7 +121,7 @@ impl LocalhostFallbacks {
     /// Get localhost fallback URL for a service
     ///
     /// Returns None if fallbacks are disabled (production mode)
-    /// 
+    ///
     /// **Deep Debt**: Even fallback URLs now try preferred ports with runtime discovery.
     /// If preferred port unavailable, discovers alternative automatically.
     #[must_use]
@@ -140,23 +140,19 @@ impl LocalhostFallbacks {
         match service_type {
             "toadstool" => {
                 // Prefer 8080, but discover if unavailable
-                let port = runtime_ports::discover_port_with_preference(8080)
-                    .unwrap_or(8080); // Fallback to preferred if discovery fails
+                let port = runtime_ports::discover_port_with_preference(8080).unwrap_or(8080); // Fallback to preferred if discovery fails
                 Some(format!("http://localhost:{}", port))
             }
             "redis" => {
-                let port = runtime_ports::discover_port_with_preference(6379)
-                    .unwrap_or(6379);
+                let port = runtime_ports::discover_port_with_preference(6379).unwrap_or(6379);
                 Some(format!("redis://localhost:{}", port))
             }
             "postgres" => {
-                let port = runtime_ports::discover_port_with_preference(5432)
-                    .unwrap_or(5432);
+                let port = runtime_ports::discover_port_with_preference(5432).unwrap_or(5432);
                 Some(format!("postgresql://localhost:{}", port))
             }
             "mongodb" => {
-                let port = runtime_ports::discover_port_with_preference(27017)
-                    .unwrap_or(27017);
+                let port = runtime_ports::discover_port_with_preference(27017).unwrap_or(27017);
                 Some(format!("mongodb://localhost:{}", port))
             }
             _ => None,

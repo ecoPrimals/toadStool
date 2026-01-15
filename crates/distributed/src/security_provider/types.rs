@@ -9,16 +9,16 @@ use uuid::Uuid;
 pub struct PermissionRequest {
     /// Requester identification
     pub requester_id: String,
-    
+
     /// What external integration needs access
     pub target: ExternalTarget,
-    
+
     /// Requested permission scope
     pub scope: PermissionScope,
-    
+
     /// How long permission should be valid
     pub validity_duration: std::time::Duration,
-    
+
     /// Optional delegation information
     pub delegation_info: Option<DelegationInfo>,
 }
@@ -31,13 +31,13 @@ pub enum ExternalTarget {
         provider: String,
         regions: Vec<String>,
     },
-    
+
     /// Container platform
     ContainerPlatform {
         platform: String,
         clusters: Vec<String>,
     },
-    
+
     /// Generic external tool
     ExternalTool {
         tool_name: String,
@@ -50,10 +50,10 @@ pub enum ExternalTarget {
 pub struct PermissionScope {
     /// Operations allowed
     pub operations: Vec<String>,
-    
+
     /// Resource limits
     pub resource_limits: ResourceLimits,
-    
+
     /// Geographic restrictions
     pub geo_restrictions: Vec<String>,
 }
@@ -63,13 +63,13 @@ pub struct PermissionScope {
 pub struct ResourceLimits {
     /// Maximum CPU cores
     pub max_cpu: Option<u32>,
-    
+
     /// Maximum memory in GB
     pub max_memory_gb: Option<f64>,
-    
+
     /// Maximum storage in GB
     pub max_storage_gb: Option<f64>,
-    
+
     /// Maximum API calls per hour
     pub max_api_calls_per_hour: Option<u64>,
 }
@@ -90,10 +90,10 @@ impl Default for ResourceLimits {
 pub struct DelegationInfo {
     /// Original permission holder
     pub original_holder: String,
-    
+
     /// Delegation scope (may be more restrictive)
     pub delegated_scope: PermissionScope,
-    
+
     /// Maximum delegation depth
     pub max_depth: u32,
 }
@@ -103,23 +103,23 @@ pub struct DelegationInfo {
 pub struct SecurityPermission {
     /// Permission ID
     pub permission_id: Uuid,
-    
+
     /// Who holds this permission
     pub holder_id: String,
-    
+
     /// What this permission grants access to
     pub target: ExternalTarget,
-    
+
     /// Permission scope
     pub scope: PermissionScope,
-    
+
     /// Valid time range
     pub valid_from: SystemTime,
     pub valid_until: SystemTime,
-    
+
     /// Cryptographic proof
     pub proof: SecurityProof,
-    
+
     /// Provider metadata (who issued this)
     pub provider_metadata: ProviderMetadata,
 }
@@ -129,13 +129,13 @@ pub struct SecurityPermission {
 pub struct SecurityProof {
     /// Signature bytes
     pub signature: Vec<u8>,
-    
+
     /// Algorithm used
     pub algorithm: SignatureAlgorithm,
-    
+
     /// Public key identifier
     pub public_key_id: String,
-    
+
     /// Timestamp when signed
     pub signed_at: SystemTime,
 }
@@ -155,13 +155,13 @@ pub enum SignatureAlgorithm {
 pub struct ProviderMetadata {
     /// Provider ID (NOT primal name! UUID or similar)
     pub provider_id: String,
-    
+
     /// Provider type (beardog, hsm, kms, local-keyring, etc.)
     pub provider_type: String,
-    
+
     /// Provider version
     pub provider_version: String,
-    
+
     /// Additional metadata
     pub metadata: std::collections::HashMap<String, String>,
 }
@@ -171,13 +171,13 @@ pub struct ProviderMetadata {
 pub struct EncryptionResult {
     /// Encrypted data
     pub ciphertext: Vec<u8>,
-    
+
     /// Initialization vector (if applicable)
     pub iv: Option<Vec<u8>>,
-    
+
     /// Authentication tag (for AEAD)
     pub auth_tag: Option<Vec<u8>>,
-    
+
     /// Encryption metadata
     pub metadata: EncryptionMetadata,
 }
@@ -187,10 +187,10 @@ pub struct EncryptionResult {
 pub struct EncryptionMetadata {
     /// Algorithm used
     pub algorithm: String,
-    
+
     /// Key identifier
     pub key_id: String,
-    
+
     /// Timestamp
     pub encrypted_at: SystemTime,
 }
@@ -200,7 +200,7 @@ pub struct EncryptionMetadata {
 pub struct DecryptionResult {
     /// Decrypted plaintext
     pub plaintext: Vec<u8>,
-    
+
     /// Decryption metadata
     pub metadata: DecryptionMetadata,
 }
@@ -210,7 +210,7 @@ pub struct DecryptionResult {
 pub struct DecryptionMetadata {
     /// Key used
     pub key_id: String,
-    
+
     /// Timestamp
     pub decrypted_at: SystemTime,
 }
@@ -220,13 +220,13 @@ pub struct DecryptionMetadata {
 pub struct SignatureResult {
     /// Signature bytes
     pub signature: Vec<u8>,
-    
+
     /// Algorithm used
     pub algorithm: SignatureAlgorithm,
-    
+
     /// Key identifier
     pub key_id: String,
-    
+
     /// Timestamp
     pub signed_at: SystemTime,
 }

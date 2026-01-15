@@ -14,17 +14,17 @@
 //! - **network**: Network interface detection
 
 pub mod cpu;
-pub mod memory;
 pub mod gpu;
-pub mod storage;
+pub mod memory;
 pub mod network;
+pub mod storage;
 
 // Re-export all public types for backward compatibility
 pub use cpu::*;
-pub use memory::*;
 pub use gpu::*;
-pub use storage::*;
+pub use memory::*;
 pub use network::*;
+pub use storage::*;
 
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -102,7 +102,7 @@ impl HardwareDetector {
         capabilities: &SystemCapabilities,
     ) -> ToadStoolResult<PerformanceClass> {
         use tracing::debug;
-        
+
         let cpu_score = cpu::calculate_cpu_score(&capabilities.cpu_info);
         let memory_score = memory::calculate_memory_score(&capabilities.memory_info);
         let gpu_score = gpu::calculate_gpu_score(&capabilities.gpu_info);

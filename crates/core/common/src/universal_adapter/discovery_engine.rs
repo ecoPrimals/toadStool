@@ -104,13 +104,14 @@ pub trait DiscoverySource: Send + Sync {
 ///
 /// Discovers capability providers on the local network via mDNS.
 /// Providers advertise their capabilities via mDNS service records.
+#[derive(Default)]
 pub struct MDnsSource {
     // TODO: Integrate with mdns crate when available
 }
 
 impl MDnsSource {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
@@ -134,13 +135,14 @@ impl DiscoverySource for MDnsSource {
 /// - TOADSTOOL_SECURITY_PROVIDER=http://localhost:9000
 /// - TOADSTOOL_STORAGE_PROVIDER=unix:///var/run/storage.sock
 /// - etc.
+#[derive(Default)]
 pub struct EnvironmentSource {
     // Configuration if needed
 }
 
 impl EnvironmentSource {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
     fn parse_endpoint(url: &str) -> ToadStoolResult<ServiceEndpoint> {
@@ -259,13 +261,14 @@ impl DiscoverySource for EnvironmentSource {
 ///
 /// Discovers providers from a local configuration file.
 /// Default location: ~/.toadstool/providers.toml or /etc/toadstool/providers.toml
+#[derive(Default)]
 pub struct LocalRegistrySource {
     // Configuration if needed
 }
 
 impl LocalRegistrySource {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
@@ -322,7 +325,7 @@ mod tests {
         let source = EnvironmentSource::new();
         let providers = source.discover().await.unwrap();
         
-        assert!(providers.len() > 0, "Should find at least one provider from env");
+        assert!(!providers.is_empty(), "Should find at least one provider from env");
         
         std::env::remove_var("TOADSTOOL_SECURITY_PROVIDER");
     }

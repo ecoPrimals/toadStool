@@ -171,7 +171,8 @@ async fn test_generate_optimal_config_low_end_hardware() {
     };
 
     let result = auto_config
-        .generate_optimal_config(hardware, platform_config, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform_config, &ecosystem, &usage_hints)
         .await;
 
     match result {
@@ -233,7 +234,8 @@ async fn test_generate_optimal_config_high_end_hardware() {
     };
 
     let result = auto_config
-        .generate_optimal_config(hardware, platform_config, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform_config, &ecosystem, &usage_hints)
         .await;
 
     match result {
@@ -427,7 +429,8 @@ async fn test_auto_config_handles_minimal_system() {
     };
 
     let result = auto_config
-        .generate_optimal_config(hardware, platform_config, ecosystem, usage_hints)
+        .config_generator
+        .generate_optimal_config(&hardware, &platform_config, &ecosystem, &usage_hints)
         .await;
 
     // Should either succeed with minimal config or fail gracefully

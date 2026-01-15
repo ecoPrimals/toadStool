@@ -39,15 +39,15 @@
 
 pub mod capability_types;
 pub mod discovery_engine;
+pub mod graceful_degradation;
 pub mod provider_registry;
 pub mod request_builder;
-pub mod graceful_degradation;
 
 pub use capability_types::*;
 pub use discovery_engine::*;
+pub use graceful_degradation::*;
 pub use provider_registry::*;
 pub use request_builder::*;
-pub use graceful_degradation::*;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -61,10 +61,10 @@ use crate::ToadStoolResult;
 pub struct UniversalAdapter {
     /// Discovery engine (mDNS, environment, registry, etc.)
     discovery: Arc<DiscoveryEngine>,
-    
+
     /// Runtime registry of discovered providers
     registry: Arc<RwLock<ProviderRegistry>>,
-    
+
     /// Graceful degradation strategy
     degradation: Arc<GracefulDegradation>,
 }
@@ -116,10 +116,10 @@ impl UniversalAdapter {
     /// Scans all discovery sources and registers found providers
     pub async fn discover_providers(&self) -> ToadStoolResult<usize> {
         let providers = self.discovery.discover_all().await?;
-        
+
         let mut registry = self.registry.write().await;
         let count = providers.len();
-        
+
         for provider in providers {
             registry.register(provider)?;
         }
@@ -153,7 +153,7 @@ impl UniversalAdapter {
     ) -> ToadStoolResult<CapabilityHandle> {
         // Try to find a provider
         let registry = self.registry.read().await;
-        
+
         if let Some(provider) = registry.find_best_match(&capability)? {
             return Ok(CapabilityHandle::new(provider, capability));
         }
@@ -212,15 +212,18 @@ mod tests {
     #[tokio::test]
     async fn test_capability_check() {
         let adapter = UniversalAdapter::new().await.unwrap();
-        
-        let has_security = adapter.has_capability(&CapabilityType::Security {
-            features: vec![SecurityFeature::Encryption],
-            min_trust_level: TrustLevel::Low,
-        }).await;
+
+        let has_security = adapter
+            .has_capability(&CapabilityType::Security {
+                features: vec![SecurityFeature::Encryption],
+                min_trust_level: TrustLevel::Low,
+            })
+            .await;
 
         // May or may not have security provider depending on environment
         // Just verify the check completes without error
-        assert!(has_security == true || has_security == false);
+        // Check that has_security is a valid boolean (this assertion is always true by type system)
+        let _ = has_security; // Acknowledge the variable is used
     }
 
     #[tokio::test]

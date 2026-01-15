@@ -13,14 +13,14 @@
 
 pub mod core;
 pub mod instances;
-pub mod registry;
 pub mod linking;
+pub mod registry;
 
 // Re-export all public types for backward compatibility
 pub use core::*;
 pub use instances::*;
-pub use registry::*;
 pub use linking::*;
+pub use registry::*;
 
 use async_trait::async_trait;
 use toadstool::ToadStoolResult;
@@ -64,7 +64,7 @@ impl ComponentModelSupport for WasmRuntimeEngine {
     /// Create component instance
     async fn create_component_instance(&self, interface_name: &str) -> ToadStoolResult<String> {
         use toadstool::ToadStoolError;
-        
+
         if !self.supports_component_model() {
             return Err(ToadStoolError::not_supported(
                 "Component model support is disabled".to_string(),
@@ -85,7 +85,7 @@ impl ComponentModelSupport for WasmRuntimeEngine {
     ) -> ToadStoolResult<ComponentValue> {
         use toadstool::ToadStoolError;
         use tracing::info;
-        
+
         if !self.supports_component_model() {
             return Err(ToadStoolError::not_supported(
                 "Component model support is disabled".to_string(),
@@ -225,7 +225,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_component_composition_validation() {
         use std::sync::Arc;
-        
+
         let config = ComponentModelConfig::default();
         let registry = Arc::new(ComponentRegistry::new(config.clone()));
         let linker = ComponentLinker::new(config, registry.clone());
@@ -258,7 +258,10 @@ mod tests {
 
     #[test]
     fn test_component_value_variants() {
-        assert!(matches!(ComponentValue::Bool(true), ComponentValue::Bool(_)));
+        assert!(matches!(
+            ComponentValue::Bool(true),
+            ComponentValue::Bool(_)
+        ));
         assert!(matches!(ComponentValue::U32(1), ComponentValue::U32(_)));
         assert!(matches!(
             ComponentValue::String("test".to_string()),

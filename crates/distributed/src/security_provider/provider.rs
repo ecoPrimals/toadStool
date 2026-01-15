@@ -181,28 +181,28 @@ pub trait SecurityProvider: Send + Sync {
 pub enum SecurityCapability {
     /// Symmetric encryption (AES, etc.)
     SymmetricEncryption,
-    
+
     /// Asymmetric encryption (RSA, etc.)
     AsymmetricEncryption,
-    
+
     /// Digital signatures (ECDSA, Ed25519, etc.)
     DigitalSignatures,
-    
+
     /// Key management
     KeyManagement,
-    
+
     /// Permission issuance
     PermissionIssuance,
-    
+
     /// Certificate authority
     CertificateAuthority,
-    
+
     /// Hardware security module
     HardwareSecurityModule,
-    
+
     /// Quantum-resistant crypto
     QuantumResistant,
-    
+
     /// Audit logging
     AuditLogging,
 }
@@ -212,10 +212,10 @@ pub enum SecurityCapability {
 pub struct EncryptionOptions {
     /// Encryption algorithm to use
     pub algorithm: Option<String>,
-    
+
     /// Key ID to use
     pub key_id: Option<String>,
-    
+
     /// Additional authenticated data (for AEAD)
     pub aad: Option<Vec<u8>>,
 }
@@ -225,7 +225,7 @@ pub struct EncryptionOptions {
 pub struct SigningOptions {
     /// Signature algorithm to use
     pub algorithm: Option<SignatureAlgorithm>,
-    
+
     /// Key ID to use
     pub key_id: Option<String>,
 }
@@ -235,16 +235,16 @@ pub struct SigningOptions {
 pub enum PermissionValidationResult {
     /// Permission is valid
     Valid,
-    
+
     /// Permission signature is invalid
     InvalidSignature,
-    
+
     /// Permission has expired
     Expired,
-    
+
     /// Permission has been revoked
     Revoked,
-    
+
     /// Permission not found
     NotFound,
 }
@@ -254,10 +254,10 @@ pub enum PermissionValidationResult {
 pub enum ProviderHealth {
     /// Provider is healthy and operational
     Healthy,
-    
+
     /// Provider is degraded but functional
     Degraded,
-    
+
     /// Provider is unhealthy (should not use)
     Unhealthy,
 }
@@ -362,7 +362,7 @@ impl SecurityProvider for MockSecurityProvider {
         request: PermissionRequest,
     ) -> ToadStoolResult<SecurityPermission> {
         let now = std::time::SystemTime::now();
-        
+
         Ok(SecurityPermission {
             permission_id: uuid::Uuid::new_v4(),
             holder_id: request.requester_id,
@@ -413,7 +413,7 @@ mod tests {
     async fn test_mock_provider_capabilities() {
         let provider = MockSecurityProvider::new();
         let caps = provider.capabilities().await.unwrap();
-        
+
         assert!(caps.contains(&SecurityCapability::SymmetricEncryption));
         assert!(caps.contains(&SecurityCapability::DigitalSignatures));
     }
@@ -445,7 +445,7 @@ mod tests {
     async fn test_mock_provider_health() {
         let provider = MockSecurityProvider::new();
         let health = provider.health_check().await.unwrap();
-        
+
         assert_eq!(health, ProviderHealth::Healthy);
     }
 
