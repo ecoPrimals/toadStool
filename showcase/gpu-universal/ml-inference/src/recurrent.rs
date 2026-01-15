@@ -29,7 +29,9 @@
 //! - Time series forecasting
 //! - Music generation
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+#[cfg(test)]
+use anyhow::Context;
 use std::sync::Arc;
 
 /// RNN Cell (Elman Network)
