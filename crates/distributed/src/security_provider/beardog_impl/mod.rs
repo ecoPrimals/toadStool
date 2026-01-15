@@ -17,6 +17,9 @@
 //! - ✅ Self-knowledge (BearDog knows itself, not what others need)
 //! - ✅ Pluggable (can swap for HSM/KMS/etc.)
 
+// Allow deprecated during migration - beardog_integration will be evolved
+#![allow(deprecated)]
+
 pub mod client;
 pub mod adapters;
 
