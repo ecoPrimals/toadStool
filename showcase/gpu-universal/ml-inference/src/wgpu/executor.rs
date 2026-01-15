@@ -40,21 +40,33 @@ impl WgpuExecutor {
     ///
     /// Allows runtime selection of GPU backend based on discovered capabilities.
     pub async fn new_with_backend(backends: wgpu::Backends) -> Result<Self> {
+        Self::new_with_backend_and_filter(backends, |_| true).await
+    }
+
+    /// Create executor selecting a specific GPU by filter
+    ///
+    /// Allows precise GPU selection for multi-GPU systems and research.
+    pub async fn new_with_backend_and_filter<F>(
+        backends: wgpu::Backends,
+        adapter_filter: F,
+    ) -> Result<Self>
+    where
+        F: Fn(&wgpu::AdapterInfo) -> bool,
+    {
         // Create instance (pure Rust, runtime discovery)
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
             ..Default::default()
         });
 
-        // Request adapter (runtime GPU discovery)
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            })
-            .await
-            .context("Failed to find GPU adapter - no GPU available at runtime")?;
+        // Enumerate all adapters (returns Vec already)
+        let adapters = instance.enumerate_adapters(backends);
+        
+        // Find matching adapter
+        let adapter = adapters
+            .into_iter()
+            .find(|adapter: &wgpu::Adapter| adapter_filter(&adapter.get_info()))
+            .context("No GPU matching filter found")?;
 
         let adapter_info = adapter.get_info();
 
@@ -77,6 +89,44 @@ impl WgpuExecutor {
             queue,
             adapter_info,
         })
+    }
+
+    /// Create executor with AMD GPU (for research/testing)
+    pub async fn new_amd() -> Result<Self> {
+        Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
+            info.name.to_lowercase().contains("amd") || 
+            info.name.to_lowercase().contains("radeon")
+        })
+        .await
+        .context("No AMD GPU found")
+    }
+
+    /// Create executor with NVIDIA GPU (for research/testing)
+    pub async fn new_nvidia() -> Result<Self> {
+        Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
+            info.name.to_lowercase().contains("nvidia") || 
+            info.name.to_lowercase().contains("geforce")
+        })
+        .await
+        .context("No NVIDIA GPU found")
+    }
+
+    /// List all available GPUs (for research/multi-GPU systems)
+    pub async fn list_gpus() -> Vec<String> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        
+        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
+        
+        adapters
+            .iter()
+            .map(|adapter: &wgpu::Adapter| {
+                let info = adapter.get_info();
+                format!("{} {} ({:?})", info.vendor, info.name, info.backend)
+            })
+            .collect()
     }
 
     /// Get GPU information (runtime-discovered capabilities)
