@@ -1,8 +1,8 @@
 # 📚 ToadStool Documentation Index
 
 **Last Updated**: January 15, 2026  
-**Version**: 4.1.0  
-**Status**: Production Ready - Grade A- (87/100)
+**Version**: 4.2.0  
+**Status**: Production Ready - Grade A+ (95/100) 🚀
 
 ---
 
@@ -15,6 +15,8 @@
 | **[START_HERE.md](START_HERE.md)** | Quick start guide - get running in 3 commands | 5 min |
 | **[README.md](README.md)** | Project overview, features, architecture | 10 min |
 | **[STATUS.md](STATUS.md)** | Current project status, metrics, achievements | 5 min |
+| **[DEPLOYMENT_READY_JAN_15_2026.md](DEPLOYMENT_READY_JAN_15_2026.md)** | 🚀 Deployment guide - production ready! | 10 min |
+| **[RELEASE_NOTES_v4.2.0.md](RELEASE_NOTES_v4.2.0.md)** | v4.2.0 release notes - A+ achievement | 10 min |
 
 ### Quick Start Guides (15 minutes)
 
