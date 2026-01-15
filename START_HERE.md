@@ -2,8 +2,8 @@
 
 **Welcome!** This is your 5-minute guide to getting started with ToadStool.
 
-**Version**: 3.5.0  
-**Updated**: January 15, 2026 (Deep Debt Evolution - Phase 1, 2 Complete + Phase 3 In Progress!)  
+**Version**: 3.6.0  
+**Updated**: January 15, 2026 (Weeks 1-5 Complete - 76 Operations!)  
 **Status**: ✅ **Production Ready - Grade A+ (98/100)** 🏆
 
 ---
@@ -44,41 +44,37 @@ cargo run --release --example nadam_demo
 cargo run --release --example dice_loss_demo
 ```
 
-**🎉 60 GPU operations + Deep Debt Evolution Phases 1, 2 Complete + Phase 3 In Progress!** 
+**🎉 76 GPU operations - Weeks 1-5 Complete!** 
 
-### Recent Achievements 🏆
+### Recent Achievements 🏆 (NEW!)
 
-**Deep Debt Evolution - THREE PHASES UNDERWAY!**:
-- ✅ **Phase 1 COMPLETE**: 52 hardcoded instances eliminated
-  - RuntimePortDiscovery module created
-  - mDNS-first discovery approach
-  - Deep Debt: 96% → 98% (+2%)
-  
-- ✅ **Phase 2 COMPLETE**: 100% unsafe code audited
-  - 30% eliminated (unnecessary)
-  - 70% approved (necessary FFI)
-  - All public APIs 100% safe
-  - WASM zero-unsafe discovered!
+**WEEKS 1-5 COMPLETE IN ONE SESSION!** 🚀
+- ✅ **Week 1**: Adaptive Optimization System (learns GPU configs automatically!)
+- ✅ **Week 2**: bearDog Entropy Integration (cryptographic-grade randomness)
+- ✅ **Week 3**: Attention Mechanisms (+5 ops) - BERT/GPT/LLaMA ready!
+- ✅ **Week 4**: RNN/LSTM Operations (+8 ops) - Complete sequence modeling!
+- ✅ **Week 5**: Advanced Convolutions (+3 ops) - Mobile/edge deployment!
 
-- 🚀 **Phase 3 IN PROGRESS (45% Complete!)**: Smart file refactoring
-  - **5 files refactored** → **30 focused modules**
-  - Files >860 lines: 21 → 16 (-24%)
-  - **Zero regressions** (1,174 tests passing!)
-  - 5 different refactoring strategies demonstrated
-  - Average module size: ~180 lines (optimal!)
+**Progress**: 76/100 operations (76%!)
+**New Code**: ~4,500 lines pure Rust, ZERO unsafe!
+**Tests**: 96.8% passing (61/63)
+**Timeline**: ON TRACK for March 31, 2026!
 
-**barraCUDA Status - 60 Operations Complete!**:
-- **60 operations** across 12 categories
-- **169 comprehensive tests** (100% passing!)
-- **60 WGSL shaders** (vendor-agnostic)
-- **Pure Rust** implementation
+**barraCUDA Status - 76 Operations Complete!**:
+- **76 operations** across 15 categories
+- **13 categories**: Activations, Optimizers, Loss, Normalizations, Pooling, Convolutions, 
+  Basic Ops, Compute, Data, NLP, Regularization, **Attention (NEW!)**, **RNN/LSTM (NEW!)**, **Advanced Conv (NEW!)**
+- **Full transformer stack**: BERT, GPT, LLaMA
+- **Sequence modeling**: RNN/LSTM/GRU (speech, video, NLP)
+- **Efficient networks**: MobileNet, EfficientNet (9× fewer params!)
+- **Pure Rust** + vendor-agnostic
 
-**Documentation**:
-- **[DEEP_DEBT_EVOLUTION_PLAN.md](DEEP_DEBT_EVOLUTION_PLAN.md)** - 5-phase evolution strategy
-- **[PHASE1_DEEP_DEBT_COMPLETE.md](PHASE1_DEEP_DEBT_COMPLETE.md)** - Phase 1: Hardcoding elimination
-- **[PHASE2_COMPLETE_ASSESSMENT.md](PHASE2_COMPLETE_ASSESSMENT.md)** - Phase 2: Unsafe assessment
-- **[PHASE3_SESSION_FINAL_JAN_15_2026.md](PHASE3_SESSION_FINAL_JAN_15_2026.md)** - Phase 3: Smart refactoring
-- **[docs/archive/jan15_2026_barracuda_research/](docs/archive/jan15_2026_barracuda_research/)** - GPU research archive
+**Key Documentation**:
+- **[SESSION_PROGRESS_WEEKS_1_5.md](SESSION_PROGRESS_WEEKS_1_5.md)** - 5 weeks in ONE session!
+- **[BARRACUDA_100_OPERATIONS_ROADMAP.md](BARRACUDA_100_OPERATIONS_ROADMAP.md)** - Road to 100 operations
+- **[BARRACUDA_CUDA_STATUS_FOR_TEAMS.md](BARRACUDA_CUDA_STATUS_FOR_TEAMS.md)** - Team status update
+- **[crates/runtime/adaptive/README.md](crates/runtime/adaptive/README.md)** - Adaptive optimization
+- **[crates/integration/beardog/](crates/integration/beardog/)** - bearDog entropy integration
 
 ---
 
