@@ -78,6 +78,43 @@ pub struct UnifiedBuffer {
 }
 
 impl UnifiedBuffer {
+    /// Get safe mutable slice from CPU pointer (internal helper)
+    ///
+    /// # Safety
+    /// This is the ONLY place we convert raw pointer to slice.
+    /// All unsafe pointer operations go through this method.
+    ///
+    /// # Guarantees
+    /// - Pointer is validated (not null)
+    /// - Size is valid (checked at creation)
+    /// - Exclusive access via &mut self
+    #[allow(clippy::mut_from_ref)]
+    fn as_cpu_slice_mut(&mut self) -> &mut [u8] {
+        // SAFETY:
+        // - cpu_ptr is guaranteed valid by backend
+        // - size is validated at buffer creation
+        // - We have exclusive &mut self
+        unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr, self.size) }
+    }
+
+    /// Get safe immutable slice from CPU pointer (internal helper)
+    ///
+    /// # Safety
+    /// This is the ONLY place we convert raw pointer to slice for reads.
+    /// All unsafe pointer operations go through this method.
+    ///
+    /// # Guarantees
+    /// - Pointer is validated (not null)
+    /// - Size is valid (checked at creation)
+    /// - Shared access via &self (Rust ensures no concurrent writes)
+    fn as_cpu_slice(&self) -> &[u8] {
+        // SAFETY:
+        // - cpu_ptr is guaranteed valid by backend
+        // - size is validated at buffer creation
+        // - We have &self, Rust guarantees no concurrent mutation
+        unsafe { std::slice::from_raw_parts(self.cpu_ptr, self.size) }
+    }
+
     /// Create new unified buffer (internal use only)
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
@@ -181,26 +218,13 @@ impl UnifiedBuffer {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
 
-        // SAFETY:
-        // - Pointer validated above (not null, not zero)
-        // - Bounds checked above with overflow protection
-        // - We have exclusive &mut self, so no concurrent access
-        // - cpu_ptr is valid for writes up to self.size (backend guarantees)
-        // - Source and destination do not overlap (source is stack/heap, dest is mapped memory)
-        unsafe {
-            let src = data.as_ptr();
-            let dst = self.cpu_ptr.add(offset);
-
-            // Debug assertions for development builds
-            debug_assert!(!src.is_null(), "Source pointer should never be null");
-            debug_assert!(!dst.is_null(), "Destination pointer should never be null");
-            debug_assert!(
-                (dst as usize).checked_add(data.len()).is_some(),
-                "Destination pointer arithmetic should not overflow"
-            );
-
-            std::ptr::copy_nonoverlapping(src, dst, data.len());
-        }
+        // Deep Debt: Use safe slice operations instead of raw pointers!
+        // Get safe mutable slice (unsafe encapsulated in helper method)
+        let buffer_slice = self.as_cpu_slice_mut();
+        let target_slice = &mut buffer_slice[offset..offset + data.len()];
+        
+        // Now use safe slice copy (no unsafe here!)
+        target_slice.copy_from_slice(data);
 
         // Update sync state
         *self.sync_state.write() = SyncState::CpuModified;
@@ -272,29 +296,13 @@ impl UnifiedBuffer {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
 
-        // Allocate output buffer
-        let mut result = vec![0u8; len];
-
-        // SAFETY:
-        // - Pointer validated above (not null, not zero)
-        // - Bounds checked above with overflow protection
-        // - We have &self, ensuring no concurrent writes (mutation requires &mut)
-        // - cpu_ptr is valid for reads up to self.size (backend guarantees)
-        // - Source and destination do not overlap (source is mapped memory, dest is new Vec)
-        unsafe {
-            let src = self.cpu_ptr.add(offset);
-            let dst = result.as_mut_ptr();
-
-            // Debug assertions for development builds
-            debug_assert!(!src.is_null(), "Source pointer should never be null");
-            debug_assert!(!dst.is_null(), "Destination pointer should never be null");
-            debug_assert!(
-                (src as usize).checked_add(len).is_some(),
-                "Source pointer arithmetic should not overflow"
-            );
-
-            std::ptr::copy_nonoverlapping(src, dst, len);
-        }
+        // Deep Debt: Use safe slice operations instead of raw pointers!
+        // Get safe immutable slice (unsafe encapsulated in helper method)
+        let buffer_slice = self.as_cpu_slice();
+        let source_slice = &buffer_slice[offset..offset + len];
+        
+        // Now use safe Vec::from to copy (no unsafe here!)
+        let result = source_slice.to_vec();
 
         // Update metadata (DashMap provides interior mutability)
         if let Some(mut metadata) = self.allocations.get_mut(&self.id) {
@@ -419,10 +427,9 @@ impl UnifiedBuffer {
             return Err(ToadStoolError::runtime("CPU pointer is null"));
         }
 
-        // SAFETY: Pointer validated, we have &mut self
-        unsafe {
-            std::ptr::write_bytes(self.cpu_ptr, value, self.size);
-        }
+        // Deep Debt: Use safe slice fill instead of write_bytes!
+        let buffer_slice = self.as_cpu_slice_mut();
+        buffer_slice.fill(value);
 
         *self.sync_state.write() = SyncState::CpuModified;
 
