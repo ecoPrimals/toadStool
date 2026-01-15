@@ -1,21 +1,19 @@
-//! # `ToadStool` Crypto Lock System
-//!
-//! Cryptographic access control for external integrations:
-//! - 🔓 Pure Rust ecosystem: Always unlocked, no crypto needed
-//! - 🔐 External integrations: Require `BearDog` crypto permissions
-//! - 🐻 `BearDog` controls all access: Crypto keys and permissions
-//! - 🚫 No phone home: Pure cryptographic proof system
-//! - 🤝 Delegatable: People can lend access through `BearDog`
-//! - 🎯 Granular: Fine-grained permission control
+//! Access control and policy enforcement for crypto lock system
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
-use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+
+use super::cache::PermissionCache;
+use super::permissions::{
+    BearDogCryptoPermission, DelegationChain, DelegationRequest, DelegationScope, DelegationStatus,
+    ExpiringPermission, ExternalTarget, PermissionHolder, PermissionScope, PermissionStatus,
+};
+use super::validation::{BearDogPermissionValidator, PermissionValidationResult};
 
 /// `ToadStool` Crypto Lock Manager - enforces cryptographic access control
 pub struct ToadStoolCryptoLock {
@@ -27,164 +25,6 @@ pub struct ToadStoolCryptoLock {
     permission_cache: PermissionCache,
     /// Access control policies
     _access_policies: AccessPolicies,
-}
-
-/// `BearDog` Permission Validator - validates crypto permissions
-pub struct BearDogPermissionValidator {
-    /// `BearDog` public keys for permission verification
-    _beardog_public_keys: HashMap<String, BearDogPublicKey>,
-    /// Cryptographic signature validator
-    _crypto_validator: CryptoValidator,
-    /// Permission delegation chain validator
-    _delegation_validator: DelegationValidator,
-    /// Permission revocation list
-    _revocation_list: PermissionRevocationList,
-}
-
-/// `BearDog` Crypto Permission - cryptographic proof of access rights
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogCryptoPermission {
-    /// Permission ID
-    pub permission_id: Uuid,
-    /// Permission holder (who has access)
-    pub holder: PermissionHolder,
-    /// What external integration this unlocks
-    pub external_target: ExternalTarget,
-    /// Permission scope and limits
-    pub scope: PermissionScope,
-    /// Valid time range
-    pub valid_from: SystemTime,
-    pub valid_until: SystemTime,
-    /// `BearDog` cryptographic proof
-    pub crypto_proof: BearDogCryptoProof,
-    /// Delegation chain (if this was delegated)
-    pub delegation_chain: Option<DelegationChain>,
-    /// Permission metadata
-    pub metadata: PermissionMetadata,
-}
-
-/// External targets that require crypto permissions
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ExternalTarget {
-    /// Cloud provider APIs
-    CloudProvider {
-        provider: CloudProvider,
-        regions: Vec<String>,
-        services: Vec<String>,
-    },
-    /// Container orchestration platforms
-    ContainerPlatform {
-        platform: ContainerPlatform,
-        clusters: Vec<String>,
-        namespaces: Vec<String>,
-    },
-    /// External tools and services
-    ExternalTool {
-        tool_name: String,
-        api_endpoints: Vec<String>,
-        feature_set: Vec<String>,
-    },
-    /// Quantum computing platforms
-    QuantumProvider {
-        provider: QuantumProvider,
-        backends: Vec<String>,
-        qubit_limits: Option<u32>,
-    },
-    /// HPC and supercomputing clusters
-    HPCCluster {
-        cluster_name: String,
-        scheduler: HPCScheduler,
-        partitions: Vec<String>,
-    },
-    /// Enterprise and commercial services
-    EnterpriseService {
-        service_name: String,
-        tier: ServiceTier,
-        features: Vec<String>,
-    },
-}
-
-/// Permission holder identification
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PermissionHolder {
-    /// Individual user
-    Individual {
-        user_id: String,
-        public_key: String,
-        verification_level: VerificationLevel,
-    },
-    /// Organization (university, company, etc.)
-    Organization {
-        org_id: String,
-        org_type: OrganizationType,
-        authorized_users: Vec<String>,
-    },
-    /// Delegated permission (someone lending access)
-    Delegated {
-        original_holder: Box<PermissionHolder>,
-        delegated_to: String,
-        delegation_scope: DelegationScope,
-    },
-}
-
-/// Permission scope and limitations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PermissionScope {
-    /// Maximum resource limits
-    pub resource_limits: ResourceLimits,
-    /// Time-based restrictions
-    pub time_restrictions: TimeRestrictions,
-    /// Usage quotas
-    pub usage_quotas: UsageQuotas,
-    /// Geographic restrictions
-    pub geographic_limits: Vec<String>,
-    /// Feature restrictions
-    pub feature_restrictions: Vec<String>,
-}
-
-/// `BearDog` cryptographic proof
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogCryptoProof {
-    /// Cryptographic signature
-    pub signature: Vec<u8>,
-    /// Signature algorithm used
-    pub algorithm: CryptoAlgorithm,
-    /// Public key identifier
-    pub public_key_id: String,
-    /// Proof timestamp
-    pub timestamp: SystemTime,
-    /// Additional proof metadata
-    pub metadata: ProofMetadata,
-}
-
-/// Delegation chain for permission lending
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DelegationChain {
-    /// Original permission holder
-    pub original_holder: PermissionHolder,
-    /// Chain of delegations
-    pub delegations: Vec<Delegation>,
-    /// Current delegation level
-    pub delegation_level: u32,
-    /// Maximum delegation depth allowed
-    pub max_delegation_depth: u32,
-}
-
-/// Individual delegation in the chain
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Delegation {
-    /// Who delegated the permission
-    pub delegator: String,
-    /// Who received the delegated permission
-    pub delegatee: String,
-    /// When the delegation was created
-    pub delegated_at: SystemTime,
-    /// Delegation expiry
-    pub expires_at: SystemTime,
-    /// Scope of delegated permission
-    pub delegated_scope: DelegationScope,
-    /// Cryptographic proof of delegation
-    pub delegation_proof: BearDogCryptoProof,
 }
 
 impl ToadStoolCryptoLock {
@@ -636,8 +476,9 @@ impl ToadStoolCryptoLock {
     }
 }
 
-// Supporting types and enums
+// Access control result types
 
+/// Access result (granted or denied)
 #[derive(Debug, Clone)]
 pub enum AccessResult {
     Granted {
@@ -652,14 +493,7 @@ pub enum AccessResult {
     },
 }
 
-#[derive(Debug, Clone)]
-pub enum PermissionValidationResult {
-    Valid,
-    Invalid,
-    Expired,
-    Revoked,
-}
-
+/// Permission level for access
 #[derive(Debug, Clone)]
 pub enum PermissionLevel {
     Basic,
@@ -667,96 +501,7 @@ pub enum PermissionLevel {
     Full,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OrganizationType {
-    University,
-    Research,
-    NonProfit,
-    Commercial,
-    Government,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum VerificationLevel {
-    Unverified,
-    EmailVerified,
-    IdentityVerified,
-    InstitutionVerified,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DelegationScope {
-    pub resource_limits: Option<ResourceLimits>,
-    pub time_limits: Option<Duration>,
-    pub feature_subset: Vec<String>,
-    pub geographic_subset: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceLimits {
-    pub max_cpu_cores: Option<f64>,
-    pub max_memory_gb: Option<f64>,
-    pub max_storage_gb: Option<f64>,
-    pub max_network_bandwidth: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimeRestrictions {
-    pub allowed_hours: Option<Vec<u8>>, // Hours 0-23
-    pub allowed_days: Option<Vec<u8>>,  // Days 0-6 (Sunday-Saturday)
-    pub timezone: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UsageQuotas {
-    pub max_requests_per_hour: Option<u64>,
-    pub max_data_transfer_gb: Option<f64>,
-    pub max_compute_hours: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CryptoAlgorithm {
-    Ed25519,
-    EcdsaP256,
-    Rsa4096,
-    BearDogCustom,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofMetadata {
-    pub issuer: String,
-    pub purpose: String,
-    pub additional_claims: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PermissionMetadata {
-    pub issued_by: String,
-    pub notes: String,
-    pub features: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct DelegationRequest {
-    pub request_id: Uuid,
-    pub base_permission_id: Uuid,
-    pub from_holder: PermissionHolder,
-    pub to_holder: PermissionHolder,
-    pub target: ExternalTarget,
-    pub delegation_scope: DelegationScope,
-    pub duration: Duration,
-    pub requested_at: SystemTime,
-    pub status: DelegationStatus,
-}
-
-#[derive(Debug, Clone)]
-pub enum DelegationStatus {
-    Pending,
-    Approved,
-    Denied,
-    Expired,
-}
-
+/// Crypto lock status report
 #[derive(Debug, Clone)]
 pub struct CryptoLockStatus {
     pub pure_rust_unlocked: bool,
@@ -765,188 +510,11 @@ pub struct CryptoLockStatus {
     pub expiring_permissions: Vec<ExpiringPermission>,
 }
 
-#[derive(Debug, Clone)]
-pub struct PermissionStatus {
-    pub permission_id: Uuid,
-    pub holder: PermissionHolder,
-    pub valid_until: SystemTime,
-    pub scope: PermissionScope,
-    pub is_delegated: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct ExpiringPermission {
-    pub permission_id: Uuid,
-    pub target: ExternalTarget,
-    pub expires_in: Duration,
-}
-
-// Cloud providers and external services
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum CloudProvider {
-    AWS,
-    Azure,
-    GCP,
-    DigitalOcean,
-    Linode,
-    Vultr,
-    Hetzner,
-    OVH,
-    Scaleway,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ContainerPlatform {
-    Docker,
-    Kubernetes,
-    Nomad,
-    OpenShift,
-    DockerSwarm,
-    Podman,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum QuantumProvider {
-    IBM,
-    Google,
-    IonQ,
-    Rigetti,
-    AWSBraket,
-    AzureQuantum,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum HPCScheduler {
-    SLURM,
-    PBS,
-    SGE,
-    LSF,
-    Custom,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ServiceTier {
-    Basic,
-    Professional,
-    Enterprise,
-    Premium,
-}
-
-// Implementation stubs for supporting components
-
-impl BearDogPermissionValidator {
-    pub async fn new() -> ToadStoolResult<Self> {
-        Ok(Self {
-            _beardog_public_keys: HashMap::new(),
-            _crypto_validator: CryptoValidator::new(),
-            _delegation_validator: DelegationValidator::new(),
-            _revocation_list: PermissionRevocationList::new(),
-        })
-    }
-
-    pub async fn validate_permission(
-        &self,
-        _permission: &BearDogCryptoPermission,
-    ) -> ToadStoolResult<PermissionValidationResult> {
-        // Validate crypto signature
-        // Check time bounds
-        // Verify against revocation list
-        Ok(PermissionValidationResult::Valid)
-    }
-
-    pub async fn validate_delegation_proof(
-        &self,
-        _proof: &BearDogCryptoProof,
-    ) -> ToadStoolResult<()> {
-        // Validate delegation proof
-        Ok(())
-    }
-}
-
-// Supporting structs and implementations
-pub struct PermissionCache;
-pub struct CryptoValidator;
-pub struct DelegationValidator;
-pub struct PermissionRevocationList;
+/// Access control policies
 pub struct AccessPolicies;
-pub struct BearDogPublicKey;
-
-impl Default for PermissionCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PermissionCache {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self
-    }
-    pub async fn get(&self, _target: &ExternalTarget) -> Option<CachedResult> {
-        None
-    }
-    pub async fn cache_result(&self, _target: ExternalTarget, _result: AccessResult) {}
-    pub async fn invalidate_for_target(&self, _target: &ExternalTarget) {}
-}
-
-impl Default for CryptoValidator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CryptoValidator {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for DelegationValidator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DelegationValidator {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for PermissionRevocationList {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PermissionRevocationList {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self
-    }
-}
 
 impl Default for AccessPolicies {
     fn default() -> Self {
         Self
     }
-}
-
-pub struct CachedResult {
-    pub result: AccessResult,
-}
-
-impl CachedResult {
-    #[must_use]
-    pub const fn is_expired(&self) -> bool {
-        false
-    }
-}
-
-// Helper function for duration from days
-#[must_use]
-pub const fn duration_from_days(days: u64) -> Duration {
-    Duration::from_secs(days * 86400)
 }
