@@ -10,7 +10,7 @@ use toadstool_config::ToadStoolConfig;
 
 /// Usage pattern learning and prediction
 pub struct UsageLearner {
-    _environment_hints: Vec<EnvironmentHint>,
+    pub _environment_hints: Vec<EnvironmentHint>,
 }
 
 impl Default for UsageLearner {
