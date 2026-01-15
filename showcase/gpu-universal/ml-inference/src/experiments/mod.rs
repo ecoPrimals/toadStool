@@ -7,7 +7,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
 
 /// Result of a single experimental run
 #[derive(Debug, Clone, Serialize, Deserialize)]

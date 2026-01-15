@@ -16,6 +16,7 @@ pub mod wgpu;
 pub use wgpu as wgpu_executor;
 
 pub mod gpu_selector;
+pub mod experiments;
 pub mod mnist;
 pub mod network;
 
