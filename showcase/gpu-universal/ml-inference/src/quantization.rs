@@ -123,7 +123,10 @@ impl QuantizeInt8 {
     }
 
     /// Per-channel quantization (separate scale/zero_point per channel)
-    fn quantize_per_channel(input: &[f32], num_channels: usize) -> Result<(Vec<i8>, Vec<f32>, Vec<f32>)> {
+    fn quantize_per_channel(
+        input: &[f32],
+        num_channels: usize,
+    ) -> Result<(Vec<i8>, Vec<f32>, Vec<f32>)> {
         anyhow::ensure!(
             input.len() % num_channels == 0,
             "Input size must be divisible by num_channels"
@@ -220,15 +223,15 @@ impl DequantizeInt8 {
         zero_point: &[f32],
     ) -> Result<Vec<f32>> {
         anyhow::ensure!(scale.len() == 1, "Per-tensor mode requires single scale");
-        anyhow::ensure!(zero_point.len() == 1, "Per-tensor mode requires single zero_point");
+        anyhow::ensure!(
+            zero_point.len() == 1,
+            "Per-tensor mode requires single zero_point"
+        );
 
         let s = scale[0];
         let zp = zero_point[0];
 
-        let dequantized: Vec<f32> = quantized
-            .iter()
-            .map(|&q| (f32::from(q) - zp) * s)
-            .collect();
+        let dequantized: Vec<f32> = quantized.iter().map(|&q| (f32::from(q) - zp) * s).collect();
 
         Ok(dequantized)
     }
@@ -413,7 +416,8 @@ mod tests {
     fn test_quantize_dequantize_int8_roundtrip() {
         let input = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
         let (quantized, scale, zero_point) = QuantizeInt8::quantize(&input, false, 1).unwrap();
-        let dequantized = DequantizeInt8::dequantize(&quantized, &scale, &zero_point, false, 1).unwrap();
+        let dequantized =
+            DequantizeInt8::dequantize(&quantized, &scale, &zero_point, false, 1).unwrap();
 
         assert_eq!(dequantized.len(), input.len());
 

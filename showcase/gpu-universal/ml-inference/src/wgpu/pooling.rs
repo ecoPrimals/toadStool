@@ -76,13 +76,13 @@ impl WgpuExecutor {
             padding_w: pad_w as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("MaxPool2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MaxPool2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -141,8 +141,7 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "MaxPool2D", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "MaxPool2D", &bind_group_layout);
 
         // 2D workgroups for spatial operations
         let workgroups_x = (out_width as u32 + 15) / 16;
@@ -222,13 +221,13 @@ impl WgpuExecutor {
             width: width as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("GlobalAvgPool Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GlobalAvgPool Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -351,13 +350,13 @@ impl WgpuExecutor {
             width: width as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("GlobalMaxPool Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GlobalMaxPool Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -486,13 +485,13 @@ impl WgpuExecutor {
             out_width: out_width as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("AdaptiveAvgPool2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("AdaptiveAvgPool2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -637,13 +636,13 @@ impl WgpuExecutor {
             out_width: out_width as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("AdaptiveMaxPool2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("AdaptiveMaxPool2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -804,13 +803,13 @@ impl WgpuExecutor {
             padding_w: pad_w as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("AvgPool2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("AvgPool2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -871,7 +870,8 @@ impl WgpuExecutor {
 
         let pipeline = self.create_simple_pipeline(shader_source, "AvgPool2D", &bind_group_layout);
         let workgroups = self.calculate_workgroups(out_size, 256);
-        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "AvgPool2D");
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "AvgPool2D");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,

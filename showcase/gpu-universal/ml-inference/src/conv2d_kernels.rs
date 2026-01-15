@@ -277,21 +277,21 @@ impl Conv2DParams {
     pub fn output_height(&self) -> usize {
         (self.in_height + 2 * self.pad_h - self.kernel_h) / self.stride_h + 1
     }
-    
+
     pub fn output_width(&self) -> usize {
         (self.in_width + 2 * self.pad_w - self.kernel_w) / self.stride_w + 1
     }
-    
+
     /// Calculate total input size
     pub fn input_size(&self) -> usize {
         self.batch_size * self.in_channels * self.in_height * self.in_width
     }
-    
+
     /// Calculate total weight size
     pub fn weight_size(&self) -> usize {
         self.out_channels * self.in_channels * self.kernel_h * self.kernel_w
     }
-    
+
     /// Calculate total output size
     pub fn output_size(&self) -> usize {
         self.batch_size * self.out_channels * self.output_height() * self.output_width()
@@ -311,12 +311,12 @@ impl Conv2DExecutor {
     /// Create new Conv2D executor
     pub fn new() -> Result<Self> {
         use anyhow::Context;
-        
+
         // Find a platform with GPU devices
         let platforms = Platform::list();
         let mut selected_device = None;
         let mut selected_platform = None;
-        
+
         for platform in platforms {
             if let Ok(devices) = Device::list_all(platform) {
                 for device in devices {
@@ -335,32 +335,31 @@ impl Conv2DExecutor {
                 }
             }
         }
-        
+
         let device = selected_device.context("No OpenCL GPU device found")?;
         let platform = selected_platform.context("No OpenCL platform found")?;
-        
+
         let context = OclContext::builder()
             .platform(platform)
             .devices(device)
             .build()
             .context("Failed to create OpenCL context")?;
-        
-        let queue = Queue::new(&context, device, None)
-            .context("Failed to create command queue")?;
-        
+
+        let queue = Queue::new(&context, device, None).context("Failed to create command queue")?;
+
         let program = Program::builder()
             .src(OPENCL_CONV2D_KERNEL)
             .devices(device)
             .build(&context)
             .context("Failed to build OpenCL program")?;
-        
+
         Ok(Self {
             _context: context,
             queue,
             program,
         })
     }
-    
+
     /// Execute Conv2D operation on GPU
     pub fn conv2d(
         &self,
@@ -370,14 +369,14 @@ impl Conv2DExecutor {
         params: &Conv2DParams,
     ) -> Result<Vec<f32>> {
         use anyhow::Context;
-        
+
         // Validate input sizes
         assert_eq!(input.len(), params.input_size());
         assert_eq!(weights.len(), params.weight_size());
         assert_eq!(bias.len(), params.out_channels);
-        
+
         let output_size = params.output_size();
-        
+
         // Create GPU buffers
         let input_buf = Buffer::builder()
             .queue(self.queue.clone())
@@ -385,31 +384,31 @@ impl Conv2DExecutor {
             .copy_host_slice(input)
             .build()
             .context("Failed to create input buffer")?;
-        
+
         let weights_buf = Buffer::builder()
             .queue(self.queue.clone())
             .len(weights.len())
             .copy_host_slice(weights)
             .build()
             .context("Failed to create weights buffer")?;
-        
+
         let bias_buf = Buffer::builder()
             .queue(self.queue.clone())
             .len(bias.len())
             .copy_host_slice(bias)
             .build()
             .context("Failed to create bias buffer")?;
-        
+
         let output_buf: Buffer<f32> = Buffer::builder()
             .queue(self.queue.clone())
             .len(output_size)
             .build()
             .context("Failed to create output buffer")?;
-        
+
         // Build kernel
         let out_height = params.output_height();
         let out_width = params.output_width();
-        
+
         let kernel = Kernel::builder()
             .program(&self.program)
             .name("conv2d")
@@ -436,20 +435,22 @@ impl Conv2DExecutor {
             .arg(params.pad_w as i32)
             .build()
             .context("Failed to build Conv2D kernel")?;
-        
+
         // Execute
         unsafe {
             kernel.enq().context("Failed to execute Conv2D")?;
         }
-        
+
         // Read results
         let mut output = vec![0.0f32; output_size];
-        output_buf.read(&mut output).enq()
+        output_buf
+            .read(&mut output)
+            .enq()
             .context("Failed to read output from GPU")?;
-        
+
         Ok(output)
     }
-    
+
     /// Execute MaxPool2D operation on GPU
     pub fn maxpool2d(
         &self,
@@ -464,11 +465,11 @@ impl Conv2DExecutor {
         stride_w: usize,
     ) -> Result<Vec<f32>> {
         use anyhow::Context;
-        
+
         let out_height = (in_height - kernel_h) / stride_h + 1;
         let out_width = (in_width - kernel_w) / stride_w + 1;
         let output_size = batch_size * channels * out_height * out_width;
-        
+
         // Create GPU buffers
         let input_buf = Buffer::builder()
             .queue(self.queue.clone())
@@ -476,13 +477,13 @@ impl Conv2DExecutor {
             .copy_host_slice(input)
             .build()
             .context("Failed to create input buffer")?;
-        
+
         let output_buf: Buffer<f32> = Buffer::builder()
             .queue(self.queue.clone())
             .len(output_size)
             .build()
             .context("Failed to create output buffer")?;
-        
+
         // Build kernel
         let kernel = Kernel::builder()
             .program(&self.program)
@@ -503,45 +504,42 @@ impl Conv2DExecutor {
             .arg(0i32) // pad_w
             .build()
             .context("Failed to build MaxPool2D kernel")?;
-        
+
         // Execute
         unsafe {
             kernel.enq().context("Failed to execute MaxPool2D")?;
         }
-        
+
         // Read results
         let mut output = vec![0.0f32; output_size];
-        output_buf.read(&mut output).enq()
+        output_buf
+            .read(&mut output)
+            .enq()
             .context("Failed to read output from GPU")?;
-        
+
         Ok(output)
     }
 }
 
 /// CPU reference implementation for Conv2D (for testing)
-pub fn conv2d_cpu(
-    input: &[f32],
-    weights: &[f32],
-    bias: &[f32],
-    params: &Conv2DParams,
-) -> Vec<f32> {
+pub fn conv2d_cpu(input: &[f32], weights: &[f32], bias: &[f32], params: &Conv2DParams) -> Vec<f32> {
     let out_height = params.output_height();
     let out_width = params.output_width();
     let output_size = params.output_size();
     let mut output = vec![0.0f32; output_size];
-    
+
     for b in 0..params.batch_size {
         for oc in 0..params.out_channels {
             for oh in 0..out_height {
                 for ow in 0..out_width {
                     let mut sum = 0.0f32;
-                    
+
                     for ic in 0..params.in_channels {
                         for kh in 0..params.kernel_h {
                             for kw in 0..params.kernel_w {
                                 let ih = oh * params.stride_h + kh;
                                 let iw = ow * params.stride_w + kw;
-                                
+
                                 if ih >= params.pad_h
                                     && ih < params.in_height + params.pad_h
                                     && iw >= params.pad_w
@@ -549,36 +547,38 @@ pub fn conv2d_cpu(
                                 {
                                     let ih = ih - params.pad_h;
                                     let iw = iw - params.pad_w;
-                                    
-                                    let input_idx = b * params.in_channels * params.in_height * params.in_width
-                                        + ic * params.in_height * params.in_width
-                                        + ih * params.in_width
-                                        + iw;
-                                    
-                                    let weight_idx = oc * params.in_channels * params.kernel_h * params.kernel_w
-                                        + ic * params.kernel_h * params.kernel_w
-                                        + kh * params.kernel_w
-                                        + kw;
-                                    
+
+                                    let input_idx =
+                                        b * params.in_channels * params.in_height * params.in_width
+                                            + ic * params.in_height * params.in_width
+                                            + ih * params.in_width
+                                            + iw;
+
+                                    let weight_idx =
+                                        oc * params.in_channels * params.kernel_h * params.kernel_w
+                                            + ic * params.kernel_h * params.kernel_w
+                                            + kh * params.kernel_w
+                                            + kw;
+
                                     sum += input[input_idx] * weights[weight_idx];
                                 }
                             }
                         }
                     }
-                    
+
                     sum += bias[oc];
-                    
+
                     let output_idx = b * params.out_channels * out_height * out_width
                         + oc * out_height * out_width
                         + oh * out_width
                         + ow;
-                    
+
                     output[output_idx] = sum;
                 }
             }
         }
     }
-    
+
     output
 }
 
@@ -601,14 +601,14 @@ mod tests {
             pad_h: 0,
             pad_w: 0,
         };
-        
+
         assert_eq!(params.output_height(), 26);
         assert_eq!(params.output_width(), 26);
         assert_eq!(params.input_size(), 1 * 3 * 28 * 28);
         assert_eq!(params.weight_size(), 32 * 3 * 3 * 3);
         assert_eq!(params.output_size(), 1 * 32 * 26 * 26);
     }
-    
+
     #[test]
     fn test_conv2d_cpu_simple() {
         // Simple 1x1x3x3 input, 1 filter of 1x1x2x2
@@ -625,25 +625,18 @@ mod tests {
             pad_h: 0,
             pad_w: 0,
         };
-        
-        let input = vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        ];
-        
-        let weights = vec![
-            1.0, 1.0,
-            1.0, 1.0,
-        ];
-        
+
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+
+        let weights = vec![1.0, 1.0, 1.0, 1.0];
+
         let bias = vec![0.0];
-        
+
         let output = conv2d_cpu(&input, &weights, &bias, &params);
-        
+
         // Should be 2x2 output
         assert_eq!(output.len(), 4);
-        
+
         // Verify values
         assert_eq!(output[0], 12.0); // 1+2+4+5
         assert_eq!(output[1], 16.0); // 2+3+5+6
@@ -651,4 +644,3 @@ mod tests {
         assert_eq!(output[3], 28.0); // 5+6+8+9
     }
 }
-

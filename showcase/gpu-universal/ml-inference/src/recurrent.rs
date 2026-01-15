@@ -29,9 +29,9 @@
 //! - Time series forecasting
 //! - Music generation
 
-use anyhow::Result;
 #[cfg(test)]
 use anyhow::Context;
+use anyhow::Result;
 use std::sync::Arc;
 
 /// RNN Cell (Elman Network)
@@ -394,7 +394,8 @@ impl GRUCell {
                 let mut n_t = gates[(2 * self.hidden_size + h) as usize];
                 for hh in 0..self.hidden_size {
                     let hidden_idx = (b * self.hidden_size + hh) as usize;
-                    let weight_idx = (hh * 3 * self.hidden_size + 2 * self.hidden_size + h) as usize;
+                    let weight_idx =
+                        (hh * 3 * self.hidden_size + 2 * self.hidden_size + h) as usize;
                     n_t += r_t * hidden[hidden_idx] * w_hh[weight_idx];
                 }
                 n_t += r_t * b_hh[(2 * self.hidden_size + h) as usize];
@@ -485,7 +486,9 @@ mod tests {
                 let b_ih = vec![0.0f32; 8];
                 let b_hh = vec![0.0f32; 8];
 
-                let result = rnn.forward(&input, &hidden, &w_ih, &w_hh, &b_ih, &b_hh, batch).await;
+                let result = rnn
+                    .forward(&input, &hidden, &w_ih, &w_hh, &b_ih, &b_hh, batch)
+                    .await;
                 assert!(result.is_ok(), "RNN forward pass failed");
 
                 if let Ok(output) = result {
@@ -509,7 +512,9 @@ mod tests {
                 let b_ih = vec![0.0f32; (4 * 8) as usize];
                 let b_hh = vec![0.0f32; (4 * 8) as usize];
 
-                let result = lstm.forward(&input, &hidden, &cell, &w_ih, &w_hh, &b_ih, &b_hh, batch).await;
+                let result = lstm
+                    .forward(&input, &hidden, &cell, &w_ih, &w_hh, &b_ih, &b_hh, batch)
+                    .await;
                 assert!(result.is_ok(), "LSTM forward pass failed");
 
                 if let Ok((new_hidden, new_cell)) = result {
@@ -534,7 +539,9 @@ mod tests {
                 let b_ih = vec![0.0f32; (3 * 8) as usize];
                 let b_hh = vec![0.0f32; (3 * 8) as usize];
 
-                let result = gru.forward(&input, &hidden, &w_ih, &w_hh, &b_ih, &b_hh, batch).await;
+                let result = gru
+                    .forward(&input, &hidden, &w_ih, &w_hh, &b_ih, &b_hh, batch)
+                    .await;
                 assert!(result.is_ok(), "GRU forward pass failed");
 
                 if let Ok(output) = result {
@@ -577,7 +584,13 @@ impl BidirectionalRNN {
         input_size: u32,
         hidden_size: u32,
     ) -> Result<Self> {
-        let forward_rnn = RNNCell::new(Arc::clone(&device), Arc::clone(&queue), input_size, hidden_size).await?;
+        let forward_rnn = RNNCell::new(
+            Arc::clone(&device),
+            Arc::clone(&queue),
+            input_size,
+            hidden_size,
+        )
+        .await?;
         let backward_rnn = RNNCell::new(device, queue, input_size, hidden_size).await?;
 
         Ok(Self {
@@ -625,15 +638,18 @@ impl BidirectionalRNN {
             let input_end = (batch * (t + 1) * input_size) as usize;
             let input_t = &sequence[input_start..input_end];
 
-            hidden_fwd = self.forward_rnn.forward(
-                input_t,
-                &hidden_fwd,
-                w_ih_fwd,
-                w_hh_fwd,
-                b_ih_fwd,
-                b_hh_fwd,
-                batch,
-            ).await?;
+            hidden_fwd = self
+                .forward_rnn
+                .forward(
+                    input_t,
+                    &hidden_fwd,
+                    w_ih_fwd,
+                    w_hh_fwd,
+                    b_ih_fwd,
+                    b_hh_fwd,
+                    batch,
+                )
+                .await?;
 
             forward_outputs.push(hidden_fwd.clone());
         }
@@ -647,15 +663,18 @@ impl BidirectionalRNN {
             let input_end = (batch * (t + 1) * input_size) as usize;
             let input_t = &sequence[input_start..input_end];
 
-            hidden_bwd = self.backward_rnn.forward(
-                input_t,
-                &hidden_bwd,
-                w_ih_bwd,
-                w_hh_bwd,
-                b_ih_bwd,
-                b_hh_bwd,
-                batch,
-            ).await?;
+            hidden_bwd = self
+                .backward_rnn
+                .forward(
+                    input_t,
+                    &hidden_bwd,
+                    w_ih_bwd,
+                    w_hh_bwd,
+                    b_ih_bwd,
+                    b_hh_bwd,
+                    batch,
+                )
+                .await?;
 
             backward_outputs.push(hidden_bwd.clone());
         }
@@ -673,7 +692,8 @@ impl BidirectionalRNN {
                     output[out_idx] = forward_outputs[t as usize][fwd_idx];
 
                     let bwd_idx = (b * hidden_size + h) as usize;
-                    let out_idx_bwd = ((b * seq_len + t) * 2 * hidden_size + hidden_size + h) as usize;
+                    let out_idx_bwd =
+                        ((b * seq_len + t) * 2 * hidden_size + hidden_size + h) as usize;
                     output[out_idx_bwd] = backward_outputs[t as usize][bwd_idx];
                 }
             }
@@ -721,14 +741,17 @@ impl StackedLSTM {
 
         for layer in 0..num_layers {
             let input_sz = if layer == 0 { input_size } else { hidden_size };
-            let lstm = LSTMCell::new(Arc::clone(&device), Arc::clone(&queue), input_sz, hidden_size).await?;
+            let lstm = LSTMCell::new(
+                Arc::clone(&device),
+                Arc::clone(&queue),
+                input_sz,
+                hidden_size,
+            )
+            .await?;
             layers.push(lstm);
         }
 
-        Ok(Self {
-            layers,
-            num_layers,
-        })
+        Ok(Self { layers, num_layers })
     }
 }
 
@@ -774,7 +797,10 @@ impl GRULayer {
             let input_end = (batch * (t + 1) * input_size) as usize;
             let input_t = &sequence[input_start..input_end];
 
-            hidden = self.cell.forward(input_t, &hidden, w_ih, w_hh, b_ih, b_hh, batch).await?;
+            hidden = self
+                .cell
+                .forward(input_t, &hidden, w_ih, w_hh, b_ih, b_hh, batch)
+                .await?;
             outputs.extend_from_slice(&hidden);
         }
 
@@ -825,16 +851,10 @@ impl LSTMLayer {
             let input_end = (batch * (t + 1) * input_size) as usize;
             let input_t = &sequence[input_start..input_end];
 
-            let (new_hidden, new_cell) = self.cell.forward(
-                input_t,
-                &hidden,
-                &cell,
-                w_ih,
-                w_hh,
-                b_ih,
-                b_hh,
-                batch,
-            ).await?;
+            let (new_hidden, new_cell) = self
+                .cell
+                .forward(input_t, &hidden, &cell, w_ih, w_hh, b_ih, b_hh, batch)
+                .await?;
 
             hidden = new_hidden;
             cell = new_cell;
@@ -907,7 +927,8 @@ impl RecurrentDropout {
 
         for i in 0..mask.len() {
             // Simple LCG for mask generation
-            let val = ((seed.wrapping_mul(1103515245).wrapping_add(i as u64 * 12345)) % 2147483648) as f32
+            let val = ((seed.wrapping_mul(1103515245).wrapping_add(i as u64 * 12345)) % 2147483648)
+                as f32
                 / 2147483648.0;
 
             mask[i] = if val > self.dropout_rate { scale } else { 0.0 };

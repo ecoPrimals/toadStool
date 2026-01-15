@@ -643,21 +643,18 @@ mod tests {
     #[test]
     fn test_maxpool2d() {
         let pool = MaxPool2D::new(2, 2);
-        
+
         // 1×1×4×4 input
         let input = vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-            9.0, 10.0, 11.0, 12.0,
-            13.0, 14.0, 15.0, 16.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         ];
 
         let output = pool.forward(&input, 1, 1, 4, 4).unwrap();
-        
+
         // Expected 2×2 output: max of each 2×2 region
         assert_eq!(output.len(), 4);
-        assert_eq!(output[0], 6.0);  // max(1,2,5,6)
-        assert_eq!(output[1], 8.0);  // max(3,4,7,8)
+        assert_eq!(output[0], 6.0); // max(1,2,5,6)
+        assert_eq!(output[1], 8.0); // max(3,4,7,8)
         assert_eq!(output[2], 14.0); // max(9,10,13,14)
         assert_eq!(output[3], 16.0); // max(11,12,15,16)
     }
@@ -665,30 +662,27 @@ mod tests {
     #[test]
     fn test_avgpool2d() {
         let pool = AvgPool2D::new(2, 2);
-        
+
         let input = vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-            9.0, 10.0, 11.0, 12.0,
-            13.0, 14.0, 15.0, 16.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         ];
 
         let output = pool.forward(&input, 1, 1, 4, 4).unwrap();
-        
+
         assert_eq!(output.len(), 4);
-        assert!((output[0] - 3.5).abs() < 0.01);  // mean(1,2,5,6)
-        assert!((output[1] - 5.5).abs() < 0.01);  // mean(3,4,7,8)
+        assert!((output[0] - 3.5).abs() < 0.01); // mean(1,2,5,6)
+        assert!((output[1] - 5.5).abs() < 0.01); // mean(3,4,7,8)
     }
 
     #[test]
     fn test_adaptive_avgpool() {
         let pool = AdaptiveAvgPool::new(1, 1);
-        
+
         // Global average pooling (any size to 1×1)
         let input = vec![1.0, 2.0, 3.0, 4.0];
 
         let output = pool.forward(&input, 1, 1, 2, 2).unwrap();
-        
+
         assert_eq!(output.len(), 1);
         assert!((output[0] - 2.5).abs() < 0.01); // mean of all
     }
@@ -697,16 +691,16 @@ mod tests {
     fn test_swish_activation() {
         let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
         let output = Swish::forward(&input);
-        
+
         assert_eq!(output.len(), 5);
-        
+
         // Swish(0) = 0
         assert!(output[2].abs() < 0.01);
-        
+
         // Swish(x) = x for large positive x
         // Swish(2) should be close to 2
         assert!((output[4] - 1.76).abs() < 0.1);
-        
+
         // Negative values should be negative but closer to 0
         assert!(output[0] < 0.0);
         assert!(output[0] > -2.0);
@@ -716,12 +710,12 @@ mod tests {
     fn test_gelu_activation() {
         let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
         let output = GELU::forward(&input);
-        
+
         assert_eq!(output.len(), 5);
-        
+
         // GELU(0) ≈ 0
         assert!(output[2].abs() < 0.01);
-        
+
         // GELU is roughly monotonically increasing
         assert!(output[4] > output[0]);
     }
@@ -730,13 +724,13 @@ mod tests {
     fn test_cross_entropy_loss() {
         // 2 samples, 3 classes
         let predictions = vec![
-            1.0, 2.0, 3.0,  // sample 0 (class 2 has highest logit)
-            3.0, 2.0, 1.0,  // sample 1 (class 0 has highest logit)
+            1.0, 2.0, 3.0, // sample 0 (class 2 has highest logit)
+            3.0, 2.0, 1.0, // sample 1 (class 0 has highest logit)
         ];
         let targets = vec![2, 0]; // Correct predictions
 
         let loss = CrossEntropyLoss::compute(&predictions, &targets, 2, 3).unwrap();
-        
+
         // Loss should be low (correct predictions)
         assert!(loss < 1.0, "Loss too high for correct predictions");
         assert!(loss > 0.0, "Loss should be positive");
@@ -748,7 +742,7 @@ mod tests {
         let targets = vec![1.0, 2.0, 3.0, 4.0];
 
         let loss = MSELoss::compute(&predictions, &targets).unwrap();
-        
+
         // Perfect prediction = zero loss
         assert!(loss.abs() < 0.001);
     }
@@ -759,20 +753,17 @@ mod tests {
         let targets = vec![2.0, 3.0, 4.0, 5.0]; // Off by 1
 
         let loss = MSELoss::compute(&predictions, &targets).unwrap();
-        
+
         // MSE = mean((1)²) = 1.0
         assert!((loss - 1.0).abs() < 0.001);
     }
 
     #[test]
     fn test_transpose_2d() {
-        let input = vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-        ];
+        let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
 
         let output = Transpose::transpose_2d(&input, 2, 3).unwrap();
-        
+
         // Should transpose to 3×2
         assert_eq!(output.len(), 6);
         assert_eq!(output[0], 1.0);
@@ -791,10 +782,10 @@ mod tests {
         let channels = vec![2, 2];
 
         let output = Concatenate::concat_channels(&tensors, 1, &channels, 2).unwrap();
-        
+
         // Should have 4 channels total
         assert_eq!(output.len(), 8);
-        
+
         // First tensor's channels, then second tensor's channels
         assert_eq!(output[0], 1.0);
         assert_eq!(output[1], 2.0);

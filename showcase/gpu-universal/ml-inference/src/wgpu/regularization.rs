@@ -66,13 +66,13 @@ impl WgpuExecutor {
             }) as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Dropout Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dropout Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -145,11 +145,9 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "Dropout", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "Dropout", &bind_group_layout);
         let workgroups = self.calculate_workgroups(size, 256);
-        let mut encoder =
-            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Dropout");
+        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "Dropout");
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,

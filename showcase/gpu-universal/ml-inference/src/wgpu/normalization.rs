@@ -55,13 +55,13 @@ impl WgpuExecutor {
             _padding: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Softmax Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Softmax Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout (5 bindings for multi-pass)
         let bind_group_layout =
@@ -157,13 +157,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Softmax Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Softmax Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Three pipelines for three passes
         let find_max_pipeline =
@@ -290,7 +290,9 @@ impl WgpuExecutor {
         let stats_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("LayerNorm Stats"),
             size: ((workgroups * 2 + 2) * std::mem::size_of::<f32>() as u32) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -308,13 +310,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("LayerNorm Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LayerNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Complex bind group for multi-pass algorithm
         let bind_group_layout =
@@ -424,25 +426,25 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("LayerNorm Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("LayerNorm Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Three passes: compute stats, finalize stats, normalize
-        let compute_stats =
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LayerNorm Compute Stats"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "compute_stats",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
+        let compute_stats = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LayerNorm Compute Stats"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "compute_stats",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         let finalize_stats =
             self.device
@@ -455,16 +457,16 @@ impl WgpuExecutor {
                     cache: None,
                 });
 
-        let normalize =
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LayerNorm Normalize"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "normalize",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
+        let normalize = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LayerNorm Normalize"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "normalize",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         // Execute three-pass algorithm
         let mut encoder = self
@@ -525,7 +527,11 @@ impl WgpuExecutor {
     ///
     /// Target: 118ms → 46ms (2.6x improvement on LLaMA scale)
     /// Architecture: 3-Pass (required for correctness)
-    pub async fn execute_layernorm_optimized(&self, input: &[f32], config: NormConfig) -> Result<Vec<f32>> {
+    pub async fn execute_layernorm_optimized(
+        &self,
+        input: &[f32],
+        config: NormConfig,
+    ) -> Result<Vec<f32>> {
         let size = input.len();
         anyhow::ensure!(size > 0, "LayerNorm Optimized: input cannot be empty");
 
@@ -558,7 +564,9 @@ impl WgpuExecutor {
         let stats_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("LayerNorm Opt Stats"),
             size: ((workgroups * 2 + 2) * std::mem::size_of::<f32>() as u32) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -576,13 +584,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("LayerNorm Opt Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("LayerNorm Opt Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Bind group layout (same as original)
         let bind_group_layout =
@@ -692,25 +700,25 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("LayerNorm Opt Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("LayerNorm Opt Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Three passes: compute stats, finalize stats, normalize (OPTIMIZED!)
-        let compute_stats =
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LayerNorm Opt Compute Stats"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "compute_stats",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
+        let compute_stats = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LayerNorm Opt Compute Stats"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "compute_stats",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         let finalize_stats =
             self.device
@@ -723,16 +731,16 @@ impl WgpuExecutor {
                     cache: None,
                 });
 
-        let normalize =
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("LayerNorm Opt Normalize"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "normalize",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
+        let normalize = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LayerNorm Opt Normalize"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "normalize",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         // Execute three-pass algorithm
         let mut encoder = self
@@ -851,13 +859,13 @@ impl WgpuExecutor {
             _padding: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("BatchNorm Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Complex bind group with 7 bindings
         let bind_group_layout =
@@ -973,8 +981,7 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "BatchNorm", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "BatchNorm", &bind_group_layout);
         let workgroups = self.calculate_workgroups(total_size, 256);
         let mut encoder =
             self.execute_compute_pass(&pipeline, &bind_group, workgroups, "BatchNorm");
@@ -1067,13 +1074,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("GroupNorm Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GroupNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Complex bind group with 6 bindings
         let bind_group_layout =
@@ -1183,13 +1190,13 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("GroupNorm Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("GroupNorm Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         // Two passes: compute_stats, then normalize
         let compute_stats_pipeline =
@@ -1312,13 +1319,13 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("InstanceNorm Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("InstanceNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -1474,13 +1481,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("RMSNorm Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RMSNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device

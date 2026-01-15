@@ -1,7 +1,7 @@
 // Concurrency Testing - Parallel execution, thread safety, race conditions
 // Tests system behavior under concurrent workloads
 
-use ml_inference_showcase::wgpu_executor::{WgpuExecutor, BinaryOp, ReduceOp, NormConfig};
+use ml_inference_showcase::wgpu_executor::{BinaryOp, NormConfig, ReduceOp, WgpuExecutor};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -12,14 +12,14 @@ use tokio::sync::Mutex;
 #[tokio::test]
 async fn test_sequential_operations() {
     let executor = WgpuExecutor::new().await.unwrap();
-    
+
     // Run 10 operations sequentially
     for i in 0..10 {
         let input = vec![i as f32; 100];
         let result = executor.execute_relu(&input).await.unwrap();
         assert_eq!(result.len(), 100);
     }
-    
+
     println!("Sequential operations: 10 completed successfully");
 }
 
@@ -30,10 +30,10 @@ async fn test_sequential_operations() {
 #[tokio::test]
 async fn test_concurrent_operations_shared_executor() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Spawn 10 concurrent tasks, all using the same executor
     let mut handles = vec![];
-    
+
     for i in 0..10 {
         let executor_clone = Arc::clone(&executor);
         let handle = tokio::spawn(async move {
@@ -42,14 +42,14 @@ async fn test_concurrent_operations_shared_executor() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all tasks to complete
     for (i, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
         assert_eq!(result.len(), 100);
         println!("Task {} completed", i);
     }
-    
+
     println!("Concurrent operations: 10 tasks completed successfully");
 }
 
@@ -60,47 +60,49 @@ async fn test_concurrent_operations_shared_executor() {
 #[tokio::test]
 async fn test_interleaved_operation_types() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Spawn different operation types concurrently
     let mut handles = vec![];
-    
+
     // Task 1: ReLU
     let ex1 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
         let input = vec![1.0; 100];
         ex1.execute_relu(&input).await.unwrap()
     }));
-    
+
     // Task 2: Sigmoid
     let ex2 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
         let input = vec![0.5; 100];
         ex2.execute_sigmoid(&input).await.unwrap()
     }));
-    
+
     // Task 3: Reduce (returns f32, not Vec<f32>)
     let ex3 = Arc::clone(&executor);
     let reduce_handle = tokio::spawn(async move {
         let input = vec![1.0; 100];
         ex3.execute_reduce(&input, ReduceOp::Sum).await.unwrap()
     });
-    
+
     // Task 4: Elementwise
     let ex4 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
         let a = vec![1.0; 100];
         let b = vec![2.0; 100];
-        ex4.execute_elementwise_binary(&a, &b, BinaryOp::Add).await.unwrap()
+        ex4.execute_elementwise_binary(&a, &b, BinaryOp::Add)
+            .await
+            .unwrap()
     }));
-    
+
     // Wait for all (vec handles)
     for handle in handles {
         let _result = handle.await.unwrap();
     }
-    
+
     // Wait for reduce (scalar)
     let _reduce_result = reduce_handle.await.unwrap();
-    
+
     println!("Interleaved operations: All types completed successfully");
 }
 
@@ -111,10 +113,10 @@ async fn test_interleaved_operation_types() {
 #[tokio::test]
 async fn test_rapid_fire_operations() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Spawn 50 tasks in rapid succession
     let mut handles = vec![];
-    
+
     for i in 0..50 {
         let ex = Arc::clone(&executor);
         let handle = tokio::spawn(async move {
@@ -123,13 +125,13 @@ async fn test_rapid_fire_operations() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for handle in handles {
         let vec_result = handle.await.unwrap();
         assert_eq!(vec_result.len(), 50);
     }
-    
+
     println!("Rapid fire: 50 concurrent operations completed");
 }
 
@@ -140,10 +142,10 @@ async fn test_rapid_fire_operations() {
 #[tokio::test]
 async fn test_concurrent_large_data() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Process large arrays concurrently
     let mut handles = vec![];
-    
+
     for i in 0..5 {
         let ex = Arc::clone(&executor);
         let handle = tokio::spawn(async move {
@@ -155,13 +157,13 @@ async fn test_concurrent_large_data() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for handle in handles {
         let size = handle.await.unwrap();
         println!("Processed array of size {}", size);
     }
-    
+
     println!("Large data concurrent: All sizes completed");
 }
 
@@ -172,36 +174,39 @@ async fn test_concurrent_large_data() {
 #[tokio::test]
 async fn test_concurrent_pipelines() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Each task runs a 3-operation pipeline
     let mut handles = vec![];
-    
+
     for i in 0..5 {
         let ex = Arc::clone(&executor);
         let handle = tokio::spawn(async move {
             let input = vec![i as f32; 100];
-            
+
             // Step 1: ReLU
             let step1 = ex.execute_relu(&input).await.unwrap();
-            
+
             // Step 2: Sigmoid
             let step2 = ex.execute_sigmoid(&step1).await.unwrap();
-            
+
             // Step 3: Reduce to mean
             let final_result = ex.execute_reduce(&step2, ReduceOp::Mean).await.unwrap();
-            
+
             final_result
         });
         handles.push(handle);
     }
-    
+
     // Wait for all pipelines
     for (i, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
-        assert!(result >= 0.0 && result <= 1.0, "Sigmoid output should be in [0,1]");
+        assert!(
+            result >= 0.0 && result <= 1.0,
+            "Sigmoid output should be in [0,1]"
+        );
         println!("Pipeline {} completed with mean: {}", i, result);
     }
-    
+
     println!("Concurrent pipelines: 5 pipelines completed");
 }
 
@@ -213,34 +218,37 @@ async fn test_concurrent_pipelines() {
 async fn test_shared_counter_thread_safety() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
     let counter = Arc::new(Mutex::new(0));
-    
+
     // 10 tasks increment a shared counter after GPU operation
     let mut handles = vec![];
-    
+
     for i in 0..10 {
         let ex = Arc::clone(&executor);
         let counter_clone = Arc::clone(&counter);
-        
+
         let handle = tokio::spawn(async move {
             let input = vec![i as f32; 100];
             let _result = ex.execute_relu(&input).await.unwrap();
-            
+
             // Increment shared counter
             let mut count = counter_clone.lock().await;
             *count += 1;
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for handle in handles {
         handle.await.unwrap();
     }
-    
+
     // Verify counter
     let final_count = *counter.lock().await;
-    assert_eq!(final_count, 10, "All 10 tasks should have incremented counter");
-    
+    assert_eq!(
+        final_count, 10,
+        "All 10 tasks should have incremented counter"
+    );
+
     println!("Shared counter: {} (expected 10)", final_count);
 }
 
@@ -251,10 +259,10 @@ async fn test_shared_counter_thread_safety() {
 #[tokio::test]
 async fn test_operation_mix_stress() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Mix of different operations running concurrently
     let mut handles = vec![];
-    
+
     // 5x ReLU
     for i in 0..5 {
         let ex = Arc::clone(&executor);
@@ -263,7 +271,7 @@ async fn test_operation_mix_stress() {
             ex.execute_relu(&input).await.unwrap()
         }));
     }
-    
+
     // 3x MatMul
     for _ in 0..3 {
         let ex = Arc::clone(&executor);
@@ -273,7 +281,7 @@ async fn test_operation_mix_stress() {
             ex.execute_matmul(&a, &b, 10, 10, 10).await.unwrap()
         }));
     }
-    
+
     // 4x Reduce (returns f32, not Vec<f32>)
     let mut reduce_handles = vec![];
     for _ in 0..4 {
@@ -283,7 +291,7 @@ async fn test_operation_mix_stress() {
             ex.execute_reduce(&input, ReduceOp::Sum).await.unwrap()
         }));
     }
-    
+
     // 3x Softmax
     for _ in 0..3 {
         let ex = Arc::clone(&executor);
@@ -292,17 +300,17 @@ async fn test_operation_mix_stress() {
             ex.execute_softmax(&input).await.unwrap()
         }));
     }
-    
+
     // Wait for all vec operations
     for handle in handles {
         let _result = handle.await.unwrap();
     }
-    
+
     // Wait for all reduce operations (scalar)
     for handle in reduce_handles {
         let _result = handle.await.unwrap();
     }
-    
+
     println!("Operation mix stress: 15 mixed operations completed");
 }
 
@@ -313,17 +321,17 @@ async fn test_operation_mix_stress() {
 #[tokio::test]
 async fn test_concurrent_with_errors() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Mix of valid and invalid operations
     let mut handles = vec![];
-    
+
     // Valid operation
     let ex1 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
         let input = vec![1.0; 100];
         ex1.execute_relu(&input).await
     }));
-    
+
     // Invalid operation (mismatched sizes)
     let ex2 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
@@ -331,30 +339,33 @@ async fn test_concurrent_with_errors() {
         let b = vec![1.0; 50]; // Wrong size!
         ex2.execute_elementwise_binary(&a, &b, BinaryOp::Add).await
     }));
-    
+
     // Another valid operation
     let ex3 = Arc::clone(&executor);
     handles.push(tokio::spawn(async move {
         let input = vec![2.0; 100];
         ex3.execute_relu(&input).await
     }));
-    
+
     // Wait for all
     let mut results = Vec::new();
     for handle in handles.into_iter() {
         let result = handle.await.unwrap();
         results.push(result);
     }
-    
+
     // First should succeed
     assert!(results[0].is_ok(), "First operation should succeed");
-    
+
     // Second should fail
-    assert!(results[1].is_err(), "Second operation should fail (size mismatch)");
-    
+    assert!(
+        results[1].is_err(),
+        "Second operation should fail (size mismatch)"
+    );
+
     // Third should still succeed (executor not corrupted by error)
     assert!(results[2].is_ok(), "Third operation should succeed");
-    
+
     println!("Concurrent error handling: Executor remains functional after error");
 }
 
@@ -365,10 +376,10 @@ async fn test_concurrent_with_errors() {
 #[tokio::test]
 async fn test_concurrent_normalization() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Run LayerNorm concurrently
     let mut handles = vec![];
-    
+
     for i in 0..5 {
         let ex = Arc::clone(&executor);
         let handle = tokio::spawn(async move {
@@ -382,16 +393,20 @@ async fn test_concurrent_normalization() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for (i, handle) in handles.into_iter().enumerate() {
         let result = handle.await.unwrap();
-        
+
         // Verify normalization
         let mean: f32 = result.iter().sum::<f32>() / result.len() as f32;
-        assert!(mean.abs() < 0.1, "LayerNorm mean should be ~0 for task {}", i);
+        assert!(
+            mean.abs() < 0.1,
+            "LayerNorm mean should be ~0 for task {}",
+            i
+        );
     }
-    
+
     println!("Concurrent normalization: 5 LayerNorm operations completed");
 }
 
@@ -402,11 +417,11 @@ async fn test_concurrent_normalization() {
 #[tokio::test]
 async fn test_concurrent_varying_sizes() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Different sizes: prime numbers
     let sizes = vec![7, 13, 17, 23, 29, 31, 37, 41, 43, 47];
     let mut handles = vec![];
-    
+
     for size in sizes.iter() {
         let ex = Arc::clone(&executor);
         let s = *size;
@@ -418,13 +433,13 @@ async fn test_concurrent_varying_sizes() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for handle in handles {
         let size = handle.await.unwrap();
         println!("Processed size: {}", size);
     }
-    
+
     println!("Varying sizes: 10 different prime sizes completed concurrently");
 }
 
@@ -435,44 +450,47 @@ async fn test_concurrent_varying_sizes() {
 #[tokio::test]
 async fn test_concurrent_reductions() {
     let executor = Arc::new(WgpuExecutor::new().await.unwrap());
-    
+
     // Run different reduction types concurrently
     let mut handles = vec![];
-    
+
     let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    
+
     // Sum
     let ex1 = Arc::clone(&executor);
     let input1 = input.clone();
     handles.push(tokio::spawn(async move {
         ex1.execute_reduce(&input1, ReduceOp::Sum).await.unwrap()
     }));
-    
+
     // Mean
     let ex2 = Arc::clone(&executor);
     let input2 = input.clone();
     handles.push(tokio::spawn(async move {
         ex2.execute_reduce(&input2, ReduceOp::Mean).await.unwrap()
     }));
-    
+
     // Max
     let ex3 = Arc::clone(&executor);
     let input3 = input.clone();
     handles.push(tokio::spawn(async move {
         ex3.execute_reduce(&input3, ReduceOp::Max).await.unwrap()
     }));
-    
+
     // Wait for all
     let mut results = Vec::new();
     for handle in handles {
         let result = handle.await.unwrap();
         results.push(result);
     }
-    
+
     // Verify results
     assert!((results[0] - 15.0).abs() < 0.01, "Sum should be 15");
     assert!((results[1] - 3.0).abs() < 0.01, "Mean should be 3");
     assert!((results[2] - 5.0).abs() < 0.01, "Max should be 5");
-    
-    println!("Concurrent reductions: Sum={}, Mean={}, Max={}", results[0], results[1], results[2]);
+
+    println!(
+        "Concurrent reductions: Sum={}, Mean={}, Max={}",
+        results[0], results[1], results[2]
+    );
 }

@@ -63,7 +63,7 @@ fn main() -> Result<()> {
         // GPU (OpenCL)
         for gpu in gpus.iter().filter(|g| g.backend == GpuBackend::OpenCL) {
             println!("Running on {} (OpenCL)...", gpu.name);
-            
+
             match Conv2DExecutor::new() {
                 Ok(executor) => {
                     let params = Conv2DParams {
@@ -96,7 +96,14 @@ fn main() -> Result<()> {
 
                     println!("  GPU Time:  {:.2} ms", gpu_time.as_secs_f64() * 1000.0);
                     println!("  Speedup:   {:.2}x", speedup);
-                    println!("  Status:    {}", if speedup > 3.0 { "✅ EXCELLENT" } else { "⚠️  NEEDS TUNING" });
+                    println!(
+                        "  Status:    {}",
+                        if speedup > 3.0 {
+                            "✅ EXCELLENT"
+                        } else {
+                            "⚠️  NEEDS TUNING"
+                        }
+                    );
                     println!();
                 }
                 Err(e) => {
@@ -150,7 +157,7 @@ fn run_conv2d_cpu(input: &[f32], weights: &[f32], bias: &[f32]) -> Vec<f32> {
     let out_height = (in_height + 2 * pad_h - kernel_h) / stride_h + 1;
     let out_width = (in_width + 2 * pad_w - kernel_w) / stride_w + 1;
     let output_size = batch_size * out_channels * out_height * out_width;
-    
+
     let mut output = vec![0.0f32; output_size];
 
     for b in 0..batch_size {
@@ -165,7 +172,11 @@ fn run_conv2d_cpu(input: &[f32], weights: &[f32], bias: &[f32]) -> Vec<f32> {
                                 let ih = (oh * stride_h + kh) as i32 - pad_h as i32;
                                 let iw = (ow * stride_w + kw) as i32 - pad_w as i32;
 
-                                if ih >= 0 && ih < in_height as i32 && iw >= 0 && iw < in_width as i32 {
+                                if ih >= 0
+                                    && ih < in_height as i32
+                                    && iw >= 0
+                                    && iw < in_width as i32
+                                {
                                     let input_idx = b * in_channels * in_height * in_width
                                         + ic * in_height * in_width
                                         + (ih as usize) * in_width
@@ -195,4 +206,3 @@ fn run_conv2d_cpu(input: &[f32], weights: &[f32], bias: &[f32]) -> Vec<f32> {
 
     output
 }
-

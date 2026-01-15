@@ -100,10 +100,10 @@ impl Default for Conv2DConfig {
 /// TransposedConv2D configuration (deconvolution/upsampling)
 #[derive(Debug, Clone, Copy)]
 pub struct TransposedConv2DConfig {
-    pub kernel_size: (usize, usize),       // (height, width)
-    pub stride: (usize, usize),            // (height, width)
-    pub padding: (usize, usize),           // (height, width)
-    pub output_padding: (usize, usize),    // (height, width) - controls output size
+    pub kernel_size: (usize, usize),    // (height, width)
+    pub stride: (usize, usize),         // (height, width)
+    pub padding: (usize, usize),        // (height, width)
+    pub output_padding: (usize, usize), // (height, width) - controls output size
 }
 
 impl Default for TransposedConv2DConfig {
@@ -120,10 +120,10 @@ impl Default for TransposedConv2DConfig {
 /// Conv3D configuration (3D convolution for video/medical imaging)
 #[derive(Debug, Clone, Copy)]
 pub struct Conv3DConfig {
-    pub kernel_size: (usize, usize, usize),  // (depth, height, width)
-    pub stride: (usize, usize, usize),       // (depth, height, width)
-    pub padding: (usize, usize, usize),      // (depth, height, width)
-    pub dilation: (usize, usize, usize),     // (depth, height, width)
+    pub kernel_size: (usize, usize, usize), // (depth, height, width)
+    pub stride: (usize, usize, usize),      // (depth, height, width)
+    pub padding: (usize, usize, usize),     // (depth, height, width)
+    pub dilation: (usize, usize, usize),    // (depth, height, width)
 }
 
 impl Default for Conv3DConfig {
@@ -358,7 +358,7 @@ impl Default for RegressionLossConfig {
 /// Huber loss configuration (robust regression)
 #[derive(Debug, Clone, Copy)]
 pub struct HuberLossConfig {
-    pub delta: f32,        // Threshold for switching from quadratic to linear
+    pub delta: f32, // Threshold for switching from quadratic to linear
     pub reduction: LossReduction,
 }
 
@@ -390,9 +390,9 @@ impl Default for BceLossConfig {
 /// Focal loss configuration (for class imbalance in object detection)
 #[derive(Debug, Clone, Copy)]
 pub struct FocalLossConfig {
-    pub alpha: f32,    // Balancing factor, typically 0.25
-    pub gamma: f32,    // Focusing parameter, typically 2.0
-    pub epsilon: f32,  // Numerical stability
+    pub alpha: f32,   // Balancing factor, typically 0.25
+    pub gamma: f32,   // Focusing parameter, typically 2.0
+    pub epsilon: f32, // Numerical stability
     pub reduction: LossReduction,
 }
 
@@ -410,7 +410,7 @@ impl Default for FocalLossConfig {
 /// Dice loss configuration (for segmentation tasks)
 #[derive(Debug, Clone, Copy)]
 pub struct DiceLossConfig {
-    pub smooth: f32,  // Smoothing factor, typically 1.0
+    pub smooth: f32, // Smoothing factor, typically 1.0
     pub reduction: LossReduction,
 }
 

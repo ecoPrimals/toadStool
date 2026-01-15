@@ -115,7 +115,8 @@ impl DilatedConv2D {
         let out_height = (height + 2 * self.padding - effective_kernel_size) / self.stride + 1;
         let out_width = (width + 2 * self.padding - effective_kernel_size) / self.stride + 1;
 
-        let mut output = vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
+        let mut output =
+            vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
 
         for b in 0..batch {
             for oc in 0..self.out_channels {
@@ -128,20 +129,33 @@ impl DilatedConv2D {
                             for kh in 0..self.kernel_size {
                                 for kw in 0..self.kernel_size {
                                     // Calculate input position with dilation
-                                    let ih = (oh * self.stride + kh * self.dilation) as i32 - self.padding as i32;
-                                    let iw = (ow * self.stride + kw * self.dilation) as i32 - self.padding as i32;
+                                    let ih = (oh * self.stride + kh * self.dilation) as i32
+                                        - self.padding as i32;
+                                    let iw = (ow * self.stride + kw * self.dilation) as i32
+                                        - self.padding as i32;
 
                                     // Check bounds
-                                    if ih >= 0 && ih < height as i32 && iw >= 0 && iw < width as i32 {
-                                        let input_idx = (((b * self.in_channels + ic) * height + ih as u32) * width + iw as u32) as usize;
-                                        let kernel_idx = (((oc * self.in_channels + ic) * self.kernel_size + kh) * self.kernel_size + kw) as usize;
+                                    if ih >= 0 && ih < height as i32 && iw >= 0 && iw < width as i32
+                                    {
+                                        let input_idx = (((b * self.in_channels + ic) * height
+                                            + ih as u32)
+                                            * width
+                                            + iw as u32)
+                                            as usize;
+                                        let kernel_idx =
+                                            (((oc * self.in_channels + ic) * self.kernel_size + kh)
+                                                * self.kernel_size
+                                                + kw)
+                                                as usize;
                                         sum += input[input_idx] * kernel[kernel_idx];
                                     }
                                 }
                             }
                         }
 
-                        let output_idx = (((b * self.out_channels + oc) * out_height + oh) * out_width + ow) as usize;
+                        let output_idx = (((b * self.out_channels + oc) * out_height + oh)
+                            * out_width
+                            + ow) as usize;
                         output[output_idx] = sum;
                     }
                 }
@@ -248,7 +262,8 @@ impl GroupedConv2D {
         let out_height = (height + 2 * self.padding - self.kernel_size) / self.stride + 1;
         let out_width = (width + 2 * self.padding - self.kernel_size) / self.stride + 1;
 
-        let mut output = vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
+        let mut output =
+            vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
 
         let in_channels_per_group = self.in_channels / self.groups;
         let out_channels_per_group = self.out_channels / self.groups;
@@ -268,20 +283,42 @@ impl GroupedConv2D {
 
                                 for kh in 0..self.kernel_size {
                                     for kw in 0..self.kernel_size {
-                                        let ih = (oh * self.stride + kh) as i32 - self.padding as i32;
-                                        let iw = (ow * self.stride + kw) as i32 - self.padding as i32;
+                                        let ih =
+                                            (oh * self.stride + kh) as i32 - self.padding as i32;
+                                        let iw =
+                                            (ow * self.stride + kw) as i32 - self.padding as i32;
 
-                                        if ih >= 0 && ih < height as i32 && iw >= 0 && iw < width as i32 {
-                                            let input_idx = (((b * self.in_channels + ic) * height + ih as u32) * width + iw as u32) as usize;
-                                            let kernel_idx = (((oc_local * in_channels_per_group + ic_local) * self.kernel_size + kh) * self.kernel_size + kw) as usize
-                                                + (g * out_channels_per_group * in_channels_per_group * self.kernel_size * self.kernel_size) as usize;
+                                        if ih >= 0
+                                            && ih < height as i32
+                                            && iw >= 0
+                                            && iw < width as i32
+                                        {
+                                            let input_idx = (((b * self.in_channels + ic) * height
+                                                + ih as u32)
+                                                * width
+                                                + iw as u32)
+                                                as usize;
+                                            let kernel_idx = (((oc_local * in_channels_per_group
+                                                + ic_local)
+                                                * self.kernel_size
+                                                + kh)
+                                                * self.kernel_size
+                                                + kw)
+                                                as usize
+                                                + (g * out_channels_per_group
+                                                    * in_channels_per_group
+                                                    * self.kernel_size
+                                                    * self.kernel_size)
+                                                    as usize;
                                             sum += input[input_idx] * kernel[kernel_idx];
                                         }
                                     }
                                 }
                             }
 
-                            let output_idx = (((b * self.out_channels + oc) * out_height + oh) * out_width + ow) as usize;
+                            let output_idx = (((b * self.out_channels + oc) * out_height + oh)
+                                * out_width
+                                + ow) as usize;
                             output[output_idx] = sum;
                         }
                     }
@@ -376,7 +413,8 @@ impl SeparableConv2D {
         let out_height = (height + 2 * self.padding - self.kernel_size) / self.stride + 1;
         let out_width = (width + 2 * self.padding - self.kernel_size) / self.stride + 1;
 
-        let mut depthwise_output = vec![0.0f32; (batch * self.in_channels * out_height * out_width) as usize];
+        let mut depthwise_output =
+            vec![0.0f32; (batch * self.in_channels * out_height * out_width) as usize];
 
         for b in 0..batch {
             for c in 0..self.in_channels {
@@ -390,14 +428,20 @@ impl SeparableConv2D {
                                 let iw = (ow * self.stride + kw) as i32 - self.padding as i32;
 
                                 if ih >= 0 && ih < height as i32 && iw >= 0 && iw < width as i32 {
-                                    let input_idx = (((b * self.in_channels + c) * height + ih as u32) * width + iw as u32) as usize;
-                                    let kernel_idx = ((c * self.kernel_size + kh) * self.kernel_size + kw) as usize;
+                                    let input_idx =
+                                        (((b * self.in_channels + c) * height + ih as u32) * width
+                                            + iw as u32)
+                                            as usize;
+                                    let kernel_idx =
+                                        ((c * self.kernel_size + kh) * self.kernel_size + kw)
+                                            as usize;
                                     sum += input[input_idx] * kernel_dw[kernel_idx];
                                 }
                             }
                         }
 
-                        let dw_idx = (((b * self.in_channels + c) * out_height + oh) * out_width + ow) as usize;
+                        let dw_idx = (((b * self.in_channels + c) * out_height + oh) * out_width
+                            + ow) as usize;
                         depthwise_output[dw_idx] = sum;
                     }
                 }
@@ -405,7 +449,8 @@ impl SeparableConv2D {
         }
 
         // Step 2: Pointwise (1×1) convolution
-        let mut output = vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
+        let mut output =
+            vec![0.0f32; (batch * self.out_channels * out_height * out_width) as usize];
 
         for b in 0..batch {
             for oc in 0..self.out_channels {
@@ -414,12 +459,16 @@ impl SeparableConv2D {
                         let mut sum = bias_pw[oc as usize];
 
                         for ic in 0..self.in_channels {
-                            let dw_idx = (((b * self.in_channels + ic) * out_height + oh) * out_width + ow) as usize;
+                            let dw_idx = (((b * self.in_channels + ic) * out_height + oh)
+                                * out_width
+                                + ow) as usize;
                             let pw_idx = (oc * self.in_channels + ic) as usize;
                             sum += depthwise_output[dw_idx] * kernel_pw[pw_idx];
                         }
 
-                        let output_idx = (((b * self.out_channels + oc) * out_height + oh) * out_width + ow) as usize;
+                        let output_idx = (((b * self.out_channels + oc) * out_height + oh)
+                            * out_width
+                            + ow) as usize;
                         output[output_idx] = sum;
                     }
                 }
@@ -502,7 +551,9 @@ mod tests {
         let bias_dw = vec![0.0f32; 2];
         let bias_pw = vec![0.0f32; 4];
 
-        let result = conv.forward(&input, &kernel_dw, &kernel_pw, &bias_dw, &bias_pw, batch, height, width);
+        let result = conv.forward(
+            &input, &kernel_dw, &kernel_pw, &bias_dw, &bias_pw, batch, height, width,
+        );
         assert!(result.is_ok());
 
         let output = result.unwrap();

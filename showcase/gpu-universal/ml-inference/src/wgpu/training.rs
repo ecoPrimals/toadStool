@@ -65,13 +65,13 @@ impl WgpuExecutor {
             reduction: reduction_mode,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("CrossEntropy Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("CrossEntropy Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -152,24 +152,24 @@ impl WgpuExecutor {
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
             });
 
-        let pipeline_layout =
-            self.device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("CrossEntropy Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("CrossEntropy Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
-        let pipeline =
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("CrossEntropy Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader,
-                    entry_point: "compute_loss",
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("CrossEntropy Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "compute_loss",
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         let workgroups = self.calculate_workgroups(batch_size, 256);
         let mut encoder =
@@ -225,35 +225,41 @@ impl WgpuExecutor {
             gradients.len() == num_params,
             "Adam: gradients size must equal params size"
         );
-        anyhow::ensure!(m.len() == num_params, "Adam: m buffer size must equal params size");
-        anyhow::ensure!(v.len() == num_params, "Adam: v buffer size must equal params size");
+        anyhow::ensure!(
+            m.len() == num_params,
+            "Adam: m buffer size must equal params size"
+        );
+        anyhow::ensure!(
+            v.len() == num_params,
+            "Adam: v buffer size must equal params size"
+        );
         anyhow::ensure!(step > 0, "Adam: step must be >= 1");
 
         let shader_source = include_str!("../shaders/adam.wgsl");
 
         // Create buffers
         let gradients_buffer = self.create_input_buffer(gradients, "Adam Gradients");
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Adam Params"),
-                    contents: bytemuck::cast_slice(params.as_slice()),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                });
-        let m_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Adam M"),
-                    contents: bytemuck::cast_slice(m.as_slice()),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                });
-        let v_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Adam V"),
-                    contents: bytemuck::cast_slice(v.as_slice()),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Adam Params"),
+                contents: bytemuck::cast_slice(params.as_slice()),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
+        let m_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Adam M"),
+                contents: bytemuck::cast_slice(m.as_slice()),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
+        let v_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Adam V"),
+                contents: bytemuck::cast_slice(v.as_slice()),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
 
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -510,13 +516,13 @@ impl WgpuExecutor {
             dampening: config.dampening,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("SGD Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SGD Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -735,13 +741,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("MSE Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MSE Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -890,13 +896,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("MAE Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MAE Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout (same as MSE)
         let bind_group_layout =
@@ -1058,13 +1064,13 @@ impl WgpuExecutor {
             weight_decay: config.weight_decay,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("RMSprop Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RMSprop Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -1287,13 +1293,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Huber Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Huber Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -1440,13 +1446,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("BCE Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BCE Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -1600,13 +1606,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("AdaGrad Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("AdaGrad Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -1838,13 +1844,13 @@ impl WgpuExecutor {
             _padding: [0; 2],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("NAdam Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("NAdam Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -2122,13 +2128,13 @@ impl WgpuExecutor {
             _padding: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("AdaDelta Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("AdaDelta Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -2376,18 +2382,18 @@ impl WgpuExecutor {
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
         struct FocalParams {
-            alpha: f32,            // offset 0, 4 bytes
-            gamma: f32,            // offset 4, 4 bytes
-            epsilon: f32,          // offset 8, 4 bytes
-            reduction_mode: u32,   // offset 12, 4 bytes
-            size: u32,             // offset 16, 4 bytes
-            _pad0: [u32; 3],       // offset 20, 12 bytes - padding to align vec3
-            _pad1: [u32; 3],       // offset 32, 12 bytes - vec3<u32>
-            _pad2: [u32; 4],       // offset 48, 16 bytes - vec4<u32>
-            _pad3: [u32; 4],       // offset 64, 16 bytes - vec4<u32>
-            _pad4: [u32; 4],       // offset 80, 16 bytes - vec4<u32>
-            _pad5: u32,            // offset 92, 4 bytes - final padding to 96 (multiple of 16)
-            // Total: 96 bytes (matches WGSL struct alignment requirement)
+            alpha: f32,          // offset 0, 4 bytes
+            gamma: f32,          // offset 4, 4 bytes
+            epsilon: f32,        // offset 8, 4 bytes
+            reduction_mode: u32, // offset 12, 4 bytes
+            size: u32,           // offset 16, 4 bytes
+            _pad0: [u32; 3],     // offset 20, 12 bytes - padding to align vec3
+            _pad1: [u32; 3],     // offset 32, 12 bytes - vec3<u32>
+            _pad2: [u32; 4],     // offset 48, 16 bytes - vec4<u32>
+            _pad3: [u32; 4],     // offset 64, 16 bytes - vec4<u32>
+            _pad4: [u32; 4],     // offset 80, 16 bytes - vec4<u32>
+            _pad5: u32,          // offset 92, 4 bytes - final padding to 96 (multiple of 16)
+                                 // Total: 96 bytes (matches WGSL struct alignment requirement)
         }
 
         let reduction_mode = match config.reduction {
@@ -2402,21 +2408,21 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
             reduction_mode,
             size: size as u32,
-            _pad0: [0; 3],  // Explicit padding to match WGSL vec3 alignment
+            _pad0: [0; 3], // Explicit padding to match WGSL vec3 alignment
             _pad1: [0; 3],
             _pad2: [0; 4],
             _pad3: [0; 4],
             _pad4: [0; 4],
-            _pad5: 0,       // Final padding to reach 96 bytes
+            _pad5: 0, // Final padding to reach 96 bytes
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Focal Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Focal Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -2570,13 +2576,13 @@ impl WgpuExecutor {
             elements_per_sample: elements_per_sample as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Dice Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dice Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device

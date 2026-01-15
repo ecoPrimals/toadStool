@@ -70,7 +70,9 @@ async fn main() -> Result<()> {
         let cpu_result = benchmark_cpu(&network, &test_data, size)?;
         println!(
             "      Time: {:.2}s | Throughput: {:.0} img/s | Accuracy: {:.1}%",
-            cpu_result.time_sec, cpu_result.throughput, cpu_result.accuracy * 100.0
+            cpu_result.time_sec,
+            cpu_result.throughput,
+            cpu_result.accuracy * 100.0
         );
 
         // NVIDIA GPU
@@ -98,15 +100,9 @@ async fn main() -> Result<()> {
         // Comparison
         let nvidia_vs_amd = nvidia_result.throughput / amd_result.throughput;
         if nvidia_vs_amd > 1.0 {
-            println!(
-                "  📊 NVIDIA is {:.2}x faster than AMD",
-                nvidia_vs_amd
-            );
+            println!("  📊 NVIDIA is {:.2}x faster than AMD", nvidia_vs_amd);
         } else {
-            println!(
-                "  📊 AMD is {:.2}x faster than NVIDIA",
-                1.0 / nvidia_vs_amd
-            );
+            println!("  📊 AMD is {:.2}x faster than NVIDIA", 1.0 / nvidia_vs_amd);
         }
         println!();
     }
@@ -210,4 +206,3 @@ fn print_summary() {
     println!("      Production use OpenCL/wgpu for full GPU acceleration.");
     println!();
 }
-

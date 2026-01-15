@@ -56,57 +56,61 @@ impl WgpuExecutor {
             k: k as u32,
         };
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("BatchMatMul Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchMatMul Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
-        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("BatchMatMul Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("BatchMatMul Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("BatchMatMul Bind Group"),
@@ -131,15 +135,18 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline = self.create_simple_pipeline(shader_source, "BatchMatMul", &bind_group_layout);
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "BatchMatMul", &bind_group_layout);
 
         let workgroup_x = (n + 15) / 16;
         let workgroup_y = (m + 15) / 16;
         let workgroup_z = batch_size;
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("BatchMatMul Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("BatchMatMul Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -186,13 +193,13 @@ impl WgpuExecutor {
         // Create params buffer (dimensions - runtime configuration, not hardcoded!)
         // WGSL struct order: M, K, N (must match shader exactly!)
         let params = [m as u32, k as u32, n as u32, 0]; // Pad to 16 bytes
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("MatMul Params"),
-                    contents: bytemuck::cast_slice(&params),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MatMul Params"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -318,13 +325,13 @@ impl WgpuExecutor {
 
         // Runtime parameter (not hardcoded!)
         let params = [alpha, 0.0, 0.0, 0.0]; // Pad to 16 bytes
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Add Params"),
-                    contents: bytemuck::cast_slice(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Add Params"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Similar pattern but with params binding...
         let bind_group_layout =
@@ -423,7 +430,10 @@ impl WgpuExecutor {
         b: &[f32],
         operation: BinaryOp,
     ) -> Result<Vec<f32>> {
-        anyhow::ensure!(a.len() == b.len(), "Vector sizes must match for binary operation");
+        anyhow::ensure!(
+            a.len() == b.len(),
+            "Vector sizes must match for binary operation"
+        );
         let size = a.len();
 
         let shader_source = include_str!("../shaders/elementwise_binary.wgsl");
@@ -446,13 +456,13 @@ impl WgpuExecutor {
             operation: operation as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Binary Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Binary Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout (3 inputs + params)
         let bind_group_layout =
@@ -574,13 +584,13 @@ impl WgpuExecutor {
             cols: cols as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Transpose Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Transpose Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -639,8 +649,7 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline =
-            self.create_simple_pipeline(shader_source, "Transpose", &bind_group_layout);
+        let pipeline = self.create_simple_pipeline(shader_source, "Transpose", &bind_group_layout);
 
         // 2D workgroups for better memory access patterns
         let tile_size = 16u32;
@@ -708,7 +717,10 @@ impl WgpuExecutor {
         );
 
         // Calculate output length
-        let out_length = (in_length + 2 * config.padding - config.dilation * (config.kernel_size - 1) - 1) / config.stride + 1;
+        let out_length =
+            (in_length + 2 * config.padding - config.dilation * (config.kernel_size - 1) - 1)
+                / config.stride
+                + 1;
         let out_size = batch * out_channels * out_length;
 
         let shader_source = include_str!("../shaders/conv1d.wgsl");
@@ -747,13 +759,13 @@ impl WgpuExecutor {
             _padding: [0; 3],
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Conv1D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Conv1D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -945,13 +957,13 @@ impl WgpuExecutor {
             out_width: out_width as u32,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("DepthwiseConv2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("DepthwiseConv2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group_layout =
             self.device
@@ -1174,13 +1186,13 @@ impl WgpuExecutor {
             _pad: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Conv2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Conv2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -1400,13 +1412,13 @@ impl WgpuExecutor {
             _pad: 0,
         };
 
-        let params_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("TransposedConv2D Params"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("TransposedConv2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout =
@@ -1494,11 +1506,8 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline = self.create_simple_pipeline(
-            shader_source,
-            "TransposedConv2D",
-            &bind_group_layout,
-        );
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "TransposedConv2D", &bind_group_layout);
 
         // Dispatch with 2D workgroups + output channels
         let workgroup_x = (output_width + 15) / 16;
@@ -1518,11 +1527,7 @@ impl WgpuExecutor {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(
-                workgroup_x as u32,
-                workgroup_y as u32,
-                workgroup_z as u32,
-            );
+            pass.dispatch_workgroups(workgroup_x as u32, workgroup_y as u32, workgroup_z as u32);
         }
 
         encoder.copy_buffer_to_buffer(
@@ -1559,16 +1564,35 @@ impl WgpuExecutor {
         config: super::types::Conv3DConfig,
     ) -> Result<Vec<f32>> {
         // Calculate output dimensions
-        let output_depth = (input_depth + 2 * config.padding.0 - config.dilation.0 * (config.kernel_size.0 - 1) - 1) / config.stride.0 + 1;
-        let output_height = (input_height + 2 * config.padding.1 - config.dilation.1 * (config.kernel_size.1 - 1) - 1) / config.stride.1 + 1;
-        let output_width = (input_width + 2 * config.padding.2 - config.dilation.2 * (config.kernel_size.2 - 1) - 1) / config.stride.2 + 1;
+        let output_depth = (input_depth + 2 * config.padding.0
+            - config.dilation.0 * (config.kernel_size.0 - 1)
+            - 1)
+            / config.stride.0
+            + 1;
+        let output_height = (input_height + 2 * config.padding.1
+            - config.dilation.1 * (config.kernel_size.1 - 1)
+            - 1)
+            / config.stride.1
+            + 1;
+        let output_width = (input_width + 2 * config.padding.2
+            - config.dilation.2 * (config.kernel_size.2 - 1)
+            - 1)
+            / config.stride.2
+            + 1;
 
         let input_size = batch * in_channels * input_depth * input_height * input_width;
-        let weight_size = out_channels * in_channels * config.kernel_size.0 * config.kernel_size.1 * config.kernel_size.2;
+        let weight_size = out_channels
+            * in_channels
+            * config.kernel_size.0
+            * config.kernel_size.1
+            * config.kernel_size.2;
         let out_size = batch * out_channels * output_depth * output_height * output_width;
 
         anyhow::ensure!(input.len() == input_size, "Conv3D: input size mismatch");
-        anyhow::ensure!(weights.len() == weight_size, "Conv3D: weights size mismatch");
+        anyhow::ensure!(
+            weights.len() == weight_size,
+            "Conv3D: weights size mismatch"
+        );
         anyhow::ensure!(bias.len() == out_channels, "Conv3D: bias size mismatch");
 
         let shader_source = include_str!("../shaders/conv3d.wgsl");
@@ -1633,68 +1657,72 @@ impl WgpuExecutor {
             _pad: 0,
         };
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Conv3D Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Conv3D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
-        let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Conv3D Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            self.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Conv3D Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Conv3D Bind Group"),
@@ -1730,9 +1758,11 @@ impl WgpuExecutor {
         let workgroup_y = (output_height + 3) / 4;
         let workgroup_z = (output_depth + 3) / 4;
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Conv3D Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Conv3D Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
