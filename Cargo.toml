@@ -19,6 +19,7 @@ members = [
     "crates/management/performance",
     "crates/management/resources",
     "crates/management/analytics",    # Sprint 5
+    "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
     "crates/runtime/gpu",
     # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations (see docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md)

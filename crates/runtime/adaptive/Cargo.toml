@@ -1,0 +1,46 @@
+[package]
+name = "toadstool-runtime-adaptive"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team"]
+license = "MIT OR Apache-2.0"
+description = "Adaptive optimization system for barraCUDA GPU operations"
+repository = "https://github.com/ecoPrimals/toadStool"
+
+[dependencies]
+# Core dependencies
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# GPU runtime
+wgpu = { workspace = true }
+
+# ToadStool core
+toadstool = { path = "../../core/toadstool" }
+
+# Platform-specific paths
+dirs = "5.0"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+criterion = "0.5"
+proptest = "1.0"
+
+[features]
+default = []
+
+# Telemetry (opt-in)
+telemetry = []
+
+# Testing
+testing = []
+
+# [[bench]]
+# name = "adaptive_benchmarks"
+# harness = false
