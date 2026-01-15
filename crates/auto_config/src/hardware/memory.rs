@@ -99,8 +99,7 @@ fn parse_linux_meminfo(meminfo: &str) -> ToadStoolResult<MemoryInfo> {
                 "MemTotal" => {
                     if let Some(kb_str) = value.split_whitespace().next() {
                         if let Ok(kb) = kb_str.parse::<u64>() {
-                            memory_info.total_gb =
-                                (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
+                            memory_info.total_gb = (kb * 1024) as f64 / (1024.0 * 1024.0 * 1024.0);
                         }
                     }
                 }

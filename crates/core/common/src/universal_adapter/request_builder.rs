@@ -217,7 +217,10 @@ mod tests {
             .build();
 
         match capability {
-            CapabilityType::Security { features, min_trust_level } => {
+            CapabilityType::Security {
+                features,
+                min_trust_level,
+            } => {
                 assert_eq!(features.len(), 2);
                 assert_eq!(min_trust_level, TrustLevel::High);
             }
@@ -235,7 +238,10 @@ mod tests {
             .build();
 
         match capability {
-            CapabilityType::Storage { features, min_throughput_mbps } => {
+            CapabilityType::Storage {
+                features,
+                min_throughput_mbps,
+            } => {
                 assert_eq!(features.len(), 2);
                 assert_eq!(min_throughput_mbps, Some(100));
             }
@@ -253,7 +259,10 @@ mod tests {
             .build();
 
         match capability {
-            CapabilityType::Coordination { features, max_latency_ms } => {
+            CapabilityType::Coordination {
+                features,
+                max_latency_ms,
+            } => {
                 assert_eq!(features.len(), 2);
                 assert_eq!(max_latency_ms, Some(10));
             }
@@ -270,7 +279,10 @@ mod tests {
             .build();
 
         match capability {
-            CapabilityType::Intelligence { features, model_types } => {
+            CapabilityType::Intelligence {
+                features,
+                model_types,
+            } => {
                 assert_eq!(features.len(), 1);
                 assert_eq!(model_types.len(), 1);
             }

@@ -385,7 +385,9 @@ impl BearDogClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog verify request failed: {}", e)))?;
+            .map_err(|e| {
+                ToadStoolError::network(format!("BearDog verify request failed: {}", e))
+            })?;
 
         if !response.status().is_success() {
             return Err(ToadStoolError::network(format!(
@@ -421,7 +423,9 @@ impl BearDogClient {
             .json(request)
             .send()
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog permission request failed: {}", e)))?;
+            .map_err(|e| {
+                ToadStoolError::network(format!("BearDog permission request failed: {}", e))
+            })?;
 
         if !response.status().is_success() {
             return Err(ToadStoolError::network(format!(
@@ -431,7 +435,10 @@ impl BearDogClient {
         }
 
         response.json::<PermissionResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog permission response: {}", e))
+            ToadStoolError::network(format!(
+                "Failed to parse BearDog permission response: {}",
+                e
+            ))
         })
     }
 
@@ -455,7 +462,9 @@ impl BearDogClient {
             .json(permission)
             .send()
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog validate request failed: {}", e)))?;
+            .map_err(|e| {
+                ToadStoolError::network(format!("BearDog validate request failed: {}", e))
+            })?;
 
         if !response.status().is_success() {
             return Err(ToadStoolError::network(format!(
@@ -497,7 +506,9 @@ impl BearDogClient {
             .json(&request)
             .send()
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog revoke request failed: {}", e)))?;
+            .map_err(|e| {
+                ToadStoolError::network(format!("BearDog revoke request failed: {}", e))
+            })?;
 
         if !response.status().is_success() {
             return Err(ToadStoolError::network(format!(

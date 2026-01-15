@@ -15,16 +15,16 @@ mod tests {
     async fn test_beardog_provider_creation() {
         // This may fail if BearDog is not running (expected)
         let result = BearDogSecurityProvider::new().await;
-        
+
         // Provider creation should succeed even if BearDog unavailable
         assert!(result.is_ok());
-        
+
         let provider = result.unwrap();
-        
+
         // Check capabilities
         let caps = provider.capabilities().await;
         assert!(caps.is_ok());
-        
+
         let caps_vec = caps.unwrap();
         assert!(caps_vec.contains(&SecurityCapability::SymmetricEncryption));
         assert!(caps_vec.contains(&SecurityCapability::DigitalSignatures));
@@ -35,7 +35,7 @@ mod tests {
     async fn test_beardog_provider_metadata() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let metadata = provider.metadata().await.unwrap();
-        
+
         assert_eq!(metadata.provider_type, "beardog");
         assert_eq!(metadata.provider_version, "2.0.0");
         assert!(metadata.metadata.contains_key("primal"));
@@ -45,11 +45,11 @@ mod tests {
     #[tokio::test]
     async fn test_beardog_provider_health_check() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
-        
+
         // Health check should return Unhealthy if BearDog not running
         let health = provider.health_check().await;
         assert!(health.is_ok());
-        
+
         // Will be Unhealthy if no BearDog service available
         let status = health.unwrap();
         assert!(matches!(
@@ -62,7 +62,7 @@ mod tests {
     async fn test_beardog_provider_capabilities_list() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let caps = provider.capabilities().await.unwrap();
-        
+
         // Verify all expected capabilities
         assert_eq!(caps.len(), 6);
         assert!(caps.contains(&SecurityCapability::SymmetricEncryption));
@@ -78,19 +78,19 @@ mod tests {
     #[tokio::test]
     async fn test_beardog_encryption_graceful_fail() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
-        
+
         let data = b"test data for encryption";
         let result = provider.encrypt(data, None).await;
-        
+
         // If BearDog not available, this should fail gracefully
         // (not panic, not hang, just return error)
         if result.is_err() {
             // Expected: service not found or connection failed
             let err_str = format!("{:?}", result.unwrap_err());
             assert!(
-                err_str.contains("not found") || 
-                err_str.contains("connection") ||
-                err_str.contains("network")
+                err_str.contains("not found")
+                    || err_str.contains("connection")
+                    || err_str.contains("network")
             );
         }
         // If BearDog IS available, verify result structure
@@ -106,17 +106,17 @@ mod tests {
     #[tokio::test]
     async fn test_beardog_signing_graceful_fail() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
-        
+
         let data = b"test data for signing";
         let result = provider.sign(data, None).await;
-        
+
         // Graceful failure expected if no BearDog
         if result.is_err() {
             let err_str = format!("{:?}", result.unwrap_err());
             assert!(
-                err_str.contains("not found") || 
-                err_str.contains("connection") ||
-                err_str.contains("network")
+                err_str.contains("not found")
+                    || err_str.contains("connection")
+                    || err_str.contains("network")
             );
         } else {
             let signature = result.unwrap();
@@ -129,7 +129,7 @@ mod tests {
     #[tokio::test]
     async fn test_beardog_permission_creation_graceful_fail() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
-        
+
         let request = PermissionRequest {
             requester_id: "test-user".to_string(),
             target: ExternalTarget::ExternalTool {
@@ -144,16 +144,16 @@ mod tests {
             validity_duration: std::time::Duration::from_secs(3600),
             delegation_info: None,
         };
-        
+
         let result = provider.create_permission(request).await;
-        
+
         // Graceful failure expected if no BearDog
         if result.is_err() {
             let err_str = format!("{:?}", result.unwrap_err());
             assert!(
-                err_str.contains("not found") || 
-                err_str.contains("connection") ||
-                err_str.contains("network")
+                err_str.contains("not found")
+                    || err_str.contains("connection")
+                    || err_str.contains("network")
             );
         } else {
             let permission = result.unwrap();
@@ -166,7 +166,7 @@ mod tests {
     fn test_beardog_provider_is_send_sync() {
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
-        
+
         assert_send::<BearDogSecurityProvider>();
         assert_sync::<BearDogSecurityProvider>();
     }
@@ -174,12 +174,12 @@ mod tests {
     /// Test provider can be used as trait object
     #[tokio::test]
     async fn test_beardog_provider_as_trait_object() {
-        let provider: Box<dyn SecurityProvider> = 
+        let provider: Box<dyn SecurityProvider> =
             Box::new(BearDogSecurityProvider::new().await.unwrap());
-        
+
         let caps = provider.capabilities().await.unwrap();
         assert!(!caps.is_empty());
-        
+
         let metadata = provider.metadata().await.unwrap();
         assert_eq!(metadata.provider_type, "beardog");
     }
@@ -189,16 +189,16 @@ mod tests {
     async fn test_multiple_beardog_providers() {
         let provider1 = BearDogSecurityProvider::new().await.unwrap();
         let provider2 = BearDogSecurityProvider::new().await.unwrap();
-        
+
         let caps1 = provider1.capabilities().await.unwrap();
         let caps2 = provider2.capabilities().await.unwrap();
-        
+
         // Both should report same capabilities
         assert_eq!(caps1, caps2);
-        
+
         let meta1 = provider1.metadata().await.unwrap();
         let meta2 = provider2.metadata().await.unwrap();
-        
+
         // Metadata should be consistent
         assert_eq!(meta1.provider_type, meta2.provider_type);
         assert_eq!(meta1.provider_version, meta2.provider_version);

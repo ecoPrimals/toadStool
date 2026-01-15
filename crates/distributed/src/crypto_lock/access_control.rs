@@ -10,10 +10,11 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 use super::cache::PermissionCache;
 use super::permissions::{
-    SecurityProviderPermission, DelegationChain, DelegationRequest, DelegationScope, DelegationStatus,
-    ExpiringPermission, ExternalTarget, PermissionHolder, PermissionScope, PermissionStatus,
+    DelegationChain, DelegationRequest, DelegationScope, DelegationStatus, ExpiringPermission,
+    ExternalTarget, PermissionHolder, PermissionScope, PermissionStatus,
+    SecurityProviderPermission,
 };
-use super::validation::{SecurityPermissionValidator, PermissionValidationResult};
+use super::validation::{PermissionValidationResult, SecurityPermissionValidator};
 
 /// `ToadStool` Crypto Lock Manager - enforces cryptographic access control
 pub struct ToadStoolCryptoLock {
@@ -100,7 +101,8 @@ impl ToadStoolCryptoLock {
             );
 
             return Ok(AccessResult::Denied {
-                reason: "No security provider crypto permission for external integration".to_string(),
+                reason: "No security provider crypto permission for external integration"
+                    .to_string(),
                 how_to_get_access: self.get_access_instructions(target),
             });
         }
@@ -340,7 +342,7 @@ impl ToadStoolCryptoLock {
                 // Check if tool declares itself as a known primal type
                 const ECOSYSTEM_PRIMALS: &[&str] = &[
                     "primal:toadstool",
-                    "primal:security",     // generic, not hardcoded primal name
+                    "primal:security", // generic, not hardcoded primal name
                     "primal:nestgate",
                     "primal:songbird",
                     "primal:squirrel",

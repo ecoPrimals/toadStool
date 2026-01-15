@@ -12,14 +12,14 @@
 //! - **generation**: Configuration generation (Stage 3)
 //! - **validation**: Configuration validation (Stage 4)
 
-pub mod detection;
 pub mod analysis;
+pub mod detection;
 pub mod generation;
 pub mod validation;
 
 // Re-export all public types for backward compatibility
-pub use detection::*;
 pub use analysis::*;
+pub use detection::*;
 pub use generation::*;
 pub use validation::*;
 
@@ -220,7 +220,10 @@ impl IntelligentAutoConfig {
 
         // Phase 6: Validation and Health Check
         info!("✅ Phase 6: Validating configuration...");
-        auto_config.config_validator.validate_configuration(&config).await?;
+        auto_config
+            .config_validator
+            .validate_configuration(&config)
+            .await?;
 
         info!("🎉 Auto-configuration complete - ToadStool is ready!");
         info!("🚀 Zero-touch setup successful - ready to execute any workload!");

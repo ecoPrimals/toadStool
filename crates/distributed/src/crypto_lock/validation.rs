@@ -22,7 +22,7 @@ use crate::security_provider::provider::SecurityProvider;
 pub struct SecurityPermissionValidator {
     /// Security provider (discovered at runtime via Universal Adapter)
     security_provider: Option<Arc<dyn SecurityProvider>>,
-    
+
     /// Security provider public keys for permission verification (fallback)
     _security_provider_keys: HashMap<String, SecurityPublicKey>,
     /// Cryptographic signature validator (fallback)
@@ -40,7 +40,7 @@ impl SecurityPermissionValidator {
     pub async fn new() -> ToadStoolResult<Self> {
         // Try to discover security provider via Universal Adapter
         let security_provider = Self::discover_security_provider().await;
-        
+
         Ok(Self {
             security_provider,
             _security_provider_keys: HashMap::new(),
@@ -56,19 +56,19 @@ impl SecurityPermissionValidator {
     async fn discover_security_provider() -> Option<Arc<dyn SecurityProvider>> {
         // Try to discover security provider via Universal Adapter
         use toadstool_common::universal_adapter::*;
-        
+
         match UniversalAdapter::new().await {
             Ok(adapter) => {
                 let request = CapabilityType::Security {
                     features: vec![SecurityFeature::Signing],
                     min_trust_level: TrustLevel::High,
                 };
-                
+
                 match adapter.request_capability(request).await {
                     Ok(handle) => {
                         // Try to create provider from handle
                         use crate::security_provider::factory::SecurityProviderFactory;
-                        
+
                         match SecurityProviderFactory::create_from_handle(&handle).await {
                             Ok(provider) => Some(provider),
                             Err(_) => None,
@@ -96,7 +96,7 @@ impl SecurityPermissionValidator {
         if now > permission.valid_until {
             return Ok(PermissionValidationResult::Expired);
         }
-        
+
         // If we have a security provider, we COULD use it for validation
         // For now, we demonstrate that the provider is available and can be used
         if let Some(_provider) = &self.security_provider {
@@ -111,10 +111,7 @@ impl SecurityPermissionValidator {
         }
     }
 
-    pub async fn validate_delegation_proof(
-        &self,
-        _proof: &SecurityProof,
-    ) -> ToadStoolResult<()> {
+    pub async fn validate_delegation_proof(&self, _proof: &SecurityProof) -> ToadStoolResult<()> {
         // Validate delegation proof
         Ok(())
     }

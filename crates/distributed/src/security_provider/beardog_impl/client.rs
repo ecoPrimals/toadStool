@@ -4,7 +4,6 @@
 
 // Allow deprecated during migration phase
 #[allow(deprecated)]
-
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,12 +11,7 @@ use tokio::sync::RwLock;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use crate::security_provider::{
-    provider::*,
-    types::*,
-    EncryptionOptions,
-    SigningOptions,
-};
+use crate::security_provider::{provider::*, types::*, EncryptionOptions, SigningOptions};
 
 use crate::beardog_integration::{BearDogClient, BearDogConfig, BearDogDiscovery};
 
@@ -28,14 +22,14 @@ use crate::beardog_integration::{BearDogClient, BearDogConfig, BearDogDiscovery}
 pub struct BearDogSecurityProvider {
     /// Underlying BearDog client (wrapped in Arc for sharing)
     client: Arc<RwLock<Option<Arc<BearDogClient>>>>,
-    
+
     /// Discovery mechanism (for future reconnection logic)
     #[allow(dead_code)]
     discovery: BearDogDiscovery,
-    
+
     /// Provider metadata
     metadata: ProviderMetadata,
-    
+
     /// Cached capabilities
     capabilities: Vec<SecurityCapability>,
 }
@@ -52,7 +46,7 @@ impl BearDogSecurityProvider {
     /// Create with custom configuration
     pub async fn with_config(config: BearDogConfig) -> ToadStoolResult<Self> {
         let discovery = BearDogDiscovery::new(config.clone());
-        
+
         // Attempt to discover and create BearDog client
         let client = match BearDogClient::new(config.clone()) {
             Ok(client) => {
@@ -97,16 +91,16 @@ impl BearDogSecurityProvider {
     /// Get or create client connection
     async fn get_client(&self) -> ToadStoolResult<Arc<BearDogClient>> {
         let client_lock = self.client.read().await;
-        
+
         if let Some(client) = &*client_lock {
             return Ok(Arc::clone(client));
         }
-        
+
         drop(client_lock);
 
         // No client, try to discover and create
         let client = Arc::new(BearDogClient::new(BearDogConfig::default())?);
-        
+
         // Verify we can discover endpoints
         let endpoints = client.discover().await?;
         if endpoints.is_empty() {
@@ -114,10 +108,10 @@ impl BearDogSecurityProvider {
                 "BearDog service not found - security provider unavailable".to_string(),
             ));
         }
-        
+
         let mut client_lock = self.client.write().await;
         *client_lock = Some(Arc::clone(&client));
-        
+
         Ok(client)
     }
 }
@@ -138,10 +132,12 @@ impl SecurityProvider for BearDogSecurityProvider {
         _options: Option<EncryptionOptions>,
     ) -> ToadStoolResult<EncryptionResult> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to encrypt
-        use crate::beardog_integration::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
-        
+        use crate::beardog_integration::types::{
+            EncryptionOperation, EncryptionRequest, SecurityLevel,
+        };
+
         let request = EncryptionRequest {
             request_id: uuid::Uuid::new_v4(),
             operation: EncryptionOperation::Encrypt,
@@ -150,21 +146,29 @@ impl SecurityProvider for BearDogSecurityProvider {
             algorithm: Some("AES-256-GCM".to_string()),
             security_level: SecurityLevel::Standard,
         };
-        
+
         let response = client.encrypt(request).await?;
-        
+
         // Extract IV and auth tag from metadata
         let metadata_obj = response.metadata.as_object();
         let iv = metadata_obj
             .and_then(|m| m.get("iv"))
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
-        
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_u64().map(|n| n as u8))
+                    .collect()
+            });
+
         let auth_tag = metadata_obj
             .and_then(|m| m.get("auth_tag"))
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
-        
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_u64().map(|n| n as u8))
+                    .collect()
+            });
+
         Ok(EncryptionResult {
             ciphertext: response.data,
             iv,
@@ -183,10 +187,12 @@ impl SecurityProvider for BearDogSecurityProvider {
         metadata: &EncryptionMetadata,
     ) -> ToadStoolResult<DecryptionResult> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to decrypt
-        use crate::beardog_integration::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
-        
+        use crate::beardog_integration::types::{
+            EncryptionOperation, EncryptionRequest, SecurityLevel,
+        };
+
         let request = EncryptionRequest {
             request_id: uuid::Uuid::new_v4(),
             operation: EncryptionOperation::Decrypt,
@@ -195,9 +201,9 @@ impl SecurityProvider for BearDogSecurityProvider {
             algorithm: Some(metadata.algorithm.clone()),
             security_level: SecurityLevel::Standard,
         };
-        
+
         let response = client.decrypt(request).await?;
-        
+
         Ok(DecryptionResult {
             plaintext: response.data,
             metadata: DecryptionMetadata {
@@ -213,10 +219,10 @@ impl SecurityProvider for BearDogSecurityProvider {
         _options: Option<SigningOptions>,
     ) -> ToadStoolResult<SignatureResult> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to sign
         let response = client.sign(data).await?;
-        
+
         Ok(SignatureResult {
             signature: response.signature,
             algorithm: SignatureAlgorithm::EcdsaP256, // BearDog default
@@ -232,10 +238,10 @@ impl SecurityProvider for BearDogSecurityProvider {
         public_key_id: &str,
     ) -> ToadStoolResult<VerificationResult> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to verify
         let is_valid = client.verify(data, signature, public_key_id).await?;
-        
+
         Ok(if is_valid {
             VerificationResult::Valid
         } else {
@@ -248,12 +254,12 @@ impl SecurityProvider for BearDogSecurityProvider {
         request: PermissionRequest,
     ) -> ToadStoolResult<SecurityPermission> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to create permission
         let response = client.create_permission(&request).await?;
-        
+
         let now = std::time::SystemTime::now();
-        
+
         Ok(SecurityPermission {
             permission_id: response.permission_id,
             holder_id: request.requester_id,
@@ -276,10 +282,10 @@ impl SecurityProvider for BearDogSecurityProvider {
         permission: &SecurityPermission,
     ) -> ToadStoolResult<PermissionValidationResult> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to validate
         let is_valid = client.validate_permission(permission).await?;
-        
+
         Ok(if is_valid {
             PermissionValidationResult::Valid
         } else {
@@ -293,14 +299,14 @@ impl SecurityProvider for BearDogSecurityProvider {
         reason: &str,
     ) -> ToadStoolResult<()> {
         let client = self.get_client().await?;
-        
+
         // Use BearDog client to revoke
         client.revoke_permission(permission_id, reason).await
     }
 
     async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
         let client_lock = self.client.read().await;
-        
+
         match &*client_lock {
             Some(_client) => {
                 // TODO: Check if client is responsive once health_check is available
@@ -320,7 +326,7 @@ mod tests {
     async fn test_beardog_provider_creation() {
         // This may fail if BearDog is not running, which is expected
         let result = BearDogSecurityProvider::new().await;
-        
+
         // Provider creation should succeed even if BearDog is not available
         // (it will operate in degraded mode)
         assert!(result.is_ok());
@@ -330,7 +336,7 @@ mod tests {
     async fn test_beardog_provider_capabilities() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let caps = provider.capabilities().await.unwrap();
-        
+
         assert!(caps.contains(&SecurityCapability::SymmetricEncryption));
         assert!(caps.contains(&SecurityCapability::DigitalSignatures));
     }
@@ -339,7 +345,7 @@ mod tests {
     async fn test_beardog_provider_metadata() {
         let provider = BearDogSecurityProvider::new().await.unwrap();
         let metadata = provider.metadata().await.unwrap();
-        
+
         assert_eq!(metadata.provider_type, "beardog");
     }
 }

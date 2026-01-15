@@ -222,7 +222,7 @@ impl UnifiedBuffer {
         // Get safe mutable slice (unsafe encapsulated in helper method)
         let buffer_slice = self.as_cpu_slice_mut();
         let target_slice = &mut buffer_slice[offset..offset + data.len()];
-        
+
         // Now use safe slice copy (no unsafe here!)
         target_slice.copy_from_slice(data);
 
@@ -300,7 +300,7 @@ impl UnifiedBuffer {
         // Get safe immutable slice (unsafe encapsulated in helper method)
         let buffer_slice = self.as_cpu_slice();
         let source_slice = &buffer_slice[offset..offset + len];
-        
+
         // Now use safe Vec::from to copy (no unsafe here!)
         let result = source_slice.to_vec();
 

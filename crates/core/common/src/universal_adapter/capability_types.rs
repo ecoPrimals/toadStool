@@ -282,16 +282,16 @@ pub enum ModelType {
 pub struct CapabilityInfo {
     /// Unique provider ID (NOT a primal name! Random UUID)
     pub provider_id: String,
-    
+
     /// What capability this provides
     pub capability: CapabilityType,
-    
+
     /// Additional metadata (performance, cost, etc.)
     pub metadata: HashMap<String, String>,
-    
+
     /// Service endpoint (URL, socket path, etc.)
     pub endpoint: ServiceEndpoint,
-    
+
     /// Provider health status
     pub health: HealthStatus,
 }
@@ -359,7 +359,10 @@ impl CapabilityHandle {
 
     /// Check if provider is healthy
     pub fn is_healthy(&self) -> bool {
-        matches!(self.provider.health, HealthStatus::Healthy | HealthStatus::Degraded)
+        matches!(
+            self.provider.health,
+            HealthStatus::Healthy | HealthStatus::Degraded
+        )
     }
 
     /// Get provider ID (for logging/debugging only, NOT for business logic!)

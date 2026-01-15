@@ -42,16 +42,16 @@
 //! # }
 //! ```
 
-pub mod types;
-pub mod provider;
 pub mod factory;
+pub mod provider;
+pub mod types;
 
 // BearDog implementation (ONE of many possible implementations)
 pub mod beardog_impl;
 
-pub use types::*;
-pub use provider::*;
 pub use factory::*;
+pub use provider::*;
+pub use types::*;
 
 // Re-export BearDog implementation
 pub use beardog_impl::BearDogSecurityProvider;

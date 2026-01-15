@@ -77,9 +77,7 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
 async fn detect_storage_type() -> ToadStoolResult<StorageType> {
     // Linux: check rotational attribute
     if cfg!(target_os = "linux") {
-        if let Ok(rotational) =
-            tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await
-        {
+        if let Ok(rotational) = tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await {
             if rotational.trim() == "0" {
                 return Ok(StorageType::SSD);
             }

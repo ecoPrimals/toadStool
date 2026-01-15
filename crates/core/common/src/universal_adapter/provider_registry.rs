@@ -6,14 +6,14 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use crate::ToadStoolResult;
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus};
+use crate::ToadStoolResult;
 
 /// Runtime registry of capability providers
 pub struct ProviderRegistry {
     /// Providers indexed by ID
     providers: HashMap<String, RegisteredProvider>,
-    
+
     /// Provider health check interval (for future use)
     #[allow(dead_code)]
     health_check_interval: Duration,
@@ -40,7 +40,7 @@ impl ProviderRegistry {
     /// Register a capability provider
     pub fn register(&mut self, info: CapabilityInfo) -> ToadStoolResult<()> {
         let provider_id = info.provider_id.clone();
-        
+
         let registered = RegisteredProvider {
             info,
             registered_at: Instant::now(),
@@ -60,12 +60,17 @@ impl ProviderRegistry {
     }
 
     /// Find the best matching provider for a capability request
-    pub fn find_best_match(&self, requested: &CapabilityType) -> ToadStoolResult<Option<CapabilityInfo>> {
+    pub fn find_best_match(
+        &self,
+        requested: &CapabilityType,
+    ) -> ToadStoolResult<Option<CapabilityInfo>> {
         let mut candidates: Vec<&RegisteredProvider> = self
             .providers
             .values()
             .filter(|p| Self::matches_capability(requested, &p.info.capability))
-            .filter(|p| p.info.health == HealthStatus::Healthy || p.info.health == HealthStatus::Unknown)
+            .filter(|p| {
+                p.info.health == HealthStatus::Healthy || p.info.health == HealthStatus::Unknown
+            })
             .collect();
 
         if candidates.is_empty() {
@@ -83,8 +88,14 @@ impl ProviderRegistry {
     fn matches_capability(requested: &CapabilityType, available: &CapabilityType) -> bool {
         match (requested, available) {
             (
-                CapabilityType::Security { features: req_features, min_trust_level },
-                CapabilityType::Security { features: avail_features, min_trust_level: avail_trust },
+                CapabilityType::Security {
+                    features: req_features,
+                    min_trust_level,
+                },
+                CapabilityType::Security {
+                    features: avail_features,
+                    min_trust_level: avail_trust,
+                },
             ) => {
                 // Check if available provider has all requested features
                 let has_features = req_features.iter().all(|f| avail_features.contains(f));
@@ -92,10 +103,16 @@ impl ProviderRegistry {
                 let trust_ok = avail_trust >= min_trust_level;
                 has_features && trust_ok
             }
-            
+
             (
-                CapabilityType::Storage { features: req_features, min_throughput_mbps },
-                CapabilityType::Storage { features: avail_features, min_throughput_mbps: avail_throughput },
+                CapabilityType::Storage {
+                    features: req_features,
+                    min_throughput_mbps,
+                },
+                CapabilityType::Storage {
+                    features: avail_features,
+                    min_throughput_mbps: avail_throughput,
+                },
             ) => {
                 let has_features = req_features.iter().all(|f| avail_features.contains(f));
                 let throughput_ok = match (min_throughput_mbps, avail_throughput) {
@@ -105,10 +122,16 @@ impl ProviderRegistry {
                 };
                 has_features && throughput_ok
             }
-            
+
             (
-                CapabilityType::Coordination { features: req_features, max_latency_ms },
-                CapabilityType::Coordination { features: avail_features, max_latency_ms: avail_latency },
+                CapabilityType::Coordination {
+                    features: req_features,
+                    max_latency_ms,
+                },
+                CapabilityType::Coordination {
+                    features: avail_features,
+                    max_latency_ms: avail_latency,
+                },
             ) => {
                 let has_features = req_features.iter().all(|f| avail_features.contains(f));
                 let latency_ok = match (max_latency_ms, avail_latency) {
@@ -118,19 +141,31 @@ impl ProviderRegistry {
                 };
                 has_features && latency_ok
             }
-            
+
             (
-                CapabilityType::Intelligence { features: req_features, model_types: req_models },
-                CapabilityType::Intelligence { features: avail_features, model_types: avail_models },
+                CapabilityType::Intelligence {
+                    features: req_features,
+                    model_types: req_models,
+                },
+                CapabilityType::Intelligence {
+                    features: avail_features,
+                    model_types: avail_models,
+                },
             ) => {
                 let has_features = req_features.iter().all(|f| avail_features.contains(f));
                 let has_models = req_models.iter().all(|m| avail_models.contains(m));
                 has_features && has_models
             }
-            
+
             (
-                CapabilityType::Compute { features: req_features, min_memory_gb },
-                CapabilityType::Compute { features: avail_features, min_memory_gb: avail_memory },
+                CapabilityType::Compute {
+                    features: req_features,
+                    min_memory_gb,
+                },
+                CapabilityType::Compute {
+                    features: avail_features,
+                    min_memory_gb: avail_memory,
+                },
             ) => {
                 let has_features = req_features.iter().all(|f| avail_features.contains(f));
                 let memory_ok = match (min_memory_gb, avail_memory) {
@@ -140,11 +175,11 @@ impl ProviderRegistry {
                 };
                 has_features && memory_ok
             }
-            
+
             // For other capability types, just match the variant
             (CapabilityType::Network { .. }, CapabilityType::Network { .. }) => true,
             (CapabilityType::Monitoring { .. }, CapabilityType::Monitoring { .. }) => true,
-            
+
             // Different capability types don't match
             _ => false,
         }
@@ -179,10 +214,7 @@ impl ProviderRegistry {
 
     /// List all available capabilities
     pub fn list_capabilities(&self) -> Vec<CapabilityInfo> {
-        self.providers
-            .values()
-            .map(|p| p.info.clone())
-            .collect()
+        self.providers.values().map(|p| p.info.clone()).collect()
     }
 
     /// Get provider by ID
@@ -258,7 +290,7 @@ mod tests {
     fn test_provider_registration() {
         let mut registry = ProviderRegistry::new();
         let provider = create_test_security_provider();
-        
+
         registry.register(provider).unwrap();
         assert_eq!(registry.provider_count(), 1);
     }
@@ -268,10 +300,10 @@ mod tests {
         let mut registry = ProviderRegistry::new();
         let provider = create_test_security_provider();
         let provider_id = provider.provider_id.clone();
-        
+
         registry.register(provider).unwrap();
         assert_eq!(registry.provider_count(), 1);
-        
+
         registry.unregister(&provider_id).unwrap();
         assert_eq!(registry.provider_count(), 0);
     }
@@ -313,10 +345,10 @@ mod tests {
         let mut registry = ProviderRegistry::new();
         let provider = create_test_security_provider();
         let provider_id = provider.provider_id.clone();
-        
+
         registry.register(provider).unwrap();
         registry.update_health(&provider_id, HealthStatus::Degraded);
-        
+
         let info = registry.get_provider(&provider_id).unwrap();
         assert_eq!(info.health, HealthStatus::Degraded);
     }
@@ -326,13 +358,13 @@ mod tests {
         let mut registry = ProviderRegistry::new();
         let provider = create_test_security_provider();
         let provider_id = provider.provider_id.clone();
-        
+
         registry.register(provider).unwrap();
-        
+
         registry.record_success(&provider_id);
         registry.record_success(&provider_id);
         registry.record_failure(&provider_id);
-        
+
         // Verify counts are tracked (internal state)
         assert!(registry.get_provider(&provider_id).is_some());
     }
@@ -341,7 +373,7 @@ mod tests {
     fn test_list_capabilities() {
         let mut registry = ProviderRegistry::new();
         registry.register(create_test_security_provider()).unwrap();
-        
+
         let caps = registry.list_capabilities();
         assert_eq!(caps.len(), 1);
     }
@@ -351,7 +383,7 @@ mod tests {
         let mut registry = ProviderRegistry::new();
         registry.register(create_test_security_provider()).unwrap();
         assert_eq!(registry.provider_count(), 1);
-        
+
         registry.clear();
         assert_eq!(registry.provider_count(), 0);
     }

@@ -32,6 +32,9 @@ pub struct EphemeralKeyStore {
 
 impl EphemeralKeyStore {
     /// Create a new empty key store
+    ///
+    /// # Errors
+    /// Returns an error if isolated memory region allocation fails.
     pub fn new() -> Result<Self> {
         let memory = IsolatedMemoryRegion::new(MAX_KEY_SIZE)?;
 

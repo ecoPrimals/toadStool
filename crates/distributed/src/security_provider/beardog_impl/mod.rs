@@ -20,11 +20,11 @@
 // Allow deprecated during migration - beardog_integration will be evolved
 #![allow(deprecated)]
 
-pub mod client;
 pub mod adapters;
+pub mod client;
 
 #[cfg(test)]
 mod tests;
 
-pub use client::BearDogSecurityProvider;
 pub use adapters::*;
+pub use client::BearDogSecurityProvider;

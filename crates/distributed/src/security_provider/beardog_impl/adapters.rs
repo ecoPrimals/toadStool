@@ -5,17 +5,14 @@
 
 // Allow deprecated during migration phase
 #[allow(deprecated)]
-
 use toadstool::error::ToadStoolResult;
 
-use crate::security_provider::types::*;
-use crate::security_provider::{EncryptionOptions};
 use crate::beardog_integration::types::*;
+use crate::security_provider::types::*;
+use crate::security_provider::EncryptionOptions;
 
 /// Convert generic PermissionRequest to BearDog-specific request
-pub fn to_beardog_permission_request(
-    _request: &PermissionRequest,
-) -> KeyManagementRequest {
+pub fn to_beardog_permission_request(_request: &PermissionRequest) -> KeyManagementRequest {
     // TODO: Implement actual conversion when beardog_integration supports it
     KeyManagementRequest {
         request_id: uuid::Uuid::new_v4(),
@@ -31,7 +28,7 @@ pub fn from_beardog_permission(
     request: &PermissionRequest,
 ) -> ToadStoolResult<SecurityPermission> {
     let now = std::time::SystemTime::now();
-    
+
     // ✅ IMPLEMENTED: Full BearDog integration complete (Phase 1B)
     // NOTE: Using default permission structure - full extraction in future enhancement
     Ok(SecurityPermission {
@@ -72,20 +69,26 @@ pub fn to_beardog_encryption_request(
 }
 
 /// Convert BearDog encryption response to generic EncryptionResult
-pub fn from_beardog_encryption_response(
-    response: EncryptionResponse,
-) -> EncryptionResult {
+pub fn from_beardog_encryption_response(response: EncryptionResponse) -> EncryptionResult {
     // Extract IV and auth tag from metadata if present
     let metadata_obj = response.metadata.as_object();
     let iv = metadata_obj
         .and_then(|m| m.get("iv"))
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
-    
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_u64().map(|n| n as u8))
+                .collect()
+        });
+
     let auth_tag = metadata_obj
         .and_then(|m| m.get("auth_tag"))
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_u64().map(|n| n as u8)).collect());
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_u64().map(|n| n as u8))
+                .collect()
+        });
 
     EncryptionResult {
         ciphertext: response.data,
@@ -107,7 +110,7 @@ mod tests {
     fn test_encryption_request_conversion() {
         let data = b"test data";
         let request = to_beardog_encryption_request(data, None);
-        
+
         assert_eq!(request.data, data);
         assert_eq!(request.algorithm, Some("AES-256-GCM".to_string()));
     }
@@ -123,7 +126,7 @@ mod tests {
         };
 
         let result = from_beardog_encryption_response(response);
-        
+
         assert_eq!(result.ciphertext, vec![1, 2, 3, 4]);
         assert_eq!(result.metadata.algorithm, "AES-256-GCM");
         assert_eq!(result.metadata.key_id, "test-key");

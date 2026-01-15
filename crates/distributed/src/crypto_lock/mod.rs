@@ -18,16 +18,16 @@
 //! - **access_control**: Policy enforcement and access control (Layer 3)
 //! - **cache**: Performance caching (Layer 4)
 
-pub mod permissions;
-pub mod validation;
 pub mod access_control;
 pub mod cache;
+pub mod permissions;
+pub mod validation;
 
 // Re-export all public types for backward compatibility
-pub use permissions::*;
-pub use validation::*;
 pub use access_control::*;
 pub use cache::*;
+pub use permissions::*;
+pub use validation::*;
 
 // Helper function for duration from days
 #[must_use]
