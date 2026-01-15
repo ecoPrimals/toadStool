@@ -95,6 +95,16 @@
 | **[NEXT_STEPS_JAN_15_2026.md](NEXT_STEPS_JAN_15_2026.md)** | Path forward options |
 | **[REFACTORING_READY_TO_START.md](REFACTORING_READY_TO_START.md)** | Refactoring quick-start guide |
 
+### Upstream Debt Resolution (biomeOS) - January 15, 2026
+
+| Document | Description |
+|----------|-------------|
+| **[BIOMEOS_HANDOFF_READY_JAN_15_2026.md](BIOMEOS_HANDOFF_READY_JAN_15_2026.md)** | ⭐ Ready for deployment! (~2 hours work) |
+| **[UPSTREAM_DEBT_FINAL_SUMMARY_JAN_15_2026.md](UPSTREAM_DEBT_FINAL_SUMMARY_JAN_15_2026.md)** | Complete summary (fix + validation) |
+| **[SOCKET_PATH_TEST_VALIDATION_JAN_15_2026.md](SOCKET_PATH_TEST_VALIDATION_JAN_15_2026.md)** | 1,100+ tests validated |
+| **[SOCKET_PATH_FIX_JAN_15_2026.md](SOCKET_PATH_FIX_JAN_15_2026.md)** | Fix details (~50 lines code) |
+| **[UPSTREAM_DEBT_COMPLETE_JAN_15_2026.md](UPSTREAM_DEBT_COMPLETE_JAN_15_2026.md)** | Status and NUCLEUS readiness |
+
 ### Evolution Documents
 
 | Document | Description |

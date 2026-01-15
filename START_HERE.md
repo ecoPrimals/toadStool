@@ -3,9 +3,9 @@
 **Welcome!** This is your 5-minute guide to getting started with ToadStool.
 
 **Version**: 4.1.0  
-**Updated**: January 15, 2026 - **SESSION COMPLETE!** 🎉  
+**Updated**: January 15, 2026 - **SESSION + UPSTREAM DEBT COMPLETE!** 🎉  
 **Status**: ✅ **Production Ready - Grade A- (87/100)**  
-**Operations**: 105/100 (100%) - **2.5 months ahead!**
+**Operations**: 105/100 | **Upstream**: biomeOS socket path fixed | **2.5 months ahead!**
 
 ---
 
@@ -83,6 +83,12 @@ cargo run --release --example dice_loss_demo
 - **[TEST_COVERAGE_ANALYSIS_JAN_15_2026.md](TEST_COVERAGE_ANALYSIS_JAN_15_2026.md)** - Coverage analysis
 - **[BARRACUDA_STATUS_JAN_15_2026.md](BARRACUDA_STATUS_JAN_15_2026.md)** - Operations status
 - **[NEXT_STEPS_JAN_15_2026.md](NEXT_STEPS_JAN_15_2026.md)** - Path forward
+
+**Upstream Debt Resolution** (biomeOS):
+- **[BIOMEOS_HANDOFF_READY_JAN_15_2026.md](BIOMEOS_HANDOFF_READY_JAN_15_2026.md)** - Handoff package (ready!)
+- **[SOCKET_PATH_FIX_JAN_15_2026.md](SOCKET_PATH_FIX_JAN_15_2026.md)** - Fix details (~50 lines)
+- **[SOCKET_PATH_TEST_VALIDATION_JAN_15_2026.md](SOCKET_PATH_TEST_VALIDATION_JAN_15_2026.md)** - 1,100+ tests validated
+- **[UPSTREAM_DEBT_FINAL_SUMMARY_JAN_15_2026.md](UPSTREAM_DEBT_FINAL_SUMMARY_JAN_15_2026.md)** - Complete summary
 
 ---
 
