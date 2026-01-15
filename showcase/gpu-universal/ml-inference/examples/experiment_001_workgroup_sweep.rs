@@ -19,8 +19,6 @@
 //! **Expected Outcome**: Optimal workgroup size per matrix size
 
 use ml_inference_showcase::wgpu::WgpuExecutor;
-use serde_json::json;
-use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -30,8 +28,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize GPU
     let executor = WgpuExecutor::new().await?;
     
-    println!("Hardware: {}", executor.get_adapter_info().name);
-    println!("Backend: {:?}\n", executor.get_adapter_info().backend);
+    println!("Hardware: {}\n", executor.gpu_info());
     
     // Matrix sizes to test
     let matrix_sizes = vec![256, 512, 1024, 2048];
