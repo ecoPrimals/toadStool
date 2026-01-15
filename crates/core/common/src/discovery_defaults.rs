@@ -15,7 +15,13 @@
 //!
 //! In production, discovery should always succeed. If it doesn't, fail fast
 //! rather than falling back to localhost defaults.
+//!
+//! ## Deep Debt Enhancement (Jan 15, 2026)
+//!
+//! Even fallback URLs now use runtime port discovery instead of hardcoded ports.
+//! This ensures no port conflicts even in development environments.
 
+use crate::runtime_ports;
 use std::env;
 use std::time::Duration;
 
@@ -115,6 +121,9 @@ impl LocalhostFallbacks {
     /// Get localhost fallback URL for a service
     ///
     /// Returns None if fallbacks are disabled (production mode)
+    /// 
+    /// **Deep Debt**: Even fallback URLs now try preferred ports with runtime discovery.
+    /// If preferred port unavailable, discovers alternative automatically.
     #[must_use]
     pub fn get_fallback_url(&self, service_type: &str) -> Option<String> {
         if !self.enabled {
@@ -126,13 +135,30 @@ impl LocalhostFallbacks {
             return Some(url);
         }
 
-        // These are ONLY for local development
-        // Real deployments should use proper service discovery
+        // Deep Debt: Use runtime port discovery with preferred defaults
+        // If preferred port unavailable, finds alternative automatically
         match service_type {
-            "toadstool" => Some("http://localhost:8080".to_string()),
-            "redis" => Some("redis://localhost:6379".to_string()),
-            "postgres" => Some("postgresql://localhost:5432".to_string()),
-            "mongodb" => Some("mongodb://localhost:27017".to_string()),
+            "toadstool" => {
+                // Prefer 8080, but discover if unavailable
+                let port = runtime_ports::discover_port_with_preference(8080)
+                    .unwrap_or(8080); // Fallback to preferred if discovery fails
+                Some(format!("http://localhost:{}", port))
+            }
+            "redis" => {
+                let port = runtime_ports::discover_port_with_preference(6379)
+                    .unwrap_or(6379);
+                Some(format!("redis://localhost:{}", port))
+            }
+            "postgres" => {
+                let port = runtime_ports::discover_port_with_preference(5432)
+                    .unwrap_or(5432);
+                Some(format!("postgresql://localhost:{}", port))
+            }
+            "mongodb" => {
+                let port = runtime_ports::discover_port_with_preference(27017)
+                    .unwrap_or(27017);
+                Some(format!("mongodb://localhost:{}", port))
+            }
             _ => None,
         }
     }

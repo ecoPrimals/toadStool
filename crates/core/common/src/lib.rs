@@ -30,6 +30,7 @@ pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
 pub mod primal_identity;
 pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
+pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
 
