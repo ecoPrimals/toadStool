@@ -49,13 +49,13 @@ fn softmax_row(batch: u32, row: u32, scores: ptr<function, array<f32, 1024>>, se
     // Find max for numerical stability
     var max_val: f32 = -1e38;
     for (var col: u32 = 0u; col < seq_len; col++) {
-        max_val = max(max_val, scores[col]);
+        max_val = max(max_val, (*scores)[col]);  // ✅ Dereference pointer before indexing
     }
     
     // Compute exp(x - max) and sum
     var sum: f32 = 0.0;
     for (var col: u32 = 0u; col < seq_len; col++) {
-        let exp_val = exp(scores[col] - max_val);
+        let exp_val = exp((*scores)[col] - max_val);  // ✅ Dereference pointer
         result[col] = exp_val;
         sum += exp_val;
     }
@@ -112,10 +112,13 @@ fn scaled_dot_product_attention(@builtin(global_invocation_id) global_id: vec3<u
     // Step 3: Softmax over scores to get attention weights
     let weights = softmax_row(batch, query_pos, &scores, config.seq_len);
     
+    // ✅ Copy to local variable for indexing (WGSL requires this)
+    var local_weights: array<f32, 1024> = weights;
+    
     // Store attention weights
     for (var key_pos: u32 = 0u; key_pos < config.seq_len; key_pos++) {
         let weight_idx = get_3d_index(batch, query_pos, key_pos, config.seq_len, config.seq_len);
-        attention_weights[weight_idx] = weights[key_pos];
+        attention_weights[weight_idx] = local_weights[key_pos];
     }
     
     // Step 4: Compute output = attention_weights·V
@@ -123,7 +126,7 @@ fn scaled_dot_product_attention(@builtin(global_invocation_id) global_id: vec3<u
         var weighted_sum: f32 = 0.0;
         for (var key_pos: u32 = 0u; key_pos < config.seq_len; key_pos++) {
             let v_idx = get_3d_index(batch, key_pos, v_dim, config.seq_len, config.d_v);
-            weighted_sum += weights[key_pos] * value[v_idx];
+            weighted_sum += local_weights[key_pos] * value[v_idx];
         }
         
         let out_idx = get_3d_index(batch, query_pos, v_dim, config.seq_len, config.d_v);
