@@ -7,7 +7,7 @@ use crate::ToadStoolResult;
 
 /// Platform-specific optimization engine
 pub struct PlatformOptimizer {
-    platform_info: PlatformInfo,
+    pub platform_info: PlatformInfo,
 }
 
 impl Default for PlatformOptimizer {
