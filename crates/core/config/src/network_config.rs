@@ -68,14 +68,18 @@ impl std::str::FromStr for BindMode {
 
 impl Default for NetworkConfig {
     fn default() -> Self {
+        // Deep Debt: Prefer standard ports, but these are just preferences
+        // Actual runtime will check availability and adjust
         Self {
             listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
             service_port: 8080,
             api_port: 8080,
             metrics_port: 9090,
             health_port: 8081,
-            discovery_endpoints: vec!["http://localhost:9999".to_string()],
-            enable_mdns: true,
+            // Deep Debt: No hardcoded discovery endpoints by default
+            // Services should be discovered via mDNS or provided via environment
+            discovery_endpoints: vec![],
+            enable_mdns: true, // Rely on mDNS for discovery
             bind_mode: BindMode::Localhost,
         }
     }
@@ -101,10 +105,9 @@ impl NetworkConfig {
             api_port: env_var_or("TOADSTOOL_API_PORT", 8080),
             metrics_port: env_var_or("TOADSTOOL_METRICS_PORT", 9090),
             health_port: env_var_or("TOADSTOOL_HEALTH_PORT", 8081),
-            discovery_endpoints: env_var_list_or(
-                "TOADSTOOL_DISCOVERY_ENDPOINTS",
-                vec!["http://localhost:9999".to_string()],
-            ),
+            // Deep Debt: Only use discovery endpoints from environment
+            // No hardcoded fallbacks - rely on mDNS or explicit configuration
+            discovery_endpoints: env_var_list_or("TOADSTOOL_DISCOVERY_ENDPOINTS", vec![]),
             enable_mdns: env_var_or("TOADSTOOL_ENABLE_MDNS", true),
             bind_mode: env_var_or("TOADSTOOL_BIND_MODE", BindMode::Localhost),
         }
