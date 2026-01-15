@@ -24,7 +24,7 @@
 //! - Production serving (2-4× speedup)
 //! - Cloud cost reduction (fewer GPUs needed)
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 /// Int8 Quantization
 ///
@@ -308,19 +308,19 @@ impl QuantizeFloat16 {
     /// Convert single float32 to float16 (as u16)
     fn f32_to_f16(value: f32) -> u16 {
         let bits = value.to_bits();
-        let sign = (bits >> 31) & 0x1;
+        let sign = ((bits >> 31) & 0x1) as u16;
         let exponent = ((bits >> 23) & 0xFF) as i32;
         let mantissa = bits & 0x7F_FFFF;
 
         // Handle special cases
         if exponent == 0xFF {
             // Infinity or NaN
-            return ((sign << 15) | 0x7C00 | ((mantissa >> 13) as u16)) as u16;
+            return (sign << 15) | 0x7C00 | ((mantissa >> 13) as u16);
         }
 
         if exponent == 0 {
             // Zero or denormalized
-            return (sign << 15) as u16;
+            return sign << 15;
         }
 
         // Convert exponent from float32 bias (127) to float16 bias (15)
@@ -328,17 +328,17 @@ impl QuantizeFloat16 {
 
         if new_exp >= 31 {
             // Overflow to infinity
-            return ((sign << 15) | 0x7C00) as u16;
+            return (sign << 15) | 0x7C00;
         }
 
         if new_exp <= 0 {
             // Underflow to zero
-            return (sign << 15) as u16;
+            return sign << 15;
         }
 
         // Normal case
         let new_mantissa = (mantissa >> 13) as u16;
-        ((sign << 15) | ((new_exp as u16) << 10) | new_mantissa) as u16
+        (sign << 15) | ((new_exp as u16) << 10) | new_mantissa
     }
 }
 
@@ -363,7 +363,7 @@ impl DequantizeFloat16 {
 
     /// Convert single float16 (as u16) to float32
     fn f16_to_f32(value: u16) -> f32 {
-        let sign = (value >> 15) & 0x1;
+        let sign = ((value >> 15) & 0x1) as u32;
         let exponent = ((value >> 10) & 0x1F) as i32;
         let mantissa = (value & 0x3FF) as u32;
 

@@ -31,7 +31,6 @@
 
 use anyhow::{Context, Result};
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 /// RNN Cell (Elman Network)
 ///
@@ -49,7 +48,9 @@ use wgpu::util::DeviceExt;
 /// - Complexity: O(d_input·d_hidden + d_hidden²)
 /// - Memory: O(batch·d_hidden)
 pub struct RNNCell {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     input_size: u32,
     hidden_size: u32,
@@ -156,7 +157,9 @@ impl RNNCell {
 /// - 4 weight matrices (forget, input, cell, output)
 /// - 4 bias vectors
 pub struct LSTMCell {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     input_size: u32,
     hidden_size: u32,
@@ -292,7 +295,9 @@ impl LSTMCell {
 /// - Faster training
 /// - Often comparable performance
 pub struct GRUCell {
+    #[allow(dead_code)]
     device: Arc<wgpu::Device>,
+    #[allow(dead_code)]
     queue: Arc<wgpu::Queue>,
     input_size: u32,
     hidden_size: u32,
@@ -695,7 +700,9 @@ impl BidirectionalRNN {
 /// - Hierarchical feature learning
 /// - Better for complex sequence tasks
 pub struct StackedLSTM {
+    #[allow(dead_code)]
     layers: Vec<LSTMCell>,
+    #[allow(dead_code)]
     num_layers: u32,
 }
 
