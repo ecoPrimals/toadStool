@@ -23,5 +23,8 @@
 pub mod client;
 pub mod adapters;
 
+#[cfg(test)]
+mod tests;
+
 pub use client::BearDogSecurityProvider;
 pub use adapters::*;
