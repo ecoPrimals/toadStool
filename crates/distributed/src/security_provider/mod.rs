@@ -46,12 +46,12 @@ pub mod types;
 pub mod provider;
 pub mod factory;
 
-// BearDog implementation will be migrated in future commit
-// TODO: Move beardog_integration/ to security_provider/beardog_impl/
+// BearDog implementation (ONE of many possible implementations)
+pub mod beardog_impl;
 
 pub use types::*;
 pub use provider::*;
 pub use factory::*;
 
-// BearDog implementation will be added in future commit
-// TODO: Migrate beardog_integration/ to security_provider/beardog_impl/
+// Re-export BearDog implementation
+pub use beardog_impl::BearDogSecurityProvider;
