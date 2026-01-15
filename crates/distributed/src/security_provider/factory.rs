@@ -103,12 +103,21 @@ impl SecurityProviderFactory {
     async fn create_in_process_provider() -> ToadStoolResult<Arc<dyn SecurityProvider>> {
         // For in-process, we can try to instantiate providers directly
         
-        // TODO: Try beardog implementation (when migrated to beardog_impl/)
-        // TODO: Try LocalKeyringProvider (future)
-        // TODO: Try SoftwareHSMProvider (future)
+        // ✅ COMPLETED: BearDog SecurityProvider fully implemented (Phase 1B)
+        // Try BearDog implementation first
+        use crate::security_provider::beardog_impl::BearDogSecurityProvider;
+        match BearDogSecurityProvider::new().await {
+            Ok(provider) => return Ok(Arc::new(provider) as Arc<dyn SecurityProvider>),
+            Err(_) => {
+                // BearDog not available, try other providers
+            }
+        }
+        
+        // TODO(future): Try LocalKeyringProvider
+        // TODO(future): Try SoftwareHSMProvider
 
         Err(ToadStoolError::not_found(
-            "No in-process security provider available yet - beardog migration pending".to_string(),
+            "No in-process security provider available (tried BearDog)".to_string(),
         ))
     }
 
