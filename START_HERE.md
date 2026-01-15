@@ -3,7 +3,7 @@
 **Welcome!** This is your 5-minute guide to getting started with ToadStool.
 
 **Version**: 3.3.0  
-**Updated**: January 15, 2026 (Post-Optimization Research)  
+**Updated**: January 15, 2026 (Cross-Vendor Research + Adaptive Strategy)  
 **Status**: ✅ **Production Ready - Grade A+ (100/100)** 🏆
 
 ---
@@ -46,21 +46,30 @@ cargo run --release --example dice_loss_demo
 
 **🎉 60 GPU operations, ALL VERIFIED!** (100% TARGET ACHIEVED!)
 
-### barraCUDA Status - 60 OPERATIONS + OPTIMIZATION INSIGHTS! 🏆
+### barraCUDA Status - 60 OPS + CROSS-VENDOR RESEARCH + ADAPTIVE! 🏆
 
+**Core Achievement**:
 - **60 operations** implemented & verified across 12 categories
 - **169 comprehensive tests** (100% passing!)
 - **100% TARGET ACHIEVED!** (60/60 operations)
-- **NEW**: BatchMatMul, Split, Squeeze, Unsqueeze ✨
-- **COMPLETE**: U-Net, Transformers, Video/Medical (Conv3D) 🎯
 - **60 WGSL shaders** (vendor-agnostic)
-- **Benchmarking complete** - performance baseline established
-- **Optimization research complete** - empirical findings documented 🔬
-- **Strategic pivot** - operation fusion + MatMul focus (data-driven!)
-- **100% complete categories**: All 12 categories!
-- **LEARNED**: WebGPU ≠ CUDA - platform-specific strategies required
-- **See [60_OPERATIONS_COMPLETE.md](60_OPERATIONS_COMPLETE.md)** for celebration
-- **See [LAYERNORM_OPTIMIZATION_RESULTS.md](LAYERNORM_OPTIMIZATION_RESULTS.md)** for insights
+
+**Research Breakthrough** (27+ hour marathon!):
+- **3 Experiments**: MatMul (NVIDIA), MatMul (AMD), LayerNorm (NVIDIA)
+- **720 Measurements**: 10 runs × 72 configurations
+- **AMD 3x Faster**: RX 6950 XT crushes RTX 3090 on small matrices!
+- **Vendor-Specific Patterns**: AMD chaotic (32→1024→256→32), NVIDIA consistent (128-256)
+
+**Strategic Evolution**:
+- **Adaptive System Spec**: Complete design in `specs/adaptive_optimization.md`
+- **Runtime Profiling**: 10-second startup learns YOUR GPU
+- **Zero Configuration**: Automatically optimal on any hardware
+- **Implementation Plan**: Phase 1 starting this week!
+
+**Documentation**:
+- **See [RESEARCH_SESSION_COMPLETE_JAN15_2026.md](RESEARCH_SESSION_COMPLETE_JAN15_2026.md)** for epic journey
+- **See [AMD_vs_NVIDIA_ANALYSIS.md](AMD_vs_NVIDIA_ANALYSIS.md)** for shocking findings
+- **See [ADAPTIVE_OPTIMIZATION_PROGRESS.md](ADAPTIVE_OPTIMIZATION_PROGRESS.md)** for tracking
 
 ---
 
