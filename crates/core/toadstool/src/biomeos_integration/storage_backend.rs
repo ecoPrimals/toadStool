@@ -295,10 +295,11 @@ pub trait StorageBackend: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>>;
 }
 
-/// Production implementation using NestGate HTTP API
+/// Production implementation using NestGate Unix Socket API (Pure Rust!)
+///
+/// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct NestGateBackend {
-    client: reqwest::Client,
-    endpoint: String,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     #[allow(dead_code)] // Stored for potential future use (defaults, reporting, etc.)
     storage_tier: String,
     replication_enabled: bool,
@@ -306,17 +307,20 @@ pub struct NestGateBackend {
 }
 
 impl NestGateBackend {
-    /// Create a new NestGate backend
+    /// Create a new NestGate backend with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
     pub fn new(
-        endpoint: impl Into<String>,
+        _endpoint: impl Into<String>,
         storage_tier: impl Into<String>,
         replication_enabled: bool,
         replication_factor: u32,
     ) -> Self {
+        // Use unix socket path discovery instead of HTTP endpoint
+        let socket_path = toadstool_common::primal_sockets::get_nestgate_socket_path();
         Self {
-            client: reqwest::Client::new(),
-            endpoint: endpoint.into(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             storage_tier: storage_tier.into(),
             replication_enabled,
             replication_factor,
@@ -326,26 +330,15 @@ impl NestGateBackend {
 
 impl StorageBackend for NestGateBackend {
     fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let endpoint = self.endpoint.clone();
-        let client = self.client.clone();
-
         Box::pin(async move {
-            let response = client
-                .get(format!("{}/health", endpoint))
-                .send()
+            // Health check via JSON-RPC over unix socket
+            let _health: serde_json::Value = self
+                .rpc_client
+                .call("nestgate.health", serde_json::json!({}))
                 .await
-                .map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}"))
-                })?;
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}")))?;
 
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "NestGate health check failed with status: {}",
-                    response.status()
-                )));
-            }
-
-            tracing::info!("Successfully connected to NestGate at {}", endpoint);
+            tracing::info!("Successfully connected to NestGate via unix socket");
             Ok(())
         })
     }
