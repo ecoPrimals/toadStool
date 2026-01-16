@@ -102,3 +102,7 @@ harness = false
 [[bench]]
 name = "layernorm_comparison"
 harness = false
+
+[[bench]]
+name = "layernorm_fused_benchmark"
+harness = false
