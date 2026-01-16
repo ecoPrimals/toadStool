@@ -94,7 +94,9 @@ impl WgpuExecutor {
     /// Create executor with AMD GPU (for research/testing)
     pub async fn new_amd() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
-            info.name.to_lowercase().contains("amd") || info.name.to_lowercase().contains("radeon")
+            info.vendor == 0x1002 || // AMD vendor ID
+            info.name.to_lowercase().contains("amd") || 
+            info.name.to_lowercase().contains("radeon")
         })
         .await
         .context("No AMD GPU found")
@@ -103,11 +105,35 @@ impl WgpuExecutor {
     /// Create executor with NVIDIA GPU (for research/testing)
     pub async fn new_nvidia() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
-            info.name.to_lowercase().contains("nvidia")
-                || info.name.to_lowercase().contains("geforce")
+            info.vendor == 0x10DE || // NVIDIA vendor ID
+            info.name.to_lowercase().contains("nvidia") ||
+            info.name.to_lowercase().contains("geforce")
         })
         .await
         .context("No NVIDIA GPU found")
+    }
+    
+    /// Create executor with Intel GPU (for research/testing)
+    pub async fn new_intel() -> Result<Self> {
+        Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
+            info.vendor == 0x8086 || // Intel vendor ID
+            info.name.to_lowercase().contains("intel") ||
+            info.name.to_lowercase().contains("iris")
+        })
+        .await
+        .context("No Intel GPU found")
+    }
+    
+    /// Create executor with Apple GPU (for research/testing)
+    pub async fn new_apple() -> Result<Self> {
+        Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
+            info.name.to_lowercase().contains("apple") ||
+            info.name.to_lowercase().contains("m1") ||
+            info.name.to_lowercase().contains("m2") ||
+            info.name.to_lowercase().contains("m3")
+        })
+        .await
+        .context("No Apple GPU found")
     }
 
     /// List all available GPUs (for research/multi-GPU systems)
