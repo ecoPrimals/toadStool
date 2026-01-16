@@ -122,9 +122,9 @@ impl CoordinationDiscovery {
 
 /// Coordination service client - Makes requests to discovered services
 ///
-/// **Design**: Works with ANY coordination provider's HTTP API
+/// **Design**: Works with ANY coordination provider via unix sockets (pure Rust!)
 pub struct CoordinationClient {
-    http_client: reqwest::Client,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     service_endpoint: ServiceEndpoint,
     timeout: Duration,
 }
@@ -139,18 +139,12 @@ impl CoordinationClient {
             })
         })?;
 
-        let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: "http_client".to_string(),
-                    reason: e.to_string(),
-                })
-            })?;
+        // Use unix socket path discovery for coordination service  
+        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path(); // Coordination via Songbird
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
-            http_client,
+            rpc_client,
             service_endpoint: endpoint.clone(),
             timeout: Duration::from_secs(30),
         })
