@@ -2,9 +2,9 @@
 
 **Universal GPU compute with breakthrough async performance**
 
-## 🔥 Performance Breakthrough: 5.95x Async Speedup!
+## 🔥 Performance Breakthrough: 5.28x Async Speedup!
 
-**Proven on NVIDIA RTX 3090**: Simple `tokio::join!` pattern delivers **5.95x speedup**
+**Proven on NVIDIA RTX 3090**: Simple `tokio::join!` pattern delivers **5.28x speedup**
 
 ```rust
 // ❌ Sequential: 107.74ms
@@ -12,7 +12,7 @@ let r1 = executor.execute_matmul(&a, &b, ...).await?;
 let r2 = executor.execute_matmul(&c, &d, ...).await?;
 let r3 = executor.execute_matmul(&e, &f, ...).await?;
 
-// ✅ Async: 18.11ms - 5.95x faster!
+// ✅ Async: 20.41ms - 5.28x faster!
 let (r1, r2, r3) = tokio::join!(
     executor.execute_matmul(&a, &b, ...),
     executor.execute_matmul(&c, &d, ...),
@@ -21,8 +21,9 @@ let (r1, r2, r3) = tokio::join!(
 ```
 
 **📖 Learn More**:
-- `ASYNC_PATTERNS_GUIDE.md` - When and how to use async (5.95x proven!)
+- `ASYNC_PATTERNS_GUIDE.md` - When and how to use async (5.28x proven!)
 - `ASYNC_COOKBOOK.md` - 8 practical recipes for real-world use
+- `COMPREHENSIVE_EVOLUTION_COMPLETE_JAN_16_2026.md` - Full evolution summary
 
 ---
 
