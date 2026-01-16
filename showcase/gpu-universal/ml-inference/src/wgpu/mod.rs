@@ -47,6 +47,7 @@ pub(crate) mod async_executor;
 pub(crate) mod basic_ops;
 pub(crate) mod data_ops;
 mod executor;
+pub(crate) mod matmul_strategy;
 pub(crate) mod normalization;
 pub(crate) mod pooling;
 pub(crate) mod reductions;
@@ -57,6 +58,9 @@ pub(crate) mod utils;
 
 // Re-export async execution framework
 pub use async_executor::{AsyncBatch, AsyncOp, AsyncPipeline, AsyncStats, GpuVendor};
+
+// Re-export MatMul strategy selection
+pub use matmul_strategy::MatMulStrategy;
 
 // Re-export commonly used items for convenience
 pub use anyhow::{Context, Result};
