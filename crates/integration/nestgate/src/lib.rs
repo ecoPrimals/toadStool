@@ -53,7 +53,11 @@ pub use pipeline::{
     ScheduleType, StepExecutionStatus, StepStatus, StepType,
 };
 
-pub use client::NestGateClient;
+// Capability-based storage client (vendor-agnostic!)
+pub use client::StorageClient;
+
+// Legacy export for compatibility
+pub use client::StorageClient as NestGateClient;
 
 // Tests module
 #[cfg(test)]
