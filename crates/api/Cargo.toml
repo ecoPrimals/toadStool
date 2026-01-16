@@ -56,8 +56,9 @@ validator = { version = "0.16", features = ["derive"] }
 futures-util = "0.3"
 tokio-tungstenite = "0.20"
 
-# Authentication and security
-jsonwebtoken = "9.0"
+# Authentication and security  
+# NOTE: jsonwebtoken removed - not actively used, had C dependency (ring)
+# If JWT needed in future, use jwt-simple (pure Rust alternative)
 bcrypt = "0.15"
 argon2 = "0.5"
 
@@ -88,7 +89,7 @@ config = "0.14"
 dotenvy = "0.15"
 
 # HTTP client for health checks
-reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 # Metrics and monitoring
 prometheus = "0.13"

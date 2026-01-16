@@ -74,7 +74,7 @@ uuid = { workspace = true, features = ["v4"] }
 dirs = "5.0"
 
 # Networking
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true }
 # mdns = "3.0"  # Note: mDNS discovery available via toadstool-config crate
 
 # System information
@@ -91,10 +91,9 @@ atty = "0.2"
 # Process management
 which = "4.4"
 
-# Cryptography (for BearDog integration)
-ring = "0.17"
+# Cryptography (for BearDog integration) - Pure Rust (RustCrypto)
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 base64 = "0.21"
-rustls = { version = "0.21", default-features = false, features = ["logging", "tls12"] }
 sha2 = "0.10"
 hex = "0.4"
 
