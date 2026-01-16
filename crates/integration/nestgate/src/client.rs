@@ -321,91 +321,65 @@ impl StorageClient {
     pub async fn delete_artifact(&self, artifact_id: &str) -> NestGateResult<()> {
         info!("Deleting artifact: {}", artifact_id);
 
-        let url = format!("{}/artifacts/{}", self.config.endpoint, artifact_id);
-        let response = self
-            .client
-            .delete(&url)
-            .send()
+        // Modern async RPC call
+        let _response: serde_json::Value = self
+            .rpc_client
+            .call(
+                "storage.artifact.delete",
+                serde_json::json!({ "artifact_id": artifact_id }),
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
-        if !response.status().is_success() {
-            return Err(NestGateError::Storage(format!(
-                "Failed to delete artifact: {}",
-                response.status()
-            )));
-        }
-
-        // Remove from cache
-        if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
-            // Cache implementation would go here
-            // For now, we'll just proceed without caching
-        }
-
-        info!("Successfully deleted artifact: {}", artifact_id);
+        info!("✅ Successfully deleted artifact: {}", artifact_id);
         Ok(())
     }
 
-    /// Create a data processing pipeline
+    /// Create a data processing pipeline - Modern async
+    ///
+    /// **MODERN ASYNC**: Concurrent pipeline creation
     ///
     /// # Errors
     /// Returns an error if the pipeline configuration is invalid or creation fails
     pub async fn create_pipeline(&self, config: PipelineConfig) -> NestGateResult<String> {
         info!("Creating pipeline: {}", config.pipeline_id);
 
-        let url = format!("{}/pipelines", self.config.endpoint);
-        let response = self
-            .client
-            .post(&url)
-            .json(&config)
-            .send()
+        // Modern async RPC call
+        let pipeline_id: String = self
+            .rpc_client
+            .call_typed(
+                "storage.pipeline.create",
+                serde_json::to_value(&config)
+                    .map_err(|e| NestGateError::Pipeline(e.to_string()))?,
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
-        if !response.status().is_success() {
-            return Err(NestGateError::Pipeline(format!(
-                "Failed to create pipeline: {}",
-                response.status()
-            )));
-        }
-
-        // Cache the pipeline configuration
-        // Cache implementation would go here
-        // For now, we'll just proceed without caching
-
-        info!("Successfully created pipeline: {}", config.pipeline_id);
-        Ok(config.pipeline_id)
+        info!("✅ Successfully created pipeline: {}", pipeline_id);
+        Ok(pipeline_id)
     }
 
-    /// Start a pipeline execution
+    /// Start a pipeline execution - Modern async
+    ///
+    /// **MODERN ASYNC**: Non-blocking pipeline start
     ///
     /// # Errors
     /// Returns an error if the pipeline is not found or start fails
     pub async fn start_pipeline(&self, pipeline_id: &str) -> NestGateResult<String> {
         info!("Starting pipeline: {}", pipeline_id);
 
-        let url = format!("{}/pipelines/{}/start", self.config.endpoint, pipeline_id);
-        let response = self
-            .client
-            .post(&url)
-            .send()
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(NestGateError::Pipeline(format!(
-                "Failed to start pipeline: {}",
-                response.status()
-            )));
-        }
-
-        let execution_id: String = response
-            .json()
+        // Modern async RPC call
+        let execution_id: String = self
+            .rpc_client
+            .call_typed(
+                "storage.pipeline.start",
+                serde_json::json!({ "pipeline_id": pipeline_id }),
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
         info!(
-            "Successfully started pipeline: {} with execution ID: {}",
+            "✅ Successfully started pipeline: {} with execution ID: {}",
             pipeline_id, execution_id
         );
         Ok(execution_id)
