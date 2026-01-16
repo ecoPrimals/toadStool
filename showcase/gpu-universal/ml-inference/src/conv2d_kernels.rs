@@ -436,7 +436,13 @@ impl Conv2DExecutor {
             .build()
             .context("Failed to build Conv2D kernel")?;
 
-        // Execute
+        // Execute kernel
+        // SAFETY: OpenCL FFI - kernel.enq() is unsafe in ocl crate (thin wrapper over clEnqueueNDRangeKernel).
+        // Invariants upheld:
+        // - Kernel built with correct buffer arguments and types
+        // - All buffers are valid and not aliased
+        // - Queue is valid and matches kernel's queue
+        // - Global work size matches output dimensions
         unsafe {
             kernel.enq().context("Failed to execute Conv2D")?;
         }
@@ -505,7 +511,13 @@ impl Conv2DExecutor {
             .build()
             .context("Failed to build MaxPool2D kernel")?;
 
-        // Execute
+        // Execute kernel
+        // SAFETY: OpenCL FFI - kernel.enq() is unsafe in ocl crate (thin wrapper over clEnqueueNDRangeKernel).
+        // Invariants upheld:
+        // - Kernel built with correct buffer arguments and types
+        // - All buffers are valid and not aliased
+        // - Queue is valid and matches kernel's queue
+        // - Global work size matches output dimensions
         unsafe {
             kernel.enq().context("Failed to execute MaxPool2D")?;
         }

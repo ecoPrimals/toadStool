@@ -322,6 +322,11 @@ impl OpenCLExecutor {
             .build()
             .context("Failed to build layer1 kernel")?;
 
+        // SAFETY: OpenCL FFI - kernel.enq() is unsafe in ocl crate (thin wrapper over clEnqueueNDRangeKernel).
+        // Invariants upheld:
+        // - Kernel built with correct buffer arguments (input, w1, b1, output, dimensions)
+        // - All buffers are valid and not aliased
+        // - Queue is valid and matches kernel's queue
         unsafe {
             kernel1.enq().context("Failed to execute layer1")?;
         }
@@ -365,6 +370,11 @@ impl OpenCLExecutor {
             .build()
             .context("Failed to build add_bias kernel")?;
 
+        // SAFETY: OpenCL FFI - kernel.enq() is unsafe in ocl crate (thin wrapper over clEnqueueNDRangeKernel).
+        // Invariants upheld:
+        // - Kernel built with correct buffer arguments (z2, b2, output, dimensions)
+        // - All buffers are valid and not aliased
+        // - Queue is valid and matches kernel's queue
         unsafe {
             kernel_bias.enq().context("Failed to execute add_bias")?;
         }
@@ -382,6 +392,12 @@ impl OpenCLExecutor {
             .build()
             .context("Failed to build softmax kernel")?;
 
+        // SAFETY: OpenCL FFI - kernel.enq() is unsafe in ocl crate (thin wrapper over clEnqueueNDRangeKernel).
+        // Invariants upheld:
+        // - Kernel built with correct buffer arguments (output, output, dimensions)
+        // - In-place operation: output buffer used for both input and output
+        // - All buffers are valid and not aliased
+        // - Queue is valid and matches kernel's queue
         unsafe {
             kernel_softmax.enq().context("Failed to execute softmax")?;
         }

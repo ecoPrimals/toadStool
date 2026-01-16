@@ -64,6 +64,16 @@ impl VulkanExecutor {
     /// # Arguments
     /// * `device_index` - Index of GPU to use (from discovery)
     pub fn new(device_index: usize) -> Result<Self> {
+        // SAFETY: Vulkan FFI - All Vulkan API calls are unsafe (C API via ash crate).
+        // This entire initialization sequence is standard Vulkan bootstrapping pattern.
+        // Invariants upheld throughout:
+        // - Vulkan library loaded successfully via ash::Entry
+        // - Instance created with valid ApplicationInfo
+        // - Device selection validates index bounds
+        // - Logical device created with valid queue family
+        // - Command pool and descriptor pool created with valid parameters
+        // - All Vulkan objects stored in Self for proper cleanup in Drop
+        // - Error handling at each step prevents partial initialization
         unsafe {
             // Load Vulkan
             let entry = ash::Entry::load().context("Failed to load Vulkan library")?;
@@ -191,6 +201,13 @@ impl VulkanExecutor {
     }
 
     /// Create buffer on GPU
+    ///
+    /// # Safety
+    /// Vulkan FFI - Caller must ensure:
+    /// - Device is valid
+    /// - Size is non-zero
+    /// - Usage flags are valid
+    /// - Returned buffer and memory must be properly destroyed
     #[allow(dead_code)]
     unsafe fn create_buffer(
         &self,
@@ -250,6 +267,14 @@ impl VulkanExecutor {
     }
 
     /// Write data to buffer
+    ///
+    /// # Safety
+    /// Vulkan FFI - Caller must ensure:
+    /// - Memory is valid and allocated
+    /// - Memory is host-visible and coherent
+    /// - Data size fits within allocated memory
+    /// - Memory is not currently mapped elsewhere
+    /// - T is Pod-safe for GPU transfer
     #[allow(dead_code)]
     unsafe fn write_buffer<T: Copy>(&self, memory: vk::DeviceMemory, data: &[T]) -> Result<()> {
         let size = std::mem::size_of_val(data) as vk::DeviceSize;
@@ -267,6 +292,15 @@ impl VulkanExecutor {
     }
 
     /// Read data from buffer
+    ///
+    /// # Safety
+    /// Vulkan FFI - Caller must ensure:
+    /// - Memory is valid and allocated
+    /// - Memory is host-visible and coherent
+    /// - Data size fits within allocated memory
+    /// - Memory is not currently mapped elsewhere
+    /// - T is Pod-safe for GPU transfer
+    /// - GPU operations writing to this memory have completed
     #[allow(dead_code)]
     unsafe fn read_buffer<T: Copy>(&self, memory: vk::DeviceMemory, data: &mut [T]) -> Result<()> {
         let size = std::mem::size_of_val(data) as vk::DeviceSize;
@@ -358,6 +392,11 @@ impl VulkanExecutor {
 
 impl Drop for VulkanExecutor {
     fn drop(&mut self) {
+        // SAFETY: Vulkan FFI cleanup - destroying all Vulkan objects created in new().
+        // Invariants upheld:
+        // - Objects destroyed in reverse order of creation (standard Vulkan pattern)
+        // - Device waited for idle before cleanup
+        // - All handles are valid (created successfully in new())
         unsafe {
             // Clean up pipelines
             if let Some(pipeline) = &self.matrix_multiply_pipeline {
