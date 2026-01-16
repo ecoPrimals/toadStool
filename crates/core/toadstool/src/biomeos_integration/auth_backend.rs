@@ -79,8 +79,8 @@ impl BearDogBackend {
     /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
     pub fn new(_endpoint: impl Into<String>) -> Self {
-        // Use unix socket path discovery instead of HTTP endpoint
-        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
+        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         }

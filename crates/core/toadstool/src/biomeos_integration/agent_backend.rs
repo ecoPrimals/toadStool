@@ -224,8 +224,8 @@ impl SquirrelBackend {
         agent_runtime: impl Into<String>,
         mcp_enabled: bool,
     ) -> Self {
-        // Use unix socket path discovery instead of HTTP endpoint
-        let socket_path = toadstool_common::primal_sockets::get_squirrel_socket_path();
+        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("squirrel");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             model_registry: model_registry.into(),

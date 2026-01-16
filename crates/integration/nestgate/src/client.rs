@@ -139,34 +139,50 @@ impl StorageClient {
         Ok(client)
     }
 
-    /// Connect to storage server with default configuration (Direct endpoint)
+    /// Connect to storage server by service name
     ///
     /// **Note**: Consider using `discover()` for capability-based discovery.
+    /// This method requires knowing the service name (e.g., "nestgate", "minio").
+    ///
+    /// # Arguments
+    /// * `service_name` - Name of the storage service to connect to
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid or connection fails
-    pub async fn connect(endpoint: &str) -> NestGateResult<Self> {
+    pub async fn connect(service_name: &str) -> NestGateResult<Self> {
         let config = NestGateConfig {
-            endpoint: endpoint.to_string(),
+            endpoint: format!("unix://{}", service_name),  // Placeholder
             ..Default::default()
         };
-        Self::with_config(config).await
+        Self::with_config(config, Some(service_name.to_string())).await
     }
 
     /// Create client with custom configuration
     ///
+    /// **TRUE PRIMAL**: Accepts optional service name from discovery, no hardcoding!
+    ///
+    /// # Arguments
+    /// * `config` - Storage configuration
+    /// * `service_name` - Optional discovered service name (defaults to "nestgate" for backward compat)
+    ///
     /// # Errors
     /// Returns an error if the client configuration is invalid
-    pub async fn with_config(config: NestGateConfig) -> NestGateResult<Self> {
-        // PURE RUST: Use unix socket instead of HTTP
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_nestgate_socket_path()
-        );
+    pub async fn with_config(config: NestGateConfig, service_name: Option<String>) -> NestGateResult<Self> {
+        // ✅ TRUE PRIMAL: Use discovered service name or fallback
+        let service_name = service_name.unwrap_or_else(|| {
+            // Fallback to "nestgate" for backward compatibility
+            // In production, prefer using discover() which provides the service name
+            "nestgate".to_string()
+        });
+
+        // ✅ Generic socket path resolution (works with ANY storage service!)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         let client = Self {
             rpc_client,
             config,
-            service_name: "nestgate".to_string(),
+            service_name,  // ✅ Dynamic service name!
         };
 
         // Perform initial health check

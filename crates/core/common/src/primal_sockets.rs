@@ -39,11 +39,18 @@ pub fn get_family_id() -> String {
 
 /// Get BearDog unix socket path
 ///
+/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("beardog")` instead
+///
+/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "beardog".
+/// Prefer: `StorageClient::discover()` or `get_socket_path_for_service(discovered_name)`
+///
 /// Priority:
 /// 1. BEARDOG_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/beardog-{family}.sock`
-///
-/// **TRUE PRIMAL**: Discovery-based, no hardcoding
+#[deprecated(
+    since = "4.9.0",
+    note = "Use capability-based discovery + get_socket_path_for_service() instead. This violates TRUE PRIMAL self-knowledge."
+)]
 pub fn get_beardog_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
@@ -75,9 +82,17 @@ pub fn get_songbird_socket_path() -> PathBuf {
 
 /// Get NestGate unix socket path
 ///
+/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("nestgate")` instead
+///
+/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "nestgate".
+///
 /// Priority:
 /// 1. NESTGATE_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/nestgate-{family}.sock`
+#[deprecated(
+    since = "4.9.0",
+    note = "Use capability-based discovery + get_socket_path_for_service() instead"
+)]
 pub fn get_nestgate_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("NESTGATE_SOCKET") {
@@ -92,9 +107,17 @@ pub fn get_nestgate_socket_path() -> PathBuf {
 
 /// Get Squirrel unix socket path
 ///
+/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("squirrel")` instead
+///
+/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "squirrel".
+///
 /// Priority:
 /// 1. SQUIRREL_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/squirrel-{family}.sock`
+#[deprecated(
+    since = "4.9.0",
+    note = "Use capability-based discovery + get_socket_path_for_service() instead"
+)]
 pub fn get_squirrel_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("SQUIRREL_SOCKET") {
@@ -154,10 +177,18 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 
 /// Get socket path for any service by name
 ///
+/// **TRUE PRIMAL**: Generic socket resolution for ANY service
+///
 /// Maps service names to socket paths using established patterns.
 /// Falls back to generic pattern for unknown services.
+///
+/// This is the **preferred** method for socket path resolution as it:
+/// - Works with ANY service name (discovered or known)
+/// - Respects environment variables
+/// - Has consistent fallback behavior
+#[allow(deprecated)]  // Calls deprecated functions internally for backward compat
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
-    // Map known service names to specific socket paths
+    // Map known service names to specific socket paths (for environment variable support)
     match service_name.to_lowercase().as_str() {
         "beardog" | "bear-dog" => get_beardog_socket_path(),
         "songbird" | "song-bird" => get_songbird_socket_path(),
@@ -166,8 +197,15 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
         "toadstool" | "toad-stool" => get_toadstool_socket_path(),
         "nucleus" | "biomeos" => get_nucleus_socket_path(),
         
-        // Generic pattern for unknown services
+        // Generic pattern for unknown services (TRUE PRIMAL - works with ANY service!)
         _ => {
+            // Try service-specific environment variable first
+            let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
+            if let Ok(socket) = std::env::var(&env_var) {
+                return PathBuf::from(socket);
+            }
+            
+            // Fall back to generic pattern
             let runtime_dir = get_runtime_dir();
             let family = get_family_id();
             PathBuf::from(&runtime_dir).join(format!("{}-{}.sock", service_name.to_lowercase(), family))

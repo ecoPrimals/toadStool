@@ -73,7 +73,7 @@ impl EntropyClient {
                 Ok(Self {
                     endpoint: None,
                     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                        toadstool_common::primal_sockets::get_beardog_socket_path()
+                        toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
                     ),
                     available: false,
                 })
@@ -114,10 +114,10 @@ impl EntropyClient {
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
     async fn probe_service(_url: &str) -> Result<()> {
-        // PURE RUST: Try to connect to unix socket
-        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
+        // PURE RUST: Try to connect to unix socket (vendor-agnostic!)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
         
-        match tokio::net::UnixStream::connect(&socket_path).await {
+        match tokio::net::UnixStream::connect(socket_path).await {
             Ok(_) => {
                 tracing::debug!("BearDog unix socket available");
                 Ok(())
@@ -133,7 +133,7 @@ impl EntropyClient {
     /// **PURE RUST**: Uses unix socket instead of HTTP
     async fn connect(endpoint: &str) -> Result<Self> {
         let socket_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_beardog_socket_path()
+            toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
         );
 
         // Verify service is reachable via unix socket

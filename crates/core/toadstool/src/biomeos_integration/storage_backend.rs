@@ -317,8 +317,8 @@ impl NestGateBackend {
         replication_enabled: bool,
         replication_factor: u32,
     ) -> Self {
-        // Use unix socket path discovery instead of HTTP endpoint
-        let socket_path = toadstool_common::primal_sockets::get_nestgate_socket_path();
+        // ✅ TRUE PRIMAL: Generic socket path discovery (vendor-agnostic!)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("nestgate");
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             storage_tier: storage_tier.into(),
