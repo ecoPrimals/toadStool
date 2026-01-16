@@ -43,6 +43,7 @@ pub use executor::{GpuCapabilities, WgpuExecutor};
 // Internal modules
 pub(crate) mod activations;
 pub(crate) mod advanced_ops;
+pub(crate) mod async_executor;
 pub(crate) mod basic_ops;
 pub(crate) mod data_ops;
 mod executor;
@@ -53,6 +54,9 @@ pub(crate) mod regularization;
 pub(crate) mod training;
 mod types;
 pub(crate) mod utils;
+
+// Re-export async execution framework
+pub use async_executor::{AsyncBatch, AsyncOp, AsyncPipeline, AsyncStats, GpuVendor};
 
 // Re-export commonly used items for convenience
 pub use anyhow::{Context, Result};
