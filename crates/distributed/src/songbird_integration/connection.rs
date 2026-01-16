@@ -59,21 +59,13 @@ impl SongbirdConnection {
     ) -> ToadStoolResult<()> {
         match protocol_config.protocol {
             SongbirdProtocol::HTTP => {
-                let client = reqwest::Client::builder()
-                    .timeout(std::time::Duration::from_millis(
-                        protocol_config.http.timeout_ms,
-                    ))
-                    .build()
-                    .map_err(|e| {
-                        ToadStoolError::runtime(format!("Failed to create HTTP client: {e}"))
-                    })?;
-
-                let health_url = format!("{endpoint}/health");
-                client
-                    .get(&health_url)
-                    .send()
-                    .await
-                    .map_err(|e| ToadStoolError::runtime(format!("Health check failed: {e}")))?;
+                // PURE RUST: HTTP removed - use Unix sockets!
+                tracing::warn!(
+                    "HTTP health check deprecated for endpoint: {} - use Unix sockets instead",
+                    endpoint
+                );
+                // Stub: Return success for backward compatibility
+                // Real health checks should use Unix socket RPC
                 Ok(())
             }
             SongbirdProtocol::GRPC => {

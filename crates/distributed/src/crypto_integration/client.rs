@@ -138,7 +138,8 @@ impl CryptoServiceClient {
         })?;
 
         // Use unix socket path discovery - crypto services are typically BearDog
-        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
+        // CAPABILITY-BASED: Use generic discovery instead of primal-specific knowledge
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {

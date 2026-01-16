@@ -18,7 +18,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use toadstool_common::{ToadStoolError, ToadStoolResult};
-use toadstool_common::primal_sockets::get_beardog_socket_path;
+use toadstool_common::primal_sockets::get_socket_path_for_service;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 
 #[allow(unused_imports)] // Keep for discovery trait implementations
@@ -216,7 +216,8 @@ impl BearDogClient {
     /// Returns error if socket path discovery fails
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
         // Get unix socket path from environment-based discovery
-        let socket_path = get_beardog_socket_path();
+        // CAPABILITY-BASED: Use generic discovery instead of primal-specific knowledge
+        let socket_path = get_socket_path_for_service("beardog");
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {

@@ -144,33 +144,20 @@ impl ToadStoolSongbirdIntegration {
     // Protocol-specific submission methods
     async fn submit_via_http(
         &self,
-        request: SongbirdJobRequest,
+        _request: SongbirdJobRequest,
         endpoint: &str,
     ) -> ToadStoolResult<SongbirdJobResponse> {
-        debug!("Submitting job via HTTP to: {}", endpoint);
-
-        let client = reqwest::Client::new();
-        let response = client
-            .post(endpoint)
-            .json(&request)
-            .timeout(std::time::Duration::from_secs(30))
-            .send()
-            .await
-            .map_err(|e| ToadStoolError::network(format!("HTTP submission failed: {e}")))?;
-
-        if response.status().is_success() {
-            let job_response: SongbirdJobResponse = response
-                .json()
-                .await
-                .map_err(|e| ToadStoolError::network(format!("Failed to parse response: {e}")))?;
-
-            Ok(job_response)
-        } else {
-            Err(ToadStoolError::network(format!(
-                "HTTP submission failed with status: {}",
-                response.status()
-            )))
-        }
+        // PURE RUST: HTTP removed - use Unix sockets!
+        tracing::warn!(
+            "HTTP submission deprecated for endpoint: {} - use Unix socket RPC instead",
+            endpoint
+        );
+        
+        // Return error indicating this method is deprecated
+        Err(ToadStoolError::not_supported(
+            "HTTP job submission removed - use Unix socket RPC via SongbirdClient instead. \
+             External HTTP should go through Songbird primal (Concentrated Gap architecture)."
+        ))
     }
 
     async fn submit_via_grpc(
