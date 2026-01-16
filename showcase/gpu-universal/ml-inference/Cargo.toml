@@ -106,3 +106,7 @@ harness = false
 [[bench]]
 name = "layernorm_fused_benchmark"
 harness = false
+
+[[bench]]
+name = "matmul_tiled_benchmark"
+harness = false
