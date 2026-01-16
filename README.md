@@ -12,7 +12,7 @@
 ## 🔥 Evolution Complete v4.5.0 (Jan 16, 2026)
 
 ### Phase 1: Async Patterns ✅ COMPLETE
-**5.95x speedup** on NVIDIA RTX 3090 with `tokio::join!` pattern
+**5.28x speedup** on NVIDIA RTX 3090 with `tokio::join!` pattern (measured Jan 16)
 - **Modern async/await**: Non-blocking GPU operations with Tokio
 - **Proven performance**: 3 concurrent MatMuls (1024×1024) measured
 - **Documentation**: Comprehensive guide + 8 practical recipes

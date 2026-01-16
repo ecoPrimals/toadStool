@@ -76,7 +76,7 @@
 **Comprehensive Evolution**: Modern, idiomatic, fully async Rust with zero deep debt
 
 ### Phase 1: Async Patterns COMPLETE ✅
-- **5.95x speedup** on NVIDIA RTX 3090 (proven, benchmarked)
+- **5.28x speedup** on NVIDIA RTX 3090 (measured Jan 16, 2026)
 - **Modern async/await**: Tokio-based, non-blocking GPU operations
 - **Documentation**: Comprehensive guides + cookbook (8 recipes)
 - **Location**: `showcase/gpu-universal/ml-inference/`
