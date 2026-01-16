@@ -271,8 +271,4 @@ impl WgpuExecutor {
     /// Execute Instance Normalization
     ///
     /// Normalizes each instance (batch sample) independently across spatial dimensions.
-    /// Computes mean and variance over (height, width) for each (batch, channel) pair.
-    ///
-    /// Used in: Style transfer, GANs, real-time image generation.
-    /// Benefits: No batch dependency, works well for style/texture tasks.
-    ///
+}
