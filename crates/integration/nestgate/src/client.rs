@@ -16,7 +16,7 @@
 //! ```
 
 use chrono::Utc;
-use reqwest::Client;
+// PURE RUST: Using unix sockets instead of HTTP
 use sha2::Digest;
 use sha2::Sha256;
 use std::collections::HashMap;
@@ -35,10 +35,10 @@ use crate::types::{
 
 /// Main `NestGate` client for storage and pipeline operations
 ///
-/// **Design**: Supports both direct endpoint and capability-based discovery
+/// **Design**: Supports capability-based discovery via unix sockets (pure Rust!)
 #[derive(Debug, Clone)]
 pub struct NestGateClient {
-    client: Client,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     config: NestGateConfig,
 }
 
@@ -103,12 +103,13 @@ impl NestGateClient {
     /// # Errors
     /// Returns an error if the client configuration is invalid
     pub async fn with_config(config: NestGateConfig) -> NestGateResult<Self> {
-        let http_client = reqwest::Client::builder()
-            .timeout(config.timeout)
-            .build()
-            .map_err(|e| NestGateError::Connection(e.to_string()))?;
+        // PURE RUST: Use unix socket instead of HTTP
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+            toadstool_common::primal_sockets::get_nestgate_socket_path()
+        );
 
         let client = Self {
+            rpc_client,
             config,
             client: http_client,
         };

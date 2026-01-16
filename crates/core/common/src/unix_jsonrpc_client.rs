@@ -71,9 +71,10 @@ struct JsonRpcError {
 ///
 /// let result = client.call("beardog.encrypt", params).await?;
 /// ```
+#[derive(Debug, Clone)]
 pub struct UnixJsonRpcClient {
     socket_path: PathBuf,
-    next_id: std::sync::atomic::AtomicU64,
+    next_id: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl UnixJsonRpcClient {
@@ -83,7 +84,7 @@ impl UnixJsonRpcClient {
     pub fn new(socket_path: impl Into<PathBuf>) -> Self {
         Self {
             socket_path: socket_path.into(),
-            next_id: std::sync::atomic::AtomicU64::new(1),
+            next_id: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1)),
         }
     }
 
