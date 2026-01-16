@@ -256,7 +256,6 @@ clap = { workspace = true, features = ["derive"] }
 colored = "2.0"
 
 # Networking (for ecosystem integration)
-reqwest = { workspace = true, features = ["json"] }
 tokio-tungstenite = "0.20"
 # tonic = { version = "0.10", optional = true } # REMOVED: protobuf dependency
 

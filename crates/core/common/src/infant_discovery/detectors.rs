@@ -163,11 +163,9 @@ impl ConsulDetector {
     }
 
     /// Check if Consul is available
+    ///
+    /// **PURE RUST**: Consul detection removed (no HTTP dependencies)
     async fn is_consul_available(&self) -> bool {
-        // Check environment variable
-        // Deep Debt compliant: runtime discovery with env var override
-        // PURE RUST: Consul detection removed for pure Rust
-        // Use environment variables or unix sockets instead
         tracing::trace!("Consul detection disabled (pure Rust mode)");
         false // Consul not available in pure Rust mode
     }
