@@ -167,13 +167,5 @@ impl WgpuExecutor {
         self.read_buffer(&staging_buffer, total_size).await
     }
 
-    /// Execute RMS Normalization
-    ///
-    /// Simpler alternative to LayerNorm used in modern transformers.
-    /// RMSNorm(x) = x / sqrt(mean(x²) + epsilon) * gamma
-    ///
-    /// No mean subtraction, only RMS scaling - faster and simpler than LayerNorm.
-    /// Used in: LLaMA, GPT-NeoX, T5, modern large language models.
-    ///
-    /// Deep Debt: Runtime dimensions, learnable scale parameters.
+}
 }
