@@ -29,7 +29,7 @@ toadstool-config = { path = "../core/config" }
 toadstool-common = { path = "../core/common" }
 
 # HTTP client and networking
-reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+# PURE RUST: reqwest removed - unix sockets only! ✅
 url = "2.4"
 
 # WebSocket support (optional)

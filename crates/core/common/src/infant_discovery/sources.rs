@@ -279,62 +279,27 @@ impl EndpointSource for ServiceMeshSource {
             match mesh_type {
                 ServiceMeshType::Consul => {
                     // PURE RUST: Consul integration removed for pure Rust
-                    // Use environment variables or unix sockets instead
-                    tracing::trace!(
-                        service,
-                        "Consul discovery disabled (pure Rust mode) - use environment variables"
-                    );
-                    return Ok(None); // Graceful degradation - fall back to other sources
+                    tracing::trace!(service, "Consul discovery disabled (pure Rust mode)");
+                    Ok(None) // Graceful degradation
                 }
                 ServiceMeshType::Etcd => {
-                    use base64::Engine;
-
-                    // Query etcd for service key (Deep Debt compliant: runtime discovery)
-                    let etcd_addr = crate::constants::network::etcd_endpoints();
-
-                    let key = format!("/services/{service}");
-                    let url = format!("{etcd_addr}/v3/kv/range");
-
-                    let payload = serde_json::json!({
-                        "key": base64::engine::general_purpose::STANDARD.encode(key.as_bytes()),
-                    });
-
-                    match reqwest::Client::new()
-                        .post(&url)
-                        .json(&payload)
-                        .timeout(std::time::Duration::from_secs(5))
-                        .send()
-                        .await
-                    {
-                        Ok(response) if response.status().is_success() => {
-                            tracing::trace!(service, "Found service in etcd");
-                            // Would need to parse etcd response format
-                        }
-                        Ok(_) | Err(_) => {
-                            tracing::trace!(service, "etcd service lookup failed");
-                        }
-                    }
+                    // PURE RUST: etcd integration removed for pure Rust
+                    tracing::trace!(service, "etcd discovery disabled (pure Rust mode)");
+                    Ok(None) // Graceful degradation
                 }
                 ServiceMeshType::Kubernetes => {
                     // PURE RUST: Kubernetes DNS can still work (no HTTP needed for DNS)
-                    // Try Kubernetes DNS (works inside cluster)
                     let k8s_dns = format!("{service}.default.svc.cluster.local");
                     tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
-                    return Ok(Some(format!("http://{k8s_dns}")));
+                    Ok(Some(format!("http://{k8s_dns}")))
                 }
                 ServiceMeshType::Auto => {
-                    // PURE RUST: Auto-detection simplified
-                    // Try Kubernetes DNS (works without HTTP)
-                    tracing::trace!("Auto-discovery using K8s DNS (pure Rust mode)");
-
-                    // Try K8s DNS as fallback
+                    // PURE RUST: Auto-detection simplified - try K8s DNS
                     let k8s_dns = format!("{service}.default.svc.cluster.local");
-                    tracing::trace!(service, "Auto-detection: trying K8s DNS");
-                    return Ok(Some(format!("http://{k8s_dns}")));
+                    tracing::trace!(service, "Auto-detection: trying K8s DNS (pure Rust)");
+                    Ok(Some(format!("http://{k8s_dns}")))
                 }
             }
-
-            Ok(None)
         })
     }
 

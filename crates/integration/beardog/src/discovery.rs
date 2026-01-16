@@ -6,7 +6,6 @@ use crate::seed::{EphemeralSeed, SeedQuality};
 use crate::types::{EntropyMixing, EntropySource};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 /// Request for ephemeral seed generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,9 +34,10 @@ impl Default for SeedRequest {
 /// Uses capability-based discovery (no hardcoded URLs!).
 pub struct EntropyClient {
     /// Service endpoint (discovered at runtime)
+    #[allow(dead_code)] // Stored for diagnostics
     endpoint: Option<String>,
-    /// HTTP client for communication
-    client: reqwest::Client,
+    /// RPC client for communication (pure Rust unix socket!)
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     /// Whether service is available
     available: bool,
 }
@@ -72,9 +72,9 @@ impl EntropyClient {
                 // Return unavailable client (will fallback to system entropy)
                 Ok(Self {
                     endpoint: None,
-                    client: reqwest::Client::builder()
-                        .timeout(Duration::from_secs(5))
-                        .build()?,
+                    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+                        toadstool_common::primal_sockets::get_beardog_socket_path()
+                    ),
                     available: false,
                 })
             }
@@ -108,37 +108,38 @@ impl EntropyClient {
         anyhow::bail!("No bearDog service found via capability discovery")
     }
 
-    /// Probe a URL to check if it's a bearDog service
-    async fn probe_service(url: &str) -> Result<()> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(2))
-            .build()?;
-
-        let response = client
-            .get(format!("{url}/health"))
-            .send()
-            .await
-            .context("Failed to probe service")?;
-
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            anyhow::bail!("Service returned non-success status")
+    /// Probe unix socket to check if bearDog service is available
+    ///
+    /// **PURE RUST**: Uses unix socket instead of HTTP
+    async fn probe_service(_url: &str) -> Result<()> {
+        // PURE RUST: Try to connect to unix socket
+        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
+        
+        match tokio::net::UnixStream::connect(&socket_path).await {
+            Ok(_) => {
+                tracing::debug!("BearDog unix socket available");
+                Ok(())
+            }
+            Err(e) => {
+                anyhow::bail!("BearDog socket not available: {}", e)
+            }
         }
     }
 
-    /// Connect to specific endpoint
+    /// Connect to bearDog service via unix socket
+    ///
+    /// **PURE RUST**: Uses unix socket instead of HTTP
     async fn connect(endpoint: &str) -> Result<Self> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()?;
+        let socket_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+            toadstool_common::primal_sockets::get_beardog_socket_path()
+        );
 
-        // Verify service is reachable
-        let available = Self::probe_service(endpoint).await.is_ok();
+        // Verify service is reachable via unix socket
+        let available = Self::probe_service("").await.is_ok();
 
         Ok(Self {
             endpoint: Some(endpoint.to_string()),
-            client,
+            rpc_client: socket_client,
             available,
         })
     }
@@ -182,28 +183,17 @@ impl EntropyClient {
         }
     }
 
-    /// Request seed from bearDog service
+    /// Request seed from bearDog service via unix socket
+    ///
+    /// **PURE RUST**: JSON-RPC over unix socket (no HTTP!)
     async fn request_from_beardog(&self, request: &SeedRequest) -> Result<EphemeralSeed> {
-        let endpoint = self.endpoint.as_ref()
-            .context("No endpoint available")?;
+        let params = serde_json::to_value(request)
+            .context("Failed to serialize seed request")?;
 
-        let url = format!("{endpoint}/api/v1/entropy/seed");
-
-        let response = self.client
-            .post(&url)
-            .json(request)
-            .send()
+        let seed: EphemeralSeed = self.rpc_client
+            .call_typed("beardog.entropy.generate_seed", params)
             .await
             .context("Failed to request seed from bearDog")?;
-
-        if !response.status().is_success() {
-            anyhow::bail!("bearDog returned error: {}", response.status());
-        }
-
-        let seed: EphemeralSeed = response
-            .json()
-            .await
-            .context("Failed to parse seed response")?;
 
         Ok(seed)
     }
@@ -264,7 +254,9 @@ mod tests {
     async fn test_system_entropy_fallback() {
         let client = EntropyClient {
             endpoint: None,
-            client: reqwest::Client::new(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+                toadstool_common::primal_sockets::get_beardog_socket_path()
+            ),
             available: false,
         };
 
@@ -280,7 +272,9 @@ mod tests {
     async fn test_generate_seed_fallback() {
         let client = EntropyClient {
             endpoint: None,
-            client: reqwest::Client::new(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+                toadstool_common::primal_sockets::get_beardog_socket_path()
+            ),
             available: false,
         };
 

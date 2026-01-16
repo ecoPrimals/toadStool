@@ -74,7 +74,7 @@ uuid = { workspace = true, features = ["v4"] }
 dirs = "5.0"
 
 # Networking
-reqwest = { workspace = true }
+# PURE RUST: reqwest removed - unix sockets only! ✅
 # mdns = "3.0"  # Note: mDNS discovery available via toadstool-config crate
 
 # System information
