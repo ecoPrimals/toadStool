@@ -22,6 +22,7 @@ use toadstool::{
 // Import runtime engines
 use toadstool_runtime_native::NativeRuntimeEngine;
 use toadstool_runtime_python::PythonRuntimeEngine;
+#[cfg(feature = "wasm")]
 use toadstool_runtime_wasm::WasmRuntimeEngine;
 
 #[cfg(feature = "gpu")]
@@ -193,19 +194,26 @@ async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator) -> Result<
         }
     }
 
-    // WASM runtime
-    let wasm_config = toadstool_runtime_wasm::WasmRuntimeConfig::default();
-    match WasmRuntimeEngine::new(wasm_config) {
-        Ok(wasm_engine) => {
-            orchestrator
-                .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
-                .await
-                .context("Failed to register WASM runtime")?;
-            info!("   ✅ WASM runtime registered");
+    // WASM runtime - Optional (has zstd C dependency)
+    #[cfg(feature = "wasm")]
+    {
+        let wasm_config = toadstool_runtime_wasm::WasmRuntimeConfig::default();
+        match WasmRuntimeEngine::new(wasm_config) {
+            Ok(wasm_engine) => {
+                orchestrator
+                    .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
+                    .await
+                    .context("Failed to register WASM runtime")?;
+                info!("   ✅ WASM runtime registered");
+            }
+            Err(e) => {
+                debug!("   ⚠️  WASM runtime not available: {}", e);
+            }
         }
-        Err(e) => {
-            debug!("   ⚠️  WASM runtime not available: {}", e);
-        }
+    }
+    #[cfg(not(feature = "wasm"))]
+    {
+        debug!("   ⚠️  WASM runtime not enabled (pure-rust build)");
     }
 
     // GPU runtime (optional, feature-gated)

@@ -7,7 +7,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use ndarray::Array1;
-use sqlx::{Row, SqlitePool};
+// PURE RUST: sqlx removed - in-memory analytics only
+// use sqlx::{Row, SqlitePool};
 use statrs::statistics::Statistics;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, error, info};
@@ -24,9 +25,12 @@ use crate::types::{
 use crate::utils::{calculate_median, calculate_percentile};
 
 /// Intelligent analytics engine implementation
+/// 
+/// PURE RUST: Database persistence disabled - in-memory analytics only
+/// Future: Can add pure Rust database (sled, redb) for persistence
 pub struct IntelligentAnalyticsEngine {
     config: AnalyticsConfig,
-    database: SqlitePool,
+    // database: SqlitePool,  // REMOVED: Brings ring via rustls
     data_buffer: Arc<RwLock<VecDeque<AnalyticsDataPoint>>>,
     alert_sender: broadcast::Sender<Alert>,
     dashboards: Arc<RwLock<HashMap<Uuid, Dashboard>>>,

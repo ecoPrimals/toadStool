@@ -39,7 +39,7 @@ tracing = { workspace = true }
 validator = { version = "0.18", features = ["derive"] }
 notify = "4.0"
 chrono = { workspace = true }
-ring = "0.17"
+# ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
 base64 = "0.22"
 async-trait = "0.1"
 semver = "1.0"

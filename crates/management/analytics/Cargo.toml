@@ -30,8 +30,10 @@ chrono = { version = "0.4", features = ["serde"] }
 ndarray = "0.15"
 statrs = "0.16"
 
-# Database for storing metrics
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+# Database for storing metrics - REMOVED: Brings in ring via rustls (violates pure Rust)
+# PURE RUST: Database persistence disabled by default (in-memory only)
+# Future: Use pure Rust alternatives (sled, redb, etc.) when persistence needed
+# sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"], optional = true }
 
 # Networking
 hyper = { version = "1.0", features = ["full"] }

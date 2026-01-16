@@ -27,7 +27,7 @@ mutex_atomic = "warn"
 toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-management-monitoring = { path = "../management/monitoring" }
-toadstool-management-analytics = { path = "../management/analytics" }
+# toadstool-management-analytics = { path = "../management/analytics" }  # Disabled: has sqlx/ring dependency
 toadstool-distributed = { path = "../distributed" }
 toadstool-config = { path = "../core/config" }
 
@@ -65,8 +65,10 @@ argon2 = "0.5"
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
-# Database with migrations
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
+# Database with migrations - REMOVED: Unused, brings in ring via rustls
+# PURE RUST: sqlx removed - was unused and violated pure Rust principle
+# If database needed in future, use pure Rust alternatives (sled, redb) or feature-gate
+# sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "chrono", "uuid", "migrate"] }
 
 # CLI interface with better UX
 clap = { version = "4.0", features = ["derive", "color"] }

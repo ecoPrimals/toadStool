@@ -51,7 +51,7 @@ humantime-serde = "1.1"
 # Runtime engines
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-python = { path = "../runtime/python" }
-toadstool-runtime-wasm = { path = "../runtime/wasm" }
+toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: has zstd C dependency
 toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 
 # CLI framework
@@ -131,14 +131,18 @@ predicates = "3.0"
 
 [features]
 default = ["full"]
-full = ["ecosystem", "universal", "monitoring", "templates", "daemon"]
+full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm"]
 ecosystem = []
 universal = []
 monitoring = []
 templates = []
 daemon = ["axum", "tower", "tower-http"]
+wasm = ["dep:toadstool-runtime-wasm"]  # Optional: WASM runtime (has zstd C dependency)
 
 # GPU FEATURES: Sovereign + Pragmatic
 gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
 gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # Add CUDA for Python AI
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
+
+# PURE RUST: Build without C dependencies (no WASM, minimal features)
+pure-rust = ["ecosystem", "universal", "monitoring"]
