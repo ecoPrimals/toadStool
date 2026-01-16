@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 toadstool = { path = "../../../crates/core/toadstool" }
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 serde_json = "1.0"
 
 [[bin]]

@@ -184,7 +184,7 @@ pub struct VersionInfo {
 }
 
 /// Artifact filtering options
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct ArtifactFilters {
     /// Filter by artifact type
     pub artifact_type: Option<ArtifactType>,

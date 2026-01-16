@@ -201,10 +201,11 @@ pub trait AgentBackend: Send + Sync {
     }
 }
 
-/// Production implementation using Squirrel HTTP API
+/// Production implementation using Squirrel Unix Socket API (Pure Rust!)
+///
+/// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct SquirrelBackend {
-    client: reqwest::Client,
-    endpoint: String,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     #[allow(dead_code)] // Stored for potential future use
     model_registry: String,
     #[allow(dead_code)] // Stored for potential future use
@@ -213,17 +214,20 @@ pub struct SquirrelBackend {
 }
 
 impl SquirrelBackend {
-    /// Create a new Squirrel backend
+    /// Create a new Squirrel backend with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
     pub fn new(
-        endpoint: impl Into<String>,
+        _endpoint: impl Into<String>,
         model_registry: impl Into<String>,
         agent_runtime: impl Into<String>,
         mcp_enabled: bool,
     ) -> Self {
+        // Use unix socket path discovery instead of HTTP endpoint
+        let socket_path = toadstool_common::primal_sockets::get_squirrel_socket_path();
         Self {
-            client: reqwest::Client::new(),
-            endpoint: endpoint.into(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             model_registry: model_registry.into(),
             agent_runtime: agent_runtime.into(),
             _mcp_enabled: mcp_enabled,
@@ -234,241 +238,139 @@ impl SquirrelBackend {
 #[async_trait]
 impl AgentBackend for SquirrelBackend {
     async fn initialize(&self) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .get(format!("{}/health", self.endpoint))
-            .send()
+        // Health check via JSON-RPC over unix socket
+        let _health: serde_json::Value = self
+            .rpc_client
+            .call("squirrel.health", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to Squirrel: {e}")))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Squirrel health check failed with status: {}",
-                response.status()
-            )));
-        }
-
-        tracing::info!("Successfully connected to Squirrel at {}", self.endpoint);
+        tracing::info!("Successfully connected to Squirrel via unix socket");
         Ok(())
     }
 
     async fn deploy_agent(&self, config: &AgentConfig) -> ToadStoolResult<AgentInfo> {
-        let response = self
-            .client
-            .post(format!("{}/agents", self.endpoint))
-            .json(&config)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e))
-            })?;
+        let params = serde_json::to_value(config)
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent deployment failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let agent_info: AgentInfo = response
-            .json()
+        let agent_info: AgentInfo = self
+            .rpc_client
+            .call_typed("squirrel.deploy_agent", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse agent info: {e}")))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e)))?;
 
         tracing::info!("Deployed agent: {}", config.name);
         Ok(agent_info)
     }
 
     async fn load_model(&self, config: &ModelConfig) -> ToadStoolResult<ModelInfo> {
-        let response = self
-            .client
-            .post(format!("{}/models", self.endpoint))
-            .json(&config)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e))
-            })?;
+        let params = serde_json::to_value(config)
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Model loading failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let model_info: ModelInfo = response
-            .json()
+        let model_info: ModelInfo = self
+            .rpc_client
+            .call_typed("squirrel.load_model", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse model info: {e}")))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e)))?;
 
         tracing::info!("Loaded model: {}", config.name);
         Ok(model_info)
     }
 
     async fn scale_agent(&self, agent_name: &str, replicas: u32) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .patch(format!("{}/agents/{}/scale", self.endpoint, agent_name))
-            .json(&serde_json::json!({ "replicas": replicas }))
-            .send()
+        let params = serde_json::json!({
+            "agent_name": agent_name,
+            "replicas": replicas
+        });
+
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("squirrel.scale_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to scale agent: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent scaling failed with status: {}",
-                response.status()
-            )));
-        }
 
         tracing::info!("Scaled agent {} to {} replicas", agent_name, replicas);
         Ok(())
     }
 
     async fn stop_agent(&self, agent_name: &str) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .post(format!("{}/agents/{}/stop", self.endpoint, agent_name))
-            .send()
+        let params = serde_json::json!({"agent_name": agent_name});
+
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("squirrel.stop_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to stop agent: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent stop failed with status: {}",
-                response.status()
-            )));
-        }
 
         tracing::info!("Stopped agent {}", agent_name);
         Ok(())
     }
 
     async fn remove_agent(&self, agent_name: &str) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .delete(format!("{}/agents/{}", self.endpoint, agent_name))
-            .send()
+        let params = serde_json::json!({"agent_name": agent_name});
+
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("squirrel.remove_agent", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to remove agent: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent removal failed with status: {}",
-                response.status()
-            )));
-        }
 
         tracing::info!("Removed agent {}", agent_name);
         Ok(())
     }
 
     async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus> {
-        let response = self
-            .client
-            .get(format!("{}/agents/{}/status", self.endpoint, agent_name))
-            .send()
+        let params = serde_json::json!({"agent_name": agent_name});
+
+        let status: AgentStatus = self
+            .rpc_client
+            .call_typed("squirrel.get_agent_status", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent status: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent status request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let status: AgentStatus = response
-            .json()
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse agent status: {e}")))?;
 
         Ok(status)
     }
 
     async fn list_agents(&self) -> ToadStoolResult<Vec<AgentInfo>> {
-        let response = self
-            .client
-            .get(format!("{}/agents", self.endpoint))
-            .send()
+        let agents: Vec<AgentInfo> = self
+            .rpc_client
+            .call_typed("squirrel.list_agents", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to list agents: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent list request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let agents: Vec<AgentInfo> = response
-            .json()
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse agent list: {e}")))?;
 
         Ok(agents)
     }
 
     async fn list_models(&self) -> ToadStoolResult<Vec<ModelInfo>> {
-        let response = self
-            .client
-            .get(format!("{}/models", self.endpoint))
-            .send()
+        let models: Vec<ModelInfo> = self
+            .rpc_client
+            .call_typed("squirrel.list_models", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to list models: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Model list request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let models: Vec<ModelInfo> = response
-            .json()
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse model list: {e}")))?;
 
         Ok(models)
     }
 
     async fn get_agent_resources(&self, agent_name: &str) -> ToadStoolResult<AgentResourceUsage> {
-        let response = self
-            .client
-            .get(format!("{}/agents/{}/resources", self.endpoint, agent_name))
-            .send()
+        let params = serde_json::json!({"agent_name": agent_name});
+
+        let resources: AgentResourceUsage = self
+            .rpc_client
+            .call_typed("squirrel.get_agent_resources", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent resources: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Agent resources request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let resources: AgentResourceUsage = response.json().await.map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to parse agent resources: {e}"))
-        })?;
 
         Ok(resources)
     }
 
     async fn unload_model(&self, model_name: &str) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .delete(format!("{}/models/{}", self.endpoint, model_name))
-            .send()
+        let params = serde_json::json!({"model_name": model_name});
+
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("squirrel.unload_model", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to unload model: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Model unload failed with status: {}",
-                response.status()
-            )));
-        }
 
         tracing::info!("Unloaded model {}", model_name);
         Ok(())

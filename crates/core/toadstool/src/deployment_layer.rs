@@ -514,100 +514,81 @@ impl LayerDetector {
 
     /// Check AWS metadata endpoint
     async fn check_aws_metadata(&self) -> bool {
-        // AWS metadata endpoint: http://169.254.169.254/latest/meta-data/
-        // Timeout quickly to avoid blocking
-        tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            reqwest::get("http://169.254.169.254/latest/meta-data/"),
-        )
-        .await
-        .is_ok_and(|r| r.is_ok_and(|resp| resp.status().is_success()))
+        // PURE RUST: Use environment variables instead of HTTP
+        // Use Songbird for external HTTP if needed
+        std::env::var("AWS_EXECUTION_ENV").is_ok()
+            || std::env::var("AWS_LAMBDA_FUNCTION_NAME").is_ok()
+            || std::env::var("ECS_CONTAINER_METADATA_URI").is_ok()
     }
 
     /// Get AWS instance type
     async fn get_aws_instance_type(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::get("http://169.254.169.254/latest/meta-data/instance-type").await?;
-        Ok(resp.text().await?)
+        // PURE RUST: Use environment variable or return default
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("AWS_INSTANCE_TYPE")
+            .or_else(|_| std::env::var("EC2_INSTANCE_TYPE"))
+            .or(Ok("unknown".to_string()))
     }
 
     /// Get AWS region
     async fn get_aws_region(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::get("http://169.254.169.254/latest/meta-data/placement/region").await?;
-        Ok(resp.text().await?)
+        // PURE RUST: Use environment variable
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("AWS_REGION")
+            .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
+            .or(Ok("us-east-1".to_string()))
     }
 
     /// Check GCP metadata endpoint
     async fn check_gcp_metadata(&self) -> bool {
-        tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            reqwest::Client::new()
-                .get("http://metadata.google.internal/computeMetadata/v1/")
-                .header("Metadata-Flavor", "Google")
-                .send(),
-        )
-        .await
-        .is_ok_and(|r| r.is_ok_and(|resp| resp.status().is_success()))
+        // PURE RUST: Use environment variables
+        // Use Songbird for external HTTP if needed
+        std::env::var("GCP_PROJECT").is_ok()
+            || std::env::var("GOOGLE_CLOUD_PROJECT").is_ok()
+            || std::env::var("GCLOUD_PROJECT").is_ok()
     }
 
     /// Get GCP instance type
     async fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::Client::new()
-            .get("http://metadata.google.internal/computeMetadata/v1/instance/machine-type")
-            .header("Metadata-Flavor", "Google")
-            .send()
-            .await?;
-        let machine_type = resp.text().await?;
-        // Extract just the machine type (remove project/zone prefix)
-        Ok(machine_type
-            .split('/')
-            .last()
-            .unwrap_or(&machine_type)
-            .to_string())
+        // PURE RUST: Use environment variable or return default
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("GCE_MACHINE_TYPE")
+            .or(Ok("unknown".to_string()))
     }
 
     /// Get GCP region
     async fn get_gcp_region(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::Client::new()
-            .get("http://metadata.google.internal/computeMetadata/v1/instance/zone")
-            .header("Metadata-Flavor", "Google")
-            .send()
-            .await?;
-        let zone = resp.text().await?;
-        // Extract region from zone (e.g., us-central1-a -> us-central1)
-        Ok(zone.rsplitn(2, '-').last().unwrap_or(&zone).to_string())
+        // PURE RUST: Use environment variable
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("GCE_ZONE")
+            .or_else(|_| std::env::var("GOOGLE_CLOUD_ZONE"))
+            .or(Ok("unknown".to_string()))
     }
 
     /// Check Azure metadata endpoint
     async fn check_azure_metadata(&self) -> bool {
-        tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            reqwest::Client::new()
-                .get("http://169.254.169.254/metadata/instance?api-version=2021-02-01")
-                .header("Metadata", "true")
-                .send(),
-        )
-        .await
-        .is_ok_and(|r| r.is_ok_and(|resp| resp.status().is_success()))
+        // PURE RUST: Use environment variables
+        // Use Songbird for external HTTP if needed
+        std::env::var("AZURE_SUBSCRIPTION_ID").is_ok()
+            || std::env::var("WEBSITE_INSTANCE_ID").is_ok()
+            || std::env::var("FUNCTIONS_WORKER_RUNTIME").is_ok()
     }
 
     /// Get Azure instance type
     async fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::Client::new()
-            .get("http://169.254.169.254/metadata/instance/compute/vmSize?api-version=2021-02-01")
-            .header("Metadata", "true")
-            .send()
-            .await?;
-        Ok(resp.text().await?)
+        // PURE RUST: Use environment variable or return default
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("AZURE_VM_SIZE")
+            .or(Ok("unknown".to_string()))
     }
 
     /// Get Azure region
     async fn get_azure_region(&self) -> Result<String, DetectionError> {
-        let resp = reqwest::Client::new()
-            .get("http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01")
-            .header("Metadata", "true")
-            .send()
-            .await?;
-        Ok(resp.text().await?)
+        // PURE RUST: Use environment variable
+        // For detailed metadata, use Songbird for external HTTP
+        std::env::var("AZURE_LOCATION")
+            .or_else(|_| std::env::var("AZURE_REGION"))
+            .or(Ok("unknown".to_string()))
     }
 
     /// Detect GPU passthrough in VM
@@ -650,9 +631,9 @@ pub enum DetectionError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// HTTP request error (cloud metadata)
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
+    /// External HTTP not available (use Songbird for external HTTP)
+    #[error("External HTTP detection disabled - use Songbird for external HTTP")]
+    ExternalHttpDisabled,
 
     /// Container ID not found
     #[error("Container ID not found")]

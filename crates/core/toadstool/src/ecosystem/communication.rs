@@ -29,8 +29,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::sync::RwLock;
-#[cfg(feature = "networking")]
-use tracing::warn;
 use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
@@ -109,20 +107,14 @@ impl CommunicationManager {
             ServiceClient::Tarpc(_tarpc_client) => {
                 debug!("📤 Sending via tarpc (PRIMARY protocol)");
                 // TODO(future): Implement tarpc message sending when tarpc integration complete
-                // Current: Falls back to HTTP while tarpc is being integrated
-                self.send_via_http_fallback(channel, message).await
+                // For now, tarpc not yet implemented, return error
+                Err(ToadStoolError::runtime("Tarpc messaging not yet implemented"))
             }
 
             #[cfg(feature = "networking")]
-            ServiceClient::JsonRpc(client) => {
-                debug!("📤 Sending via JSON-RPC (PRIMARY protocol)");
-                self.send_via_jsonrpc(channel, client, message).await
-            }
-
-            #[cfg(feature = "networking")]
-            ServiceClient::Http(client) => {
-                debug!("📤 Sending via HTTP (FALLBACK protocol)");
-                self.send_via_http(channel, client, message).await
+            ServiceClient::UnixSocket(rpc_client) => {
+                debug!("📤 Sending via JSON-RPC over unix socket (PRIMARY - pure Rust!)");
+                self.send_via_unix_socket(rpc_client, message).await
             }
 
             #[cfg(feature = "websocket")]
@@ -148,21 +140,12 @@ impl CommunicationManager {
 
         match &channel.client {
             #[cfg(feature = "networking")]
-            ServiceClient::Http(client) | ServiceClient::JsonRpc(client) => {
-                let health_url = format!("{}/health", channel.endpoint);
-                let response = client
-                    .get(&health_url)
-                    .timeout(self.default_timeout)
-                    .send()
+            ServiceClient::UnixSocket(rpc_client) => {
+                // Health check via JSON-RPC
+                let _result: serde_json::Value = rpc_client
+                    .call("health", serde_json::json!({}))
                     .await
                     .map_err(|e| ToadStoolError::network(format!("Health check failed: {e}")))?;
-
-                if !response.status().is_success() {
-                    return Err(ToadStoolError::network(format!(
-                        "Health check returned: {}",
-                        response.status()
-                    )));
-                }
 
                 debug!("✅ Health check passed");
                 Ok(())
@@ -262,15 +245,22 @@ impl CommunicationManager {
                 continue;
             }
 
-            if endpoint.protocol == "jsonrpc" || endpoint.protocol == "json-rpc" {
-                debug!("🌍 Using JSON-RPC (PRIMARY) for service: {}", service.name);
-                return Ok(ServiceClient::JsonRpc(reqwest::Client::new()));
+            if endpoint.protocol == "jsonrpc" || endpoint.protocol == "json-rpc" || endpoint.protocol == "tarpc" {
+                debug!("🌍 Using JSON-RPC over unix socket (PRIMARY) for service: {}", service.name);
+                // Use unix socket path from discovery
+                let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+                return Ok(ServiceClient::UnixSocket(
+                    toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path)
+                ));
             }
         }
 
-        // Fallback to HTTP
-        debug!("⚠️  Using HTTP (FALLBACK) for service: {}", service.name);
-        Ok(ServiceClient::Http(reqwest::Client::new()))
+        // Fallback: Try to determine from service name
+        debug!("Using socket path discovery for service: {}", service.name);
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+        Ok(ServiceClient::UnixSocket(
+            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path)
+        ))
     }
 
     #[cfg(not(feature = "networking"))]
@@ -281,96 +271,76 @@ impl CommunicationManager {
         Ok(ServiceClient::Mock)
     }
 
-    /// Send message via HTTP
+    /// Send message via HTTP - DEPRECATED
+    ///
+    /// **LEGACY**: HTTP deprecated - use Unix sockets
+    #[allow(dead_code)]
     #[cfg(feature = "networking")]
     async fn send_via_http(
         &self,
         channel: &ServiceChannel,
-        client: &reqwest::Client,
+        _client_placeholder: &str, // Was: &reqwest::Client
         message: EcosystemMessage,
     ) -> ToadStoolResult<EcosystemMessage> {
-        let message_url = format!("{}/message", channel.endpoint);
-        let response = client
-            .post(&message_url)
-            .json(&message)
-            .timeout(self.default_timeout)
-            .send()
-            .await
-            .map_err(|e| ToadStoolError::network(format!("Failed to send message: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "Message send failed: {}",
-                response.status()
-            )));
-        }
-
-        let response_message: EcosystemMessage = response
-            .json()
-            .await
-            .map_err(|e| ToadStoolError::parsing(format!("Failed to parse response: {e}")))?;
-
-        debug!("✅ Message sent via HTTP");
-        Ok(response_message)
+        // LEGACY: HTTP deprecated - return error
+        Err(ToadStoolError::not_supported(format!(
+            "HTTP communication deprecated for channel {}. Use Unix sockets. Message: {:?}",
+            channel.service_id, message
+        )))
     }
 
-    /// Send message via JSON-RPC
+    /// Send message via JSON-RPC - DEPRECATED
+    ///
+    /// **LEGACY**: HTTP RPC deprecated - use Unix sockets
+    #[allow(dead_code)]
     #[cfg(feature = "networking")]
     async fn send_via_jsonrpc(
         &self,
         channel: &ServiceChannel,
-        client: &reqwest::Client,
+        _client_placeholder: &str, // Was: &reqwest::Client
         message: EcosystemMessage,
     ) -> ToadStoolResult<EcosystemMessage> {
-        let rpc_url = format!("{}/jsonrpc", channel.endpoint);
-        let rpc_request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "ecosystem.send_message",
-            "params": message,
-            "id": 1
-        });
-
-        let response = client
-            .post(&rpc_url)
-            .json(&rpc_request)
-            .timeout(self.default_timeout)
-            .send()
-            .await
-            .map_err(|e| ToadStoolError::network(format!("JSON-RPC send failed: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "JSON-RPC failed: {}",
-                response.status()
-            )));
-        }
-
-        let rpc_response: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| ToadStoolError::parsing(format!("Failed to parse JSON-RPC: {e}")))?;
-
-        let result = rpc_response
-            .get("result")
-            .ok_or_else(|| ToadStoolError::parsing("Missing result in JSON-RPC response"))?;
-
-        let response_message: EcosystemMessage = serde_json::from_value(result.clone())
-            .map_err(|e| ToadStoolError::parsing(format!("Invalid message format: {e}")))?;
-
-        debug!("✅ Message sent via JSON-RPC");
-        Ok(response_message)
+        // LEGACY: HTTP RPC deprecated - return error
+        Err(ToadStoolError::not_supported(format!(
+            "HTTP JSON-RPC communication deprecated for channel {}. Use Unix sockets. Message: {:?}",
+            channel.service_id, message
+        )))
     }
 
-    /// Fallback HTTP sending when tarpc not yet implemented
+    /// Fallback HTTP sending - DEPRECATED
+    ///
+    /// **LEGACY**: Use Unix sockets instead
+    #[allow(dead_code)]
     #[cfg(feature = "networking")]
     async fn send_via_http_fallback(
         &self,
         channel: &ServiceChannel,
         message: EcosystemMessage,
     ) -> ToadStoolResult<EcosystemMessage> {
-        warn!("⚠️  tarpc not yet wired - falling back to HTTP");
-        let client = reqwest::Client::new();
-        self.send_via_http(channel, &client, message).await
+        // LEGACY: Use Unix sockets instead
+        Err(ToadStoolError::not_supported(format!(
+            "HTTP fallback deprecated for channel {}. Use Unix sockets. Message: {:?}",
+            channel.service_id, message
+        )))
+    }
+
+    /// Send message via JSON-RPC 2.0 over unix socket (pure Rust!)
+    #[cfg(feature = "networking")]
+    async fn send_via_unix_socket(
+        &self,
+        rpc_client: &toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+        message: EcosystemMessage,
+    ) -> ToadStoolResult<EcosystemMessage> {
+        let params = serde_json::to_value(&message)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize message: {e}")))?;
+
+        let response_message: EcosystemMessage = rpc_client
+            .call_typed("ecosystem.send_message", params)
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Unix socket RPC failed: {e}")))?;
+
+        debug!("✅ Message sent via JSON-RPC over unix socket (pure Rust!)");
+        Ok(response_message)
     }
 
     /// Create a mock response for testing

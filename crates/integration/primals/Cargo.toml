@@ -25,7 +25,6 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 
 # HTTP client for service communication
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 # Workspace dependencies
 toadstool-config = { path = "../../core/config" }

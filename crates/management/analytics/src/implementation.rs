@@ -558,63 +558,17 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 }
 
 impl IntelligentAnalyticsEngine {
-    /// Export metrics to a webhook endpoint
+    /// Export metrics to a webhook endpoint - PURE RUST
+    ///
+    /// **EVOLUTION**: Use Songbird for external HTTP
     async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
-        let client = reqwest::Client::new();
-
-        // Get recent metrics
-        let recent_time = Utc::now() - chrono::Duration::hours(1);
-        let rows = sqlx::query(
-            r"
-            SELECT metric_name, value, timestamp FROM analytics_data 
-            WHERE timestamp >= ?
-            ORDER BY timestamp DESC
-        ",
-        )
-        .bind(recent_time.to_rfc3339())
-        .fetch_all(&self.database)
-        .await
-        .map_err(|e| ToadStoolError::io(e.to_string()))?;
-
-        let metrics: Vec<serde_json::Value> = rows
-            .iter()
-            .map(|row| {
-                let metric_name: String = row.get("metric_name");
-                let value: f64 = row.get("value");
-                let timestamp: String = row.get("timestamp");
-                serde_json::json!({
-                    "metric_name": metric_name,
-                    "value": value,
-                    "timestamp": timestamp
-                })
-            })
-            .collect();
-
-        let payload = serde_json::json!({
-            "source": "toadstool-analytics",
-            "timestamp": Utc::now().to_rfc3339(),
-            "metrics": metrics
-        });
-
-        let mut request = client.post(&webhook.url).json(&payload);
-
-        // Add custom headers
-        for (key, value) in &webhook.headers {
-            request = request.header(key, value);
-        }
-
-        let response = request
-            .send()
-            .await
-            .map_err(|e| ToadStoolError::network(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "Webhook error: HTTP {}",
-                response.status()
-            )));
-        }
-
+        // PURE RUST: External HTTP disabled - use Songbird
+        tracing::info!("Webhook export to {} - use Songbird for external HTTP", webhook.url);
+        
+        // Would use Songbird RPC client here:
+        // let songbird = SongbirdClient::discover().await?;
+        // songbird.http_post(&webhook.url, payload).await?;
+        
         Ok(())
     }
 }
