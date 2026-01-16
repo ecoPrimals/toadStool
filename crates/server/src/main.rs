@@ -165,11 +165,14 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
     }
 
     // 3. XDG runtime directory (standard for user-mode deployments)
-    // SAFETY: getuid() is always safe - returns current process's real user ID
-    // No memory access, no side effects, always succeeds
-    let uid = unsafe { libc::getuid() };
-    let runtime_dir =
-        std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
+    // EVOLVED: Pure Rust - no unsafe! Use environment or fallback to /tmp
+    // Primal principle: Prefer environment-based discovery over system calls
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+        // Fallback: Use /tmp with username for multi-user systems
+        // This is safer and works in all environments (containers, etc.)
+        let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
+        format!("/tmp/toadstool-runtime-{}", username)
+    });
 
     let xdg_path = PathBuf::from(&runtime_dir).join(format!("toadstool-{}.sock", family_id));
 
