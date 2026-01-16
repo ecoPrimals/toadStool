@@ -8,6 +8,9 @@ pub mod conv2d_kernels;
 #[cfg(feature = "opencl")]
 pub mod gpu_kernels;
 
+// Modern processing substrate abstraction (ZERO deep debt!)
+pub mod substrate;
+
 // Modern modular WGPU implementation (part of barraCUDA)
 pub mod wgpu;
 

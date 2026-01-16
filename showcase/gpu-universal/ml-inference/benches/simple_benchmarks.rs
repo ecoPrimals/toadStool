@@ -10,15 +10,15 @@ use tokio::runtime::Runtime;
 fn bench_matmul(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     
-    // Select GPU based on environment variable, default to first available
+    // Robust GPU selection using new substrate API
     let executor = if std::env::var("USE_AMD_GPU").is_ok() {
-        eprintln!("🔴 Benchmarking on AMD GPU");
+        eprintln!("🔴 Benchmarking on AMD GPU (explicit selection)");
         rt.block_on(WgpuExecutor::new_amd()).unwrap()
     } else if std::env::var("USE_NVIDIA_GPU").is_ok() {
-        eprintln!("🟢 Benchmarking on NVIDIA GPU");
+        eprintln!("🟢 Benchmarking on NVIDIA GPU (explicit selection)");
         rt.block_on(WgpuExecutor::new_nvidia()).unwrap()
     } else {
-        eprintln!("📊 Benchmarking on default GPU");
+        eprintln!("📊 Benchmarking on default GPU (first available)");
         let exec = rt.block_on(WgpuExecutor::new()).unwrap();
         eprintln!("   GPU: {}", exec.gpu_info());
         exec
