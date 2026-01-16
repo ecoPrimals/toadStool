@@ -142,8 +142,8 @@ pub enum ToadStoolError {
     #[error("JSON parsing error: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
+    #[error("External HTTP not supported - use Songbird for external HTTP")]
+    ExternalHttpNotSupported,
 
     #[error("Other error: {0}")]
     Other(String),
