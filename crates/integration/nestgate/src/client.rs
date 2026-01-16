@@ -259,7 +259,9 @@ impl StorageClient {
         Ok(None)
     }
 
-    /// Get artifact metadata
+    /// Get artifact metadata via modern async RPC
+    ///
+    /// **MODERN ASYNC**: Idiomatic concurrent pattern with JSON-RPC
     ///
     /// # Errors
     /// Returns an error if the artifact is not found or request fails
@@ -269,44 +271,26 @@ impl StorageClient {
     ) -> NestGateResult<ArtifactMetadata> {
         info!("Getting metadata for artifact: {}", artifact_id);
 
-        // Check cache first
-        if self.config.cache.as_ref().is_some_and(|c| c.enabled) {
-            // Cache implementation would go here
-            // For now, we'll just proceed without caching
-        }
-
-        // Get from NestGate
-        let url = format!(
-            "{}/artifacts/{}/metadata",
-            self.config.endpoint, artifact_id
-        );
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(NestGateError::Storage(format!(
-                "Failed to get metadata: {}",
-                response.status()
-            )));
-        }
-
-        let metadata: ArtifactMetadata = response
-            .json()
+        // Modern async RPC call
+        let metadata: ArtifactMetadata = self
+            .rpc_client
+            .call_typed(
+                "storage.artifact.get_metadata",
+                serde_json::json!({ "artifact_id": artifact_id }),
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
         info!(
-            "Successfully retrieved metadata for artifact: {}",
+            "✅ Successfully retrieved metadata for artifact: {}",
             artifact_id
         );
         Ok(metadata)
     }
 
-    /// List artifacts with optional filtering
+    /// List artifacts with optional filtering - Modern async pattern
+    ///
+    /// **MODERN ASYNC**: Non-blocking concurrent RPC call
     ///
     /// # Errors
     /// Returns an error if the listing request fails
@@ -316,53 +300,17 @@ impl StorageClient {
     ) -> NestGateResult<Vec<ArtifactMetadata>> {
         info!("Listing artifacts with filters: {:?}", filters);
 
-        let mut url = format!("{}/artifacts", self.config.endpoint);
-
-        // Add query parameters for filters
-        if let Some(filters) = filters {
-            let mut params = Vec::new();
-
-            if let Some(artifact_type) = filters.artifact_type {
-                params.push(format!("type={artifact_type:?}"));
-            }
-
-            if let Some(execution_id) = filters.execution_id {
-                params.push(format!("execution_id={execution_id}"));
-            }
-
-            if let Some(created_since) = filters.created_since {
-                params.push(format!("created_since={}", created_since.to_rfc3339()));
-            }
-
-            for (key, value) in filters.tags {
-                params.push(format!("tag_{key}={value}"));
-            }
-
-            if !params.is_empty() {
-                url = format!("{}?{}", url, params.join("&"));
-            }
-        }
-
-        let response = self
-            .client
-            .get(&url)
-            .send()
+        // Modern async RPC call with optional filters
+        let artifacts: Vec<ArtifactMetadata> = self
+            .rpc_client
+            .call_typed(
+                "storage.artifact.list",
+                serde_json::json!({ "filters": filters }),
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
-        if !response.status().is_success() {
-            return Err(NestGateError::Storage(format!(
-                "Failed to list artifacts: {}",
-                response.status()
-            )));
-        }
-
-        let artifacts: Vec<ArtifactMetadata> = response
-            .json()
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        info!("Successfully listed {} artifacts", artifacts.len());
+        info!("✅ Successfully listed {} artifacts", artifacts.len());
         Ok(artifacts)
     }
 
@@ -463,35 +411,27 @@ impl StorageClient {
         Ok(execution_id)
     }
 
-    /// Get pipeline execution status
+    /// Get pipeline execution status - Modern async
+    ///
+    /// **MODERN ASYNC**: Concurrent status polling
     ///
     /// # Errors
     /// Returns an error if the pipeline is not found or status request fails
     pub async fn get_pipeline_status(&self, pipeline_id: &str) -> NestGateResult<PipelineStatus> {
         info!("Getting status for pipeline: {}", pipeline_id);
 
-        let url = format!("{}/pipelines/{}/status", self.config.endpoint, pipeline_id);
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| NestGateError::Network(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(NestGateError::Pipeline(format!(
-                "Failed to get pipeline status: {}",
-                response.status()
-            )));
-        }
-
-        let status: PipelineStatus = response
-            .json()
+        // Modern async RPC call
+        let status: PipelineStatus = self
+            .rpc_client
+            .call_typed(
+                "storage.pipeline.get_status",
+                serde_json::json!({ "pipeline_id": pipeline_id }),
+            )
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
         info!(
-            "Successfully retrieved status for pipeline: {}",
+            "✅ Successfully retrieved status for pipeline: {}",
             pipeline_id
         );
         Ok(status)
