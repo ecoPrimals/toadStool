@@ -143,26 +143,6 @@ impl WgpuExecutor {
         self.read_buffer(&staging_buffer, total_size).await
     }
 
-    /// Execute Fused LayerNorm: SINGLE-PASS layer normalization
-    ///
-    /// **BREAKTHROUGH OPTIMIZATION**: Combines all 3 passes into ONE kernel launch!
-    ///
-    /// Previous (3-pass):
-    ///   - Pass 1: Compute partial stats → launch overhead + sync
-    ///   - Pass 2: Finalize stats       → launch overhead + sync
-    ///   - Pass 3: Normalize            → launch overhead + sync
-    ///   - Total: 3x launch overhead + 2x global sync
-    ///
-    /// Fused (1-pass):
-    ///   - Single kernel launch with Welford's algorithm in shared memory
-    ///   - Immediate normalization (no intermediate global memory)
-    ///   - Grid-stride loop for large inputs
-    ///   - Total: 1x launch overhead + 0x global sync
-    ///
-    /// **Expected Speedup**: 8-12x for LLaMA-scale (118ms → 10-15ms)
-    ///
-    /// **Memory Pattern**: Streaming (one read, one write, no intermediate buffers)
-    ///
-    /// Formula: output = (input - mean) / sqrt(variance + epsilon) * gamma + beta
+}
 }
 }

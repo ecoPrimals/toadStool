@@ -268,7 +268,5 @@ impl WgpuExecutor {
         self.read_buffer(&staging_buffer, total_size).await
     }
 
-    /// Execute Instance Normalization
-    ///
-    /// Normalizes each instance (batch sample) independently across spatial dimensions.
+}
 }
