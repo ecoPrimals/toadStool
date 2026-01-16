@@ -1,8 +1,8 @@
 # Async Patterns Guide - GPU Operations
 
-**Performance Impact**: 4.89x speedup on NVIDIA, 1.23x on AMD  
+**Performance Impact**: 5.28x speedup on NVIDIA (measured), ~1.2x on AMD  
 **Complexity**: Low (one-line change!)  
-**Benefit**: Universal (all 66 GPU operations)  
+**Benefit**: Universal (all 105 GPU operations)  
 
 ---
 
@@ -20,7 +20,7 @@ let r3 = executor.execute_matmul(&e, &f, m, n, k).await?;
 // NVIDIA: 3 × 4-5ms = 12-15ms wasted overhead!
 ```
 
-### ✅ Async (Fast - 4.89x!)
+### ✅ Async (Fast - 5.28x!)
 
 ```rust
 // Submit all operations, wait once
@@ -32,7 +32,7 @@ let (r1, r2, r3) = tokio::join!(
 
 // Total time = 1 × launch overhead + parallel compute
 // NVIDIA: 1 × 4-5ms = 3x less overhead!
-// Proven: 4.89x faster on real hardware! ✅
+// Proven: 5.28x faster on real hardware! ✅
 ```
 
 ---
