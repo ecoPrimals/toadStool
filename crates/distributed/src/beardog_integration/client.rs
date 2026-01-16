@@ -1,17 +1,28 @@
-//! BearDog HTTP client
+//! BearDog Unix Socket Client (Pure Rust!)
 //!
 //! **Design Philosophy**:
-//! - Async-first: Non-blocking operations
-//! - Resilient: Retry logic, circuit breaker patterns
-//! - Observable: Metrics and health checks
-//! - No hardcoding: Endpoints discovered at runtime
+//! - **Pure Rust**: Unix sockets, no HTTP/TLS (no ring dependency!)
+//! - **Async-first**: Non-blocking operations with tokio
+//! - **Local IPC**: Fast, secure primal-to-primal communication
+//! - **No hardcoding**: Socket paths discovered at runtime
+//! - **TRUE PRIMAL**: Songbird handles external HTTP, we use local IPC
+//!
+//! ## Architecture
+//!
+//! ToadStool = Compute orchestration (internal)
+//! BearDog = Security services (local)
+//! Communication = JSON-RPC over unix sockets (pure Rust!)
 
 use async_trait::async_trait;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
 
-use toadstool_common::{NetworkError, ToadStoolError, ToadStoolResult};
+use toadstool_common::{ToadStoolError, ToadStoolResult};
+use toadstool_common::primal_sockets::get_beardog_socket_path;
+use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+
+#[allow(unused_imports)] // Keep for discovery trait implementations
+use std::time::Duration;
 
 use super::types::{
     BearDogCapability, BearDogEndpoint, EncryptionRequest, EncryptionResponse,
@@ -187,33 +198,30 @@ impl BearDogDiscovery {
     }
 }
 
-/// BearDog HTTP client
+/// BearDog Unix Socket Client (Pure Rust!)
 ///
-/// **Design**: Thin wrapper over discovered endpoints
+/// **Design**: JSON-RPC 2.0 over unix sockets (no HTTP, no TLS, no ring!)
+/// **TRUE PRIMAL**: Local IPC for compute primal → security primal communication
 pub struct BearDogClient {
     discovery: Arc<BearDogDiscovery>,
-    http_client: reqwest::Client,
+    rpc_client: UnixJsonRpcClient,
 }
 
 impl BearDogClient {
-    /// Create new BearDog client
+    /// Create new BearDog client with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     ///
     /// # Errors
-    /// Returns error if HTTP client cannot be created
+    /// Returns error if socket path discovery fails
     pub fn new(config: BearDogConfig) -> ToadStoolResult<Self> {
-        let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_millis(config.discovery_timeout_ms))
-            .build()
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: "HTTP client builder".to_string(),
-                    reason: e.to_string(),
-                })
-            })?;
+        // Get unix socket path from environment-based discovery
+        let socket_path = get_beardog_socket_path();
+        let rpc_client = UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
             discovery: Arc::new(BearDogDiscovery::new(config)),
-            http_client,
+            rpc_client,
         })
     }
 
@@ -222,113 +230,49 @@ impl BearDogClient {
         self.discovery.discover().await
     }
 
-    /// Encrypt data using BearDog
+    /// Encrypt data using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn encrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
+        let params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let url = format!(
-            "{}://{}:{}/api/v1/encrypt",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
+        self.rpc_client
+            .call_typed("beardog.encrypt", params)
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog returned error: {}",
-                response.status()
-            )));
-        }
-
-        response.json::<EncryptionResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog response: {}", e))
-        })
     }
 
-    /// Decrypt data using BearDog
+    /// Decrypt data using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn decrypt(&self, request: EncryptionRequest) -> ToadStoolResult<EncryptionResponse> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
+        let params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let url = format!(
-            "{}://{}:{}/api/v1/decrypt",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
+        self.rpc_client
+            .call_typed("beardog.decrypt", params)
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog returned error: {}",
-                response.status()
-            )));
-        }
-
-        response.json::<EncryptionResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog response: {}", e))
-        })
     }
 
-    /// Manage keys using BearDog
+    /// Manage keys using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn key_management(
         &self,
         request: KeyManagementRequest,
     ) -> ToadStoolResult<KeyManagementResponse> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
+        let params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let url = format!(
-            "{}://{}:{}/api/v1/keys",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
+        self.rpc_client
+            .call_typed("beardog.key_management", params)
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog returned error: {}",
-                response.status()
-            )));
-        }
-
-        response.json::<KeyManagementResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog response: {}", e))
-        })
     }
 
-    /// Sign data using BearDog
+    /// Sign data using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn sign(&self, data: &[u8]) -> ToadStoolResult<SignatureResponse> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
-
-        let url = format!(
-            "{}://{}:{}/api/v1/sign",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
         let request = SignatureRequest {
             request_id: uuid::Uuid::new_v4(),
             data: data.to_vec(),
@@ -336,42 +280,23 @@ impl BearDogClient {
             algorithm: None,
         };
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
+        let params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+
+        self.rpc_client
+            .call_typed("beardog.sign", params)
             .await
-            .map_err(|e| ToadStoolError::network(format!("BearDog sign request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog sign returned error: {}",
-                response.status()
-            )));
-        }
-
-        response.json::<SignatureResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog sign response: {}", e))
-        })
     }
 
-    /// Verify signature using BearDog
+    /// Verify signature using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn verify(
         &self,
         data: &[u8],
         signature: &[u8],
         public_key_id: &str,
     ) -> ToadStoolResult<bool> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
-
-        let url = format!(
-            "{}://{}:{}/api/v1/verify",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
         let request = VerificationRequest {
             request_id: uuid::Uuid::new_v4(),
             data: data.to_vec(),
@@ -379,143 +304,74 @@ impl BearDogClient {
             public_key_id: public_key_id.to_string(),
         };
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::network(format!("BearDog verify request failed: {}", e))
-            })?;
+        let params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog verify returned error: {}",
-                response.status()
-            )));
-        }
-
-        let result: VerificationResponse = response.json().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog verify response: {}", e))
-        })?;
+        let result: VerificationResponse = self
+            .rpc_client
+            .call_typed("beardog.verify", params)
+            .await?;
 
         Ok(result.valid)
     }
 
-    /// Create permission using BearDog
+    /// Create permission using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn create_permission(
         &self,
         request: &crate::security_provider::PermissionRequest,
     ) -> ToadStoolResult<PermissionResponse> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
+        let params = serde_json::to_value(request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let url = format!(
-            "{}://{}:{}/api/v1/permissions",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(request)
-            .send()
+        self.rpc_client
+            .call_typed("beardog.create_permission", params)
             .await
-            .map_err(|e| {
-                ToadStoolError::network(format!("BearDog permission request failed: {}", e))
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog permission returned error: {}",
-                response.status()
-            )));
-        }
-
-        response.json::<PermissionResponse>().await.map_err(|e| {
-            ToadStoolError::network(format!(
-                "Failed to parse BearDog permission response: {}",
-                e
-            ))
-        })
     }
 
-    /// Validate permission using BearDog
+    /// Validate permission using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn validate_permission(
         &self,
         permission: &crate::security_provider::SecurityPermission,
     ) -> ToadStoolResult<bool> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
+        let params = serde_json::to_value(permission)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let url = format!(
-            "{}://{}:{}/api/v1/permissions/validate",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(permission)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::network(format!("BearDog validate request failed: {}", e))
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog validate returned error: {}",
-                response.status()
-            )));
-        }
-
-        let result: ValidationResponse = response.json().await.map_err(|e| {
-            ToadStoolError::network(format!("Failed to parse BearDog validate response: {}", e))
-        })?;
+        let result: ValidationResponse = self
+            .rpc_client
+            .call_typed("beardog.validate_permission", params)
+            .await?;
 
         Ok(result.valid)
     }
 
-    /// Revoke permission using BearDog
+    /// Revoke permission using BearDog via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no TLS, no ring!)
     pub async fn revoke_permission(
         &self,
         permission_id: &uuid::Uuid,
         reason: &str,
     ) -> ToadStoolResult<()> {
-        let endpoint = self.discovery.get_best_endpoint().await?;
-
-        let url = format!(
-            "{}://{}:{}/api/v1/permissions/{}/revoke",
-            endpoint.protocol,
-            endpoint.address.ip(),
-            endpoint.address.port(),
-            permission_id
-        );
-
         let request = RevocationRequest {
             reason: reason.to_string(),
         };
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::network(format!("BearDog revoke request failed: {}", e))
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::network(format!(
-                "BearDog revoke returned error: {}",
-                response.status()
-            )));
+        let mut params = serde_json::to_value(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
+        
+        // Add permission_id to params
+        if let Some(obj) = params.as_object_mut() {
+            obj.insert("permission_id".to_string(), serde_json::json!(permission_id.to_string()));
         }
+
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("beardog.revoke_permission", params)
+            .await?;
 
         Ok(())
     }

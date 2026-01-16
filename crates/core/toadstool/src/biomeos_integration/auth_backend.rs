@@ -66,19 +66,23 @@ pub trait AuthBackend: Send + Sync {
     }
 }
 
-/// Production implementation using BearDog HTTP API
+/// Production implementation using BearDog Unix Socket API (Pure Rust!)
+///
+/// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct BearDogBackend {
-    client: reqwest::Client,
-    endpoint: String,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
 impl BearDogBackend {
-    /// Create a new BearDog authentication backend
+    /// Create a new BearDog authentication backend with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
-    pub fn new(endpoint: impl Into<String>) -> Self {
+    pub fn new(_endpoint: impl Into<String>) -> Self {
+        // Use unix socket path discovery instead of HTTP endpoint
+        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
         Self {
-            client: reqwest::Client::new(),
-            endpoint: endpoint.into(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         }
     }
 }
@@ -86,46 +90,26 @@ impl BearDogBackend {
 #[async_trait]
 impl AuthBackend for BearDogBackend {
     async fn initialize(&self) -> ToadStoolResult<()> {
-        let response = self
-            .client
-            .get(format!("{}/health", self.endpoint))
-            .send()
+        // Health check via JSON-RPC over unix socket
+        let _health: serde_json::Value = self
+            .rpc_client
+            .call("beardog.health", serde_json::json!({}))
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to BearDog: {e}")))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "BearDog health check failed with status: {}",
-                response.status()
-            )));
-        }
-
-        tracing::info!("Successfully connected to BearDog at {}", self.endpoint);
+        tracing::info!("Successfully connected to BearDog via unix socket");
         Ok(())
     }
 
     async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
-        let response = self
-            .client
-            .post(format!("{}/auth/token", self.endpoint))
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}"))
-            })?;
+        let params = serde_json::to_value(request)
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {e}")))?;
 
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Token request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let token: AuthenticationToken = response
-            .json()
+        let token: AuthenticationToken = self
+            .rpc_client
+            .call_typed("beardog.request_token", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to parse token response: {e}")))?;
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}")))?;
 
         // Validate token
         self.validate_token(&token)?;
@@ -137,24 +121,14 @@ impl AuthBackend for BearDogBackend {
         &self,
         request: &TokenRefreshRequest,
     ) -> ToadStoolResult<AuthenticationToken> {
-        let response = self
-            .client
-            .post(format!("{}/auth/refresh", self.endpoint))
-            .json(&request)
-            .send()
+        let params = serde_json::to_value(request)
+            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {e}")))?;
+
+        let token: AuthenticationToken = self
+            .rpc_client
+            .call_typed("beardog.refresh_token", params)
             .await
             .map_err(|e| ToadStoolError::runtime(format!("Failed to refresh token: {e}")))?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::runtime(format!(
-                "Token refresh failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let token: AuthenticationToken = response.json().await.map_err(|e| {
-            ToadStoolError::runtime(format!("Failed to parse refresh response: {e}"))
-        })?;
 
         Ok(token)
     }

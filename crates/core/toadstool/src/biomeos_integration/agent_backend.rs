@@ -201,10 +201,11 @@ pub trait AgentBackend: Send + Sync {
     }
 }
 
-/// Production implementation using Squirrel HTTP API
+/// Production implementation using Squirrel Unix Socket API (Pure Rust!)
+///
+/// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct SquirrelBackend {
-    client: reqwest::Client,
-    endpoint: String,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     #[allow(dead_code)] // Stored for potential future use
     model_registry: String,
     #[allow(dead_code)] // Stored for potential future use
@@ -213,17 +214,20 @@ pub struct SquirrelBackend {
 }
 
 impl SquirrelBackend {
-    /// Create a new Squirrel backend
+    /// Create a new Squirrel backend with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     #[must_use]
     pub fn new(
-        endpoint: impl Into<String>,
+        _endpoint: impl Into<String>,
         model_registry: impl Into<String>,
         agent_runtime: impl Into<String>,
         mcp_enabled: bool,
     ) -> Self {
+        // Use unix socket path discovery instead of HTTP endpoint
+        let socket_path = toadstool_common::primal_sockets::get_squirrel_socket_path();
         Self {
-            client: reqwest::Client::new(),
-            endpoint: endpoint.into(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             model_registry: model_registry.into(),
             agent_runtime: agent_runtime.into(),
             _mcp_enabled: mcp_enabled,
