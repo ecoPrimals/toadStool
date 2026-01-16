@@ -3,9 +3,8 @@
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
 
 use async_trait::async_trait;
-use reqwest::Client;
+// No longer using reqwest - using unix sockets (pure Rust!)
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 use super::registry::Capability;
 use anyhow::Result;
@@ -44,7 +43,7 @@ pub trait PrimalAdapter: Send + Sync {
 /// Implements the Songbird Federation API for capability registration
 pub struct SongbirdAdapter {
     endpoint: String,
-    client: Client,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     toadstool_endpoint: String,
 }
 
@@ -64,10 +63,9 @@ impl SongbirdAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(songbird_endpoint: &str) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {e}"))?;
+        // Use unix socket instead of HTTP (pure Rust!)
+        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         // Get ToadStool's own endpoint from environment (required - primal self-knowledge)
         let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT").map_err(|_| {
@@ -79,7 +77,7 @@ impl SongbirdAdapter {
 
         Ok(Self {
             endpoint: songbird_endpoint.to_string(),
-            client,
+            rpc_client,
             toadstool_endpoint,
         })
     }
@@ -87,14 +85,13 @@ impl SongbirdAdapter {
     /// Create adapter with explicit endpoint (for testing/development)
     #[cfg(test)]
     pub fn new_with_endpoint(songbird_endpoint: &str, toadstool_endpoint: String) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {e}"))?;
+        // Use unix socket instead of HTTP (pure Rust!)
+        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
             endpoint: songbird_endpoint.to_string(),
-            client,
+            rpc_client,
             toadstool_endpoint,
         })
     }
@@ -111,9 +108,7 @@ impl PrimalAdapter for SongbirdAdapter {
     }
 
     async fn register_capabilities(&self, capabilities: Vec<Capability>) -> Result<()> {
-        // Songbird Federation API: POST /api/v1/federation/register
-        let url = format!("{}/api/v1/federation/register", self.endpoint);
-
+        // Songbird Federation API via JSON-RPC over unix socket
         let registration = SongbirdRegistrationRequest {
             service_id: "toadstool".to_string(),
             service_endpoint: self.toadstool_endpoint.clone(),
@@ -137,45 +132,40 @@ impl PrimalAdapter for SongbirdAdapter {
             workload_endpoint: format!("{}/api/v1/workload/execute", self.toadstool_endpoint),
         };
 
-        let response = self.client.post(&url).json(&registration).send().await?;
+        let params = serde_json::to_value(&registration)?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(anyhow::anyhow!(
-                "Songbird registration failed ({}): {}",
-                status,
-                body
-            ));
-        }
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("songbird.register_capabilities", params)
+            .await
+            .map_err(|e| anyhow::anyhow!("Songbird registration failed: {e}"))?;
 
         tracing::info!(
-            "Successfully registered {} capabilities with Songbird at {}",
-            capabilities.len(),
-            self.endpoint
+            "Successfully registered {} capabilities with Songbird via unix socket",
+            capabilities.len()
         );
 
         Ok(())
     }
 
     async fn send_heartbeat(&self) -> Result<()> {
-        // Songbird Federation API: POST /api/v1/federation/heartbeat
-        let url = format!("{}/api/v1/federation/heartbeat", self.endpoint);
-
+        // Songbird Federation API via JSON-RPC over unix socket
         let heartbeat = SongbirdHeartbeat {
             service_id: "toadstool".to_string(),
             timestamp: chrono::Utc::now(),
             status: "healthy".to_string(),
         };
 
-        let response = self.client.post(&url).json(&heartbeat).send().await?;
+        let params = serde_json::to_value(&heartbeat)?;
 
-        if !response.status().is_success() {
-            tracing::warn!("Heartbeat to Songbird failed: {}", response.status());
-        }
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("songbird.heartbeat", params)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("Heartbeat to Songbird failed: {e}");
+                serde_json::json!({})
+            });
 
         Ok(())
     }
@@ -185,9 +175,7 @@ impl PrimalAdapter for SongbirdAdapter {
         capability: &Capability,
         available: bool,
     ) -> Result<()> {
-        // Songbird Federation API: POST /api/v1/federation/capability/update
-        let url = format!("{}/api/v1/federation/capability/update", self.endpoint);
-
+        // Songbird Federation API via JSON-RPC over unix socket
         let update = SongbirdCapabilityUpdate {
             service_id: "toadstool".to_string(),
             capability_id: capability.id.clone(),
@@ -195,36 +183,38 @@ impl PrimalAdapter for SongbirdAdapter {
             timestamp: chrono::Utc::now(),
         };
 
-        let response = self.client.post(&url).json(&update).send().await?;
+        let params = serde_json::to_value(&update)?;
 
-        if !response.status().is_success() {
-            tracing::warn!(
-                "Capability update to Songbird failed: {}",
-                response.status()
-            );
-        }
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("songbird.capability_update", params)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("Capability update to Songbird failed: {e}");
+                serde_json::json!({})
+            });
 
         Ok(())
     }
 
     async fn deregister(&self) -> Result<()> {
-        // Songbird Federation API: DELETE /api/v1/federation/deregister
-        let url = format!("{}/api/v1/federation/deregister", self.endpoint);
-
+        // Songbird Federation API via JSON-RPC over unix socket
         let request = SongbirdDeregisterRequest {
             service_id: "toadstool".to_string(),
         };
 
-        let response = self.client.delete(&url).json(&request).send().await?;
+        let params = serde_json::to_value(&request)?;
 
-        if !response.status().is_success() {
-            tracing::warn!("Deregistration from Songbird failed: {}", response.status());
-        } else {
-            tracing::info!(
-                "Successfully deregistered from Songbird at {}",
-                self.endpoint
-            );
-        }
+        let _: serde_json::Value = self
+            .rpc_client
+            .call("songbird.deregister", params)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("Deregistration from Songbird failed: {e}");
+                serde_json::json!({})
+            });
+
+        tracing::info!("Successfully deregistered from Songbird via unix socket");
 
         Ok(())
     }
