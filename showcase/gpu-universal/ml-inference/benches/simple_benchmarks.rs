@@ -9,7 +9,20 @@ use tokio::runtime::Runtime;
 /// Benchmark MatMul - the most critical operation
 fn bench_matmul(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let executor = rt.block_on(WgpuExecutor::new()).unwrap();
+    
+    // Select GPU based on environment variable, default to first available
+    let executor = if std::env::var("USE_AMD_GPU").is_ok() {
+        eprintln!("🔴 Benchmarking on AMD GPU");
+        rt.block_on(WgpuExecutor::new_amd()).unwrap()
+    } else if std::env::var("USE_NVIDIA_GPU").is_ok() {
+        eprintln!("🟢 Benchmarking on NVIDIA GPU");
+        rt.block_on(WgpuExecutor::new_nvidia()).unwrap()
+    } else {
+        eprintln!("📊 Benchmarking on default GPU");
+        let exec = rt.block_on(WgpuExecutor::new()).unwrap();
+        eprintln!("   GPU: {}", exec.gpu_info());
+        exec
+    };
 
     let mut group = c.benchmark_group("MatMul");
 
