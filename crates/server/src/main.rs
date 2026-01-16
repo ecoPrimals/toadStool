@@ -62,8 +62,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Node ID: {}", node_id);
 
     // Determine socket path using biomeOS-standardized 3-tier fallback
+    info!("🔍 Socket Path Discovery:");
+    info!("  Checking TOADSTOOL_SOCKET: {:?}", std::env::var("TOADSTOOL_SOCKET").ok());
+    info!("  Checking BIOMEOS_SOCKET_PATH: {:?}", std::env::var("BIOMEOS_SOCKET_PATH").ok());
+    info!("  Checking XDG_RUNTIME_DIR: {:?}", std::env::var("XDG_RUNTIME_DIR").ok());
+    
     let socket_path = get_socket_path(&family_id, &node_id)?;
-    info!("Socket path: {:?}", socket_path);
+    info!("✅ Final socket path: {:?}", socket_path);
 
     // Create executor (workload handler) - now with distributed coordinator
     info!("Initializing compute executor...");
@@ -147,13 +152,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (primal-specific)
     if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
-        info!("Using socket path from TOADSTOOL_SOCKET: {}", socket);
+        info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
+        info!("   (Orchestrator-provided explicit path - highest priority)");
         return Ok(PathBuf::from(socket));
     }
 
     // 2. BIOMEOS_SOCKET_PATH: Generic orchestrator-provided path
     if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
-        info!("Using socket path from BIOMEOS_SOCKET_PATH: {}", socket);
+        info!("✅ Using socket path from BIOMEOS_SOCKET_PATH: {}", socket);
+        info!("   (Generic biomeOS path - second priority)");
         return Ok(PathBuf::from(socket));
     }
 
@@ -167,15 +174,18 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
     let xdg_path = PathBuf::from(&runtime_dir).join(format!("toadstool-{}.sock", family_id));
 
     if PathBuf::from(&runtime_dir).exists() {
-        info!("Using XDG runtime directory: {}", runtime_dir);
+        info!("⚠️  Using XDG runtime directory fallback: {}", runtime_dir);
+        info!("   (User-mode deployment - third priority)");
+        info!("   NOTE: For orchestrator deployments, set TOADSTOOL_SOCKET env var!");
         return Ok(xdg_path);
     }
 
     // 4. /tmp fallback (system-wide deployments, containers, minimal systems)
     let tmp_path = PathBuf::from("/tmp").join(format!("toadstool-{}.sock", family_id));
 
-    info!("Using /tmp fallback for system-wide deployment");
-    info!("Socket path: {:?}", tmp_path);
+    info!("⚠️  Using /tmp fallback for system-wide deployment");
+    info!("   (System-mode deployment - lowest priority)");
+    info!("   NOTE: For orchestrator deployments, set TOADSTOOL_SOCKET env var!");
     Ok(tmp_path)
 }
 
