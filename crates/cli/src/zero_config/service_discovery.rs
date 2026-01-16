@@ -152,55 +152,13 @@ impl ServiceDiscovery {
         capability: &str,
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
-        // Get registry endpoints from environment
-        use toadstool_config::network_config::NetworkConfig;
-        let network_config = NetworkConfig::from_env();
-
-        for registry_endpoint in network_config.discovery_endpoints.iter() {
-            debug!(
-                "Querying registry {} for {} capability",
-                registry_endpoint, capability_name
-            );
-
-            // Build registry query URL
-            let query_url = format!(
-                "{}/api/v1/services?capability={}",
-                registry_endpoint, capability
-            );
-
-            // Query registry with timeout
-            let client = reqwest::Client::new();
-            let send_result = timeout(self.discovery_timeout, client.get(&query_url).send()).await;
-
-            match send_result {
-                Ok(Ok(response)) if response.status().is_success() => {
-                    // Parse registry response
-                    if let Ok(services) = response.json::<Vec<RegistryService>>().await {
-                        if let Some(service) = services.first() {
-                            debug!("Found {} in registry", capability_name);
-                            return Ok(Some(ServiceEndpoint {
-                                name: capability_name.to_string(),
-                                endpoint: service.endpoint.clone(),
-                                version: service.version.clone(),
-                                status: "online".to_string(),
-                                auth_required: service.requires_auth,
-                                discovered_at: chrono::Utc::now(),
-                            }));
-                        }
-                    }
-                }
-                Ok(Ok(response)) => {
-                    debug!("Registry query failed with status: {}", response.status());
-                }
-                Ok(Err(e)) => {
-                    debug!("Registry query error: {}", e);
-                }
-                Err(_) => {
-                    debug!("Registry query timeout");
-                }
-            }
-        }
-
+        // DEEP DEBT: HTTP registry discovery removed - use Unix socket capability discovery!
+        tracing::debug!(
+            "HTTP registry discovery deprecated for {} ({}) - use Unix socket discovery",
+            capability_name, capability
+        );
+        
+        // Return None to allow fallback to other discovery methods
         Ok(None)
     }
 
@@ -278,6 +236,8 @@ impl Default for ServiceDiscovery {
 
 /// Registry service response format
 #[derive(serde::Deserialize)]
+// HTTP registry removed - struct kept for reference but unused
+#[allow(dead_code)]
 struct RegistryService {
     endpoint: String,
     version: String,

@@ -147,39 +147,18 @@ impl UniversalServiceAdapter {
     }
 
     /// Invoke via HTTP/REST
-    async fn invoke_http(&self, provider: &ServiceProvider, request: Request) -> Result<Response> {
-        let url = format!("{}/api/v1/{}", provider.endpoint, request.operation);
-
-        let response = tokio::time::timeout(
-            self.timeout,
-            reqwest::Client::new()
-                .post(&url)
-                .json(&request.payload)
-                .send(),
+    /// 
+    /// DEEP DEBT: HTTP adapter removed - use Unix socket RPC instead!
+    async fn invoke_http(&self, _provider: &ServiceProvider, _request: Request) -> Result<Response> {
+        // External HTTP should go through Songbird (Concentrated Gap architecture)
+        tracing::error!(
+            "HTTP invoke deprecated - use Unix socket RPC for primal-to-primal communication"
+        );
+        
+        anyhow::bail!(
+            "HTTP adapter removed. Use Unix socket RPC instead. \
+             For external HTTP, route through Songbird (Concentrated Gap architecture)."
         )
-        .await
-        .context("Request timeout")?
-        .context("HTTP request failed")?;
-
-        if response.status().is_success() {
-            let data: serde_json::Value =
-                response.json().await.context("Failed to parse response")?;
-
-            Ok(Response {
-                status: ResponseStatus::Success,
-                data: Some(data),
-                error: None,
-            })
-        } else {
-            let status_code = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-
-            Ok(Response {
-                status: ResponseStatus::Error,
-                data: None,
-                error: Some(format!("HTTP {}: {}", status_code, error_text)),
-            })
-        }
     }
 
     /// Invoke via gRPC (stub implementation)

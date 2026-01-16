@@ -27,16 +27,18 @@ use tracing::{debug, error, info, warn};
 use toadstool_cli::{
     ecosystem::EcosystemIntegrator, executor::BiomeExecutor,
     network_config::SongbirdNetworkConfigurator, universal::UniversalComputeManager,
-    zero_config::execute_zero_config_deployment, Cli, CliContext, Commands, EcosystemCommands,
+    // zero_config::execute_zero_config_deployment,  // Temporarily disabled (HTTP deps)
+    Cli, CliContext, Commands, EcosystemCommands,
     UniversalCommands,
 };
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // UNIBIN: Detect how we were invoked for backward compatibility
-    let bin_name = std::env::args()
-        .next()
-        .and_then(|p| Path::new(&p).file_name())
+    let bin_path = std::env::args().next();
+    let bin_name = bin_path
+        .as_deref()
+        .and_then(|p| Path::new(p).file_name())
         .and_then(|n| n.to_str())
         .unwrap_or("toadstool");
 
@@ -290,58 +292,21 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         }
 
         Commands::Daemon {
-            register,
-            port,
-            socket,
-            config,
-            max_workloads,
-            biomeos_socket,
+            register: _,
+            port: _,
+            socket: _,
+            config: _,
+            max_workloads: _,
+            biomeos_socket: _,
         } => {
             info!("🍄 Starting ToadStool in daemon mode (UniBin)");
             // UniBin: Call the server daemon logic
             return run_server_daemon().await;
         }
 
-        Commands::ZeroConfig {
-            save_config,
-            skip_discovery,
-            target_time,
-            dry_run,
-        } => {
-            println!("🚀 Starting zero-configuration deployment");
-
-            if *dry_run {
-                println!("🧪 Dry run mode - no actual deployment");
-                return Ok(());
-            }
-
-            if *skip_discovery {
-                println!("⚡ Skipping service discovery for faster deployment");
-            }
-
-            let start = std::time::Instant::now();
-
-            match execute_zero_config_deployment().await {
-                Ok(()) => {
-                    let duration = start.elapsed();
-                    println!("✅ Zero-configuration deployment completed in {duration:?}");
-
-                    if duration.as_secs() <= *target_time {
-                        println!("🎯 Target time of {target_time}s achieved!");
-                    } else {
-                        println!("⏰ Deployment took longer than target {target_time}s");
-                    }
-
-                    if let Some(config_path) = save_config {
-                        println!("💾 Configuration saved to: {}", config_path.display());
-                    }
-                }
-                Err(e) => {
-                    eprintln!("❌ Zero-configuration deployment failed: {e}");
-                    std::process::exit(1);
-                }
-            }
-        }
+        // UNIBIN PHASE 1: ZeroConfig temporarily disabled (HTTP dependencies)
+        // Will be re-enabled in Phase 2 after full HTTP cleanup
+        // Commands::ZeroConfig { ... } => { ... }
 
         // UNIBIN PHASE 1: NetworkConfig temporarily disabled
         // Commands::NetworkConfig {
@@ -708,6 +673,8 @@ fn print_operation_summary(operation: &str, duration: std::time::Duration, detai
 }
 
 /// Execute network configuration command
+// UNIBIN PHASE 1: NetworkConfig temporarily disabled
+#[allow(dead_code)]
 async fn execute_network_config_command(
     apply: bool,
     validate: bool,
