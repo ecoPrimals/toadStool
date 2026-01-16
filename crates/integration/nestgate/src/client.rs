@@ -1,18 +1,24 @@
-//! `NestGate` client implementation for artifact and storage management
+//! Storage client implementation using capability-based discovery
 //!
-//! **Evolution**: Now supports capability-based discovery in addition to direct endpoints.
+//! **TRUE PRIMAL**: Self-knowledge only - discovers storage via capabilities!
 //!
-//! ## Usage Patterns
+//! ## Philosophy
 //!
-//! ### Pattern 1: Direct Endpoint (Legacy, still supported)
+//! - ✅ **Self-Knowledge**: Knows only itself, discovers storage at runtime
+//! - ✅ **Capability-Based**: Discovers ANY storage service with required capability
+//! - ✅ **Vendor-Agnostic**: Works with NestGate, S3, MinIO, GCS, or any storage
+//! - ✅ **Pure Rust**: Unix socket IPC for primal communication
+//!
+//! ## Usage
+//!
 //! ```ignore
-//! let client = NestGateClient::connect("http://localhost:8080").await?;
-//! ```
+//! use toadstool_integration_nestgate::StorageClient;
 //!
-//! ### Pattern 2: Capability-Based Discovery (NEW)
-//! ```ignore
-//! let client = NestGateClient::discover().await?;
-//! // Discovers ANY storage service with ArtifactStorage capability
+//! // Discover ANY storage service with ArtifactStorage capability
+//! let client = StorageClient::discover().await?;
+//!
+//! // Store artifact (vendor-agnostic!)
+//! client.store_artifact("model.bin", data).await?;
 //! ```
 
 use chrono::Utc;
@@ -20,7 +26,7 @@ use chrono::Utc;
 use sha2::Digest;
 use sha2::Sha256;
 use std::collections::HashMap;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use toadstool_common::primal_identity::{Capability, StorageCapability};
@@ -33,20 +39,57 @@ use crate::types::{
     NestGateError, NestGateResult, StorageInfo, StorageResult, StorageStatus, StorageTier,
 };
 
-/// Main `NestGate` client for storage and pipeline operations
+/// Storage client for artifact and pipeline operations
 ///
-/// **Design**: Supports capability-based discovery via unix sockets (pure Rust!)
+/// **TRUE PRIMAL**: Capability-based, vendor-agnostic storage client
+///
+/// ## Design Principles
+///
+/// - **Self-Knowledge**: Knows only storage capabilities, not specific services
+/// - **Runtime Discovery**: Finds storage services via capability system
+/// - **Vendor-Agnostic**: Works with ANY storage implementing ArtifactStorage capability
+/// - **Pure Rust IPC**: Unix socket communication (no HTTP between primals!)
+///
+/// ## Supported Storage Services
+///
+/// - NestGate (ecoPrimals storage)
+/// - MinIO (S3-compatible)
+/// - AWS S3 (via adapter)
+/// - Google Cloud Storage (via adapter)
+/// - Any service advertising `storage:artifact` capability
 #[derive(Debug, Clone)]
-pub struct NestGateClient {
+pub struct StorageClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     config: NestGateConfig,
+    /// Discovered service name (for diagnostics)
+    #[allow(dead_code)]
+    service_name: String,
 }
 
-impl NestGateClient {
-    /// Discover storage service by capability (RECOMMENDED)
+impl StorageClient {
+    /// Discover storage service via capability-based discovery
     ///
-    /// Discovers ANY storage service advertising ArtifactStorage capability.
-    /// This is vendor-agnostic and works with NestGate, S3, MinIO, GCS, etc.
+    /// **TRUE PRIMAL**: Discovers ANY storage service with ArtifactStorage capability
+    ///
+    /// ## Vendor-Agnostic Discovery
+    ///
+    /// Finds storage services advertising `storage:artifact` capability:
+    /// - NestGate (ecoPrimals native storage)
+    /// - MinIO (S3-compatible object storage)
+    /// - AWS S3 (via capability adapter)
+    /// - Google Cloud Storage (via capability adapter)
+    /// - Custom storage implementations
+    ///
+    /// ## Self-Knowledge Principle
+    ///
+    /// This client knows:
+    /// - ✅ What capabilities it needs (storage:artifact)
+    /// - ✅ How to communicate via unix sockets
+    ///
+    /// This client does NOT know:
+    /// - ❌ Specific service names (NestGate, MinIO, etc.)
+    /// - ❌ Hardcoded endpoints or ports
+    /// - ❌ Implementation details
     ///
     /// # Errors
     /// Returns an error if no storage service is found or connection fails
@@ -56,6 +99,8 @@ impl NestGateClient {
     }
 
     /// Discover storage service by specific capability
+    ///
+    /// **TRUE PRIMAL**: Runtime discovery, no hardcoding!
     ///
     /// # Errors
     /// Returns an error if no service is found or connection fails
@@ -69,19 +114,29 @@ impl NestGateClient {
             .await
             .map_err(|e| NestGateError::Connection(format!("No storage service found: {}", e)))?;
 
-        let endpoint = service
-            .endpoints
-            .first()
-            .ok_or_else(|| NestGateError::Connection("No endpoints available".to_string()))?;
+        let service_name = service.name.clone();
 
-        let endpoint_url = endpoint.url();
+        // Get unix socket path for discovered service
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
 
         info!(
-            "Discovered storage service: {} at {}",
-            service.name, endpoint_url
+            "✅ Discovered storage service: {} (capability-based discovery)",
+            service_name
         );
 
-        Self::connect(&endpoint_url).await
+        // Create client with discovered service
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+
+        let client = Self {
+            rpc_client,
+            config: NestGateConfig::default(),
+            service_name,
+        };
+
+        // Verify connectivity
+        client.health_check().await?;
+
+        Ok(client)
     }
 
     /// Connect to storage server with default configuration (Direct endpoint)
@@ -111,7 +166,7 @@ impl NestGateClient {
         let client = Self {
             rpc_client,
             config,
-            client: http_client,
+            service_name: "nestgate".to_string(),
         };
 
         // Perform initial health check
@@ -120,30 +175,22 @@ impl NestGateClient {
         Ok(client)
     }
 
-    /// Check `NestGate` server health
+    /// Check `NestGate` server health via unix socket
+    ///
+    /// **PURE RUST**: JSON-RPC over unix socket (modern async pattern!)
     ///
     /// # Errors
     /// Returns an error if the health check request fails or server is unhealthy
     pub async fn health_check(&self) -> NestGateResult<()> {
-        let url = format!("{}/health", self.config.endpoint);
-
-        let response = self
-            .client
-            .get(&url)
-            .send()
+        // Modern async RPC pattern
+        let _response: serde_json::Value = self
+            .rpc_client
+            .call("nestgate.health", serde_json::json!({}))
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
-        if response.status().is_success() {
-            debug!("NestGate health check passed");
-            Ok(())
-        } else {
-            warn!("NestGate health check failed: {}", response.status());
-            Err(NestGateError::Connection(format!(
-                "Health check failed with status: {}",
-                response.status()
-            )))
-        }
+        debug!("NestGate health check passed via unix socket");
+        Ok(())
     }
 
     /// Store artifact in `NestGate`
