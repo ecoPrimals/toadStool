@@ -152,6 +152,29 @@ pub fn get_toadstool_socket_path() -> PathBuf {
     PathBuf::from(&runtime_dir).join(format!("toadstool-{}.sock", family))
 }
 
+/// Get socket path for any service by name
+///
+/// Maps service names to socket paths using established patterns.
+/// Falls back to generic pattern for unknown services.
+pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
+    // Map known service names to specific socket paths
+    match service_name.to_lowercase().as_str() {
+        "beardog" | "bear-dog" => get_beardog_socket_path(),
+        "songbird" | "song-bird" => get_songbird_socket_path(),
+        "nestgate" | "nest-gate" => get_nestgate_socket_path(),
+        "squirrel" => get_squirrel_socket_path(),
+        "toadstool" | "toad-stool" => get_toadstool_socket_path(),
+        "nucleus" | "biomeos" => get_nucleus_socket_path(),
+        
+        // Generic pattern for unknown services
+        _ => {
+            let runtime_dir = get_runtime_dir();
+            let family = get_family_id();
+            PathBuf::from(&runtime_dir).join(format!("{}-{}.sock", service_name.to_lowercase(), family))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
