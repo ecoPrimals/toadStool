@@ -52,10 +52,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
 
-use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
-    WorkloadSubmission as TarpcWorkloadSubmission,
-};
+// UNIBIN: protocols crate disabled (peripheral, HTTP remnants)
+// use toadstool_integration_protocols::tarpc_service::{
+//     ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
+//     WorkloadSubmission as TarpcWorkloadSubmission,
+// };
 
 /// JSON-RPC server configuration
 #[derive(Debug, Clone)]

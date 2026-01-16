@@ -28,7 +28,7 @@ toadstool = { path = "../core/toadstool", features = ["networking"] }
 toadstool-config = { path = "../core/config" }
 toadstool-common = { path = "../core/common" }
 toadstool-distributed = { path = "../distributed" }
-toadstool-integration-protocols = { path = "../integration/protocols" }
+# toadstool-integration-protocols = { path = "../integration/protocols" }  # Disabled: peripheral crate with HTTP remnants
 
 # HTTP server framework (optional)
 axum = { version = "0.7", features = ["ws"], optional = true }

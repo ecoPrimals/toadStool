@@ -1,4 +1,4 @@
-//! ToadStool CLI - Universal Compute Command Center
+//! ToadStool - Universal Compute Platform (UniBin Architecture)
 //!
 //! 🍄 **WELCOME TO THE FUTURE OF SOVEREIGN SCIENCE** 🍄
 //!
@@ -9,6 +9,14 @@
 //! 🎯 **SOVEREIGN SCIENCE**: Your compute, your data, your control
 //! 🚀 **UNIVERSAL COMPUTE**: If it has a chip and memory, ToadStool runs on it
 //! 🔒 **ZERO TRUST**: BearDog cryptographic security by default
+//!
+//! ## UniBin Architecture
+//!
+//! This is the FIRST UniBin primal in the ecoPrimals ecosystem!
+//! One binary, multiple modes:
+//! - `toadstool <command>` - CLI commands (run, up, down, etc.)
+//! - `toadstool daemon` - Server/daemon mode
+//! - `toadstool-server` - Backward compat (auto-runs daemon mode)
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -25,6 +33,20 @@ use toadstool_cli::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // UNIBIN: Detect how we were invoked for backward compatibility
+    let bin_name = std::env::args()
+        .next()
+        .and_then(|p| Path::new(&p).file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or("toadstool");
+
+    // If invoked as "toadstool-server", run in daemon mode automatically
+    if bin_name == "toadstool-server" {
+        info!("🍄 ToadStool invoked as 'toadstool-server' (legacy mode)");
+        info!("💡 TIP: Use 'toadstool daemon' for the modern UniBin interface");
+        return run_server_daemon().await;
+    }
+
     // Parse command line arguments
     let cli = Cli::parse();
 
@@ -275,16 +297,9 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             max_workloads,
             biomeos_socket,
         } => {
-            info!("🍄 Starting ToadStool daemon mode");
-            toadstool_cli::daemon::start_daemon(
-                *port,
-                *register,
-                socket.clone(),
-                config.clone(),
-                *max_workloads,
-                biomeos_socket.clone(),
-            )
-            .await?;
+            info!("🍄 Starting ToadStool in daemon mode (UniBin)");
+            // UniBin: Call the server daemon logic
+            return run_server_daemon().await;
         }
 
         Commands::ZeroConfig {
@@ -328,17 +343,18 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             }
         }
 
-        Commands::NetworkConfig {
-            apply,
-            validate,
-            summary,
-            config_file,
-            test,
-            export,
-        } => {
-            execute_network_config_command(*apply, *validate, *summary, config_file, *test, export)
-                .await?;
-        }
+        // UNIBIN PHASE 1: NetworkConfig temporarily disabled
+        // Commands::NetworkConfig {
+        //     apply,
+        //     validate,
+        //     summary,
+        //     config_file,
+        //     test,
+        //     export,
+        // } => {
+        //     execute_network_config_command(*apply, *validate, *summary, config_file, *test, export)
+        //         .await?;
+        // }
 
         Commands::Execute {
             workload,
@@ -559,6 +575,28 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
 }
 
 /// Execute universal compute operations
+/// Run ToadStool in server/daemon mode
+///
+/// UNIBIN PHASE 1: Redirect to standalone server during migration
+/// Phase 2 will fully integrate server logic into this binary
+async fn run_server_daemon() -> Result<()> {
+    error!("🚧 UniBin Phase 1: Server mode not yet integrated");
+    error!("");
+    error!("The UniBin architecture is being implemented in phases:");
+    error!("  Phase 1: CLI consolidation (CURRENT) ✅");
+    error!("  Phase 2: Server integration (NEXT)");
+    error!("");
+    error!("For now, please use the standalone server:");
+    error!("  $ toadstool-server");
+    error!("");
+    error!("Or build it directly:");
+    error!("  $ cargo build --release --bin toadstool-server");
+    error!("");
+    error!("Once Phase 2 is complete, 'toadstool daemon' will work!");
+    
+    std::process::exit(1);
+}
+
 async fn execute_universal_command(operation: &UniversalCommands) -> Result<()> {
     let mut manager = UniversalComputeManager::new().await?;
 

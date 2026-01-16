@@ -286,51 +286,55 @@ pub enum Commands {
         biomeos_socket: Option<PathBuf>,
     },
 
-    /// Zero-configuration rapid deployment
-    ZeroConfig {
-        /// Save configuration to file
-        #[arg(short, long)]
-        save_config: Option<PathBuf>,
+    // UNIBIN PHASE 1: ZeroConfig temporarily disabled (has HTTP dependencies)  
+    // Will be re-enabled in Phase 2 after full HTTP cleanup
+    // /// Zero-configuration rapid deployment
+    // ZeroConfig {
+    //     /// Save configuration to file
+    //     #[arg(short, long)]
+    //     save_config: Option<PathBuf>,
+    //
+    //     /// Skip service discovery
+    //     #[arg(long)]
+    //     skip_discovery: bool,
+    //
+    //     /// Target deployment time in seconds
+    //     #[arg(long, default_value = "60")]
+    //     target_time: u64,
+    //
+    //     /// Dry run (don't deploy)
+    //     #[arg(long)]
+    //     dry_run: bool,
+    // },
 
-        /// Skip service discovery
-        #[arg(long)]
-        skip_discovery: bool,
-
-        /// Target deployment time in seconds
-        #[arg(long, default_value = "60")]
-        target_time: u64,
-
-        /// Dry run (don't deploy)
-        #[arg(long)]
-        dry_run: bool,
-    },
-
-    /// Configure Songbird service mesh networking
-    NetworkConfig {
-        /// Apply network configuration
-        #[arg(long)]
-        apply: bool,
-
-        /// Validate configuration
-        #[arg(long)]
-        validate: bool,
-
-        /// Show configuration summary
-        #[arg(long)]
-        summary: bool,
-
-        /// Configuration file path
-        #[arg(short = 'f', long)]
-        config_file: Option<PathBuf>,
-
-        /// Test connectivity
-        #[arg(long)]
-        test: bool,
-
-        /// Export configuration
-        #[arg(long)]
-        export: Option<PathBuf>,
-    },
+    // UNIBIN PHASE 1: NetworkConfig temporarily disabled (has HTTP dependencies)
+    // Will be re-enabled in Phase 2 after full HTTP cleanup
+    // /// Configure Songbird service mesh networking
+    // NetworkConfig {
+    //     /// Apply network configuration
+    //     #[arg(long)]
+    //     apply: bool,
+    //
+    //     /// Validate configuration
+    //     #[arg(long)]
+    //     validate: bool,
+    //
+    //     /// Show configuration summary
+    //     #[arg(long)]
+    //     summary: bool,
+    //
+    //     /// Configuration file path
+    //     #[arg(short = 'f', long)]
+    //     config_file: Option<PathBuf>,
+    //
+    //     /// Test connectivity
+    //     #[arg(long)]
+    //     test: bool,
+    //
+    //     /// Export configuration
+    //     #[arg(long)]
+    //     export: Option<PathBuf>,
+    // },
 
     /// Execute a workload directly (no biome.yaml required)
     Execute {

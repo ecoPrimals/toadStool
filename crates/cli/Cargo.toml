@@ -27,7 +27,16 @@ large_enum_variant = "warn"
 mutex_atomic = "warn"
 
 [[bin]]
+name = "toadstool"
+path = "src/main.rs"
+
+# Backward compatibility aliases
+[[bin]]
 name = "toadstool-cli"
+path = "src/main.rs"
+
+[[bin]]
+name = "toadstool-server"
 path = "src/main.rs"
 
 [dependencies]
@@ -36,6 +45,7 @@ toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
+# toadstool-server = { path = "../server" }  # UniBin: Will be integrated after protocols crate cleanup
 humantime-serde = "1.1"
 
 # Runtime engines

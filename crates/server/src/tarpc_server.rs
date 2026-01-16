@@ -13,10 +13,11 @@ use tracing::{info, warn};
 // For resource utilization calculation
 use num_cpus;
 
-use toadstool_integration_protocols::tarpc_service::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
-    ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
-};
+// UNIBIN: protocols crate disabled (peripheral, HTTP remnants)
+// use toadstool_integration_protocols::tarpc_service::{
+//     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
+//     ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+// };
 
 /// tarpc server state
 pub struct ToadStoolTarpcServer {

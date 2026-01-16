@@ -13,7 +13,8 @@
 //! - `ReliabilityExt`: Circuit breakers and health monitoring
 
 use super::types::*;
-use reqwest::Client;
+// UNIBIN: reqwest removed - use Unix sockets!
+// use reqwest::Client;
 use toadstool::error::ToadStoolResult;
 
 // Internal modules
@@ -47,9 +48,9 @@ pub(crate) use traffic::TrafficExt;
 /// configurator.validate_configuration()?;
 /// ```
 pub struct SongbirdNetworkConfigurator {
-    /// HTTP client for making configuration requests
+    /// HTTP client for making configuration requests - REMOVED (Unix sockets!)
     #[allow(dead_code)]
-    pub(crate) client: Client,
+    pub(crate) _stub: String, // UniBin placeholder
 
     /// Network configuration
     pub config: SongbirdNetworkConfig,

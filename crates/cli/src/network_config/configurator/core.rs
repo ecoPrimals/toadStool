@@ -52,7 +52,7 @@ impl super::SongbirdNetworkConfigurator {
 impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
     fn new() -> Self {
         Self {
-            client: reqwest::Client::new(),
+            _stub: "UNIBIN_PHASE_1".to_string(), // Placeholder during migration
             config: Self::default_config(),
         }
     }

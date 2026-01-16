@@ -23,9 +23,10 @@ use toadstool::{
     SecurityContext, WorkloadSpec,
 };
 use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
-use toadstool_integration_protocols::tarpc_service::{
-    ComputeCapabilities, ExecutionMetrics, WorkloadResult, WorkloadStatus, WorkloadSubmission,
-};
+// UNIBIN: protocols crate disabled (peripheral, HTTP remnants)
+// use toadstool_integration_protocols::tarpc_service::{
+//     ComputeCapabilities, ExecutionMetrics, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+// };
 
 use super::tarpc_server::WorkloadExecutor;
 
