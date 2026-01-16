@@ -104,17 +104,18 @@ use ml_inference::attention::ScaledDotProductAttention;
 ### Severity: **Low** ⚠️
 - Production code compiles and works correctly
 - Tests are a separate concern
-- Fix is straightforward (import path updates)
+- Fix requires test code updates
 
 ### Urgency: **Medium**
 - Should fix before next major release
 - Does not block production deployment
 - Good housekeeping task
 
-### Effort: **Low**
-- Estimated: 15-30 minutes
-- Straightforward find-and-replace
-- Can be scripted if needed
+### Effort: **Medium**
+- Estimated: 1-2 hours (more involved than initially assessed)
+- Tests need type annotations and structure updates
+- Not just import paths - some test logic needs adjustment
+- Glob re-exports added but tests need further updates
 
 ---
 

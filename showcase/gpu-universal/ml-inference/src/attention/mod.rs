@@ -32,9 +32,16 @@ mod masks;
 mod bias;
 mod flash;
 
-// Re-export all public types
+// Re-export all public types for backward compatibility
 pub use scaled_dot_product::ScaledDotProductAttention;
 pub use multi_head::MultiHeadAttention;
 pub use masks::CausalMask;
 pub use bias::AttentionBias;
 pub use flash::FlashAttention;
+
+// Glob re-exports for test compatibility
+pub use scaled_dot_product::*;
+pub use multi_head::*;
+pub use masks::*;
+pub use bias::*;
+pub use flash::*;

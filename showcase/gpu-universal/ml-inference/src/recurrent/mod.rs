@@ -35,9 +35,16 @@ mod gru;
 mod architectures;
 mod dropout;
 
-// Re-export all public types
+// Re-export all public types for backward compatibility
 pub use rnn::RNNCell;
 pub use lstm::{LSTMCell, LSTMLayer};
 pub use gru::{GRUCell, GRULayer};
 pub use architectures::{BidirectionalRNN, StackedLSTM};
 pub use dropout::RecurrentDropout;
+
+// Glob re-exports for test compatibility
+pub use rnn::*;
+pub use lstm::*;
+pub use gru::*;
+pub use architectures::*;
+pub use dropout::*;
