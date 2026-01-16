@@ -59,7 +59,8 @@ tempfile = "3.0"
 tempdir = "0.3"
 
 # HTTP client for integration tests
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false, optional = true }
+# PURE RUST: reqwest removed even from testing (use unix sockets in tests too!)
+# reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false, optional = true }
 
 # Logging for tests
 tracing = "0.1"
@@ -91,5 +92,5 @@ harness = false
 
 [features]
 default = []
-integration-tests = ["wiremock", "reqwest", "libc"]
+integration-tests = ["wiremock", "libc"] # Removed reqwest - use unix sockets!
 benchmarks = [] 

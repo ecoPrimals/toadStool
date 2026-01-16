@@ -698,7 +698,7 @@ impl JobCoordinator {
 
 pub struct DiscoveryClient {
     pub(super) connection: Arc<SongbirdConnection>,
-    pub(super) http_client: reqwest::Client,
+    pub(super) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
 #[derive(Default)]

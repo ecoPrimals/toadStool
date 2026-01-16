@@ -85,11 +85,13 @@ impl SongbirdClient {
 
         // Method 2: Family ID (standard pattern)
         if let Ok(family) = std::env::var("SONGBIRD_FAMILY_ID") {
-            // SAFETY: getuid() is always safe - it just reads process state
-            // Consider: Using `nix` crate for safer wrapper
-            let uid = unsafe { libc::getuid() };
-            let runtime_dir =
-                std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
+            // EVOLVED: Pure Rust - no unsafe! Use environment-based discovery
+            // Primal principle: Environment variables > system calls
+            let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+                // Fallback: Use /tmp with username for portability
+                let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
+                format!("/tmp/toadstool-runtime-{}", username)
+            });
             let socket = format!("{}/songbird-{}.sock", runtime_dir, family);
             return Ok(format!("unix://{}", socket));
         }

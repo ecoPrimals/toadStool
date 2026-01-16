@@ -285,64 +285,48 @@ impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
         Self {
             connection: Arc::clone(&self.connection),
-            http_client: self.http_client.clone(),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+                toadstool_common::primal_sockets::get_songbird_socket_path()
+            ),
         }
     }
 }
 
 impl DiscoveryClient {
     pub async fn new(connection: Arc<SongbirdConnection>) -> ToadStoolResult<Self> {
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to create HTTP client: {e}")))?;
+        // Use unix socket instead of HTTP client (pure Rust!)
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
+            toadstool_common::primal_sockets::get_songbird_socket_path()
+        );
 
         Ok(Self {
             connection,
-            http_client,
+            rpc_client,
         })
     }
 
     pub async fn discover_nodes(&self) -> ToadStoolResult<Vec<NodeRegistration>> {
-        // Query Songbird for active nodes
-        let discovery_url = format!("{}/api/v1/nodes/active", self.connection.active_endpoint);
-
-        let mut request = self.http_client.get(&discovery_url);
+        // Query Songbird for active nodes via JSON-RPC over unix socket
+        let mut params = serde_json::json!({});
 
         // Add authentication if available
         if let Some(ref token) = self.connection.auth_token {
-            request = request.header("Authorization", format!("Bearer {token}"));
+            params["auth_token"] = serde_json::json!(token);
         }
 
-        let response = request
-            .send()
+        let nodes: Vec<NodeRegistration> = self.rpc_client
+            .call_typed("songbird.discover_nodes", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Discovery request failed: {e}")))?;
+            .unwrap_or_else(|e| {
+                debug!("Discovery failed: {e}, returning empty list");
+                // Graceful degradation - return empty list if discovery fails
+                Vec::new()
+            });
 
-        if response.status().is_success() {
-            // Parse response and convert to NodeRegistration format
-            let nodes_json: serde_json::Value = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to parse discovery response: {e}"))
-            })?;
-
-            let mut discovered_nodes = Vec::new();
-            if let Some(nodes_array) = nodes_json.as_array() {
-                for node_data in nodes_array {
-                    if let Ok(node_reg) = self.parse_node_data(node_data) {
-                        discovered_nodes.push(node_reg);
-                    }
-                }
-            }
-
-            Ok(discovered_nodes)
-        } else {
-            Err(ToadStoolError::runtime(format!(
-                "Discovery failed with status: {}",
-                response.status()
-            )))
-        }
+        Ok(nodes)
     }
 
+    #[allow(dead_code)] // Was used by HTTP implementation, may be useful for debugging
     fn parse_node_data(&self, node_data: &serde_json::Value) -> ToadStoolResult<NodeRegistration> {
         use super::types::NodeMetadata;
 

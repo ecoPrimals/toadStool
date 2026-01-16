@@ -163,35 +163,11 @@ impl ConsulDetector {
     }
 
     /// Check if Consul is available
+    ///
+    /// **PURE RUST**: Consul detection removed (no HTTP dependencies)
     async fn is_consul_available(&self) -> bool {
-        // Check environment variable
-        // Deep Debt compliant: runtime discovery with env var override
-        let consul_addr = crate::constants::network::consul_http_addr();
-
-        // Try to connect to Consul API
-        match reqwest::Client::new()
-            .get(format!("{consul_addr}/v1/status/leader"))
-            .timeout(std::time::Duration::from_secs(2))
-            .send()
-            .await
-        {
-            Ok(response) if response.status().is_success() => {
-                tracing::debug!(consul_addr, "Successfully connected to Consul");
-                true
-            }
-            Ok(response) => {
-                tracing::debug!(
-                    consul_addr,
-                    status = %response.status(),
-                    "Consul returned non-success status"
-                );
-                false
-            }
-            Err(e) => {
-                tracing::trace!(consul_addr, error = %e, "Consul not available");
-                false
-            }
-        }
+        tracing::trace!("Consul detection disabled (pure Rust mode)");
+        false // Consul not available in pure Rust mode
     }
 }
 

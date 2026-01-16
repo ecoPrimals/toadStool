@@ -330,27 +330,11 @@ impl WasmRuntimeEngine {
                     })?;
                     self.load_module_from_bytes(&bytes)
                 }
-                toadstool::workload::WasmModuleSource::Url { url } => {
-                    #[cfg(feature = "url-module-loading")]
-                    {
-                        let response = reqwest::get(url).await.map_err(|e| {
-                            ToadStoolError::network(format!("Failed to fetch WASM from {url}: {e}"))
-                        })?;
-
-                        let bytes = response.bytes().await.map_err(|e| {
-                            ToadStoolError::network(format!(
-                                "Failed to read WASM response from {url}: {e}"
-                            ))
-                        })?;
-
-                        self.load_module_from_bytes(&bytes)
-                    }
-                    #[cfg(not(feature = "url-module-loading"))]
-                    {
-                        Err(ToadStoolError::not_supported(
-                            "URL module loading not enabled".to_string(),
-                        ))
-                    }
+                toadstool::workload::WasmModuleSource::Url { url: _ } => {
+                    // PURE RUST: URL loading disabled - use Songbird for external HTTP
+                    Err(ToadStoolError::not_supported(
+                        "URL module loading disabled - use Songbird for external HTTP or provide bytes/file".to_string(),
+                    ))
                 }
                 toadstool::workload::WasmModuleSource::Bytes { data } => {
                     self.load_module_from_bytes(data)

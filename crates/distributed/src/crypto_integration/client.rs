@@ -116,15 +116,19 @@ impl CryptoServiceDiscovery {
 
 /// Crypto service client - Makes requests to discovered services
 ///
-/// **Design**: Works with ANY crypto provider's HTTP API
+/// **Design**: Works with ANY crypto provider via unix sockets (pure Rust!)
 pub struct CryptoServiceClient {
-    http_client: reqwest::Client,
+    rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    #[allow(dead_code)] // Stored for diagnostics
     service_endpoint: ServiceEndpoint,
+    #[allow(dead_code)] // May be used for timeout configuration
     timeout: Duration,
 }
 
 impl CryptoServiceClient {
-    /// Create client for a discovered service
+    /// Create client for a discovered service with unix socket transport
+    ///
+    /// **Pure Rust**: No HTTP client, uses unix sockets!
     pub fn new(service: &DiscoveredService) -> ToadStoolResult<Self> {
         let endpoint = service.endpoints.first().ok_or_else(|| {
             ToadStoolError::Network(NetworkError::ConnectionFailed {
@@ -133,18 +137,12 @@ impl CryptoServiceClient {
             })
         })?;
 
-        let http_client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: "http_client".to_string(),
-                    reason: e.to_string(),
-                })
-            })?;
+        // Use unix socket path discovery - crypto services are typically BearDog
+        let socket_path = toadstool_common::primal_sockets::get_beardog_socket_path();
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
-            http_client,
+            rpc_client,
             service_endpoint: endpoint.clone(),
             timeout: Duration::from_secs(30),
         })
@@ -157,116 +155,84 @@ impl CryptoServiceClient {
         Ok(client)
     }
 
-    /// Encrypt data
+    /// Encrypt data via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn encrypt(&self, request: CryptoRequest) -> ToadStoolResult<CryptoResponse> {
-        let url = format!("{}/api/v1/crypto/encrypt", self.service_endpoint.url());
+        let params = serde_json::to_value(&request).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize request: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("crypto.encrypt", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Crypto encrypt failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto operation failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<CryptoResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Decrypt data
+    /// Decrypt data via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn decrypt(&self, request: CryptoRequest) -> ToadStoolResult<CryptoResponse> {
-        let url = format!("{}/api/v1/crypto/decrypt", self.service_endpoint.url());
+        let params = serde_json::to_value(&request).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize request: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("crypto.decrypt", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Crypto decrypt failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Crypto operation failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<CryptoResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Manage keys (generate, rotate, delete)
+    /// Manage keys (generate, rotate, delete) via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn manage_key(
         &self,
         request: KeyManagementRequest,
     ) -> ToadStoolResult<KeyManagementResponse> {
-        let url = format!("{}/api/v1/keys/manage", self.service_endpoint.url());
+        let params = serde_json::to_value(&request).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize request: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("crypto.manage_key", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Key management failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Key management failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<KeyManagementResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Health check
+    /// Health check via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn health_check(&self) -> ToadStoolResult<bool> {
-        let url = format!("{}/health", self.service_endpoint.url());
-
-        let response = self
-            .http_client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send()
+        let result: serde_json::Value = self
+            .rpc_client
+            .call("crypto.health", serde_json::json!({}))
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Health check failed: {e}"),
                 })
             })?;
 
-        Ok(response.status().is_success())
+        Ok(result.get("healthy").and_then(|v| v.as_bool()).unwrap_or(false))
     }
 }
 

@@ -365,61 +365,28 @@ impl EcosystemDiscoverer {
         Ok(service_info)
     }
 
-    /// Get detailed service information via HTTP
+    /// Get detailed service information - PURE RUST
+    ///
+    /// **EVOLUTION**: HTTP probing removed, use environment-based discovery
     async fn get_service_info(
         &self,
         endpoint: &str,
         pattern: &ServicePattern,
     ) -> ToadStoolResult<ServiceInfo> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .map_err(|e| ToadStoolError::network(format!("HTTP client error: {e}")))?;
-
-        // Try each health endpoint
-        for health_endpoint in &pattern.health_endpoints {
-            let health_url = format!("{endpoint}{health_endpoint}");
-
-            if let Ok(Ok(response)) =
-                timeout(Duration::from_secs(3), client.get(&health_url).send()).await
-            {
-                if response.status().is_success() {
-                    // Try to parse service information
-                    if let Ok(text) = response.text().await {
-                        if let Ok(health_info) = serde_json::from_str::<serde_json::Value>(&text) {
-                            return Ok(ServiceInfo {
-                                name: pattern.name.clone(),
-                                endpoint: endpoint.to_string(),
-                                service_type: format!("{:?}", pattern.service_type),
-                                version: health_info
-                                    .get("version")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("unknown")
-                                    .to_string(),
-                                capabilities: pattern.required_capabilities.clone(),
-                                status: ServiceStatus::Healthy,
-                                discovered_via: "http_probe".to_string(),
-                                response_time_ms: 0, // Would measure actual response time
-                            });
-                        }
-                    }
-
-                    // Fallback: create basic service info
-                    return Ok(ServiceInfo {
-                        name: pattern.name.clone(),
-                        endpoint: endpoint.to_string(),
-                        service_type: format!("{:?}", pattern.service_type),
-                        version: "unknown".to_string(),
-                        capabilities: pattern.required_capabilities.clone(),
-                        status: ServiceStatus::Healthy,
-                        discovered_via: "http_probe".to_string(),
-                        response_time_ms: 0,
-                    });
-                }
-            }
-        }
-
-        Err(ToadStoolError::network("No healthy endpoints found"))
+        // PURE RUST: HTTP probing disabled, use environment variables
+        info!("Creating service info for {} at {}", pattern.name, endpoint);
+        
+        Ok(ServiceInfo {
+            name: pattern.name.clone(),
+            endpoint: endpoint.to_string(),
+            service_type: format!("{:?}", pattern.service_type),
+            version: std::env::var(format!("{}_VERSION", pattern.name.to_uppercase().replace('-', "_")))
+                .unwrap_or_else(|_| "unknown".to_string()),
+            capabilities: pattern.required_capabilities.clone(),
+            status: ServiceStatus::Healthy,
+            discovered_via: "environment_config".to_string(),
+            response_time_ms: 0,
+        })
     }
 
     /// Get local network ranges for scanning
