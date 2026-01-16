@@ -125,7 +125,9 @@ impl CoordinationDiscovery {
 /// **Design**: Works with ANY coordination provider via unix sockets (pure Rust!)
 pub struct CoordinationClient {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
+    #[allow(dead_code)] // Stored for diagnostics and future use
     service_endpoint: ServiceEndpoint,
+    #[allow(dead_code)] // May be used for timeout configuration in future
     timeout: Duration,
 }
 
@@ -157,191 +159,129 @@ impl CoordinationClient {
         Ok(client)
     }
 
-    /// Register a service with the coordination provider
+    /// Register a service with the coordination provider via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn register_service(
         &self,
         registration: ServiceRegistration,
     ) -> ToadStoolResult<CoordinationResponse> {
-        let url = format!("{}/api/v1/services/register", self.service_endpoint.url());
+        let params = serde_json::to_value(&registration).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize registration: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&registration)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("coordination.register_service", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Service registration failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Service registration failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<CoordinationResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Discover services by capability
+    /// Discover services by capability via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn discover_services(&self, capability: &str) -> ToadStoolResult<Vec<NodeInfo>> {
-        let url = format!(
-            "{}/api/v1/services/discover?capability={}",
-            self.service_endpoint.url(),
-            capability
-        );
+        let params = serde_json::json!({"capability": capability});
 
-        let response = self
-            .http_client
-            .get(&url)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("coordination.discover_services", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Service discovery failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Service discovery failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<Vec<NodeInfo>>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Report health status
+    /// Report health status via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn report_health(
         &self,
         health: HealthCheckRequest,
     ) -> ToadStoolResult<CoordinationResponse> {
-        let url = format!("{}/api/v1/health/report", self.service_endpoint.url());
+        let params = serde_json::to_value(&health).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize health: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&health)
-            .timeout(Duration::from_secs(5))
-            .send()
+        self.rpc_client
+            .call_typed("coordination.report_health", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Health report failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Health report failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<CoordinationResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 
-    /// Get load balancing advice
+    /// Get load balancing advice via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn get_load_balancing(
         &self,
         request: LoadBalancingRequest,
     ) -> ToadStoolResult<Vec<NodeInfo>> {
-        let url = format!(
-            "{}/api/v1/loadbalancing/advice",
-            self.service_endpoint.url()
-        );
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .timeout(self.timeout)
-            .send()
-            .await
-            .map_err(|e| {
-                ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
-                })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Load balancing request failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<Vec<NodeInfo>>().await.map_err(|e| {
+        let params = serde_json::to_value(&request).map_err(|e| {
             ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
+                reason: format!("Failed to serialize request: {e}"),
             })
-        })
-    }
+        })?;
 
-    /// Health check
-    pub async fn health_check(&self) -> ToadStoolResult<bool> {
-        let url = format!("{}/health", self.service_endpoint.url());
-
-        let response = self
-            .http_client
-            .get(&url)
-            .timeout(Duration::from_secs(5))
-            .send()
+        self.rpc_client
+            .call_typed("coordination.get_load_balancing", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Load balancing request failed: {e}"),
+                })
+            })
+    }
+
+    /// Health check via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
+    pub async fn health_check(&self) -> ToadStoolResult<bool> {
+        let result: serde_json::Value = self
+            .rpc_client
+            .call("coordination.health", serde_json::json!({}))
+            .await
+            .map_err(|e| {
+                ToadStoolError::Network(NetworkError::IoError {
+                    reason: format!("Health check failed: {e}"),
                 })
             })?;
 
-        Ok(response.status().is_success())
+        Ok(result.get("healthy").and_then(|v| v.as_bool()).unwrap_or(false))
     }
 
-    /// Execute generic coordination request
+    /// Execute generic coordination request via unix socket
+    ///
+    /// **Pure Rust**: JSON-RPC over unix socket (no HTTP, no ring!)
     pub async fn execute(
         &self,
         request: CoordinationRequest,
     ) -> ToadStoolResult<CoordinationResponse> {
-        let url = format!("{}/api/v1/coordination", self.service_endpoint.url());
+        let params = serde_json::to_value(&request).map_err(|e| {
+            ToadStoolError::Network(NetworkError::IoError {
+                reason: format!("Failed to serialize request: {e}"),
+            })
+        })?;
 
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request)
-            .timeout(self.timeout)
-            .send()
+        self.rpc_client
+            .call_typed("coordination.execute", params)
             .await
             .map_err(|e| {
                 ToadStoolError::Network(NetworkError::IoError {
-                    reason: e.to_string(),
+                    reason: format!("Coordination request failed: {e}"),
                 })
-            })?;
-
-        if !response.status().is_success() {
-            return Err(ToadStoolError::Network(NetworkError::IoError {
-                reason: format!("Coordination request failed: {}", response.status()),
-            }));
-        }
-
-        response.json::<CoordinationResponse>().await.map_err(|e| {
-            ToadStoolError::Network(NetworkError::IoError {
-                reason: e.to_string(),
             })
-        })
     }
 }
 
