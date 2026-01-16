@@ -50,7 +50,7 @@ base64 = "0.22"
 tokio = { version = "1.0", features = ["full"] }
 
 # HTTP client (for Songbird registration)
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 # Async utilities
 futures-util = "0.3"

@@ -53,7 +53,7 @@ base64 = "0.22"
 zeroize = { version = "1.7", features = ["derive"] }
 
 # Networking for ecosystem integration (now standard - ToadStool is distributed)
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 tokio-tungstenite = { version = "0.23", optional = true }
 
 # Regex for security hardening

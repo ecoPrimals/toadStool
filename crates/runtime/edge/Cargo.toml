@@ -34,7 +34,7 @@ cc = "1.0"
 bindgen = "0.69"
 
 # Network and communication
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 mdns = "3.0"
 # zeroconf = "0.12"  # Optional - not critical for core functionality
 # mqtt = "0.1"  # Using latest available version

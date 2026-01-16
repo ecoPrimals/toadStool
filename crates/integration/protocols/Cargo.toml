@@ -23,7 +23,7 @@ toadstool-config = { path = "../../core/config" }
 tarpc = { version = "0.33", features = ["tokio1", "serde-transport"] }
 
 # HTTP client
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

@@ -59,7 +59,7 @@ tempfile = "3.0"
 tempdir = "0.3"
 
 # HTTP client for integration tests
-reqwest = { version = "0.11", features = ["json"], optional = true }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false, optional = true }
 
 # Logging for tests
 tracing = "0.1"
