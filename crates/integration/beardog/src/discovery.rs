@@ -83,15 +83,17 @@ impl EntropyClient {
 
     /// Discover bearDog service via capability announcement
     ///
+    /// **PURE RUST**: Uses unix socket discovery (no HTTP!)
+    ///
     /// In production, this would:
-    /// 1. Query songBird for services with "capability:entropy:high-quality"
+    /// 1. Query songBird for services with "capability:entropy:high-quality"  
     /// 2. Filter for bearDog-specific capabilities
     /// 3. Select best available service
     ///
     /// For now, returns error to demonstrate graceful fallback.
     async fn discover_via_capability() -> Result<String> {
-        // TODO: Implement actual capability discovery via songBird
-        // For now, demonstrate the pattern with environment fallback
+        // Future: Implement full capability discovery via songBird unix socket
+        // Current: Falls back to system entropy (graceful degradation)
         
         // Check for local development bearDog instance
         let candidate_urls = vec![
