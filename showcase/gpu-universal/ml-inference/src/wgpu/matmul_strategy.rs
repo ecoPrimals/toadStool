@@ -8,47 +8,44 @@
 /// MatMul strategy selection based on matrix dimensions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MatMulStrategy {
-    /// Naive implementation: Simple, low overhead, good for small matrices
+    /// Naive implementation: Simple, low overhead, good for small-medium matrices
     Naive,
-    /// Tiled 8x8: Optimized for production scales (1024-2048)
-    Tiled8x8,
-    /// Tiled 16x16: Balanced tiling for large matrices (2048-4096)
-    Tiled16x16,
-    /// Tiled 32x32: Maximum tiling for extreme scales (4096+)
-    Tiled32x32,
+    /// Tiled implementation (16x16): Memory-optimized, good for large matrices (4096+)
+    Tiled,
 }
 
 impl MatMulStrategy {
     /// Choose the best strategy for given matrix dimensions
     ///
-    /// **Refined Heuristic Based on Real Hardware Measurements**:
+    /// **Heuristic Based on Real Hardware Measurements**:
     ///
-    /// NVIDIA RTX 3090 Results:
-    ///   - < 1024: Naive wins (low overhead)
-    ///   - 1024-2048: Marginal (try 8x8 tiling)
-    ///   - 2048-4096: 16x16 tiling
-    ///   - 4096+: 32x32 tiling wins (1.17x measured!)
+    /// NVIDIA RTX 3090:
+    ///   - 512x512: Naive wins (0.98x tiling speedup)
+    ///   - 1024x1024: Naive wins (0.93x)
+    ///   - 2048x2048: Naive wins (0.93x)
+    ///   - 3072x3072: Naive wins (0.96x)
+    ///   - 4096x4096: Tiling WINS (1.17x) ✅
     ///
-    /// **Multi-Tier Strategy**:
-    ///   - < 1024: Naive (lowest overhead)
-    ///   - 1024-2048: 8x8 tiles (reduced overhead)
-    ///   - 2048-4096: 16x16 tiles (balanced)
-    ///   - >= 4096: 32x32 tiles (maximum reuse)
+    /// **Decision**: Use tiling ONLY at 4096+ where bandwidth critical
+    ///   - Below 4096: Tiling overhead > benefit
+    ///   - At 4096+: Memory bandwidth critical, tiling helps
+    ///
+    /// **Conservative Threshold**: 3584 (between 3072 and 4096)
+    ///   - Ensures we only use tiling when it clearly helps
+    ///   - Avoids overhead at production scales
     pub fn choose(m: usize, k: usize, n: usize) -> Self {
         // Use maximum dimension to determine strategy
         let max_dim = m.max(k).max(n);
         
-        if max_dim >= 4096 {
-            // Extreme scale: Use largest tiles for maximum memory reuse
-            Self::Tiled32x32
-        } else if max_dim >= 2048 {
-            // Large scale: Use 16x16 tiles (current implementation)
-            Self::Tiled16x16
-        } else if max_dim >= 1024 {
-            // Production scale: Use 8x8 tiles (lower overhead)
-            Self::Tiled8x8
+        // Conservative threshold: Only use tiling at extreme scales
+        // where memory bandwidth is proven critical
+        const TILING_THRESHOLD: usize = 3584;
+        
+        if max_dim >= TILING_THRESHOLD {
+            // Extreme scale: Memory bandwidth critical, tiling helps (1.17x measured)
+            Self::Tiled
         } else {
-            // Small-medium: Use naive (lowest overhead)
+            // Small-medium-large: Tiling overhead > benefit, use naive
             Self::Naive
         }
     }
@@ -77,25 +74,35 @@ mod tests {
     }
 
     #[test]
-    fn test_strategy_large_matrices() {
-        // Large matrices should use tiling (memory bandwidth critical)
-        assert_eq!(MatMulStrategy::choose(2048, 2048, 2048), MatMulStrategy::Tiled);
+    fn test_strategy_production_matrices() {
+        // Production scales should use naive (tiling has overhead)
+        assert_eq!(MatMulStrategy::choose(2048, 2048, 2048), MatMulStrategy::Naive);
+        assert_eq!(MatMulStrategy::choose(3072, 3072, 3072), MatMulStrategy::Naive);
+    }
+
+    #[test]
+    fn test_strategy_extreme_matrices() {
+        // Only at extreme scale (4096+) should use tiling
         assert_eq!(MatMulStrategy::choose(4096, 4096, 4096), MatMulStrategy::Tiled);
+        assert_eq!(MatMulStrategy::choose(8192, 8192, 8192), MatMulStrategy::Tiled);
     }
 
     #[test]
     fn test_strategy_threshold() {
-        // At threshold (1536), should switch to tiling
-        assert_eq!(MatMulStrategy::choose(1536, 1536, 1536), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(1535, 1535, 1535), MatMulStrategy::Naive);
+        // At threshold (3584), should switch to tiling
+        assert_eq!(MatMulStrategy::choose(3584, 3584, 3584), MatMulStrategy::Tiled);
+        assert_eq!(MatMulStrategy::choose(3583, 3583, 3583), MatMulStrategy::Naive);
     }
 
     #[test]
     fn test_strategy_mixed_dimensions() {
-        // If ANY dimension is large, use tiling
-        assert_eq!(MatMulStrategy::choose(2048, 256, 256), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(256, 2048, 256), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(256, 256, 2048), MatMulStrategy::Tiled);
+        // If ANY dimension >= 3584, use tiling
+        assert_eq!(MatMulStrategy::choose(4096, 256, 256), MatMulStrategy::Tiled);
+        assert_eq!(MatMulStrategy::choose(256, 4096, 256), MatMulStrategy::Tiled);
+        assert_eq!(MatMulStrategy::choose(256, 256, 4096), MatMulStrategy::Tiled);
+        
+        // Below threshold, use naive even if one dimension is large-ish
+        assert_eq!(MatMulStrategy::choose(3072, 256, 256), MatMulStrategy::Naive);
     }
 
     #[test]
