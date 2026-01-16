@@ -349,8 +349,6 @@ impl StorageBackend for NestGateBackend {
         use super::types::{ReplicationSettings, StorageProvisioningRequest};
 
         let config_name = config.name.clone();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
 
@@ -372,28 +370,17 @@ impl StorageBackend for NestGateBackend {
         };
 
         Box::pin(async move {
-            let response = client
-                .post(format!("{}/volumes", endpoint))
-                .json(&request)
-                .send()
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
+            })?;
+
+            let volume_info: VolumeInfo = self
+                .rpc_client
+                .call_typed("nestgate.provision_volume", params)
                 .await
                 .map_err(|e| {
-                    ToadStoolError::runtime(format!(
-                        "Failed to provision volume {}: {}",
-                        config_name, e
-                    ))
+                    ToadStoolError::runtime(format!("Failed to provision volume {}: {}", config_name, e))
                 })?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume provisioning failed with status: {}",
-                    response.status()
-                )));
-            }
-
-            let volume_info: VolumeInfo = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to parse volume info: {e}"))
-            })?;
 
             Ok(volume_info)
         })
@@ -406,8 +393,6 @@ impl StorageBackend for NestGateBackend {
         use super::types::{ReplicationSettings, StorageProvisioningRequest};
 
         let config_name = config.name.clone();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
 
@@ -429,28 +414,17 @@ impl StorageBackend for NestGateBackend {
         };
 
         Box::pin(async move {
-            let response = client
-                .post(format!("{}/volumes/persistent", endpoint))
-                .json(&request)
-                .send()
+            let params = serde_json::to_value(&request).map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
+            })?;
+
+            let volume_info: VolumeInfo = self
+                .rpc_client
+                .call_typed("nestgate.provision_persistent_volume", params)
                 .await
                 .map_err(|e| {
-                    ToadStoolError::runtime(format!(
-                        "Failed to provision persistent volume {}: {}",
-                        config_name, e
-                    ))
+                    ToadStoolError::runtime(format!("Failed to provision persistent volume {}: {}", config_name, e))
                 })?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Persistent volume provisioning failed with status: {}",
-                    response.status()
-                )));
-            }
-
-            let volume_info: VolumeInfo = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to parse volume info: {e}"))
-            })?;
 
             Ok(volume_info)
         })
@@ -463,36 +437,26 @@ impl StorageBackend for NestGateBackend {
         mount_path: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volume_name = volume_name.to_string();
-        let service_name = service_name.to_string();
-        let mount_path = mount_path.to_string();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
+        let service_name_clone = service_name.to_string();
+        let mount_path_str = mount_path.to_string();
 
         Box::pin(async move {
-            let request = serde_json::json!({
+            let params = serde_json::json!({
                 "volume_name": volume_name,
-                "service_name": service_name,
-                "mount_path": mount_path,
+                "service_name": service_name_clone,
+                "mount_path": mount_path_str,
             });
 
-            let response = client
-                .post(format!("{}/volumes/mount", endpoint))
-                .json(&request)
-                .send()
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("nestgate.mount_volume", params)
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to mount volume: {e}")))?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume mount failed with status: {}",
-                    response.status()
-                )));
-            }
 
             tracing::info!(
                 "Successfully mounted volume {} to {}",
                 volume_name,
-                service_name
+                service_name_clone
             );
             Ok(())
         })
@@ -504,34 +468,24 @@ impl StorageBackend for NestGateBackend {
         service_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volume_name = volume_name.to_string();
-        let service_name = service_name.to_string();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
+        let service_name_clone = service_name.to_string();
 
         Box::pin(async move {
-            let request = serde_json::json!({
+            let params = serde_json::json!({
                 "volume_name": volume_name,
-                "service_name": service_name,
+                "service_name": service_name_clone,
             });
 
-            let response = client
-                .post(format!("{}/volumes/unmount", endpoint))
-                .json(&request)
-                .send()
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("nestgate.unmount_volume", params)
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to unmount volume: {e}")))?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume unmount failed with status: {}",
-                    response.status()
-                )));
-            }
 
             tracing::info!(
                 "Successfully unmounted volume {} from {}",
                 volume_name,
-                service_name
+                service_name_clone
             );
             Ok(())
         })
@@ -542,22 +496,15 @@ impl StorageBackend for NestGateBackend {
         volume_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         let volume_name = volume_name.to_string();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
 
         Box::pin(async move {
-            let response = client
-                .delete(format!("{}/volumes/{}", endpoint, volume_name))
-                .send()
+            let params = serde_json::json!({"volume_name": volume_name});
+
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("nestgate.delete_volume", params)
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to delete volume: {e}")))?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume deletion failed with status: {}",
-                    response.status()
-                )));
-            }
 
             tracing::info!("Successfully deleted volume {}", volume_name);
             Ok(())
@@ -569,28 +516,15 @@ impl StorageBackend for NestGateBackend {
         volume_name: &str,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
         let volume_name = volume_name.to_string();
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
 
         Box::pin(async move {
-            let response = client
-                .get(format!("{}/volumes/{}/status", endpoint, volume_name))
-                .send()
+            let params = serde_json::json!({"volume_name": volume_name});
+
+            let status: VolumeStatus = self
+                .rpc_client
+                .call_typed("nestgate.get_volume_status", params)
                 .await
-                .map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to get volume status: {e}"))
-                })?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume status request failed with status: {}",
-                    response.status()
-                )));
-            }
-
-            let status: VolumeStatus = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to parse volume status: {e}"))
-            })?;
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to get volume status: {e}")))?;
 
             Ok(status)
         })
@@ -599,26 +533,12 @@ impl StorageBackend for NestGateBackend {
     fn list_volumes(
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
-        let client = self.client.clone();
-        let endpoint = self.endpoint.clone();
-
         Box::pin(async move {
-            let response = client
-                .get(format!("{}/volumes", endpoint))
-                .send()
+            let volumes: Vec<VolumeInfo> = self
+                .rpc_client
+                .call_typed("nestgate.list_volumes", serde_json::json!({}))
                 .await
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to list volumes: {e}")))?;
-
-            if !response.status().is_success() {
-                return Err(ToadStoolError::runtime(format!(
-                    "Volume list request failed with status: {}",
-                    response.status()
-                )));
-            }
-
-            let volumes: Vec<VolumeInfo> = response.json().await.map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to parse volume list: {e}"))
-            })?;
 
             Ok(volumes)
         })
