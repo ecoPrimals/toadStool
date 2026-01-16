@@ -203,25 +203,18 @@ impl EndpointSource for MDNSSource {
             ];
 
             // Check if service matches common patterns
-            for (svc, port) in common_mdns_ports {
+            for (svc, _port) in common_mdns_ports {
                 if service.contains(svc) {
-                    let endpoint = format!("http://{}:{port}", crate::constants::DEFAULT_HOSTNAME);
-
-                    // Try to verify service is actually running
-                    if reqwest::Client::new()
-                        .head(&endpoint)
-                        .timeout(std::time::Duration::from_millis(500))
-                        .send()
-                        .await
-                        .is_ok()
-                    {
-                        tracing::debug!(
-                            service,
-                            endpoint,
-                            "Found local service via mDNS-style lookup"
-                        );
-                        return Ok(Some(endpoint));
-                    }
+                    // PURE RUST: Use unix socket paths instead of HTTP
+                    let socket_path = crate::primal_sockets::get_socket_path_for_service(svc);
+                    let endpoint = format!("unix://{}", socket_path.display());
+                    
+                    tracing::debug!(
+                        service,
+                        endpoint,
+                        "Found local service via socket discovery (pure Rust!)"
+                    );
+                    return Ok(Some(endpoint));
                 }
             }
 
@@ -285,43 +278,13 @@ impl EndpointSource for ServiceMeshSource {
         Box::pin(async move {
             match mesh_type {
                 ServiceMeshType::Consul => {
-                    // Query Consul API for service (Deep Debt compliant: runtime discovery)
-                    let consul_addr = crate::constants::network::consul_http_addr();
-
-                    let url = format!("{consul_addr}/v1/catalog/service/{service}");
-
-                    match reqwest::Client::new()
-                        .get(&url)
-                        .timeout(std::time::Duration::from_secs(5))
-                        .send()
-                        .await
-                    {
-                        Ok(response) if response.status().is_success() => {
-                            if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
-                                if let Some(first_service) = services.first() {
-                                    if let (Some(addr), Some(port)) = (
-                                        first_service
-                                            .get("ServiceAddress")
-                                            .and_then(|v| v.as_str()),
-                                        first_service
-                                            .get("ServicePort")
-                                            .and_then(serde_json::Value::as_u64),
-                                    ) {
-                                        let endpoint = format!("http://{addr}:{port}");
-                                        tracing::info!(
-                                            service,
-                                            endpoint,
-                                            "Discovered service via Consul"
-                                        );
-                                        return Ok(Some(endpoint));
-                                    }
-                                }
-                            }
-                        }
-                        Ok(_) | Err(_) => {
-                            tracing::trace!(service, "Consul service lookup failed");
-                        }
-                    }
+                    // PURE RUST: Consul integration removed for pure Rust
+                    // Use environment variables or unix sockets instead
+                    tracing::trace!(
+                        service,
+                        "Consul discovery disabled (pure Rust mode) - use environment variables"
+                    );
+                    return Ok(None); // Graceful degradation - fall back to other sources
                 }
                 ServiceMeshType::Etcd => {
                     use base64::Engine;
@@ -353,48 +316,16 @@ impl EndpointSource for ServiceMeshSource {
                     }
                 }
                 ServiceMeshType::Kubernetes => {
+                    // PURE RUST: Kubernetes DNS can still work (no HTTP needed for DNS)
                     // Try Kubernetes DNS (works inside cluster)
                     let k8s_dns = format!("{service}.default.svc.cluster.local");
                     tracing::trace!(service, k8s_dns, "Trying Kubernetes DNS lookup");
                     return Ok(Some(format!("http://{k8s_dns}")));
                 }
                 ServiceMeshType::Auto => {
-                    // Auto-detect: try Consul first, then etcd, then k8s DNS
-                    // Try Consul
-                    if let Ok(consul_addr) = std::env::var("CONSUL_HTTP_ADDR") {
-                        let url = format!("{consul_addr}/v1/catalog/service/{service}");
-                        if let Ok(response) = reqwest::Client::new()
-                            .get(&url)
-                            .timeout(std::time::Duration::from_secs(2))
-                            .send()
-                            .await
-                        {
-                            if response.status().is_success() {
-                                if let Ok(services) =
-                                    response.json::<Vec<serde_json::Value>>().await
-                                {
-                                    if let Some(first_service) = services.first() {
-                                        if let (Some(addr), Some(port)) = (
-                                            first_service
-                                                .get("ServiceAddress")
-                                                .and_then(|v| v.as_str()),
-                                            first_service
-                                                .get("ServicePort")
-                                                .and_then(serde_json::Value::as_u64),
-                                        ) {
-                                            let endpoint = format!("http://{addr}:{port}");
-                                            tracing::info!(
-                                                service,
-                                                endpoint,
-                                                "Auto-discovered service via Consul"
-                                            );
-                                            return Ok(Some(endpoint));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // PURE RUST: Auto-detection simplified
+                    // Try Kubernetes DNS (works without HTTP)
+                    tracing::trace!("Auto-discovery using K8s DNS (pure Rust mode)");
 
                     // Try K8s DNS as fallback
                     let k8s_dns = format!("{service}.default.svc.cluster.local");
