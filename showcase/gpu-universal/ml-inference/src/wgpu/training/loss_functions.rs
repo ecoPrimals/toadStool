@@ -1186,4 +1186,3 @@ use super::super::{executor::WgpuExecutor, types::*};
 
         Ok(loss)
     }
-}
