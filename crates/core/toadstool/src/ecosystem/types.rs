@@ -190,13 +190,9 @@ pub enum ServiceClient {
     #[cfg(feature = "networking")]
     Tarpc(Arc<tokio::sync::Mutex<Option<TarpcClientWrapper>>>),
 
-    /// JSON-RPC client (PRIMARY - universal access)
+    /// JSON-RPC 2.0 over unix sockets (PRIMARY - pure Rust!)
     #[cfg(feature = "networking")]
-    JsonRpc(reqwest::Client),
-
-    /// HTTP client (FALLBACK - legacy)
-    #[cfg(feature = "networking")]
-    Http(reqwest::Client),
+    UnixSocket(toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient),
 
     /// WebSocket client (real-time bidirectional)
     #[cfg(feature = "websocket")]
