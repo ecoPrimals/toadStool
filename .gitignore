@@ -1,155 +1,32 @@
-# Rust/Cargo
-/target/
-tools/target/
-**/*.rs.bk
+# Rust
+target/
 Cargo.lock
+**/*.rs.bk
+*.pdb
 
-# IDE/Editor
-.vscode/
+# IDE
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
 # OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+
+# Testing
+*.profraw
+*.profdata
+
+# Temporary
+*.tmp
+*.log
+.env.local
 
 # Build artifacts
 *.o
-*.a
 *.so
 *.dylib
 *.dll
-*.exe
-
-# Logs
-*.log
-*.out
-*.err
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Documentation build
-/docs/_build/
-/book/
-
-# Test artifacts
-/test-results/
-/coverage/
-*.profraw
-*.profdata
-*.gcda
-*.gcno
-# Benchmark and showcase results
-showcase/results/*.json
-showcase/results/*.log
-showcase/results/*.out
-# Performance and profiling
-perf.data
-perf.data.old
-flamegraph.svg
-
-# Temporary files
-*.tmp
-*.temp
-/tmp/
-/temp/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Keys and certificates (security)
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-
-# ToadStool specific
-# Substrate detection cache
-.substrate_cache/
-# Execution logs
-/execution_logs/
-# Performance metrics
-/metrics/
-# Biome data
-/biomes/
-# Crypto locks
-*.lock.json
-# Runtime cache
-.runtime_cache/
-
-# Node.js (if any)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Python (if any)
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Local configuration
-config.local.toml
-config.local.json
-
-# System files
-*~
-.fuse_hidden*
-.nfs*
-
-# Backup files
-*.bak
-*.backup
-*.old
-
-# Large datasets and archives (construction debris from testing)
-*.tar.gz
-*.zip
-*.7z
-*.rar
-showcase/**/datasets/*.tar.gz
-showcase/**/datasets/*.zip
-showcase/**/datasets/cifar-*
-showcase/**/datasets/imagenet-*
-showcase/**/datasets/mnist-*
-zluda-external/
-
-# Build artifacts (CRITICAL - must not be committed!)
-**/target/
-**/*.timestamp
-**/*.rlib
-**/*.rmeta
 
