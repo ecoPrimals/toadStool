@@ -10,12 +10,20 @@
 //! ## Module Structure (Refactored by Concern)
 //!
 //! - `types`: Type definitions (BiomeProcess, RunningBiome, WasmModule, etc.)
+//! - `display`: UI and pretty-printing
+//! - `resources`: Resource cleanup and PID management
+//! - `signals`: Unix signal handling
 //! - `workload`: Direct workload execution
 //! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
 // Submodules
 mod log_management;
 mod types;
+
+// Refactored domain modules
+mod display;
+mod resources;
+mod signals;
 
 // Internal use
 use types::{BiomeProcess, ProcessType, RunningBiome};
