@@ -305,14 +305,13 @@ impl StandaloneExecutor {
         // Query real system resources (self-knowledge)
         let cpu_cores = num_cpus::get() as u32;
 
-        // Query real memory
-        let (total_memory, available_memory) = match sys_info::mem_info() {
-            Ok(mem) => (mem.total * 1024, mem.avail * 1024), // KB to bytes
-            Err(_) => {
-                warn!("Failed to query system memory, using fallback");
-                (8 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024) // 8GB/4GB fallback
-            }
-        };
+        // Query real memory - Pure Rust Evolution (Jan 17, 2026)
+        use sysinfo::System;
+        let mut system = System::new_all();
+        system.refresh_memory();
+        
+        let total_memory = system.total_memory(); // Already in bytes
+        let available_memory = system.available_memory(); // Already in bytes
 
         Self {
             capabilities: ComputeCapabilities {

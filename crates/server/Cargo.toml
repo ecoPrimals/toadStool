@@ -85,8 +85,11 @@ chrono = { version = "0.4", features = ["serde"] }
 # Unix socket support (libc for getuid)
 libc = "0.2"
 
-# System info (for memory query)
-sys-info = "0.9"
+# System info - Pure Rust Evolution (Jan 17, 2026)
+# OLD: sys-info = "0.9" (C dependency, blocked ARM cross-compilation)
+# NEW: sysinfo (100% Pure Rust, cross-platform, better maintained)
+# Migration: sys_info::mem_info() → System::new_all() + refresh_memory()
+sysinfo = "0.37"
 
 # CPU info
 num_cpus = "1.0"

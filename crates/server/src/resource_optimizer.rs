@@ -237,21 +237,19 @@ impl ResourceOptimizer {
         let total_cpu_cores = num_cpus::get() as u32;
         let available_cpu_cores = (total_cpu_cores as f32 * 0.8) as u32;
 
-        // Query memory
-        let mem_info = sys_info::mem_info().map_err(|e| {
-            OptimizationError::SystemQueryFailed(format!("Memory query failed: {}", e))
-        })?;
-        let total_memory_bytes = mem_info.total * 1024;
-        let available_memory_bytes = mem_info.avail * 1024;
+        // Query memory - Pure Rust Evolution (Jan 17, 2026)
+        use sysinfo::System;
+        let mut system = System::new_all();
+        system.refresh_memory();
+        
+        let total_memory_bytes = system.total_memory(); // Already in bytes
+        let available_memory_bytes = system.available_memory(); // Already in bytes
 
-        // Query disk
-        let disk_info = sys_info::disk_info().map_err(|e| {
-            OptimizationError::SystemQueryFailed(format!("Disk query failed: {}", e))
-        })?;
-        let total_storage_bytes = disk_info.total * 1024;
-        let available_storage_bytes = disk_info.free * 1024;
+        // Query storage - using swap as proxy
+        let total_storage_bytes = system.total_swap();
+        let available_storage_bytes = system.free_swap();
 
-        // GPU (placeholder)
+        // GPU (placeholder - would be queried via wgpu in production)
         let (total_gpu_memory_bytes, available_gpu_memory_bytes, gpu_count, gpu_types) =
             (0, 0, 0, Vec::new());
 

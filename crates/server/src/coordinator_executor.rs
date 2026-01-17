@@ -117,12 +117,14 @@ impl WorkloadExecutor for CoordinatorExecutor {
         // The coordinator will report what THIS instance can do
 
         let cpu_cores = num_cpus::get() as u32;
-        let (total_memory, available_memory) = if let Ok(mem_info) = sys_info::mem_info() {
-            (mem_info.total as u64 * 1024, mem_info.avail as u64 * 1024)
-        } else {
-            warn!("Failed to get system memory info, using defaults");
-            (8 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024)
-        };
+        
+        // Query memory - Pure Rust Evolution (Jan 17, 2026)
+        use sysinfo::System;
+        let mut system = System::new_all();
+        system.refresh_memory();
+        
+        let total_memory = system.total_memory(); // Already in bytes
+        let available_memory = system.available_memory(); // Already in bytes
 
         Ok(ComputeCapabilities {
             service_id: self.service_id.clone(),
