@@ -138,18 +138,23 @@ impl RuntimeEngine for WasmRuntimeEngine {
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
+        use std::collections::HashMap;
+        
+        let mut features = HashMap::new();
+        features.insert("wasi".to_string(), true);
+        features.insert("fuel_metering".to_string(), self.config.fuel_limit.is_some());
+        features.insert("async".to_string(), true);
+        
         RuntimeCapabilities {
             supported_workloads: vec![WorkloadType::Wasm],
-            max_concurrent_executions: Some(100), // Configurable in future
+            max_concurrent_executions: Some(100),
             supported_architectures: vec![
                 "x86_64".to_string(),
                 "aarch64".to_string(),
                 "arm".to_string(),
             ],
-            platform_features: vec![
-                "wasi".to_string(),
-                "fuel_metering".to_string(),
-            ],
+            platform_features: features,
+            version: "1.0.7".to_string(),
         }
     }
 
@@ -161,19 +166,24 @@ impl RuntimeEngine for WasmRuntimeEngine {
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async move {
+            use toadstool::resources::{CpuMetrics, MemoryMetrics, TimingMetrics};
+            
             let total = self.metrics.total_executions();
             let successful = self.metrics.successful_executions();
             let failed = self.metrics.failed_executions();
             let avg_time_us = self.metrics.average_execution_time_us();
             
             Ok(RuntimeMetrics {
-                total_executions: total,
-                successful_executions: successful,
-                failed_executions: failed,
-                average_execution_time_ms: (avg_time_us as f64) / 1000.0,
-                total_execution_time_ms: 0, // TODO: track separately
-                memory_used_bytes: 0, // TODO: track memory
-                cpu_time_ms: 0, // TODO: track CPU time
+                cpu: CpuMetrics::default(),
+                memory: MemoryMetrics::default(),
+                storage: None,
+                network: toadstool::resources::NetworkMetrics::default(),
+                gpu: None,
+                timing: TimingMetrics {
+                    start_time: chrono::Utc::now(),
+                    end_time: None,
+                    duration: chrono::TimeDelta::milliseconds((avg_time_us as i64) / 1000),
+                },
             })
         })
     }

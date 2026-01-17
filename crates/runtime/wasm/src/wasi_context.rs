@@ -40,16 +40,20 @@ pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
 
     // Configure stdio
     if config.inherit_stdio {
-        builder = builder.inherit_stdio();
+        builder.inherit_stdio().inherit_stdout().inherit_stderr();
     }
 
     // Configure environment
     if config.inherit_env {
-        builder = builder.inherit_env();
+        builder.inherit_env().map_err(|e| {
+            toadstool::error::ToadStoolError::configuration(format!("Failed to inherit environment: {}", e))
+        })?;
     }
 
     // Add command-line arguments
-    builder = builder.args(&config.args);
+    builder.args(&config.args).map_err(|e| {
+        toadstool::error::ToadStoolError::configuration(format!("Failed to set args: {}", e))
+    })?;
 
     // Add preopened directories
     for (guest_path, host_path) in &config.preopened_dirs {
@@ -59,7 +63,7 @@ pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
             host_path.display()
         );
         // Note: wasmi_wasi API may differ - need to verify exact method
-        // builder = builder.preopened_dir(host_path, guest_path)?;
+        // builder.preopened_dir(host_path, guest_path)?;
     }
 
     // Build context

@@ -82,7 +82,7 @@ impl ModuleLoader {
                     })?;
                     self.load_from_bytes(&bytes)
                 }
-                WasmModuleSource::Url { url } => {
+                WasmModuleSource::Url { url: _ } => {
                     // URL loading feature-gated (removed for pure Rust)
                     Err(ToadStoolError::not_supported(
                         "URL module loading not enabled (pure Rust build)".to_string(),
