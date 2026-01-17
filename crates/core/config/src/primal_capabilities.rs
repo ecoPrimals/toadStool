@@ -39,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use etcetera::BaseStrategy;  // Pure Rust directory paths
 
 /// Primal capability registry error
 #[derive(Debug, thiserror::Error)]
@@ -240,11 +241,18 @@ impl PrimalCapabilitiesRegistry {
             return Self::load_from_file(local_path);
         }
 
-        // Try config directory
-        if let Some(config_dir) = directories::ProjectDirs::from("", "", "toadstool") {
-            let config_path = config_dir.config_dir().join("primal-capabilities.toml");
-            if config_path.exists() {
-                return Self::load_from_file(config_path);
+        // Try config directory (Pure Rust Evolution - Jan 17, 2026)
+        // OLD: directories::ProjectDirs (pulled in dirs-sys)
+        // NEW: etcetera (100% Pure Rust!)
+        match etcetera::choose_base_strategy() {
+            Ok(strategy) => {
+                let config_path = strategy.config_dir().join("toadstool").join("primal-capabilities.toml");
+                if config_path.exists() {
+                    return Self::load_from_file(config_path);
+                }
+            }
+            Err(_) => {
+                // Strategy selection failed, continue to error
             }
         }
 
