@@ -32,26 +32,34 @@ tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
 futures = { workspace = true }
 
-# WebAssembly runtime
-# Pure Rust Evolution: Disable cache to remove zstd C dependency
-wasmtime = { version = "20.0.0", default-features = false, features = [
-    "async",
-    "cranelift",
-    "gc",
-    "wat",
-    "profiling",
-    "parallel-compilation",
-    "pooling-allocator",
-    "demangle",
-    "addr2line",
-    "coredump",
-    "debug-builtins",
-    "runtime",
-    "component-model",
-    "threads"
-] }
-wasmtime-wasi = "20.0.0"
-wasi-common = "20.0.0"
+# WebAssembly runtime - Pure Rust Evolution (Jan 17, 2026)
+# 
+# OLD: wasmtime 20.0.0 (JIT compiler with C dependencies)
+#   ❌ C code in wasmtime-runtime (signal handling)
+#   ❌ C code in wasmtime-fiber (stack switching)
+#   ❌ C code in Cranelift JIT
+#   ❌ Blocked ARM cross-compilation
+#   ✅ Fast execution (~10x faster than interpreter)
+#   ⚠️ Higher memory (JIT code)
+#   ⚠️ Slower startup (JIT compilation)
+#
+# NEW: wasmi 1.0.7 (Pure Rust interpreter - STABLE!)
+#   ✅ 100% Pure Rust (ZERO C dependencies!)
+#   ✅ Trivial ARM cross-compilation
+#   ✅ Instant startup (no JIT warmup)
+#   ✅ Lower memory usage
+#   ✅ Better security (no JIT exploits)
+#   ⚠️ Slower execution (~10x slower than JIT)
+#   ✅ PERFECT for ToadStool's short-lived WASM workloads!
+#
+# Architectural Decision: Short WASM (seconds-minutes) via wasmi interpreter.
+# For truly long WASM compute: Phase 2 will orchestrate wasmtime as subprocess.
+# This achieves 100% Pure Rust core while supporting all workload types!
+wasmi = { version = "1.0", features = ["std"] }
+wasmi_wasi = { version = "1.0" }
+
+# Kept for development/testing WAT format
+wat = "1.0"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -91,4 +99,4 @@ unsafe-fast-cache = []
 toadstool-testing = { path = "../../testing" }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-wat = "1.0"
+# wat moved to main dependencies (needed for wasmi parsing)
