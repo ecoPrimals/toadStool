@@ -44,6 +44,7 @@ pub mod cache_wasmi;
 pub mod cache_metrics;
 pub mod config;
 pub mod engine_wasmi;
+pub mod metrics;
 pub mod module_loader;
 pub mod wasi_context;
 

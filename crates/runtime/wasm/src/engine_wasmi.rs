@@ -15,13 +15,16 @@
 //!
 //! **Perfect for ToadStool's short-lived WASM workloads!**
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tracing::{info, debug};
-use wasmi::{Config, Engine, Linker, Module, Store};
+use wasmi::{Config, Engine};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::execution::{ExecutionRequest, ExecutionResponse, RuntimeEngine};
+use toadstool::execution::{ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine};
 use toadstool::resources::RuntimeMetrics;
+use toadstool::WorkloadType;
 
 use crate::config::WasmRuntimeConfig;
 use crate::metrics::MetricsCollector;
@@ -38,6 +41,9 @@ pub struct WasmRuntimeEngine {
     
     /// Metrics collector
     metrics: Arc<MetricsCollector>,
+    
+    /// Initialized flag
+    initialized: bool,
 }
 
 impl std::fmt::Debug for WasmRuntimeEngine {
@@ -46,6 +52,7 @@ impl std::fmt::Debug for WasmRuntimeEngine {
             .field("config", &self.config)
             .field("engine", &"<wasmi::Engine>")
             .field("metrics", &"<MetricsCollector>")
+            .field("initialized", &self.initialized)
             .finish()
     }
 }
@@ -69,6 +76,7 @@ impl WasmRuntimeEngine {
             engine,
             config,
             metrics,
+            initialized: false,
         })
     }
 
@@ -105,31 +113,76 @@ impl WasmRuntimeEngine {
     }
 }
 
-#[async_trait::async_trait]
 impl RuntimeEngine for WasmRuntimeEngine {
-    async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        // TODO: Implement full execution logic
-        // For now, return not implemented
-        Err(ToadStoolError::not_supported(
-            "Wasmi execution implementation in progress".to_string(),
-        ))
+    fn initialize(
+        &mut self,
+        _config: RuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("Initializing wasmi runtime engine");
+            self.initialized = true;
+            Ok(())
+        })
     }
 
-    async fn health_check(&self) -> ToadStoolResult<bool> {
-        // Engine is always healthy if created successfully
-        Ok(true)
+    fn execute(
+        &self,
+        _request: ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        Box::pin(async move {
+            // TODO: Implement full execution logic
+            Err(ToadStoolError::not_supported(
+                "Wasmi execution implementation in progress".to_string(),
+            ))
+        })
     }
 
-    async fn get_metrics(&self) -> ToadStoolResult<RuntimeMetrics> {
-        // Return basic metrics for now
-        Ok(RuntimeMetrics {
-            total_executions: 0,
-            successful_executions: 0,
-            failed_executions: 0,
-            average_execution_time_ms: 0.0,
-            total_execution_time_ms: 0,
-            memory_used_bytes: 0,
-            cpu_time_ms: 0,
+    fn get_capabilities(&self) -> RuntimeCapabilities {
+        RuntimeCapabilities {
+            supported_workloads: vec![WorkloadType::Wasm],
+            max_concurrent_executions: Some(100), // Configurable in future
+            supported_architectures: vec![
+                "x86_64".to_string(),
+                "aarch64".to_string(),
+                "arm".to_string(),
+            ],
+            platform_features: vec![
+                "wasi".to_string(),
+                "fuel_metering".to_string(),
+            ],
+        }
+    }
+
+    fn supports_workload(&self, workload_type: &WorkloadType) -> bool {
+        matches!(workload_type, WorkloadType::Wasm)
+    }
+
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+        Box::pin(async move {
+            let total = self.metrics.total_executions();
+            let successful = self.metrics.successful_executions();
+            let failed = self.metrics.failed_executions();
+            let avg_time_us = self.metrics.average_execution_time_us();
+            
+            Ok(RuntimeMetrics {
+                total_executions: total,
+                successful_executions: successful,
+                failed_executions: failed,
+                average_execution_time_ms: (avg_time_us as f64) / 1000.0,
+                total_execution_time_ms: 0, // TODO: track separately
+                memory_used_bytes: 0, // TODO: track memory
+                cpu_time_ms: 0, // TODO: track CPU time
+            })
+        })
+    }
+
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("Shutting down wasmi runtime engine");
+            self.initialized = false;
+            Ok(())
         })
     }
 }
@@ -143,5 +196,14 @@ mod tests {
         let config = WasmRuntimeConfig::default();
         let engine = WasmRuntimeEngine::new(config);
         assert!(engine.is_ok(), "Should create wasmi engine successfully");
+    }
+
+    #[test]
+    fn test_get_capabilities() {
+        let config = WasmRuntimeConfig::default();
+        let engine = WasmRuntimeEngine::new(config).unwrap();
+        let caps = engine.get_capabilities();
+        assert_eq!(caps.name, "wasmi");
+        assert!(caps.supports_wasi);
     }
 }

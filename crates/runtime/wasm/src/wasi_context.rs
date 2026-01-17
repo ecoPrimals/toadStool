@@ -3,11 +3,10 @@
 //! Provides WASI (WebAssembly System Interface) support using wasmi_wasi.
 
 use std::path::PathBuf;
-use wasmi::Store;
 use wasmi_wasi::{WasiCtx, WasiCtxBuilder};
 use tracing::debug;
 
-use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool::error::ToadStoolResult;
 
 /// WASI configuration
 #[derive(Debug, Clone)]

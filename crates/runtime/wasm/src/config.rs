@@ -6,9 +6,6 @@
 use std::time::Duration;
 use toadstool_common::config_bases::CacheConfig;
 
-#[cfg(feature = "component-model")]
-use crate::component_model::ComponentModelConfig;
-
 /// Security isolation level for WebAssembly execution
 ///
 /// Defines the security posture and resource isolation guarantees
@@ -68,10 +65,6 @@ pub struct WasmRuntimeConfig {
     
     /// Fuel limit for execution (None = unlimited)
     pub fuel_limit: Option<u64>,
-    
-    /// Component model configuration (Phase 2 - feature-gated)
-    #[cfg(feature = "component-model")]
-    pub component_model: ComponentModelConfig,
 }
 
 impl Default for WasmRuntimeConfig {
@@ -89,8 +82,6 @@ impl Default for WasmRuntimeConfig {
             execution_timeout_ms: 30000,
             module_load_timeout_ms: 10000,
             fuel_limit: Some(1_000_000),
-            #[cfg(feature = "component-model")]
-            component_model: ComponentModelConfig::default(),
         }
     }
 }
@@ -135,7 +126,6 @@ pub struct WasmRuntimeConfigBuilder {
     execution_timeout_ms: Option<u64>,
     module_load_timeout_ms: Option<u64>,
     fuel_limit: Option<Option<u64>>,
-    component_model: Option<ComponentModelConfig>,
 }
 
 impl WasmRuntimeConfigBuilder {
@@ -181,29 +171,17 @@ impl WasmRuntimeConfigBuilder {
         self
     }
 
-    /// Set component model configuration
-    pub fn component_model(mut self, config: ComponentModelConfig) -> Self {
-        self.component_model = Some(config);
-        self
-    }
-
     /// Build the configuration
     pub fn build(self) -> WasmRuntimeConfig {
         let default = WasmRuntimeConfig::default();
-
         WasmRuntimeConfig {
             cache: self.cache.unwrap_or(default.cache),
             security_level: self.security_level.unwrap_or(default.security_level),
             max_memory_mb: self.max_memory_mb.unwrap_or(default.max_memory_mb),
             max_pages: self.max_pages.unwrap_or(default.max_pages),
-            execution_timeout_ms: self
-                .execution_timeout_ms
-                .unwrap_or(default.execution_timeout_ms),
-            module_load_timeout_ms: self
-                .module_load_timeout_ms
-                .unwrap_or(default.module_load_timeout_ms),
+            execution_timeout_ms: self.execution_timeout_ms.unwrap_or(default.execution_timeout_ms),
+            module_load_timeout_ms: self.module_load_timeout_ms.unwrap_or(default.module_load_timeout_ms),
             fuel_limit: self.fuel_limit.unwrap_or(default.fuel_limit),
-            component_model: self.component_model.unwrap_or(default.component_model),
         }
     }
 }
@@ -222,32 +200,21 @@ mod tests {
 
     #[test]
     fn test_config_validation() {
-        let config = WasmRuntimeConfig::default();
+        let mut config = WasmRuntimeConfig::default();
         assert!(config.validate().is_ok());
 
-        let mut bad_config = config.clone();
-        bad_config.max_memory_mb = 0;
-        assert!(bad_config.validate().is_err());
+        config.max_memory_mb = 0;
+        assert!(config.validate().is_err());
     }
 
     #[test]
-    fn test_config_builder() {
+    fn test_builder() {
         let config = WasmRuntimeConfig::builder()
             .max_memory_mb(256)
-            .security_level(SecurityLevel::Maximum)
-            .fuel_limit(Some(2_000_000))
+            .fuel_limit(Some(5000000))
             .build();
 
         assert_eq!(config.max_memory_mb, 256);
-        assert_eq!(config.security_level, SecurityLevel::Maximum);
-        assert_eq!(config.fuel_limit, Some(2_000_000));
-    }
-
-    #[test]
-    fn test_security_level_checks() {
-        assert!(SecurityLevel::Strict.enforces_memory_limits());
-        assert!(SecurityLevel::Maximum.requires_fuel_tracking());
-        assert!(!SecurityLevel::None.enforces_memory_limits());
+        assert_eq!(config.fuel_limit, Some(5000000));
     }
 }
-

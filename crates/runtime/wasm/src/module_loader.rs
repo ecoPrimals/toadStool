@@ -3,11 +3,10 @@
 //! Handles loading WASM modules from various sources (file, bytes, URL)
 //! with validation and caching support.
 
-use std::path::Path;
 use std::time::Duration;
 use sha2::{Digest, Sha256};
 use wasmi::{Engine, Module};
-use tracing::{debug, info};
+use tracing::debug;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::workload::WasmModuleSource;
