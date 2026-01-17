@@ -17,9 +17,12 @@ toadstool-common = { path = "../../core/common" }
 tokio = { version = "1.35", features = ["full"] }
 futures = "0.3"
 
-# Compression (from NestGate integration)
-zstd = "0.13"
-lz4 = "1.24"
+# Compression (Pure Rust Evolution - Jan 17, 2026)
+# REMOVED: zstd (not actually used in code, was pulling in zstd-sys C dependency)
+# REMOVED: lz4 (not actually used in code, was pulling in lz4-sys C dependency)
+# Pure Rust compression can be added when actually needed:
+#   lz4_flex = "0.11"  # Pure Rust lz4
+#   Or implement custom compression if needed
 
 # Cryptography
 aes-gcm = "0.10"

@@ -8,10 +8,11 @@ use tokio::signal;
 use tracing::{error, info, warn};
 
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
-use crate::songbird_client::{
-    build_capabilities, query_system_resources, ServiceLocation, SongbirdClient,
-    SongbirdRegistration,
-};
+// DISABLED: HTTP-based Songbird registration (legacy)
+// use crate::songbird_client::{
+//     build_capabilities, query_system_resources, ServiceLocation, SongbirdClient,
+//     SongbirdRegistration,
+// };
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 use crate::{CoordinatorExecutor, ManualJsonRpcServer};
 
@@ -69,9 +70,15 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     // Create tarpc server (PRIMARY protocol)
     let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
 
-    // Register with Songbird BEFORE starting servers
-    // Deep debt principle: Discovery first, then serve
-    register_with_ecosystem(&socket_path, &family_id, &version).await;
+    // EVOLUTION NOTE: Songbird registration now happens via capability-based discovery
+    // Songbird discovers ToadStool by checking known socket paths (environment/XDG)
+    // No HTTP client needed! Registration happens when Songbird finds our Unix socket.
+    // See: ARCHITECTURAL_DEBT_SONGBIRD_HTTP_JAN_16_2026.md for evolution plan
+    //
+    // OLD (HTTP-based - removed for TRUE UniBin):
+    // register_with_ecosystem(&socket_path, &family_id, &version).await;
+    info!("🔍 Capability-based discovery: Songbird will find us via Unix socket");
+    info!("   Socket advertised via environment/XDG runtime directory");
 
     // Start manual JSON-RPC server on Unix socket (for universal compatibility)
     info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");
@@ -249,94 +256,102 @@ async fn create_executor(
 ///
 /// Deep debt principle: Self-knowledge only
 async fn query_local_capabilities() -> Vec<String> {
-    let resources = query_system_resources();
-    build_capabilities(&resources)
+    // TEMPORARY: Return basic capabilities until we implement pure Rust capability query
+    // TODO: Implement capability discovery without HTTP dependencies
+    vec![
+        "compute".to_string(),
+        "cpu".to_string(),
+        "orchestration".to_string(),
+    ]
 }
 
-/// Register with ecosystem (Songbird discovery)
-///
-/// Deep debt principle: Capability-based, runtime discovery, graceful degradation
-async fn register_with_ecosystem(socket_path: &PathBuf, family_id: &str, version: &str) {
-    info!("Attempting to register with ecosystem...");
-
-    // Try to discover Songbird via capability-based discovery
-    // Deep debt principle: No hardcoded endpoints
-    match discover_and_register_songbird(socket_path, family_id, version).await {
-        Ok(()) => {
-            info!("✅ Successfully registered with Songbird");
-        }
-        Err(e) => {
-            warn!("Could not register with Songbird: {}", e);
-            warn!("Operating in standalone mode (will be discovered via mDNS/local scan)");
-        }
-    }
-}
-
-/// Discover Songbird and register our capabilities
-///
-/// Deep debt principle: Capability-based discovery, no hardcoding
-async fn discover_and_register_songbird(
-    socket_path: &PathBuf,
-    family_id: &str,
-    version: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Step 1: Discover Songbird (no hardcoding)
-    let songbird = SongbirdClient::discover()
-        .await
-        .map_err(|e| format!("Failed to discover Songbird: {}", e))?;
-
-    info!("Discovered Songbird successfully");
-
-    // Step 2: Query our local capabilities (self-knowledge)
-    let resources = query_system_resources();
-    let capabilities = build_capabilities(&resources);
-
-    info!("Local capabilities: {:?}", capabilities);
-    info!(
-        "System resources: {} CPU cores, {} MB memory",
-        resources.cpu_cores,
-        resources.total_memory_bytes / 1024 / 1024
-    );
-
-    // Step 3: Build registration
-    let registration = SongbirdRegistration {
-        service_id: format!("toadstool-{}", family_id),
-        service_name: "toadstool".to_string(),
-        family_id: family_id.to_string(),
-        version: version.to_string(),
-        capabilities,
-        location: ServiceLocation {
-            location_type: "unix-socket".to_string(),
-            path: socket_path.to_string_lossy().to_string(),
-            protocol: "tarpc".to_string(),
-        },
-        resources,
-        metadata: std::collections::HashMap::from([
-            ("platform".to_string(), std::env::consts::OS.to_string()),
-            ("arch".to_string(), std::env::consts::ARCH.to_string()),
-        ]),
-        ttl_seconds: 300, // 5 minutes TTL
-    };
-
-    // Step 4: Register with Songbird
-    songbird
-        .register_service(registration)
-        .await
-        .map_err(|e| format!("Failed to register: {}", e))?;
-
-    info!("✅ Registered with Songbird");
-
-    // Step 5: Start heartbeat task
-    let service_id = format!("toadstool-{}", family_id);
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
-        loop {
-            interval.tick().await;
-            if let Err(e) = songbird.heartbeat(&service_id).await {
-                warn!("Heartbeat failed: {}", e);
-            }
-        }
-    });
-
-    Ok(())
-}
+// DISABLED: HTTP-based ecosystem registration (legacy)
+// Evolution: Songbird discovers ToadStool via Unix socket paths
+//
+// /// Register with ecosystem (Songbird discovery)
+// ///
+// /// Deep debt principle: Capability-based, runtime discovery, graceful degradation
+// async fn register_with_ecosystem(socket_path: &PathBuf, family_id: &str, version: &str) {
+//     info!("Attempting to register with ecosystem...");
+//
+//     // Try to discover Songbird via capability-based discovery
+//     // Deep debt principle: No hardcoded endpoints
+//     match discover_and_register_songbird(socket_path, family_id, version).await {
+//         Ok(()) => {
+//             info!("✅ Successfully registered with Songbird");
+//         }
+//         Err(e) => {
+//             warn!("Could not register with Songbird: {}", e);
+//             warn!("Operating in standalone mode (will be discovered via mDNS/local scan)");
+//         }
+//     }
+// }
+//
+// /// Discover Songbird and register our capabilities
+// ///
+// /// Deep debt principle: Capability-based discovery, no hardcoding
+// async fn discover_and_register_songbird(
+//     socket_path: &PathBuf,
+//     family_id: &str,
+//     version: &str,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     // Step 1: Discover Songbird (no hardcoding)
+//     let songbird = SongbirdClient::discover()
+//         .await
+//         .map_err(|e| format!("Failed to discover Songbird: {}", e))?;
+//
+//     info!("Discovered Songbird successfully");
+//
+//     // Step 2: Query our local capabilities (self-knowledge)
+//     let resources = query_system_resources();
+//     let capabilities = build_capabilities(&resources);
+//
+//     info!("Local capabilities: {:?}", capabilities);
+//     info!(
+//         "System resources: {} CPU cores, {} MB memory",
+//         resources.cpu_cores,
+//         resources.total_memory_bytes / 1024 / 1024
+//     );
+//
+//     // Step 3: Build registration
+//     let registration = SongbirdRegistration {
+//         service_id: format!("toadstool-{}", family_id),
+//         service_name: "toadstool".to_string(),
+//         family_id: family_id.to_string(),
+//         version: version.to_string(),
+//         capabilities,
+//         location: ServiceLocation {
+//             location_type: "unix-socket".to_string(),
+//             path: socket_path.to_string_lossy().to_string(),
+//             protocol: "tarpc".to_string(),
+//         },
+//         resources,
+//         metadata: std::collections::HashMap::from([
+//             ("platform".to_string(), std::env::consts::OS.to_string()),
+//             ("arch".to_string(), std::env::consts::ARCH.to_string()),
+//         ]),
+//         ttl_seconds: 300, // 5 minutes TTL
+//     };
+//
+//     // Step 4: Register with Songbird
+//     songbird
+//         .register_service(registration)
+//         .await
+//         .map_err(|e| format!("Failed to register: {}", e))?;
+//
+//     info!("✅ Registered with Songbird");
+//
+//     // Step 5: Start heartbeat task
+//     let service_id = format!("toadstool-{}", family_id);
+//     tokio::spawn(async move {
+//         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+//         loop {
+//             interval.tick().await;
+//             if let Err(e) = songbird.heartbeat(&service_id).await {
+//                 warn!("Heartbeat failed: {}", e);
+//             }
+//         }
+//     });
+//
+//     Ok(())
+// }

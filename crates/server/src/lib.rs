@@ -113,7 +113,8 @@ pub mod resource_estimator; // NEW: Resource estimation for graphs
 pub mod resource_optimizer;
 pub mod resource_validator; // NEW: Resource validation for graphs
 pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
-pub mod songbird_client; // Songbird registration client
+// pub mod songbird_client; // DISABLED: HTTP-based registration (legacy)
+// Evolution: Songbird discovers ToadStool via Unix socket (capability-based)
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
@@ -135,7 +136,8 @@ pub use coordinator_executor::CoordinatorExecutor;
 pub use manual_jsonrpc::ManualJsonRpcServer;
 
 // Re-export Songbird client
-pub use songbird_client::{ServiceLocation, SongbirdClient, SongbirdRegistration, SystemResources};
+// DISABLED: HTTP-based Songbird client (legacy)
+// pub use songbird_client::{ServiceLocation, SongbirdClient, SongbirdRegistration, SystemResources};
 
 // Re-export collaborative intelligence types
 pub use graph_types::{

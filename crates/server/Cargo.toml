@@ -53,11 +53,17 @@ tokio = { version = "1.0", features = ["full"] }
 futures-util = "0.3"
 async-trait = "0.1"
 
-# HTTP client (ONLY for external Songbird registration - allowed per biomeOS guidance)
-# Per biomeOS: "songbird will be the only primal with tls dependencies and we can route 
-# http request to external through that primal when we are orchestrated by biomeOS"
-# This is external ecosystem communication, not primal-to-primal
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# HTTP client - REMOVED: Legacy artifact from old Songbird HTTP registration
+# ARCHITECTURAL EVOLUTION (Jan 17, 2026):
+#   OLD: ToadStool used HTTP to register with Songbird (violated concentrated gap)
+#   NEW: Songbird discovers ToadStool via Unix socket (capability-based discovery)
+#   RESULT: ToadStool has NO legitimate need for HTTP/TLS dependencies!
+# 
+# Deep Debt Solution: ToadStool provides Unix socket server (manual_jsonrpc.rs),
+# Songbird discovers ToadStool via socket path, registration happens via JSON-RPC over Unix.
+# This achieves 100% Pure Rust and TRUE UniBin (no C deps, trivial cross-compilation).
+#
+# reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
