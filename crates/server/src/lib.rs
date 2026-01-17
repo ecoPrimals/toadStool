@@ -112,6 +112,7 @@ pub mod mocks;
 pub mod resource_estimator; // NEW: Resource estimation for graphs
 pub mod resource_optimizer;
 pub mod resource_validator; // NEW: Resource validation for graphs
+pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
 pub mod songbird_client; // Songbird registration client
 pub mod state;
 pub mod tarpc_server;
@@ -123,6 +124,9 @@ pub use background::start_background_services;
 
 // Re-export UniBin entry point for external use
 pub use unibin::run_server_main;
+
+// Re-export pure RPC types (deep debt solution)
+pub use rpc_types::*;
 
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;

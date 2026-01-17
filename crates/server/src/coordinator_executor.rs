@@ -23,10 +23,13 @@ use toadstool::{
     SecurityContext, WorkloadSpec,
 };
 use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
-// UNIBIN: protocols crate disabled (peripheral, HTTP remnants)
-// use toadstool_integration_protocols::tarpc_service::{
-//     ComputeCapabilities, ExecutionMetrics, WorkloadResult, WorkloadStatus, WorkloadSubmission,
-// };
+
+// Deep debt solution: Use pure RPC types from local module
+use crate::rpc_types::{
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics,
+    HealthStatus, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+};
+use crate::tarpc_server::WorkloadExecutor;
 
 use super::tarpc_server::WorkloadExecutor;
 
@@ -142,7 +145,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 "distributed".to_string(),
             ],
             available_resources:
-                toadstool_integration_protocols::tarpc_service::AvailableResources {
+                AvailableResources {
                     total_cpu_cores: cpu_cores,
                     available_cpu_cores: cpu_cores,
                     total_memory_bytes: total_memory,

@@ -52,11 +52,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
 
-// UNIBIN: protocols crate disabled (peripheral, HTTP remnants)
-// use toadstool_integration_protocols::tarpc_service::{
-//     ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
-//     WorkloadSubmission as TarpcWorkloadSubmission,
-// };
+// Deep debt solution: Use pure RPC types from local module
+use crate::rpc_types::{
+    ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
+    WorkloadSubmission as TarpcWorkloadSubmission,
+};
+use crate::tarpc_server::WorkloadExecutor;
 
 /// JSON-RPC server configuration
 #[derive(Debug, Clone)]
