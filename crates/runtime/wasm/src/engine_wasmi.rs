@@ -168,15 +168,15 @@ impl RuntimeEngine for WasmRuntimeEngine {
         Box::pin(async move {
             use toadstool::resources::{CpuMetrics, MemoryMetrics, TimingMetrics};
             
-            let total = self.metrics.total_executions();
-            let successful = self.metrics.successful_executions();
-            let failed = self.metrics.failed_executions();
+            let _total = self.metrics.total_executions();
+            let _successful = self.metrics.successful_executions();
+            let _failed = self.metrics.failed_executions();
             let avg_time_us = self.metrics.average_execution_time_us();
             
             Ok(RuntimeMetrics {
                 cpu: CpuMetrics::default(),
                 memory: MemoryMetrics::default(),
-                storage: None,
+                storage: toadstool::resources::StorageMetrics::default(),
                 network: toadstool::resources::NetworkMetrics::default(),
                 gpu: None,
                 timing: TimingMetrics {

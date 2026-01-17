@@ -67,6 +67,7 @@ pub use component_model::*;
 use toadstool::error::ToadStoolError;
 
 /// Helper function to convert wasmi errors to `ToadStoolError`
+#[allow(dead_code)]
 pub(crate) fn wasmi_error(err: wasmi::Error) -> ToadStoolError {
     ToadStoolError::runtime(err.to_string())
 }
