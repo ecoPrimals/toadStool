@@ -291,17 +291,47 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             execute_universal_command(operation).await?;
         }
 
-        Commands::Daemon {
-            register: _,
-            port: _,
-            socket: _,
-            config: _,
-            max_workloads: _,
-            biomeos_socket: _,
+        Commands::Server {
+            register,
+            port,
+            socket,
+            config,
+            max_workloads,
+            biomeos_socket,
+        }
+        | Commands::Daemon {
+            register,
+            port,
+            socket,
+            config,
+            max_workloads,
+            biomeos_socket,
         } => {
-            info!("🍄 Starting ToadStool in daemon mode (UniBin)");
-            // UniBin: Call the server daemon logic
-            return run_server_daemon().await;
+            // Determine which command name was used
+            let is_server = matches!(&cli.command, Commands::Server { .. });
+            
+            if is_server {
+                info!("🍄 ToadStool Server Mode (UniBin Standard)");
+            } else {
+                info!("🍄 ToadStool Daemon Mode (backward compat)");
+                info!("💡 TIP: Use 'toadstool server' for ecosystem standard naming");
+            }
+            
+            info!("   Register: {}", if *register { "enabled" } else { "disabled" });
+            info!("   Port: {}", port);
+            if let Some(sock) = socket {
+                info!("   Socket: {}", sock.display());
+            }
+            if let Some(cfg) = config {
+                info!("   Config: {}", cfg.display());
+            }
+            info!("   Max workloads: {}", max_workloads);
+            if let Some(biomeos) = biomeos_socket {
+                info!("   BiomeOS: {}", biomeos.display());
+            }
+
+            // TODO: UniBin Phase 3 - Full server daemon integration
+            run_server_daemon().await?;
         }
 
         // UNIBIN PHASE 1: ZeroConfig temporarily disabled (HTTP dependencies)

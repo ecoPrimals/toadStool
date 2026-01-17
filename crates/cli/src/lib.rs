@@ -250,12 +250,49 @@ pub enum Commands {
         operation: UniversalCommands,
     },
 
+    /// Start ToadStool in server mode (long-running service)
+    ///
+    /// **UniBin Standard Compliant**: Ecosystem-standard subcommand for running ToadStool
+    /// as a long-running service. Server mode processes workloads via JSON-RPC over Unix sockets.
+    ///
+    /// Like the fungus: CLI = fruiting body (specialized), Server = mycelium (network-wide)
+    ///
+    /// ## What Server Mode Does
+    ///
+    /// 1. **JSON-RPC API** (Unix Socket): Primal-to-primal workload submission
+    /// 2. **Ecosystem Integration**: Registers with biomeOS capability registry
+    /// 3. **Workload Orchestration**: Multi-runtime support (Native, Python, WASM, GPU)
+    Server {
+        /// Register with biomeOS capability registry
+        #[arg(long)]
+        register: bool,
+
+        /// HTTP API port
+        #[arg(long, default_value = "8084")]
+        port: u16,
+
+        /// Unix socket path for IPC
+        #[arg(long)]
+        socket: Option<PathBuf>,
+
+        /// Configuration file
+        #[arg(long)]
+        config: Option<PathBuf>,
+
+        /// Maximum concurrent workloads
+        #[arg(long, default_value = "10")]
+        max_workloads: usize,
+
+        /// biomeOS registry socket path
+        #[arg(long)]
+        biomeos_socket: Option<PathBuf>,
+    },
+
     /// Start ToadStool as a daemon service (workload execution service)
     ///
     /// Like the fungus: CLI = fruiting body (specialized), Daemon = mycelium (network-wide)
-    ///
     /// The daemon mode transforms ToadStool from a CLI tool into an ecosystem compute service:
-    /// - HTTP API for workload submission
+    /// - JSON-RPC API for workload submission (Unix Socket)
     /// - Auto-registration with biomeOS capability registry
     /// - Resource monitoring and reporting
     /// - Multi-tower coordination
