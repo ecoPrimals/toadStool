@@ -49,6 +49,8 @@ libc = "0.2"
 criterion = "0.5"
 proptest = "1.4"
 tempfile = "3.8"
+# For creating test data only (not used in production!)
+zstd = "0.13"
 
 [build-dependencies]
 # None yet
