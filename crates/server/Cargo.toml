@@ -49,12 +49,15 @@ base64 = "0.22"
 # Async runtime and channels
 tokio = { version = "1.0", features = ["full"] }
 
-# HTTP client (for Songbird registration)
-# PURE RUST: reqwest removed - unix sockets only! ✅
-
 # Async utilities
 futures-util = "0.3"
 async-trait = "0.1"
+
+# HTTP client (ONLY for external Songbird registration - allowed per biomeOS guidance)
+# Per biomeOS: "songbird will be the only primal with tls dependencies and we can route 
+# http request to external through that primal when we are orchestrated by biomeOS"
+# This is external ecosystem communication, not primal-to-primal
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

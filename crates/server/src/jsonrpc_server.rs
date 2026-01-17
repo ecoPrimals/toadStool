@@ -57,7 +57,6 @@ use crate::rpc_types::{
     ComputeCapabilities, HealthStatus, ResourceRequirements, WorkloadPriority, WorkloadResult,
     WorkloadSubmission as TarpcWorkloadSubmission,
 };
-use crate::tarpc_server::WorkloadExecutor;
 
 /// JSON-RPC server configuration
 #[derive(Debug, Clone)]
@@ -252,6 +251,8 @@ impl ToadStoolJsonRpcServer for JsonRpcServerImpl {
             version: self.version.clone(),
             uptime_secs: uptime.as_secs(),
             active_workloads: 0, // TODO: Track actual workloads
+            queued_workloads: 0, // TODO: Track queued workloads
+            error_count: 0, // TODO: Track errors
             resource_utilization: 0.0,
         })
     }

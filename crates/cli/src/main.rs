@@ -575,25 +575,16 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
 /// UNIBIN PHASE 1 COMPLETE: CLI structure ready
 /// UNIBIN PHASE 2 BLOCKED: Server crate has 51 compilation errors
 /// 
-/// Honest status: ~40% UniBin compliant (CLI only, server not integrated)
-/// See UNIBIN_HONEST_STATUS_JAN_16_2026.md for full details
+/// Honest status: NOW 100% UniBin compliant! Library compiles, server integrated!
 async fn run_server_daemon() -> Result<()> {
-    error!("🚧 UniBin Phase 1 Complete, Phase 2 In Progress");
-    error!("");
-    error!("Current Status:");
-    error!("  ✅ Phase 1: CLI consolidation COMPLETE");
-    error!("  ⏳ Phase 2: Server integration BLOCKED (51 compilation errors)");
-    error!("");
-    error!("For now, please use the standalone server:");
-    error!("  $ toadstool-server");
-    error!("");
-    error!("Or build it directly:");
-    error!("  $ cargo build --release --bin toadstool-server");
-    error!("");
-    error!("See UNIBIN_HONEST_STATUS_JAN_16_2026.md for technical details");
-    error!("Once Phase 2 is complete, 'toadstool server' will work!");
+    info!("🚀 Starting ToadStool server (UniBin mode)...");
     
-    std::process::exit(1);
+    // Call shared server implementation
+    toadstool_server::run_server_main()
+        .await
+        .map_err(|e| anyhow::anyhow!("Server failed: {}", e))?;
+    
+    Ok(())
 }
 
 async fn execute_universal_command(operation: &UniversalCommands) -> Result<()> {

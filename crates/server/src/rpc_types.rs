@@ -161,11 +161,17 @@ pub struct ComputeUnit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AvailableResources {
     /// Total CPU cores
-    pub cpu_cores: u32,
+    pub total_cpu_cores: u32,
+    /// Available CPU cores
+    pub available_cpu_cores: u32,
     /// Total memory (bytes)
-    pub memory_bytes: u64,
+    pub total_memory_bytes: u64,
+    /// Available memory (bytes)
+    pub available_memory_bytes: u64,
     /// Total GPU memory (bytes)
-    pub gpu_memory_bytes: Option<u64>,
+    pub total_gpu_memory_bytes: Option<u64>,
+    /// Available GPU memory (bytes)
+    pub available_gpu_memory_bytes: Option<u64>,
     /// Current CPU utilization (0.0-1.0)
     pub cpu_utilization: f32,
     /// Current memory utilization (0.0-1.0)

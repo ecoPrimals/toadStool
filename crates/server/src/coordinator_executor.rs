@@ -27,11 +27,10 @@ use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
 // Deep debt solution: Use pure RPC types from local module
 use crate::rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics,
-    HealthStatus, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+    WorkloadResult, WorkloadStatus, WorkloadSubmission,
 };
+// WorkloadExecutor trait is defined in tarpc_server module
 use crate::tarpc_server::WorkloadExecutor;
-
-use super::tarpc_server::WorkloadExecutor;
 
 /// Executor that uses the distributed coordinator for workload execution
 ///
@@ -128,7 +127,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
         Ok(ComputeCapabilities {
             service_id: self.service_id.clone(),
             compute_units: vec![
-                toadstool_integration_protocols::tarpc_service::ComputeUnit {
+                ComputeUnit {
                     id: "coordinator-local".to_string(),
                     unit_type: "distributed".to_string(),
                     name: "Distributed Coordinator".to_string(),
@@ -144,15 +143,17 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 "neural_compute".to_string(),
                 "distributed".to_string(),
             ],
-            available_resources:
-                AvailableResources {
-                    total_cpu_cores: cpu_cores,
-                    available_cpu_cores: cpu_cores,
-                    total_memory_bytes: total_memory,
-                    available_memory_bytes: available_memory,
-                    total_gpu_memory_bytes: None,
-                    available_gpu_memory_bytes: None,
-                },
+            available_resources: AvailableResources {
+                total_cpu_cores: cpu_cores,
+                available_cpu_cores: cpu_cores,
+                total_memory_bytes: total_memory,
+                available_memory_bytes: available_memory,
+                total_gpu_memory_bytes: None,
+                available_gpu_memory_bytes: None,
+                cpu_utilization: 0.0,
+                memory_utilization: 0.0,
+                gpu_utilization: None,
+            },
             metadata: std::collections::HashMap::from([
                 ("mode".to_string(), "distributed".to_string()),
                 ("coordinator".to_string(), "active".to_string()),
