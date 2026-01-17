@@ -30,7 +30,7 @@ lint-all = "clippy --workspace --all-targets"
 # Philosophy: Lean INTO compile time - each optimization is a runtime improvement
 
 [target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gnu-gcc"
+linker = "aarch64-linux-gnu-gcc-11"
 
 [target.riscv64gc-unknown-linux-gnu]
 linker = "riscv64-linux-gnu-gcc"
