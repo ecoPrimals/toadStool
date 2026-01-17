@@ -1,34 +1,134 @@
-//! # ToadStool Server Daemon
+//! UniBin server entry point
 //!
-//! Universal compute server for biomeOS ecosystem integration.
-//!
-//! ## Deep Debt Principles
-//!
-//! - **Capability-Based Discovery**: Registers with Songbird at runtime
-//! - **Self-Knowledge Only**: No hardcoded knowledge of other primals
-//! - **Unix Socket PRIMARY**: No TCP hardcoding, multi-instance support
-//! - **Unique Family IDs**: Each instance has unique identity
-//! - **Graceful Degradation**: Works standalone if Songbird unavailable
-//! - **Modern Idiomatic Rust**: No unwrap(), proper error handling
-//!
-//! ## UniBin Architecture
-//!
-//! This standalone binary shares logic with the `toadstool server` UniBin command.
-//! Both call the same `run_server_main()` function from the toadstool-server library.
+//! Shared server main logic for both toadstool and toadstool-server binaries
 
-use tracing_subscriber::EnvFilter;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::signal;
+use tracing::{error, info, warn};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging with env filter support
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .init();
+use toadstool_distributed::{DistributedConfig, StandaloneConfig};
+use crate::songbird_client::{
+    build_capabilities, query_system_resources, ServiceLocation, SongbirdClient,
+    SongbirdRegistration,
+};
+use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+use crate::{CoordinatorExecutor, ManualJsonRpcServer};
 
-    // Call shared UniBin server implementation
-    toadstool_server::run_server_main().await
+/// Run ToadStool in server/daemon mode
+///
+/// This is the main entry point for both `toadstool server` (UniBin)
+/// and `toadstool-server` (standalone binary).
+///
+/// ## UniBin Architecture
+///
+/// This function enables the UniBin pattern by providing a shared
+/// implementation that can be called from multiple binary entry points.
+pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
+    info!(
+        "🍄 ToadStool Universal Compute Server v{}",
+        env!("CARGO_PKG_VERSION")
+    );
+    info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
+
+    // Get configuration from environment (TRUE PRIMAL standard)
+    // Priority: TOADSTOOL_FAMILY_ID > TOADSTOOL_FAMILY > BIOMEOS_FAMILY_ID > default
+    let family_id = std::env::var("TOADSTOOL_FAMILY_ID")
+        .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
+        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+        .unwrap_or_else(|_| {
+            warn!("No family ID environment variables set, using 'default'");
+            warn!("For multi-instance support, set one of:");
+            warn!("  export TOADSTOOL_FAMILY_ID=nat0 (primal-specific)");
+            warn!("  export BIOMEOS_FAMILY_ID=nat0 (orchestrator-provided)");
+            "default".to_string()
+        });
+
+    let node_id = std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
+        info!("TOADSTOOL_NODE_ID not set, using 'default'");
+        "default".to_string()
+    });
+
+    info!("Family ID: {}", family_id);
+    info!("Node ID: {}", node_id);
+
+    // Determine socket path using biomeOS-standardized 3-tier fallback
+    info!("🔍 Socket Path Discovery:");
+    info!("  Checking TOADSTOOL_SOCKET: {:?}", std::env::var("TOADSTOOL_SOCKET").ok());
+    info!("  Checking BIOMEOS_SOCKET_PATH: {:?}", std::env::var("BIOMEOS_SOCKET_PATH").ok());
+    info!("  Checking XDG_RUNTIME_DIR: {:?}", std::env::var("XDG_RUNTIME_DIR").ok());
+    
+    let socket_path = get_socket_path(&family_id, &node_id)?;
+    info!("✅ Final socket path: {:?}", socket_path);
+
+    // Create executor (workload handler) - now with distributed coordinator
+    info!("Initializing compute executor...");
+    let executor = create_executor(&family_id).await?;
+    let version = env!("CARGO_PKG_VERSION").to_string();
+
+    // Create tarpc server (PRIMARY protocol)
+    let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
+
+    // Register with Songbird BEFORE starting servers
+    // Deep debt principle: Discovery first, then serve
+    register_with_ecosystem(&socket_path, &family_id, &version).await;
+
+    // Start manual JSON-RPC server on Unix socket (for universal compatibility)
+    info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");
+    let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
+    let jsonrpc_server = ManualJsonRpcServer::new(Arc::clone(&executor), version.clone());
+    let jsonrpc_socket_clone = jsonrpc_socket.clone();
+    tokio::spawn(async move {
+        if let Err(e) = jsonrpc_server.serve(jsonrpc_socket_clone).await {
+            error!("JSON-RPC server error: {}", e);
+        }
+    });
+
+    info!("Starting tarpc server on Unix socket (PRIMARY protocol)...");
+    info!("✅ ToadStool server ready");
+    info!("Socket (tarpc): {:?}", socket_path);
+    info!("Socket (JSON-RPC): {:?}", jsonrpc_socket);
+    info!("Protocol: tarpc (binary RPC, PRIMARY)");
+    info!("Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
+    info!("Family: {}", family_id);
+    info!("Capabilities: compute, gpu, orchestration");
+
+    // Clone socket path for cleanup later
+    let socket_path_clone = socket_path.clone();
+
+    // Start server (blocking)
+    let server_handle = tokio::spawn(async move {
+        if let Err(e) = server.serve_unix(&socket_path).await {
+            error!("tarpc server error: {}", e);
+        }
+    });
+
+    // Wait for shutdown signal
+    info!("Press Ctrl+C to shutdown");
+    match signal::ctrl_c().await {
+        Ok(()) => {
+            info!("Received shutdown signal");
+        }
+        Err(err) => {
+            error!("Failed to listen for shutdown signal: {}", err);
+        }
+    }
+
+    // Graceful shutdown
+    info!("Shutting down ToadStool server...");
+    server_handle.abort();
+
+    // Clean up socket files
+    if let Err(e) = tokio::fs::remove_file(&socket_path_clone).await {
+        warn!("Failed to remove tarpc socket: {}", e);
+    }
+    let jsonrpc_socket = socket_path_clone.with_extension("jsonrpc.sock");
+    if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
+        warn!("Failed to remove JSON-RPC socket: {}", e);
+    }
+
+    info!("ToadStool server stopped");
+    Ok(())
 }
 
 /// Get socket path following biomeOS-standardized fallback

@@ -12,6 +12,7 @@
 //! - **Resource Management**: CPU, memory, storage, and GPU resource tracking
 //! - **Authentication & Authorization**: Configurable security policies
 //! - **Ecosystem Integration**: Integration with Songbird, `BearDog`, `NestGate`
+//! - **UniBin Support**: Main server function for UniBin integration
 //!
 //! ## Quick Start
 //!
@@ -37,6 +38,19 @@
 //!     server.start().await?;
 //!     
 //!     Ok(())
+//! }
+//! ```
+//!
+//! ## UniBin Integration
+//!
+//! For UniBin architecture, use the `run_server_main()` function:
+//!
+//! ```ignore
+//! use toadstool_server::run_server_main;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     run_server_main().await
 //! }
 //! ```
 
@@ -101,10 +115,14 @@ pub mod resource_validator; // NEW: Resource validation for graphs
 pub mod songbird_client; // Songbird registration client
 pub mod state;
 pub mod tarpc_server;
+pub mod unibin; // UniBin server entry point (shared between binaries)
 pub mod websocket; // NEW: Resource optimization for graphs
 
 // Re-export background services for tests
 pub use background::start_background_services;
+
+// Re-export UniBin entry point for external use
+pub use unibin::run_server_main;
 
 // Re-export coordinator executor
 pub use coordinator_executor::CoordinatorExecutor;

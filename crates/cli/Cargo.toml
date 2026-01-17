@@ -45,7 +45,7 @@ toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
-# toadstool-server = { path = "../server" }  # UniBin: Will be integrated after protocols crate cleanup
+# toadstool-server = { path = "../server" }  # UniBin Phase 2: Blocked by 51 compilation errors in server crate
 humantime-serde = "1.1"
 
 # Runtime engines
