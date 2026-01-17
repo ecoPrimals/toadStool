@@ -154,10 +154,19 @@ pub fn decompress_isolated(
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>> {
     // PURE RUST EVOLUTION (Jan 17, 2026):
     //   OLD: zstd crate (pulled in zstd-sys C dependency)
-    //   NEW: zstd with default-features = false (100% Pure Rust decoder!)
+    //   NEW: ruzstd (100% Pure Rust implementation!)
     //   BENEFIT: Cross-compiles trivially, no C toolchain needed!
-    zstd::decode_all(compressed)
-        .map_err(|e| Error::decompression(format!("Zstd decompression failed: {e}")))
+    use std::io::Read;
+    use ruzstd::decoding::StreamingDecoder;
+    
+    let mut decoder = StreamingDecoder::new(compressed)
+        .map_err(|e| Error::decompression(format!("Failed to create zstd decoder: {e}")))?;
+    
+    let mut decompressed = Vec::new();
+    decoder.read_to_end(&mut decompressed)
+        .map_err(|e| Error::decompression(format!("Zstd decompression failed: {e}")))?;
+    
+    Ok(decompressed)
 }
 
 /// Decompress using LZ4 (Pure Rust implementation!)
@@ -179,8 +188,15 @@ mod tests {
         // Use larger, repetitive data for realistic compression
         let original = b"Hello, world! ".repeat(100); // ~1.3KB repetitive data
 
-        // Compress with zstd
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        // Compress with ruzstd (using basic compression)
+        // For testing, we need to create valid zstd frames
+        // Using a pre-compressed test vector or external tool would be better
+        // For now, test with a simple pattern
+        use std::io::Write;
+        
+        let mut encoder = ruzstd::encoding::Encoder::new(Vec::new()).unwrap();
+        encoder.write_all(&original).unwrap();
+        let compressed = encoder.finish().unwrap();
 
         // Decompress in isolated memory
         let (memory, stats) = decompress_isolated(
@@ -224,7 +240,12 @@ mod tests {
     #[test]
     fn test_size_mismatch_error() {
         let original = b"Test data";
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        
+        // Compress with ruzstd
+        use std::io::Write;
+        let mut encoder = ruzstd::encoding::Encoder::new(Vec::new()).unwrap();
+        encoder.write_all(original).unwrap();
+        let compressed = encoder.finish().unwrap();
 
         // Expect wrong size
         let result = decompress_isolated(
@@ -239,7 +260,12 @@ mod tests {
     #[test]
     fn test_decompression_stats() {
         let original = vec![0u8; 1024 * 1024]; // 1MB of zeros (highly compressible)
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        
+        // Compress with ruzstd
+        use std::io::Write;
+        let mut encoder = ruzstd::encoding::Encoder::new(Vec::new()).unwrap();
+        encoder.write_all(&original).unwrap();
+        let compressed = encoder.finish().unwrap();
 
         let (_memory, stats) =
             decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None).unwrap();
@@ -252,7 +278,12 @@ mod tests {
     #[test]
     fn test_memory_isolation() {
         let original = b"Sensitive data";
-        let compressed = zstd::encode_all(&original[..], 3).unwrap();
+        
+        // Compress with ruzstd
+        use std::io::Write;
+        let mut encoder = ruzstd::encoding::Encoder::new(Vec::new()).unwrap();
+        encoder.write_all(original).unwrap();
+        let compressed = encoder.finish().unwrap();
 
         let (mut memory, _stats) =
             decompress_isolated(&compressed, CompressionAlgorithm::Zstd, None).unwrap();
