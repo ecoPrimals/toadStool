@@ -44,7 +44,7 @@ impl<'a> BiomeLifecycle<'a> {
         env_vars: Vec<String>,
         _detached: bool,
         _debug: bool,
-        security_level: &str,
+        _security_level: &str,
     ) -> Result<BiomeInfo> {
         let biome_id = Uuid::new_v4();
         let start_time = Utc::now();
@@ -64,7 +64,7 @@ impl<'a> BiomeLifecycle<'a> {
         }
 
         // Start processes (simplified - actual implementation would call start_primal/start_service)
-        let mut processes = Vec::new();
+        let processes = Vec::new();
         
         info!("✅ Biome infrastructure ready");
 
@@ -89,6 +89,7 @@ impl<'a> BiomeLifecycle<'a> {
         // Register running biome
         let running_biome = RunningBiome {
             info: biome_info.clone(),
+            _manifest: manifest,
             process_handles: processes,
             log_files: HashMap::new(),
         };
