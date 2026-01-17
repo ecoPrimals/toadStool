@@ -61,6 +61,9 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # barraCUDA framework uses wgpu for vendor-agnostic GPU compute
 wgpu = "22"
 
+# Pure Rust directory discovery (replaces dirs/dirs-sys)
+etcetera = "0.8"
+
 
 # Core dependencies
 tokio = { version = "1.35", features = ["full"] }

@@ -119,16 +119,25 @@ impl ServiceDiscoveryConfig {
 
     /// Load configuration from default locations
     ///
-    /// Tries in order:
+    /// Tries in order using Pure Rust etcetera:
     /// 1. `~/.toadstool/services.toml`
     /// 2. `./.toadstool/config.toml`
     /// 3. `/etc/toadstool/services.toml`
     pub fn load_default() -> Self {
-        let paths = vec![
-            dirs::home_dir().map(|h| h.join(".toadstool/services.toml")),
-            Some(PathBuf::from(".toadstool/config.toml")),
-            Some(PathBuf::from("/etc/toadstool/services.toml")),
-        ];
+        use etcetera::{choose_base_strategy, BaseStrategy};
+        
+        let paths = if let Ok(strategy) = choose_base_strategy() {
+            vec![
+                Some(strategy.home_dir().join(".toadstool/services.toml")),
+                Some(PathBuf::from(".toadstool/config.toml")),
+                Some(PathBuf::from("/etc/toadstool/services.toml")),
+            ]
+        } else {
+            vec![
+                Some(PathBuf::from(".toadstool/config.toml")),
+                Some(PathBuf::from("/etc/toadstool/services.toml")),
+            ]
+        };
 
         for path in paths.into_iter().flatten() {
             if let Ok(config) = Self::from_file(&path) {

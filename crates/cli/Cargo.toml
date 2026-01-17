@@ -80,8 +80,8 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID generation
 uuid = { workspace = true, features = ["v4"] }
 
-# File system operations
-dirs = "5.0"
+# File system operations (Pure Rust!)
+etcetera = { workspace = true }
 
 # Networking
 # PURE RUST: reqwest removed - unix sockets only! ✅

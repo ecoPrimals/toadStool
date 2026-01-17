@@ -52,7 +52,7 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 
 /// Discover service from configuration file
 ///
-/// Looks for configuration in:
+/// Looks for configuration using Pure Rust etcetera in:
 /// 1. `~/.toadstool/services.toml`
 /// 2. `./.toadstool/config.toml`
 /// 3. `/etc/toadstool/services.toml`
@@ -68,12 +68,21 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 /// priority = 80
 /// ```
 pub fn discover_from_config(capability_category: &str) -> Option<String> {
+    use etcetera::{choose_base_strategy, BaseStrategy};
+    
     // Try multiple config locations
-    let config_paths = vec![
-        dirs::home_dir().map(|h| h.join(".toadstool/services.toml")),
-        Some(std::path::PathBuf::from(".toadstool/config.toml")),
-        Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
-    ];
+    let config_paths = if let Ok(strategy) = choose_base_strategy() {
+        vec![
+            Some(strategy.home_dir().join(".toadstool/services.toml")),
+            Some(std::path::PathBuf::from(".toadstool/config.toml")),
+            Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
+        ]
+    } else {
+        vec![
+            Some(std::path::PathBuf::from(".toadstool/config.toml")),
+            Some(std::path::PathBuf::from("/etc/toadstool/services.toml")),
+        ]
+    };
 
     for path in config_paths.into_iter().flatten() {
         if let Ok(contents) = std::fs::read_to_string(&path) {

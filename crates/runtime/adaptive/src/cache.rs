@@ -177,12 +177,15 @@ impl OptimizationCache {
 
     /// Get cache file path
     ///
-    /// Platform-specific location:
+    /// Platform-specific location using Pure Rust etcetera:
     /// - Linux: ~/.cache/barracuda/
     /// - macOS: ~/Library/Caches/barracuda/
     /// - Windows: %LOCALAPPDATA%\barracuda\
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf> {
-        let cache_dir = dirs::cache_dir().context("Failed to find cache directory")?;
+        use etcetera::{choose_base_strategy, BaseStrategy};
+        
+        let strategy = choose_base_strategy().context("Failed to determine base directory strategy")?;
+        let cache_dir = strategy.cache_dir();
 
         let barracuda_cache = cache_dir.join("barracuda");
         let filename = format!("optimization_{}.json", gpu.cache_key());

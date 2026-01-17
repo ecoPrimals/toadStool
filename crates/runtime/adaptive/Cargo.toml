@@ -27,8 +27,8 @@ wgpu = { workspace = true }
 # ToadStool core
 toadstool = { path = "../../core/toadstool" }
 
-# Platform-specific paths
-dirs = "5.0"
+# Pure Rust directory discovery
+etcetera = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
