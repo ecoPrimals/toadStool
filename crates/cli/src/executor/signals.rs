@@ -9,6 +9,7 @@ use tracing::info;
 #[allow(dead_code)]
 pub(super) struct SignalManager;
 
+#[allow(dead_code)]
 impl SignalManager {
     /// Wait for termination signal (SIGTERM or SIGINT)
     ///

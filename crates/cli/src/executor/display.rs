@@ -16,6 +16,7 @@ use super::BiomeInfo;
 #[allow(dead_code)]
 pub(super) struct DisplayManager;
 
+#[allow(dead_code)]
 impl DisplayManager {
     /// Print biomes in a formatted table
     ///

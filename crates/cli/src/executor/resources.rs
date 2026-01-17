@@ -16,6 +16,7 @@ pub(super) struct ResourceManager<'a> {
     executor: &'a BiomeExecutor,
 }
 
+#[allow(dead_code)]
 impl<'a> ResourceManager<'a> {
     /// Create new resource manager
     pub fn new(executor: &'a BiomeExecutor) -> Self {
