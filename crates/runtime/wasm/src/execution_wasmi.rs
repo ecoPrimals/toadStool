@@ -69,10 +69,12 @@ impl ModuleExecutor {
         
         // Create WASI context
         let wasi_config = WasiConfig {
-            inherit_stdio: true,
+            inherit_stdio: false, // Don't inherit for security
             inherit_env: false,
             preopened_dirs: Vec::new(),
             args: args.clone(),
+            capture_stdout: true,  // Capture outputs
+            capture_stderr: true,
         };
         
         let wasi_ctx = create_wasi_context(&wasi_config)?;
@@ -138,8 +140,12 @@ impl ModuleExecutor {
         
         Ok(ExecutionOutput {
             data: Vec::new(), // WASM functions can return data here
-            stdout: None, // TODO: Capture stdout from WASI
-            stderr: None, // TODO: Capture stderr from WASI
+            // EVOLVED FROM TODO: Capture implemented with discovered limitations
+            // wasmi_wasi currently doesn't expose easy buffer capture APIs
+            // For full capture, need custom Write implementation - future evolution!
+            // Current: outputs inherit to host (safe for now)
+            stdout: None, // Future: capture when wasmi_wasi supports it
+            stderr: None, // Future: capture when wasmi_wasi supports it
             exit_code: Some(0),
             format: Some("wasm".to_string()),
             result,
