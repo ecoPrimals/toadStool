@@ -44,6 +44,7 @@ pub mod cache_wasmi;
 pub mod cache_metrics;
 pub mod config;
 pub mod engine_wasmi;
+pub mod execution_wasmi;
 pub mod metrics;
 pub mod module_loader;
 pub mod wasi_context;
@@ -57,6 +58,7 @@ pub use cache_wasmi::ModuleCache;
 pub use cache_metrics::CacheMetrics;
 pub use config::{SecurityLevel, WasmRuntimeConfig, WasmRuntimeConfigBuilder};
 pub use engine_wasmi::WasmRuntimeEngine;
+pub use execution_wasmi::ModuleExecutor;
 pub use module_loader::ModuleLoader;
 pub use wasi_context::{WasiConfig, create_wasi_context};
 

@@ -28,6 +28,9 @@ use toadstool::WorkloadType;
 
 use crate::config::WasmRuntimeConfig;
 use crate::metrics::MetricsCollector;
+use crate::module_loader::ModuleLoader;
+use crate::execution_wasmi::ModuleExecutor;
+use crate::cache_wasmi::ModuleCache;
 
 /// WebAssembly Runtime Engine (wasmi-based)
 ///
@@ -41,6 +44,15 @@ pub struct WasmRuntimeEngine {
     
     /// Metrics collector
     metrics: Arc<MetricsCollector>,
+    
+    /// Module cache
+    cache: Arc<ModuleCache>,
+    
+    /// Module loader
+    loader: Arc<ModuleLoader>,
+    
+    /// Module executor
+    executor: Arc<ModuleExecutor>,
     
     /// Initialized flag
     initialized: bool,
@@ -71,11 +83,17 @@ impl WasmRuntimeEngine {
         // Initialize components
         let metrics = Arc::new(MetricsCollector::new());
         let config = Arc::new(config);
+        let cache = Arc::new(ModuleCache::new(config.cache.max_entries));
+        let loader = Arc::new(ModuleLoader::new(engine.clone(), (*config).clone()));
+        let executor = Arc::new(ModuleExecutor::new(engine.clone(), (*config).clone()));
 
         Ok(Self {
             engine,
             config,
             metrics,
+            cache,
+            loader,
+            executor,
             initialized: false,
         })
     }
@@ -127,13 +145,45 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
     fn execute(
         &self,
-        _request: ExecutionRequest,
+        request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
-            // TODO: Implement full execution logic
-            Err(ToadStoolError::not_supported(
-                "Wasmi execution implementation in progress".to_string(),
-            ))
+            let start_time = std::time::Instant::now();
+            
+            // Extract WASM module source from request
+            let module_source = match request.workload_spec {
+                toadstool::WorkloadSpec::Wasm { module_source, entry_point, .. } => {
+                    (module_source, entry_point)
+                },
+                _ => {
+                    return Err(ToadStoolError::validation(
+                        "Expected WASM workload spec".to_string()
+                    ));
+                }
+            };
+            
+            // Execute the module
+            let output = self.executor
+                .load_and_execute(&module_source.0, &module_source.1, vec![])
+                .await?;
+            
+            let duration = start_time.elapsed();
+            
+            // Record metrics
+            if output.status == toadstool::execution::ExecutionStatus::Completed {
+                self.metrics.record_success(duration.as_micros() as u64);
+            } else {
+                self.metrics.record_failure();
+            }
+            
+            // Build response
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: output.status,
+                output: Some(output),
+                error: None,
+                metadata: std::collections::HashMap::new(),
+            })
         })
     }
 
