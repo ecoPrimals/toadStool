@@ -9,9 +9,11 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+use crate::BiomeStatus;
 use super::BiomeInfo;
 
 /// Display manager for UI and logging
+#[allow(dead_code)]
 pub(super) struct DisplayManager;
 
 impl DisplayManager {
@@ -45,12 +47,12 @@ impl DisplayManager {
 
         for (name, info) in sorted {
             let status_str = match &info.status {
-                crate::BiomeStatus::Running => "running".green(),
-                crate::BiomeStatus::Starting => "starting".yellow(),
-                crate::BiomeStatus::Stopping => "stopping".yellow(),
-                crate::BiomeStatus::Stopped => "stopped".bright_black(),
-                crate::BiomeStatus::Error(_) => "error".red(),
-                crate::BiomeStatus::Migrating => "migrating".cyan(),
+                BiomeStatus::Running => "running".green(),
+                BiomeStatus::Starting => "starting".yellow(),
+                BiomeStatus::Stopping => "stopping".yellow(),
+                BiomeStatus::Stopped => "stopped".bright_black(),
+                BiomeStatus::Error(_) => "error".red(),
+                BiomeStatus::Migrating => "migrating".cyan(),
             };
 
             let started = info.started

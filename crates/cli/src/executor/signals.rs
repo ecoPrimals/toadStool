@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use tracing::info;
 
 /// Signal manager for Unix signal handling
+#[allow(dead_code)]
 pub(super) struct SignalManager;
 
 impl SignalManager {

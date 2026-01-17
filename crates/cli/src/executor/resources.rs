@@ -11,6 +11,7 @@ use uuid::Uuid;
 use super::{BiomeExecutor, BiomeInfo};
 
 /// Resource manager for biome data and processes
+#[allow(dead_code)]
 pub(super) struct ResourceManager<'a> {
     executor: &'a BiomeExecutor,
 }
