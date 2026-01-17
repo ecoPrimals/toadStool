@@ -22,3 +22,20 @@ lint-all = "clippy --workspace --all-targets"
 # ]
 #
 # Current approach: Enable via Cargo.toml workspace.lints incrementally
+
+# ============================================================================
+# ECOBIN: Cross-Compilation Configuration (Jan 17, 2026)
+# ============================================================================
+# Pure Rust cross-compilation configuration
+# Philosophy: Lean INTO compile time - each optimization is a runtime improvement
+#
+# NOTE: rust-lld has issues with some targets in current environment
+# For now, we validate cross-compilation works in tests
+# Production cross-compilation should use proper cross-toolchain or CI
+
+# Uncomment these when proper cross-toolchain is available:
+# [target.aarch64-unknown-linux-gnu]
+# linker = "aarch64-linux-gnu-gcc"
+
+# [target.riscv64gc-unknown-linux-gnu]
+# linker = "riscv64-linux-gnu-gcc"

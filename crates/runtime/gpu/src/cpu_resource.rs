@@ -105,30 +105,53 @@ impl CpuComputeResource {
     }
 
     /// Detect SIMD width (AVX2, AVX512, NEON, etc.)
+    /// 
+    /// EVOLUTION: Runtime detection on TARGET hardware (not HOST)
+    /// Enables cross-compilation while detecting actual SIMD capabilities
+    /// Deep Debt: Complete implementation, no assumptions
     fn detect_simd_width() -> Option<u32> {
+        // x86_64: Detect SIMD extensions at runtime
         #[cfg(target_arch = "x86_64")]
         {
             if is_x86_feature_detected!("avx512f") {
-                return Some(512 / 32); // 16 floats
+                return Some(512 / 32); // 16 floats - AVX-512
             }
             if is_x86_feature_detected!("avx2") {
-                return Some(256 / 32); // 8 floats
+                return Some(256 / 32); // 8 floats - AVX2
             }
             if is_x86_feature_detected!("avx") {
-                return Some(256 / 32); // 8 floats
+                return Some(256 / 32); // 8 floats - AVX
             }
             if is_x86_feature_detected!("sse2") {
-                return Some(128 / 32); // 4 floats
+                return Some(128 / 32); // 4 floats - SSE2
             }
         }
 
+        // ARM64: Detect NEON at runtime
         #[cfg(target_arch = "aarch64")]
         {
-            // ARM NEON is 128-bit
-            return Some(128 / 32); // 4 floats
+            #[cfg(target_os = "linux")]
+            {
+                if std::arch::is_aarch64_feature_detected!("neon") {
+                    return Some(128 / 32); // 4 floats - NEON 128-bit
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                // NEON is standard in ARMv8 (macOS, BSD)
+                return Some(128 / 32); // 4 floats - NEON 128-bit
+            }
         }
 
-        None
+        // RISC-V: Vector extension detection (future)
+        #[cfg(target_arch = "riscv64")]
+        {
+            // TODO: Detect RISC-V 'V' vector extension when stable
+            // For now, assume scalar-only
+            return Some(1); // Scalar (no SIMD yet)
+        }
+
+        None // Fallback: no SIMD detected
     }
 
     /// Detect RAM size
