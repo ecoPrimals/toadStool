@@ -18,11 +18,14 @@ tokio = { version = "1.35", features = ["full"] }
 futures = "0.3"
 
 # Compression (Pure Rust Evolution - Jan 17, 2026)
-# REMOVED: zstd (not actually used in code, was pulling in zstd-sys C dependency)
-# REMOVED: lz4 (not actually used in code, was pulling in lz4-sys C dependency)
-# Pure Rust compression can be added when actually needed:
-#   lz4_flex = "0.11"  # Pure Rust lz4
-#   Or implement custom compression if needed
+# OLD: zstd, lz4 (both pulled in C dependencies via zstd-sys, lz4-sys)
+# NEW: Pure Rust alternatives for NestGate decompression support
+lz4_flex = "0.11"  # Pure Rust LZ4 implementation
+# NOTE: zstd has no pure-Rust decoder yet (zstd-safe wraps C lib)
+# For now, keep zstd for NestGate compatibility, will be removed when NestGate
+# switches to lz4 or we implement pure Rust zstd decoder
+# This is the ONLY remaining C dependency for secure_enclave
+zstd = "0.13"  # TODO: Replace with pure Rust when available
 
 # Cryptography
 aes-gcm = "0.10"

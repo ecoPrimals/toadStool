@@ -22,7 +22,7 @@ use tracing::{info, debug};
 use wasmi::{Config, Engine};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::execution::{ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine};
+use toadstool::execution::{ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine, RuntimeType};
 use toadstool::resources::RuntimeMetrics;
 use toadstool::WorkloadType;
 
@@ -45,10 +45,12 @@ pub struct WasmRuntimeEngine {
     /// Metrics collector
     metrics: Arc<MetricsCollector>,
     
-    /// Module cache
+    /// Module cache (reserved for future use)
+    #[allow(dead_code)]
     cache: Arc<ModuleCache>,
     
-    /// Module loader
+    /// Module loader (reserved for future use)
+    #[allow(dead_code)]
     loader: Arc<ModuleLoader>,
     
     /// Module executor
@@ -83,7 +85,7 @@ impl WasmRuntimeEngine {
         // Initialize components
         let metrics = Arc::new(MetricsCollector::new());
         let config = Arc::new(config);
-        let cache = Arc::new(ModuleCache::new(config.cache.max_entries));
+        let cache = Arc::new(ModuleCache::new(config.cache.max_entries as usize));
         let loader = Arc::new(ModuleLoader::new(engine.clone(), (*config).clone()));
         let executor = Arc::new(ModuleExecutor::new(engine.clone(), (*config).clone()));
 
@@ -151,9 +153,9 @@ impl RuntimeEngine for WasmRuntimeEngine {
             let start_time = std::time::Instant::now();
             
             // Extract WASM module source from request
-            let module_source = match request.workload_spec {
-                toadstool::WorkloadSpec::Wasm { module_source, entry_point, .. } => {
-                    (module_source, entry_point)
+            let (module_source, args) = match &request.workload {
+                toadstool::WorkloadSpec::Wasm { module, args, .. } => {
+                    (module, args.clone().unwrap_or_default())
                 },
                 _ => {
                     return Err(ToadStoolError::validation(
@@ -163,26 +165,42 @@ impl RuntimeEngine for WasmRuntimeEngine {
             };
             
             // Execute the module
+            // Note: wasmi doesn't have explicit entry points like wasmtime,
+            // it calls _start automatically or we get exports
             let output = self.executor
-                .load_and_execute(&module_source.0, &module_source.1, vec![])
+                .load_and_execute(module_source, "_start", args)
                 .await?;
             
             let duration = start_time.elapsed();
             
-            // Record metrics
-            if output.status == toadstool::execution::ExecutionStatus::Completed {
-                self.metrics.record_success(duration.as_micros() as u64);
+            // Determine status from exit code
+            let status = if output.exit_code.unwrap_or(0) == 0 {
+                toadstool::execution::ExecutionStatus::Success
             } else {
-                self.metrics.record_failure();
+                toadstool::execution::ExecutionStatus::Failed {
+                    error: format!("Exit code: {}", output.exit_code.unwrap_or(-1))
+                }
+            };
+            
+            // Record metrics
+            match &status {
+                toadstool::execution::ExecutionStatus::Success => {
+                    self.metrics.record_success(duration.as_micros() as u64);
+                },
+                _ => {
+                    self.metrics.record_failure();
+                }
             }
             
-            // Build response
+            // Build response with correct structure
             Ok(ExecutionResponse {
                 execution_id: request.execution_id,
-                status: output.status,
-                output: Some(output),
-                error: None,
-                metadata: std::collections::HashMap::new(),
+                status,
+                output,
+                metrics: self.get_metrics().await?,
+                duration,
+                runtime_used: RuntimeType::Wasm,
+                warnings: Vec::new(),
             })
         })
     }

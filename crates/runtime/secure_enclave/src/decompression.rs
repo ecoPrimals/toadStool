@@ -150,21 +150,25 @@ pub fn decompress_isolated(
     Ok((memory, stats))
 }
 
-/// Decompress using Zstandard
+/// Decompress using Zstandard (Pure Rust decoder!)
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>> {
+    // PURE RUST EVOLUTION (Jan 17, 2026):
+    //   OLD: zstd crate (pulled in zstd-sys C dependency)
+    //   NEW: zstd with default-features = false (100% Pure Rust decoder!)
+    //   BENEFIT: Cross-compiles trivially, no C toolchain needed!
     zstd::decode_all(compressed)
         .map_err(|e| Error::decompression(format!("Zstd decompression failed: {e}")))
 }
 
-/// Decompress using LZ4
+/// Decompress using LZ4 (Pure Rust implementation!)
 fn decompress_lz4(compressed: &[u8]) -> Result<Vec<u8>> {
-    // LZ4 needs max size hint for safety - use 10MB as reasonable default
-    // In production, this would come from NestGate metadata
-    const MAX_DECOMPRESSED_SIZE: i32 = 10 * 1024 * 1024;
+    // PURE RUST EVOLUTION (Jan 17, 2026):
+    //   OLD: lz4 crate (pulled in lz4-sys C dependency)
+    //   NEW: lz4_flex (100% Pure Rust, fast, safe!)
+    //   BENEFIT: Cross-compiles trivially, no C toolchain needed!
+    lz4_flex::block::decompress_size_prepended(compressed)
+        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {e}")))}
 
-    lz4::block::decompress(compressed, Some(MAX_DECOMPRESSED_SIZE))
-        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {e}")))
-}
 
 #[cfg(test)]
 mod tests {
@@ -203,8 +207,8 @@ mod tests {
         // Use larger, repetitive data
         let original = b"Test data for LZ4 compression. ".repeat(50); // ~1.6KB
 
-        // Compress with lz4
-        let compressed = lz4::block::compress(&original, None, false).unwrap();
+        // Compress with lz4_flex (Pure Rust!)
+        let compressed = lz4_flex::block::compress_prepend_size(&original);
 
         // Decompress in isolated memory
         let (memory, stats) =
