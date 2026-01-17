@@ -6,6 +6,7 @@
 use std::time::Duration;
 use toadstool_common::config_bases::CacheConfig;
 
+#[cfg(feature = "component-model")]
 use crate::component_model::ComponentModelConfig;
 
 /// Security isolation level for WebAssembly execution
@@ -68,7 +69,8 @@ pub struct WasmRuntimeConfig {
     /// Fuel limit for execution (None = unlimited)
     pub fuel_limit: Option<u64>,
     
-    /// Component model configuration
+    /// Component model configuration (Phase 2 - feature-gated)
+    #[cfg(feature = "component-model")]
     pub component_model: ComponentModelConfig,
 }
 
@@ -87,6 +89,7 @@ impl Default for WasmRuntimeConfig {
             execution_timeout_ms: 30000,
             module_load_timeout_ms: 10000,
             fuel_limit: Some(1_000_000),
+            #[cfg(feature = "component-model")]
             component_model: ComponentModelConfig::default(),
         }
     }
