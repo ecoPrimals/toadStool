@@ -25,7 +25,8 @@ ruzstd = "0.8"  # Pure Rust Zstd implementation (no C dependencies!)
 
 # Cryptography
 aes-gcm = "0.10"
-blake3 = "1.5"
+# blake3: Pure Rust mode (no C/ASM optimizations for TRUE cross-compile!)
+blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
 getrandom = { version = "0.2", features = ["std"] }
 
 # Serialization
