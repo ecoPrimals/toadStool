@@ -155,88 +155,37 @@ async fn query_local_capabilities() -> Vec<String> {
 
 /// Register with ecosystem (Songbird discovery)
 ///
-/// Deep debt principle: Capability-based, runtime discovery, graceful degradation
-async fn register_with_ecosystem(socket_path: &PathBuf, family_id: &str, version: &str) {
-    info!("Attempting to register with ecosystem...");
+/// Deep debt principle: Self-knowledge + Announcement (not registration!)
+async fn announce_capabilities_to_ecosystem(_socket_path: &PathBuf, _family_id: &str, _version: &str) {
+    use toadstool_server::capabilities::PrimalCapabilities;
+    
+    info!("🔍 Discovering self capabilities (self-knowledge!)");
 
-    // Try to discover Songbird via capability-based discovery
-    // Deep debt principle: No hardcoded endpoints
-    match discover_and_register_songbird(socket_path, family_id, version).await {
+    // EVOLVED: Self-knowledge + announcement (not external registration!)
+    let capabilities = PrimalCapabilities::discover_self("toadstool").await;
+
+    info!("✅ Self-knowledge acquired:");
+    info!("   - Primal ID: {}", capabilities.primal_id);
+    info!("   - Type: {}", capabilities.primal_type);
+    info!("   - CPU Cores: {}", capabilities.resources.cpu_cores);
+    info!("   - Memory: {} GB", capabilities.resources.total_memory_bytes / (1024 * 1024 * 1024));
+    info!("   - Architecture: {}", capabilities.resources.architecture);
+    info!("   - OS: {}", capabilities.resources.os);
+    info!("   - Capabilities: {}", capabilities.capabilities.len());
+
+    // Announce capabilities (optional, for peer discovery)
+    match capabilities.announce().await {
         Ok(()) => {
-            info!("✅ Successfully registered with Songbird");
+            info!("📢 Successfully announced capabilities for peer discovery");
+            info!("   Deep debt principle: Announcement, not registration!");
+            info!("   Peers can now discover us via capability files");
         }
         Err(e) => {
-            warn!("Could not register with Songbird: {}", e);
-            warn!("Operating in standalone mode (will be discovered via mDNS/local scan)");
+            warn!("Could not announce capabilities: {}", e);
+            warn!("Operating without peer discovery (standalone mode)");
         }
     }
 }
 
-/// Discover Songbird and register our capabilities
-///
-/// Deep debt principle: Capability-based discovery, no hardcoding
-async fn discover_and_register_songbird(
-    socket_path: &PathBuf,
-    family_id: &str,
-    version: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Step 1: Discover Songbird (no hardcoding)
-    let songbird = SongbirdClient::discover()
-        .await
-        .map_err(|e| format!("Failed to discover Songbird: {}", e))?;
-
-    info!("Discovered Songbird successfully");
-
-    // Step 2: Query our local capabilities (self-knowledge)
-    let resources = query_system_resources();
-    let capabilities = build_capabilities(&resources);
-
-    info!("Local capabilities: {:?}", capabilities);
-    info!(
-        "System resources: {} CPU cores, {} MB memory",
-        resources.cpu_cores,
-        resources.total_memory_bytes / 1024 / 1024
-    );
-
-    // Step 3: Build registration
-    let registration = SongbirdRegistration {
-        service_id: format!("toadstool-{}", family_id),
-        service_name: "toadstool".to_string(),
-        family_id: family_id.to_string(),
-        version: version.to_string(),
-        capabilities,
-        location: ServiceLocation {
-            location_type: "unix-socket".to_string(),
-            path: socket_path.to_string_lossy().to_string(),
-            protocol: "tarpc".to_string(),
-        },
-        resources,
-        metadata: std::collections::HashMap::from([
-            ("platform".to_string(), std::env::consts::OS.to_string()),
-            ("arch".to_string(), std::env::consts::ARCH.to_string()),
-        ]),
-        ttl_seconds: 300, // 5 minutes TTL
-    };
-
-    // Step 4: Register with Songbird
-    songbird
-        .register_service(registration)
-        .await
-        .map_err(|e| format!("Failed to register: {}", e))?;
-
-    info!("✅ Registered with Songbird");
-
-    // Step 5: Start heartbeat task
-    let service_id = format!("toadstool-{}", family_id);
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
-        loop {
-            interval.tick().await;
-            if let Err(e) = songbird.heartbeat(&service_id).await {
-                warn!("Heartbeat failed: {}", e);
-            }
-        }
-    });
-
-    Ok(())
-}
+// REMOVED: discover_and_register_songbird() - EVOLVED to announcement-based!
+// Deep debt evolution: External registration → Self-knowledge + Peer discovery

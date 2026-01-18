@@ -100,6 +100,7 @@ pub use mocks::*;
 
 // Module declarations
 pub mod background;
+pub mod capabilities; // EVOLVED: Self-knowledge & peer discovery (deep debt!)
 pub mod config;
 pub mod coordinator_executor; // NEW: Distributed coordinator integration
 pub mod errors;
@@ -113,8 +114,8 @@ pub mod resource_estimator; // NEW: Resource estimation for graphs
 pub mod resource_optimizer;
 pub mod resource_validator; // NEW: Resource validation for graphs
 pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
-// pub mod songbird_client; // DISABLED: HTTP-based registration (legacy)
-// Evolution: Songbird discovers ToadStool via Unix socket (capability-based)
+// REMOVED: pub mod songbird_client; - EVOLVED to capabilities module!
+// Deep debt evolution: External registration → Self-knowledge + Peer discovery
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
