@@ -77,9 +77,41 @@ ssh arm-server "./toadstool daemon"
 # ✅ WORKS PERFECTLY!
 ```
 
-**UniBin**: One binary, 14+ modes (x86_64)  
+**UniBin**: One binary, 14+ modes  
 **EcoBin**: Full cross-compilation validated!  
 **Deploy Anywhere**: AWS Graviton, Raspberry Pi, Apple Silicon, traditional x86_64!
+
+### **UniBin Architecture** 🎯
+
+ToadStool is a TRUE UniBin! **One binary, multiple modes**:
+
+```bash
+# Primary CLI interface:
+$ toadstool run mybiome.yaml
+$ toadstool up mybiome.yaml
+$ toadstool status
+
+# Daemon/server mode:
+$ toadstool daemon
+
+# Backward compatibility (auto-detects mode):
+$ toadstool-server  # Automatically runs daemon mode
+```
+
+**How it works**:
+- All three names (`toadstool`, `toadstool-cli`, `toadstool-server`) are **hardlinked** to the same binary
+- Binary detects how it was invoked (`argv[0]`)
+- Routes to appropriate mode automatically
+- Zero overhead, zero duplication! ✅
+
+**Proof**:
+```bash
+$ ls -li target/release/toadstool*
+2 -rwxrwxr-x toadstool           # Same inode!
+2 -rwxrwxr-x toadstool-cli       # Same inode!
+2 -rwxrwxr-x toadstool-server    # Same inode!
+# All point to the SAME 14MB binary! ✅
+```
 
 ---
 
