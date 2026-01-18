@@ -38,10 +38,13 @@ pub enum ProtocolError {
     Timeout(String),
 
     #[error("Network error: {0}")]
-    Network(#[from] reqwest::Error),
+    Network(String),
 
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
 
     #[error("Internal error: {0}")]
     Internal(String),

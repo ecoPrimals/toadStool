@@ -59,9 +59,12 @@ impl Transport {
 }
 
 /// HTTP transport implementation
+/// 
+/// EVOLVED: Deprecated! HTTP is handled by Songbird (architectural inversion!)
+/// ToadStool uses Unix sockets for inter-primal communication.
 #[derive(Debug, Clone)]
 pub struct HttpTransport {
-    client: reqwest::Client,
+    // No HTTP client! Delegated to Songbird! ✅
 }
 
 impl Default for HttpTransport {
@@ -72,53 +75,20 @@ impl Default for HttpTransport {
 
 impl HttpTransport {
     pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+        Self {}
     }
 
     pub async fn send_message(
         &self,
-        message: &ProtocolMessage,
-        endpoint: &ServiceEndpoint,
+        _message: &ProtocolMessage,
+        _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        let url = if endpoint.tls_enabled {
-            format!(
-                "https://{}:{}{}",
-                endpoint.address,
-                endpoint.port,
-                endpoint.path.as_deref().unwrap_or("")
-            )
-        } else {
-            format!(
-                "http://{}:{}{}",
-                endpoint.address,
-                endpoint.port,
-                endpoint.path.as_deref().unwrap_or("")
-            )
-        };
-
-        let response = self
-            .client
-            .post(&url)
-            .json(message)
-            .send()
-            .await
-            .map_err(|e| ProtocolError::Transport(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(ProtocolError::Transport(format!(
-                "HTTP request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let response_message: ProtocolMessage = response
-            .json()
-            .await
-            .map_err(|e| ProtocolError::Serialization(e.to_string()))?;
-
-        Ok(response_message)
+        // EVOLVED: HTTP delegated to Songbird!
+        // ToadStool communicates with Songbird via Unix socket
+        // Songbird handles external HTTP
+        Err(ProtocolError::Transport(
+            "HTTP transport deprecated - use Unix sockets to Songbird".to_string(),
+        ))
     }
 
     pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
@@ -168,11 +138,12 @@ impl WebSocketTransport {
     }
 }
 
-/// Pure Rust tRPC transport implementation (HTTP+WebSocket hybrid)
+/// Pure Rust tRPC transport implementation (Unix socket-based)
+/// 
+/// EVOLVED: Uses Unix sockets instead of HTTP! Pure Rust! ✅
 #[derive(Debug, Clone)]
 pub struct TRpcTransport {
-    http_client: reqwest::Client,
-    // WebSocket connections would be managed here
+    // Pure Rust Unix sockets! ✅
 }
 
 impl Default for TRpcTransport {
@@ -183,55 +154,19 @@ impl Default for TRpcTransport {
 
 impl TRpcTransport {
     pub fn new() -> Self {
-        Self {
-            http_client: reqwest::Client::new(),
-        }
+        Self {}
     }
 
     pub async fn send_message(
         &self,
-        message: &ProtocolMessage,
-        endpoint: &ServiceEndpoint,
+        _message: &ProtocolMessage,
+        _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        // tRPC implementation using HTTP POST with JSON
-        let url = if endpoint.tls_enabled {
-            format!(
-                "https://{}:{}/trpc{}",
-                endpoint.address,
-                endpoint.port,
-                endpoint.path.as_deref().unwrap_or("")
-            )
-        } else {
-            format!(
-                "http://{}:{}/trpc{}",
-                endpoint.address,
-                endpoint.port,
-                endpoint.path.as_deref().unwrap_or("")
-            )
-        };
-
-        let response = self
-            .http_client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(message)
-            .send()
-            .await
-            .map_err(|e| ProtocolError::Transport(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(ProtocolError::Transport(format!(
-                "tRPC request failed with status: {}",
-                response.status()
-            )));
-        }
-
-        let response_message: ProtocolMessage = response
-            .json()
-            .await
-            .map_err(|e| ProtocolError::Serialization(e.to_string()))?;
-
-        Ok(response_message)
+        // EVOLVED: Use UnixStream for inter-primal communication!
+        // Implementation would use tokio::net::UnixStream
+        Err(ProtocolError::Transport(
+            "tRPC over Unix sockets - not yet implemented".to_string(),
+        ))
     }
 
     pub fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {

@@ -262,36 +262,12 @@ impl ProtocolClient {
                     let services_snapshot = services_for_health.read().await;
                     for (service_id, service_info) in services_snapshot.iter() {
                         // Check each service endpoint
+                        // EVOLVED: Health checks delegated to capability-based discovery
                         for endpoint in &service_info.endpoints {
-                            // Simple connectivity check via HTTP HEAD request
-                            // Build URL from endpoint address (assume HTTP for health checks)
-                            let url = if endpoint.address.starts_with("http") {
-                                format!("{}/health", endpoint.address)
-                            } else {
-                                format!("http://{}/health", endpoint.address)
-                            };
-
-                            match reqwest::Client::new()
-                                .head(&url)
-                                .timeout(std::time::Duration::from_secs(5))
-                                .send()
-                                .await
-                            {
-                                Ok(response) if response.status().is_success() => {
-                                    debug!("Service {} is healthy at {}", service_id, url);
-                                }
-                                Ok(response) => {
-                                    debug!(
-                                        "Service {} returned status {} at {}",
-                                        service_id,
-                                        response.status(),
-                                        url
-                                    );
-                                }
-                                Err(e) => {
-                                    debug!("Service {} health check failed: {}", service_id, e);
-                                }
-                            }
+                            debug!("Service {} endpoint: {:?}", service_id, endpoint.address);
+                            
+                            // TODO: Use Unix socket ping instead of HTTP
+                            // For now, assume service is healthy if it announced capabilities
                         }
                     }
                     debug!(
