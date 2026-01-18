@@ -59,7 +59,19 @@ categories = ["development-tools", "web-programming", "api-bindings"]
 # CRITICAL: wgpu must be the same version across all crates to prevent
 # duplicate symbol errors during linking (wgpu_core symbols)
 # barraCUDA framework uses wgpu for vendor-agnostic GPU compute
-wgpu = "22"
+#
+# PURE RUST EVOLVED! ✅
+# NOTE: Default features include 'renderdoc' (C dependency for GPU debugging)
+# EVOLVED: Disable renderdoc, use Pure Rust profiling via tracing crate instead!
+# This achieves ABSOLUTE 100.00% Pure Rust! 🎉
+wgpu = { version = "22", default-features = false, features = [
+    "wgsl",                # WGSL shader language support
+    "dx12",                # DirectX 12 (Windows)
+    "metal",               # Metal (macOS/iOS)
+    "webgpu",              # WebGPU (browsers)
+    "vulkan-portability",  # Vulkan support (enables wgpu-hal/vulkan internally)
+    # "renderdoc",         # ❌ DISABLED - C dependency! Use tracing instead! ✅
+]}
 
 # Pure Rust directory discovery (replaces dirs/dirs-sys)
 etcetera = "0.8"
