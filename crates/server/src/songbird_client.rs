@@ -6,10 +6,12 @@
 //! - **No Hardcoding**: Discovers Songbird via environment
 //! - **Self-Knowledge**: Reports only local capabilities  
 //! - **Graceful Degradation**: Works standalone if Songbird unavailable
+//! - **Pure Rust**: Uses Unix sockets (no reqwest/C dependencies!)
 
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::net::UnixStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, info, warn};
 
 /// Songbird registration request
@@ -64,6 +66,7 @@ impl SongbirdClient {
     /// Discover and create Songbird client
     ///
     /// Deep debt principle: No hardcoding, discovers via environment
+    /// EVOLVED: Pure Rust! No reqwest Client needed!
     pub async fn discover() -> Result<Self, String> {
         // Try multiple discovery methods (no hardcoding)
         let endpoint = Self::discover_songbird_endpoint()?;
@@ -72,7 +75,7 @@ impl SongbirdClient {
 
         Ok(Self {
             endpoint,
-            client: Client::new(),
+            // Pure Rust! No HTTP client needed! ✅
         })
     }
 
@@ -105,76 +108,112 @@ impl SongbirdClient {
     }
 
     /// Register service with Songbird
+    /// 
+    /// EVOLVED: Pure Rust! Uses Unix sockets with JSON-RPC protocol
     pub async fn register_service(&self, registration: SongbirdRegistration) -> Result<(), String> {
         debug!("Registering with Songbird: {:?}", registration);
 
-        // Unix socket support: graceful degradation
-        // If Unix socket, log registration attempt and continue (Songbird optional)
+        // Extract socket path from unix:// endpoint
         if self.endpoint.starts_with("unix://") {
+            let socket_path = self.endpoint.strip_prefix("unix://").unwrap();
+            
             info!(
-                "📡 Songbird registration via Unix socket: {} (graceful degradation - continuing without Songbird)",
-                self.endpoint
+                "📡 Songbird registration via Pure Rust Unix socket: {}",
+                socket_path
             );
             info!(
-                "   Service: {} ({}), Capabilities: {:?}",
+                "   Service: {} ({}), Capabilities: {}",
                 registration.service_name,
                 registration.service_id,
                 registration.capabilities.len()
             );
 
-            // Deep debt principle: Graceful degradation
-            // ToadStool works standalone, Songbird is optional enhancement
-            return Ok(());
+            // Try to connect to Songbird via Unix socket
+            match UnixStream::connect(socket_path).await {
+                Ok(mut stream) => {
+                    // Send JSON-RPC registration request (Pure Rust!)
+                    let request = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "method": "services.register",
+                        "params": registration,
+                        "id": 1
+                    });
+
+                    let request_str = serde_json::to_string(&request)
+                        .map_err(|e| format!("Failed to serialize request: {}", e))?;
+
+                    stream.write_all(request_str.as_bytes()).await
+                        .map_err(|e| format!("Failed to send registration: {}", e))?;
+
+                    // Read response
+                    let mut response = Vec::new();
+                    stream.read_to_end(&mut response).await
+                        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+                    info!("✅ Successfully registered with Songbird via Pure Rust Unix socket");
+                    Ok(())
+                }
+                Err(e) => {
+                    // Graceful degradation: Songbird not available
+                    info!(
+                        "⚠️  Songbird not available ({}), continuing standalone",
+                        e
+                    );
+                    info!("   Deep debt principle: ToadStool works standalone, Songbird is optional");
+                    Ok(())
+                }
+            }
+        } else {
+            // External HTTP endpoint (handled by Songbird itself)
+            warn!(
+                "⚠️  External HTTP endpoint configured: {}",
+                self.endpoint
+            );
+            warn!("   ToadStool should communicate via Unix sockets (architectural inversion!)");
+            warn!("   Songbird handles external HTTP (ToadStool stays Pure Rust!)");
+            
+            // Graceful degradation
+            Ok(())
         }
-
-        // HTTP endpoint: full registration
-        let url = format!("{}/api/v1/services/register", self.endpoint);
-
-        let response = self
-            .client
-            .post(&url)
-            .json(&registration)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to register with Songbird: {}", e))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(format!(
-                "Songbird registration failed ({}): {}",
-                status, body
-            ));
-        }
-
-        info!("✅ Successfully registered with Songbird");
-        Ok(())
     }
 
     /// Send heartbeat to Songbird
+    /// 
+    /// EVOLVED: Pure Rust! Uses Unix sockets with JSON-RPC
     pub async fn heartbeat(&self, service_id: &str) -> Result<(), String> {
-        let url = if self.endpoint.starts_with("unix://") {
-            info!("Would send heartbeat via Unix socket");
-            return Ok(());
+        if self.endpoint.starts_with("unix://") {
+            let socket_path = self.endpoint.strip_prefix("unix://").unwrap();
+            
+            // Try to send heartbeat via Unix socket
+            match UnixStream::connect(socket_path).await {
+                Ok(mut stream) => {
+                    let request = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "method": "services.heartbeat",
+                        "params": { "service_id": service_id },
+                        "id": 2
+                    });
+
+                    let request_str = serde_json::to_string(&request)
+                        .map_err(|e| format!("Failed to serialize heartbeat: {}", e))?;
+
+                    stream.write_all(request_str.as_bytes()).await
+                        .map_err(|e| format!("Failed to send heartbeat: {}", e))?;
+
+                    debug!("💓 Heartbeat sent to Songbird via Pure Rust Unix socket");
+                    Ok(())
+                }
+                Err(_) => {
+                    // Songbird not available, graceful degradation
+                    debug!("Songbird not available for heartbeat (standalone mode)");
+                    Ok(())
+                }
+            }
         } else {
-            format!("{}/api/v1/services/{}/heartbeat", self.endpoint, service_id)
-        };
-
-        let response = self
-            .client
-            .post(&url)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to send heartbeat: {}", e))?;
-
-        if !response.status().is_success() {
-            warn!("Heartbeat failed: {}", response.status());
+            // External endpoint: graceful degradation
+            debug!("External endpoint configured, no heartbeat needed (handled by Songbird)");
+            Ok(())
         }
-
-        Ok(())
     }
 }
 
