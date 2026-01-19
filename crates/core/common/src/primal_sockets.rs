@@ -252,7 +252,7 @@ mod tests {
         let songbird = get_songbird_socket_path();
         let nestgate = get_nestgate_socket_path();
         let squirrel = get_squirrel_socket_path();
-        let toadstool = get_toadstool_socket_path();
+        let _toadstool = get_toadstool_socket_path();
 
         // All should be different
         assert_ne!(beardog, songbird);

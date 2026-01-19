@@ -18,7 +18,7 @@
 //! - `executor_impl`: BiomeExecutor implementation (all orchestration logic)
 
 // Submodules
-mod log_management;
+// mod log_management; // REMOVED: Functionality moved to display_ops.rs
 mod types;
 
 // Refactored domain modules
@@ -70,8 +70,12 @@ pub struct BiomeExecutor {
     _config: ToadStoolConfig,
 }
 
-// Include the implementation
-include!("executor_impl.rs");
+// ✅ REFACTORED: Split by logical domains (Smart Refactoring - Deep Debt!)
+// Domain modules contain `impl BiomeExecutor { ... }` for their specific concerns
+mod commands;          // Public CLI commands (new, run, up, down, list, logs)
+mod lifecycle_ops;     // Internal lifecycle (start/stop biomes, primals, services)
+mod display_ops;       // Display & logging (table printing, log viewing)
+mod wasm_ops;          // WASM operations (loading, verification, execution)
 
 #[cfg(test)]
 mod tests {

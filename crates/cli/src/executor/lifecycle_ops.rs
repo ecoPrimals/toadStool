@@ -1,353 +1,28 @@
+//! Internal Lifecycle Operations for Biome Management
+//!
+//! This module contains all internal biome lifecycle management:
+//! - `start_biome_internal()` - Start biome with all components
+//! - `start_primal()` - Start individual primal
+//! - `start_service()` - Start individual service  
+//! - `workload_source_to_spec()` - Convert workload sources to specs
+//! - `stop_biome_internal()` - Stop biome and all components
+//! - `graceful_stop_process()` - Gracefully stop a process
+//! - `force_kill_process()` - Force kill a process
+//! - `purge_biome_data()` - Clean up biome data
+//! - `wait_for_interruption()` - Wait for termination signals
+//! - `get_actual_pid()` - Get real PID of a biome process
+//! - `send_signal_to_process()` - Send Unix signal to process
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Real implementations (no mocks)
+//! - ✅ Modern async/await throughout
+//! - ✅ Proper error handling with context
+
+use super::*;
+
+/// Internal lifecycle operation implementations
 impl BiomeExecutor {
-    /// Create new biome executor
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The distributed coordinator fails to initialize
-    /// - Configuration loading fails
-    #[must_use = "BiomeExecutor creation should be checked"]
-    pub async fn new() -> Result<Self> {
-        info!("🍄 Initializing Universal Compute Biome Executor");
-
-        // Load configuration
-        let config = ToadStoolConfig::default();
-
-        // Initialize distributed coordinator
-        let distributed_config = DistributedConfig::default();
-        let distributed = Arc::new(
-            DistributedCoordinator::new(distributed_config)
-                .await
-                .context("Failed to initialize distributed coordinator")?,
-        );
-
-        // Discovery via mDNS, environment variables, or configuration
-        // No hardcoded registry client - pure capability-based discovery
-        info!("📢 Service discovery via mDNS/environment");
-
-        Ok(Self {
-            distributed,
-            biomes: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            _config: config,
-        })
-    }
-
-    /// Execute 'run' command - start biome in foreground
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Manifest loading or validation fails
-    /// - Biome is already running with the same name
-    /// - Biome startup fails
-    /// - User interruption handling fails
-    #[allow(clippy::too_many_arguments)]
-    #[must_use = "Result of run_biome should be checked"]
-    pub async fn run_biome(
-        &self,
-        _ctx: &CliContext,
-        manifest_path: PathBuf,
-        name: Option<String>,
-        env: Vec<String>,
-        debug: bool,
-        cpu_limit: Option<f64>,
-        memory_limit: Option<String>,
-        security: String,
-    ) -> Result<()> {
-        info!("🚀 Starting biome in foreground mode");
-
-        // Load and validate manifest
-        let manifest = load_biome_manifest(&manifest_path).await?;
-        let warnings = validate_manifest(&manifest)?;
-
-        for warning in warnings {
-            warn!("⚠️  {}", warning);
-        }
-
-        // Determine biome name
-        let biome_name = name.unwrap_or_else(|| manifest.metadata.name.clone());
-
-        info!("📋 Biome: {} v{}", biome_name, manifest.metadata.version);
-        info!("🔐 Security Level: {}", security);
-
-        // Check if biome is already running
-        {
-            let biomes = self.biomes.read().await;
-            if biomes.contains_key(&biome_name) {
-                bail!("Biome '{biome_name}' is already running");
-            }
-        }
-
-        // ✅ OPTIMIZED: Apply resource overrides in-place (avoid clone)
-        let mut effective_manifest = manifest;
-        if let Some(cpu) = cpu_limit {
-            effective_manifest.resources.cpu_limit = Some(cpu);
-        }
-        if let Some(memory) = memory_limit {
-            effective_manifest.resources.memory_limit = Some(memory);
-        }
-
-        // Start biome (pass by reference to avoid clone)
-        let biome_info = self
-            .start_biome_internal(
-                &biome_name, // Now accepts &str - no clone needed
-                effective_manifest,
-                env,
-                false, // not detached
-                debug,
-                &security, // ✅ OPTIMIZED: Pass &str reference
-            )
-            .await?;
-
-        info!("✅ Biome '{}' started successfully", biome_name);
-        info!("🆔 Biome ID: {}", biome_info.id);
-
-        // Wait for user interruption in foreground mode
-        self.wait_for_interruption().await?;
-
-        info!("🛑 Stopping biome due to user interruption");
-        self.stop_biome_internal(&biome_name, false, 30).await?;
-
-        Ok(())
-    }
-
-    /// Execute 'up' command - start biome in background
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Manifest loading or validation fails
-    /// - Biome is already running with the same name
-    /// - Biome startup in detached mode fails
-    #[allow(clippy::too_many_arguments)]
-    #[must_use = "Result of up_biome should be checked"]
-    pub async fn up_biome(
-        &self,
-        _ctx: &CliContext,
-        manifest_path: PathBuf,
-        detach: bool,
-        name: Option<String>,
-        env: Vec<String>,
-        restart: bool,
-        _health_interval: u64,
-    ) -> Result<()> {
-        info!("🚀 Starting biome in background mode");
-
-        // Load and validate manifest
-        let manifest = load_biome_manifest(&manifest_path).await?;
-        let warnings = validate_manifest(&manifest)?;
-
-        for warning in warnings {
-            warn!("⚠️  {}", warning);
-        }
-
-        // Determine biome name
-        let biome_name = name.unwrap_or_else(|| manifest.metadata.name.clone());
-
-        // Check if biome is already running
-        {
-            let biomes = self.biomes.read().await;
-            if biomes.contains_key(&biome_name) {
-                bail!("Biome '{biome_name}' is already running");
-            }
-        }
-
-        // Start biome
-        let biome_info = self
-            .start_biome_internal(
-                &biome_name,
-                manifest,
-                env,
-                detach,
-                false, // debug
-                "high", // ✅ OPTIMIZED: Use &str instead of String allocation
-            )
-            .await?;
-
-        info!("✅ Biome '{}' started in background", biome_name);
-        info!("🆔 Biome ID: {}", biome_info.id);
-
-        if restart {
-            info!("🔄 Auto-restart enabled");
-        }
-
-        if detach {
-            info!(
-                "🔌 Biome running detached - use 'toadstool logs {}' to view output",
-                biome_name
-            );
-        }
-
-        Ok(())
-    }
-
-    /// Execute 'down' command - stop running biome
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Biome is not currently running
-    /// - Biome stop operation fails
-    /// - Purge operation fails (if requested)
-    #[must_use = "Result of down_biome should be checked"]
-    pub async fn down_biome(
-        &self,
-        biome_name: String,
-        force: bool,
-        timeout_secs: u64,
-        purge: bool,
-    ) -> Result<()> {
-        info!("🛑 Stopping biome: {}", biome_name);
-
-        // Check if biome exists
-        {
-            let biomes = self.biomes.read().await;
-            if !biomes.contains_key(&biome_name) {
-                bail!("Biome '{biome_name}' is not running");
-            }
-        }
-
-        self.stop_biome_internal(&biome_name, force, timeout_secs)
-            .await?;
-
-        if purge {
-            info!("🗑️  Purging biome data");
-            self.purge_biome_data(&biome_name).await?;
-        }
-
-        info!("✅ Biome '{}' stopped successfully", biome_name);
-
-        Ok(())
-    }
-
-    /// Execute 'ps' command - list running biomes
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - JSON/YAML serialization fails
-    /// - Table formatting fails
-    #[must_use = "Result of list_biomes should be checked"]
-    pub async fn list_biomes(
-        &self,
-        all: bool,
-        format: String,
-        resources: bool,
-        status_filter: Option<String>,
-    ) -> Result<()> {
-        let biomes = self.biomes.read().await;
-
-        let mut biome_list: Vec<&RunningBiome> = biomes.values().collect();
-
-        // Apply status filter
-        if let Some(filter_status) = &status_filter {
-            biome_list.retain(|b| {
-                matches!(
-                    (&b.info.status, filter_status.as_str()),
-                    (BiomeStatus::Running, "running")
-                        | (BiomeStatus::Stopped, "stopped")
-                        | (BiomeStatus::Starting, "starting")
-                        | (BiomeStatus::Stopping, "stopping")
-                        | (BiomeStatus::Error(_), "error")
-                        | (BiomeStatus::Migrating, "migrating")
-                )
-            });
-        }
-
-        if !all {
-            // Filter to only running biomes
-            biome_list.retain(|b| matches!(b.info.status, BiomeStatus::Running));
-        }
-
-        match format.as_str() {
-            "json" => {
-                let json_output = serde_json::to_string_pretty(
-                    &biome_list.iter().map(|b| &b.info).collect::<Vec<_>>(),
-                )?;
-                println!("{json_output}");
-            }
-            "yaml" => {
-                let yaml_output =
-                    serde_yaml::to_string(&biome_list.iter().map(|b| &b.info).collect::<Vec<_>>())?;
-                println!("{yaml_output}");
-            }
-            "table" => {
-                self.print_biomes_table(&biome_list, resources).await?;
-            }
-            _ => {
-                self.print_biomes_table(&biome_list, resources).await?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Execute 'logs' command - view biome/service logs
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Biome or service not found
-    /// - Log file cannot be read
-    /// - Log filtering/following fails
-    #[must_use = "Result of show_logs should be checked"]
-    pub async fn show_logs(
-        &self,
-        target: String,
-        follow: bool,
-        lines: usize,
-        timestamps: bool,
-        level_filter: Option<String>,
-        grep_pattern: Option<String>,
-    ) -> Result<()> {
-        // ✅ OPTIMIZED: Parse target without unnecessary allocations
-        let (biome_name, service_name) = if let Some((biome, service)) = target.split_once('.') {
-            (biome.to_string(), Some(service.to_string()))
-        } else {
-            (target.clone(), None) // Clone needed since target is used in error below
-        };
-
-        // Check if biome exists
-        let log_file = {
-            let biomes = self.biomes.read().await;
-            let biome = biomes
-                .get(&biome_name)
-                .ok_or_else(|| anyhow::anyhow!("Biome '{biome_name}' not found"))?;
-
-            // ✅ OPTIMIZED: Avoid unnecessary clones by using as_deref
-            let log_key = service_name.as_deref().unwrap_or("main");
-
-            biome
-                .log_files
-                .get(log_key)
-                .ok_or_else(|| anyhow::anyhow!("No logs found for {target}"))?
-                .clone() // This clone is necessary (PathBuf from HashMap)
-        };
-
-        info!("📜 Showing logs for: {}", target);
-
-        if follow {
-            self.tail_log_file(&log_file, lines, timestamps, level_filter, grep_pattern)
-                .await?;
-        } else {
-            self.show_log_file(&log_file, lines, timestamps, level_filter, grep_pattern)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    // -------------------------------------------------------------------------
-    // Primal Discovery (Capability-Based)
-    // -------------------------------------------------------------------------
-    // Discovery methods removed - use UniversalServiceAdapter.discover(capability) instead
-    // See crates/cli/src/ecosystem/adapters/ for capability-based discovery
-
-    // -------------------------------------------------------------------------
-    // Internal implementation methods
-    // -------------------------------------------------------------------------
-
-    async fn start_biome_internal(
+    pub(super) async fn start_biome_internal(
         &self,
         biome_name: &str,
         manifest: BiomeManifest,
@@ -619,7 +294,7 @@ impl BiomeExecutor {
         }
     }
 
-    async fn stop_biome_internal(
+    pub(super) async fn stop_biome_internal(
         &self,
         biome_name: &str,
         force: bool,
@@ -714,7 +389,7 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    async fn purge_biome_data(&self, biome_name: &str) -> Result<()> {
+    pub(super) async fn purge_biome_data(&self, biome_name: &str) -> Result<()> {
         let data_dir = PathBuf::from(format!("/tmp/toadstool/data/{biome_name}"));
         let log_dir = PathBuf::from(format!("/tmp/toadstool/logs/{biome_name}"));
 
@@ -731,7 +406,7 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    async fn wait_for_interruption(&self) -> Result<()> {
+    pub(super) async fn wait_for_interruption(&self) -> Result<()> {
         use tokio::signal;
 
         #[cfg(unix)]
@@ -759,80 +434,6 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    async fn print_biomes_table(
-        &self,
-        biomes: &[&RunningBiome],
-        show_resources: bool,
-    ) -> Result<()> {
-        if biomes.is_empty() {
-            println!("No biomes found");
-            return Ok(());
-        }
-
-        println!(
-            "{:<20} {:<12} {:<10} {:<20} {:<10}",
-            "NAME", "STATUS", "SERVICES", "CREATED", "ID"
-        );
-        println!("{}", "-".repeat(80));
-
-        for biome in biomes {
-            let status_str = match &biome.info.status {
-                BiomeStatus::Running => "running",
-                BiomeStatus::Starting => "starting",
-                BiomeStatus::Stopping => "stopping",
-                BiomeStatus::Stopped => "stopped",
-                BiomeStatus::Error(_) => "error",
-                BiomeStatus::Migrating => "migrating",
-            };
-
-            let created_str = biome.info.created.format("%Y-%m-%d %H:%M").to_string();
-            let id_short = biome.info.id.to_string()[..8].to_string();
-
-            println!(
-                "{:<20} {:<12} {:<10} {:<20} {:<10}",
-                biome.info.name,
-                status_str,
-                biome.info.services.len(),
-                created_str,
-                id_short
-            );
-
-            if show_resources {
-                println!(
-                    "    CPU: {:.1}% | Memory: {}MB | Storage: {}MB",
-                    biome.info.resource_usage.cpu_percent,
-                    biome.info.resource_usage.memory_bytes / 1024 / 1024,
-                    biome.info.resource_usage.storage_bytes / 1024 / 1024
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn show_log_file(
-        &self,
-        log_file: &PathBuf,
-        lines: usize,
-        timestamps: bool,
-        level_filter: Option<String>,
-        grep_pattern: Option<String>,
-    ) -> Result<()> {
-        log_management::show_log_file(log_file, lines, timestamps, level_filter, grep_pattern).await
-    }
-
-    async fn tail_log_file(
-        &self,
-        log_file: &PathBuf,
-        initial_lines: usize,
-        timestamps: bool,
-        level_filter: Option<String>,
-        grep_pattern: Option<String>,
-    ) -> Result<()> {
-        log_management::tail_log_file(log_file, initial_lines, timestamps, level_filter, grep_pattern).await
-    }
-
-    // Helper methods for improved functionality
     #[allow(dead_code)]
     async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
         // Get the actual PID from the running biome processes
@@ -870,48 +471,6 @@ impl BiomeExecutor {
     }
 
     #[allow(dead_code)]
-    async fn load_wasm_with_verification(
-        &self,
-        source: &str,
-        checksum: &Option<String>,
-    ) -> Result<Vec<u8>> {
-        use sha2::{Digest, Sha256};
-        use tokio::fs;
-
-        // Load the WASM file
-        let module_data = fs::read(source)
-            .await
-            .with_context(|| format!("Failed to read WASM file: {source}"))?;
-
-        // Verify checksum if provided
-        if let Some(expected_checksum) = checksum {
-            let mut hasher = Sha256::new();
-            hasher.update(&module_data);
-            let actual_checksum = format!("{:x}", hasher.finalize());
-
-            if actual_checksum != *expected_checksum {
-                return Err(anyhow::anyhow!(
-                    "WASM checksum verification failed. Expected: {expected_checksum}, Got: {actual_checksum}"
-                ));
-            }
-        }
-
-        Ok(module_data)
-    }
-
-    #[allow(dead_code)]
-    async fn execute_wasm_module(
-        &self,
-        biome_name: &str,
-        _module_data: Vec<u8>,
-        _wasi_config: HashMap<String, String>,
-    ) -> Result<()> {
-        info!("Executing WASM module for biome: {}", biome_name);
-
-        // For now, we'll just return success
-        // This will be implemented when WASM runtime is integrated
-        Ok(())
-    }
 
     fn send_signal_to_process(&self, pid: u32, signal: &str) -> Result<()> {
         use std::process::Command;

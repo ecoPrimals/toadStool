@@ -229,7 +229,12 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             info!("📋 Listing biomes");
             let executor = BiomeExecutor::new().await?;
             executor
-                .list_biomes(*all, format.clone(), *resources, status.clone())
+                .list_biomes(
+                    *all,
+                    format.clone(),
+                    *resources,
+                    status.clone(),
+                )
                 .await?;
         }
 

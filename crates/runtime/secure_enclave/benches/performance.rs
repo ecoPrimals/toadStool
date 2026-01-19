@@ -92,7 +92,7 @@ fn bench_lz4_decompression(c: &mut Criterion) {
 
     for (size, label) in sizes.iter() {
         let data = vec![42u8; *size];
-        let compressed = lz4::block::compress(&data, None, false).unwrap();
+        let compressed = lz4_flex::compress_prepend_size(&data);
 
         group.throughput(Throughput::Bytes(*size as u64));
         group.bench_with_input(
