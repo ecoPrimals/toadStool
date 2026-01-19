@@ -1,0 +1,53 @@
+[package]
+name = "toadstool-display"
+version = "0.1.0"
+edition = "2021"
+authors = ["Toadstool Team"]
+description = "100% Pure Rust display and input backend for ecoPrimals"
+license = "MIT OR Apache-2.0"
+keywords = ["display", "input", "drm", "evdev", "pure-rust"]
+categories = ["gui", "graphics", "hardware-support"]
+
+[dependencies]
+# Display management (Pure Rust!)
+linux-drm = { version = "0.5", features = ["stable_polyfill"] }  # DRM/KMS bindings (NO C!) with stable Rust support
+rustix = { version = "0.38", features = ["fs", "mm", "process"] }  # Syscall wrapper (fallback)
+
+# Input handling (Pure Rust!)
+evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
+
+# Async runtime
+tokio = { workspace = true }
+futures = "0.3"
+
+# IPC
+tarpc = { workspace = true }
+serde = { workspace = true }
+serde_json = "1.0"
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Utilities
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+
+[[example]]
+name = "poc_drm"
+path = "examples/poc_drm.rs"
+
+[[example]]
+name = "poc_input"
+path = "examples/poc_input.rs"
+
+[features]
+default = []
+# Use rustix instead of linux-drm (fallback)
+rustix-backend = []

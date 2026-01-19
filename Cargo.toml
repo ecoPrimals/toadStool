@@ -22,6 +22,7 @@ members = [
     # "crates/management/analytics",    # DISABLED: sqlx (removed for Pure Rust) ✅
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
+    "crates/runtime/display",         # NEW: 100% Pure Rust display backend for petalTongue (Jan 19, 2026) 🍄🌸
     "crates/runtime/gpu",
     # "crates/runtime/specialty",  # Future feature (P3) - incomplete trait implementations (see docs/sessions/dec-4-2025/SPECIALTY_RUNTIME_11_HOUR_ASSESSMENT.md)
     "crates/runtime/native",
