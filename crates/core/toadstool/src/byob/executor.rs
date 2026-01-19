@@ -95,9 +95,7 @@ impl ServiceExecutor {
             .push(instance);
 
         // Store execution ID
-        deployment
-            .execution_ids
-            .insert(service_name.to_string(), execution_id);
+        deployment.add_service_execution(service_name, execution_id);
 
         info!(
             "Service {} started with execution ID {}",
