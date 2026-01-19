@@ -918,3 +918,412 @@ impl PerformanceHardeningManager {
         Ok(cache)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, RuntimeMetrics, StorageMetrics};
+
+    // Helper function to create test metrics
+    fn create_test_metrics(cpu_percent: f64, memory_percent: f64) -> RuntimeMetrics {
+        RuntimeMetrics {
+            cpu: CpuMetrics {
+                usage_percent: cpu_percent,
+                cores_used: cpu_percent / 100.0 * 4.0,
+                cpu_time_seconds: 1.0,
+            },
+            memory: MemoryMetrics {
+                usage_percent: memory_percent,
+                used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
+                peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
+            },
+            storage: StorageMetrics::default(),
+            network: NetworkMetrics::default(),
+            gpu: None,
+            timing: crate::resources::TimingMetrics {
+                start_time: chrono::Utc::now(),
+                end_time: None,
+                duration: chrono::Duration::zero(),
+            },
+        }
+    }
+
+    // ===== OptimizedResourceMonitor Tests =====
+
+    #[tokio::test]
+    async fn test_optimized_monitor_creation() {
+        let config = OptimizedMonitoringConfig::default();
+        let monitor = OptimizedResourceMonitor::new(config.clone());
+        
+        let interval = monitor.get_sampling_interval().await;
+        assert_eq!(interval, config.base_sampling_interval);
+    }
+
+    #[tokio::test]
+    async fn test_optimized_monitor_add_sample() {
+        let config = OptimizedMonitoringConfig::default();
+        let monitor = OptimizedResourceMonitor::new(config);
+        
+        let metrics = create_test_metrics(50.0, 60.0);
+        monitor.add_sample("workload-1", metrics).await;
+        
+        let aggregated = monitor.get_aggregated_metrics("workload-1").await;
+        assert!(aggregated.is_some());
+        let agg = aggregated.unwrap();
+        assert_eq!(agg.avg_cpu_usage, 50.0);
+        assert_eq!(agg.avg_memory_usage, 60.0);
+        assert_eq!(agg.sample_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_optimized_monitor_multiple_samples() {
+        let config = OptimizedMonitoringConfig::default();
+        let monitor = OptimizedResourceMonitor::new(config);
+        
+        // Add multiple samples
+        monitor.add_sample("workload-1", create_test_metrics(30.0, 40.0)).await;
+        monitor.add_sample("workload-1", create_test_metrics(50.0, 60.0)).await;
+        monitor.add_sample("workload-1", create_test_metrics(70.0, 80.0)).await;
+        
+        let aggregated = monitor.get_aggregated_metrics("workload-1").await.unwrap();
+        
+        // Should have running average
+        assert_eq!(aggregated.sample_count, 3);
+        assert_eq!(aggregated.avg_cpu_usage, 50.0); // (30+50+70)/3
+        assert_eq!(aggregated.avg_memory_usage, 60.0); // (40+60+80)/3
+        assert_eq!(aggregated.peak_memory_usage, 80.0); // Peak should be max
+    }
+
+    #[tokio::test]
+    async fn test_adaptive_sampling_high_load() {
+        let mut config = OptimizedMonitoringConfig::default();
+        config.adaptive_sampling = true;
+        config.base_sampling_interval = Duration::from_millis(100);
+        config.high_load_multiplier = 0.5;
+        
+        let monitor = OptimizedResourceMonitor::new(config.clone());
+        
+        // Simulate high load (>80%)
+        let high_load_metrics = create_test_metrics(90.0, 90.0);
+        monitor.add_sample("workload-1", high_load_metrics).await;
+        
+        let interval = monitor.get_sampling_interval().await;
+        // Should be reduced (faster sampling)
+        assert_eq!(interval, Duration::from_millis(50)); // 100 * 0.5
+    }
+
+    #[tokio::test]
+    async fn test_adaptive_sampling_low_load() {
+        let mut config = OptimizedMonitoringConfig::default();
+        config.adaptive_sampling = true;
+        config.base_sampling_interval = Duration::from_millis(100);
+        config.low_load_multiplier = 2.0;
+        
+        let monitor = OptimizedResourceMonitor::new(config.clone());
+        
+        // Simulate low load (<20%)
+        let low_load_metrics = create_test_metrics(10.0, 10.0);
+        monitor.add_sample("workload-1", low_load_metrics).await;
+        
+        let interval = monitor.get_sampling_interval().await;
+        // Should be increased (slower sampling)
+        assert_eq!(interval, Duration::from_millis(200)); // 100 * 2.0
+    }
+
+    // ===== MemoryPool Tests =====
+
+    #[tokio::test]
+    async fn test_memory_pool_creation() {
+        let config = MemoryPoolConfig::default();
+        let pool = MemoryPool::new(config, || String::from("test"));
+        
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_allocations, 0);
+        assert_eq!(stats.current_size, 0);
+    }
+
+    #[tokio::test]
+    async fn test_memory_pool_get_release() {
+        let config = MemoryPoolConfig::default();
+        let pool = MemoryPool::new(config, || String::from("test"));
+        
+        // Get an object
+        let obj = pool.get().await;
+        assert_eq!(obj.get(), Some(&String::from("test")));
+        
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.total_allocations, 1);
+        
+        // Release back to pool
+        drop(obj);
+        
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        let stats = pool.get_stats().await;
+        assert_eq!(stats.current_size, 1); // Should be back in pool
+    }
+
+    #[tokio::test]
+    async fn test_memory_pool_reuse() {
+        let config = MemoryPoolConfig::default();
+        let counter = Arc::new(RwLock::new(0u32));
+        let counter_clone = Arc::clone(&counter);
+        
+        let pool = MemoryPool::new(config, move || {
+            let mut c = counter_clone.blocking_write();
+            *c += 1;
+            format!("object-{}", *c)
+        });
+        
+        // First get - creates new object
+        let obj1 = pool.get().await;
+        assert_eq!(obj1.get(), Some(&String::from("object-1")));
+        drop(obj1);
+        
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        
+        // Second get - should reuse
+        let _obj2 = pool.get().await;
+        // Factory should only have been called once if reused
+        let count = *counter.read().await;
+        assert_eq!(count, 1); // Only one creation!
+    }
+
+    // ===== IntelligentCache Tests =====
+
+    #[tokio::test]
+    async fn test_cache_creation() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+        
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_put_get() {
+        let config = CachingConfig::default();
+        let cache = IntelligentCache::new(config);
+        
+        let _ = cache.put("key1".to_string(), 42).await;
+        
+        let value = cache.get(&"key1".to_string()).await;
+        assert_eq!(value, Some(42));
+        
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_miss() {
+        let config = CachingConfig::default();
+        let cache: IntelligentCache<String, i32> = IntelligentCache::new(config);
+        
+        let value = cache.get(&"nonexistent".to_string()).await;
+        assert_eq!(value, None);
+        
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.misses, 1);
+    }
+
+    #[tokio::test]
+    async fn test_cache_expiration() {
+        let mut config = CachingConfig::default();
+        config.default_ttl = Duration::from_millis(50);
+        let cache = IntelligentCache::new(config);
+        
+        let _ = cache.put("key1".to_string(), 42).await;
+        
+        // Should be present immediately
+        assert_eq!(cache.get(&"key1".to_string()).await, Some(42));
+        
+        // Wait for expiration
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        
+        // Should be expired
+        assert_eq!(cache.get(&"key1".to_string()).await, None);
+    }
+
+    #[tokio::test]
+    async fn test_cache_hit_rate() {
+        let config = CachingConfig::default();
+        let cache = IntelligentCache::new(config);
+        
+        let _ = cache.put("key1".to_string(), 1).await;
+        let _ = cache.put("key2".to_string(), 2).await;
+        
+        // 3 hits
+        cache.get(&"key1".to_string()).await;
+        cache.get(&"key2".to_string()).await;
+        cache.get(&"key1".to_string()).await;
+        
+        // 2 misses
+        cache.get(&"key3".to_string()).await;
+        cache.get(&"key4".to_string()).await;
+        
+        let stats = cache.get_stats().await;
+        assert_eq!(stats.hits, 3);
+        assert_eq!(stats.misses, 2);
+        
+        // Hit rate should be 60% (3/5)
+        let hit_rate = stats.hits as f64 / (stats.hits + stats.misses) as f64;
+        assert!((hit_rate - 0.6).abs() < 0.01);
+    }
+
+    // ===== AsyncBatcher Tests =====
+
+    #[tokio::test]
+    async fn test_batcher_creation() {
+        let config = AsyncOptimizationConfig::default();
+        let _batcher: AsyncBatcher<i32, i32> = AsyncBatcher::new(
+            config,
+            |items: Vec<i32>| {
+                Box::pin(async move {
+                    items.into_iter().map(|x| x * 2).collect()
+                })
+            },
+        );
+        
+        // Creation successful
+        assert!(true);
+    }
+
+    #[tokio::test]
+    async fn test_batcher_submit() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 1, // Process immediately
+            batch_timeout: Duration::from_millis(100),
+            ..Default::default()
+        };
+        
+        let batcher = AsyncBatcher::new(
+            config,
+            |items: Vec<i32>| {
+                Box::pin(async move {
+                    items.into_iter().map(|x| x * 2).collect()
+                })
+            },
+        );
+        
+        let result = batcher.submit(5).await.unwrap();
+        assert_eq!(result, 10); // 5 * 2
+    }
+
+    #[tokio::test]
+    async fn test_batcher_batching() {
+        let config = AsyncOptimizationConfig {
+            batch_size: 3,
+            batch_timeout: Duration::from_secs(1), // Long timeout to force batch size trigger
+            ..Default::default()
+        };
+        
+        let batch_count = Arc::new(RwLock::new(0u32));
+        let batch_count_clone = Arc::clone(&batch_count);
+        
+        let batcher = AsyncBatcher::new(
+            config,
+            move |items: Vec<i32>| {
+                let bc = Arc::clone(&batch_count_clone);
+                Box::pin(async move {
+                    let mut count = bc.write().await;
+                    *count += 1;
+                    items.into_iter().map(|x| x * 2).collect()
+                })
+            },
+        );
+        
+        // Submit 3 items - should trigger one batch
+        let _r1 = batcher.submit(1);
+        let _r2 = batcher.submit(2);
+        let _r3 = batcher.submit(3);
+        
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        
+        let count = *batch_count.read().await;
+        assert!(count >= 1); // At least one batch processed
+    }
+
+    // ===== PerformanceHardeningManager Tests =====
+
+    #[tokio::test]
+    async fn test_manager_creation() {
+        let config = PerformanceHardeningConfig::default();
+        let _manager = PerformanceHardeningManager::new(config);
+        
+        // Should create successfully
+        assert!(true);
+    }
+
+    #[tokio::test]
+    async fn test_manager_resource_monitor() {
+        let config = PerformanceHardeningConfig::default();
+        let manager = PerformanceHardeningManager::new(config);
+        
+        let monitor = manager.get_resource_monitor();
+        
+        // Add a sample
+        let metrics = create_test_metrics(50.0, 60.0);
+        monitor.add_sample("test-workload", metrics).await;
+    }
+
+    #[tokio::test]
+    async fn test_manager_memory_pool() {
+        let config = PerformanceHardeningConfig::default();
+        let manager = PerformanceHardeningManager::new(config);
+        
+        let pool = manager
+            .create_memory_pool("test-pool", || String::from("test"))
+            .await
+            .unwrap();
+        
+        let obj = pool.get().await;
+        assert_eq!(obj.get(), Some(&String::from("test")));
+    }
+
+    #[tokio::test]
+    async fn test_manager_cache() {
+        let config = PerformanceHardeningConfig::default();
+        let manager = PerformanceHardeningManager::new(config);
+        
+        let cache: Arc<IntelligentCache<String, i32>> = manager
+            .create_cache("test-cache")
+            .await
+            .unwrap();
+        
+        let _ = cache.put("key1".to_string(), 42).await;
+        assert_eq!(cache.get(&"key1".to_string()).await, Some(42));
+    }
+
+    #[tokio::test]
+    async fn test_manager_disabled_features() {
+        let mut config = PerformanceHardeningConfig::default();
+        config.enable_memory_pools = false;
+        config.enable_caching = false;
+        
+        let manager = PerformanceHardeningManager::new(config);
+        
+        // Should fail when features are disabled
+        let pool_result = manager.create_memory_pool("test", || 0).await;
+        assert!(pool_result.is_err());
+        
+        let cache_result: ToadStoolResult<Arc<IntelligentCache<String, i32>>> = 
+            manager.create_cache("test").await;
+        assert!(cache_result.is_err());
+    }
+
+    // ===== Configuration Tests =====
+
+    #[test]
+    fn test_default_configs() {
+        let _ph_config = PerformanceHardeningConfig::default();
+        let _monitor_config = OptimizedMonitoringConfig::default();
+        let _pool_config = MemoryPoolConfig::default();
+        let _cache_config = CachingConfig::default();
+        let _async_config = AsyncOptimizationConfig::default();
+        let _conn_config = PerformanceConnectionPoolConfig::default();
+        
+        // All defaults should create successfully
+        assert!(true);
+    }
+}
