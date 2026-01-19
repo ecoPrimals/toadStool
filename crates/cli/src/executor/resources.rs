@@ -52,7 +52,7 @@ impl<'a> ResourceManager<'a> {
     /// Returns an error if PID cannot be found
     pub async fn get_actual_pid(&self, biome_name: &str) -> Result<u32> {
         let biomes = self.executor.biomes.read().await;
-        
+
         if let Some(biome) = biomes.get(biome_name) {
             // Return the first valid PID
             for process in &biome.process_handles {

@@ -110,15 +110,16 @@ impl Device {
     /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
-        
+
         if !path.exists() {
-            return Err(DisplayError::InputError(
-                format!("Device not found: {}", path.display())
-            ));
+            return Err(DisplayError::InputError(format!(
+                "Device not found: {}",
+                path.display()
+            )));
         }
-        
+
         tracing::debug!("Opening input device: {}", path.display());
-        
+
         // TODO: Implement actual evdev device opening
         //
         // Future implementation:
@@ -130,23 +131,24 @@ impl Device {
         //     .to_string();
         //
         // let device_type = Self::detect_type(&evdev_device);
-        
-        let name = path.file_name()
+
+        let name = path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        
+
         let device_type = DeviceType::Other;
-        
+
         tracing::info!("✅ Opened input device: {} ({})", name, path.display());
-        
+
         Ok(Self {
             path,
             name,
             device_type,
         })
     }
-    
+
     /// Detect device type from capabilities
     ///
     /// Uses heuristics based on what the device supports:
@@ -181,25 +183,25 @@ impl Device {
         // if has_buttons && has_abs_axes {
         //     return DeviceType::Gamepad;
         // }
-        
+
         DeviceType::Other
     }
-    
+
     /// Get device name
     pub fn name(&self) -> &str {
         &self.name
     }
-    
+
     /// Get device type
     pub fn device_type(&self) -> DeviceType {
         self.device_type
     }
-    
+
     /// Get device path
     pub fn path(&self) -> &Path {
         &self.path
     }
-    
+
     /// Discover all input devices on the system
     ///
     /// **Deep Debt Compliance:**
@@ -220,28 +222,28 @@ impl Device {
     /// ```
     pub fn discover_all() -> Result<Vec<DeviceInfo>> {
         tracing::info!("🔍 Discovering input devices (self-knowledge)...");
-        
+
         let mut devices = Vec::new();
-        
+
         // Capability-based discovery: scan /dev/input/
         let input_dir = Path::new("/dev/input");
         if !input_dir.exists() {
             tracing::warn!("No /dev/input directory - no input devices available");
             return Ok(devices);
         }
-        
+
         // Read directory entries
         for entry in std::fs::read_dir(input_dir)
             .map_err(|e| DisplayError::InputError(format!("Failed to read /dev/input: {}", e)))?
         {
             let entry = entry?;
             let path = entry.path();
-            
+
             // Only event* devices (not mice, mouse*, js*, etc.)
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 if name.starts_with("event") {
                     tracing::trace!("  Found: {}", path.display());
-                    
+
                     // Try to open and get device info
                     // If we can't open it (permissions), skip it
                     match Self::open(&path) {
@@ -260,17 +262,17 @@ impl Device {
                 }
             }
         }
-        
+
         tracing::info!("✅ Discovered {} input device(s)", devices.len());
-        
+
         // Log device types for debugging
         for dev in &devices {
             tracing::debug!("  - {} ({:?})", dev.name, dev.device_type);
         }
-        
+
         Ok(devices)
     }
-    
+
     /// Get device information
     pub fn info(&self) -> DeviceInfo {
         DeviceInfo {

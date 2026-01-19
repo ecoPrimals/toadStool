@@ -108,7 +108,9 @@ impl CommunicationManager {
                 debug!("📤 Sending via tarpc (PRIMARY protocol)");
                 // TODO(future): Implement tarpc message sending when tarpc integration complete
                 // For now, tarpc not yet implemented, return error
-                Err(ToadStoolError::runtime("Tarpc messaging not yet implemented"))
+                Err(ToadStoolError::runtime(
+                    "Tarpc messaging not yet implemented",
+                ))
             }
 
             #[cfg(feature = "networking")]
@@ -245,21 +247,29 @@ impl CommunicationManager {
                 continue;
             }
 
-            if endpoint.protocol == "jsonrpc" || endpoint.protocol == "json-rpc" || endpoint.protocol == "tarpc" {
-                debug!("🌍 Using JSON-RPC over unix socket (PRIMARY) for service: {}", service.name);
+            if endpoint.protocol == "jsonrpc"
+                || endpoint.protocol == "json-rpc"
+                || endpoint.protocol == "tarpc"
+            {
+                debug!(
+                    "🌍 Using JSON-RPC over unix socket (PRIMARY) for service: {}",
+                    service.name
+                );
                 // Use unix socket path from discovery
-                let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+                let socket_path =
+                    toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
                 return Ok(ServiceClient::UnixSocket(
-                    toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path)
+                    toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
                 ));
             }
         }
 
         // Fallback: Try to determine from service name
         debug!("Using socket path discovery for service: {}", service.name);
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(&service.name);
         Ok(ServiceClient::UnixSocket(
-            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path)
+            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         ))
     }
 

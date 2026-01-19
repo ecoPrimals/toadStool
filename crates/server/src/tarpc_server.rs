@@ -262,10 +262,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         self.executor.query_capabilities().await
     }
 
-    async fn health_status(
-        self,
-        _context: Context,
-    ) -> Result<HealthStatus, String> {
+    async fn health_status(self, _context: Context) -> Result<HealthStatus, String> {
         let uptime = self.start_time.elapsed();
         let workloads = self.workloads.read().await;
         let active_count = workloads
@@ -309,7 +306,7 @@ impl StandaloneExecutor {
         use sysinfo::System;
         let mut system = System::new_all();
         system.refresh_memory();
-        
+
         let total_memory = system.total_memory(); // Already in bytes
         let available_memory = system.available_memory(); // Already in bytes
 
@@ -337,8 +334,8 @@ impl StandaloneExecutor {
                     available_memory_bytes: available_memory,
                     total_gpu_memory_bytes: None,
                     available_gpu_memory_bytes: None,
-                    cpu_utilization: 0.0,  // TODO: Query actual utilization
-                    memory_utilization: 0.0,  // TODO: Query actual utilization
+                    cpu_utilization: 0.0,    // TODO: Query actual utilization
+                    memory_utilization: 0.0, // TODO: Query actual utilization
                     gpu_utilization: None,
                 },
                 metadata: std::collections::HashMap::new(),

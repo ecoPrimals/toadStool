@@ -10,8 +10,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
-use wasmi::Module;
 use tracing::debug;
+use wasmi::Module;
 
 /// Cached WASM module with metadata
 #[derive(Clone, Debug)]
@@ -52,13 +52,13 @@ impl CachedModule {
 pub struct ModuleCache {
     /// Cached modules
     cache: Arc<RwLock<HashMap<String, CachedModule>>>,
-    
+
     /// Maximum cache entries
     max_entries: usize,
-    
+
     /// Cache hits
     hits: Arc<RwLock<u64>>,
-    
+
     /// Cache misses
     misses: Arc<RwLock<u64>>,
 }
@@ -78,12 +78,12 @@ impl ModuleCache {
     /// Get a module from cache
     pub async fn get(&self, key: &str) -> Option<Module> {
         let mut cache = self.cache.write().await;
-        
+
         if let Some(entry) = cache.get_mut(key) {
             // Record hit
             entry.record_access();
             *self.hits.write().await += 1;
-            
+
             debug!("Cache hit for key: {}", key);
             Some(entry.module.clone())
         } else {
@@ -105,7 +105,7 @@ impl ModuleCache {
 
         let cached = CachedModule::new(module);
         cache.insert(key.clone(), cached);
-        
+
         debug!("Cached module with key: {} (total: {})", key, cache.len());
     }
 
@@ -163,18 +163,18 @@ mod tests {
     async fn test_cache_insert_and_get() {
         let cache = ModuleCache::new(10);
         let engine = Engine::default();
-        
+
         // Create a simple WASM module
         let wasm = wat::parse_str("(module)").unwrap();
         let module = Module::new(&engine, &wasm[..]).unwrap();
-        
+
         // Insert into cache
         cache.insert("test_key".to_string(), module.clone()).await;
-        
+
         // Retrieve from cache
         let cached = cache.get("test_key").await;
         assert!(cached.is_some(), "Module should be in cache");
-        
+
         // Check hit rate
         let hit_rate = cache.hit_rate().await;
         assert!(hit_rate > 0.0, "Should have cache hit");
@@ -184,19 +184,19 @@ mod tests {
     async fn test_cache_eviction() {
         let cache = ModuleCache::new(2);
         let engine = Engine::default();
-        
+
         let wasm = wat::parse_str("(module)").unwrap();
         let module = Module::new(&engine, &wasm[..]).unwrap();
-        
+
         // Fill cache
         cache.insert("key1".to_string(), module.clone()).await;
         cache.insert("key2".to_string(), module.clone()).await;
-        
+
         assert_eq!(cache.size().await, 2);
-        
+
         // This should trigger eviction
         cache.insert("key3".to_string(), module.clone()).await;
-        
+
         assert_eq!(cache.size().await, 2, "Cache should maintain max size");
     }
 }

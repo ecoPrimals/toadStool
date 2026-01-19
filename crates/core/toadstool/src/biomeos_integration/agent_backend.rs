@@ -257,7 +257,9 @@ impl AgentBackend for SquirrelBackend {
             .rpc_client
             .call_typed("squirrel.deploy_agent", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e)))?;
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e))
+            })?;
 
         tracing::info!("Deployed agent: {}", config.name);
         Ok(agent_info)
@@ -271,7 +273,9 @@ impl AgentBackend for SquirrelBackend {
             .rpc_client
             .call_typed("squirrel.load_model", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e)))?;
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e))
+            })?;
 
         tracing::info!("Loaded model: {}", config.name);
         Ok(model_info)

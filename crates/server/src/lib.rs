@@ -121,15 +121,15 @@ pub mod handlers;
 pub mod manual_jsonrpc;
 
 // ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
-pub mod pure_jsonrpc;
 #[cfg(test)]
 pub mod mocks;
+pub mod pure_jsonrpc;
 pub mod resource_estimator; // NEW: Resource estimation for graphs
 pub mod resource_optimizer;
 pub mod resource_validator; // NEW: Resource validation for graphs
 pub mod rpc_types; // Pure RPC types (deep debt solution - no HTTP deps)
-// REMOVED: pub mod songbird_client; - EVOLVED to capabilities module!
-// Deep debt evolution: External registration → Self-knowledge + Peer discovery
+                   // REMOVED: pub mod songbird_client; - EVOLVED to capabilities module!
+                   // Deep debt evolution: External registration → Self-knowledge + Peer discovery
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)

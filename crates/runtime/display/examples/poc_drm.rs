@@ -31,10 +31,10 @@ fn main() -> Result<()> {
 
     tracing::info!("🍄 Toadstool Display Backend - DRM PoC");
     tracing::info!("Goal: 100% Pure Rust display control!");
-    
+
     // Phase 0: Proof of Concept
     // TODO: Implement DRM device operations
-    
+
     tracing::info!("📋 Phase 0 Tasks:");
     tracing::info!("  1. Open DRM device (/dev/dri/card0)");
     tracing::info!("  2. Query device capabilities");
@@ -43,18 +43,18 @@ fn main() -> Result<()> {
     tracing::info!("  5. Fill with test pattern");
     tracing::info!("  6. Display on screen");
     tracing::info!("  7. Clean shutdown");
-    
+
     tracing::warn!("⚠️  TODO: Implement DRM operations");
     tracing::warn!("    See: linux-drm crate documentation");
     tracing::warn!("    See: specs/DISPLAY_BACKEND_SPEC.md");
-    
+
     // Placeholder for now
     tracing::info!("💤 Sleeping for 2 seconds (placeholder)...");
     std::thread::sleep(Duration::from_secs(2));
-    
+
     tracing::info!("✅ PoC structure ready!");
     tracing::info!("🚀 Next: Implement DRM device opening");
-    
+
     Ok(())
 }
 

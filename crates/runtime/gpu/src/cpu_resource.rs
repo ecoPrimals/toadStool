@@ -105,7 +105,7 @@ impl CpuComputeResource {
     }
 
     /// Detect SIMD width (AVX2, AVX512, NEON, etc.)
-    /// 
+    ///
     /// EVOLUTION: Runtime detection on TARGET hardware (not HOST)
     /// Enables cross-compilation while detecting actual SIMD capabilities
     /// Deep Debt: Complete implementation, no assumptions

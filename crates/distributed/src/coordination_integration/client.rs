@@ -141,7 +141,7 @@ impl CoordinationClient {
             })
         })?;
 
-        // Use unix socket path discovery for coordination service  
+        // Use unix socket path discovery for coordination service
         let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path(); // Coordination via Songbird
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
@@ -258,7 +258,10 @@ impl CoordinationClient {
                 })
             })?;
 
-        Ok(result.get("healthy").and_then(|v| v.as_bool()).unwrap_or(false))
+        Ok(result
+            .get("healthy")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
     }
 
     /// Execute generic coordination request via unix socket

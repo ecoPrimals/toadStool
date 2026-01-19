@@ -3,10 +3,10 @@
 //! Handles loading WASM modules from various sources (file, bytes, URL)
 //! with validation and caching support.
 
-use std::time::Duration;
 use sha2::{Digest, Sha256};
-use wasmi::{Engine, Module};
+use std::time::Duration;
 use tracing::debug;
+use wasmi::{Engine, Module};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::workload::WasmModuleSource;
@@ -122,7 +122,7 @@ impl ModuleLoader {
         Module::new(&self.engine, bytes)
             .map_err(|e| ToadStoolError::validation(format!("Invalid WASM module: {e}")))
     }
-    
+
     /// Get engine reference
     pub fn engine(&self) -> &Engine {
         &self.engine

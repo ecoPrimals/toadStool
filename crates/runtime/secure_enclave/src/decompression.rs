@@ -156,16 +156,17 @@ fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>> {
     //   OLD: zstd crate (pulled in zstd-sys C dependency)
     //   NEW: ruzstd (100% Pure Rust implementation!)
     //   BENEFIT: Cross-compiles trivially, no C toolchain needed!
-    use std::io::Read;
     use ruzstd::decoding::StreamingDecoder;
-    
+    use std::io::Read;
+
     let mut decoder = StreamingDecoder::new(compressed)
         .map_err(|e| Error::decompression(format!("Failed to create zstd decoder: {e}")))?;
-    
+
     let mut decompressed = Vec::new();
-    decoder.read_to_end(&mut decompressed)
+    decoder
+        .read_to_end(&mut decompressed)
         .map_err(|e| Error::decompression(format!("Zstd decompression failed: {e}")))?;
-    
+
     Ok(decompressed)
 }
 
@@ -176,8 +177,8 @@ fn decompress_lz4(compressed: &[u8]) -> Result<Vec<u8>> {
     //   NEW: lz4_flex (100% Pure Rust, fast, safe!)
     //   BENEFIT: Cross-compiles trivially, no C toolchain needed!
     lz4_flex::block::decompress_size_prepended(compressed)
-        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {e}")))}
-
+        .map_err(|e| Error::decompression(format!("LZ4 decompression failed: {e}")))
+}
 
 #[cfg(test)]
 mod tests {
@@ -233,7 +234,7 @@ mod tests {
     #[test]
     fn test_size_mismatch_error() {
         let original = b"Test data";
-        
+
         // Compress with ruzstd
         let compressed = zstd::encode_all(&original[..], 3).unwrap();
 
@@ -250,7 +251,7 @@ mod tests {
     #[test]
     fn test_decompression_stats() {
         let original = vec![0u8; 1024 * 1024]; // 1MB of zeros (highly compressible)
-        
+
         // Compress with ruzstd
         let compressed = zstd::encode_all(&original[..], 3).unwrap();
 
@@ -265,7 +266,7 @@ mod tests {
     #[test]
     fn test_memory_isolation() {
         let original = b"Sensitive data";
-        
+
         // Compress with ruzstd
         let compressed = zstd::encode_all(&original[..], 3).unwrap();
 

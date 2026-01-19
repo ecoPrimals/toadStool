@@ -78,18 +78,18 @@
 #![warn(missing_docs, rust_2018_idioms)]
 
 // Public modules
+pub mod capabilities;
 pub mod drm;
 pub mod input;
-pub mod window;
 pub mod ipc;
-pub mod capabilities;
+pub mod window;
 
 // Re-exports
-pub use drm::DrmBackend;
-pub use input::{InputManager, InputEvent};
-pub use window::{WindowManager, Window, WindowId};
-pub use ipc::{DisplayServer, DisplayClient};
 pub use capabilities::DisplayCapabilities;
+pub use drm::DrmBackend;
+pub use input::{InputEvent, InputManager};
+pub use ipc::{DisplayClient, DisplayServer};
+pub use window::{Window, WindowId, WindowManager};
 
 /// Display backend errors
 #[derive(Debug, thiserror::Error)]
@@ -97,27 +97,27 @@ pub enum DisplayError {
     /// DRM device not found
     #[error("DRM device not found: {0}")]
     DeviceNotFound(std::path::PathBuf),
-    
+
     /// Failed to open DRM device
     #[error("Failed to open DRM device: {0}")]
     OpenFailed(#[from] std::io::Error),
-    
+
     /// DRM ioctl failed
     #[error("DRM ioctl failed: {0}")]
     IoctlFailed(String),
-    
+
     /// Buffer allocation failed
     #[error("Buffer allocation failed")]
     AllocationFailed,
-    
+
     /// Window not found
     #[error("Window not found: {0}")]
     WindowNotFound(WindowId),
-    
+
     /// Input device error
     #[error("Input device error: {0}")]
     InputError(String),
-    
+
     /// IPC error
     #[error("IPC error: {0}")]
     IpcError(String),
@@ -133,7 +133,7 @@ pub mod __doc {
 
     /// Version info
     pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-    
+
     /// Pure Rust status
     pub const PURE_RUST: bool = true;
 }

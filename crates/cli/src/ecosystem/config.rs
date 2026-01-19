@@ -125,7 +125,7 @@ impl ServiceDiscoveryConfig {
     /// 3. `/etc/toadstool/services.toml`
     pub fn load_default() -> Self {
         use etcetera::{choose_base_strategy, BaseStrategy};
-        
+
         let paths = if let Ok(strategy) = choose_base_strategy() {
             vec![
                 Some(strategy.home_dir().join(".toadstool/services.toml")),

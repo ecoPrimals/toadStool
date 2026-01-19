@@ -375,13 +375,16 @@ impl EcosystemDiscoverer {
     ) -> ToadStoolResult<ServiceInfo> {
         // PURE RUST: HTTP probing disabled, use environment variables
         info!("Creating service info for {} at {}", pattern.name, endpoint);
-        
+
         Ok(ServiceInfo {
             name: pattern.name.clone(),
             endpoint: endpoint.to_string(),
             service_type: format!("{:?}", pattern.service_type),
-            version: std::env::var(format!("{}_VERSION", pattern.name.to_uppercase().replace('-', "_")))
-                .unwrap_or_else(|_| "unknown".to_string()),
+            version: std::env::var(format!(
+                "{}_VERSION",
+                pattern.name.to_uppercase().replace('-', "_")
+            ))
+            .unwrap_or_else(|_| "unknown".to_string()),
             capabilities: pattern.required_capabilities.clone(),
             status: ServiceStatus::Healthy,
             discovered_via: "environment_config".to_string(),

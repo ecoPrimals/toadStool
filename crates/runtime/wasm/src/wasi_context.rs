@@ -3,8 +3,8 @@
 //! Provides WASI (WebAssembly System Interface) support using wasmi_wasi.
 
 use std::path::PathBuf;
-use wasmi_wasi::{WasiCtx, WasiCtxBuilder};
 use tracing::debug;
+use wasmi_wasi::{WasiCtx, WasiCtxBuilder};
 
 use toadstool::error::ToadStoolResult;
 
@@ -39,12 +39,14 @@ impl Default for WasiConfig {
 }
 
 /// Create WASI context from configuration
-/// 
+///
 /// Returns the context and optional output buffers (stdout, stderr) if capturing
 pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
-    debug!("Creating WASI context (capture_stdout: {}, capture_stderr: {})", 
-           config.capture_stdout, config.capture_stderr);
-    
+    debug!(
+        "Creating WASI context (capture_stdout: {}, capture_stderr: {})",
+        config.capture_stdout, config.capture_stderr
+    );
+
     let mut builder = WasiCtxBuilder::new();
 
     // Configure stdio based on capture/inherit settings
@@ -66,7 +68,10 @@ pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
     // Configure environment
     if config.inherit_env {
         builder.inherit_env().map_err(|e| {
-            toadstool::error::ToadStoolError::configuration(format!("Failed to inherit environment: {}", e))
+            toadstool::error::ToadStoolError::configuration(format!(
+                "Failed to inherit environment: {}",
+                e
+            ))
         })?;
     }
 
@@ -89,7 +94,7 @@ pub fn create_wasi_context(config: &WasiConfig) -> ToadStoolResult<WasiCtx> {
 
     // Build context
     let ctx = builder.build();
-    
+
     Ok(ctx)
 }
 

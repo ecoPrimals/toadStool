@@ -1,18 +1,18 @@
 //! Test utilities for wasmi runtime testing
 //!
 //! Pure Rust test utilities - NO MOCKS, real implementations!
-//! 
+//!
 //! ## Deep Debt Principles Applied:
 //! - ✅ Modern async patterns (tokio::test)
 //! - ✅ No hardcoding (capability-based helpers)
 //! - ✅ No mocks (real WASM modules)
 //! - ✅ Fast AND safe (zero unsafe)
 
-use wasmi::Module;
 use toadstool::error::ToadStoolResult;
+use wasmi::Module;
 
 /// Create a simple WASM module for testing
-/// 
+///
 /// Returns a module with basic arithmetic functions.
 /// Pure Rust - no hardcoded paths, runtime-generated WAT!
 pub fn create_simple_wasm_module() -> ToadStoolResult<Vec<u8>> {
@@ -35,13 +35,14 @@ pub fn create_simple_wasm_module() -> ToadStoolResult<Vec<u8>> {
             )
         )
     "#;
-    
-    wat::parse_str(wat)
-        .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e)))
+
+    wat::parse_str(wat).map_err(|e| {
+        toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e))
+    })
 }
 
 /// Create a compute-intensive WASM module for fuel testing
-/// 
+///
 /// Returns a module that consumes significant fuel.
 /// Tests capability: fuel metering accuracy!
 pub fn create_compute_intensive_wasm() -> ToadStoolResult<Vec<u8>> {
@@ -80,13 +81,14 @@ pub fn create_compute_intensive_wasm() -> ToadStoolResult<Vec<u8>> {
             )
         )
     "#;
-    
-    wat::parse_str(wat)
-        .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e)))
+
+    wat::parse_str(wat).map_err(|e| {
+        toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e))
+    })
 }
 
 /// Create a memory-intensive WASM module
-/// 
+///
 /// Returns a module that allocates significant memory.
 /// Tests capability: memory limit enforcement!
 pub fn create_memory_intensive_wasm() -> ToadStoolResult<Vec<u8>> {
@@ -119,13 +121,14 @@ pub fn create_memory_intensive_wasm() -> ToadStoolResult<Vec<u8>> {
             )
         )
     "#;
-    
-    wat::parse_str(wat)
-        .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e)))
+
+    wat::parse_str(wat).map_err(|e| {
+        toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e))
+    })
 }
 
 /// Create an invalid WASM module for error testing
-/// 
+///
 /// Returns invalid WASM bytecode.
 /// Tests capability: graceful error handling!
 pub fn create_invalid_wasm() -> Vec<u8> {
@@ -134,7 +137,7 @@ pub fn create_invalid_wasm() -> Vec<u8> {
 }
 
 /// Create a WASM module with WASI capabilities
-/// 
+///
 /// Returns a module that uses WASI for stdio.
 /// Tests capability: WASI integration!
 pub fn create_wasi_hello_world() -> ToadStoolResult<Vec<u8>> {
@@ -161,13 +164,14 @@ pub fn create_wasi_hello_world() -> ToadStoolResult<Vec<u8>> {
             )
         )
     "#;
-    
-    wat::parse_str(wat)
-        .map_err(|e| toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e)))
+
+    wat::parse_str(wat).map_err(|e| {
+        toadstool::error::ToadStoolError::validation(format!("WAT parse error: {}", e))
+    })
 }
 
 /// Verify a WASM module is valid
-/// 
+///
 /// Capability-based validation - discovers what the module can do!
 pub fn verify_wasm_module(engine: &wasmi::Engine, wasm: &[u8]) -> ToadStoolResult<Module> {
     Module::new(engine, wasm)
@@ -175,14 +179,14 @@ pub fn verify_wasm_module(engine: &wasmi::Engine, wasm: &[u8]) -> ToadStoolResul
 }
 
 /// Helper to create test engine with specific configuration
-/// 
+///
 /// Pure Rust configuration - no hardcoded values!
 pub fn create_test_engine() -> wasmi::Engine {
     let mut config = wasmi::Config::default();
     // Modern async-friendly configuration
     config.wasm_multi_value(true);
-    config.wasm_mutable_global(true);  // Note: singular, not plural!
-    
+    config.wasm_mutable_global(true); // Note: singular, not plural!
+
     wasmi::Engine::new(&config)
 }
 
@@ -194,11 +198,11 @@ mod tests {
     fn test_create_simple_wasm() {
         let wasm = create_simple_wasm_module().unwrap();
         assert!(!wasm.is_empty());
-        
+
         // Verify it's valid WASM (capability: validation!)
         let engine = create_test_engine();
         let _module = verify_wasm_module(&engine, &wasm).unwrap();
-        
+
         // Module created successfully - no hardcoded expectations!
     }
 
@@ -206,7 +210,7 @@ mod tests {
     fn test_create_compute_intensive_wasm() {
         let wasm = create_compute_intensive_wasm().unwrap();
         assert!(!wasm.is_empty());
-        
+
         let engine = create_test_engine();
         verify_wasm_module(&engine, &wasm).unwrap();
     }
@@ -215,7 +219,7 @@ mod tests {
     fn test_create_memory_intensive_wasm() {
         let wasm = create_memory_intensive_wasm().unwrap();
         assert!(!wasm.is_empty());
-        
+
         let engine = create_test_engine();
         verify_wasm_module(&engine, &wasm).unwrap();
     }
@@ -224,7 +228,7 @@ mod tests {
     fn test_invalid_wasm_fails_validation() {
         let wasm = create_invalid_wasm();
         let engine = create_test_engine();
-        
+
         // Should fail validation (capability: error detection!)
         let result = verify_wasm_module(&engine, &wasm);
         assert!(result.is_err());
@@ -234,7 +238,7 @@ mod tests {
     fn test_wasi_hello_world() {
         let wasm = create_wasi_hello_world().unwrap();
         assert!(!wasm.is_empty());
-        
+
         let engine = create_test_engine();
         verify_wasm_module(&engine, &wasm).unwrap();
     }

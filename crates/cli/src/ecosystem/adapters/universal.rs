@@ -147,14 +147,18 @@ impl UniversalServiceAdapter {
     }
 
     /// Invoke via HTTP/REST
-    /// 
+    ///
     /// DEEP DEBT: HTTP adapter removed - use Unix socket RPC instead!
-    async fn invoke_http(&self, _provider: &ServiceProvider, _request: Request) -> Result<Response> {
+    async fn invoke_http(
+        &self,
+        _provider: &ServiceProvider,
+        _request: Request,
+    ) -> Result<Response> {
         // External HTTP should go through Songbird (Concentrated Gap architecture)
         tracing::error!(
             "HTTP invoke deprecated - use Unix socket RPC for primal-to-primal communication"
         );
-        
+
         anyhow::bail!(
             "HTTP adapter removed. Use Unix socket RPC instead. \
              For external HTTP, route through Songbird (Concentrated Gap architecture)."

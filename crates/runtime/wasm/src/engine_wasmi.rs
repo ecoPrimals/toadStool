@@ -1,7 +1,7 @@
 //! WebAssembly Runtime Engine - Wasmi Implementation
 //!
 //! 100% Pure Rust WASM runtime using wasmi interpreter.
-//! 
+//!
 //! **Evolution** (Jan 17, 2026):
 //! - OLD: wasmtime (JIT with C dependencies)
 //! - NEW: wasmi 1.0 (100% Pure Rust interpreter)
@@ -18,19 +18,22 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tracing::{info, debug};
+use tracing::{debug, info};
 use wasmi::{Config, Engine};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::execution::{ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine, RuntimeType};
+use toadstool::execution::{
+    ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
+    RuntimeType,
+};
 use toadstool::resources::RuntimeMetrics;
 use toadstool::WorkloadType;
 
+use crate::cache_wasmi::ModuleCache;
 use crate::config::WasmRuntimeConfig;
+use crate::execution_wasmi::ModuleExecutor;
 use crate::metrics::MetricsCollector;
 use crate::module_loader::ModuleLoader;
-use crate::execution_wasmi::ModuleExecutor;
-use crate::cache_wasmi::ModuleCache;
 
 /// WebAssembly Runtime Engine (wasmi-based)
 ///
@@ -38,24 +41,24 @@ use crate::cache_wasmi::ModuleCache;
 pub struct WasmRuntimeEngine {
     /// Wasmi engine (thread-safe)
     engine: Engine,
-    
+
     /// Runtime configuration
     config: Arc<WasmRuntimeConfig>,
-    
+
     /// Metrics collector
     metrics: Arc<MetricsCollector>,
-    
+
     /// Module cache (reserved for future use)
     #[allow(dead_code)]
     cache: Arc<ModuleCache>,
-    
+
     /// Module loader (reserved for future use)
     #[allow(dead_code)]
     loader: Arc<ModuleLoader>,
-    
+
     /// Module executor
     executor: Arc<ModuleExecutor>,
-    
+
     /// Initialized flag
     initialized: bool,
 }
@@ -103,30 +106,30 @@ impl WasmRuntimeEngine {
     /// Create wasmi engine with appropriate configuration
     fn create_wasmi_engine(config: &WasmRuntimeConfig) -> ToadStoolResult<Engine> {
         debug!("Creating wasmi engine with Pure Rust interpreter");
-        
+
         // wasmi 1.0 Config is much simpler than wasmtime!
         let mut wasmi_config = Config::default();
-        
+
         // Enable fuel metering if configured
         if config.fuel_limit.is_some() {
             wasmi_config.consume_fuel(true);
         }
-        
+
         // wasmi 1.0 supports multi-memory by default!
         // No need for explicit configuration like wasmtime
-        
+
         let engine = Engine::new(&wasmi_config);
-        
+
         info!("✅ Wasmi engine created - 100% Pure Rust interpreter ready!");
-        
+
         Ok(engine)
     }
-    
+
     /// Get engine reference
     pub fn engine(&self) -> &Engine {
         &self.engine
     }
-    
+
     /// Get configuration
     pub fn config(&self) -> &WasmRuntimeConfig {
         &self.config
@@ -151,47 +154,48 @@ impl RuntimeEngine for WasmRuntimeEngine {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
             let start_time = std::time::Instant::now();
-            
+
             // Extract WASM module source from request
             let (module_source, args) = match &request.workload {
                 toadstool::WorkloadSpec::Wasm { module, args, .. } => {
                     (module, args.clone().unwrap_or_default())
-                },
+                }
                 _ => {
                     return Err(ToadStoolError::validation(
-                        "Expected WASM workload spec".to_string()
+                        "Expected WASM workload spec".to_string(),
                     ));
                 }
             };
-            
+
             // Execute the module
             // Note: wasmi doesn't have explicit entry points like wasmtime,
             // it calls _start automatically or we get exports
-            let output = self.executor
+            let output = self
+                .executor
                 .load_and_execute(module_source, "_start", args)
                 .await?;
-            
+
             let duration = start_time.elapsed();
-            
+
             // Determine status from exit code
             let status = if output.exit_code.unwrap_or(0) == 0 {
                 toadstool::execution::ExecutionStatus::Success
             } else {
                 toadstool::execution::ExecutionStatus::Failed {
-                    error: format!("Exit code: {}", output.exit_code.unwrap_or(-1))
+                    error: format!("Exit code: {}", output.exit_code.unwrap_or(-1)),
                 }
             };
-            
+
             // Record metrics
             match &status {
                 toadstool::execution::ExecutionStatus::Success => {
                     self.metrics.record_success(duration.as_micros() as u64);
-                },
+                }
                 _ => {
                     self.metrics.record_failure();
                 }
             }
-            
+
             // Build response with correct structure
             Ok(ExecutionResponse {
                 execution_id: request.execution_id,
@@ -207,12 +211,15 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
         use std::collections::HashMap;
-        
+
         let mut features = HashMap::new();
         features.insert("wasi".to_string(), true);
-        features.insert("fuel_metering".to_string(), self.config.fuel_limit.is_some());
+        features.insert(
+            "fuel_metering".to_string(),
+            self.config.fuel_limit.is_some(),
+        );
         features.insert("async".to_string(), true);
-        
+
         RuntimeCapabilities {
             supported_workloads: vec![WorkloadType::Wasm],
             max_concurrent_executions: Some(100),
@@ -235,12 +242,12 @@ impl RuntimeEngine for WasmRuntimeEngine {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
         Box::pin(async move {
             use toadstool::resources::{CpuMetrics, MemoryMetrics, TimingMetrics};
-            
+
             let _total = self.metrics.total_executions();
             let _successful = self.metrics.successful_executions();
             let _failed = self.metrics.failed_executions();
             let avg_time_us = self.metrics.average_execution_time_us();
-            
+
             Ok(RuntimeMetrics {
                 cpu: CpuMetrics::default(),
                 memory: MemoryMetrics::default(),

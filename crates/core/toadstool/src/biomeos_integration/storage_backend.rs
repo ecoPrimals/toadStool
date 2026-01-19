@@ -336,7 +336,9 @@ impl StorageBackend for NestGateBackend {
                 .rpc_client
                 .call("nestgate.health", serde_json::json!({}))
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}")))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}"))
+                })?;
 
             tracing::info!("Successfully connected to NestGate via unix socket");
             Ok(())
@@ -379,7 +381,10 @@ impl StorageBackend for NestGateBackend {
                 .call_typed("nestgate.provision_volume", params)
                 .await
                 .map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to provision volume {}: {}", config_name, e))
+                    ToadStoolError::runtime(format!(
+                        "Failed to provision volume {}: {}",
+                        config_name, e
+                    ))
                 })?;
 
             Ok(volume_info)
@@ -423,7 +428,10 @@ impl StorageBackend for NestGateBackend {
                 .call_typed("nestgate.provision_persistent_volume", params)
                 .await
                 .map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to provision persistent volume {}: {}", config_name, e))
+                    ToadStoolError::runtime(format!(
+                        "Failed to provision persistent volume {}: {}",
+                        config_name, e
+                    ))
                 })?;
 
             Ok(volume_info)
@@ -524,7 +532,9 @@ impl StorageBackend for NestGateBackend {
                 .rpc_client
                 .call_typed("nestgate.get_volume_status", params)
                 .await
-                .map_err(|e| ToadStoolError::runtime(format!("Failed to get volume status: {e}")))?;
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to get volume status: {e}"))
+                })?;
 
             Ok(status)
         })

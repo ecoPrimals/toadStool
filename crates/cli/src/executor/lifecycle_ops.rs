@@ -58,7 +58,7 @@ impl BiomeExecutor {
         // See crates/cli/src/ecosystem/adapters/ for capability-based discovery
         if manifest.security.beardog_required {
             info!("🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")");
-            
+
             if let Some(beardog_config) = manifest.primals.get("beardog") {
                 let primal_name = "security-provider";
                 info!("🐻 Starting security primal (discovered by capability)");
@@ -144,7 +144,7 @@ impl BiomeExecutor {
                 .services
                 .keys()
                 .map(|name| ServiceInfo {
-                    name: name.clone(), // Necessary - owned String needed
+                    name: name.clone(),              // Necessary - owned String needed
                     status: String::from("running"), // ✅ OPTIMIZED: String::from for literals
                     replicas: 1,
                     ports: vec![],
@@ -192,7 +192,7 @@ impl BiomeExecutor {
             environment: environment.clone(),
             input_data: ExecutionInput::default(),
             callback_config: None,
-        encryption_config: None,
+            encryption_config: None,
         };
 
         // Submit to distributed coordinator
@@ -233,7 +233,7 @@ impl BiomeExecutor {
             environment: service_env,
             input_data: ExecutionInput::default(),
             callback_config: None,
-        encryption_config: None,
+            encryption_config: None,
         };
 
         // Submit to distributed coordinator

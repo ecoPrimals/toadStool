@@ -59,7 +59,7 @@ impl Transport {
 }
 
 /// HTTP transport implementation
-/// 
+///
 /// EVOLVED: Deprecated! HTTP is handled by Songbird (architectural inversion!)
 /// ToadStool uses Unix sockets for inter-primal communication.
 #[derive(Debug, Clone)]
@@ -139,7 +139,7 @@ impl WebSocketTransport {
 }
 
 /// Pure Rust tRPC transport implementation (Unix socket-based)
-/// 
+///
 /// EVOLVED: Uses Unix sockets instead of HTTP! Pure Rust! ✅
 #[derive(Debug, Clone)]
 pub struct TRpcTransport {

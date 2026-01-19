@@ -40,8 +40,8 @@
 //! For truly long-running WASM: Phase 2 will orchestrate wasmtime as subprocess.
 
 // Module declarations
-pub mod cache_wasmi;
 pub mod cache_metrics;
+pub mod cache_wasmi;
 pub mod config;
 pub mod engine_wasmi;
 pub mod execution_wasmi;
@@ -54,13 +54,13 @@ pub mod wasi_context;
 pub mod component_model;
 
 // Re-export public API
-pub use cache_wasmi::ModuleCache;
 pub use cache_metrics::CacheMetrics;
+pub use cache_wasmi::ModuleCache;
 pub use config::{SecurityLevel, WasmRuntimeConfig, WasmRuntimeConfigBuilder};
 pub use engine_wasmi::WasmRuntimeEngine;
 pub use execution_wasmi::ModuleExecutor;
 pub use module_loader::ModuleLoader;
-pub use wasi_context::{WasiConfig, create_wasi_context};
+pub use wasi_context::{create_wasi_context, WasiConfig};
 
 #[cfg(feature = "component-model")]
 pub use component_model::*;

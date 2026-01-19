@@ -177,7 +177,7 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 /// - Works with ANY service name (discovered or known)
 /// - Respects environment variables
 /// - Has consistent fallback behavior
-#[allow(deprecated)]  // Calls deprecated functions internally for backward compat
+#[allow(deprecated)] // Calls deprecated functions internally for backward compat
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
     // Map known service names to specific socket paths (for environment variable support)
     match service_name.to_lowercase().as_str() {
@@ -187,7 +187,7 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
         "squirrel" => get_squirrel_socket_path(),
         "toadstool" | "toad-stool" => get_toadstool_socket_path(),
         "nucleus" | "biomeos" => get_nucleus_socket_path(),
-        
+
         // Generic pattern for unknown services (TRUE PRIMAL - works with ANY service!)
         _ => {
             // Try service-specific environment variable first
@@ -195,11 +195,15 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
             if let Ok(socket) = std::env::var(&env_var) {
                 return PathBuf::from(socket);
             }
-            
+
             // Fall back to generic pattern
             let runtime_dir = get_runtime_dir();
             let family = get_family_id();
-            PathBuf::from(&runtime_dir).join(format!("{}-{}.sock", service_name.to_lowercase(), family))
+            PathBuf::from(&runtime_dir).join(format!(
+                "{}-{}.sock",
+                service_name.to_lowercase(),
+                family
+            ))
         }
     }
 }
@@ -238,10 +242,10 @@ mod tests {
         std::env::remove_var("BEARDOG_SOCKET");
         std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
         std::env::set_var("BIOMEOS_FAMILY_ID", "nat0");
-        
+
         let path = get_beardog_socket_path();
         assert_eq!(path, PathBuf::from("/run/user/1000/beardog-nat0.sock"));
-        
+
         std::env::remove_var("XDG_RUNTIME_DIR");
         std::env::remove_var("BIOMEOS_FAMILY_ID");
     }
@@ -261,7 +265,7 @@ mod tests {
         assert_ne!(songbird, nestgate);
         assert_ne!(songbird, squirrel);
         assert_ne!(nestgate, squirrel);
-        
+
         // ToadStool can equal BIOMEOS_SOCKET_PATH if set
         // (orchestrator binds multiple primals)
     }

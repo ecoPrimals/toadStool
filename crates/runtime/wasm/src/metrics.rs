@@ -9,13 +9,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub struct MetricsCollector {
     /// Total executions
     total_executions: AtomicU64,
-    
+
     /// Successful executions
     successful_executions: AtomicU64,
-    
+
     /// Failed executions
     failed_executions: AtomicU64,
-    
+
     /// Total execution time (microseconds)
     total_execution_time_us: AtomicU64,
 }
@@ -35,7 +35,8 @@ impl MetricsCollector {
     pub fn record_success(&self, execution_time_us: u64) {
         self.total_executions.fetch_add(1, Ordering::Relaxed);
         self.successful_executions.fetch_add(1, Ordering::Relaxed);
-        self.total_execution_time_us.fetch_add(execution_time_us, Ordering::Relaxed);
+        self.total_execution_time_us
+            .fetch_add(execution_time_us, Ordering::Relaxed);
     }
 
     /// Record failed execution

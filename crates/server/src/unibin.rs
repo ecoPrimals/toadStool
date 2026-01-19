@@ -55,10 +55,19 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Determine socket path using biomeOS-standardized 3-tier fallback
     info!("🔍 Socket Path Discovery:");
-    info!("  Checking TOADSTOOL_SOCKET: {:?}", std::env::var("TOADSTOOL_SOCKET").ok());
-    info!("  Checking BIOMEOS_SOCKET_PATH: {:?}", std::env::var("BIOMEOS_SOCKET_PATH").ok());
-    info!("  Checking XDG_RUNTIME_DIR: {:?}", std::env::var("XDG_RUNTIME_DIR").ok());
-    
+    info!(
+        "  Checking TOADSTOOL_SOCKET: {:?}",
+        std::env::var("TOADSTOOL_SOCKET").ok()
+    );
+    info!(
+        "  Checking BIOMEOS_SOCKET_PATH: {:?}",
+        std::env::var("BIOMEOS_SOCKET_PATH").ok()
+    );
+    info!(
+        "  Checking XDG_RUNTIME_DIR: {:?}",
+        std::env::var("XDG_RUNTIME_DIR").ok()
+    );
+
     let socket_path = get_socket_path(&family_id, &node_id)?;
     info!("✅ Final socket path: {:?}", socket_path);
 

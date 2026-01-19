@@ -29,10 +29,10 @@ fn main() -> Result<()> {
 
     tracing::info!("🍄 Toadstool Display Backend - Input PoC");
     tracing::info!("Goal: 100% Pure Rust input handling!");
-    
+
     // Phase 0: Proof of Concept
     // TODO: Implement input device operations
-    
+
     tracing::info!("📋 Phase 0 Tasks:");
     tracing::info!("  1. Enumerate /dev/input/event* devices");
     tracing::info!("  2. Open keyboard device");
@@ -40,18 +40,18 @@ fn main() -> Result<()> {
     tracing::info!("  4. Read events (async)");
     tracing::info!("  5. Parse and print events");
     tracing::info!("  6. Handle hotplug (future)");
-    
+
     tracing::warn!("⚠️  TODO: Implement input operations");
     tracing::warn!("    See: evdev crate documentation");
     tracing::warn!("    See: specs/DISPLAY_BACKEND_SPEC.md");
-    
+
     // Placeholder for now
     tracing::info!("💤 Sleeping for 2 seconds (placeholder)...");
     std::thread::sleep(Duration::from_secs(2));
-    
+
     tracing::info!("✅ PoC structure ready!");
     tracing::info!("🚀 Next: Implement device enumeration");
-    
+
     Ok(())
 }
 

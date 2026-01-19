@@ -117,7 +117,8 @@ impl StorageClient {
         let service_name = service.name.clone();
 
         // Get unix socket path for discovered service
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
 
         info!(
             "✅ Discovered storage service: {} (capability-based discovery)",
@@ -151,7 +152,7 @@ impl StorageClient {
     /// Returns an error if the client configuration is invalid or connection fails
     pub async fn connect(service_name: &str) -> NestGateResult<Self> {
         let config = NestGateConfig {
-            endpoint: format!("unix://{}", service_name),  // Placeholder
+            endpoint: format!("unix://{}", service_name), // Placeholder
             ..Default::default()
         };
         Self::with_config(config, Some(service_name.to_string())).await
@@ -167,7 +168,10 @@ impl StorageClient {
     ///
     /// # Errors
     /// Returns an error if the client configuration is invalid
-    pub async fn with_config(config: NestGateConfig, service_name: Option<String>) -> NestGateResult<Self> {
+    pub async fn with_config(
+        config: NestGateConfig,
+        service_name: Option<String>,
+    ) -> NestGateResult<Self> {
         // ✅ TRUE PRIMAL: Use discovered service name or fallback
         let service_name = service_name.unwrap_or_else(|| {
             // Fallback to "nestgate" for backward compatibility
@@ -176,13 +180,14 @@ impl StorageClient {
         });
 
         // ✅ Generic socket path resolution (works with ANY storage service!)
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_service(&service_name);
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         let client = Self {
             rpc_client,
             config,
-            service_name,  // ✅ Dynamic service name!
+            service_name, // ✅ Dynamic service name!
         };
 
         // Perform initial health check

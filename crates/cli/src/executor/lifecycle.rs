@@ -65,7 +65,7 @@ impl<'a> BiomeLifecycle<'a> {
 
         // Start processes (simplified - actual implementation would call start_primal/start_service)
         let processes = Vec::new();
-        
+
         info!("✅ Biome infrastructure ready");
 
         // Create BiomeInfo (simplified for now)
@@ -110,12 +110,7 @@ impl<'a> BiomeLifecycle<'a> {
     /// Returns an error if:
     /// - Biome is not found
     /// - Process termination fails
-    pub async fn stop_biome(
-        &self,
-        biome_name: &str,
-        force: bool,
-        timeout_secs: u64,
-    ) -> Result<()> {
+    pub async fn stop_biome(&self, biome_name: &str, force: bool, timeout_secs: u64) -> Result<()> {
         let running_biome = {
             let mut biomes = self.executor.biomes.write().await;
             biomes

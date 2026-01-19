@@ -155,9 +155,10 @@ impl ServiceDiscovery {
         // DEEP DEBT: HTTP registry discovery removed - use Unix socket capability discovery!
         tracing::debug!(
             "HTTP registry discovery deprecated for {} ({}) - use Unix socket discovery",
-            capability_name, capability
+            capability_name,
+            capability
         );
-        
+
         // Return None to allow fallback to other discovery methods
         Ok(None)
     }

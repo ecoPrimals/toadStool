@@ -470,7 +470,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Check if a service endpoint is available
-    /// 
+    ///
     /// DEEP DEBT SOLUTION: HTTP removed - use Unix sockets for primal discovery!
     /// External HTTP should go through Songbird (Concentrated Gap architecture)
     async fn check_service_endpoint(
@@ -481,9 +481,10 @@ impl ZeroConfigDeployment {
         // PURE RUST: External HTTP removed - stub for backward compatibility
         tracing::warn!(
             "HTTP service check deprecated for {} at {} - use Unix socket discovery instead",
-            service_name, endpoint
+            service_name,
+            endpoint
         );
-        
+
         // Return mock success for now - real impl should use Unix socket RPC
         // TODO: Migrate to capability-based discovery via Unix sockets
         Ok(ServiceEndpoint {

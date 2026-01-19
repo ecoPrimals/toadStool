@@ -226,7 +226,7 @@ async fn detect_windows_cpu() -> ToadStoolResult<CpuInfo> {
 }
 
 /// Detect CPU features and instruction sets
-/// 
+///
 /// EVOLUTION: Runtime detection on TARGET hardware (not HOST)
 /// Enables cross-compilation while maintaining accurate feature detection
 /// Deep Debt: Complete implementation, detects on actual deployment hardware
@@ -240,7 +240,7 @@ fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
         features.supports_avx2 = is_x86_feature_detected!("avx2");
         features.supports_sse4_1 = is_x86_feature_detected!("sse4.1");
         features.supports_sse4_2 = is_x86_feature_detected!("sse4.2");
-        
+
         debug!(
             "x86_64 CPU features detected: AVX={}, AVX2={}, SSE4.1={}, SSE4.2={}",
             features.supports_avx,
@@ -264,8 +264,11 @@ fn detect_cpu_features() -> ToadStoolResult<CpuFeatures> {
             // On non-Linux ARM (macOS, BSD), NEON is standard in ARMv8
             features.supports_neon = true;
         }
-        
-        debug!("ARM64 CPU features detected: NEON={}", features.supports_neon);
+
+        debug!(
+            "ARM64 CPU features detected: NEON={}",
+            features.supports_neon
+        );
     }
 
     // RISC-V: Future extension detection

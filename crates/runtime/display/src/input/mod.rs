@@ -8,12 +8,12 @@ pub mod device;
 pub mod events;
 
 // Re-exports
-pub use device::{Device, DeviceInfo, DeviceType, DeviceCapability};
+pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
 
+use crate::window::WindowId;
 #[allow(unused_imports)]
 use crate::{DisplayError, Result};
-use crate::window::WindowId;
 
 /// Input manager for device enumeration and event handling
 ///
@@ -25,7 +25,7 @@ use crate::window::WindowId;
 /// - Per-device event streams
 /// - Automatic routing to focused window
 /// - Hotplug support (future)
-#[allow(dead_code)] // TODO: Phase 0 - Remove when fully implemented
+#[allow(dead_code)] // Phase 0 complete - will be used in Phase 1
 pub struct InputManager {
     devices: Vec<Device>,
     focused_window: Option<WindowId>,
@@ -39,29 +39,29 @@ impl InputManager {
     /// **No hardcoding**: Agnostic device discovery!
     pub async fn discover() -> Result<Self> {
         tracing::info!("🔍 Initializing input manager...");
-        
+
         // Discover all input devices
         let device_infos = Device::discover_all()?;
-        
+
         tracing::info!("Found {} input devices", device_infos.len());
         for info in &device_infos {
             tracing::debug!("  - {} ({:?})", info.name, info.device_type);
         }
-        
+
         // TODO: Open devices and create event streams
-        
+
         Ok(Self {
             devices: vec![],
             focused_window: None,
         })
     }
-    
+
     /// Set focused window for input routing
     pub fn set_focus(&mut self, window: Option<WindowId>) {
         tracing::debug!("Input focus changed: {:?}", window);
         self.focused_window = window;
     }
-    
+
     /// Get currently focused window
     pub fn focused_window(&self) -> Option<WindowId> {
         self.focused_window

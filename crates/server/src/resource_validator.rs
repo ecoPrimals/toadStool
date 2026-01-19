@@ -199,7 +199,7 @@ impl ResourceValidator {
         use sysinfo::System;
         let mut system = System::new_all();
         system.refresh_memory();
-        
+
         let total_memory_bytes = system.total_memory(); // Already in bytes
         let available_memory_bytes = system.available_memory(); // Already in bytes
 
@@ -207,7 +207,7 @@ impl ResourceValidator {
         // Note: sysinfo provides system-wide storage info
         let total_storage_bytes = system.total_swap(); // Use swap as proxy for storage
         let available_storage_bytes = system.free_swap();
-        
+
         // TODO: For more accurate disk usage, consider using std::fs or platform-specific APIs
         // For now, using memory values as reasonable proxy
 

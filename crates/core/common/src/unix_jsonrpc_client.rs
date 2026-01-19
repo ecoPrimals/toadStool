@@ -195,9 +195,8 @@ impl UnixJsonRpcClient {
         params: Value,
     ) -> ToadStoolResult<T> {
         let result = self.call(method, params).await?;
-        serde_json::from_value(result).map_err(|e| {
-            ToadStoolError::network(format!("Failed to deserialize response: {}", e))
-        })
+        serde_json::from_value(result)
+            .map_err(|e| ToadStoolError::network(format!("Failed to deserialize response: {}", e)))
     }
 
     /// Check if socket exists and is accessible
@@ -242,7 +241,7 @@ mod tests {
     fn test_response_deserialization() {
         let json = r#"{"jsonrpc":"2.0","id":1,"result":{"status":"ok"}}"#;
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, 1);
         assert!(response.result.is_some());
@@ -251,12 +250,13 @@ mod tests {
 
     #[test]
     fn test_error_response_deserialization() {
-        let json = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
-        
+
         assert!(response.result.is_none());
         assert!(response.error.is_some());
-        
+
         let error = response.error.unwrap();
         assert_eq!(error.code, -32600);
         assert_eq!(error.message, "Invalid Request");

@@ -25,10 +25,15 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
 use toadstool_cli::{
-    ecosystem::EcosystemIntegrator, executor::BiomeExecutor,
-    network_config::SongbirdNetworkConfigurator, universal::UniversalComputeManager,
+    ecosystem::EcosystemIntegrator,
+    executor::BiomeExecutor,
+    network_config::SongbirdNetworkConfigurator,
+    universal::UniversalComputeManager,
     // zero_config::execute_zero_config_deployment,  // Temporarily disabled (HTTP deps)
-    Cli, CliContext, Commands, EcosystemCommands,
+    Cli,
+    CliContext,
+    Commands,
+    EcosystemCommands,
     UniversalCommands,
 };
 
@@ -229,12 +234,7 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             info!("📋 Listing biomes");
             let executor = BiomeExecutor::new().await?;
             executor
-                .list_biomes(
-                    *all,
-                    format.clone(),
-                    *resources,
-                    status.clone(),
-                )
+                .list_biomes(*all, format.clone(), *resources, status.clone())
                 .await?;
         }
 
@@ -314,15 +314,18 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         } => {
             // Determine which command name was used
             let is_server = matches!(&cli.command, Commands::Server { .. });
-            
+
             if is_server {
                 info!("🍄 ToadStool Server Mode (UniBin Standard)");
             } else {
                 info!("🍄 ToadStool Daemon Mode (backward compat)");
                 info!("💡 TIP: Use 'toadstool server' for ecosystem standard naming");
             }
-            
-            info!("   Register: {}", if *register { "enabled" } else { "disabled" });
+
+            info!(
+                "   Register: {}",
+                if *register { "enabled" } else { "disabled" }
+            );
             info!("   Port: {}", port);
             if let Some(sock) = socket {
                 info!("   Socket: {}", sock.display());
@@ -355,7 +358,6 @@ async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         //     execute_network_config_command(*apply, *validate, *summary, config_file, *test, export)
         //         .await?;
         // }
-
         Commands::Execute {
             workload,
             runtime,
@@ -579,16 +581,16 @@ async fn execute_ecosystem_command(action: &EcosystemCommands) -> Result<()> {
 ///
 /// UNIBIN PHASE 1 COMPLETE: CLI structure ready
 /// UNIBIN PHASE 2 BLOCKED: Server crate has 51 compilation errors
-/// 
+///
 /// Honest status: NOW 100% UniBin compliant! Library compiles, server integrated!
 async fn run_server_daemon() -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
-    
+
     // Call shared server implementation
     toadstool_server::run_server_main()
         .await
         .map_err(|e| anyhow::anyhow!("Server failed: {}", e))?;
-    
+
     Ok(())
 }
 

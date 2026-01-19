@@ -2,7 +2,7 @@
 //!
 //! This module provides integration with various ecosystem protocols and services,
 //! including `BearDog` security integration for authentication and authorization.
-//! 
+//!
 //! EVOLVED: Pure Rust! Uses Unix sockets for inter-primal communication (no reqwest!)
 
 use async_trait::async_trait;
@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{Mutex, RwLock};
-use tokio::net::UnixStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixStream;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -29,7 +29,7 @@ pub mod transport;
 pub mod types;
 
 /// `BearDog` security integration configuration
-/// 
+///
 /// EVOLVED: Pure Rust! Uses Unix socket paths instead of HTTP endpoints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
@@ -48,14 +48,13 @@ pub struct BearDogConfig {
 impl Default for BearDogConfig {
     fn default() -> Self {
         // EVOLVED: Pure Rust Unix socket discovery!
-        let socket_path = std::env::var("BEARDOG_SOCKET")
-            .unwrap_or_else(|_| {
-                // Standard primal socket location
-                let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-                    .unwrap_or_else(|_| "/tmp".to_string());
-                format!("{}/beardog.sock", runtime_dir)
-            });
-        
+        let socket_path = std::env::var("BEARDOG_SOCKET").unwrap_or_else(|_| {
+            // Standard primal socket location
+            let runtime_dir =
+                std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+            format!("{}/beardog.sock", runtime_dir)
+        });
+
         Self {
             socket_path,
             request_timeout_secs: 30,
@@ -142,7 +141,7 @@ pub struct SecurityAuditEvent {
 }
 
 /// `BearDog` security integration client
-/// 
+///
 /// EVOLVED: Pure Rust! Uses Unix sockets with JSON-RPC (no HTTP/reqwest!)
 pub struct BearDogIntegration {
     config: BearDogConfig,
@@ -156,7 +155,7 @@ pub struct BearDogIntegration {
 
 impl BearDogIntegration {
     /// Create a new `BearDog` integration client
-    /// 
+    ///
     /// EVOLVED: Pure Rust! No HTTP client needed!
     pub fn new(config: BearDogConfig) -> Result<Self, ToadStoolError> {
         // Pure Rust! No reqwest::Client! ✅
@@ -171,7 +170,7 @@ impl BearDogIntegration {
     }
 
     /// Authenticate with `BearDog` and obtain access token
-    /// 
+    ///
     /// EVOLVED: Pure Rust JSON-RPC over Unix socket!
     pub async fn authenticate(
         &self,
@@ -193,8 +192,9 @@ impl BearDogIntegration {
         // Try to call BearDog via Pure Rust Unix socket
         match self.make_request("auth.authenticate", &auth_request).await {
             Ok(result) => {
-                let auth_response: AuthResponse = serde_json::from_value(result)
-                    .map_err(|e| ToadStoolError::security(format!("Failed to parse auth response: {}", e)))?;
+                let auth_response: AuthResponse = serde_json::from_value(result).map_err(|e| {
+                    ToadStoolError::security(format!("Failed to parse auth response: {}", e))
+                })?;
 
                 // Store access token
                 let mut token = self.access_token.lock().await;
@@ -215,7 +215,7 @@ impl BearDogIntegration {
                 // Graceful degradation: BearDog not available
                 info!("⚠️  BearDog not available: {}", e);
                 info!("   Deep debt principle: ToadStool works standalone");
-                
+
                 // Return stub response for graceful degradation
                 Ok(AuthResponse {
                     access_token: "standalone".to_string(),
@@ -230,7 +230,7 @@ impl BearDogIntegration {
     }
 
     /// Check authorization for a resource and action
-    /// 
+    ///
     /// EVOLVED: Pure Rust JSON-RPC over Unix socket!
     pub async fn authorize(
         &self,
@@ -263,8 +263,10 @@ impl BearDogIntegration {
         // Try to call BearDog via Pure Rust Unix socket
         match self.make_request("authz.authorize", &authz_request).await {
             Ok(result) => {
-                let authz_response: AuthzResponse = serde_json::from_value(result)
-                    .map_err(|e| ToadStoolError::security(format!("Failed to parse authz response: {}", e)))?;
+                let authz_response: AuthzResponse =
+                    serde_json::from_value(result).map_err(|e| {
+                        ToadStoolError::security(format!("Failed to parse authz response: {}", e))
+                    })?;
 
                 // Audit the authorization decision
                 self.audit_authorization_decision(resource, action, &authz_response)
@@ -285,7 +287,7 @@ impl BearDogIntegration {
                 // Graceful degradation: BearDog not available
                 info!("⚠️  BearDog not available for authorization: {}", e);
                 info!("   Deep debt principle: ToadStool works standalone");
-                
+
                 // Return permissive response for graceful degradation
                 Ok(AuthzResponse {
                     allowed: true,
@@ -299,7 +301,7 @@ impl BearDogIntegration {
     }
 
     /// Perform zero-trust validation
-    /// 
+    ///
     /// EVOLVED: Pure Rust JSON-RPC over Unix socket!
     pub async fn zero_trust_validation(
         &self,
@@ -315,11 +317,14 @@ impl BearDogIntegration {
         });
 
         // Try to call BearDog via Pure Rust Unix socket
-        match self.make_request("authz.validate", &validation_request).await {
+        match self
+            .make_request("authz.validate", &validation_request)
+            .await
+        {
             Ok(result) => {
-                let is_valid = result["valid"]
-                    .as_bool()
-                    .ok_or_else(|| ToadStoolError::security("Invalid validation response format"))?;
+                let is_valid = result["valid"].as_bool().ok_or_else(|| {
+                    ToadStoolError::security("Invalid validation response format")
+                })?;
 
                 // Update last validation time
                 let mut last_validation = self.last_validation.lock().await;
@@ -328,10 +333,7 @@ impl BearDogIntegration {
                 if is_valid {
                     info!("✅ Zero-trust validation passed");
                 } else {
-                    warn!(
-                        "❌ Zero-trust validation failed: {:?}",
-                        result["reason"]
-                    );
+                    warn!("❌ Zero-trust validation failed: {:?}", result["reason"]);
                 }
 
                 Ok(is_valid)
@@ -340,7 +342,7 @@ impl BearDogIntegration {
                 // Graceful degradation: BearDog not available
                 info!("⚠️  BearDog not available for validation: {}", e);
                 info!("   Deep debt principle: ToadStool works standalone");
-                
+
                 // Return permissive for graceful degradation
                 Ok(true)
             }
@@ -497,10 +499,7 @@ impl BearDogIntegration {
                 );
             }
             Err(e) => {
-                warn!(
-                    "❌ Failed to flush audit events to BearDog: {}",
-                    e
-                );
+                warn!("❌ Failed to flush audit events to BearDog: {}", e);
                 // Re-add events to buffer for retry
                 let mut buffer = self.audit_buffer.lock().await;
                 buffer.extend(events);
@@ -516,9 +515,12 @@ impl BearDogIntegration {
         params: &T,
     ) -> ToadStoolResult<serde_json::Value> {
         // EVOLVED: Pure Rust JSON-RPC over Unix socket!
-        let mut stream = UnixStream::connect(&self.config.socket_path).await
-            .map_err(|e| ToadStoolError::security(format!("Failed to connect to BearDog: {}", e)))?;
-        
+        let mut stream = UnixStream::connect(&self.config.socket_path)
+            .await
+            .map_err(|e| {
+                ToadStoolError::security(format!("Failed to connect to BearDog: {}", e))
+            })?;
+
         // Create JSON-RPC 2.0 request
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -531,12 +533,16 @@ impl BearDogIntegration {
             .map_err(|e| ToadStoolError::security(format!("Failed to serialize request: {}", e)))?;
 
         // Send request
-        stream.write_all(request_str.as_bytes()).await
+        stream
+            .write_all(request_str.as_bytes())
+            .await
             .map_err(|e| ToadStoolError::security(format!("Failed to send request: {}", e)))?;
 
         // Read response
         let mut response = Vec::new();
-        stream.read_to_end(&mut response).await
+        stream
+            .read_to_end(&mut response)
+            .await
             .map_err(|e| ToadStoolError::security(format!("Failed to read response: {}", e)))?;
 
         // Parse JSON-RPC response
@@ -544,10 +550,14 @@ impl BearDogIntegration {
             .map_err(|e| ToadStoolError::security(format!("Failed to parse response: {}", e)))?;
 
         if let Some(error) = response_json.get("error") {
-            return Err(ToadStoolError::security(format!("BearDog error: {}", error)));
+            return Err(ToadStoolError::security(format!(
+                "BearDog error: {}",
+                error
+            )));
         }
 
-        response_json.get("result")
+        response_json
+            .get("result")
             .cloned()
             .ok_or_else(|| ToadStoolError::security("No result in response"))
     }

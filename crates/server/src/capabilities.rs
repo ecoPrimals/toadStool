@@ -96,7 +96,10 @@ impl PrimalCapabilities {
         info!("   - Primal ID: {}", primal_id);
         info!("   - Type: {}", primal_type);
         info!("   - CPU Cores: {}", resources.cpu_cores);
-        info!("   - Memory: {} GB", resources.total_memory_bytes / (1024 * 1024 * 1024));
+        info!(
+            "   - Memory: {} GB",
+            resources.total_memory_bytes / (1024 * 1024 * 1024)
+        );
         info!("   - GPUs: {}", resources.gpu_devices.len());
         info!("   - Capabilities: {}", capabilities.len());
         info!("   - Socket: {}", socket_path.display());
@@ -120,7 +123,7 @@ impl PrimalCapabilities {
     /// - No centralized registry!
     pub async fn announce(&self) -> Result<(), String> {
         let discovery_dir = discovery_directory();
-        
+
         // Create discovery directory if needed
         fs::create_dir_all(&discovery_dir)
             .await
@@ -148,15 +151,19 @@ impl PrimalCapabilities {
         debug!("🔍 Searching for peer with capability: {}", capability);
 
         let discovery_dir = discovery_directory();
-        
+
         // Read all capability files
         let mut entries = fs::read_dir(&discovery_dir)
             .await
             .map_err(|e| format!("Failed to read discovery directory: {}", e))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| format!("Failed to read entry: {}", e))? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| format!("Failed to read entry: {}", e))?
+        {
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) != Some("json") {
                 continue;
             }
@@ -171,7 +178,10 @@ impl PrimalCapabilities {
 
             // Check if peer has the capability
             if peer.capabilities.iter().any(|c| c.contains(capability)) {
-                info!("✅ Found peer with capability '{}': {}", capability, peer.primal_id);
+                info!(
+                    "✅ Found peer with capability '{}': {}",
+                    capability, peer.primal_id
+                );
                 return Ok(peer);
             }
         }
@@ -193,21 +203,23 @@ impl PrimalCapabilities {
             .await
             .map_err(|e| format!("Failed to read discovery directory: {}", e))?;
 
-        while let Some(entry) = entries.next_entry().await.map_err(|e| format!("Failed to read entry: {}", e))? {
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| format!("Failed to read entry: {}", e))?
+        {
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) != Some("json") {
                 continue;
             }
 
             // Read peer capability file
             match fs::read_to_string(&path).await {
-                Ok(json) => {
-                    match serde_json::from_str::<PrimalCapabilities>(&json) {
-                        Ok(peer) => peers.push(peer),
-                        Err(e) => warn!("Failed to parse {}: {}", path.display(), e),
-                    }
-                }
+                Ok(json) => match serde_json::from_str::<PrimalCapabilities>(&json) {
+                    Ok(peer) => peers.push(peer),
+                    Err(e) => warn!("Failed to parse {}: {}", path.display(), e),
+                },
                 Err(e) => warn!("Failed to read {}: {}", path.display(), e),
             }
         }
@@ -243,7 +255,7 @@ pub fn query_system_resources() -> SystemResources {
     use sysinfo::System;
     let mut sys = System::new_all();
     sys.refresh_all();
-    
+
     let total_memory = sys.total_memory();
     let available_memory = sys.available_memory();
 
@@ -345,17 +357,17 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
 ///
 /// Deep debt principle: Standard location for peer discovery
 fn discovery_directory() -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| "/tmp".to_string());
-    
-    PathBuf::from(runtime_dir).join("ecoPrimals").join("discovery")
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+
+    PathBuf::from(runtime_dir)
+        .join("ecoPrimals")
+        .join("discovery")
 }
 
 /// Get default socket path for this primal
 fn default_socket_path(primal_id: &str) -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| "/tmp".to_string());
-    
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+
     PathBuf::from(runtime_dir)
         .join("ecoPrimals")
         .join("sockets")

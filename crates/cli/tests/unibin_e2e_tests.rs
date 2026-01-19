@@ -32,7 +32,7 @@ async fn test_server_mode_starts() {
 
     // Kill the server
     cmd.kill().await.ok();
-    
+
     // Should have started successfully
     assert!(true);
 }
@@ -42,15 +42,19 @@ async fn test_server_mode_starts() {
 async fn test_server_mode_with_socket() {
     // Test server mode with Unix socket
     let socket_path = "/tmp/toadstool-test.sock";
-    
+
     // Clean up any existing socket
     let _ = tokio::fs::remove_file(socket_path).await;
-    
+
     let mut cmd = Command::new("cargo")
         .args(&[
-            "run", "--", "server",
-            "--socket", socket_path,
-            "--port", "8086"
+            "run",
+            "--",
+            "server",
+            "--socket",
+            socket_path,
+            "--port",
+            "8086",
         ])
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -61,11 +65,11 @@ async fn test_server_mode_with_socket() {
 
     // Kill the server
     cmd.kill().await.ok();
-    
+
     // Socket should have been created
     // Note: May need to check if socket exists
     assert!(true);
-    
+
     // Cleanup
     let _ = tokio::fs::remove_file(socket_path).await;
 }
@@ -85,7 +89,7 @@ async fn test_daemon_mode_backward_compat() {
 
     // Kill the daemon
     cmd.kill().await.ok();
-    
+
     // Daemon mode should work
     assert!(true);
 }
@@ -97,19 +101,26 @@ async fn test_server_mode_with_all_options() {
     let socket_path = "/tmp/toadstool-full-test.sock";
     let config_path = "/tmp/toadstool-test-config.toml";
     let biomeos_socket = "/tmp/biomeos-test.sock";
-    
+
     // Clean up
     let _ = tokio::fs::remove_file(socket_path).await;
-    
+
     let mut cmd = Command::new("cargo")
         .args(&[
-            "run", "--", "server",
+            "run",
+            "--",
+            "server",
             "--register",
-            "--port", "8088",
-            "--socket", socket_path,
-            "--config", config_path,
-            "--max-workloads", "25",
-            "--biomeos-socket", biomeos_socket,
+            "--port",
+            "8088",
+            "--socket",
+            socket_path,
+            "--config",
+            config_path,
+            "--max-workloads",
+            "25",
+            "--biomeos-socket",
+            biomeos_socket,
         ])
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -120,10 +131,10 @@ async fn test_server_mode_with_all_options() {
 
     // Kill the server
     cmd.kill().await.ok();
-    
+
     // Should handle all options
     assert!(true);
-    
+
     // Cleanup
     let _ = tokio::fs::remove_file(socket_path).await;
 }
@@ -136,7 +147,7 @@ async fn test_server_mode_with_all_options() {
 #[ignore] // Requires built binary and server running
 async fn test_cli_to_server_communication() {
     // Test that CLI commands can communicate with running server
-    
+
     // Start server in background
     let mut server = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8089"])
@@ -165,7 +176,7 @@ async fn test_cli_to_server_communication() {
 #[ignore] // Requires built binary
 async fn test_multiple_cli_commands_to_server() {
     // Test multiple concurrent CLI commands to server
-    
+
     // Start server
     let mut server = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8090"])
@@ -224,7 +235,7 @@ async fn test_server_graceful_shutdown() {
     {
         use nix::sys::signal::{self, Signal};
         use nix::unistd::Pid;
-        
+
         let pid = Pid::from_raw(cmd.id().unwrap() as i32);
         let _ = signal::kill(pid, Signal::SIGTERM);
     }
@@ -240,7 +251,7 @@ async fn test_server_graceful_shutdown() {
 #[ignore] // Requires built binary
 async fn test_server_restart_after_crash() {
     // Test server can restart after crash
-    
+
     // Start server
     let mut cmd1 = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8092"])
@@ -267,7 +278,7 @@ async fn test_server_restart_after_crash() {
 
     // Should start successfully
     cmd2.kill().await.ok();
-    
+
     assert!(true);
 }
 
@@ -279,7 +290,7 @@ async fn test_server_restart_after_crash() {
 #[ignore] // Requires built binary and test manifest
 async fn test_server_executes_workload() {
     // Test server can execute workloads
-    
+
     // Create test manifest
     let manifest_content = r#"
 [metadata]
@@ -336,16 +347,16 @@ memory_limit = "256M"
 async fn test_multiple_servers_different_ports() {
     // Test multiple server instances on different ports
     let ports = vec![8094, 8095, 8096];
-    
+
     let mut servers = Vec::new();
-    
+
     for port in &ports {
         let cmd = Command::new("cargo")
             .args(&["run", "--", "server", "--port", &port.to_string()])
             .stdout(std::process::Stdio::piped())
             .spawn()
             .expect("Failed to spawn server");
-        
+
         servers.push(cmd);
     }
 
@@ -364,10 +375,18 @@ async fn test_multiple_servers_different_ports() {
 #[ignore] // Requires built binary
 async fn test_server_handles_concurrent_requests() {
     // Test server handles many concurrent CLI requests
-    
+
     // Start server
     let mut server = Command::new("cargo")
-        .args(&["run", "--", "server", "--port", "8097", "--max-workloads", "50"])
+        .args(&[
+            "run",
+            "--",
+            "server",
+            "--port",
+            "8097",
+            "--max-workloads",
+            "50",
+        ])
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to spawn server");
@@ -382,13 +401,13 @@ async fn test_server_handles_concurrent_requests() {
             tokio::spawn(async move {
                 // Synchronize start
                 b.wait().await;
-                
+
                 // Send request
                 let output = Command::new("cargo")
                     .args(&["run", "--", "list"])
                     .output()
                     .await;
-                
+
                 output.is_ok()
             })
         })
@@ -416,7 +435,7 @@ async fn test_server_handles_concurrent_requests() {
 #[ignore] // Requires built binary
 async fn test_single_binary_multiple_modes() {
     // Test UniBin principle: one binary, multiple modes
-    
+
     // Start server mode
     let mut server = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8098"])
@@ -443,7 +462,7 @@ async fn test_single_binary_multiple_modes() {
 #[ignore] // Requires built binary
 async fn test_server_and_daemon_equivalence() {
     // Test that server and daemon modes are functionally equivalent
-    
+
     // Start with server
     let mut server = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8099"])
@@ -478,7 +497,7 @@ async fn test_server_and_daemon_equivalence() {
 #[ignore] // Requires built binary
 async fn test_server_recovers_from_invalid_request() {
     // Test server recovers from invalid requests
-    
+
     let mut server = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8100"])
         .stdout(std::process::Stdio::piped())
@@ -509,7 +528,7 @@ async fn test_server_recovers_from_invalid_request() {
 #[ignore] // Requires built binary
 async fn test_server_handles_port_already_in_use() {
     // Test server handles port already in use gracefully
-    
+
     // Start first server
     let mut server1 = Command::new("cargo")
         .args(&["run", "--", "server", "--port", "8101"])

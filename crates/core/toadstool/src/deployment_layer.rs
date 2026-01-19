@@ -552,8 +552,7 @@ impl LayerDetector {
     async fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
         // PURE RUST: Use environment variable or return default
         // For detailed metadata, use Songbird for external HTTP
-        std::env::var("GCE_MACHINE_TYPE")
-            .or(Ok("unknown".to_string()))
+        std::env::var("GCE_MACHINE_TYPE").or(Ok("unknown".to_string()))
     }
 
     /// Get GCP region
@@ -578,8 +577,7 @@ impl LayerDetector {
     async fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
         // PURE RUST: Use environment variable or return default
         // For detailed metadata, use Songbird for external HTTP
-        std::env::var("AZURE_VM_SIZE")
-            .or(Ok("unknown".to_string()))
+        std::env::var("AZURE_VM_SIZE").or(Ok("unknown".to_string()))
     }
 
     /// Get Azure region

@@ -183,8 +183,9 @@ impl OptimizationCache {
     /// - Windows: %LOCALAPPDATA%\barracuda\
     fn cache_path(gpu: &GpuFingerprint) -> Result<PathBuf> {
         use etcetera::{choose_base_strategy, BaseStrategy};
-        
-        let strategy = choose_base_strategy().context("Failed to determine base directory strategy")?;
+
+        let strategy =
+            choose_base_strategy().context("Failed to determine base directory strategy")?;
         let cache_dir = strategy.cache_dir();
 
         let barracuda_cache = cache_dir.join("barracuda");

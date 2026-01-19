@@ -16,12 +16,12 @@ impl DisplayServer {
     pub fn new(_manager: crate::WindowManager) -> Self {
         todo!("Phase 1: Implement display server")
     }
-    
+
     /// Bind to Unix socket path
     pub async fn bind(self, _path: impl Into<PathBuf>) -> Result<Self> {
         todo!("Phase 1: Implement socket binding")
     }
-    
+
     /// Serve requests
     pub async fn serve(self) -> Result<()> {
         todo!("Phase 1: Implement request handling")

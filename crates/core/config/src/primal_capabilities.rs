@@ -35,11 +35,11 @@
 //! # }
 //! ```
 
+use etcetera::BaseStrategy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
-use etcetera::BaseStrategy;  // Pure Rust directory paths
+use std::path::Path; // Pure Rust directory paths
 
 /// Primal capability registry error
 #[derive(Debug, thiserror::Error)]
@@ -246,7 +246,10 @@ impl PrimalCapabilitiesRegistry {
         // NEW: etcetera (100% Pure Rust!)
         match etcetera::choose_base_strategy() {
             Ok(strategy) => {
-                let config_path = strategy.config_dir().join("toadstool").join("primal-capabilities.toml");
+                let config_path = strategy
+                    .config_dir()
+                    .join("toadstool")
+                    .join("primal-capabilities.toml");
                 if config_path.exists() {
                     return Self::load_from_file(config_path);
                 }

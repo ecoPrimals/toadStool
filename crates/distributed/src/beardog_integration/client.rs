@@ -17,9 +17,9 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use toadstool_common::{ToadStoolError, ToadStoolResult};
 use toadstool_common::primal_sockets::get_socket_path_for_service;
 use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+use toadstool_common::{ToadStoolError, ToadStoolResult};
 
 #[allow(unused_imports)] // Keep for discovery trait implementations
 use std::time::Duration;
@@ -238,9 +238,7 @@ impl BearDogClient {
         let params = serde_json::to_value(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        self.rpc_client
-            .call_typed("beardog.encrypt", params)
-            .await
+        self.rpc_client.call_typed("beardog.encrypt", params).await
     }
 
     /// Decrypt data using BearDog via unix socket
@@ -250,9 +248,7 @@ impl BearDogClient {
         let params = serde_json::to_value(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        self.rpc_client
-            .call_typed("beardog.decrypt", params)
-            .await
+        self.rpc_client.call_typed("beardog.decrypt", params).await
     }
 
     /// Manage keys using BearDog via unix socket
@@ -284,9 +280,7 @@ impl BearDogClient {
         let params = serde_json::to_value(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        self.rpc_client
-            .call_typed("beardog.sign", params)
-            .await
+        self.rpc_client.call_typed("beardog.sign", params).await
     }
 
     /// Verify signature using BearDog via unix socket
@@ -308,10 +302,8 @@ impl BearDogClient {
         let params = serde_json::to_value(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
 
-        let result: VerificationResponse = self
-            .rpc_client
-            .call_typed("beardog.verify", params)
-            .await?;
+        let result: VerificationResponse =
+            self.rpc_client.call_typed("beardog.verify", params).await?;
 
         Ok(result.valid)
     }
@@ -363,10 +355,13 @@ impl BearDogClient {
 
         let mut params = serde_json::to_value(&request)
             .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {}", e)))?;
-        
+
         // Add permission_id to params
         if let Some(obj) = params.as_object_mut() {
-            obj.insert("permission_id".to_string(), serde_json::json!(permission_id.to_string()));
+            obj.insert(
+                "permission_id".to_string(),
+                serde_json::json!(permission_id.to_string()),
+            );
         }
 
         let _: serde_json::Value = self

@@ -26,8 +26,8 @@ use toadstool_distributed::{DistributedConfig, DistributedCoordinator};
 
 // Deep debt solution: Use pure RPC types from local module
 use crate::rpc_types::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics,
-    WorkloadResult, WorkloadStatus, WorkloadSubmission,
+    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, WorkloadResult,
+    WorkloadStatus, WorkloadSubmission,
 };
 // WorkloadExecutor trait is defined in tarpc_server module
 use crate::tarpc_server::WorkloadExecutor;
@@ -117,28 +117,26 @@ impl WorkloadExecutor for CoordinatorExecutor {
         // The coordinator will report what THIS instance can do
 
         let cpu_cores = num_cpus::get() as u32;
-        
+
         // Query memory - Pure Rust Evolution (Jan 17, 2026)
         use sysinfo::System;
         let mut system = System::new_all();
         system.refresh_memory();
-        
+
         let total_memory = system.total_memory(); // Already in bytes
         let available_memory = system.available_memory(); // Already in bytes
 
         Ok(ComputeCapabilities {
             service_id: self.service_id.clone(),
-            compute_units: vec![
-                ComputeUnit {
-                    id: "coordinator-local".to_string(),
-                    unit_type: "distributed".to_string(),
-                    name: "Distributed Coordinator".to_string(),
-                    cores: cpu_cores,
-                    memory_bytes: total_memory,
-                    tflops: Some((cpu_cores as f64) * 0.1),
-                    utilization: 0.0,
-                },
-            ],
+            compute_units: vec![ComputeUnit {
+                id: "coordinator-local".to_string(),
+                unit_type: "distributed".to_string(),
+                name: "Distributed Coordinator".to_string(),
+                cores: cpu_cores,
+                memory_bytes: total_memory,
+                tflops: Some((cpu_cores as f64) * 0.1),
+                utilization: 0.0,
+            }],
             supported_workload_types: vec![
                 "cpu_compute".to_string(),
                 "gpu_compute".to_string(),

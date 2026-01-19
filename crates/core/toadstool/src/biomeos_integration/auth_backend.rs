@@ -109,7 +109,9 @@ impl AuthBackend for BearDogBackend {
             .rpc_client
             .call_typed("beardog.request_token", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}")))?;
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}"))
+            })?;
 
         // Validate token
         self.validate_token(&token)?;

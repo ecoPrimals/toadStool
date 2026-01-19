@@ -152,11 +152,11 @@ impl ToadStoolSongbirdIntegration {
             "HTTP submission deprecated for endpoint: {} - use Unix socket RPC instead",
             endpoint
         );
-        
+
         // Return error indicating this method is deprecated
         Err(ToadStoolError::not_supported(
             "HTTP job submission removed - use Unix socket RPC via SongbirdClient instead. \
-             External HTTP should go through Songbird primal (Concentrated Gap architecture)."
+             External HTTP should go through Songbird primal (Concentrated Gap architecture).",
         ))
     }
 

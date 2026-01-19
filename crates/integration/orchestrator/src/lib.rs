@@ -44,7 +44,7 @@ impl OrchestratorClient {
     /// **DEPRECATED**: Use `SongbirdClient::discover()` instead
     pub async fn discover(discovery: &dyn CapabilityDiscovery) -> Result<Self, OrchestratorError> {
         warn!("OrchestratorClient::discover() is deprecated - use SongbirdClient instead");
-        
+
         // Stub implementation
         let _ = discovery;
         Ok(Self {
@@ -72,7 +72,10 @@ impl OrchestratorClient {
         &self,
         registration: ServiceRegistration,
     ) -> Result<RegistrationResponse, OrchestratorError> {
-        info!("Stub: register service {} - use Songbird", registration.service_id);
+        info!(
+            "Stub: register service {} - use Songbird",
+            registration.service_id
+        );
         Ok(RegistrationResponse {
             service_id: registration.service_id,
             status: "stub".to_string(),
@@ -82,7 +85,10 @@ impl OrchestratorClient {
 
     /// Report health - STUB
     pub async fn report_health(&self, health: HealthReport) -> Result<(), OrchestratorError> {
-        info!("Stub: report health for {} - use Songbird", health.service_id);
+        info!(
+            "Stub: report health for {} - use Songbird",
+            health.service_id
+        );
         Ok(())
     }
 
@@ -91,7 +97,10 @@ impl OrchestratorClient {
         &self,
         capability: &str,
     ) -> Result<Vec<DiscoveredServiceInfo>, OrchestratorError> {
-        info!("Stub: discover service with capability {} - use Songbird", capability);
+        info!(
+            "Stub: discover service with capability {} - use Songbird",
+            capability
+        );
         Ok(vec![])
     }
 
@@ -143,13 +152,13 @@ pub struct DiscoveredServiceInfo {
 pub enum OrchestratorError {
     #[error("Discovery failed: {0}")]
     DiscoveryFailed(String),
-    
+
     #[error("Request failed: {0}")]
     RequestFailed(String),
-    
+
     #[error("Registration failed: {0}")]
     RegistrationFailed(String),
-    
+
     #[error("Invalid response: {0}")]
     InvalidResponse(String),
 }

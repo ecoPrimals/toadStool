@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
-use crate::BiomeStatus;
 use super::BiomeInfo;
+use crate::BiomeStatus;
 
 /// Display manager for UI and logging
 #[allow(dead_code)]
@@ -56,7 +56,8 @@ impl DisplayManager {
                 BiomeStatus::Migrating => "migrating".cyan(),
             };
 
-            let started = info.started
+            let started = info
+                .started
                 .map(|dt| dt.format("%Y-%m-%d %H:%M").to_string())
                 .unwrap_or_else(|| "not started".to_string());
 
@@ -99,11 +100,7 @@ impl DisplayManager {
         let mut all_lines = reader.lines();
         let mut buffer = Vec::new();
 
-        while let Some(line) = all_lines
-            .next_line()
-            .await
-            .context("Failed to read line")?
-        {
+        while let Some(line) = all_lines.next_line().await.context("Failed to read line")? {
             buffer.push(line);
             if buffer.len() > lines {
                 buffer.remove(0);

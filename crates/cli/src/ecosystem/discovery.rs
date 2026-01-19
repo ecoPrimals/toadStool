@@ -69,7 +69,7 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 /// ```
 pub fn discover_from_config(capability_category: &str) -> Option<String> {
     use etcetera::{choose_base_strategy, BaseStrategy};
-    
+
     // Try multiple config locations
     let config_paths = if let Ok(strategy) = choose_base_strategy() {
         vec![

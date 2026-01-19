@@ -241,7 +241,7 @@ impl ResourceOptimizer {
         use sysinfo::System;
         let mut system = System::new_all();
         system.refresh_memory();
-        
+
         let total_memory_bytes = system.total_memory(); // Already in bytes
         let available_memory_bytes = system.available_memory(); // Already in bytes
 

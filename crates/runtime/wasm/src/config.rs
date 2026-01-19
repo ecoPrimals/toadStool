@@ -47,22 +47,22 @@ impl SecurityLevel {
 pub struct WasmRuntimeConfig {
     /// Module caching configuration
     pub cache: CacheConfig,
-    
+
     /// Security isolation level
     pub security_level: SecurityLevel,
-    
+
     /// Memory limits in megabytes
     pub max_memory_mb: u64,
-    
+
     /// Maximum memory pages (WASM page = 64KB)
     pub max_pages: u32,
-    
+
     /// Execution timeout in milliseconds
     pub execution_timeout_ms: u64,
-    
+
     /// Module load timeout in milliseconds
     pub module_load_timeout_ms: u64,
-    
+
     /// Fuel limit for execution (None = unlimited)
     pub fuel_limit: Option<u64>,
 }
@@ -179,8 +179,12 @@ impl WasmRuntimeConfigBuilder {
             security_level: self.security_level.unwrap_or(default.security_level),
             max_memory_mb: self.max_memory_mb.unwrap_or(default.max_memory_mb),
             max_pages: self.max_pages.unwrap_or(default.max_pages),
-            execution_timeout_ms: self.execution_timeout_ms.unwrap_or(default.execution_timeout_ms),
-            module_load_timeout_ms: self.module_load_timeout_ms.unwrap_or(default.module_load_timeout_ms),
+            execution_timeout_ms: self
+                .execution_timeout_ms
+                .unwrap_or(default.execution_timeout_ms),
+            module_load_timeout_ms: self
+                .module_load_timeout_ms
+                .unwrap_or(default.module_load_timeout_ms),
             fuel_limit: self.fuel_limit.unwrap_or(default.fuel_limit),
         }
     }

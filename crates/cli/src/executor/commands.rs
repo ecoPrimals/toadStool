@@ -185,7 +185,7 @@ impl BiomeExecutor {
                 manifest,
                 env,
                 detach,
-                false, // debug
+                false,      // debug
                 "standard", // security level
             )
             .await?;
@@ -231,7 +231,8 @@ impl BiomeExecutor {
         }
 
         // Stop biome (with timeout, force)
-        self.stop_biome_internal(&biome_name, force, timeout_secs).await?;
+        self.stop_biome_internal(&biome_name, force, timeout_secs)
+            .await?;
 
         info!("✅ Biome '{}' stopped successfully", biome_name);
 

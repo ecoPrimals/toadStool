@@ -156,9 +156,13 @@ async fn query_local_capabilities() -> Vec<String> {
 /// Register with ecosystem (Songbird discovery)
 ///
 /// Deep debt principle: Self-knowledge + Announcement (not registration!)
-async fn announce_capabilities_to_ecosystem(_socket_path: &PathBuf, _family_id: &str, _version: &str) {
+async fn announce_capabilities_to_ecosystem(
+    _socket_path: &PathBuf,
+    _family_id: &str,
+    _version: &str,
+) {
     use toadstool_server::capabilities::PrimalCapabilities;
-    
+
     info!("🔍 Discovering self capabilities (self-knowledge!)");
 
     // EVOLVED: Self-knowledge + announcement (not external registration!)
@@ -168,7 +172,10 @@ async fn announce_capabilities_to_ecosystem(_socket_path: &PathBuf, _family_id: 
     info!("   - Primal ID: {}", capabilities.primal_id);
     info!("   - Type: {}", capabilities.primal_type);
     info!("   - CPU Cores: {}", capabilities.resources.cpu_cores);
-    info!("   - Memory: {} GB", capabilities.resources.total_memory_bytes / (1024 * 1024 * 1024));
+    info!(
+        "   - Memory: {} GB",
+        capabilities.resources.total_memory_bytes / (1024 * 1024 * 1024)
+    );
     info!("   - Architecture: {}", capabilities.resources.architecture);
     info!("   - OS: {}", capabilities.resources.os);
     info!("   - Capabilities: {}", capabilities.capabilities.len());

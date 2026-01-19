@@ -10,7 +10,7 @@ use super::registry::ServiceRegistry;
 use crate::types::UniversalJob;
 
 /// Ecosystem caller for invoking external services
-/// 
+///
 /// **DEPRECATED**: HTTP-based external calls removed
 /// **Use**: Unix socket connections via primal integrations instead
 pub struct EcosystemCaller {

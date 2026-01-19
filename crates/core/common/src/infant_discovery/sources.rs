@@ -208,7 +208,7 @@ impl EndpointSource for MDNSSource {
                     // PURE RUST: Use unix socket paths instead of HTTP
                     let socket_path = crate::primal_sockets::get_socket_path_for_service(svc);
                     let endpoint = format!("unix://{}", socket_path.display());
-                    
+
                     tracing::debug!(
                         service,
                         endpoint,

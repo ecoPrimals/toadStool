@@ -72,10 +72,10 @@ pub struct BiomeExecutor {
 
 // ✅ REFACTORED: Split by logical domains (Smart Refactoring - Deep Debt!)
 // Domain modules contain `impl BiomeExecutor { ... }` for their specific concerns
-mod commands;          // Public CLI commands (new, run, up, down, list, logs)
-mod lifecycle_ops;     // Internal lifecycle (start/stop biomes, primals, services)
-mod display_ops;       // Display & logging (table printing, log viewing)
-mod wasm_ops;          // WASM operations (loading, verification, execution)
+mod commands; // Public CLI commands (new, run, up, down, list, logs)
+mod display_ops; // Display & logging (table printing, log viewing)
+mod lifecycle_ops; // Internal lifecycle (start/stop biomes, primals, services)
+mod wasm_ops; // WASM operations (loading, verification, execution)
 
 #[cfg(test)]
 mod tests {

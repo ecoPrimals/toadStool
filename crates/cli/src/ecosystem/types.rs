@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
@@ -327,16 +327,18 @@ impl CryptoVerificationContext {
     ) -> Result<bool> {
         // Parse public key from bytes (RustCrypto ed25519-dalek - pure Rust!)
         let public_key = VerifyingKey::from_bytes(
-            public_key_bytes.try_into()
-                .map_err(|_| anyhow::anyhow!("Invalid public key length (expected 32 bytes)"))?
+            public_key_bytes
+                .try_into()
+                .map_err(|_| anyhow::anyhow!("Invalid public key length (expected 32 bytes)"))?,
         )?;
-        
+
         // Parse signature from bytes
         let signature = Signature::from_bytes(
-            signature_bytes.try_into()
-                .map_err(|_| anyhow::anyhow!("Invalid signature length (expected 64 bytes)"))?
+            signature_bytes
+                .try_into()
+                .map_err(|_| anyhow::anyhow!("Invalid signature length (expected 64 bytes)"))?,
         );
-        
+
         // Verify signature using RustCrypto (pure Rust, no C/assembly!)
         match public_key.verify(message, &signature) {
             Ok(()) => Ok(true),

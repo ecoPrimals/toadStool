@@ -73,7 +73,7 @@ impl EntropyClient {
                 Ok(Self {
                     endpoint: None,
                     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                        toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
+                        toadstool_common::primal_sockets::get_socket_path_for_service("beardog"),
                     ),
                     available: false,
                 })
@@ -94,11 +94,11 @@ impl EntropyClient {
     async fn discover_via_capability() -> Result<String> {
         // Future: Implement full capability discovery via songBird unix socket
         // Current: Falls back to system entropy (graceful degradation)
-        
+
         // Check for local development bearDog instance
         let candidate_urls = vec![
-            "http://localhost:8081",  // Common bearDog port
-            "http://localhost:3000",  // Alternative
+            "http://localhost:8081", // Common bearDog port
+            "http://localhost:3000", // Alternative
         ];
 
         for url in candidate_urls {
@@ -116,14 +116,14 @@ impl EntropyClient {
     async fn probe_service(_url: &str) -> Result<()> {
         // PURE RUST: Try to connect to unix socket (vendor-agnostic!)
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
-        
+
         match tokio::net::UnixStream::connect(socket_path).await {
             Ok(_) => {
                 tracing::debug!("BearDog unix socket available");
                 Ok(())
             }
             Err(e) => {
-                anyhow::bail!("BearDog socket not available: {}", e)
+                anyhow::bail!("BearDog socket not available: {e}")
             }
         }
     }
@@ -133,7 +133,7 @@ impl EntropyClient {
     /// **PURE RUST**: Uses unix socket instead of HTTP
     async fn connect(endpoint: &str) -> Result<Self> {
         let socket_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_socket_path_for_service("beardog")
+            toadstool_common::primal_sockets::get_socket_path_for_service("beardog"),
         );
 
         // Verify service is reachable via unix socket
@@ -161,7 +161,8 @@ impl EntropyClient {
     ///
     /// Returns error if request fails and fallback is disabled.
     pub async fn generate_seed(&self) -> Result<EphemeralSeed> {
-        self.generate_seed_with_request(SeedRequest::default()).await
+        self.generate_seed_with_request(SeedRequest::default())
+            .await
     }
 
     /// Generate seed with custom request
@@ -172,15 +173,18 @@ impl EntropyClient {
     pub async fn generate_seed_with_request(&self, request: SeedRequest) -> Result<EphemeralSeed> {
         if !self.available {
             // Fallback to system entropy
-            return self.system_entropy_fallback();
+            return Self::system_entropy_fallback();
         }
 
         // Request from bearDog
         match self.request_from_beardog(&request).await {
             Ok(seed) => Ok(seed),
             Err(e) => {
-                tracing::warn!("bearDog request failed: {}, falling back to system entropy", e);
-                self.system_entropy_fallback()
+                tracing::warn!(
+                    "bearDog request failed: {}, falling back to system entropy",
+                    e
+                );
+                Self::system_entropy_fallback()
             }
         }
     }
@@ -189,10 +193,10 @@ impl EntropyClient {
     ///
     /// **PURE RUST**: JSON-RPC over unix socket (no HTTP!)
     async fn request_from_beardog(&self, request: &SeedRequest) -> Result<EphemeralSeed> {
-        let params = serde_json::to_value(request)
-            .context("Failed to serialize seed request")?;
+        let params = serde_json::to_value(request).context("Failed to serialize seed request")?;
 
-        let seed: EphemeralSeed = self.rpc_client
+        let seed: EphemeralSeed = self
+            .rpc_client
             .call_typed("beardog.entropy.generate_seed", params)
             .await
             .context("Failed to request seed from bearDog")?;
@@ -204,7 +208,7 @@ impl EntropyClient {
     ///
     /// When bearDog unavailable, use system RNG.
     /// Quality is lower (pure machine entropy), but sufficient for many use cases.
-    fn system_entropy_fallback(&self) -> Result<EphemeralSeed> {
+    fn system_entropy_fallback() -> Result<EphemeralSeed> {
         use std::time::SystemTime;
 
         // Generate random bytes using system entropy
@@ -217,9 +221,9 @@ impl EntropyClient {
         }
 
         let quality = SeedQuality::new(
-            0.7,  // Acceptable but not cryptographic
-            0.9,  // Good machine entropy
-            0.0,  // No human entropy
+            0.7, // Acceptable but not cryptographic
+            0.9, // Good machine entropy
+            0.0, // No human entropy
         );
 
         let mixing = EntropyMixing {
@@ -257,12 +261,12 @@ mod tests {
         let client = EntropyClient {
             endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_beardog_socket_path()
+                toadstool_common::primal_sockets::get_beardog_socket_path(),
             ),
             available: false,
         };
 
-        let seed = client.system_entropy_fallback();
+        let seed = EntropyClient::system_entropy_fallback();
         assert!(seed.is_ok());
 
         let seed = seed.unwrap();
@@ -275,7 +279,7 @@ mod tests {
         let client = EntropyClient {
             endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_beardog_socket_path()
+                toadstool_common::primal_sockets::get_beardog_socket_path(),
             ),
             available: false,
         };

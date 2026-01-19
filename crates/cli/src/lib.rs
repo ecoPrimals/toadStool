@@ -323,7 +323,7 @@ pub enum Commands {
         biomeos_socket: Option<PathBuf>,
     },
 
-    // UNIBIN PHASE 1: ZeroConfig temporarily disabled (has HTTP dependencies)  
+    // UNIBIN PHASE 1: ZeroConfig temporarily disabled (has HTTP dependencies)
     // Will be re-enabled in Phase 2 after full HTTP cleanup
     // /// Zero-configuration rapid deployment
     // ZeroConfig {
@@ -372,7 +372,6 @@ pub enum Commands {
     //     #[arg(long)]
     //     export: Option<PathBuf>,
     // },
-
     /// Execute a workload directly (no biome.yaml required)
     Execute {
         /// Workload specification file (TOML or JSON)

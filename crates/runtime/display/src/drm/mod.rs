@@ -5,12 +5,12 @@
 //!
 //! Uses `linux-drm` for 100% Pure Rust implementation.
 
-pub mod device;
 pub mod buffer;
+pub mod device;
 
 // Re-exports
-pub use device::{Device, DeviceCapabilities};
 pub use buffer::{DumbBuffer, MappedBuffer, PixelFormat};
+pub use device::{Device, DeviceCapabilities};
 
 #[allow(unused_imports)]
 use crate::{DisplayError, Result};
@@ -38,7 +38,7 @@ impl DrmBackend {
         let device = Device::open(path)?;
         Ok(Self { device })
     }
-    
+
     /// Discover all DRM devices (self-knowledge!)
     ///
     /// Returns paths to all available DRM devices.
@@ -46,7 +46,7 @@ impl DrmBackend {
     pub fn discover_all() -> Result<Vec<std::path::PathBuf>> {
         Device::discover_all()
     }
-    
+
     /// Get device capabilities
     pub fn capabilities(&self) -> Result<DeviceCapabilities> {
         self.device.query_capabilities()

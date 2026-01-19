@@ -5,9 +5,9 @@
 //!
 //! ToadStool is the FIRST primal to achieve 100% UniBin compliance!
 
-use toadstool_cli::{Cli, Commands};
 use clap::Parser;
 use std::path::PathBuf;
+use toadstool_cli::{Cli, Commands};
 
 // ============================================================================
 // COMMAND PARSING TESTS
@@ -18,7 +18,7 @@ fn test_server_command_basic() {
     // Test basic server command parsing
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
+
     assert!(matches!(cli.command, Commands::Server { .. }));
 }
 
@@ -27,7 +27,7 @@ fn test_server_command_with_register() {
     // Test server command with register flag
     let args = vec!["toadstool", "server", "--register"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { register, .. } = cli.command {
         assert!(register);
     } else {
@@ -40,7 +40,7 @@ fn test_server_command_with_custom_port() {
     // Test server command with custom port
     let args = vec!["toadstool", "server", "--port", "9090"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { port, .. } = cli.command {
         assert_eq!(port, 9090);
     } else {
@@ -53,7 +53,7 @@ fn test_server_command_with_socket() {
     // Test server command with custom socket path
     let args = vec!["toadstool", "server", "--socket", "/tmp/toadstool.sock"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { socket, .. } = cli.command {
         assert_eq!(socket, Some(PathBuf::from("/tmp/toadstool.sock")));
     } else {
@@ -66,7 +66,7 @@ fn test_server_command_with_config() {
     // Test server command with config file
     let args = vec!["toadstool", "server", "--config", "/etc/toadstool.toml"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { config, .. } = cli.command {
         assert_eq!(config, Some(PathBuf::from("/etc/toadstool.toml")));
     } else {
@@ -79,7 +79,7 @@ fn test_server_command_with_max_workloads() {
     // Test server command with max workloads
     let args = vec!["toadstool", "server", "--max-workloads", "25"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { max_workloads, .. } = cli.command {
         assert_eq!(max_workloads, 25);
     } else {
@@ -90,9 +90,14 @@ fn test_server_command_with_max_workloads() {
 #[test]
 fn test_server_command_with_biomeos_socket() {
     // Test server command with BiomeOS socket
-    let args = vec!["toadstool", "server", "--biomeos-socket", "/tmp/biomeos.sock"];
+    let args = vec![
+        "toadstool",
+        "server",
+        "--biomeos-socket",
+        "/tmp/biomeos.sock",
+    ];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { biomeos_socket, .. } = cli.command {
         assert_eq!(biomeos_socket, Some(PathBuf::from("/tmp/biomeos.sock")));
     } else {
@@ -104,24 +109,31 @@ fn test_server_command_with_biomeos_socket() {
 fn test_server_command_all_options() {
     // Test server command with all options combined
     let args = vec![
-        "toadstool", "server",
+        "toadstool",
+        "server",
         "--register",
-        "--port", "9090",
-        "--socket", "/tmp/toadstool.sock",
-        "--config", "/etc/toadstool.toml",
-        "--max-workloads", "25",
-        "--biomeos-socket", "/tmp/biomeos.sock",
+        "--port",
+        "9090",
+        "--socket",
+        "/tmp/toadstool.sock",
+        "--config",
+        "/etc/toadstool.toml",
+        "--max-workloads",
+        "25",
+        "--biomeos-socket",
+        "/tmp/biomeos.sock",
     ];
     let cli = Cli::parse_from(args);
-    
-    if let Commands::Server { 
-        register, 
-        port, 
-        socket, 
-        config, 
+
+    if let Commands::Server {
+        register,
+        port,
+        socket,
+        config,
         max_workloads,
-        biomeos_socket 
-    } = cli.command {
+        biomeos_socket,
+    } = cli.command
+    {
         assert!(register);
         assert_eq!(port, 9090);
         assert_eq!(socket, Some(PathBuf::from("/tmp/toadstool.sock")));
@@ -142,7 +154,7 @@ fn test_daemon_command_basic() {
     // Test daemon command (backward compat alias)
     let args = vec!["toadstool", "daemon"];
     let cli = Cli::parse_from(args);
-    
+
     assert!(matches!(cli.command, Commands::Daemon { .. }));
 }
 
@@ -151,7 +163,7 @@ fn test_daemon_command_with_register() {
     // Test daemon command with register flag
     let args = vec!["toadstool", "daemon", "--register"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Daemon { register, .. } = cli.command {
         assert!(register);
     } else {
@@ -164,7 +176,7 @@ fn test_daemon_command_with_custom_port() {
     // Test daemon command with custom port
     let args = vec!["toadstool", "daemon", "--port", "9090"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Daemon { port, .. } = cli.command {
         assert_eq!(port, 9090);
     } else {
@@ -176,24 +188,31 @@ fn test_daemon_command_with_custom_port() {
 fn test_daemon_command_all_options() {
     // Test daemon command with all options (backward compat)
     let args = vec![
-        "toadstool", "daemon",
+        "toadstool",
+        "daemon",
         "--register",
-        "--port", "9090",
-        "--socket", "/tmp/toadstool.sock",
-        "--config", "/etc/toadstool.toml",
-        "--max-workloads", "25",
-        "--biomeos-socket", "/tmp/biomeos.sock",
+        "--port",
+        "9090",
+        "--socket",
+        "/tmp/toadstool.sock",
+        "--config",
+        "/etc/toadstool.toml",
+        "--max-workloads",
+        "25",
+        "--biomeos-socket",
+        "/tmp/biomeos.sock",
     ];
     let cli = Cli::parse_from(args);
-    
-    if let Commands::Daemon { 
-        register, 
-        port, 
-        socket, 
-        config, 
+
+    if let Commands::Daemon {
+        register,
+        port,
+        socket,
+        config,
         max_workloads,
-        biomeos_socket 
-    } = cli.command {
+        biomeos_socket,
+    } = cli.command
+    {
         assert!(register);
         assert_eq!(port, 9090);
         assert_eq!(socket, Some(PathBuf::from("/tmp/toadstool.sock")));
@@ -214,7 +233,7 @@ fn test_server_default_port() {
     // Test default port value
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { port, .. } = cli.command {
         assert_eq!(port, 8084); // Default port
     } else {
@@ -227,7 +246,7 @@ fn test_server_default_max_workloads() {
     // Test default max workloads value
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { max_workloads, .. } = cli.command {
         assert_eq!(max_workloads, 10); // Default max workloads
     } else {
@@ -240,7 +259,7 @@ fn test_server_default_register() {
     // Test default register value (false)
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
+
     if let Commands::Server { register, .. } = cli.command {
         assert!(!register); // Default is false
     } else {
@@ -253,8 +272,14 @@ fn test_server_default_optional_paths() {
     // Test default optional paths (None)
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
-    if let Commands::Server { socket, config, biomeos_socket, .. } = cli.command {
+
+    if let Commands::Server {
+        socket,
+        config,
+        biomeos_socket,
+        ..
+    } = cli.command
+    {
         assert_eq!(socket, None);
         assert_eq!(config, None);
         assert_eq!(biomeos_socket, None);
@@ -272,7 +297,7 @@ fn test_run_command_exists() {
     // Test that other CLI commands still work
     let args = vec!["toadstool", "run", "test.toml"];
     let cli = Cli::parse_from(args);
-    
+
     assert!(matches!(cli.command, Commands::Run { .. }));
 }
 
@@ -281,7 +306,7 @@ fn test_up_command_exists() {
     // Test up command
     let args = vec!["toadstool", "up", "test.toml"];
     let cli = Cli::parse_from(args);
-    
+
     assert!(matches!(cli.command, Commands::Up { .. }));
 }
 
@@ -290,7 +315,7 @@ fn test_down_command_exists() {
     // Test down command
     let args = vec!["toadstool", "down", "test-biome"];
     let cli = Cli::parse_from(args);
-    
+
     assert!(matches!(cli.command, Commands::Down { .. }));
 }
 
@@ -304,11 +329,11 @@ fn test_single_binary_multiple_modes() {
     let server_args = vec!["toadstool", "server"];
     let cli_args = vec!["toadstool", "run", "test.toml"];
     let daemon_args = vec!["toadstool", "daemon"];
-    
+
     let server_cli = Cli::parse_from(server_args);
     let cli_cli = Cli::parse_from(cli_args);
     let daemon_cli = Cli::parse_from(daemon_args);
-    
+
     // All parse successfully from same binary
     assert!(matches!(server_cli.command, Commands::Server { .. }));
     assert!(matches!(cli_cli.command, Commands::Run { .. }));
@@ -320,7 +345,7 @@ fn test_ecosystem_standard_naming() {
     // Verify 'server' is the ecosystem standard command name
     let args = vec!["toadstool", "server"];
     let cli = Cli::parse_from(args);
-    
+
     // Server command exists and parses correctly
     assert!(matches!(cli.command, Commands::Server { .. }));
 }
@@ -330,10 +355,10 @@ fn test_backward_compatibility_preserved() {
     // Verify daemon alias works for backward compatibility
     let daemon_args = vec!["toadstool", "daemon", "--port", "9090"];
     let server_args = vec!["toadstool", "server", "--port", "9090"];
-    
+
     let daemon_cli = Cli::parse_from(daemon_args);
     let server_cli = Cli::parse_from(server_args);
-    
+
     // Both commands should parse and have same structure
     match (daemon_cli.command, server_cli.command) {
         (Commands::Daemon { port: d_port, .. }, Commands::Server { port: s_port, .. }) => {
@@ -352,7 +377,7 @@ fn test_invalid_port_rejected() {
     // Test that invalid port values are rejected
     let args = vec!["toadstool", "server", "--port", "99999"];
     let result = Cli::try_parse_from(args);
-    
+
     // Should fail with out-of-range error
     assert!(result.is_err());
 }
@@ -362,7 +387,7 @@ fn test_missing_required_arguments() {
     // Test commands with missing required arguments fail
     let args = vec!["toadstool", "run"]; // Missing manifest path
     let result = Cli::try_parse_from(args);
-    
+
     // Should fail with missing argument error
     assert!(result.is_err());
 }
@@ -438,7 +463,7 @@ mod property_tests {
             let port_str = port.to_string();
             let args = vec!["toadstool", "server", "--port", &port_str];
             let cli = Cli::parse_from(args);
-            
+
             if let Commands::Server { port: p, .. } = cli.command {
                 assert_eq!(p, port);
             } else {
@@ -454,7 +479,7 @@ mod property_tests {
             let max_str = max.to_string();
             let args = vec!["toadstool", "server", "--max-workloads", &max_str];
             let cli = Cli::parse_from(args);
-            
+
             if let Commands::Server { max_workloads, .. } = cli.command {
                 assert_eq!(max_workloads, max);
             } else {

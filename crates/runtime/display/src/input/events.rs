@@ -19,7 +19,7 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Keyboard key released
     KeyRelease {
         /// Key code
@@ -29,7 +29,7 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Mouse moved
     MouseMove {
         /// X coordinate
@@ -39,7 +39,7 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Mouse button event
     MouseButton {
         /// Button
@@ -53,7 +53,7 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Mouse wheel scroll
     MouseWheel {
         /// Horizontal delta
@@ -63,7 +63,7 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Touch event
     Touch {
         /// Touch ID
@@ -77,19 +77,19 @@ pub enum InputEvent {
         /// Target window
         window: WindowId,
     },
-    
+
     /// Window focused
     WindowFocused {
         /// Window that gained focus
         window: WindowId,
     },
-    
+
     /// Window unfocused
     WindowUnfocused {
         /// Window that lost focus
         window: WindowId,
     },
-    
+
     /// Window resized
     WindowResized {
         /// Resized window
@@ -99,7 +99,7 @@ pub enum InputEvent {
         /// New height
         height: u32,
     },
-    
+
     /// Window closed (user requested)
     WindowClosed {
         /// Window to close
@@ -119,12 +119,12 @@ impl KeyCode {
     pub const fn from_raw(code: u32) -> Self {
         Self(code)
     }
-    
+
     /// Get raw code
     pub const fn raw(self) -> u32 {
         self.0
     }
-    
+
     // Common key codes (Linux input codes)
     /// Escape key
     pub const ESC: Self = Self(1);
@@ -148,7 +148,7 @@ impl KeyCode {
     pub const LEFT_META: Self = Self(125);
     /// Right Meta/Super/Windows
     pub const RIGHT_META: Self = Self(126);
-    
+
     // TODO: Add more key codes as needed
 }
 
@@ -177,7 +177,7 @@ impl Modifiers {
             logo: false,
         }
     }
-    
+
     /// Check if any modifiers are active
     pub const fn any(self) -> bool {
         self.shift || self.ctrl || self.alt || self.logo
@@ -221,12 +221,12 @@ pub enum TouchPhase {
 // ```rust
 // fn parse_evdev_event(event: &evdev::InputEvent, window: WindowId) -> Option<InputEvent> {
 //     use evdev::InputEventKind;
-//     
+//
 //     match event.kind() {
 //         InputEventKind::Key(key) => {
 //             let pressed = event.value() != 0;
 //             let keycode = KeyCode::from_raw(key.code());
-//             
+//
 //             if pressed {
 //                 Some(InputEvent::KeyPress {
 //                     key: keycode,
@@ -241,7 +241,7 @@ pub enum TouchPhase {
 //                 })
 //             }
 //         }
-//         
+//
 //         InputEventKind::RelAxis(axis) => {
 //             match axis.0 {
 //                 evdev::RelativeAxisType::REL_X => {
@@ -253,7 +253,7 @@ pub enum TouchPhase {
 //                 _ => None,
 //             }
 //         }
-//         
+//
 //         // ... other event types
 //     }
 // }

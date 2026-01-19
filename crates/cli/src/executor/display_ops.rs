@@ -71,7 +71,7 @@ impl BiomeExecutor {
     #[allow(dead_code)]
     pub(super) async fn show_log_file(&self, log_file: &Path, lines: Option<usize>) -> Result<()> {
         let content = fs::read_to_string(log_file).await?;
-        
+
         if let Some(n) = lines {
             // Show last N lines
             let lines_vec: Vec<&str> = content.lines().collect();
@@ -87,7 +87,7 @@ impl BiomeExecutor {
         Ok(())
     }
 
-    // Used by commands.rs for 'logs --follow' command  
+    // Used by commands.rs for 'logs --follow' command
     pub(super) async fn tail_log_file(&self, log_file: &Path, initial_lines: usize) -> Result<()> {
         use tokio::time::{sleep, Duration};
 

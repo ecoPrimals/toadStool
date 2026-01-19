@@ -7,7 +7,10 @@ use anyhow::{bail, Result};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::path::Path;
-use toadstool::{ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext, WorkloadSpec};
+use toadstool::{
+    ExecutionInput, ExecutionRequest, ResourceRequirements, RuntimeType, SecurityContext,
+    WorkloadSpec,
+};
 use toadstool_distributed::DistributedCoordinator;
 use tokio::time::Duration;
 use uuid::Uuid;
@@ -127,7 +130,10 @@ impl<'a> ProcessSpawner<'a> {
     /// Returns an error if:
     /// - WASM verification fails
     /// - Workload source is unsupported
-    async fn workload_source_to_spec(&self, source: &crate::WorkloadSource) -> Result<WorkloadSpec> {
+    async fn workload_source_to_spec(
+        &self,
+        source: &crate::WorkloadSource,
+    ) -> Result<WorkloadSpec> {
         match source {
             crate::WorkloadSource::Container {
                 registry,
@@ -190,7 +196,7 @@ impl<'a> ProcessSpawner<'a> {
         // 1. Load from URL/file/registry
         // 2. Verify checksum
         // 3. Validate WASM module
-        
+
         // Placeholder for actual implementation
         Ok(Vec::new())
     }

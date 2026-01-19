@@ -286,7 +286,7 @@ impl Clone for DiscoveryClient {
         Self {
             connection: Arc::clone(&self.connection),
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_songbird_socket_path()
+                toadstool_common::primal_sockets::get_songbird_socket_path(),
             ),
         }
     }
@@ -296,7 +296,7 @@ impl DiscoveryClient {
     pub async fn new(connection: Arc<SongbirdConnection>) -> ToadStoolResult<Self> {
         // Use unix socket instead of HTTP client (pure Rust!)
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_songbird_socket_path()
+            toadstool_common::primal_sockets::get_songbird_socket_path(),
         );
 
         Ok(Self {
@@ -314,7 +314,8 @@ impl DiscoveryClient {
             params["auth_token"] = serde_json::json!(token);
         }
 
-        let nodes: Vec<NodeRegistration> = self.rpc_client
+        let nodes: Vec<NodeRegistration> = self
+            .rpc_client
             .call_typed("songbird.discover_nodes", params)
             .await
             .unwrap_or_else(|e| {

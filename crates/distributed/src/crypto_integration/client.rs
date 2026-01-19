@@ -233,7 +233,10 @@ impl CryptoServiceClient {
                 })
             })?;
 
-        Ok(result.get("healthy").and_then(|v| v.as_bool()).unwrap_or(false))
+        Ok(result
+            .get("healthy")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
     }
 }
 

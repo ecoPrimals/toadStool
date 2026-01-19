@@ -30,7 +30,7 @@ impl PixelFormat {
             Self::RGB565 => 16,
         }
     }
-    
+
     /// Get bytes per pixel
     pub const fn bytes_per_pixel(self) -> usize {
         match self {
@@ -39,7 +39,7 @@ impl PixelFormat {
             Self::RGB565 => 2,
         }
     }
-    
+
     /// Convert to DRM fourcc code (for future DRM operations)
     pub const fn to_drm_fourcc(self) -> u32 {
         match self {
@@ -72,7 +72,7 @@ impl PixelFormat {
 /// # use toadstool_display::drm::*;
 /// let device = Device::open("/dev/dri/card0")?;
 /// let mut buffer = DumbBuffer::create(&device, 1920, 1080, PixelFormat::RGBA8888)?;
-/// 
+///
 /// // Map and write pixels
 /// let mut mapped = buffer.map()?;
 /// mapped.fill(0xFF0000FF); // Red
@@ -120,30 +120,29 @@ impl DumbBuffer {
         height: u32,
         format: PixelFormat,
     ) -> Result<Self> {
-        tracing::debug!(
-            "Creating dumb buffer: {}x{} {:?}",
-            width, height, format
-        );
-        
+        tracing::debug!("Creating dumb buffer: {}x{} {:?}", width, height, format);
+
         let fd = device.fd();
         let bpp = format.bpp();
-        
+
         // Calculate stride and size
         // Stride must be aligned (typically to 64 bytes)
         let bytes_per_pixel = format.bytes_per_pixel() as u32;
-        let stride = ((width * bytes_per_pixel + 63) / 64) * 64; // Align to 64 bytes
+        let stride = (width * bytes_per_pixel).div_ceil(64) * 64; // Align to 64 bytes
         let size = (stride * height) as u64;
-        
+
         tracing::trace!(
             "Buffer params: stride={}, size={}, bpp={}",
-            stride, size, bpp
+            stride,
+            size,
+            bpp
         );
-        
+
         // TODO: Implement actual DRM_IOCTL_MODE_CREATE_DUMB
         // For Phase 0, create placeholder
-        
+
         // Future implementation using linux-drm or rustix:
-        // 
+        //
         // let mut create_req = drm_mode_create_dumb {
         //     height,
         //     width,
@@ -153,22 +152,26 @@ impl DumbBuffer {
         //     pitch: 0,
         //     size: 0,
         // };
-        // 
+        //
         // unsafe {
         //     ioctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &mut create_req)?;
         // }
-        // 
+        //
         // let handle = create_req.handle;
         // let stride = create_req.pitch;
         // let size = create_req.size;
-        
+
         let handle = 0; // Placeholder
-        
+
         tracing::info!(
             "✅ Created dumb buffer: handle={}, {}x{} stride={} size={}",
-            handle, width, height, stride, size
+            handle,
+            width,
+            height,
+            stride,
+            size
         );
-        
+
         Ok(Self {
             fd,
             handle,
@@ -179,7 +182,7 @@ impl DumbBuffer {
             format,
         })
     }
-    
+
     /// Map buffer to memory for CPU access
     ///
     /// Returns a safe slice that can be written to.
@@ -203,10 +206,10 @@ impl DumbBuffer {
     /// ```
     pub fn map(&mut self) -> Result<MappedBuffer<'_>> {
         tracing::trace!("Mapping buffer handle={}", self.handle);
-        
+
         // TODO: Implement actual mmap
         // For Phase 0, return empty placeholder
-        
+
         // Future implementation:
         //
         // 1. Get mmap offset via DRM_IOCTL_MODE_MAP_DUMB:
@@ -243,7 +246,7 @@ impl DumbBuffer {
         //            self.size as usize,
         //        )
         //    };
-        
+
         Ok(MappedBuffer {
             ptr: std::ptr::null_mut(),
             size: self.size as usize,
@@ -251,17 +254,17 @@ impl DumbBuffer {
             _marker: std::marker::PhantomData,
         })
     }
-    
+
     /// Get buffer dimensions
     pub fn dimensions(&self) -> (u32, u32) {
         (self.width, self.height)
     }
-    
+
     /// Get buffer stride (bytes per row)
     pub fn stride(&self) -> u32 {
         self.stride
     }
-    
+
     /// Get pixel format
     pub fn format(&self) -> PixelFormat {
         self.format
@@ -272,7 +275,7 @@ impl Drop for DumbBuffer {
     fn drop(&mut self) {
         if self.handle != 0 {
             tracing::trace!("Destroying dumb buffer handle={}", self.handle);
-            
+
             // TODO: Implement DRM_IOCTL_MODE_DESTROY_DUMB
             //
             // let mut destroy_req = drm_mode_destroy_dumb {
@@ -335,7 +338,7 @@ impl<'a> MappedBuffer<'a> {
         // Write color bytes
         let _ = (x, y, color);
     }
-    
+
     /// Fill entire buffer with a color
     ///
     /// # Example
@@ -352,7 +355,7 @@ impl<'a> MappedBuffer<'a> {
         // TODO: Implement fill - write color to every pixel
         let _ = color;
     }
-    
+
     /// Copy pixel data from slice
     ///
     /// # Arguments
@@ -366,12 +369,12 @@ impl<'a> MappedBuffer<'a> {
         assert_eq!(pixels.len(), self.data.len(), "Buffer size mismatch");
         self.data.copy_from_slice(pixels);
     }
-    
+
     /// Get raw buffer data
     pub fn as_slice(&self) -> &[u8] {
         self.data
     }
-    
+
     /// Get mutable raw buffer data
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         self.data
@@ -382,7 +385,7 @@ impl<'a> Drop for MappedBuffer<'a> {
     fn drop(&mut self) {
         if !self.ptr.is_null() {
             tracing::trace!("Unmapping buffer memory");
-            
+
             // SAFETY: ptr is valid (created by mmap)
             // SAFETY: size matches original mmap
             // SAFETY: Called exactly once (Drop guarantee)
