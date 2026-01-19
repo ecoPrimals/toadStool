@@ -16,7 +16,7 @@ use toadstool_common::error::{
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("HTTP request failed: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(String), // EVOLVED: No reqwest dependency! ✅
 
     #[error("WebSocket error: {0}")]
     WebSocket(String),
@@ -38,6 +38,9 @@ pub enum ClientError {
 
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error), // EVOLVED: For Unix socket errors ✅
 }
 
 // ============================================================================

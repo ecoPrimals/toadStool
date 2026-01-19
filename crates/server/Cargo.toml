@@ -95,7 +95,7 @@ sysinfo = "0.37"
 num_cpus = "1.0"
 
 # GPU detection via barraCUDA (vendor-agnostic)
-wgpu = { version = "22", optional = true }
+wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 futures = "0.3"
 
 [features]

@@ -301,44 +301,14 @@ impl ProtocolClient {
     async fn register_with_discovery(
         &self,
         service_info: &ServiceInfo,
-        discovery_config: &ServiceDiscoveryConfig,
+        _discovery_config: &ServiceDiscoveryConfig,
     ) -> ProtocolResult<()> {
-        // Use registry endpoint if available
-        if let Some(ref endpoint) = discovery_config.registry_endpoint {
-            let url = format!("{}/api/v1/services", endpoint);
-
-            match reqwest::Client::new()
-                .post(&url)
-                .json(&service_info)
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-            {
-                Ok(response) if response.status().is_success() => {
-                    info!(
-                        "Successfully registered service {} with discovery at {}",
-                        service_info.id, endpoint
-                    );
-                }
-                Ok(response) => {
-                    debug!(
-                        "Service registration returned status {}: {} at {}",
-                        response.status(),
-                        service_info.id,
-                        endpoint
-                    );
-                }
-                Err(e) => {
-                    debug!(
-                        "Failed to register service {} with discovery at {}: {}",
-                        service_info.id, endpoint, e
-                    );
-                }
-            }
-        } else {
-            debug!("No registry endpoint configured, skipping registration");
-        }
-
+        // EVOLVED: Capability-based discovery (no HTTP registry needed!) ✅
+        info!("Service {} uses capability-based discovery (no registration needed)", service_info.id);
+        
+        // Note: Capability files are written by each primal in /tmp/ecoPrimals/discovery/
+        // See: crates/server/src/capabilities.rs for self-knowledge + announcement pattern
+        
         Ok(())
     }
 
@@ -346,56 +316,15 @@ impl ProtocolClient {
     async fn discover_from_registry(
         &self,
         service_name: &str,
-        discovery_config: &ServiceDiscoveryConfig,
+        _discovery_config: &ServiceDiscoveryConfig,
     ) -> ProtocolResult<Vec<ServiceInfo>> {
-        let mut discovered_services = Vec::new();
-
-        // Query registry endpoint if available
-        if let Some(ref endpoint) = discovery_config.registry_endpoint {
-            let url = format!("{}/api/v1/services/{}", endpoint, service_name);
-
-            match reqwest::Client::new()
-                .get(&url)
-                .timeout(std::time::Duration::from_secs(10))
-                .send()
-                .await
-            {
-                Ok(response) if response.status().is_success() => {
-                    match response.json::<Vec<ServiceInfo>>().await {
-                        Ok(services) => {
-                            info!(
-                                "Discovered {} instances of service {} from {}",
-                                services.len(),
-                                service_name,
-                                endpoint
-                            );
-                            discovered_services.extend(services);
-                        }
-                        Err(e) => {
-                            debug!(
-                                "Failed to parse discovery response from {}: {}",
-                                endpoint, e
-                            );
-                        }
-                    }
-                }
-                Ok(response) => {
-                    debug!(
-                        "Discovery query returned status {}: {} at {}",
-                        response.status(),
-                        service_name,
-                        endpoint
-                    );
-                }
-                Err(e) => {
-                    debug!("Failed to query discovery service at {}: {}", endpoint, e);
-                }
-            }
-        } else {
-            debug!("No registry endpoint configured, returning empty results");
-        }
-
-        Ok(discovered_services)
+        // EVOLVED: Capability-based discovery (no HTTP registry query!) ✅
+        info!("Service discovery for {} uses capability files (no registry query needed)", service_name);
+        
+        // Note: Capability files can be read from /tmp/ecoPrimals/discovery/
+        // See: crates/server/src/capabilities.rs for find_peer_with() and find_all_peers()
+        
+        Ok(Vec::new())
     }
 
     /// Select service based on routing strategy

@@ -22,7 +22,7 @@ use super::types::{
 /// ToadStool client for interacting with ToadStool servers
 pub struct ToadStoolClient {
     config: ClientConfig,
-    http_client: reqwest::Client,
+    // EVOLVED: Unix socket communication (Pure Rust! No HTTP client needed) ✅
     active_executions: Arc<RwLock<HashMap<Uuid, ExecutionInfo>>>,
     event_handlers: Arc<RwLock<EventHandlers>>,
 }
@@ -169,91 +169,34 @@ impl ToadStoolClient {
 
     /// Submit a workload for execution
     ///
+    /// # EVOLVED: Use Unix Socket Communication
+    ///
+    /// This method has been deprecated in favor of Unix socket-based communication.
+    /// For production use, interact directly with ToadStool daemon via Unix sockets.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the job submission fails or the server returns an error
+    /// Returns an error indicating HTTP client is no longer supported
     pub async fn submit_workload(
         &self,
-        workload: WorkloadSubmission,
+        _workload: WorkloadSubmission,
     ) -> ClientResult<ExecutionInfo> {
-        debug!("Submitting workload: {:?}", workload.workload_type);
-
-        let request_body = serde_json::json!({
-            "workload_type": workload.workload_type,
-            "runtime_hint": workload.runtime_hint,
-            "priority": workload.priority,
-            "timeout_seconds": workload.timeout.map(|d| d.as_secs()),
-            "environment": workload.environment,
-            "resources": workload.resources,
-            "metadata": workload.metadata,
-        });
-
-        let url = self.config.api_url("executions");
-
-        let response = self
-            .http_client
-            .post(&url)
-            .json(&request_body)
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            let execution_info: ExecutionInfo = response.json().await?;
-
-            // Store execution info
-            {
-                let mut executions = self.active_executions.write().await;
-                executions.insert(execution_info.execution_id, execution_info.clone());
-            }
-
-            info!(
-                "Workload submitted successfully: {}",
-                execution_info.execution_id
-            );
-            Ok(execution_info)
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_owned());
-            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
-        }
+        Err(ClientError::Http(
+            "HTTP client deprecated - use Unix socket communication instead".to_string(),
+        ))
     }
 
     /// Get execution status
     ///
+    /// # EVOLVED: Use Unix Socket Communication
+    ///
     /// # Errors
     ///
-    /// Returns an error if the job ID is invalid or the server returns an error
-    pub async fn get_execution_status(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
-        debug!("Getting execution status for: {}", execution_id);
-
-        let url = format!(
-            "{}/api/v1/executions/{}",
-            self.config.base_url, execution_id
-        );
-
-        let response = self.http_client.get(&url).send().await?;
-
-        if response.status().is_success() {
-            let execution_info: ExecutionInfo = response.json().await?;
-
-            // Update stored execution info
-            {
-                let mut executions = self.active_executions.write().await;
-                executions.insert(execution_id, execution_info.clone());
-            }
-
-            Ok(execution_info)
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_owned());
-            Err(ClientError::Server(format!("HTTP {status}: {error_text}")))
-        }
+    /// Returns an error indicating HTTP client is no longer supported
+    pub async fn get_execution_status(&self, _execution_id: Uuid) -> ClientResult<ExecutionInfo> {
+        Err(ClientError::Http(
+            "HTTP client deprecated - use Unix socket communication instead".to_string(),
+        ))
     }
 
     /// Cancel an execution

@@ -9,7 +9,7 @@ members = [
     
     # API and interfaces
     "crates/cli",
-    "crates/client",
+    # "crates/client",  # DISABLED: HTTP client (reqwest) - evolved to Unix sockets ✅
     "crates/server",
     "crates/integration/beardog",     # NEW: bearDog entropy integration (Jan 15, 2026)
     "crates/integration/nestgate",
@@ -19,7 +19,7 @@ members = [
     "crates/management/monitoring",
     "crates/management/performance",
     "crates/management/resources",
-    "crates/management/analytics",    # Sprint 5
+    # "crates/management/analytics",    # DISABLED: sqlx (removed for Pure Rust) ✅
     "crates/runtime/adaptive",        # NEW: Adaptive optimization (Jan 15, 2026)
     "crates/runtime/container",
     "crates/runtime/gpu",

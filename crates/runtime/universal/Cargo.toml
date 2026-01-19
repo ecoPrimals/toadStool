@@ -24,7 +24,7 @@ toadstool-runtime-gpu = { path = "../gpu", optional = true }
 
 # GPU backends (all optional, capability-based discovery)
 ocl = { version = "0.19", optional = true }
-wgpu = { version = "22", optional = true }  # Updated to match barraCUDA framework
+wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 pollster = { version = "0.3", optional = true }
 bytemuck = { version = "1.14", features = ["derive"], optional = true }
 futures-intrusive = { version = "0.5", optional = true }
