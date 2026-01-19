@@ -847,9 +847,10 @@ mod tests {
                 command: vec![
                     "curl".to_string(),
                     "-f".to_string(),
+                    // EVOLVED: Health check will use service's actual network endpoint
+                    // Port will be discovered from deployment network configuration
                     format!(
-                        "http://localhost:{}/health",
-                        if name.contains("web") { 80 } else { 8080 }
+                        "http://{{SERVICE_IP}}:{{SERVICE_PORT}}/health"
                     ),
                 ],
                 interval: 30,

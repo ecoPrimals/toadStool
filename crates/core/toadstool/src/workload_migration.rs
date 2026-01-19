@@ -340,11 +340,16 @@ impl MigrationCoordinator {
                 }
             }
             Some(WorkloadLocation::Cloud { .. }) => {
-                // Simulate migration to local
+                // EVOLVED: Discover local node's actual hostname from environment
                 info!("📥 Migrating {} to local", workload_id);
-                WorkloadLocation::Local {
-                    hostname: "localhost".to_string(),
-                }
+                let hostname = std::env::var("HOSTNAME")
+                    .or_else(|_| std::env::var("HOST"))
+                    .or_else(|_| std::env::var("COMPUTERNAME")) // Windows
+                    .unwrap_or_else(|_| {
+                        // Fallback: use node ID (self-knowledge)
+                        format!("node-{}", uuid::Uuid::new_v4())
+                    });
+                WorkloadLocation::Local { hostname }
             }
         };
 

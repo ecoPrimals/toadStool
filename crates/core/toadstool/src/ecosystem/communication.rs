@@ -66,10 +66,16 @@ impl CommunicationManager {
     ) -> ToadStoolResult<ServiceChannel> {
         info!("📡 Creating channel for service: {}", service.name);
 
+        // EVOLVED: No hardcoded localhost - fail if no endpoint discovered
         let endpoint = service
             .primary_endpoint()
             .map(|e| e.url())
-            .unwrap_or_else(|| "http://localhost".to_string());
+            .ok_or_else(|| {
+                ToadStoolError::integration(format!(
+                    "No endpoint discovered for service: {}. Deep Debt: Services must be discovered at runtime, not hardcoded.",
+                    service.name
+                ))
+            })?;
 
         // Determine best protocol based on service capabilities
         let client = self.create_client_for_service(service)?;
