@@ -299,6 +299,12 @@ cargo run --release --example nadam_demo
 - **[UNSAFE_CODE_AUDIT_JAN_17_2026.md](UNSAFE_CODE_AUDIT_JAN_17_2026.md)** - Unsafe analysis
 - **[SESSION_SUMMARY_JAN_17_2026.md](SESSION_SUMMARY_JAN_17_2026.md)** - Session status
 
+### **Deep Debt Reviews (NEW!)** 🏆
+- **[DEEP_DEBT_CODEBASE_REVIEW.md](DEEP_DEBT_CODEBASE_REVIEW.md)** - Complete codebase analysis (S++ grade!) ⭐
+- **[UNSAFE_AUDIT_COMPLETE.md](UNSAFE_AUDIT_COMPLETE.md)** - 100% documented (37/37 blocks)
+- **[SMART_REFACTORING_PLAN.md](SMART_REFACTORING_PLAN.md)** - Logical domain refactoring strategy
+- **[DEEP_DEBT_SESSION_SUMMARY.md](DEEP_DEBT_SESSION_SUMMARY.md)** - Complete session documentation
+
 ### **Technical Docs**
 - **[PRIMAL_INTEGRATION_GUIDE.md](PRIMAL_INTEGRATION_GUIDE.md)** - Integration guide
 - **[PEDANTIC_MODE.md](PEDANTIC_MODE.md)** - Code quality standards
