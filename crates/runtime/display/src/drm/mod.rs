@@ -5,13 +5,23 @@
 //!
 //! Uses `linux-drm` for 100% Pure Rust implementation.
 
+pub mod device;
+pub mod buffer;
+
+// Re-exports
+pub use device::{Device, DeviceCapabilities};
+pub use buffer::{DumbBuffer, MappedBuffer, PixelFormat};
+
 #[allow(unused_imports)]
 use crate::{DisplayError, Result};
 use std::path::Path;
 
 /// DRM backend for display hardware control
+///
+/// This is the main entry point for DRM operations.
+/// Wraps the lower-level Device type with a simpler API.
 pub struct DrmBackend {
-    // TODO: Implement DRM device wrapper
+    device: Device,
 }
 
 impl DrmBackend {
@@ -24,14 +34,21 @@ impl DrmBackend {
     ///
     /// let drm = DrmBackend::open("/dev/dri/card0")?;
     /// ```
-    pub fn open(_path: impl AsRef<Path>) -> Result<Self> {
-        todo!("Phase 0: Implement DRM device opening")
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let device = Device::open(path)?;
+        Ok(Self { device })
+    }
+    
+    /// Discover all DRM devices (self-knowledge!)
+    ///
+    /// Returns paths to all available DRM devices.
+    /// No hardcoding - pure runtime discovery!
+    pub fn discover_all() -> Result<Vec<std::path::PathBuf>> {
+        Device::discover_all()
+    }
+    
+    /// Get device capabilities
+    pub fn capabilities(&self) -> Result<DeviceCapabilities> {
+        self.device.query_capabilities()
     }
 }
-
-// TODO: Phase 0 Implementation:
-// - DRM device opening
-// - Capability queries
-// - Dumb buffer allocation
-// - Framebuffer management
-// - Mode setting
