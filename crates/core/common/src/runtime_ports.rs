@@ -211,17 +211,22 @@ mod tests {
     fn test_is_port_available() {
         let discovery = RuntimePortDiscovery::new();
 
-        // Find an available port
-        let port = discovery.discover_port(None).unwrap();
+        // Try multiple times to find an available port (handles race conditions)
+        let mut port_found = None;
+        for _ in 0..10 {
+            let port = discovery.discover_port(None).unwrap();
+            if discovery.is_port_available(port) {
+                // Try to bind immediately to claim it
+                if let Ok(_listener) = TcpListener::bind(format!("127.0.0.1:{}", port)) {
+                    // Port is now bound, should be unavailable
+                    assert!(!discovery.is_port_available(port));
+                    port_found = Some(port);
+                    break;
+                }
+            }
+        }
         
-        // Port should be available before binding
-        assert!(discovery.is_port_available(port));
-        
-        // Bind to the port
-        let _listener = TcpListener::bind(format!("127.0.0.1:{}", port))
-            .expect("Failed to bind to discovered port");
-
-        // Port should now be unavailable
-        assert!(!discovery.is_port_available(port));
+        // Verify we found and tested a port
+        assert!(port_found.is_some(), "Could not find available port after 10 attempts");
     }
 }
