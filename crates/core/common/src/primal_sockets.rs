@@ -39,18 +39,15 @@ pub fn get_family_id() -> String {
 
 /// Get BearDog unix socket path
 ///
-/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("beardog")` instead
+/// **Migration Path**: This function is deprecated for direct use, but still used internally
+/// by `get_socket_path_for_service("beardog")` for backward compatibility.
 ///
-/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "beardog".
-/// Prefer: `StorageClient::discover()` or `get_socket_path_for_service(discovered_name)`
+/// New code should use capability-based discovery instead of hardcoding service names.
 ///
 /// Priority:
 /// 1. BEARDOG_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/beardog-{family}.sock`
-#[deprecated(
-    since = "4.9.0",
-    note = "Use capability-based discovery + get_socket_path_for_service() instead. This violates TRUE PRIMAL self-knowledge."
-)]
+#[allow(deprecated)]
 pub fn get_beardog_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
@@ -82,17 +79,15 @@ pub fn get_songbird_socket_path() -> PathBuf {
 
 /// Get NestGate unix socket path
 ///
-/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("nestgate")` instead
+/// **Migration Path**: This function is deprecated for direct use, but still used internally
+/// by `get_socket_path_for_service("nestgate")` for backward compatibility.
 ///
 /// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "nestgate".
 ///
 /// Priority:
 /// 1. NESTGATE_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/nestgate-{family}.sock`
-#[deprecated(
-    since = "4.9.0",
-    note = "Use capability-based discovery + get_socket_path_for_service() instead"
-)]
+#[allow(deprecated)]
 pub fn get_nestgate_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("NESTGATE_SOCKET") {
@@ -107,17 +102,13 @@ pub fn get_nestgate_socket_path() -> PathBuf {
 
 /// Get Squirrel unix socket path
 ///
-/// **DEPRECATED**: Use capability-based discovery + `get_socket_path_for_service("squirrel")` instead
-///
-/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "squirrel".
+/// **Migration Path**: This function is deprecated for direct use, but still used internally
+/// by `get_socket_path_for_service("squirrel")` for backward compatibility.
 ///
 /// Priority:
 /// 1. SQUIRREL_SOCKET environment variable (absolute path)
 /// 2. Runtime directory + family: `{runtime_dir}/squirrel-{family}.sock`
-#[deprecated(
-    since = "4.9.0",
-    note = "Use capability-based discovery + get_socket_path_for_service() instead"
-)]
+#[allow(deprecated)]
 pub fn get_squirrel_socket_path() -> PathBuf {
     // Priority 1: Direct socket path
     if let Ok(socket) = std::env::var("SQUIRREL_SOCKET") {
