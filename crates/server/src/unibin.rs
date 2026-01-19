@@ -79,15 +79,20 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     // Create tarpc server (PRIMARY protocol)
     let server = ToadStoolTarpcServer::new(version.clone(), Arc::clone(&executor));
 
-    // EVOLUTION NOTE: Songbird registration now happens via capability-based discovery
-    // Songbird discovers ToadStool by checking known socket paths (environment/XDG)
-    // No HTTP client needed! Registration happens when Songbird finds our Unix socket.
-    // See: ARCHITECTURAL_DEBT_SONGBIRD_HTTP_JAN_16_2026.md for evolution plan
-    //
-    // OLD (HTTP-based - removed for TRUE UniBin):
-    // register_with_ecosystem(&socket_path, &family_id, &version).await;
-    info!("🔍 Capability-based discovery: Songbird will find us via Unix socket");
-    info!("   Socket advertised via environment/XDG runtime directory");
+    // EVOLVED: Service-based registration with Songbird (Deep Debt!)
+    // Register with Songbird discovery service if available
+    info!("🌍 Attempting registration with Songbird discovery service...");
+    match toadstool::ipc_helpers::register_with_songbird().await {
+        Ok(()) => {
+            info!("✅ Successfully registered with Songbird!");
+            info!("   Other primals can now discover us via runtime discovery");
+        }
+        Err(e) => {
+            warn!("⚠️  Could not register with Songbird: {}", e);
+            warn!("   Operating in standalone mode (no discovery)");
+            warn!("   This is OK if Songbird is not running yet");
+        }
+    }
 
     // Start manual JSON-RPC server on Unix socket (for universal compatibility)
     info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");

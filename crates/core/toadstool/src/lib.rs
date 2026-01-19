@@ -66,6 +66,7 @@ pub mod self_identity;
 pub mod universal;
 pub mod workload;
 pub mod workload_migration;
+pub mod ipc_helpers;
 // biomeOS integration is now handled as a primal through the ecosystem module
 // No longer need hard integration - biomeOS interacts as a primal like Songbird
 
