@@ -79,7 +79,9 @@ pub use state::*;
     note = "Use ManualJsonRpcServer instead - no TCP hardcoding"
 )]
 #[allow(deprecated)]
-pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
+// ⚠️ DEPRECATED: jsonrpc_server module removed (used jsonrpsee with ring)
+// Use manual_jsonrpc::ManualJsonRpcServer or pure_jsonrpc::JsonRpcHandler instead
+// pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 // Backward compatibility alias
@@ -106,8 +108,20 @@ pub mod coordinator_executor; // NEW: Distributed coordinator integration
 pub mod errors;
 pub mod graph_types; // NEW: Collaborative intelligence graph types
 pub mod handlers;
-pub mod jsonrpc_server;
-pub mod manual_jsonrpc; // NEW: Pure manual JSON-RPC over Unix sockets
+// ⚠️ DEPRECATED: Uses jsonrpsee which pulls ring (C dependency)
+// Use manual_jsonrpc.rs or pure_jsonrpc.rs instead (Pure Rust!)
+// Commented out to prevent compilation errors (kept for reference only)
+// #[deprecated(
+//     since = "4.18.0",
+//     note = "Use manual_jsonrpc or pure_jsonrpc instead - jsonrpsee pulls ring (C dependency)"
+// )]
+// pub mod jsonrpc_server;
+
+// ✅ PURE RUST: Manual JSON-RPC 2.0 over Unix sockets (no jsonrpsee!)
+pub mod manual_jsonrpc;
+
+// ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
+pub mod pure_jsonrpc;
 #[cfg(test)]
 pub mod mocks;
 pub mod resource_estimator; // NEW: Resource estimation for graphs

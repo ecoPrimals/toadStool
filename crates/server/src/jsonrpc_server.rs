@@ -1,4 +1,22 @@
-//! # ToadStool JSON-RPC 2.0 Server
+//! # ToadStool JSON-RPC 2.0 Server - DEPRECATED!
+//!
+//! ⚠️ **DEPRECATED**: This module uses `jsonrpsee` which pulls `ring` (C dependency).
+//! 
+//! **Use Instead**:
+//! - `manual_jsonrpc.rs` - Pure Rust JSON-RPC over Unix sockets
+//! - `pure_jsonrpc.rs` - Pure Rust JSON-RPC (BearDog pattern)
+//!
+//! **Why Deprecated?**:
+//! - jsonrpsee → rustls → ring (C dependency)
+//! - Violates 100% Pure Rust goal
+//! - BearDog proved ~150 lines is sufficient
+//! - Manual implementation is simpler and faster
+//!
+//! **Migration**: See `pure_jsonrpc.rs` for drop-in replacement.
+//!
+//! ---
+//!
+//! # Original Documentation (for reference)
 //!
 //! Universal, language-agnostic RPC access to ToadStool compute capabilities.
 //! Following Songbird's proven jsonrpsee pattern.

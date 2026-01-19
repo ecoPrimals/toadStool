@@ -36,7 +36,9 @@ tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
 # JSON-RPC server
-jsonrpsee = { version = "0.21", features = ["server", "macros"] }
+# ⚠️ REMOVED: jsonrpsee pulls ring (C dependency) - Evolved to Pure Rust!
+# jsonrpsee = { version = "0.21", features = ["server", "macros"] }
+# ✅ NOW USING: manual_jsonrpc.rs and pure_jsonrpc.rs (100% Pure Rust!)
 
 # tarpc for high-performance RPC
 tarpc = { version = "0.33", features = ["tokio1", "serde-transport", "serde-transport-json"] }
