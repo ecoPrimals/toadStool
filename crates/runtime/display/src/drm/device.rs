@@ -110,8 +110,8 @@ impl Device {
     pub fn query_capabilities(&self) -> Result<DeviceCapabilities> {
         tracing::debug!("Querying capabilities for: {}", self.path.display());
 
-        // TODO: Implement actual capability queries using linux-drm
-        // For Phase 0, return placeholder capabilities
+        // Phase 2: Implement actual capability queries using linux-drm
+        // For Phase 1, return placeholder capabilities
 
         // Future implementation:
         // - Query DRM_CAP_DUMB_BUFFER
@@ -243,7 +243,7 @@ pub struct DeviceCapabilities {
 //
 // Grade: ✅ SAFE (Fast AND Safe!)
 
-// TODO: Phase 0 Completion:
+// Phase 2: Advanced DRM Features
 //
 // 1. Implement actual DRM_IOCTL_VERSION to verify device
 // 2. Implement DRM_CAP queries using linux-drm

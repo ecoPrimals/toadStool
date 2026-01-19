@@ -139,8 +139,8 @@ impl DumbBuffer {
             bpp
         );
 
-        // TODO: Implement actual DRM_IOCTL_MODE_CREATE_DUMB
-        // For Phase 0, create placeholder
+        // Phase 2: Implement actual DRM_IOCTL_MODE_CREATE_DUMB
+        // For Phase 1, create placeholder
 
         // Future implementation using linux-drm or rustix:
         //
@@ -208,8 +208,8 @@ impl DumbBuffer {
     pub fn map(&mut self) -> Result<MappedBuffer<'_>> {
         tracing::trace!("Mapping buffer handle={}", self.handle);
 
-        // TODO: Implement actual mmap
-        // For Phase 0, return empty placeholder
+        // Phase 2: Implement actual mmap
+        // For Phase 1, return empty placeholder
 
         // Future implementation:
         //
@@ -277,7 +277,7 @@ impl Drop for DumbBuffer {
         if self.handle != 0 {
             tracing::trace!("Destroying dumb buffer handle={}", self.handle);
 
-            // TODO: Implement DRM_IOCTL_MODE_DESTROY_DUMB
+            // Phase 2: Implement DRM_IOCTL_MODE_DESTROY_DUMB
             //
             // let mut destroy_req = drm_mode_destroy_dumb {
             //     handle: self.handle,
@@ -334,7 +334,7 @@ impl<'a> MappedBuffer<'a> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn write_pixel(&mut self, x: u32, y: u32, color: u32) {
-        // TODO: Implement pixel writing
+        // Phase 2: Implement pixel writing
         // Calculate offset: y * stride + x * bytes_per_pixel
         // Write color bytes
         let _ = (x, y, color);
@@ -353,7 +353,7 @@ impl<'a> MappedBuffer<'a> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn fill(&mut self, color: u32) {
-        // TODO: Implement fill - write color to every pixel
+        // Phase 2: Implement fill - write color to every pixel
         let _ = color;
     }
 
@@ -425,7 +425,7 @@ impl<'a> Drop for MappedBuffer<'a> {
 //
 // Public API: 100% SAFE - No unsafe visible to users!
 
-// TODO: Phase 0 Completion:
+// Phase 2: Full DRM Buffer Operations
 //
 // 1. Implement DRM_IOCTL_MODE_CREATE_DUMB using linux-drm or rustix
 // 2. Implement DRM_IOCTL_MODE_MAP_DUMB to get mmap offset

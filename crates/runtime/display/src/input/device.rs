@@ -120,7 +120,7 @@ impl Device {
 
         tracing::debug!("Opening input device: {}", path.display());
 
-        // TODO: Implement actual evdev device opening
+        // Phase 2: Implement actual evdev device opening
         //
         // Future implementation:
         // let evdev_device = evdev::Device::open(&path)
@@ -156,11 +156,9 @@ impl Device {
     /// - Relative axes + buttons = Mouse  
     /// - Absolute axes + touch = Touchscreen/Touchpad
     /// - Buttons + axes = Gamepad
-    #[allow(dead_code)] // TODO: Phase 0 - Will be used when implementing actual device opening
+    #[allow(dead_code)] // Phase 2: Will be used when implementing actual device opening
     fn detect_type(_device: &str) -> DeviceType {
-        // TODO: Implement actual type detection
-        //
-        // Future implementation using evdev:
+        // Phase 2: Implement actual type detection using evdev:
         //
         // let has_keys = device.supported_keys().map(|k| k.len() > 0).unwrap_or(false);
         // let has_rel_axes = device.supported_relative_axes().map(|a| a.len() > 0).unwrap_or(false);
@@ -299,7 +297,7 @@ impl Device {
 //
 // This is what Pure Rust gives us - safety without compromise!
 
-// TODO: Phase 0 Completion:
+// Phase 2: Full Device Integration
 //
 // 1. Add actual evdev::Device field
 // 2. Implement device opening with evdev crate

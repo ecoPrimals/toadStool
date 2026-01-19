@@ -219,7 +219,7 @@ pub enum TouchPhase {
     Cancelled,
 }
 
-// TODO: Phase 0 Implementation
+// Phase 2: Event Parsing Implementation
 //
 // Event parsing from evdev:
 //
