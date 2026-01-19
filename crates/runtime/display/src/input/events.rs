@@ -8,7 +8,7 @@ use crate::window::WindowId;
 /// Input event
 ///
 /// All events are tagged with the target window for proper routing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum InputEvent {
     /// Keyboard key pressed
     KeyPress {
@@ -111,10 +111,15 @@ pub enum InputEvent {
 ///
 /// Represents a physical key on the keyboard.
 /// Mapped from Linux input event codes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct KeyCode(u32);
 
 impl KeyCode {
+    /// Create a new key code
+    pub const fn new(code: u32) -> Self {
+        Self(code)
+    }
+
     /// Create from raw code
     pub const fn from_raw(code: u32) -> Self {
         Self(code)
@@ -155,7 +160,7 @@ impl KeyCode {
 /// Keyboard modifiers
 ///
 /// Tracks state of modifier keys (Shift, Ctrl, Alt, Meta/Super).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Modifiers {
     /// Shift key held
     pub shift: bool,
@@ -185,7 +190,7 @@ impl Modifiers {
 }
 
 /// Mouse button
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum MouseButton {
     /// Left mouse button
     Left,
@@ -202,7 +207,7 @@ pub enum MouseButton {
 }
 
 /// Touch phase
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TouchPhase {
     /// Touch started
     Started,

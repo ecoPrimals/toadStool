@@ -26,10 +26,12 @@ use std::path::{Path, PathBuf};
 /// ## Example
 ///
 /// ```rust,no_run
-/// use toadstool_display::drm::Device;
-///
+/// # use toadstool_display::drm::Device;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let device = Device::open("/dev/dri/card0")?;
 /// let caps = device.query_capabilities()?;
+/// # Ok(())
+/// # }
 /// ```
 #[allow(dead_code)]
 pub struct Device {

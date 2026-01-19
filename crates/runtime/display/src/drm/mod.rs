@@ -30,9 +30,11 @@ impl DrmBackend {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use toadstool_display::DrmBackend;
-    ///
+    /// # use toadstool_display::DrmBackend;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let drm = DrmBackend::open("/dev/dri/card0")?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let device = Device::open(path)?;
@@ -50,5 +52,31 @@ impl DrmBackend {
     /// Get device capabilities
     pub fn capabilities(&self) -> Result<DeviceCapabilities> {
         self.device.query_capabilities()
+    }
+
+    /// Create a dumb buffer
+    ///
+    /// Allocates a simple framebuffer for rendering.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - Width in pixels
+    /// * `height` - Height in pixels
+    /// * `bpp` - Bits per pixel (typically 32 for RGBA)
+    pub fn create_dumb_buffer(
+        &self,
+        width: u32,
+        height: u32,
+        bpp: u32,
+    ) -> Result<DumbBuffer> {
+        // Map bpp to pixel format
+        let format = match bpp {
+            32 => PixelFormat::RGBA8888,
+            24 => PixelFormat::RGB888,
+            16 => PixelFormat::RGB565,
+            _ => PixelFormat::RGBA8888, // Default to 32-bit
+        };
+
+        DumbBuffer::create(&self.device, width, height, format)
     }
 }

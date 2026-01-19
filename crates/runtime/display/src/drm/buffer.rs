@@ -79,6 +79,7 @@ impl PixelFormat {
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct DumbBuffer {
     fd: RawFd,
     handle: u32,
