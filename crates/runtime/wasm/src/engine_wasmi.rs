@@ -288,7 +288,11 @@ mod tests {
         let config = WasmRuntimeConfig::default();
         let engine = WasmRuntimeEngine::new(config).unwrap();
         let caps = engine.get_capabilities();
-        assert_eq!(caps.name, "wasmi");
-        assert!(caps.supports_wasi);
+        assert_eq!(caps.version, "1.0.7"); // wasmi version
+        assert_eq!(caps.supported_workloads, vec![WorkloadType::Wasm]);
+        // Check WASI support in platform_features
+        assert_eq!(caps.platform_features.get("wasi"), Some(&true));
+        // Check async support
+        assert_eq!(caps.platform_features.get("async"), Some(&true));
     }
 }

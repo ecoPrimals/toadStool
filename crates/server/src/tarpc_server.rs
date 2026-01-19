@@ -407,14 +407,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_health_check() {
+    async fn test_health_status() {
         let executor = Arc::new(StandaloneExecutor::new());
         let server = ToadStoolTarpcServer::new("0.1.0".to_string(), executor);
 
         let health = server
-            .health_check(Context::current())
+            .health_status(Context::current())
             .await
-            .expect("Health check failed");
+            .expect("Health status check failed");
 
         assert!(health.healthy);
         assert_eq!(health.version, "0.1.0");

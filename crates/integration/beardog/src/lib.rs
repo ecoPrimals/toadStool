@@ -101,12 +101,17 @@ mod tests {
         // Should not panic - graceful if bearDog not available
         let result = discover_entropy().await;
 
-        if let Ok(client) = result {
-            // Verify client is functional
-            assert!(client.is_available());
+        // Client creation should always succeed (graceful degradation)
+        assert!(result.is_ok(), "Entropy discovery should always succeed");
+        
+        let client = result.unwrap();
+        
+        // Client may or may not be available depending on whether BearDog is running
+        // This is expected behavior - we support graceful degradation
+        if client.is_available() {
+            eprintln!("✅ BearDog available for testing");
         } else {
-            // OK if bearDog not running in test environment
-            eprintln!("Note: bearDog not available for testing");
+            eprintln!("⚠️  BearDog not available - using fallback entropy");
         }
     }
 }

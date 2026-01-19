@@ -211,9 +211,15 @@ mod tests {
     fn test_is_port_available() {
         let discovery = RuntimePortDiscovery::new();
 
-        // Bind to a port
+        // Find an available port
         let port = discovery.discover_port(None).unwrap();
-        let _listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
+        
+        // Port should be available before binding
+        assert!(discovery.is_port_available(port));
+        
+        // Bind to the port
+        let _listener = TcpListener::bind(format!("127.0.0.1:{}", port))
+            .expect("Failed to bind to discovered port");
 
         // Port should now be unavailable
         assert!(!discovery.is_port_available(port));

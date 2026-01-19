@@ -177,9 +177,9 @@ mod tests {
     async fn test_executor_creation() {
         let config = WasmRuntimeConfig::default();
         let engine = Engine::default();
-        let executor = ModuleExecutor::new(engine, config);
+        let _executor = ModuleExecutor::new(engine, config);
 
-        // Just verify it constructs
+        // Just verify it constructs without panicking
         assert!(true);
     }
 
@@ -201,9 +201,9 @@ mod tests {
 
         let config = WasmRuntimeConfig::default();
         let engine = Engine::default();
-        let module = Module::new(&engine, &wasm_bytes[..]).unwrap();
+        let _module = Module::new(&engine, &wasm_bytes[..]).unwrap();
 
-        let executor = ModuleExecutor::new(engine, config);
+        let _executor = ModuleExecutor::new(engine, config);
 
         // For this simple test, we'd need to call "add" with parameters
         // This would require a more complex setup with typed function calls

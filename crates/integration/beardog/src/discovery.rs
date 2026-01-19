@@ -258,14 +258,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_system_entropy_fallback() {
-        let client = EntropyClient {
-            endpoint: None,
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_beardog_socket_path(),
-            ),
-            available: false,
-        };
-
+        // Test system entropy fallback (no client needed - static method)
         let seed = EntropyClient::system_entropy_fallback();
         assert!(seed.is_ok());
 

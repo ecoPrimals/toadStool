@@ -146,11 +146,11 @@ impl GpuFingerprint {
 
         match vendor {
             GpuVendor::AMD => {
-                if name_lower.contains("rdna3") {
+                if name_lower.contains("rdna3") || name_lower.contains("rx 7") {
                     "RDNA3".to_string()
-                } else if name_lower.contains("rdna2") {
+                } else if name_lower.contains("rdna2") || name_lower.contains("rx 6") {
                     "RDNA2".to_string()
-                } else if name_lower.contains("rdna") {
+                } else if name_lower.contains("rdna") || name_lower.contains("rx 5") {
                     "RDNA".to_string()
                 } else {
                     "GCN".to_string()
