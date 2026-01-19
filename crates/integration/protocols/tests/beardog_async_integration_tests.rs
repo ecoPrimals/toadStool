@@ -36,15 +36,16 @@ async fn test_beardog_integration_with_custom_timeouts() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_beardog_integration_authenticate_no_server() {
+    // EVOLVED: Unix socket path (non-existent socket)
     let config = BearDogConfig {
-        auth_endpoint: "http://localhost:59999/auth".to_string(), // Non-existent port
-        request_timeout_secs: 1,                                  // Short timeout
+        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
+        request_timeout_secs: 1, // Short timeout
         ..BearDogConfig::default()
     };
 
     let integration = BearDogIntegration::new(config).unwrap();
 
-    // Should fail to connect (no server running)
+    // Should fail to connect (no socket listening)
     let result = integration
         .authenticate(
             "test-service",
@@ -60,8 +61,9 @@ async fn test_beardog_integration_authenticate_no_server() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_beardog_integration_authorize_no_token() {
+    // EVOLVED: Unix socket (non-existent)
     let config = BearDogConfig {
-        authz_endpoint: "http://localhost:59999/authz".to_string(),
+        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
         request_timeout_secs: 1,
         ..BearDogConfig::default()
     };
@@ -79,15 +81,16 @@ async fn test_beardog_integration_authorize_no_token() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_beardog_integration_zero_trust_validation_no_server() {
+    // EVOLVED: Unix socket (non-existent)
     let config = BearDogConfig {
-        policy_endpoint: "http://localhost:59999/policy".to_string(),
+        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
         request_timeout_secs: 1,
         ..BearDogConfig::default()
     };
 
     let integration = BearDogIntegration::new(config).unwrap();
 
-    // Should fail to validate (no server)
+    // Should fail to validate (no socket listening)
     let security_context = SecurityContext::default();
     let result = integration.zero_trust_validation(&security_context).await;
 
@@ -100,9 +103,10 @@ async fn test_beardog_integration_zero_trust_validation_no_server() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_config_with_api_token() {
+async fn test_beardog_config_with_custom_socket() {
+    // EVOLVED: No API tokens! Unix socket auth via file permissions
     let config = BearDogConfig {
-        api_token: Some("secret-api-token-12345".to_string()),
+        socket_path: "/var/run/custom-beardog.sock".to_string(),
         ..BearDogConfig::default()
     };
 

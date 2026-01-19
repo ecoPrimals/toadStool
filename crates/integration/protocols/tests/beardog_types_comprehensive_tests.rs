@@ -13,12 +13,10 @@ use toadstool_integration_protocols::*;
 
 #[test]
 fn test_beardog_config_default() {
+    // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
     let config = BearDogConfig::default();
 
-    assert!(config.auth_endpoint.contains("/auth"));
-    assert!(config.authz_endpoint.contains("/authz"));
-    assert!(config.policy_endpoint.contains("/policy"));
-    assert!(config.audit_endpoint.contains("/audit"));
+    assert!(config.socket_path.contains("beardog.sock"));
 }
 
 #[test]
@@ -37,9 +35,10 @@ fn test_beardog_config_default_monitoring() {
 }
 
 #[test]
-fn test_beardog_config_no_token_by_default() {
+fn test_beardog_config_unix_socket_based() {
+    // EVOLVED: No API tokens! Unix socket auth via file permissions
     let config = BearDogConfig::default();
-    assert!(config.api_token.is_none());
+    assert!(config.socket_path.ends_with(".sock"));
 }
 
 #[test]
@@ -47,7 +46,7 @@ fn test_beardog_config_clone() {
     let config1 = BearDogConfig::default();
     let config2 = config1.clone();
 
-    assert_eq!(config1.auth_endpoint, config2.auth_endpoint);
+    assert_eq!(config1.socket_path, config2.socket_path);
     assert_eq!(config1.request_timeout_secs, config2.request_timeout_secs);
 }
 

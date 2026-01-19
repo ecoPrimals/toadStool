@@ -16,10 +16,8 @@ use toadstool_integration_protocols::*;
 fn test_beardog_config_default() {
     let config = BearDogConfig::default();
 
-    assert!(config.auth_endpoint.contains("/auth"));
-    assert!(config.authz_endpoint.contains("/authz"));
-    assert!(config.policy_endpoint.contains("/policy"));
-    assert!(config.audit_endpoint.contains("/audit"));
+    // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
+    assert!(config.socket_path.contains("beardog.sock"));
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300);
     assert_eq!(config.zero_trust_validation_interval_secs, 60);
@@ -31,7 +29,8 @@ fn test_beardog_config_clone() {
     let config1 = BearDogConfig::default();
     let config2 = config1.clone();
 
-    assert_eq!(config1.auth_endpoint, config2.auth_endpoint);
+    // EVOLVED: Pure Rust Unix socket fields
+    assert_eq!(config1.socket_path, config2.socket_path);
     assert_eq!(config1.request_timeout_secs, config2.request_timeout_secs);
     assert_eq!(config1.continuous_monitoring, config2.continuous_monitoring);
 }
@@ -42,17 +41,18 @@ fn test_beardog_config_debug() {
     let debug_str = format!("{:?}", config);
 
     assert!(debug_str.contains("BearDogConfig"));
-    assert!(debug_str.contains("auth_endpoint"));
+    assert!(debug_str.contains("socket_path"));
 }
 
 #[test]
-fn test_beardog_config_with_api_token() {
+fn test_beardog_config_with_custom_socket() {
+    // EVOLVED: No API tokens! Unix socket authentication via file permissions
     let config = BearDogConfig {
-        api_token: Some("test-token-123".to_string()),
+        socket_path: "/custom/path/beardog.sock".to_string(),
         ..Default::default()
     };
 
-    assert_eq!(config.api_token, Some("test-token-123".to_string()));
+    assert_eq!(config.socket_path, "/custom/path/beardog.sock");
 }
 
 // ============================================================================

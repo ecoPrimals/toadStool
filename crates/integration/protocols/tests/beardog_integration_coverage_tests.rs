@@ -32,12 +32,9 @@ fn test_beardog_integration_new_with_default_config() {
 
 #[test]
 fn test_beardog_integration_new_with_custom_config() {
+    // EVOLVED: Pure Rust Unix socket configuration
     let config = BearDogConfig {
-        auth_endpoint: "http://localhost:8080/auth".to_string(),
-        authz_endpoint: "http://localhost:8080/authz".to_string(),
-        policy_endpoint: "http://localhost:8080/policy".to_string(),
-        audit_endpoint: "http://localhost:8080/audit".to_string(),
-        api_token: Some("test-token".to_string()),
+        socket_path: "/tmp/test-beardog.sock".to_string(),
         request_timeout_secs: 60,
         token_refresh_interval_secs: 600,
         zero_trust_validation_interval_secs: 120,
@@ -75,13 +72,11 @@ fn test_beardog_integration_new_with_monitoring_disabled() {
 // ============================================================================
 
 #[test]
-fn test_beardog_config_default_endpoints() {
+fn test_beardog_config_default_socket() {
+    // EVOLVED: Unix socket instead of HTTP endpoints
     let config = BearDogConfig::default();
 
-    assert!(config.auth_endpoint.contains("/auth"));
-    assert!(config.authz_endpoint.contains("/authz"));
-    assert!(config.policy_endpoint.contains("/policy"));
-    assert!(config.audit_endpoint.contains("/audit"));
+    assert!(config.socket_path.contains("beardog.sock"));
 }
 
 #[test]
@@ -100,9 +95,11 @@ fn test_beardog_config_default_monitoring_enabled() {
 }
 
 #[test]
-fn test_beardog_config_no_api_token_by_default() {
+fn test_beardog_config_uses_xdg_runtime_dir() {
+    // EVOLVED: No API tokens! Unix socket auth via file permissions
     let config = BearDogConfig::default();
-    assert!(config.api_token.is_none());
+    // Should use XDG_RUNTIME_DIR or fallback to /tmp
+    assert!(config.socket_path.ends_with("beardog.sock"));
 }
 
 #[test]
@@ -110,7 +107,7 @@ fn test_beardog_config_clone() {
     let config1 = BearDogConfig::default();
     let config2 = config1.clone();
 
-    assert_eq!(config1.auth_endpoint, config2.auth_endpoint);
+    assert_eq!(config1.socket_path, config2.socket_path);
     assert_eq!(config1.request_timeout_secs, config2.request_timeout_secs);
 }
 

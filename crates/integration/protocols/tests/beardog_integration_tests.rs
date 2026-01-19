@@ -17,11 +17,8 @@ use uuid::Uuid;
 fn test_beardog_config_default() {
     let config = BearDogConfig::default();
 
-    assert!(config.auth_endpoint.contains("/auth"));
-    assert!(config.authz_endpoint.contains("/authz"));
-    assert!(config.policy_endpoint.contains("/policy"));
-    assert!(config.audit_endpoint.contains("/audit"));
-    assert_eq!(config.api_token, None);
+    // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
+    assert!(config.socket_path.contains("beardog.sock"));
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300);
     assert_eq!(config.zero_trust_validation_interval_secs, 60);
@@ -30,20 +27,16 @@ fn test_beardog_config_default() {
 
 #[test]
 fn test_beardog_config_custom() {
+    // EVOLVED: Pure Rust Unix socket with custom path
     let config = BearDogConfig {
-        auth_endpoint: "https://beardog.example.com/auth".to_string(),
-        authz_endpoint: "https://beardog.example.com/authz".to_string(),
-        policy_endpoint: "https://beardog.example.com/policy".to_string(),
-        audit_endpoint: "https://beardog.example.com/audit".to_string(),
-        api_token: Some("test-token-123".to_string()),
+        socket_path: "/custom/path/beardog.sock".to_string(),
         request_timeout_secs: 60,
         token_refresh_interval_secs: 600,
         zero_trust_validation_interval_secs: 120,
         continuous_monitoring: false,
     };
 
-    assert_eq!(config.auth_endpoint, "https://beardog.example.com/auth");
-    assert_eq!(config.api_token, Some("test-token-123".to_string()));
+    assert_eq!(config.socket_path, "/custom/path/beardog.sock");
     assert_eq!(config.request_timeout_secs, 60);
     assert!(!config.continuous_monitoring);
 }
@@ -55,7 +48,8 @@ fn test_beardog_config_serialization() {
     let deserialized: BearDogConfig =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    assert_eq!(config.auth_endpoint, deserialized.auth_endpoint);
+    // EVOLVED: Unix socket serialization
+    assert_eq!(config.socket_path, deserialized.socket_path);
     assert_eq!(
         config.request_timeout_secs,
         deserialized.request_timeout_secs
@@ -343,12 +337,9 @@ fn test_beardog_integration_creation() {
 
 #[test]
 fn test_beardog_integration_with_custom_config() {
+    // EVOLVED: Pure Rust Unix socket configuration
     let config = BearDogConfig {
-        auth_endpoint: "https://custom.beardog.com/auth".to_string(),
-        authz_endpoint: "https://custom.beardog.com/authz".to_string(),
-        policy_endpoint: "https://custom.beardog.com/policy".to_string(),
-        audit_endpoint: "https://custom.beardog.com/audit".to_string(),
-        api_token: Some("custom-token".to_string()),
+        socket_path: "/var/run/beardog-custom.sock".to_string(),
         request_timeout_secs: 45,
         token_refresh_interval_secs: 450,
         zero_trust_validation_interval_secs: 90,
