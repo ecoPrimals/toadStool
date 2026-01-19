@@ -107,7 +107,7 @@ impl DisplayClient {
     pub async fn destroy_window(&mut self, window_id: WindowId) -> Result<()> {
         let req = JsonRpcRequest::new(
             "display.destroyWindow",
-            Some(serde_json::json!({"window_id": window_id.to_string()})),
+            Some(serde_json::json!({"window_id": window_id.as_string()})),
         );
 
         let response = self.send_request(req).await?;
@@ -129,7 +129,7 @@ impl DisplayClient {
         let req = JsonRpcRequest::new(
             "display.resizeWindow",
             Some(serde_json::json!({
-                "window_id": window_id.to_string(),
+                "window_id": window_id.as_string(),
                 "width": width,
                 "height": height
             })),
@@ -148,7 +148,7 @@ impl DisplayClient {
     pub async fn get_window_info(&mut self, window_id: WindowId) -> Result<WindowInfo> {
         let req = JsonRpcRequest::new(
             "display.getWindowInfo",
-            Some(serde_json::json!({"window_id": window_id.to_string()})),
+            Some(serde_json::json!({"window_id": window_id.as_string()})),
         );
 
         let response = self.send_request(req).await?;

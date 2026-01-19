@@ -54,7 +54,9 @@ impl WindowId {
     }
 
     /// Convert to string
-    pub fn to_string(&self) -> String {
+    ///
+    /// Note: Also available via `Display` trait (`format!("{}", id)`)
+    pub fn as_string(&self) -> String {
         self.0.to_string()
     }
 }
@@ -398,7 +400,7 @@ mod tests {
     #[test]
     fn test_window_id_roundtrip() {
         let id = WindowId::new();
-        let s = id.to_string();
+        let s = id.as_string();
         let id2 = WindowId::from_string(&s).unwrap();
         assert_eq!(id, id2);
     }
@@ -409,7 +411,7 @@ mod tests {
         assert_eq!(req.width, 1920);
         assert_eq!(req.height, 1080);
         assert_eq!(req.title, None);
-        assert_eq!(req.fullscreen, false);
+        assert!(!req.fullscreen);
     }
 }
 

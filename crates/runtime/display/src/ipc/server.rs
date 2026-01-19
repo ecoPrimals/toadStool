@@ -193,7 +193,7 @@ impl DisplayServer {
                 let window_id = mgr.create_window(params).await?;
 
                 Ok(serde_json::json!({
-                    "window_id": window_id.to_string()
+                    "window_id": window_id.as_string()
                 }))
             }
             "display.destroyWindow" => {

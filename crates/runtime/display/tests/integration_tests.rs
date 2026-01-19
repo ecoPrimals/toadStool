@@ -31,7 +31,7 @@ async fn test_window_lifecycle() {
     assert_eq!(info.width, 800);
     assert_eq!(info.height, 600);
     assert_eq!(info.title, Some("Test Window".to_string()));
-    assert_eq!(info.focused, true); // First window should be focused
+    assert!(info.focused); // First window should be focused
 
     // Destroy window
     manager.destroy_window(window_id).await.unwrap();
@@ -114,8 +114,8 @@ async fn test_focus_management() {
     // Verify window info reflects focus state
     let info1 = manager.get_window_info(id1).unwrap();
     let info2 = manager.get_window_info(id2).unwrap();
-    assert_eq!(info1.focused, false);
-    assert_eq!(info2.focused, true);
+    assert!(!info1.focused);
+    assert!(info2.focused);
 
     // Clean up
     manager.destroy_window(id1).await.unwrap();
@@ -149,7 +149,7 @@ fn test_window_id_serialization() {
     let s = id.to_string();
 
     // Should be a valid UUID string
-    assert!(s.len() > 0);
+    assert!(!s.is_empty());
     assert!(s.contains('-'));
 
     // Should round-trip
