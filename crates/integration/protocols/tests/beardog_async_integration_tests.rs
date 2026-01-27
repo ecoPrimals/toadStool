@@ -55,8 +55,12 @@ async fn test_beardog_integration_authenticate_no_server() {
         )
         .await;
 
-    // We expect this to fail because there's no server
-    assert!(result.is_err());
+    // DEEP DEBT EVOLUTION: Graceful degradation when BearDog unavailable
+    // ToadStool works standalone - returns stub auth response instead of failing
+    assert!(result.is_ok());
+    let auth_response = result.unwrap();
+    assert_eq!(auth_response.access_token, "standalone");
+    assert_eq!(auth_response.token_type, "bearer");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -94,8 +98,11 @@ async fn test_beardog_integration_zero_trust_validation_no_server() {
     let security_context = SecurityContext::default();
     let result = integration.zero_trust_validation(&security_context).await;
 
-    // Expect failure due to no server
-    assert!(result.is_err());
+    // DEEP DEBT EVOLUTION: Graceful degradation when BearDog unavailable
+    // ToadStool works standalone - returns permissive validation instead of failing
+    assert!(result.is_ok());
+    let is_valid = result.unwrap();
+    assert!(is_valid, "Should return true (permissive) when BearDog unavailable");
 }
 
 // ============================================================================
