@@ -103,9 +103,9 @@ mod tests {
 
         // Client creation should always succeed (graceful degradation)
         assert!(result.is_ok(), "Entropy discovery should always succeed");
-        
+
         let client = result.unwrap();
-        
+
         // Client may or may not be available depending on whether BearDog is running
         // This is expected behavior - we support graceful degradation
         if client.is_available() {

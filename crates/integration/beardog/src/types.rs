@@ -60,8 +60,8 @@ mod tests {
     fn test_default_mixing() {
         let mixing = EntropyMixing::default();
         assert!(mixing.is_valid());
-        assert_eq!(mixing.machine_weight, 0.6);
-        assert_eq!(mixing.human_weight, 0.4);
+        assert!((mixing.machine_weight - 0.6).abs() < f32::EPSILON);
+        assert!((mixing.human_weight - 0.4).abs() < f32::EPSILON);
     }
 
     #[test]

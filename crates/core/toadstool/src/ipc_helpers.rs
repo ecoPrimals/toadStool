@@ -48,24 +48,21 @@ const IPC_TIMEOUT: Duration = Duration::from_secs(5);
 /// ```
 pub async fn register_with_songbird() -> ToadStoolResult<()> {
     // Get Songbird socket path (environment override supported)
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
 
     info!("🌍 Registering with Songbird at {}", socket_path);
 
     // Connect to Songbird
-    let mut stream = timeout(
-        IPC_TIMEOUT,
-        UnixStream::connect(&socket_path)
-    )
-    .await
-    .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
-    .map_err(|e| {
-        ToadStoolError::integration(format!(
-            "Failed to connect to Songbird at {}: {}. Is Songbird running?",
-            socket_path, e
-        ))
-    })?;
+    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
+        .await
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
+        .map_err(|e| {
+            ToadStoolError::integration(format!(
+                "Failed to connect to Songbird at {}: {}. Is Songbird running?",
+                socket_path, e
+            ))
+        })?;
 
     // Build registration request
     let request = json!({
@@ -82,7 +79,7 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 
     // Send registration
     write_json_rpc(&mut stream, &request).await?;
-    
+
     // Read response
     let response: Value = read_json_rpc(&mut stream).await?;
 
@@ -120,24 +117,21 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 /// ```
 pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
     // Get Songbird socket path
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
 
     debug!("🔍 Resolving {} via Songbird", primal_name);
 
     // Connect to Songbird
-    let mut stream = timeout(
-        IPC_TIMEOUT,
-        UnixStream::connect(&socket_path)
-    )
-    .await
-    .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
-    .map_err(|e| {
-        ToadStoolError::integration(format!(
-            "Failed to connect to Songbird: {}. Is Songbird running?",
-            e
-        ))
-    })?;
+    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
+        .await
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
+        .map_err(|e| {
+            ToadStoolError::integration(format!(
+                "Failed to connect to Songbird: {}. Is Songbird running?",
+                e
+            ))
+        })?;
 
     // Build resolve request
     let request = json!({
@@ -151,7 +145,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 
     // Send request
     write_json_rpc(&mut stream, &request).await?;
-    
+
     // Read response
     let response: Value = read_json_rpc(&mut stream).await?;
 
@@ -206,21 +200,20 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
     info!("🔗 Connecting to {} at {}", primal_name, endpoint);
 
     // Connect directly to primal
-    let stream = timeout(
-        IPC_TIMEOUT,
-        UnixStream::connect(&endpoint)
-    )
-    .await
-    .map_err(|_| ToadStoolError::integration(format!(
-        "Timeout connecting to {} at {}",
-        primal_name, endpoint
-    )))?
-    .map_err(|e| {
-        ToadStoolError::integration(format!(
-            "Failed to connect to {} at {}: {}",
-            primal_name, endpoint, e
-        ))
-    })?;
+    let stream = timeout(IPC_TIMEOUT, UnixStream::connect(&endpoint))
+        .await
+        .map_err(|_| {
+            ToadStoolError::integration(format!(
+                "Timeout connecting to {} at {}",
+                primal_name, endpoint
+            ))
+        })?
+        .map_err(|e| {
+            ToadStoolError::integration(format!(
+                "Failed to connect to {} at {}: {}",
+                primal_name, endpoint, e
+            ))
+        })?;
 
     debug!("✅ Connected to {}", primal_name);
 
@@ -249,24 +242,18 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
 /// ```
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
     // Get Songbird socket path
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
 
     debug!("🔍 Finding primals with capability: {}", capability);
 
     // Connect to Songbird
-    let mut stream = timeout(
-        IPC_TIMEOUT,
-        UnixStream::connect(&socket_path)
-    )
-    .await
-    .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
-    .map_err(|e| {
-        ToadStoolError::integration(format!(
-            "Failed to connect to Songbird: {}",
-            e
-        ))
-    })?;
+    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
+        .await
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
+        .map_err(|e| {
+            ToadStoolError::integration(format!("Failed to connect to Songbird: {}", e))
+        })?;
 
     // Build capabilities request
     let request = json!({
@@ -280,7 +267,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
 
     // Send request
     write_json_rpc(&mut stream, &request).await?;
-    
+
     // Read response
     let response: Value = read_json_rpc(&mut stream).await?;
 
@@ -301,7 +288,8 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
             services
                 .iter()
                 .filter_map(|service| {
-                    service.get("primal_name")
+                    service
+                        .get("primal_name")
                         .and_then(|n| n.as_str())
                         .map(|s| s.to_string())
                 })
@@ -309,7 +297,11 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
         })
         .unwrap_or_default();
 
-    debug!("✅ Found {} primals with capability {}", primals.len(), capability);
+    debug!(
+        "✅ Found {} primals with capability {}",
+        primals.len(),
+        capability
+    );
 
     Ok(primals)
 }
@@ -327,7 +319,7 @@ async fn write_json_rpc(stream: &mut UnixStream, message: &Value) -> ToadStoolRe
 
     // Write with newline delimiter
     let data = format!("{}\n", json_str);
-    
+
     stream
         .write_all(data.as_bytes())
         .await
@@ -362,6 +354,109 @@ async fn read_json_rpc(stream: &mut UnixStream) -> ToadStoolResult<Value> {
 }
 
 // ============================================================================
+// Semantic Method Name Resolution
+// ============================================================================
+
+use crate::semantic_methods::SemanticMethodRegistry;
+use std::sync::OnceLock;
+
+/// Global semantic method registry (initialized once)
+static SEMANTIC_REGISTRY: OnceLock<SemanticMethodRegistry> = OnceLock::new();
+
+/// Get the global semantic method registry
+fn get_registry() -> &'static SemanticMethodRegistry {
+    SEMANTIC_REGISTRY.get_or_init(SemanticMethodRegistry::new)
+}
+
+/// Resolve method name from semantic to implementation
+///
+/// Supports both semantic names (e.g., `compute.execute`) and legacy names
+/// (e.g., `execute_workload`) for backward compatibility.
+///
+/// ## Phase 1: Backward Compatible
+///
+/// - Semantic names are resolved to implementation names
+/// - Implementation names pass through unchanged
+/// - Both work seamlessly
+///
+/// ## Examples
+///
+/// ```
+/// use toadstool::ipc_helpers::resolve_method_name;
+///
+/// // Semantic name → implementation name
+/// assert_eq!(resolve_method_name("compute.execute"), "execute_workload");
+///
+/// // Implementation name → pass through
+/// assert_eq!(resolve_method_name("execute_workload"), "execute_workload");
+///
+/// // Unknown semantic name → pass through
+/// assert_eq!(resolve_method_name("unknown.method"), "unknown.method");
+/// ```
+pub fn resolve_method_name(method: &str) -> String {
+    let registry = get_registry();
+    
+    // If it's a semantic name, try to resolve it
+    if registry.is_semantic(method) {
+        if let Some(impl_name) = registry.resolve(method) {
+            debug!(
+                "Resolved semantic method '{}' → '{}'",
+                method, impl_name
+            );
+            return impl_name.to_string();
+        }
+        // Unknown semantic name - pass through (might be new/external)
+        debug!("Unknown semantic method '{}', passing through", method);
+        method.to_string()
+    } else {
+        // Not semantic (no dot) - pass through as implementation name
+        method.to_string()
+    }
+}
+
+/// Check if a method name is semantic (contains '.')
+///
+/// ## Examples
+///
+/// ```
+/// use toadstool::ipc_helpers::is_semantic_method;
+///
+/// assert!(is_semantic_method("compute.execute"));
+/// assert!(is_semantic_method("resource.cpu.get_usage"));
+/// assert!(!is_semantic_method("execute_workload"));
+/// ```
+pub fn is_semantic_method(method: &str) -> bool {
+    get_registry().is_semantic(method)
+}
+
+/// Get semantic name for implementation method (if registered)
+///
+/// ## Examples
+///
+/// ```
+/// use toadstool::ipc_helpers::get_semantic_name;
+///
+/// assert_eq!(get_semantic_name("execute_workload"), Some("compute.execute"));
+/// assert_eq!(get_semantic_name("unknown_method"), None);
+/// ```
+pub fn get_semantic_name(implementation: &str) -> Option<String> {
+    get_registry()
+        .get_semantic(implementation)
+        .map(|s| s.to_string())
+}
+
+/// Get all registered semantic method names
+///
+/// Useful for API documentation and capability advertisement.
+pub fn list_semantic_methods() -> Vec<String> {
+    get_registry()
+        .semantic_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -379,10 +474,10 @@ mod tests {
     async fn test_register_with_songbird_graceful_failure() {
         // Should fail gracefully when Songbird not available
         let result = register_with_songbird().await;
-        
+
         // Expecting error since Songbird not running in test
         assert!(result.is_err());
-        
+
         // Error should be informative
         let err = result.unwrap_err();
         let err_msg = format!("{}", err);
@@ -393,7 +488,7 @@ mod tests {
     async fn test_resolve_primal_graceful_failure() {
         // Should fail gracefully when Songbird not available
         let result = resolve_primal("beardog").await;
-        
+
         // Expecting error since Songbird not running in test
         assert!(result.is_err());
     }
@@ -402,7 +497,7 @@ mod tests {
     async fn test_connect_to_primal_graceful_failure() {
         // Should fail gracefully when Songbird not available
         let result = connect_to_primal("beardog").await;
-        
+
         // Expecting error since Songbird not running in test
         assert!(result.is_err());
     }
@@ -411,7 +506,7 @@ mod tests {
     async fn test_find_by_capability_graceful_failure() {
         // Should fail gracefully when Songbird not available
         let result = find_by_capability("crypto").await;
-        
+
         // Expecting error since Songbird not running in test
         assert!(result.is_err());
     }
@@ -432,5 +527,139 @@ mod tests {
         assert_eq!(request.get("method").unwrap(), "ipc.register");
         assert!(request.get("params").is_some());
         assert_eq!(request.get("id").unwrap(), 1);
+    }
+    
+    // ========================================================================
+    // Semantic Method Resolution Tests
+    // ========================================================================
+    
+    #[test]
+    fn test_resolve_semantic_to_implementation() {
+        assert_eq!(
+            resolve_method_name("compute.execute"),
+            "execute_workload"
+        );
+        assert_eq!(
+            resolve_method_name("resource.health.check"),
+            "check_health"
+        );
+        assert_eq!(
+            resolve_method_name("storage.artifact.store"),
+            "store_artifact"
+        );
+    }
+    
+    #[test]
+    fn test_resolve_implementation_passthrough() {
+        // Implementation names should pass through unchanged
+        assert_eq!(
+            resolve_method_name("execute_workload"),
+            "execute_workload"
+        );
+        assert_eq!(resolve_method_name("check_health"), "check_health");
+    }
+    
+    #[test]
+    fn test_resolve_unknown_semantic() {
+        // Unknown semantic names should pass through
+        assert_eq!(
+            resolve_method_name("unknown.method"),
+            "unknown.method"
+        );
+        assert_eq!(
+            resolve_method_name("future.api.call"),
+            "future.api.call"
+        );
+    }
+    
+    #[test]
+    fn test_is_semantic_method() {
+        assert!(is_semantic_method("compute.execute"));
+        assert!(is_semantic_method("resource.cpu.get_usage"));
+        assert!(!is_semantic_method("execute_workload"));
+        assert!(!is_semantic_method("single_word"));
+    }
+    
+    #[test]
+    fn test_get_semantic_name() {
+        assert_eq!(
+            get_semantic_name("execute_workload"),
+            Some("compute.execute".to_string())
+        );
+        assert_eq!(
+            get_semantic_name("check_health"),
+            Some("resource.health.check".to_string())
+        );
+        assert_eq!(get_semantic_name("unknown_method"), None);
+    }
+    
+    #[test]
+    fn test_list_semantic_methods() {
+        let methods = list_semantic_methods();
+        
+        // Should have many methods
+        assert!(methods.len() > 40);
+        
+        // Should include standard methods
+        assert!(methods.contains(&"compute.execute".to_string()));
+        assert!(methods.contains(&"resource.health.check".to_string()));
+        assert!(methods.contains(&"storage.artifact.store".to_string()));
+        assert!(methods.contains(&"network.configure".to_string()));
+        assert!(methods.contains(&"security.policy.apply".to_string()));
+    }
+    
+    #[test]
+    fn test_semantic_resolution_bidirectional() {
+        // Forward: semantic → implementation
+        let impl_name = resolve_method_name("compute.execute");
+        assert_eq!(impl_name, "execute_workload");
+        
+        // Reverse: implementation → semantic
+        let semantic_name = get_semantic_name(&impl_name);
+        assert_eq!(semantic_name, Some("compute.execute".to_string()));
+    }
+    
+    #[test]
+    fn test_runtime_variant_resolution() {
+        assert_eq!(
+            resolve_method_name("compute.container.run"),
+            "run_container"
+        );
+        assert_eq!(
+            resolve_method_name("compute.wasm.execute"),
+            "start_wasm_module"
+        );
+        assert_eq!(
+            resolve_method_name("compute.python.execute"),
+            "run_python_script"
+        );
+        assert_eq!(
+            resolve_method_name("compute.native.execute"),
+            "run_native_binary"
+        );
+        assert_eq!(
+            resolve_method_name("compute.gpu.execute"),
+            "run_gpu_compute"
+        );
+    }
+    
+    #[test]
+    fn test_all_domains_covered() {
+        let methods = list_semantic_methods();
+        
+        // Verify all domains are represented
+        let has_compute = methods.iter().any(|m| m.starts_with("compute."));
+        let has_resource = methods.iter().any(|m| m.starts_with("resource."));
+        let has_storage = methods.iter().any(|m| m.starts_with("storage."));
+        let has_network = methods.iter().any(|m| m.starts_with("network."));
+        let has_security = methods.iter().any(|m| m.starts_with("security."));
+        let has_runtime = methods.iter().any(|m| m.starts_with("runtime."));
+        
+        assert!(has_compute, "Missing compute domain");
+        assert!(has_resource, "Missing resource domain");
+        assert!(has_storage, "Missing storage domain");
+        assert!(has_network, "Missing network domain");
+        assert!(has_security, "Missing security domain");
+        assert!(has_runtime, "Missing runtime domain");
     }
 }

@@ -228,11 +228,7 @@ impl WindowManager {
     /// **Capability-based discovery**: Checks common paths, no hardcoding!
     async fn discover_drm_device() -> Result<std::path::PathBuf> {
         // Check common DRM device paths
-        let candidates = [
-            "/dev/dri/card0",
-            "/dev/dri/card1",
-            "/dev/dri/renderD128",
-        ];
+        let candidates = ["/dev/dri/card0", "/dev/dri/card1", "/dev/dri/renderD128"];
 
         for path in &candidates {
             let path_buf = std::path::PathBuf::from(path);
@@ -241,9 +237,9 @@ impl WindowManager {
             }
         }
 
-        Err(DisplayError::DeviceNotFound(
-            std::path::PathBuf::from("/dev/dri/card*"),
-        ))
+        Err(DisplayError::DeviceNotFound(std::path::PathBuf::from(
+            "/dev/dri/card*",
+        )))
     }
 
     /// Create a new window
@@ -321,9 +317,7 @@ impl WindowManager {
             .ok_or(DisplayError::WindowNotFound(id))?;
 
         // Allocate new framebuffer
-        let new_framebuffer = self
-            .drm
-            .create_dumb_buffer(size.width, size.height, 32)?;
+        let new_framebuffer = self.drm.create_dumb_buffer(size.width, size.height, 32)?;
 
         // Replace framebuffer (old one cleaned up on drop)
         window.framebuffer = new_framebuffer;

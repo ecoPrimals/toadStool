@@ -225,8 +225,11 @@ mod tests {
                 }
             }
         }
-        
+
         // Verify we found and tested a port
-        assert!(port_found.is_some(), "Could not find available port after 10 attempts");
+        assert!(
+            port_found.is_some(),
+            "Could not find available port after 10 attempts"
+        );
     }
 }

@@ -51,6 +51,7 @@ pub mod encryption;
 pub mod error;
 pub mod execution;
 pub mod fractal_integration;
+pub mod ipc_helpers;
 pub mod layer_adaptation;
 pub mod multi_workload_compositor;
 pub mod os_layer;
@@ -63,10 +64,10 @@ pub mod runtime_discovery;
 pub mod security;
 pub mod security_hardening;
 pub mod self_identity;
+pub mod semantic_methods;
 pub mod universal;
 pub mod workload;
 pub mod workload_migration;
-pub mod ipc_helpers;
 // biomeOS integration is now handled as a primal through the ecosystem module
 // No longer need hard integration - biomeOS interacts as a primal like Songbird
 

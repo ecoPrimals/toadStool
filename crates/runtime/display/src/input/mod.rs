@@ -37,9 +37,9 @@ pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
 
 use crate::window::WindowId;
-use crate::Result;
 #[cfg(test)]
 use crate::DisplayError;
+use crate::Result;
 use tokio::sync::mpsc;
 
 /// Input manager for device enumeration and event handling

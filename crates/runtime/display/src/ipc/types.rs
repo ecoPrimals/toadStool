@@ -151,7 +151,7 @@ pub enum DisplayMethod {
     #[serde(rename = "display.destroyWindow")]
     DestroyWindow {
         /// Window ID to destroy
-        window_id: String
+        window_id: String,
     },
 
     /// Resize a window
@@ -169,14 +169,14 @@ pub enum DisplayMethod {
     #[serde(rename = "display.getWindowInfo")]
     GetWindowInfo {
         /// Window ID to query
-        window_id: String
+        window_id: String,
     },
 
     /// Subscribe to input events
     #[serde(rename = "display.subscribeInput")]
     SubscribeInput {
         /// Window ID for events
-        window_id: String
+        window_id: String,
     },
 
     /// Poll for pending events
@@ -203,7 +203,7 @@ pub enum DisplayResult {
     /// Window created
     WindowCreated {
         /// Created window ID
-        window_id: String
+        window_id: String,
     },
 
     /// Window destroyed
@@ -218,19 +218,19 @@ pub enum DisplayResult {
     /// Input subscription
     InputSubscription {
         /// Subscription status
-        subscribed: bool
+        subscribed: bool,
     },
 
     /// Polled events
     Events {
         /// List of input events
-        events: Vec<InputEvent>
+        events: Vec<InputEvent>,
     },
 
     /// Display capabilities
     Capabilities {
         /// Capability information
-        capabilities: DisplayCapabilitiesInfo
+        capabilities: DisplayCapabilitiesInfo,
     },
 
     /// Present acknowledgment
@@ -278,10 +278,8 @@ mod tests {
 
     #[test]
     fn test_jsonrpc_response_success() {
-        let resp = JsonRpcResponse::success(
-            serde_json::json!(1),
-            serde_json::json!({"status": "ok"}),
-        );
+        let resp =
+            JsonRpcResponse::success(serde_json::json!(1), serde_json::json!({"status": "ok"}));
         assert!(resp.result.is_some());
         assert!(resp.error.is_none());
     }

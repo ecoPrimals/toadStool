@@ -119,7 +119,7 @@ impl<T: Send + Sync + 'static> Drop for PooledObject<T> {
             if let Ok(mut available) = self.pool.try_write() {
                 if let Ok(mut stats_guard) = self.stats.try_write() {
                     let max_size = self.config.max_size;
-                    
+
                     if available.len() < max_size {
                         available.push(object);
                         stats_guard.current_size = available.len();

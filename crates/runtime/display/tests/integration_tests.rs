@@ -2,8 +2,8 @@
 //!
 //! Tests the full stack from window creation to IPC communication.
 
-use toadstool_display::window::{CreateWindowRequest, WindowManager};
 use toadstool_display::input::InputManager;
+use toadstool_display::window::{CreateWindowRequest, WindowManager};
 
 #[tokio::test]
 async fn test_window_lifecycle() {

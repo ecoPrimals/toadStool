@@ -166,9 +166,10 @@ path = "config_management_demo.rs"
 # name = "edge_runtime_comprehensive_demo"
 # path = "edge_runtime_comprehensive_demo.rs"
 
-[[bin]]
-name = "enhanced_wasm_component_demo"
-path = "enhanced_wasm_component_demo.rs"
+# Archived Jan 27, 2026 - References incomplete component_model feature
+# [[bin]]
+# name = "enhanced_wasm_component_demo"
+# path = "enhanced_wasm_component_demo.rs"
 
 # Archived Nov 13, 2025 - Missing types (SelfIdentity, InfantDiscovery)
 # [[bin]]
@@ -201,9 +202,10 @@ required-features = []  # OpenCL feature is in GPU crate, not workspace
 name = "distributed_gpu_demo"
 path = "distributed_gpu_demo.rs"
 
-[[bin]]
-name = "beardog_encrypted_workload"
-path = "beardog_encrypted_workload.rs"
+# Archived Jan 27, 2026 - Hardcoded reqwest dependency (pre-Pure-Rust pattern)
+# [[bin]]
+# name = "beardog_encrypted_workload"
+# path = "beardog_encrypted_workload.rs"
 
 [[bin]]
 name = "unified_memory_demo"

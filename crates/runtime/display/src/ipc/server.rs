@@ -44,8 +44,7 @@ impl DisplayServer {
     ///
     /// **Capability-based**: Uses XDG_RUNTIME_DIR, no hardcoding!
     fn discover_socket_path() -> PathBuf {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-            .unwrap_or_else(|_| "/tmp".to_string());
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
 
         let mut path = PathBuf::from(runtime_dir);
         path.push("toadstool");
@@ -61,9 +60,9 @@ impl DisplayServer {
 
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| DisplayError::IpcError(format!("Failed to create socket dir: {}", e)))?;
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                DisplayError::IpcError(format!("Failed to create socket dir: {}", e))
+            })?;
         }
 
         // Remove existing socket
@@ -85,8 +84,9 @@ impl DisplayServer {
     ///
     /// Accepts connections and handles requests in parallel.
     pub async fn serve(self) -> Result<()> {
-        let listener = self.listener
-            .ok_or_else(|| DisplayError::IpcError("Server not bound. Call bind() first.".to_string()))?;
+        let listener = self.listener.ok_or_else(|| {
+            DisplayError::IpcError("Server not bound. Call bind() first.".to_string())
+        })?;
 
         tracing::info!("🚀 Display server listening...");
 
@@ -133,12 +133,17 @@ impl DisplayServer {
                     let response = Self::handle_request(&line, &manager).await;
 
                     // Send response
-                    let response_json = serde_json::to_string(&response)
-                        .map_err(|e| DisplayError::IpcError(format!("Serialization error: {}", e)))?;
+                    let response_json = serde_json::to_string(&response).map_err(|e| {
+                        DisplayError::IpcError(format!("Serialization error: {}", e))
+                    })?;
 
-                    writer.write_all(response_json.as_bytes()).await
+                    writer
+                        .write_all(response_json.as_bytes())
+                        .await
                         .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
-                    writer.write_all(b"\n").await
+                    writer
+                        .write_all(b"\n")
+                        .await
                         .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
                 }
                 Err(e) => {
@@ -184,7 +189,8 @@ impl DisplayServer {
     ) -> Result<serde_json::Value> {
         match request.method.as_str() {
             "display.createWindow" => {
-                let params: CreateWindowRequest = request.params
+                let params: CreateWindowRequest = request
+                    .params
                     .as_ref()
                     .and_then(|p| serde_json::from_value(p.clone()).ok())
                     .unwrap_or_default();
@@ -198,7 +204,8 @@ impl DisplayServer {
             }
             "display.destroyWindow" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
-                let window_id_str = params["window_id"].as_str()
+                let window_id_str = params["window_id"]
+                    .as_str()
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
 
@@ -209,13 +216,18 @@ impl DisplayServer {
             }
             "display.resizeWindow" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
-                let window_id_str = params["window_id"].as_str()
+                let window_id_str = params["window_id"]
+                    .as_str()
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
-                let width = params["width"].as_u64()
-                    .ok_or_else(|| DisplayError::IpcError("Missing width".to_string()))? as u32;
-                let height = params["height"].as_u64()
-                    .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))? as u32;
+                let width = params["width"]
+                    .as_u64()
+                    .ok_or_else(|| DisplayError::IpcError("Missing width".to_string()))?
+                    as u32;
+                let height = params["height"]
+                    .as_u64()
+                    .ok_or_else(|| DisplayError::IpcError("Missing height".to_string()))?
+                    as u32;
 
                 let mut mgr = manager.write().await;
                 mgr.resize_window(window_id, Size { width, height }).await?;
@@ -224,7 +236,8 @@ impl DisplayServer {
             }
             "display.getWindowInfo" => {
                 let params: serde_json::Value = request.params.clone().unwrap_or_default();
-                let window_id_str = params["window_id"].as_str()
+                let window_id_str = params["window_id"]
+                    .as_str()
                     .ok_or_else(|| DisplayError::IpcError("Missing window_id".to_string()))?;
                 let window_id = WindowId::from_string(window_id_str)?;
 
@@ -249,7 +262,10 @@ impl DisplayServer {
                     "window_count": mgr.window_count(),
                 }))
             }
-            _ => Err(DisplayError::IpcError(format!("Unknown method: {}", request.method))),
+            _ => Err(DisplayError::IpcError(format!(
+                "Unknown method: {}",
+                request.method
+            ))),
         }
     }
 

@@ -849,9 +849,7 @@ mod tests {
                     "-f".to_string(),
                     // EVOLVED: Health check will use service's actual network endpoint
                     // Port will be discovered from deployment network configuration
-                    format!(
-                        "http://{{SERVICE_IP}}:{{SERVICE_PORT}}/health"
-                    ),
+                    format!("http://{{SERVICE_IP}}:{{SERVICE_PORT}}/health"),
                 ],
                 interval: 30,
                 timeout: 5,

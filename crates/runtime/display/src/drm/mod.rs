@@ -63,12 +63,7 @@ impl DrmBackend {
     /// * `width` - Width in pixels
     /// * `height` - Height in pixels
     /// * `bpp` - Bits per pixel (typically 32 for RGBA)
-    pub fn create_dumb_buffer(
-        &self,
-        width: u32,
-        height: u32,
-        bpp: u32,
-    ) -> Result<DumbBuffer> {
+    pub fn create_dumb_buffer(&self, width: u32, height: u32, bpp: u32) -> Result<DumbBuffer> {
         // Map bpp to pixel format
         let format = match bpp {
             32 => PixelFormat::RGBA8888,

@@ -52,17 +52,28 @@ pub trait ComponentModelSupport: Send + Sync {
 #[async_trait]
 impl ComponentModelSupport for WasmRuntimeEngine {
     /// Check if component model is supported
+    /// TODO: Implement component model configuration
     fn supports_component_model(&self) -> bool {
-        self.config.component_model.enabled
+        // Component model not yet fully integrated
+        false
     }
 
     /// Get component model configuration
+    /// TODO: Implement component model configuration  
     fn get_component_config(&self) -> &ComponentModelConfig {
-        &self.config.component_model
+        // Return default config for now
+        static DEFAULT_CONFIG: ComponentModelConfig = ComponentModelConfig {
+            enabled: false,
+            max_instances: 0,
+            linking_timeout_ms: 0,
+            composition_enabled: false,
+            wit_support: false,
+        };
+        &DEFAULT_CONFIG
     }
 
     /// Create component instance
-    async fn create_component_instance(&self, interface_name: &str) -> ToadStoolResult<String> {
+    async fn create_component_instance(&self, _interface_name: &str) -> ToadStoolResult<String> {
         use toadstool::ToadStoolError;
 
         if !self.supports_component_model() {
@@ -71,9 +82,11 @@ impl ComponentModelSupport for WasmRuntimeEngine {
             ));
         }
 
-        self.component_registry
-            .create_instance(interface_name)
-            .await
+        // TODO: Implement component registry integration
+        // self.component_registry.create_instance(interface_name).await
+        Err(ToadStoolError::not_supported(
+            "Component registry not yet integrated".to_string(),
+        ))
     }
 
     /// Execute component function
@@ -92,13 +105,14 @@ impl ComponentModelSupport for WasmRuntimeEngine {
             ));
         }
 
+        // TODO: Implement component registry integration
         // Get the component instance
-        let _instance = self.component_registry.get_instance(instance_id).await?;
+        // let _instance = self.component_registry.get_instance(instance_id).await?;
 
         // Update instance state to running
-        self.component_registry
-            .update_state(instance_id, ComponentState::Running)
-            .await?;
+        // self.component_registry
+        //     .update_state(instance_id, ComponentState::Running)
+        //     .await?;
 
         // For now, return a mock response - in a real implementation, this would
         // invoke the actual component function through Wasmtime
@@ -137,9 +151,10 @@ impl ComponentModelSupport for WasmRuntimeEngine {
         };
 
         // Update instance state back to ready
-        self.component_registry
-            .update_state(instance_id, ComponentState::Ready)
-            .await?;
+        // TODO: Implement component registry integration
+        // self.component_registry
+        //     .update_state(instance_id, ComponentState::Ready)
+        //     .await?;
 
         Ok(result)
     }

@@ -173,7 +173,7 @@ impl EntropyClient {
     pub async fn generate_seed_with_request(&self, request: SeedRequest) -> Result<EphemeralSeed> {
         if !self.available {
             // Fallback to system entropy
-            return Self::system_entropy_fallback();
+            return Ok(Self::system_entropy_fallback());
         }
 
         // Request from bearDog
@@ -184,7 +184,7 @@ impl EntropyClient {
                     "bearDog request failed: {}, falling back to system entropy",
                     e
                 );
-                Self::system_entropy_fallback()
+                Ok(Self::system_entropy_fallback())
             }
         }
     }
@@ -208,7 +208,7 @@ impl EntropyClient {
     ///
     /// When bearDog unavailable, use system RNG.
     /// Quality is lower (pure machine entropy), but sufficient for many use cases.
-    fn system_entropy_fallback() -> Result<EphemeralSeed> {
+    fn system_entropy_fallback() -> EphemeralSeed {
         use std::time::SystemTime;
 
         // Generate random bytes using system entropy
@@ -232,12 +232,7 @@ impl EntropyClient {
             algorithm: "system".to_string(),
         };
 
-        Ok(EphemeralSeed::new(
-            seed_data,
-            EntropySource::Machine,
-            mixing,
-            quality,
-        ))
+        EphemeralSeed::new(seed_data, EntropySource::Machine, mixing, quality)
     }
 }
 
@@ -260,9 +255,7 @@ mod tests {
     async fn test_system_entropy_fallback() {
         // Test system entropy fallback (no client needed - static method)
         let seed = EntropyClient::system_entropy_fallback();
-        assert!(seed.is_ok());
-
-        let seed = seed.unwrap();
+        // Verify seed has expected properties
         assert_eq!(seed.source, EntropySource::Machine);
         assert!(!seed.seed_data.is_empty());
     }

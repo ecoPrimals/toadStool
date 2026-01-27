@@ -113,7 +113,9 @@ impl DisplayClient {
         let response = self.send_request(req).await?;
 
         if response.error.is_some() {
-            Err(DisplayError::IpcError("Failed to destroy window".to_string()))
+            Err(DisplayError::IpcError(
+                "Failed to destroy window".to_string(),
+            ))
         } else {
             Ok(())
         }
@@ -138,7 +140,9 @@ impl DisplayClient {
         let response = self.send_request(req).await?;
 
         if response.error.is_some() {
-            Err(DisplayError::IpcError("Failed to resize window".to_string()))
+            Err(DisplayError::IpcError(
+                "Failed to resize window".to_string(),
+            ))
         } else {
             Ok(())
         }

@@ -2,6 +2,8 @@
 //!
 //! This module defines errors for integrating with ecosystem primals (Songbird, BearDog, etc.).
 //! PrimalError integrates with the unified ToadStoolError system for consistent error handling.
+//!
+//! **EVOLVED**: Pure Rust! Network errors use strings instead of reqwest::Error
 
 use thiserror::Error;
 use toadstool_common::error::{
@@ -20,8 +22,8 @@ pub enum PrimalError {
     #[error("Configuration error: {message}")]
     Configuration { message: String },
 
-    #[error("Network error: {source}")]
-    Network { source: reqwest::Error },
+    #[error("Network error: {endpoint} - {reason}")]
+    Network { endpoint: String, reason: String },
 
     #[error("Authentication error: {message}")]
     Authentication { message: String },
@@ -52,11 +54,8 @@ impl From<PrimalError> for ToadStoolError {
             PrimalError::Configuration { message } => {
                 ToadStoolError::Configuration(ConfigError::ValidationError { reason: message })
             }
-            PrimalError::Network { source } => {
-                ToadStoolError::Network(NetworkError::ConnectionFailed {
-                    endpoint: format!("HTTP request: {}", source.url().map(|u| u.as_str()).unwrap_or("unknown")),
-                    reason: source.to_string(),
-                })
+            PrimalError::Network { endpoint, reason } => {
+                ToadStoolError::Network(NetworkError::ConnectionFailed { endpoint, reason })
             }
             PrimalError::Authentication { message } => {
                 ToadStoolError::Security(SecurityError::AuthenticationFailed { reason: message })
@@ -102,12 +101,15 @@ impl From<ToadStoolError> for PrimalError {
             ToadStoolError::Configuration(_) => PrimalError::Configuration {
                 message: error.to_string(),
             },
-            ToadStoolError::Network(_) => PrimalError::Network {
-                source: reqwest::Error::from(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    error.to_string(),
-                )),
-            },
+            ToadStoolError::Network(ref net_error) => {
+                let (endpoint, reason) = match net_error {
+                    NetworkError::ConnectionFailed { endpoint, reason } => {
+                        (endpoint.clone(), reason.clone())
+                    }
+                    _ => ("unknown".to_string(), error.to_string()),
+                };
+                PrimalError::Network { endpoint, reason }
+            }
             ToadStoolError::Security(_) => PrimalError::Authentication {
                 message: error.to_string(),
             },
