@@ -282,7 +282,7 @@ mod tests {
     fn test_seed_request_default() {
         let request = SeedRequest::default();
         assert_eq!(request.source, EntropySource::Mixed);
-        assert_eq!(request.min_quality, 0.7);
+        assert!((request.min_quality - 0.7).abs() < f32::EPSILON);
         assert!(request.mixing.is_valid());
     }
 }

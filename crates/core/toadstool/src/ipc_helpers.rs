@@ -395,14 +395,11 @@ fn get_registry() -> &'static SemanticMethodRegistry {
 /// ```
 pub fn resolve_method_name(method: &str) -> String {
     let registry = get_registry();
-    
+
     // If it's a semantic name, try to resolve it
     if registry.is_semantic(method) {
         if let Some(impl_name) = registry.resolve(method) {
-            debug!(
-                "Resolved semantic method '{}' → '{}'",
-                method, impl_name
-            );
+            debug!("Resolved semantic method '{}' → '{}'", method, impl_name);
             return impl_name.to_string();
         }
         // Unknown semantic name - pass through (might be new/external)
@@ -528,50 +525,35 @@ mod tests {
         assert!(request.get("params").is_some());
         assert_eq!(request.get("id").unwrap(), 1);
     }
-    
+
     // ========================================================================
     // Semantic Method Resolution Tests
     // ========================================================================
-    
+
     #[test]
     fn test_resolve_semantic_to_implementation() {
-        assert_eq!(
-            resolve_method_name("compute.execute"),
-            "execute_workload"
-        );
-        assert_eq!(
-            resolve_method_name("resource.health.check"),
-            "check_health"
-        );
+        assert_eq!(resolve_method_name("compute.execute"), "execute_workload");
+        assert_eq!(resolve_method_name("resource.health.check"), "check_health");
         assert_eq!(
             resolve_method_name("storage.artifact.store"),
             "store_artifact"
         );
     }
-    
+
     #[test]
     fn test_resolve_implementation_passthrough() {
         // Implementation names should pass through unchanged
-        assert_eq!(
-            resolve_method_name("execute_workload"),
-            "execute_workload"
-        );
+        assert_eq!(resolve_method_name("execute_workload"), "execute_workload");
         assert_eq!(resolve_method_name("check_health"), "check_health");
     }
-    
+
     #[test]
     fn test_resolve_unknown_semantic() {
         // Unknown semantic names should pass through
-        assert_eq!(
-            resolve_method_name("unknown.method"),
-            "unknown.method"
-        );
-        assert_eq!(
-            resolve_method_name("future.api.call"),
-            "future.api.call"
-        );
+        assert_eq!(resolve_method_name("unknown.method"), "unknown.method");
+        assert_eq!(resolve_method_name("future.api.call"), "future.api.call");
     }
-    
+
     #[test]
     fn test_is_semantic_method() {
         assert!(is_semantic_method("compute.execute"));
@@ -579,7 +561,7 @@ mod tests {
         assert!(!is_semantic_method("execute_workload"));
         assert!(!is_semantic_method("single_word"));
     }
-    
+
     #[test]
     fn test_get_semantic_name() {
         assert_eq!(
@@ -592,14 +574,14 @@ mod tests {
         );
         assert_eq!(get_semantic_name("unknown_method"), None);
     }
-    
+
     #[test]
     fn test_list_semantic_methods() {
         let methods = list_semantic_methods();
-        
+
         // Should have many methods
         assert!(methods.len() > 40);
-        
+
         // Should include standard methods
         assert!(methods.contains(&"compute.execute".to_string()));
         assert!(methods.contains(&"resource.health.check".to_string()));
@@ -607,18 +589,18 @@ mod tests {
         assert!(methods.contains(&"network.configure".to_string()));
         assert!(methods.contains(&"security.policy.apply".to_string()));
     }
-    
+
     #[test]
     fn test_semantic_resolution_bidirectional() {
         // Forward: semantic → implementation
         let impl_name = resolve_method_name("compute.execute");
         assert_eq!(impl_name, "execute_workload");
-        
+
         // Reverse: implementation → semantic
         let semantic_name = get_semantic_name(&impl_name);
         assert_eq!(semantic_name, Some("compute.execute".to_string()));
     }
-    
+
     #[test]
     fn test_runtime_variant_resolution() {
         assert_eq!(
@@ -642,11 +624,11 @@ mod tests {
             "run_gpu_compute"
         );
     }
-    
+
     #[test]
     fn test_all_domains_covered() {
         let methods = list_semantic_methods();
-        
+
         // Verify all domains are represented
         let has_compute = methods.iter().any(|m| m.starts_with("compute."));
         let has_resource = methods.iter().any(|m| m.starts_with("resource."));
@@ -654,7 +636,7 @@ mod tests {
         let has_network = methods.iter().any(|m| m.starts_with("network."));
         let has_security = methods.iter().any(|m| m.starts_with("security."));
         let has_runtime = methods.iter().any(|m| m.starts_with("runtime."));
-        
+
         assert!(has_compute, "Missing compute domain");
         assert!(has_resource, "Missing resource domain");
         assert!(has_storage, "Missing storage domain");

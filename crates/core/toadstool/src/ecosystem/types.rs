@@ -105,8 +105,10 @@ impl EcosystemConfigBuilder {
 
 /// Discovery method configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum DiscoveryMethodConfig {
     /// Automatic selection
+    #[default]
     Auto,
     /// Environment variables only
     Environment,
@@ -118,11 +120,6 @@ pub enum DiscoveryMethodConfig {
     Registry { endpoint: String },
 }
 
-impl Default for DiscoveryMethodConfig {
-    fn default() -> Self {
-        Self::Auto
-    }
-}
 
 /// Status of a service instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

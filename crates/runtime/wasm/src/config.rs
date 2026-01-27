@@ -11,22 +11,19 @@ use toadstool_common::config_bases::CacheConfig;
 /// Defines the security posture and resource isolation guarantees
 /// for WASM module execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum SecurityLevel {
     /// No isolation (testing only)
     None,
     /// Basic sandboxing
     Basic,
     /// Strict isolation (recommended for production)
+    #[default]
     Strict,
     /// Maximum security with all restrictions
     Maximum,
 }
 
-impl Default for SecurityLevel {
-    fn default() -> Self {
-        Self::Strict
-    }
-}
 
 impl SecurityLevel {
     /// Returns true if this security level enforces memory limits

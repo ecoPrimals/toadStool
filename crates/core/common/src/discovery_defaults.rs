@@ -237,6 +237,8 @@ mod tests {
     fn test_localhost_fallback_urls() {
         let fallbacks = LocalhostFallbacks { enabled: true };
 
+        // NOTE: These are FALLBACK values for when discovery fails
+        // Production uses capability-based discovery (no hardcoding)
         assert_eq!(
             fallbacks.get_fallback_url("toadstool"),
             Some("http://localhost:8080".to_string())

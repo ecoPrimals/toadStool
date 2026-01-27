@@ -22,9 +22,11 @@ use toadstool::WorkloadType;
 
 /// Backend selection strategy for GPU compute
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum BackendSelectionStrategy {
     /// Automatic: Intelligent selection based on workload and availability
     /// Prioritizes sovereign backends (WebGPU), uses vendor when needed
+    #[default]
     Automatic,
 
     /// Sovereign only: Pure Rust WebGPU only (no vendor backends)
@@ -39,11 +41,6 @@ pub enum BackendSelectionStrategy {
     Specific(GpuFramework),
 }
 
-impl Default for BackendSelectionStrategy {
-    fn default() -> Self {
-        Self::Automatic
-    }
-}
 
 impl BackendSelectionStrategy {
     /// Select best framework based on strategy, workload, and availability

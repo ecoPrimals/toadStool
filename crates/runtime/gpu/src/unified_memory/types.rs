@@ -108,8 +108,10 @@ impl Default for MemoryFlags {
 
 /// Synchronization state of a buffer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum SyncState {
     /// Buffer is synchronized between CPU and GPU
+    #[default]
     Synced,
 
     /// CPU has modifications, GPU needs sync
@@ -122,11 +124,6 @@ pub enum SyncState {
     Conflict,
 }
 
-impl Default for SyncState {
-    fn default() -> Self {
-        Self::Synced
-    }
-}
 
 impl fmt::Display for SyncState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -178,8 +175,10 @@ impl fmt::Display for BackendType {
 
 /// Backend selection strategy
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum BackendStrategy {
     /// Automatic: Sovereignty-first (WebGPU > Vulkan > OpenCL > CPU)
+    #[default]
     Automatic,
 
     /// Sovereignty only: WebGPU or fail
@@ -192,11 +191,6 @@ pub enum BackendStrategy {
     Specific(BackendType),
 }
 
-impl Default for BackendStrategy {
-    fn default() -> Self {
-        Self::Automatic
-    }
-}
 
 /// Unified memory capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -237,6 +231,7 @@ impl UnifiedMemoryCapabilities {
 
 /// Memory access pattern (for optimization hints)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum AccessPattern {
     /// Primarily CPU access
     CpuDominant,
@@ -245,17 +240,13 @@ pub enum AccessPattern {
     GpuDominant,
 
     /// Balanced CPU/GPU access
+    #[default]
     Balanced,
 
     /// Alternating CPU/GPU access
     Alternating,
 }
 
-impl Default for AccessPattern {
-    fn default() -> Self {
-        Self::Balanced
-    }
-}
 
 /// Unified memory configuration
 #[derive(Debug, Clone)]

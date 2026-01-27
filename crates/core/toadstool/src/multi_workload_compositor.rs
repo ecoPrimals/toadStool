@@ -237,7 +237,7 @@ impl MultiWorkloadCompositor {
         } else {
             Some(WorkloadConflict {
                 workload: failing_request.name.clone(),
-                reason: format!("Resources allocated to higher-priority workloads"),
+                reason: "Resources allocated to higher-priority workloads".to_string(),
                 conflicting_workloads,
                 resolution: ConflictResolution::PriorityPreemption,
             })

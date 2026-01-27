@@ -45,6 +45,7 @@ impl fmt::Display for CudaSource {
 /// Preferred execution backend for CUDA workload
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
+#[derive(Default)]
 pub enum CudaBackend {
     /// Native NVIDIA CUDA (100% compatibility, best performance)
     NativeNvidia,
@@ -59,6 +60,7 @@ pub enum CudaBackend {
     CpuSequential,
 
     /// Automatic selection based on available hardware
+    #[default]
     Automatic,
 }
 
@@ -74,11 +76,6 @@ impl fmt::Display for CudaBackend {
     }
 }
 
-impl Default for CudaBackend {
-    fn default() -> Self {
-        Self::Automatic
-    }
-}
 
 /// CUDA launch configuration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

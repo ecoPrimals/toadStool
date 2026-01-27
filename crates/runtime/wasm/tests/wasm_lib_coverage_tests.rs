@@ -5,9 +5,7 @@
 use toadstool::execution::RuntimeEngine;
 use toadstool::security::{IsolationLevel, SecurityContext};
 use toadstool::workload::WorkloadType;
-use toadstool_runtime_wasm::{
-    CacheMetrics, SecurityLevel, WasmRuntimeConfig, WasmRuntimeEngine,
-};
+use toadstool_runtime_wasm::{CacheMetrics, SecurityLevel, WasmRuntimeConfig, WasmRuntimeEngine};
 // Note: ComponentModelConfig, ComponentState, ComponentValue not imported
 // (component_model feature disabled - Phase 2 work)
 

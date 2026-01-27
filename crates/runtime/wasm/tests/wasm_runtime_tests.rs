@@ -4,7 +4,8 @@
 
 use toadstool_common::config_bases::CacheConfig;
 use toadstool_runtime_wasm::{
-    SecurityLevel, WasmRuntimeConfig,
+    SecurityLevel,
+    WasmRuntimeConfig,
     // ComponentModelConfig, ComponentModelSupport, // Not fully integrated yet
     WasmRuntimeEngine,
 };

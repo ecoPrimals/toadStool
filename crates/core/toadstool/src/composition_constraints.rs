@@ -248,11 +248,13 @@ impl fmt::Display for Constraint {
 ///
 /// Higher priority workloads get preferential resource allocation.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum ConstraintPriority {
     /// Background task (lowest priority)
     Background = 0,
 
     /// Normal priority
+    #[default]
     Normal = 1,
 
     /// High priority (important workload)
@@ -262,11 +264,6 @@ pub enum ConstraintPriority {
     Critical = 3,
 }
 
-impl Default for ConstraintPriority {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
 
 impl fmt::Display for ConstraintPriority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

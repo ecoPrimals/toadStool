@@ -456,12 +456,12 @@ impl CompositionEngine {
                 .filter_map(|c| results.get(c.name()))
                 .collect();
 
-            if hard_results.is_empty() {
-                1.0
-            } else if hard_results.iter().all(|s| s.is_satisfied()) {
+            // If no hard constraints or all satisfied: 1.0
+            // If any hard constraint fails: 0.0 (workload infeasible)
+            if hard_results.is_empty() || hard_results.iter().all(|s| s.is_satisfied()) {
                 1.0
             } else {
-                0.0 // Any hard constraint failure = 0
+                0.0
             }
         };
 

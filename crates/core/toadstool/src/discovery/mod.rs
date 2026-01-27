@@ -98,8 +98,10 @@ impl DiscoveredService {
 
 /// Discovery method configuration
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum DiscoveryMethod {
     /// Use mDNS/DNS-SD for automatic discovery
+    #[default]
     Mdns,
     /// Use explicit configuration
     Explicit(HashMap<String, String>),
@@ -110,11 +112,6 @@ pub enum DiscoveryMethod {
     },
 }
 
-impl Default for DiscoveryMethod {
-    fn default() -> Self {
-        Self::Mdns
-    }
-}
 
 /// Discovery configuration
 #[derive(Debug, Clone)]

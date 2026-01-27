@@ -447,7 +447,7 @@ impl LayerDetector {
         // Alternative: Check /dev/kvm usage
         #[cfg(target_os = "linux")]
         {
-            if let Ok(_) = tokio::fs::metadata("/dev/kvm").await {
+            if tokio::fs::metadata("/dev/kvm").await.is_ok() {
                 // KVM device exists, check if actively used
                 if let Ok(output) = tokio::process::Command::new("lsof")
                     .arg("/dev/kvm")
@@ -492,7 +492,7 @@ impl LayerDetector {
         }
 
         // Alternative: Check for K8s manifest directory
-        if let Ok(_) = tokio::fs::metadata("/etc/kubernetes/manifests").await {
+        if tokio::fs::metadata("/etc/kubernetes/manifests").await.is_ok() {
             return true;
         }
 
@@ -505,7 +505,7 @@ impl LayerDetector {
         // Extract container ID from cgroup path
         // Example: 0::/docker/1234567890abcdef
         if let Some(line) = cgroup.lines().next() {
-            if let Some(id) = line.split('/').last() {
+            if let Some(id) = line.split('/').next_back() {
                 return Ok(id.to_string());
             }
         }
