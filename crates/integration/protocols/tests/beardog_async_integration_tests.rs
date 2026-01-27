@@ -102,7 +102,10 @@ async fn test_beardog_integration_zero_trust_validation_no_server() {
     // ToadStool works standalone - returns permissive validation instead of failing
     assert!(result.is_ok());
     let is_valid = result.unwrap();
-    assert!(is_valid, "Should return true (permissive) when BearDog unavailable");
+    assert!(
+        is_valid,
+        "Should return true (permissive) when BearDog unavailable"
+    );
 }
 
 // ============================================================================

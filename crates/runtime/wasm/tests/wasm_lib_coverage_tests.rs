@@ -369,10 +369,10 @@ async fn test_module_load_timeout() {
 #[cfg(feature = "component-model")]
 mod component_model_tests {
     use super::*;
-    
+
     // Component model types would be imported here when feature is enabled
     // For now, these tests are placeholder structure for future implementation
-    
+
     #[test]
     fn test_component_value_u32() {
         // TODO(component-model): Implement when feature is enabled

@@ -116,11 +116,20 @@ impl UnifiedMemoryBackend for CpuBackend {
         // Allocate aligned memory
         let ptr = Self::allocate_aligned(size, self.capabilities.alignment_requirement)?;
 
+        tracing::debug!(
+            "CPU backend allocated {} bytes at address {:#x} (alignment {})",
+            size,
+            ptr as usize,
+            self.capabilities.alignment_requirement
+        );
+
         // Zero the memory for safety
         // SAFETY: ptr is valid and size bytes are allocated
         unsafe {
             std::ptr::write_bytes(ptr, 0, size);
         }
+
+        tracing::debug!("CPU backend zeroed {} bytes at {:#x}", size, ptr as usize);
 
         Ok(BackendAllocation::Cpu(CpuAllocation { ptr, size }))
     }
