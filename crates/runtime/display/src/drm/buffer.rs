@@ -43,10 +43,10 @@ impl PixelFormat {
     /// Convert to DRM fourcc code (for future DRM operations)
     pub const fn to_drm_fourcc(self) -> u32 {
         match self {
-            Self::RGBA8888 => 0x34325241, // 'RA24' / DRM_FORMAT_RGBA8888
-            Self::BGRA8888 => 0x34324142, // 'BA24' / DRM_FORMAT_BGRA8888
-            Self::RGB888 => 0x34324752,   // 'RG24' / DRM_FORMAT_RGB888
-            Self::RGB565 => 0x36314752,   // 'RG16' / DRM_FORMAT_RGB565
+            Self::RGBA8888 => 0x3432_5241, // 'RA24' / DRM_FORMAT_RGBA8888
+            Self::BGRA8888 => 0x3432_4142, // 'BA24' / DRM_FORMAT_BGRA8888
+            Self::RGB888 => 0x3432_4752,   // 'RG24' / DRM_FORMAT_RGB888
+            Self::RGB565 => 0x3631_4752,   // 'RG16' / DRM_FORMAT_RGB565
         }
     }
 }

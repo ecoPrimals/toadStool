@@ -62,7 +62,7 @@ pub struct DisplayCapabilities {
     /// GPU acceleration available
     pub has_gpu_acceleration: bool,
 
-    /// VSync available
+    /// `VSync` available
     pub vsync_available: bool,
 
     /// Detected displays

@@ -66,8 +66,8 @@
 //!
 //! ## Status
 //!
-//! **Phase 0**: Foundation (In Progress)  
-//! **Version**: 0.1.0  
+//! **Phase 0**: Foundation (In Progress)\
+//! **Version**: 0.1.0\
 //! **Grade**: TBD (targeting S++)
 //!
 //! ## Collaboration
