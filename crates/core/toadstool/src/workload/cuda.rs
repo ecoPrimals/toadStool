@@ -76,7 +76,6 @@ impl fmt::Display for CudaBackend {
     }
 }
 
-
 /// CUDA launch configuration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CudaLaunchConfig {

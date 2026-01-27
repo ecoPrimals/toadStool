@@ -10,8 +10,7 @@ use toadstool_common::config_bases::CacheConfig;
 ///
 /// Defines the security posture and resource isolation guarantees
 /// for WASM module execution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SecurityLevel {
     /// No isolation (testing only)
     None,
@@ -23,7 +22,6 @@ pub enum SecurityLevel {
     /// Maximum security with all restrictions
     Maximum,
 }
-
 
 impl SecurityLevel {
     /// Returns true if this security level enforces memory limits

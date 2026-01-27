@@ -104,8 +104,7 @@ impl EcosystemConfigBuilder {
 }
 
 /// Discovery method configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum DiscoveryMethodConfig {
     /// Automatic selection
     #[default]
@@ -119,7 +118,6 @@ pub enum DiscoveryMethodConfig {
     /// Registry service
     Registry { endpoint: String },
 }
-
 
 /// Status of a service instance
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

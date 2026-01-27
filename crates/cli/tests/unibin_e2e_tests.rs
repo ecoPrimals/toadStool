@@ -5,10 +5,8 @@
 //!
 //! ToadStool is the FIRST primal to achieve 100% UniBin compliance!
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::Barrier;
 use tokio::time::timeout;

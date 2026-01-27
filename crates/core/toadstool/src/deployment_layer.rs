@@ -492,7 +492,10 @@ impl LayerDetector {
         }
 
         // Alternative: Check for K8s manifest directory
-        if tokio::fs::metadata("/etc/kubernetes/manifests").await.is_ok() {
+        if tokio::fs::metadata("/etc/kubernetes/manifests")
+            .await
+            .is_ok()
+        {
             return true;
         }
 

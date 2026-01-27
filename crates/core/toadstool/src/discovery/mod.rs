@@ -97,8 +97,7 @@ impl DiscoveredService {
 }
 
 /// Discovery method configuration
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub enum DiscoveryMethod {
     /// Use mDNS/DNS-SD for automatic discovery
     #[default]
@@ -111,7 +110,6 @@ pub enum DiscoveryMethod {
         mdns_timeout: Duration,
     },
 }
-
 
 /// Discovery configuration
 #[derive(Debug, Clone)]

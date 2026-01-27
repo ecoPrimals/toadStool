@@ -247,8 +247,7 @@ impl fmt::Display for Constraint {
 /// Priority level for composition requests
 ///
 /// Higher priority workloads get preferential resource allocation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum ConstraintPriority {
     /// Background task (lowest priority)
     Background = 0,
@@ -263,7 +262,6 @@ pub enum ConstraintPriority {
     /// Critical priority (system-critical, real-time)
     Critical = 3,
 }
-
 
 impl fmt::Display for ConstraintPriority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

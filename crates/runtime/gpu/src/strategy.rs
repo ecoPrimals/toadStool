@@ -21,8 +21,7 @@ use crate::types::GpuFramework;
 use toadstool::WorkloadType;
 
 /// Backend selection strategy for GPU compute
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendSelectionStrategy {
     /// Automatic: Intelligent selection based on workload and availability
     /// Prioritizes sovereign backends (WebGPU), uses vendor when needed
@@ -40,7 +39,6 @@ pub enum BackendSelectionStrategy {
     /// Specific: Use a specific framework (for testing/debugging)
     Specific(GpuFramework),
 }
-
 
 impl BackendSelectionStrategy {
     /// Select best framework based on strategy, workload, and availability

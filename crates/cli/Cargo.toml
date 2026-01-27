@@ -30,14 +30,18 @@ mutex_atomic = "warn"
 name = "toadstool"
 path = "src/main.rs"
 
-# Backward compatibility aliases
-[[bin]]
-name = "toadstool-cli"
-path = "src/main.rs"
-
-[[bin]]
-name = "toadstool-server"
-path = "src/main.rs"
+# UNIBIN EVOLUTION (Jan 27, 2026):
+# Removed legacy binary aliases (toadstool-cli, toadstool-server).
+# These violated the UniBin standard (wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md).
+#
+# MIGRATION PATH:
+# - Old: toadstool-server
+# - New: toadstool daemon
+#
+# The main.rs still detects legacy names (for symlinks) but we no longer
+# build multiple binaries. Users should migrate to the canonical UniBin interface.
+#
+# See: EVOLUTION_SESSION_JAN_27_2026.md for details.
 
 [dependencies]
 # Core ToadStool crates
@@ -128,6 +132,9 @@ tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 tempfile = "3.8"
 assert_cmd = "2.0"
 predicates = "3.0"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { version = "0.29", features = ["signal", "process"] }
 
 [features]
 default = ["full"]
