@@ -227,9 +227,9 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
         }));
     }
 
-    // ✅ MODERN: Single timeout for all operations, truly concurrent
-    // Increased timeout for coverage instrumentation overhead
-    timeout(Duration::from_secs(30), async {
+    // ✅ DEEP DEBT FIX: Increased timeout for coverage instrumentation overhead
+    // Coverage adds ~3-5x slowdown, CI can be slower
+    timeout(Duration::from_secs(60), async {
         for handle in burst1_handles {
             handle.await??;
         }
@@ -248,9 +248,8 @@ async fn test_burst_monitoring_sessions() -> Result<()> {
         }));
     }
 
-    // ✅ MODERN: Single timeout for all burst 2 operations
-    // Increased timeout for coverage instrumentation overhead
-    timeout(Duration::from_secs(30), async {
+    // ✅ DEEP DEBT FIX: Increased timeout for coverage instrumentation overhead
+    timeout(Duration::from_secs(60), async {
         for handle in burst2_handles {
             handle.await??;
         }
