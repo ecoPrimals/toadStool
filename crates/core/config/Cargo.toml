@@ -63,7 +63,7 @@ toadstool-common = { path = "../common" }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-serial_test = "3.0"
+serial_test = "3.0"  # For env var tests that need serialization
 
 [features]
 default = [] 
