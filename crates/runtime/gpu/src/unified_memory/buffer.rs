@@ -6,6 +6,7 @@ use crate::unified_memory::{
 };
 use dashmap::DashMap;
 use parking_lot::RwLock;
+use std::ptr::NonNull;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -52,8 +53,15 @@ pub struct UnifiedBuffer {
     /// Size in bytes
     size: usize,
 
-    /// CPU-accessible pointer
-    cpu_ptr: *mut u8,
+    /// CPU-accessible pointer (DEEP DEBT EVOLUTION: NonNull for compile-time guarantee)
+    ///
+    /// Using NonNull<u8> instead of *mut u8 provides:
+    /// - Compile-time null safety (cannot be null by construction)
+    /// - Covariant over T (safer type system interactions)
+    /// - Niche optimization (Option<NonNull<T>> same size as *mut T)
+    ///
+    /// This is a "Fast AND Safe" evolution - same performance, better safety
+    cpu_ptr: NonNull<u8>,
 
     /// GPU device pointer
     device_ptr: *const u8,
@@ -79,6 +87,9 @@ pub struct UnifiedBuffer {
 
 impl UnifiedBuffer {
     /// Validate CPU pointer before use (Deep Debt: comprehensive validation)
+    ///
+    /// DEEP DEBT EVOLUTION: With NonNull, we no longer need to check for null!
+    /// The type system guarantees it at compile time.
     fn validate_cpu_ptr(&self) -> ToadStoolResult<()> {
         // Check allocation still exists
         if self.allocation.is_none() {
@@ -87,13 +98,13 @@ impl UnifiedBuffer {
             ));
         }
 
-        // Check not null
-        if self.cpu_ptr.is_null() {
-            return Err(ToadStoolError::runtime("CPU pointer is null"));
-        }
+        // DEEP DEBT: Null check eliminated! NonNull provides compile-time guarantee
+        // Old code: if self.cpu_ptr.is_null() { ... }
+        // NonNull makes this impossible by construction
 
         // Check pointer value is reasonable (not in NULL page)
-        let ptr_val = self.cpu_ptr as usize;
+        // Note: NonNull still needs this check as it can't prevent all invalid addresses
+        let ptr_val = self.cpu_ptr.as_ptr() as usize;
         if ptr_val < 4096 {
             return Err(ToadStoolError::runtime(format!(
                 "CPU pointer value {} is in NULL page (invalid)",
@@ -137,10 +148,11 @@ impl UnifiedBuffer {
         }
 
         // SAFETY:
-        // - cpu_ptr validated above (not null, aligned, allocation exists)
+        // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
         // - size is validated at buffer creation and in validate_cpu_ptr()
         // - We have exclusive &mut self (Rust borrow checker guarantees)
-        unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr, self.size) }
+        // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
+        unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) }
     }
 
     /// Get safe immutable slice from CPU pointer (internal helper)
@@ -162,10 +174,11 @@ impl UnifiedBuffer {
         }
 
         // SAFETY:
-        // - cpu_ptr validated above (not null, aligned, allocation exists)
+        // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
         // - size is validated at buffer creation and in validate_cpu_ptr()
         // - We have &self, Rust guarantees no concurrent mutation
-        unsafe { std::slice::from_raw_parts(self.cpu_ptr, self.size) }
+        // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
+        unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) }
     }
 
     /// Create new unified buffer (internal use only)
@@ -189,7 +202,8 @@ impl UnifiedBuffer {
             device_ptr as usize
         );
 
-        // DEEP DEBT: Validate pointers at creation time!
+        // DEEP DEBT EVOLUTION: Convert to NonNull for compile-time null safety
+        // This assertion ensures the pointer is valid before conversion
         assert!(
             !cpu_ptr.is_null(),
             "CPU pointer cannot be null at buffer creation"
@@ -200,10 +214,13 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
+        // SAFETY: We've validated cpu_ptr is not null above
+        let cpu_ptr_nonnull = unsafe { NonNull::new_unchecked(cpu_ptr) };
+
         Self {
             id,
             size,
-            cpu_ptr,
+            cpu_ptr: cpu_ptr_nonnull,
             device_ptr,
             allocation: Some(allocation),
             backend,
@@ -279,13 +296,12 @@ impl UnifiedBuffer {
             )));
         }
 
-        // Validate pointer is not null
-        if self.cpu_ptr.is_null() {
-            return Err(ToadStoolError::runtime("CPU pointer is null"));
-        }
+        // DEEP DEBT: Null checks removed - NonNull provides compile-time guarantee
+        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
+        // NonNull makes this impossible by construction
 
-        // Validate pointer value (defensive check)
-        let ptr_value = self.cpu_ptr as usize;
+        // Validate pointer value (defensive check - still useful for invalid addresses)
+        let ptr_value = self.cpu_ptr.as_ptr() as usize;
         if ptr_value == 0 {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
@@ -357,13 +373,12 @@ impl UnifiedBuffer {
             )));
         }
 
-        // Validate pointer is not null
-        if self.cpu_ptr.is_null() {
-            return Err(ToadStoolError::runtime("CPU pointer is null"));
-        }
+        // DEEP DEBT: Null checks removed - NonNull provides compile-time guarantee
+        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
+        // NonNull makes this impossible by construction
 
-        // Validate pointer value (defensive check)
-        let ptr_value = self.cpu_ptr as usize;
+        // Validate pointer value (defensive check - still useful for invalid addresses)
+        let ptr_value = self.cpu_ptr.as_ptr() as usize;
         if ptr_value == 0 {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
@@ -495,9 +510,9 @@ impl UnifiedBuffer {
     ///
     /// Efficient memset-like operation.
     pub async fn fill(&mut self, value: u8) -> ToadStoolResult<()> {
-        if self.cpu_ptr.is_null() {
-            return Err(ToadStoolError::runtime("CPU pointer is null"));
-        }
+        // DEEP DEBT: Null check removed - NonNull provides compile-time guarantee
+        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
+        // NonNull makes this impossible by construction
 
         // Deep Debt: Use safe slice fill instead of write_bytes!
         let buffer_slice = self.as_cpu_slice_mut();
