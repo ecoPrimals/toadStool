@@ -180,6 +180,10 @@ impl ManualJsonRpcServer {
     }
 
     /// Handle a single connection
+    ///
+    /// Supports both raw JSON-RPC and HTTP-wrapped JSON-RPC:
+    /// - Raw: `{"jsonrpc":"2.0","method":"...","id":1}\n`
+    /// - HTTP: `POST / HTTP/1.1\r\nContent-Length: ...\r\n\r\n{...}`
     async fn handle_connection(
         &self,
         stream: UnixStream,
@@ -187,8 +191,21 @@ impl ManualJsonRpcServer {
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
 
-        // Read HTTP request
-        let (_headers, body) = self.read_http_request(&mut reader).await?;
+        // Peek at first line to detect format
+        let mut first_line = String::new();
+        reader.read_line(&mut first_line).await?;
+
+        let (body, is_http) = if first_line.starts_with("POST")
+            || first_line.starts_with("GET")
+            || first_line.starts_with("HTTP")
+        {
+            // HTTP-wrapped request - read remaining headers and body
+            let (_headers, body) = self.read_http_request_continuation(&mut reader).await?;
+            (body, true)
+        } else {
+            // Raw JSON-RPC request - the first line IS the request
+            (first_line.trim().to_string(), false)
+        };
 
         // Parse JSON-RPC request
         let response_body = match serde_json::from_str::<JsonRpcRequest>(&body) {
@@ -212,25 +229,31 @@ impl ManualJsonRpcServer {
             }
         };
 
-        // Write HTTP response
-        self.write_http_response(&mut writer, &response_body)
-            .await?;
+        // Write response in appropriate format
+        if is_http {
+            self.write_http_response(&mut writer, &response_body)
+                .await?;
+        } else {
+            // Raw JSON-RPC - just send the JSON followed by newline
+            writer.write_all(response_body.as_bytes()).await?;
+            writer.write_all(b"\n").await?;
+            writer.flush().await?;
+        }
 
         Ok(())
     }
 
-    /// Read HTTP request (simple HTTP/1.1 parser)
-    async fn read_http_request(
+    /// Read HTTP request continuation (after first line already read)
+    ///
+    /// Called when first line indicates HTTP format
+    async fn read_http_request_continuation(
         &self,
         reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
     ) -> Result<(HashMap<String, String>, String), Box<dyn std::error::Error>> {
         let mut headers = HashMap::new();
         let mut line = String::new();
 
-        // Read request line (e.g., "POST / HTTP/1.1")
-        reader.read_line(&mut line).await?;
-
-        // Read headers
+        // Read headers (request line already consumed)
         loop {
             line.clear();
             let n = reader.read_line(&mut line).await?;
