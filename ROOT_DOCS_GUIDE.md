@@ -1,8 +1,8 @@
 # ToadStool Documentation Guide
 ## Quick Navigation for Root Documentation
 
-**Last Updated**: January 29, 2026  
-**Status**: Cleaned and Organized  
+**Last Updated**: January 30, 2026  
+**Status**: Cleaned and Organized (Session docs archived)  
 
 ---
 
@@ -45,7 +45,17 @@ New to ToadStool? Read these in order:
 
 ---
 
-## 📊 **Session Documentation**
+## 📊 **Current Status**
+
+### **barraCUDA Current State** (Jan 30, 2026)
+- **BARRACUDA_CURRENT_STATUS.md** - Current status (66 ops, 586 tests, 46.9%)
+- **BARRACUDA_DEEP_DEBT_AUDIT_JAN30_2026.md** - Deep debt compliance audit
+- **BARRACUDA_UNIT_TEST_EXPANSION_GUIDE_JAN30_2026.md** - Test expansion guide
+- **BARRACUDA_250_OPS_TRANSCENDENT_JAN30_2026.md** - 250 operations milestone
+
+### **Archived Sessions**
+- Session docs moved to `docs/archive/jan30_2026_unit_test_expansion/`
+- Previous milestones in `docs/archive/barracuda-milestones/`
 
 ### **Latest Session** (Jan 27-29, 2026)
 **Location**: Root (kept for immediate reference)
