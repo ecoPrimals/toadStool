@@ -25,7 +25,7 @@ pub async fn normalize(
                 let idx = o * dim_size * inner + d * inner + i;
                 norm_sq += input[idx] * input[idx];
             }
-            let norm = (norm_sq.sqrt() + epsilon);
+            let norm = norm_sq.sqrt() + epsilon;
             
             // Normalize
             for d in 0..dim_size {

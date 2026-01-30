@@ -110,7 +110,7 @@ pub async fn flash_attention(
                             
                             if new_max > old_max {
                                 // Rescale previous accumulations
-                                let rescale = ((old_max - new_max).exp());
+                                let rescale = (old_max - new_max).exp();
                                 row_sum[local_i] *= rescale;
                                 for d in 0..head_dim {
                                     acc_output[local_i * head_dim + d] *= rescale;

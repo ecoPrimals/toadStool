@@ -210,6 +210,55 @@ pub mod diag;
 pub mod triu;
 pub mod tril;
 
+// Tensor manipulation
+pub mod stack;
+pub mod chunk;
+pub mod narrow;
+pub mod permute;
+pub mod expand;
+pub mod flatten;
+pub mod tensor_split;
+pub mod movedim;
+pub mod repeat_interleave;
+pub mod tile;
+
+// Advanced matrix operations
+pub mod matrix_inverse;
+pub mod determinant;
+pub mod matrix_rank;
+pub mod matrix_power;
+pub mod outer_product;
+pub mod cross_product;
+pub mod tensor_dot;
+
+// Gradient operations
+pub mod clip_grad_norm;
+pub mod clip_grad_value;
+
+// Quantization
+pub mod quantize;
+pub mod dequantize;
+pub mod fake_quantize;
+
+// Object detection
+pub mod nms;
+pub mod soft_nms;
+pub mod bbox_transform;
+pub mod box_iou;
+pub mod anchor_generator;
+pub mod roi_pool;
+pub mod roi_align;
+
+// Advanced pooling
+pub mod adaptive_max_pool1d;
+pub mod adaptive_avg_pool1d;
+pub mod fractional_max_pool2d;
+pub mod lp_pool2d;
+
+// Enhanced losses
+pub mod focal_loss_v2;
+pub mod smooth_l1_loss;
+
 // Utility operations (original)
 pub mod layer_scale;
 pub mod channel_shuffle;

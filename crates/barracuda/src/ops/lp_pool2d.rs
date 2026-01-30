@@ -1,0 +1,60 @@
+//! LpPool2D - Lp norm pooling
+//!
+//! Generalizes max (p=∞) and average (p=1) pooling.
+
+pub async fn lp_pool2d(
+    _device: &wgpu::Device,
+    _queue: &wgpu::Queue,
+    input: &[f32],
+    batch_size: usize,
+    channels: usize,
+    height: usize,
+    width: usize,
+    kernel_size: usize,
+    stride: usize,
+    p: f32,
+) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    let out_h = (height - kernel_size) / stride + 1;
+    let out_w = (width - kernel_size) / stride + 1;
+    let mut output = vec![0.0f32; batch_size * channels * out_h * out_w];
+    
+    for b in 0..batch_size {
+        for c in 0..channels {
+            for oh in 0..out_h {
+                for ow in 0..out_w {
+                    let mut sum = 0.0;
+                    
+                    for kh in 0..kernel_size {
+                        for kw in 0..kernel_size {
+                            let ih = oh * stride + kh;
+                            let iw = ow * stride + kw;
+                            
+                            let idx = b * channels * height * width + c * height * width + ih * width + iw;
+                            sum += input[idx].abs().powf(p);
+                        }
+                    }
+                    
+                    let out_idx = b * channels * out_h * out_w + c * out_h * out_w + oh * out_w + ow;
+                    output[out_idx] = sum.powf(1.0 / p);
+                }
+            }
+        }
+    }
+    
+    Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+    
+    #[tokio::test]
+    async fn test_lp_pool2d() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let input = vec![1.0; 1 * 3 * 8 * 8];
+        let output = lp_pool2d(&dev.device, &dev.queue, &input, 1, 3, 8, 8, 2, 2, 2.0).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 4 * 4);
+    }
+}
