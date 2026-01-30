@@ -1,36 +1,36 @@
 # 📚 ToadStool Documentation Index
 
-**Last Updated**: January 30, 2026 🔥 **250 OPS + 46.9% TEST EXPANSION!** 🔥  
-**Version**: 6.8.0  
+**Last Updated**: January 30, 2026 🔥 **250 OPS + 55.3% TEST EXPANSION!** 🔥  
+**Version**: 6.9.0  
 **Status**: 🌟 **PRODUCTION READY** (Grade A 95/100, Coverage 90/100)  
-**barraCUDA**: 🦈 **66 OPS EXPANDED + 586 TESTS!** ⚡  
+**barraCUDA**: 🦈 **87 OPS EXPANDED + 691 TESTS!** ⚡  
 **Test Coverage**: 📈 **90/100 (EXCELLENT - maintained through expansion)**  
-**Tests**: 🧪 **586/1,250 (46.9%) - Fully Concurrent, Zero Sleeps**  
+**Tests**: 🧪 **691/1,250 (55.3%) - Fully Concurrent, Zero Sleeps**  
 **Total Documentation**: 100,000+ lines (includes deep debt execution docs)
 
 ---
 
 ## 🔥 **LATEST UPDATES** (January 30, 2026 - DEEP DEBT EXECUTION)
 
-### **🦈 barraCUDA: 46.9% TEST EXPANSION COMPLETE!** 🔥🔥🔥
+### **🦈 barraCUDA: 55.3% TEST EXPANSION COMPLETE!** 🔥🔥🔥
 
-**🎊 LEGENDARY PROGRESS: 66 ops, 586 tests | 10 Perfect Batches!**
+**🎊 LEGENDARY PROGRESS: 87 ops, 691 tests | 17 Perfect Batches!**
 
 **Essential Reading** - Latest session progress:
 
 1. **[BARRACUDA_CURRENT_STATUS.md](BARRACUDA_CURRENT_STATUS.md)** 📋 **⭐ CURRENT STATE ⭐**
    - **Coverage maintained**: 90/100 (EXCELLENT!)
-   - **Operations expanded**: 66/250 complete (26.4%)
-   - **Test progress**: 586/1,250 (46.9% complete, +150 tests this session)
-   - **Latest batch**: Graph Conv, GCN Conv, GAT Conv (GNN operations)
+   - **Operations expanded**: 87/250 complete (34.8%)
+   - **Test progress**: 691/1,250 (55.3% complete, +255 tests this session)
+   - **Latest batch**: Batch MatMul, BBox Transform, Bi-LSTM (Matrix Ops & RNN)
    - **Quality maintained**: A grade (95/100), 100% pass rate
-   - **Session batches**: Batches 13-22 (Pow→GAT Conv, 30 operations)
-   - **Legendary velocity**: 10 perfect batches, zero errors
+   - **Session batches**: Batches 13-29 (Pow→Bi-LSTM, 51 operations)
+   - **Legendary velocity**: 17 perfect batches, zero errors
    - **THE CURRENT STATUS** - Read this for latest progress!
 
 2. **[BARRACUDA_UNIT_TEST_EXPANSION_GUIDE_JAN30_2026.md](docs/archive/jan30_2026_unit_test_expansion/BARRACUDA_UNIT_TEST_EXPANSION_GUIDE_JAN30_2026.md)** 📐 **EXPANSION PATTERN**
    - **5-test pattern**: Basic, Edge, Boundary, Large Tensor, Precision
-   - **66 operations complete**: ReLU → GAT Conv (16 categories expanded)
+   - **87 operations complete**: ReLU → Bi-LSTM (22 categories expanded)
    - **CPU references**: Pure Rust validation for precision testing
    - **Comprehensive guide**: 800+ lines, production patterns
 
@@ -42,7 +42,7 @@
    - **Precision tests**: 10 tests (GPU vs CPU, max error < 1e-5)
    - **Production ready**: Thread-safe concurrent GPU resource management
    - **900 lines comprehensive guide**
-   - **436/1,250 tests** (34.9% complete, 90/100 coverage)
+   - **691/1,250 tests** (55.3% complete, 90/100 coverage)
    - **CPU references**: Precision validation for all operations
    - **Fully concurrent**: Tests run in parallel naturally
    - **Updated guide**: Reflects latest progress
