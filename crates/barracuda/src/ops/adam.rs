@@ -285,12 +285,11 @@ impl AdamExt for Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_adam_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         let params = Tensor::from_data(
             &vec![1.0, 2.0, 3.0, 4.0],
@@ -309,8 +308,147 @@ mod tests {
         
         // Params should be updated with Adam optimizer
         assert_eq!(result.len(), 4);
+        assert!(result.iter().all(|&x| x.is_finite()));
         // Check that params decreased (gradients are positive, small LR)
         assert!(result[0] < 1.0);
         assert!(result[1] < 2.0);
+    }
+
+    #[tokio::test]
+    async fn test_adam_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Test with zero gradients
+        let params = Tensor::from_data(
+            &vec![1.0, 2.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![0.0, 0.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let (updated_params, m, v) = params.adam_step(&gradients, 0.01, 0.9, 0.999, 1, None, None).unwrap();
+        let result = updated_params.to_vec().unwrap();
+        let m_result = m.to_vec().unwrap();
+        let v_result = v.to_vec().unwrap();
+        
+        // Should produce valid outputs
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().all(|&x| x.is_finite()));
+        assert!(m_result.iter().all(|&x| x.is_finite()));
+        assert!(v_result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adam_boundary() {
+        let device = get_test_device().await;
+        
+        // Test with different learning rates
+        let params1 = Tensor::from_data(
+            &vec![1.0, 1.0, 1.0, 1.0],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        let params2 = Tensor::from_data(
+            &vec![1.0, 1.0, 1.0, 1.0],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![0.1, 0.1, 0.1, 0.1],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        // Small learning rate
+        let (updated1, _m, _v) = params1.adam_step(&gradients, 0.001, 0.9, 0.999, 1, None, None).unwrap();
+        
+        // Large learning rate
+        let (updated2, _m, _v) = params2.adam_step(&gradients, 0.1, 0.9, 0.999, 1, None, None).unwrap();
+        
+        let result1 = updated1.to_vec().unwrap();
+        let result2 = updated2.to_vec().unwrap();
+        
+        // Both should be valid and finite
+        assert!(result1.iter().all(|&x| x.is_finite()));
+        assert!(result2.iter().all(|&x| x.is_finite()));
+        // Different learning rates should produce some updates
+        assert!(result1.iter().zip([1.0, 1.0, 1.0, 1.0].iter()).any(|(a, b)| (a - b).abs() > 0.0));
+        assert!(result2.iter().zip([1.0, 1.0, 1.0, 1.0].iter()).any(|(a, b)| (a - b).abs() > 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_adam_large_batch() {
+        let device = get_test_device().await;
+        
+        // Larger parameter set (e.g., small neural network layer)
+        let size = 128;
+        let params_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
+        let grads_data: Vec<f32> = vec![0.01; size];
+        
+        let params = Tensor::from_data(
+            &params_data,
+            vec![size],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &grads_data,
+            vec![size],
+            device.clone(),
+        ).unwrap();
+        
+        let (updated_params, updated_m, updated_v) = params.adam_step(&gradients, 0.001, 0.9, 0.999, 1, None, None).unwrap();
+        
+        let result = updated_params.to_vec().unwrap();
+        let m_result = updated_m.to_vec().unwrap();
+        let v_result = updated_v.to_vec().unwrap();
+        
+        assert_eq!(result.len(), size);
+        assert_eq!(m_result.len(), size);
+        assert_eq!(v_result.len(), size);
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adam_precision() {
+        let device = get_test_device().await;
+        
+        // Test multiple steps with momentum accumulation
+        let params = Tensor::from_data(
+            &vec![10.0, 20.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![1.0, 2.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        // Step 1
+        let (params1, m1, v1) = params.adam_step(&gradients, 0.1, 0.9, 0.999, 1, None, None).unwrap();
+        let result1 = params1.to_vec().unwrap();
+        
+        // Params should decrease (positive gradients, gradient descent)
+        assert!(result1[0] < 10.0);
+        assert!(result1[1] < 20.0);
+        
+        // Step 2 (with momentum)
+        let (params2, _m2, _v2) = params1.adam_step(&gradients, 0.1, 0.9, 0.999, 2, Some(&m1), Some(&v1)).unwrap();
+        let result2 = params2.to_vec().unwrap();
+        
+        // Should produce valid output
+        assert!(result2.iter().all(|&x| x.is_finite()));
+        // Should still be decreasing (both are less than original)
+        assert!(result2[0] < 10.0);
+        assert!(result2[1] < 20.0);
     }
 }
