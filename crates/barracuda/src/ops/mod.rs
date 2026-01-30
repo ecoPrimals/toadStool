@@ -104,6 +104,7 @@ pub mod l1_loss;
 pub mod focal_loss;
 pub mod dice_loss;
 pub mod huber_loss;
+pub mod mae_loss;
 
 // Advanced normalization
 pub mod rmsnorm;
@@ -120,11 +121,20 @@ pub mod transposed_conv2d;
 pub mod batch_matmul;
 pub mod global_avgpool;
 pub mod split;
+pub mod dotproduct;
+pub mod map;
+pub mod filter;
+pub mod scan;
+pub mod reduce;
+pub mod matmul_tiled;
 
 // Optimizers
 pub mod sgd;
 pub mod rmsprop;
 pub mod nadam;
+pub mod adam;
+pub mod adagrad;
+pub mod adadelta;
 
 /// Re-exports
 pub use relu::ReLU;
@@ -217,4 +227,14 @@ pub use huber_loss::HuberLoss;
 pub use sgd::SGD;
 pub use rmsprop::RMSprop;
 pub use nadam::Nadam;
+pub use adam::Adam;
+pub use adagrad::AdaGrad;
+pub use adadelta::AdaDelta;
+pub use mae_loss::MAELoss;
+pub use dotproduct::DotProduct;
+pub use map::{Map, MapOperation};
+pub use filter::{Filter, FilterOperation};
+pub use scan::Scan;
+pub use reduce::{Reduce, ReduceOperation};
+pub use matmul_tiled::MatmulTiled;
 // Note: Reshape is already defined in tensor.rs
