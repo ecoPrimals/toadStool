@@ -99,6 +99,11 @@ pub mod cross_entropy;
 pub mod binary_cross_entropy;
 pub mod l1_loss;
 
+// Advanced normalization
+pub mod rmsnorm;
+pub mod instancenorm;
+pub mod groupnorm;
+
 /// Re-exports
 pub use relu::ReLU;
 pub use gelu::GELU;
@@ -171,4 +176,7 @@ pub use mse_loss::MseLoss;
 pub use cross_entropy::CrossEntropy;
 pub use binary_cross_entropy::BinaryCrossEntropy;
 pub use l1_loss::L1Loss;
+pub use rmsnorm::RMSNorm;
+pub use instancenorm::InstanceNorm;
+pub use groupnorm::GroupNorm;
 // Note: Reshape is already defined in tensor.rs
