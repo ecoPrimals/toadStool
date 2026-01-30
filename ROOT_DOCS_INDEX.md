@@ -11,33 +11,34 @@
 
 ## 🌟 **LATEST UPDATES** (January 30, 2026)
 
-### **🦈 barraCUDA: 100 OPERATIONS - 5% CUDA PARITY!** 🏆
+### **🦈 barraCUDA: 120 OPERATIONS - 6% CUDA PARITY!** 🏆
 
-**🎉 HISTORIC MILESTONE: 100 Operations - Complete Training Suite!**
+**🎉 TRANSFORMER + RNN READY: 120 Operations - Attention + Sequence Models!**
 
 **Essential Reading** - Start here:
 
-1. **[BARRACUDA_CURRENT_STATUS.md](BARRACUDA_CURRENT_STATUS.md)** 📋 **⭐ QUICK REFERENCE ⭐**
-   - **100 operations implemented** (60 → 100, +67% in extended session!)
-   - **5.0% CUDA parity** 🏆 MILESTONE ACHIEVED!
-   - **113 tests** comprehensive coverage
-   - **Complete optimizer suite** - Adam, SGD, RMSprop, Nadam, AdaGrad, AdaDelta
-   - **Performance optimized** - MatMul Tiled (2-3x speedup)
-   - **Advanced utilities** - Map, Filter, Scan, Reduce, DotProduct
-   - **Object detection** - Focal Loss for class imbalance
-   - **Medical imaging** - Dice Loss for segmentation
-   - **Production training pipelines** - All components ready
+1. **[BARRACUDA_120_OPS_MILESTONE_JAN30_2026.md](BARRACUDA_120_OPS_MILESTONE_JAN30_2026.md)** 📋 **⭐ LATEST MILESTONE ⭐**
+   - **120 operations implemented** (100 → 120, +20% in Phase 10!)
+   - **6.0% CUDA parity** 🏆 NEW MILESTONE!
+   - **139 tests** (+26 tests added)
+   - **Attention mechanisms** - ScaledDotProductAttention, MultiHeadAttention
+   - **RNN/LSTM cells** - LSTMCell, GRUCell, RNNCell, BiLSTM
+   - **Advanced activations** - PReLU, GLU, Softsign, Tanhshrink
+   - **Extended utilities** - Reshape, TopK, LayerScale, PixelShuffle, etc.
+   - **Transformer-ready** - Can build BERT, GPT, ViT!
+   - **Sequence-ready** - Can build LSTM/GRU models!
    - **THE LATEST & GREATEST** - Start here!
 
-2. **[BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md](BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md)** 📊 **5% MILESTONE SUMMARY**
-   - Complete operation breakdown (24 categories)
-   - All 8 phases documented
-   - ~1,200 lines comprehensive analysis
-   - Extended session progress (all 4 phases)
-   - Technical deep dives (convolutions, BatchMatMul)
-   - Production architectures enabled
-   - ~17,200 LOC production code
-   - **COMPREHENSIVE STATUS** - Read for full details
+2. **[BARRACUDA_CURRENT_STATUS.md](BARRACUDA_CURRENT_STATUS.md)** 📊 **QUICK REFERENCE**
+   - Always up-to-date status
+   - Quick stats and overview
+   - Use for fast lookups
+
+3. **[BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md](BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md)** 📊 **5% MILESTONE (PREVIOUS)**
+   - 100-operation milestone documentation
+   - Phases 1-8 comprehensive analysis
+   - ~1,200 lines detailed summary
+   - Historical record of 5% achievement
 
 ---
 
@@ -92,7 +93,7 @@
 ### **🏆 barraCUDA 100 Operations Achievements (NEW - Jan 30, 2026)**
 
 **Operation Inventory (100 total) - 5% CUDA Parity:**
-- ✅ **12 Activations** - ReLU, GELU, Sigmoid, Tanh, Softmax, Swish, ELU, Mish, SELU, LeakyReLU, HardSwish, Softplus
+- ✅ **16 Activations** - ReLU, GELU, Sigmoid, Tanh, Softmax, Swish, ELU, Mish, SELU, LeakyReLU, HardSwish, Softplus, **PReLU, GLU, Softsign, Tanhshrink** ⭐
 - ✅ **13 Element-wise** - Add, Sub, Mul, Div, Abs, Sqrt, Exp, Pow, Clamp, Log, Neg, Reciprocal, Sign
 - ✅ **3 Comparisons** - Eq, Gt, Lt
 - ✅ **2 Trigonometric** - Cos, Sin
