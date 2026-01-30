@@ -145,18 +145,90 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_dropout_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device).await.unwrap();
         let result = input.dropout(0.5, 12345).unwrap();
-        
-        // Some values should be zeroed, others scaled
         let data = result.to_vec().unwrap();
+        
         assert_eq!(data.len(), 4);
+        // With p=0.5, roughly half should be zero, rest scaled by 2.0
+        let zeros = data.iter().filter(|&&x| x == 0.0).count();
+        assert!(zeros > 0 && zeros < 4);
+    }
+
+    #[tokio::test]
+    async fn test_dropout_edge_cases() {
+        let device = get_test_device().await;
+
+        // p=0.0 (no dropout)
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).await.unwrap();
+        let result = input.dropout(0.0, 12345).unwrap();
+        let data = result.to_vec().unwrap();
+        
+        assert_eq!(data, vec![1.0, 2.0, 3.0, 4.0]);
+
+        // p=1.0 (all dropped)
+        let input2 = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device).await.unwrap();
+        let result2 = input2.dropout(1.0, 12345).unwrap();
+        let data2 = result2.to_vec().unwrap();
+        
+        assert!(data2.iter().all(|&x| x == 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_dropout_boundary() {
+        let device = get_test_device().await;
+
+        // Very small p
+        let input = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone()).await.unwrap();
+        let result = input.dropout(0.01, 12345).unwrap();
+        let data = result.to_vec().unwrap();
+        
+        let zeros = data.iter().filter(|&&x| x == 0.0).count();
+        assert!(zeros < 10); // Should be ~1% zeros
+
+        // Very large p
+        let input2 = Tensor::from_vec_on(vec![1.0; 100], vec![100], device).await.unwrap();
+        let result2 = input2.dropout(0.99, 12345).unwrap();
+        let data2 = result2.to_vec().unwrap();
+        
+        let zeros2 = data2.iter().filter(|&&x| x == 0.0).count();
+        assert!(zeros2 > 90); // Should be ~99% zeros
+    }
+
+    #[tokio::test]
+    async fn test_dropout_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data = vec![1.0; size];
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let result = input.dropout(0.5, 12345).unwrap();
+        let data = result.to_vec().unwrap();
+
+        let zeros = data.iter().filter(|&&x| x == 0.0).count();
+        // Should be roughly 50% ± 10%
+        assert!(zeros > 400 && zeros < 600);
+    }
+
+    #[tokio::test]
+    async fn test_dropout_precision() {
+        let device = get_test_device().await;
+
+        // Verify scaling: kept values should be scaled by 1/(1-p)
+        let input_data = vec![2.0; 100];
+        let input = Tensor::from_vec_on(input_data, vec![100], device).await.unwrap();
+        let result = input.dropout(0.5, 12345).unwrap();
+        let data = result.to_vec().unwrap();
+
+        // Non-zero values should be 2.0 * (1/0.5) = 4.0
+        for &val in data.iter() {
+            assert!(val == 0.0 || (val - 4.0).abs() < 1e-5);
+        }
     }
 }
