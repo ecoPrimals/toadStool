@@ -151,12 +151,11 @@ pub async fn flash_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
     async fn test_flash_attention_basic() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
         
@@ -178,5 +177,126 @@ mod tests {
         ).await.unwrap();
         
         assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_flash_attention_edge_cases() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Single token (seq_len = 1)
+        let batch = 1;
+        let heads = 2;
+        let seq = 1;
+        let dim = 8;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![1.0; size];
+        let key = query.clone();
+        let value = vec![2.0; size];
+        
+        let output = flash_attention(
+            device, queue,
+            &query, &key, &value,
+            batch, heads, seq, dim
+        ).await.unwrap();
+        
+        assert_eq!(output.len(), size);
+        // With single token, output should approximate value (attention weight = 1)
+        for &val in &output {
+            assert!((val - 2.0).abs() < 0.1);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_flash_attention_boundary() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Test block boundary (seq_len = 64, exactly one block)
+        let batch = 1;
+        let heads = 1;
+        let seq = 64;
+        let dim = 16;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![0.1; size];
+        let key = vec![0.2; size];
+        let value = vec![1.0; size];
+        
+        let output = flash_attention(
+            device, queue,
+            &query, &key, &value,
+            batch, heads, seq, dim
+        ).await.unwrap();
+        
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite() && x > 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_flash_attention_large_sequence() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Long sequence (tests tiling across multiple blocks)
+        let batch = 2;
+        let heads = 4;
+        let seq = 128; // > BLOCK_SIZE (64), requires tiling
+        let dim = 32;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![0.5; size];
+        let key = query.clone();
+        let value = vec![1.0; size];
+        
+        let output = flash_attention(
+            device, queue,
+            &query, &key, &value,
+            batch, heads, seq, dim
+        ).await.unwrap();
+        
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        
+        // Output should be close to uniform (all queries/keys are same)
+        let mean: f32 = output.iter().sum::<f32>() / output.len() as f32;
+        assert!((mean - 1.0).abs() < 0.2);
+    }
+
+    #[tokio::test]
+    async fn test_flash_attention_precision() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Test with different head dimensions
+        let batch = 1;
+        let heads = 2;
+        let seq = 8;
+        
+        for dim in [16, 32, 64] {
+            let size = batch * heads * seq * dim;
+            let query = vec![0.5; size];
+            let key = query.clone();
+            let value = vec![1.0; size];
+            
+            let output = flash_attention(
+                device, queue,
+                &query, &key, &value,
+                batch, heads, seq, dim
+            ).await.unwrap();
+            
+            assert_eq!(output.len(), size);
+            assert!(output.iter().all(|&x| x.is_finite()));
+            
+            // Check attention is normalized (sums to value approximately)
+            let chunk_sum: f32 = output[0..dim].iter().sum();
+            assert!((chunk_sum - dim as f32).abs() / (dim as f32) < 0.2);
+        }
     }
 }
