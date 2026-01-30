@@ -106,18 +106,96 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn hardswish_cpu(x: f32) -> f32 {
+        // HardSwish(x) = x * ReLU6(x + 3) / 6
+        // where ReLU6(x) = min(max(x, 0), 6)
+        let relu6 = (x + 3.0).max(0.0).min(6.0);
+        x * relu6 / 6.0
+    }
 
     #[tokio::test]
     async fn test_hardswish_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-3.0, 0.0, 3.0], vec![3], device).await.unwrap();
+        let input_data = vec![-3.0, 0.0, 3.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
         let result = input.hardswish().unwrap().to_vec().unwrap();
 
-        // HardSwish(x) = 0 for x ≤ -3, x for x ≥ 3
-        assert!(result[0].abs() < 1e-5);
-        assert!(result[2] > 2.9);
+        let expected: Vec<f32> = input_data.iter().map(|&x| hardswish_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_hardswish_edge_cases() {
+        let device = get_test_device().await;
+
+        // Values at transition points
+        let input_data = vec![-3.0, -2.5, 0.0, 2.5, 3.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let result = input.hardswish().unwrap().to_vec().unwrap();
+
+        let expected: Vec<f32> = input_data.iter().map(|&x| hardswish_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_hardswish_boundary() {
+        let device = get_test_device().await;
+
+        // Very large positive (should approximate x)
+        let input_data = vec![10.0, 20.0, 100.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let result = input.hardswish().unwrap().to_vec().unwrap();
+        for (r, orig) in result.iter().zip(input_data.iter()) {
+            assert!((r - orig).abs() < 0.01); // Should be approximately x
+        }
+
+        // Very large negative (should be approximately 0)
+        let input_data = vec![-10.0, -20.0, -100.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.hardswish().unwrap().to_vec().unwrap();
+        for r in result.iter() {
+            assert!(r.abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_hardswish_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| (i as f32 - 500.0) * 0.01).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        
+        let result = input.hardswish().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| hardswish_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_hardswish_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical values
+        let input_data = vec![-2.345, -1.234, 0.0, 1.234, 2.345];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let result = input.hardswish().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| hardswish_cpu(x)).collect();
+        
+        // Verify FP32 precision
+        let max_error = result.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-5, "Max error: {} exceeds threshold", max_error);
     }
 }

@@ -107,19 +107,106 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn softplus_cpu(x: f32) -> f32 {
+        // Softplus(x) = ln(1 + e^x)
+        // For numerical stability: if x > 20, use x (since e^x dominates)
+        if x > 20.0 {
+            x
+        } else if x < -20.0 {
+            0.0
+        } else {
+            (1.0 + x.exp()).ln()
+        }
+    }
 
     #[tokio::test]
     async fn test_softplus_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-2.0, 0.0, 2.0], vec![3], device).await.unwrap();
-        let result = input.softplus().unwrap();
+        let input_data = vec![-2.0, 0.0, 2.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
         
-        let data = result.to_vec().unwrap();
-        assert_eq!(data.len(), 3);
-        // softplus(0) ≈ 0.693
-        assert!((data[1] - 0.693).abs() < 0.01);
+        let expected: Vec<f32> = input_data.iter().map(|&x| softplus_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_softplus_edge_cases() {
+        let device = get_test_device().await;
+
+        // Zero should give ln(2) ≈ 0.693
+        let input_data = vec![0.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        assert!((result[0] - 0.693147).abs() < 1e-3);
+
+        // Negative values
+        let input_data = vec![-5.0, -2.0, -0.5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| softplus_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_softplus_boundary() {
+        let device = get_test_device().await;
+
+        // Large positive (should approximate x)
+        let input_data = vec![10.0, 20.0, 50.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        for (r, orig) in result.iter().zip(input_data.iter()) {
+            assert!((r - orig).abs() < 0.1); // Should be close to x
+        }
+
+        // Large negative (should approximate 0)
+        let input_data = vec![-10.0, -20.0, -50.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        for r in result.iter() {
+            assert!(*r < 1e-3); // Should be very close to 0
+        }
+    }
+
+    #[tokio::test]
+    async fn test_softplus_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| (i as f32 - 500.0) * 0.01).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| softplus_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-3);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_softplus_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical values
+        let input_data = vec![-2.345, -1.234, 0.0, 1.234, 2.345];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let result = input.softplus().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| softplus_cpu(x)).collect();
+        
+        // Verify FP32 precision
+        let max_error = result.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-4, "Max error: {} exceeds threshold", max_error);
     }
 }
