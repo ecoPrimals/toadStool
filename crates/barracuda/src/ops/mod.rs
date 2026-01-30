@@ -104,6 +104,17 @@ pub mod rmsnorm;
 pub mod instancenorm;
 pub mod groupnorm;
 
+// Convolution variants
+pub mod conv1d;
+pub mod conv3d;
+pub mod depthwise_conv2d;
+pub mod transposed_conv2d;
+
+// Advanced operations
+pub mod batch_matmul;
+pub mod global_avgpool;
+pub mod split;
+
 /// Re-exports
 pub use relu::ReLU;
 pub use gelu::GELU;
@@ -179,4 +190,11 @@ pub use l1_loss::L1Loss;
 pub use rmsnorm::RMSNorm;
 pub use instancenorm::InstanceNorm;
 pub use groupnorm::GroupNorm;
+pub use conv1d::Conv1D;
+pub use conv3d::Conv3D;
+pub use depthwise_conv2d::DepthwiseConv2D;
+pub use transposed_conv2d::TransposedConv2D;
+pub use batch_matmul::BatchMatMul;
+pub use global_avgpool::GlobalAvgPool;
+pub use split::Split;
 // Note: Reshape is already defined in tensor.rs
