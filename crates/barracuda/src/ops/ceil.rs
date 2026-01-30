@@ -66,16 +66,100 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn ceil_cpu(x: f32) -> f32 {
+        x.ceil()
+    }
 
     #[tokio::test]
     async fn test_ceil_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
-        let input = Tensor::from_vec_on(vec![1.3, -1.7, 2.5], vec![3], device).await.unwrap();
+        let device = get_test_device().await;
+        let input_data = vec![1.3, -1.7, 2.5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
         let result = input.ceil().unwrap().to_vec().unwrap();
-        assert!((result[0] - 2.0).abs() < 1e-5);
-        assert!((result[1] - (-1.0)).abs() < 1e-5);
-        assert!((result[2] - 3.0).abs() < 1e-5);
+        let expected: Vec<f32> = input_data.iter().map(|&x| ceil_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ceil_edge_cases() {
+        let device = get_test_device().await;
+
+        // Already integers (no rounding needed)
+        let input_data = vec![1.0, 2.0, 3.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        for (r, orig) in result.iter().zip(input_data.iter()) {
+            assert!((r - orig).abs() < 1e-6);
+        }
+
+        // Fractional values
+        let input_data = vec![1.1, 1.9, 2.001];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| ceil_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ceil_boundary() {
+        let device = get_test_device().await;
+
+        // Zero
+        let input_data = vec![0.0, -0.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone()).await.unwrap();
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        for r in result.iter() {
+            assert!(r.abs() < 1e-6);
+        }
+
+        // Very small positive/negative
+        let input_data = vec![0.0001, -0.0001, 0.9999, -0.9999];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| ceil_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ceil_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| (i as f32) * 0.123 - 50.0).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| ceil_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_ceil_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let input_data = vec![-123.456, -78.901, -2.345, 0.0, 1.234, 56.789, 123.456];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let result = input.ceil().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| ceil_cpu(x)).collect();
+        
+        // Verify FP32 precision
+        let max_error = result.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
     }
 }
