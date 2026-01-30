@@ -143,35 +143,96 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_mul_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let lhs = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            vec![5],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-
-        let rhs = Tensor::from_vec_on(
-            vec![2.0, 3.0, 4.0, 5.0, 6.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let lhs = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![2.0, 3.0, 4.0, 5.0, 6.0], vec![5], device).await.unwrap();
 
         let output = lhs.mul(&rhs).unwrap();
         let result = output.to_vec().unwrap();
 
         let expected = vec![2.0, 6.0, 12.0, 20.0, 30.0];
         for (i, (&r, &e)) in result.iter().zip(expected.iter()).enumerate() {
-            assert!((r - e).abs() < 1e-5, "Mismatch at {}: {} vs {}", i, r, e);
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mul_edge_cases() {
+        let device = get_test_device().await;
+
+        // Zero multiplication, small values
+        let lhs = Tensor::from_vec_on(vec![0.0, 1e-6, -1e-6, 1.0, -1.0], vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![5.0, 1e6, 1e6, 0.0, -0.0], vec![5], device).await.unwrap();
+
+        let output = lhs.mul(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert_eq!(result[0], 0.0); // 0 * 5 = 0
+        assert!((result[1] - 1.0).abs() < 1e-4); // 1e-6 * 1e6 = 1
+        assert!((result[2] + 1.0).abs() < 1e-4); // -1e-6 * 1e6 = -1
+        assert_eq!(result[3], 0.0); // 1 * 0 = 0
+    }
+
+    #[tokio::test]
+    async fn test_mul_boundary() {
+        let device = get_test_device().await;
+
+        let lhs = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device.clone()
+        ).await.unwrap();
+        
+        let rhs = Tensor::from_vec_on(vec![2.0, 2.0, 2.0, 2.0, 2.0], vec![5], device).await.unwrap();
+
+        let output = lhs.mul(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!(result[0].is_infinite() && result[0].is_sign_negative());
+        assert_eq!(result[2], 0.0);
+        assert!(result[4].is_infinite() && result[4].is_sign_positive());
+    }
+
+    #[tokio::test]
+    async fn test_mul_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let lhs_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
+        let rhs_data = vec![2.0; size];
+
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![size], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data, vec![size], device).await.unwrap();
+
+        let output = lhs.mul(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        for (i, &val) in result.iter().enumerate() {
+            assert!((val - (i as f32) * 2.0).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mul_precision() {
+        let device = get_test_device().await;
+
+        let lhs_data = vec![-5.0, -2.5, -1.0, 0.0, 1.0, 2.5, 5.0];
+        let rhs_data = vec![2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![7], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![7], device).await.unwrap();
+
+        let output = lhs.mul(&rhs).unwrap();
+        let gpu_result = output.to_vec().unwrap();
+
+        let cpu_result: Vec<f32> = lhs_data.iter().zip(rhs_data.iter()).map(|(&a, &b)| a * b).collect();
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-6, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
         }
     }
 }
