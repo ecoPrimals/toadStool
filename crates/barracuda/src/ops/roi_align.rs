@@ -82,15 +82,92 @@ pub async fn roi_align(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_roi_align() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_roi_align_basic() {
+        let dev = get_test_device().await;
         let features = vec![1.0; 1 * 3 * 8 * 8];
         let rois = vec![RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 0.5, y2: 0.5 }];
         let output = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 3, 8, 8, 2, 2, 2).await.unwrap();
         assert_eq!(output.len(), 1 * 3 * 2 * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_roi_align_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Full image RoI
+        let features = vec![2.0; 1 * 2 * 4 * 4];
+        let rois = vec![RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 1.0, y2: 1.0 }];
+        let output = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 2, 4, 4, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 2 * 2 * 2);
+        // With uniform features, output should be close to 2.0
+        for &val in &output {
+            assert!((val - 2.0).abs() < 0.5);
+        }
+        
+        // Single sampling point (sampling_ratio = 1)
+        let rois = vec![RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 0.5, y2: 0.5 }];
+        let output = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 2, 4, 4, 2, 2, 1).await.unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_roi_align_boundary() {
+        let dev = get_test_device().await;
+        
+        // RoI at edges
+        let features = vec![1.0; 1 * 1 * 8 * 8];
+        let rois = vec![
+            RoI { batch_idx: 0, x1: 0.75, y1: 0.75, x2: 1.0, y2: 1.0 },
+        ];
+        let output = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 1, 8, 8, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 2 * 2);
+        
+        // Different sampling ratios
+        let rois = vec![RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 0.5, y2: 0.5 }];
+        let output_sr2 = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 1, 8, 8, 4, 4, 2).await.unwrap();
+        let output_sr4 = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 1, 8, 8, 4, 4, 4).await.unwrap();
+        assert_eq!(output_sr2.len(), output_sr4.len());
+    }
+
+    #[tokio::test]
+    async fn test_roi_align_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Multiple RoIs from multiple batches
+        let features = vec![1.0; 2 * 3 * 14 * 14];
+        let rois = vec![
+            RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 0.5, y2: 0.5 },
+            RoI { batch_idx: 0, x1: 0.5, y1: 0.0, x2: 1.0, y2: 0.5 },
+            RoI { batch_idx: 1, x1: 0.0, y1: 0.5, x2: 0.5, y2: 1.0 },
+            RoI { batch_idx: 1, x1: 0.5, y1: 0.5, x2: 1.0, y2: 1.0 },
+        ];
+        
+        let output = roi_align(&dev.device, &dev.queue, &features, &rois, 2, 3, 14, 14, 7, 7, 2).await.unwrap();
+        assert_eq!(output.len(), 4 * 3 * 7 * 7); // 4 RoIs, 3 channels, 7x7 output
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_roi_align_precision() {
+        let dev = get_test_device().await;
+        
+        // Test bilinear interpolation with gradient
+        let mut features = vec![0.0; 1 * 1 * 4 * 4];
+        for h in 0..4 {
+            for w in 0..4 {
+                features[h * 4 + w] = (h + w) as f32;
+            }
+        }
+        
+        let rois = vec![RoI { batch_idx: 0, x1: 0.0, y1: 0.0, x2: 1.0, y2: 1.0 }];
+        let output = roi_align(&dev.device, &dev.queue, &features, &rois, 1, 1, 4, 4, 2, 2, 2).await.unwrap();
+        
+        // Output should be smooth due to bilinear interpolation
+        assert!(output.iter().all(|&x| x >= 0.0 && x <= 6.0));
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
