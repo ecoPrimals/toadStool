@@ -153,37 +153,108 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_add_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        // Test data: [1, 2, 3, 4, 5] + [10, 20, 30, 40, 50]
-        let lhs = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            vec![5],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-
-        let rhs = Tensor::from_vec_on(
-            vec![10.0, 20.0, 30.0, 40.0, 50.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let lhs = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![10.0, 20.0, 30.0, 40.0, 50.0], vec![5], device).await.unwrap();
 
         let output = lhs.add(&rhs).unwrap();
         let result = output.to_vec().unwrap();
 
-        // Expected: [11, 22, 33, 44, 55]
         let expected = vec![11.0, 22.0, 33.0, 44.0, 55.0];
         for (i, (&r, &e)) in result.iter().zip(expected.iter()).enumerate() {
-            assert!((r - e).abs() < 1e-5, "Mismatch at index {}: {} vs {}", i, r, e);
+            assert!((r - e).abs() < 1e-6, "Mismatch at {}: {} vs {}", i, r, e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_add_edge_cases() {
+        let device = get_test_device().await;
+
+        // Very small values, zero, negatives
+        let lhs = Tensor::from_vec_on(vec![-1e-6, 0.0, 1e-6, -1.0, 1.0], vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![1e-6, 0.0, -1e-6, 1.0, -1.0], vec![5], device).await.unwrap();
+
+        let output = lhs.add(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!((result[0] - 0.0).abs() < 1e-12); // -1e-6 + 1e-6 = 0
+        assert_eq!(result[1], 0.0); // 0 + 0 = 0
+        assert!((result[2] - 0.0).abs() < 1e-12); // 1e-6 + (-1e-6) = 0
+        assert_eq!(result[3], 0.0); // -1 + 1 = 0
+        assert_eq!(result[4], 0.0); // 1 + (-1) = 0
+    }
+
+    #[tokio::test]
+    async fn test_add_boundary() {
+        let device = get_test_device().await;
+
+        // Infinities and large values
+        let lhs = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device.clone()
+        ).await.unwrap();
+        
+        let rhs = Tensor::from_vec_on(
+            vec![100.0, 1e10, 0.0, -1e10, 100.0],
+            vec![5],
+            device
+        ).await.unwrap();
+
+        let output = lhs.add(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!(result[0].is_infinite() && result[0].is_sign_negative()); // -inf + 100 = -inf
+        assert_eq!(result[1], 0.0); // -1e10 + 1e10 = 0 (approximately)
+        assert_eq!(result[2], 0.0); // 0 + 0 = 0
+        assert_eq!(result[3], 0.0); // 1e10 + (-1e10) = 0 (approximately)
+        assert!(result[4].is_infinite() && result[4].is_sign_positive()); // inf + 100 = inf
+    }
+
+    #[tokio::test]
+    async fn test_add_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let lhs_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
+        let rhs_data: Vec<f32> = (0..size).map(|i| (size - i) as f32).collect();
+
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![size], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![size], device).await.unwrap();
+
+        let output = lhs.add(&rhs).unwrap();
+        let result = output.to_vec().unwrap();
+
+        // All should equal size
+        for (i, &val) in result.iter().enumerate() {
+            assert!((val - size as f32).abs() < 1e-4, "Mismatch at {}: {}", i, val);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_add_precision() {
+        let device = get_test_device().await;
+
+        let lhs_data = vec![-5.0, -2.5, -1.0, 0.0, 1.0, 2.5, 5.0];
+        let rhs_data = vec![2.0, 1.5, 0.5, 0.0, -0.5, -1.5, -2.0];
+
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![7], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![7], device).await.unwrap();
+
+        let output = lhs.add(&rhs).unwrap();
+        let gpu_result = output.to_vec().unwrap();
+
+        // CPU reference
+        let cpu_result: Vec<f32> = lhs_data.iter().zip(rhs_data.iter()).map(|(&a, &b)| a + b).collect();
+
+        // Should be exact for addition
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-6, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
         }
     }
 }

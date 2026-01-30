@@ -131,14 +131,12 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_sigmoid_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        // Test data: [-2, -1, 0, 1, 2]
         let input = Tensor::from_vec_on(
             vec![-2.0, -1.0, 0.0, 1.0, 2.0],
             vec![5],
@@ -150,13 +148,88 @@ mod tests {
         let output = input.sigmoid().unwrap();
         let result = output.to_vec().unwrap();
 
-        // Sigmoid properties:
-        // σ(0) = 0.5
-        // σ(x) is in range (0, 1)
-        // σ(-x) = 1 - σ(x)
-        assert!((result[2] - 0.5).abs() < 1e-5); // σ(0) = 0.5
-        assert!(result.iter().all(|&x| x > 0.0 && x < 1.0)); // All in (0,1)
-        assert!((result[0] + result[4] - 1.0).abs() < 1e-5); // σ(-2) + σ(2) = 1
-        assert!((result[1] + result[3] - 1.0).abs() < 1e-5); // σ(-1) + σ(1) = 1
+        // Sigmoid properties: σ(0) = 0.5, σ(x) ∈ (0,1), σ(-x) = 1 - σ(x)
+        assert!((result[2] - 0.5).abs() < 1e-5);
+        assert!(result.iter().all(|&x| x > 0.0 && x < 1.0));
+        assert!((result[0] + result[4] - 1.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_sigmoid_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(
+            vec![-100.0, -10.0, -1e-6, 0.0, 1e-6, 10.0, 100.0],
+            vec![7],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.sigmoid().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!(result[0] < 1e-20); // σ(-100) ≈ 0
+        assert!(result[1] < 1e-3);  // σ(-10) ≈ 0
+        assert!((result[3] - 0.5).abs() < 1e-5); // σ(0) = 0.5
+        assert!(result[5] > 0.999); // σ(10) ≈ 1
+        assert!(result[6] > 0.999); // σ(100) ≈ 1
+    }
+
+    #[tokio::test]
+    async fn test_sigmoid_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.sigmoid().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert_eq!(result[0], 0.0); // σ(-inf) = 0
+        assert_eq!(result[4], 1.0); // σ(+inf) = 1
+        assert!(result.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    }
+
+    #[tokio::test]
+    async fn test_sigmoid_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0 - 5.0).collect();
+        
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let output = input.sigmoid().unwrap();
+        let result = output.to_vec().unwrap();
+
+        // All in (0, 1) and monotonic
+        for i in 0..result.len() {
+            assert!(result[i] > 0.0 && result[i] < 1.0);
+            if i > 0 {
+                assert!(result[i] >= result[i-1]);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sigmoid_precision() {
+        let device = get_test_device().await;
+
+        let input_data = vec![-5.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![9], device).await.unwrap();
+        let output = input.sigmoid().unwrap();
+        let gpu_result = output.to_vec().unwrap();
+
+        // CPU reference
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| 1.0 / (1.0 + (-x).exp())).collect();
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
