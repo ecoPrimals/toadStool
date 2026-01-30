@@ -106,19 +106,89 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn clamp_cpu(x: f32) -> f32 {
+        x.clamp(0.0, 6.0) // Clamp to [0, 6] to match shader
+    }
 
     #[tokio::test]
     async fn test_clamp_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
-
-        let input = Tensor::from_vec_on(vec![-5.0, 2.0, 10.0], vec![3], device).await.unwrap();
+        let device = get_test_device().await;
+        let input_data = vec![-5.0, 2.0, 10.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
         let result = input.clamp().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| clamp_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6, "Expected {}, got {}", e, r);
+        }
+    }
 
-        // Clamp to [0, 6]
-        assert!((result[0] - 0.0).abs() < 1e-5);
-        assert!((result[1] - 2.0).abs() < 1e-5);
-        assert!((result[2] - 6.0).abs() < 1e-5);
+    #[tokio::test]
+    async fn test_clamp_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Exact boundaries
+        let input_data = vec![0.0, 6.0, -0.0001, 6.0001];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let result = input.clamp().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| clamp_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+        
+        // All within range
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let result = input.clamp().unwrap().to_vec().unwrap();
+        for (r, &orig) in result.iter().zip(input_data.iter()) {
+            assert!((r - orig).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_clamp_boundary() {
+        let device = get_test_device().await;
+        let input_data = vec![-1e10, 1e10, -100.0, 100.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.clamp().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| clamp_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_clamp_large_tensor() {
+        let device = get_test_device().await;
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01 - 5.0).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+        let result = input.clamp().unwrap().to_vec().unwrap();
+        
+        assert_eq!(result.len(), size);
+        for i in 0..10 {
+            let expected = clamp_cpu(input_data[i]);
+            assert!((result[i] - expected).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_clamp_precision() {
+        let device = get_test_device().await;
+        let input_data = vec![-10.0, -5.0, -1.0, 0.0, 1.0, 3.0, 6.0, 7.0, 10.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![9], device).await.unwrap();
+        let gpu_result = input.clamp().unwrap().to_vec().unwrap();
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| clamp_cpu(x)).collect();
+        
+        let mut max_error = 0.0f32;
+        for (r, e) in gpu_result.iter().zip(cpu_result.iter()) {
+            let error = (r - e).abs();
+            max_error = max_error.max(error);
+        }
+        assert!(max_error < 1e-6, "Max error {} exceeds threshold", max_error);
     }
 }
