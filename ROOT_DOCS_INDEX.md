@@ -34,7 +34,17 @@
    - Quick stats, categories, roadmap
    - **Use this for fast status checks**
 
-3. **Archived Milestones** (Historical reference):
+3. **[BARRACUDA_DEEP_DEBT_AUDIT_JAN30_2026.md](BARRACUDA_DEEP_DEBT_AUDIT_JAN30_2026.md)** 📊 **DEEP DEBT AUDIT**
+   - **Grade: A- (89/100)** - Comprehensive analysis
+   - ✅ Modern & Idiomatic: 98/100 (zero unsafe, Result<> everywhere)
+   - ✅ Async & Concurrent: 100/100 (515 await points, tokio)
+   - ✅ File Complexity: 100/100 (zero files > 1000 lines)
+   - ✅ Fast AND Safe: 100/100 (GPU accelerated, zero unsafe)
+   - ⚠️ Test Coverage: 40/100 (272 unit tests, missing e2e/chaos/fault)
+   - ✅ FP32 Precision: 100/100 (zero f16 usage)
+   - **Critical gaps identified with 20-week roadmap to 100/100**
+
+4. **Archived Milestones** (Historical reference):
    - **[docs/archive/barracuda-milestones/BARRACUDA_200_OPS_LEGENDARY_JAN30_2026.md](docs/archive/barracuda-milestones/BARRACUDA_200_OPS_LEGENDARY_JAN30_2026.md)** - 200 ops (10% parity)
    - **[docs/archive/barracuda-milestones/BARRACUDA_120_OPS_MILESTONE_JAN30_2026.md](docs/archive/barracuda-milestones/BARRACUDA_120_OPS_MILESTONE_JAN30_2026.md)** - 120 ops (6% parity)
    - **[docs/archive/barracuda-milestones/BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md](docs/archive/barracuda-milestones/BARRACUDA_100_OPS_MILESTONE_JAN30_2026.md)** - 100 ops (5% parity)
