@@ -137,34 +137,81 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_softmax_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        // Test data: [1, 2, 3]
-        let input = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0],
-            vec![3],
-            device,
-        )
-        .await
-        .unwrap();
-
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device).await.unwrap();
         let output = input.softmax().unwrap();
         let result = output.to_vec().unwrap();
 
-        // Softmax properties:
-        // 1. All values in range (0, 1)
-        // 2. Sum equals 1
+        // Sum = 1, all in (0,1), monotonic
         assert!(result.iter().all(|&x| x > 0.0 && x < 1.0));
         let sum: f32 = result.iter().sum();
-        assert!((sum - 1.0).abs() < 1e-5, "Sum should be 1, got {}", sum);
-        
-        // Larger values should have larger probabilities
-        assert!(result[2] > result[1]);
-        assert!(result[1] > result[0]);
+        assert!((sum - 1.0).abs() < 1e-5);
+        assert!(result[2] > result[1] && result[1] > result[0]);
+    }
+
+    #[tokio::test]
+    async fn test_softmax_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![1e-6, 2e-6, 3e-6], vec![3], device).await.unwrap();
+        let output = input.softmax().unwrap();
+        let result = output.to_vec().unwrap();
+
+        let sum: f32 = result.iter().sum();
+        assert!((sum - 1.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_softmax_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![100.0, 200.0, 300.0], vec![3], device).await.unwrap();
+        let output = input.softmax().unwrap();
+        let result = output.to_vec().unwrap();
+
+        let sum: f32 = result.iter().sum();
+        assert!((sum - 1.0).abs() < 1e-5);
+        assert!(result[2] > 0.99); // Largest dominates
+    }
+
+    #[tokio::test]
+    async fn test_softmax_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let output = input.softmax().unwrap();
+        let result = output.to_vec().unwrap();
+
+        let sum: f32 = result.iter().sum();
+        assert!((sum - 1.0).abs() < 1e-4);
+    }
+
+    #[tokio::test]
+    async fn test_softmax_precision() {
+        let device = get_test_device().await;
+
+        fn softmax_cpu(x: &[f32]) -> Vec<f32> {
+            let max = x.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+            let exps: Vec<f32> = x.iter().map(|&v| (v - max).exp()).collect();
+            let sum: f32 = exps.iter().sum();
+            exps.iter().map(|&e| e / sum).collect()
+        }
+
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let output = input.softmax().unwrap();
+        let gpu_result = output.to_vec().unwrap();
+        let cpu_result = softmax_cpu(&input_data);
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
