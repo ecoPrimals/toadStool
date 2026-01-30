@@ -12,6 +12,9 @@ pub mod wgpu_device;
 
 pub use wgpu_device::WgpuDevice;
 
+#[cfg(test)]
+pub mod test_pool;
+
 /// Auto device discovery via wgpu
 ///
 /// wgpu automatically handles:
