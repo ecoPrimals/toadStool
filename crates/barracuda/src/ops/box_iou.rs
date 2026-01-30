@@ -42,16 +42,92 @@ pub async fn box_iou(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_box_iou() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_box_iou_basic() {
+        let dev = get_test_device().await;
         let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
         let boxes2 = vec![5.0, 5.0, 15.0, 15.0];
         let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
         assert_eq!(ious.len(), 1);
         assert!(ious[0] > 0.0 && ious[0] < 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_box_iou_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Identical boxes (IoU = 1.0)
+        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
+        let boxes2 = vec![0.0, 0.0, 10.0, 10.0];
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
+        assert!((ious[0] - 1.0).abs() < 1e-5);
+        
+        // Non-overlapping boxes (IoU = 0.0)
+        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
+        let boxes2 = vec![20.0, 20.0, 30.0, 30.0];
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
+        assert_eq!(ious[0], 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_box_iou_boundary() {
+        let dev = get_test_device().await;
+        
+        // Boxes touching at edge (IoU = 0.0)
+        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
+        let boxes2 = vec![10.0, 0.0, 20.0, 10.0];
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
+        assert_eq!(ious[0], 0.0);
+        
+        // One box inside another
+        let boxes1 = vec![0.0, 0.0, 20.0, 20.0];
+        let boxes2 = vec![5.0, 5.0, 15.0, 15.0];
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
+        assert!(ious[0] > 0.0 && ious[0] < 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_box_iou_large_batch() {
+        let dev = get_test_device().await;
+        
+        // N x M matrix of IoUs
+        let n = 10;
+        let m = 5;
+        let mut boxes1 = Vec::new();
+        let mut boxes2 = Vec::new();
+        
+        for i in 0..n {
+            let x = (i * 10) as f32;
+            boxes1.extend_from_slice(&[x, 0.0, x + 10.0, 10.0]);
+        }
+        
+        for j in 0..m {
+            let x = (j * 10) as f32;
+            boxes2.extend_from_slice(&[x, 0.0, x + 10.0, 10.0]);
+        }
+        
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, n, m).await.unwrap();
+        assert_eq!(ious.len(), n * m);
+        
+        // Diagonal should have IoU = 1.0 for matching boxes
+        for i in 0..n.min(m) {
+            assert!((ious[i * m + i] - 1.0).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_box_iou_precision() {
+        let dev = get_test_device().await;
+        
+        // Test known IoU values
+        let boxes1 = vec![0.0, 0.0, 10.0, 10.0]; // Area = 100
+        let boxes2 = vec![5.0, 0.0, 15.0, 10.0]; // Area = 100, overlap = 50
+        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1).await.unwrap();
+        
+        // IoU = 50 / (100 + 100 - 50) = 50 / 150 = 1/3
+        let expected = 1.0 / 3.0;
+        assert!((ious[0] - expected).abs() < 1e-5);
     }
 }
