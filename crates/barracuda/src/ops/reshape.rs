@@ -197,10 +197,14 @@ pub async fn reshape(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_reshape_2d_to_1d() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![
             1.0, 2.0, 3.0,
@@ -215,7 +219,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_reshape_1d_to_2d() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // Shape: [6]
         
@@ -227,7 +233,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_reshape_3d() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input: Vec<f32> = (0..24).map(|i| i as f32).collect(); // 24 elements
         
@@ -239,7 +247,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_reshape_invalid_size() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // 6 elements
         

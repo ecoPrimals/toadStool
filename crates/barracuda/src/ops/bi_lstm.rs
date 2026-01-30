@@ -67,10 +67,14 @@ pub async fn bi_lstm(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_bi_lstm_dimensions() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         // Small example
         let seq_len = 3;
         let batch = 1;

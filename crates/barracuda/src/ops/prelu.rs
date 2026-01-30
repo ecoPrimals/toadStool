@@ -50,10 +50,14 @@ pub async fn prelu(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_prelu_shared() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
         let alpha = vec![0.25];
         let output = prelu(&device, &queue, &input, &alpha).await.unwrap();

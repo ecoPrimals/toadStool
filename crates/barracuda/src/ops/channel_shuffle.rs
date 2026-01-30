@@ -44,10 +44,14 @@ pub async fn channel_shuffle(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_channel_shuffle() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input: Vec<f32> = (0..16).map(|i| i as f32).collect();
         let output = channel_shuffle(&device, &queue, &input, 1, 4, 2, 2, 2).await.unwrap();
         assert_eq!(output.len(), 16);

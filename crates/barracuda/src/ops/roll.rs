@@ -28,10 +28,14 @@ pub async fn roll(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_roll() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let output = roll(&device, &queue, &input, 2).await.unwrap();
         assert_eq!(output, vec![4.0, 5.0, 1.0, 2.0, 3.0]);

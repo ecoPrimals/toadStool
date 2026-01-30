@@ -6,6 +6,7 @@
 //! h_t = tanh(W_ih * x_t + b_ih + W_hh * h_{t-1} + b_hh)
 //! ```
 
+#[derive(Clone)]
 pub struct RNNWeights {
     pub w_ih: Vec<f32>,
     pub w_hh: Vec<f32>,
@@ -47,10 +48,14 @@ pub async fn rnn_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_rnn_cell() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![0.5; 2 * 4]; // batch=2, input=4
         let prev_hidden = vec![0.0; 2 * 8]; // batch=2, hidden=8
         let weights = RNNWeights {

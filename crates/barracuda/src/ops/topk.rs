@@ -226,10 +226,14 @@ pub async fn topk(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_topk_basic() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0];
         let result = topk(&device, &queue, &input, 3).await.unwrap();
@@ -244,7 +248,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_topk_k_larger_than_input() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![3.0, 1.0, 4.0];
         let result = topk(&device, &queue, &input, 10).await.unwrap();
@@ -256,7 +262,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_topk_empty() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input: Vec<f32> = vec![];
         let result = topk(&device, &queue, &input, 5).await.unwrap();
@@ -267,7 +275,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_topk_single() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let input = vec![1.0, 5.0, 3.0, 7.0, 2.0];
         let result = topk(&device, &queue, &input, 1).await.unwrap();

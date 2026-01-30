@@ -32,6 +32,7 @@ pub struct LSTMState {
 }
 
 /// LSTM cell weights
+#[derive(Clone)]
 pub struct LSTMWeights {
     /// Input gate weights: W_ii [hidden_size, input_size]
     pub w_ii: Vec<f32>,
@@ -220,10 +221,14 @@ pub async fn lstm_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_lstm_cell_dimensions() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let batch_size = 2;
         let input_size = 4;

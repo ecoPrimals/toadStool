@@ -79,10 +79,14 @@ pub async fn upsample(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_upsample_nearest() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![1.0, 2.0, 3.0, 4.0]; // 1x1x2x2
         let output = upsample(&device, &queue, &input, 1, 1, 2, 2, 4, 4, UpsampleMode::Nearest).await.unwrap();
         assert_eq!(output.len(), 16);

@@ -48,10 +48,14 @@ pub async fn pixel_shuffle(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_pixel_shuffle() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input: Vec<f32> = (0..16).map(|i| i as f32).collect();
         let output = pixel_shuffle(&device, &queue, &input, 1, 4, 2, 2, 2).await.unwrap();
         assert_eq!(output.len(), 16); // 1 * 1 * 4 * 4

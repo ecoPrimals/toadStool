@@ -18,6 +18,7 @@
 //! Reference: Cho et al. (2014)
 
 /// GRU cell weights
+#[derive(Clone)]
 pub struct GRUWeights {
     pub w_ir: Vec<f32>,  // Reset gate input weights
     pub w_hr: Vec<f32>,  // Reset gate hidden weights
@@ -158,10 +159,14 @@ pub async fn gru_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_gru_cell_dimensions() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         let batch_size = 2;
         let input_size = 4;

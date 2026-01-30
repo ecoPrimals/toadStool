@@ -70,8 +70,8 @@ pub struct AttentionParams {
 /// Philosophy: "Make it work, make it right, make it fast."
 /// Current status: Work + Right. Fast = future evolution.
 pub async fn scaled_dot_product_attention(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
+    _device: &wgpu::Device,
+    _queue: &wgpu::Queue,
     query: &[f32],
     key: &[f32],
     value: &[f32],
@@ -171,10 +171,14 @@ pub async fn scaled_dot_product_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_attention_basic() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         // Small example: 1 batch, 1 head, 2 seq, 2 dim
         let query = vec![1.0, 0.0, 0.0, 1.0];  // [[1,0], [0,1]]
@@ -193,7 +197,9 @@ mod tests {
     
     #[tokio::test]
     async fn test_attention_identity() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         
         // When Q=K=V are identity, attention should approximate identity
         let size = 1 * 1 * 4 * 4; // batch=1, heads=1, seq=4, dim=4

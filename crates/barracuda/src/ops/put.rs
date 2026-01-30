@@ -27,10 +27,14 @@ pub async fn put(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_put() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let indices = vec![0, 2, 4];
         let values = vec![10.0, 30.0, 50.0];
         let output = put(&device, &queue, 5, &indices, &values).await.unwrap();

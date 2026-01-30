@@ -20,10 +20,14 @@ pub async fn softsign(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_softsign() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
         let output = softsign(&device, &queue, &input).await.unwrap();
         assert!((output[2] - 0.0).abs() < 1e-6); // 0 -> 0

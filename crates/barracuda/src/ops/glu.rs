@@ -35,10 +35,14 @@ pub async fn glu(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_glu() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![1.0, 2.0, 0.0, 0.0]; // Split: [1,2] and [0,0]
         let output = glu(&device, &queue, &input).await.unwrap();
         assert_eq!(output.len(), 2);

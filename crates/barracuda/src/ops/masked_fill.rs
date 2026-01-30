@@ -23,10 +23,14 @@ pub async fn masked_fill(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
     
     #[tokio::test]
     async fn test_masked_fill() {
-        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
         let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let mask = vec![false, true, false, true, false];
         let output = masked_fill(&device, &queue, &input, &mask, -999.0).await.unwrap();
