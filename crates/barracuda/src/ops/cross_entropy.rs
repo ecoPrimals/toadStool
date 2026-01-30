@@ -94,10 +94,26 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
+
+    fn cross_entropy_cpu(predictions: &[f32], targets: &[f32]) -> f32 {
+        let n = predictions.len() as f32;
+        let sum: f32 = predictions.iter()
+            .zip(targets.iter())
+            .map(|(p, t)| {
+                if *t > 0.0 {
+                    -t * p.max(1e-10).ln()
+                } else {
+                    0.0
+                }
+            })
+            .sum();
+        sum / n
+    }
 
     #[tokio::test]
     async fn test_cross_entropy_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Predictions (probabilities): [0.7, 0.2, 0.1]
         let pred_data = vec![0.7f32, 0.2, 0.1];
@@ -113,6 +129,96 @@ mod tests {
         
         assert_eq!(output.len(), 1);
         assert!(output[0] > 0.0); // Should be positive
-        assert!((output[0] - 0.357).abs() < 0.1);
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        assert!((output[0] - expected).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_cross_entropy_edge_cases() {
+        let device = get_test_device().await;
+
+        // Perfect prediction (target = prediction)
+        let pred_data = vec![1.0f32, 0.0, 0.0];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        let target_data = vec![1.0f32, 0.0, 0.0];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output[0] < 0.1); // Should be close to 0
+
+        // Uniform distribution
+        let pred_data = vec![0.33f32, 0.33, 0.34];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        let target_data = vec![0.33f32, 0.33, 0.34];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        assert!((output[0] - expected).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_cross_entropy_boundary() {
+        let device = get_test_device().await;
+
+        // Binary classification
+        let pred_data = vec![0.8f32, 0.2];
+        let predictions = Tensor::from_data(&pred_data, vec![2], device.clone()).unwrap();
+        let target_data = vec![1.0f32, 0.0];
+        let targets = Tensor::from_data(&target_data, vec![2], device.clone()).unwrap();
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        assert!((output[0] - expected).abs() < 0.1);
+
+        // Many classes
+        let pred_data = vec![0.5, 0.2, 0.1, 0.1, 0.05, 0.03, 0.02];
+        let predictions = Tensor::from_data(&pred_data, vec![7], device.clone()).unwrap();
+        let target_data = vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let targets = Tensor::from_data(&target_data, vec![7], device.clone()).unwrap();
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        assert!((output[0] - expected).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_cross_entropy_large_tensor() {
+        let device = get_test_device().await;
+
+        // 100 classes
+        let mut pred_data = vec![0.01f32; 100];
+        pred_data[0] = 0.5;
+        let mut target_data = vec![0.0f32; 100];
+        target_data[0] = 1.0;
+        
+        let predictions = Tensor::from_data(&pred_data, vec![100], device.clone()).unwrap();
+        let targets = Tensor::from_data(&target_data, vec![100], device).unwrap();
+        
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        
+        assert!((output[0] - expected).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_cross_entropy_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let pred_data = vec![0.123, 0.234, 0.345, 0.298];
+        let target_data = vec![0.0, 1.0, 0.0, 0.0];
+        
+        let predictions = Tensor::from_data(&pred_data, vec![4], device.clone()).unwrap();
+        let targets = Tensor::from_data(&target_data, vec![4], device).unwrap();
+        
+        let result = predictions.cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = cross_entropy_cpu(&pred_data, &target_data);
+        
+        // Verify FP32 precision
+        let error = (output[0] - expected).abs();
+        assert!(error < 0.01, "GPU CE: {}, CPU CE: {}, Error: {}", output[0], expected, error);
     }
 }
