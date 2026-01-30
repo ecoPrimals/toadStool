@@ -66,15 +66,82 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+    use std::f32::consts::PI;
+
+    fn sin_cpu(x: f32) -> f32 {
+        x.sin()
+    }
 
     #[tokio::test]
     async fn test_sin_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
-        let input = Tensor::from_vec_on(vec![0.0, std::f32::consts::PI / 2.0], vec![2], device).await.unwrap();
+        let device = get_test_device().await;
+        let input_data = vec![0.0, PI / 6.0, PI / 4.0, PI / 2.0, PI];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
         let result = input.sin().unwrap().to_vec().unwrap();
-        assert!((result[0] - 0.0).abs() < 1e-5); // sin(0) = 0
-        assert!((result[1] - 1.0).abs() < 1e-5); // sin(π/2) = 1
+        let expected: Vec<f32> = input_data.iter().map(|&x| sin_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5, "Expected {}, got {}", e, r);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sin_edge_cases() {
+        let device = get_test_device().await;
+        // Test special angles and negative values
+        let input_data = vec![0.0, -PI / 2.0, 2.0 * PI, -PI];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.sin().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| sin_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5, "Expected {}, got {}", e, r);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sin_boundary() {
+        let device = get_test_device().await;
+        // Large angles (periodicity)
+        let input_data = vec![10.0 * PI, -10.0 * PI, 100.0, -100.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.sin().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| sin_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4, "Expected {}, got {}", e, r);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sin_large_tensor() {
+        let device = get_test_device().await;
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) * 0.01).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+        let result = input.sin().unwrap().to_vec().unwrap();
+        
+        assert_eq!(result.len(), size);
+        for i in 0..10 {
+            let expected = sin_cpu(input_data[i]);
+            assert!((result[i] - expected).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sin_precision() {
+        let device = get_test_device().await;
+        let input_data = vec![0.0, PI / 6.0, PI / 4.0, PI / 3.0, PI / 2.0, PI];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![6], device).await.unwrap();
+        let gpu_result = input.sin().unwrap().to_vec().unwrap();
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| sin_cpu(x)).collect();
+        
+        let mut max_error = 0.0f32;
+        for (r, e) in gpu_result.iter().zip(cpu_result.iter()) {
+            let error = (r - e).abs();
+            max_error = max_error.max(error);
+        }
+        assert!(max_error < 1e-5, "Max error {} exceeds threshold", max_error);
     }
 }
