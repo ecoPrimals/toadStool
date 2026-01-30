@@ -287,12 +287,11 @@ impl AdaDeltaExt for Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_adadelta_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         let weights = Tensor::from_data(
             &vec![1.0, 2.0, 3.0, 4.0],
@@ -311,6 +310,137 @@ mod tests {
         
         // Weights should be updated
         assert_eq!(result.len(), 4);
+        assert!(result.iter().all(|&x| x.is_finite()));
         assert!(result[0] < 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_adadelta_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Test with zero gradients
+        let weights = Tensor::from_data(
+            &vec![1.0, 2.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![0.0, 0.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let (updated_weights, acc_grad, acc_delta) = weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
+        let result = updated_weights.to_vec().unwrap();
+        let ag = acc_grad.to_vec().unwrap();
+        let ad = acc_delta.to_vec().unwrap();
+        
+        assert!(result.iter().all(|&x| x.is_finite()));
+        assert!(ag.iter().all(|&x| x.is_finite()));
+        assert!(ad.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adadelta_boundary() {
+        let device = get_test_device().await;
+        
+        // Test with different rho values
+        let weights1 = Tensor::from_data(
+            &vec![1.0; 4],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        let weights2 = Tensor::from_data(
+            &vec![1.0; 4],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![0.1; 4],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        
+        // Low rho (less momentum)
+        let (updated1, _ag, _ad) = weights1.adadelta_step(&gradients, 0.5, None, None).unwrap();
+        
+        // High rho (more momentum)
+        let (updated2, _ag, _ad) = weights2.adadelta_step(&gradients, 0.99, None, None).unwrap();
+        
+        let result1 = updated1.to_vec().unwrap();
+        let result2 = updated2.to_vec().unwrap();
+        
+        assert!(result1.iter().all(|&x| x.is_finite()));
+        assert!(result2.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adadelta_large_batch() {
+        let device = get_test_device().await;
+        
+        // Larger parameter set
+        let size = 128;
+        let weights_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
+        let grads_data = vec![0.01; size];
+        
+        let weights = Tensor::from_data(
+            &weights_data,
+            vec![size],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &grads_data,
+            vec![size],
+            device.clone(),
+        ).unwrap();
+        
+        let (updated_weights, updated_ag, updated_ad) = weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
+        
+        let result = updated_weights.to_vec().unwrap();
+        let ag = updated_ag.to_vec().unwrap();
+        let ad = updated_ad.to_vec().unwrap();
+        
+        assert_eq!(result.len(), size);
+        assert_eq!(ag.len(), size);
+        assert_eq!(ad.len(), size);
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adadelta_precision() {
+        let device = get_test_device().await;
+        
+        // Test multiple steps with accumulation
+        let weights = Tensor::from_data(
+            &vec![10.0, 20.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let gradients = Tensor::from_data(
+            &vec![1.0, 2.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        // Step 1
+        let (weights1, ag1, ad1) = weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
+        let result1 = weights1.to_vec().unwrap();
+        
+        assert!(result1[0] < 10.0);
+        assert!(result1[1] < 20.0);
+        
+        // Step 2 with accumulated state
+        let (weights2, _ag2, _ad2) = weights1.adadelta_step(&gradients, 0.95, Some(&ag1), Some(&ad1)).unwrap();
+        let result2 = weights2.to_vec().unwrap();
+        
+        // Should continue optimizing
+        assert!(result2.iter().all(|&x| x.is_finite()));
+        assert!(result2[0] < 10.0);
+        assert!(result2[1] < 20.0);
     }
 }

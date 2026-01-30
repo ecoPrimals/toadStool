@@ -52,12 +52,11 @@ pub async fn adabound_step(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_adabound() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_adabound_basic() {
+        let dev = get_test_device().await;
         let params = vec![1.0; 100];
         let grads = vec![0.01; 100];
         let mut state = AdaBoundState {
@@ -67,5 +66,116 @@ mod tests {
         };
         let new_params = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
         assert_eq!(new_params.len(), 100);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // Params should decrease with positive gradients
+        assert!(new_params.iter().zip(params.iter()).all(|(a, b)| a < b));
+    }
+
+    #[tokio::test]
+    async fn test_adabound_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Test with zero gradients
+        let params = vec![1.0; 10];
+        let grads = vec![0.0; 10];
+        let mut state = AdaBoundState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 0,
+        };
+        let new_params = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        
+        // Test with single parameter
+        let params = vec![5.0];
+        let grads = vec![0.1];
+        let mut state = AdaBoundState {
+            m: vec![0.0],
+            v: vec![0.0],
+            step: 0,
+        };
+        let new_params = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        assert_eq!(new_params.len(), 1);
+        assert!(new_params[0] < 5.0);
+    }
+
+    #[tokio::test]
+    async fn test_adabound_boundary() {
+        let dev = get_test_device().await;
+        
+        // Test dynamic bounds convergence (early vs late training)
+        let params = vec![1.0; 50];
+        let grads = vec![0.1; 50];
+        
+        // Early training (step 1) - should behave like Adam
+        let mut state_early = AdaBoundState {
+            m: vec![0.0; 50],
+            v: vec![0.0; 50],
+            step: 0,
+        };
+        let new_params_early = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state_early, 0.001, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        // Late training (step 1000) - bounds should be tighter
+        let mut state_late = AdaBoundState {
+            m: vec![0.05; 50],
+            v: vec![0.005; 50],
+            step: 999, // Will become 1000
+        };
+        let new_params_late = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state_late, 0.001, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        // Both should produce valid updates
+        assert!(new_params_early.iter().all(|&x| x.is_finite()));
+        assert!(new_params_late.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_adabound_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Larger parameter set (neural network layer)
+        let size = 512;
+        let params: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0).collect();
+        let grads = vec![0.01; size];
+        let mut state = AdaBoundState {
+            m: vec![0.0; size],
+            v: vec![0.0; size],
+            step: 0,
+        };
+        
+        let new_params = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        assert_eq!(new_params.len(), size);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // State should be updated
+        assert_eq!(state.step, 1);
+        assert!(state.m.iter().any(|&x| x != 0.0));
+        assert!(state.v.iter().any(|&x| x != 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_adabound_precision() {
+        let dev = get_test_device().await;
+        
+        // Test multiple optimization steps
+        let mut params = vec![10.0, 20.0, 30.0];
+        let grads = vec![1.0, 2.0, 3.0];
+        let mut state = AdaBoundState {
+            m: vec![0.0; 3],
+            v: vec![0.0; 3],
+            step: 0,
+        };
+        
+        // Step 1
+        params = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 1.0, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(params.iter().all(|&x| x.is_finite()));
+        assert!(params[0] < 10.0);
+        assert!(params[1] < 20.0);
+        assert!(params[2] < 30.0);
+        
+        // Step 2 (momentum accumulated)
+        let params_step2 = adabound_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 1.0, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(params_step2.iter().all(|&x| x.is_finite()));
+        // Should continue decreasing
+        assert!(params_step2[0] < params[0]);
     }
 }

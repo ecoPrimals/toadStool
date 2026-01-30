@@ -66,12 +66,11 @@ pub async fn adafactor_step(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_adafactor() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_adafactor_basic() {
+        let dev = get_test_device().await;
         let params = vec![1.0; 10 * 10];
         let grads = vec![0.01; 10 * 10];
         let mut state = AdafactorState {
@@ -81,5 +80,112 @@ mod tests {
         };
         let new_params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.999, 1e-8, 10, 10).await.unwrap();
         assert_eq!(new_params.len(), 100);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // Params should decrease with positive gradients
+        assert!(new_params.iter().zip(params.iter()).all(|(a, b)| a < b));
+    }
+
+    #[tokio::test]
+    async fn test_adafactor_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Test with zero gradients
+        let params = vec![1.0; 4 * 4];
+        let grads = vec![0.0; 4 * 4];
+        let mut state = AdafactorState {
+            row_mean: vec![0.0; 4],
+            col_mean: vec![0.0; 4],
+            step: 0,
+        };
+        let new_params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.999, 1e-8, 4, 4).await.unwrap();
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        
+        // Test with single element (1x1 matrix)
+        let params = vec![5.0];
+        let grads = vec![0.1];
+        let mut state = AdafactorState {
+            row_mean: vec![0.0],
+            col_mean: vec![0.0],
+            step: 0,
+        };
+        let new_params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.999, 1e-8, 1, 1).await.unwrap();
+        assert_eq!(new_params.len(), 1);
+        assert!(new_params[0] < 5.0);
+    }
+
+    #[tokio::test]
+    async fn test_adafactor_boundary() {
+        let dev = get_test_device().await;
+        
+        // Test non-square matrices (memory efficiency benefit)
+        let rows = 8;
+        let cols = 16;
+        let size = rows * cols;
+        let params = vec![1.0; size];
+        let grads = vec![0.05; size];
+        let mut state = AdafactorState {
+            row_mean: vec![0.0; rows],
+            col_mean: vec![0.0; cols],
+            step: 0,
+        };
+        
+        let new_params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.999, 1e-8, rows, cols).await.unwrap();
+        
+        assert_eq!(new_params.len(), size);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // State should be factorized (rows + cols << rows * cols)
+        assert!(state.row_mean.iter().any(|&x| x != 0.0));
+        assert!(state.col_mean.iter().any(|&x| x != 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_adafactor_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Large matrix (T5-style large-scale training)
+        let rows = 32;
+        let cols = 32;
+        let size = rows * cols;
+        let params: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0).collect();
+        let grads = vec![0.01; size];
+        let mut state = AdafactorState {
+            row_mean: vec![0.0; rows],
+            col_mean: vec![0.0; cols],
+            step: 0,
+        };
+        
+        let new_params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.999, 1e-8, rows, cols).await.unwrap();
+        
+        assert_eq!(new_params.len(), size);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        assert_eq!(state.step, 1);
+        // Memory saved: rows + cols = 64 vs rows * cols = 1024
+    }
+
+    #[tokio::test]
+    async fn test_adafactor_precision() {
+        let dev = get_test_device().await;
+        
+        // Test multiple optimization steps
+        let rows = 5;
+        let cols = 5;
+        let mut params = vec![10.0; rows * cols];
+        let grads = vec![1.0; rows * cols];
+        let mut state = AdafactorState {
+            row_mean: vec![0.0; rows],
+            col_mean: vec![0.0; cols],
+            step: 0,
+        };
+        
+        // Step 1
+        params = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 0.999, 1e-8, rows, cols).await.unwrap();
+        assert!(params.iter().all(|&x| x.is_finite()));
+        assert!(params.iter().all(|&x| x < 10.0));
+        
+        // Step 2 (factorized moments accumulated)
+        let params_step2 = adafactor_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 0.999, 1e-8, rows, cols).await.unwrap();
+        assert!(params_step2.iter().all(|&x| x.is_finite()));
+        // Should continue decreasing
+        assert!(params_step2.iter().zip(params.iter()).all(|(a, b)| a < b));
     }
 }
