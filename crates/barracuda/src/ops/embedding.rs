@@ -168,25 +168,152 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn embedding_cpu(embeddings: &[f32], indices: &[u32], _vocab_size: usize, embed_dim: usize) -> Vec<f32> {
+        let mut result = Vec::new();
+        for &idx in indices {
+            let start = (idx as usize) * embed_dim;
+            let end = start + embed_dim;
+            result.extend_from_slice(&embeddings[start..end]);
+        }
+        result
+    }
 
     #[tokio::test]
     async fn test_embedding_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // 3 embeddings, each of dim 4
+        let embed_data = vec![
+            1.0, 2.0, 3.0, 4.0,   // embedding 0
+            5.0, 6.0, 7.0, 8.0,   // embedding 1
+            9.0, 10.0, 11.0, 12.0, // embedding 2
+        ];
+        
         let embeddings = Tensor::from_vec_on(
-            vec![
-                1.0, 2.0, 3.0, 4.0,   // embedding 0
-                5.0, 6.0, 7.0, 8.0,   // embedding 1
-                9.0, 10.0, 11.0, 12.0, // embedding 2
-            ],
+            embed_data.clone(),
             vec![3, 4],
             device
         ).await.unwrap();
         
-        let result = embeddings.embedding(vec![1, 0, 2]).unwrap();
+        let indices = vec![1, 0, 2];
+        let result = embeddings.embedding(indices.clone()).unwrap();
         assert_eq!(result.shape(), &[3, 4]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, 3, 4);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_embedding_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single embedding lookup
+        let embed_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![2, 3], device.clone()).await.unwrap();
+        let indices = vec![0];
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        assert_eq!(result.shape(), &[1, 3]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, 2, 3);
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+
+        // Repeated indices
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![2, 3], device.clone()).await.unwrap();
+        let indices = vec![0, 0, 1, 1];
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        assert_eq!(result.shape(), &[4, 3]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, 2, 3);
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_embedding_boundary() {
+        let device = get_test_device().await;
+
+        // Minimal embedding (1 vocab, 1 dim)
+        let embed_data = vec![42.0];
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![1, 1], device.clone()).await.unwrap();
+        let indices = vec![0];
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output[0], 42.0);
+
+        // Large vocabulary
+        let vocab_size = 100;
+        let embed_dim = 8;
+        let embed_data: Vec<f32> = (0..vocab_size * embed_dim).map(|i| i as f32 * 0.1).collect();
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![vocab_size, embed_dim], device.clone()).await.unwrap();
+        let indices = vec![0, 50, 99];
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        assert_eq!(result.shape(), &[3, embed_dim]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, vocab_size, embed_dim);
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_embedding_large_tensor() {
+        let device = get_test_device().await;
+
+        // Transformer-scale: 10k vocab, 512 embed dim, 32 token sequence
+        let vocab_size = 1000; // Reduced from 10k for test speed
+        let embed_dim = 64;     // Reduced from 512 for test speed
+        let seq_len = 32;
+        
+        let embed_data: Vec<f32> = (0..vocab_size * embed_dim).map(|i| (i as f32) * 0.001).collect();
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![vocab_size, embed_dim], device).await.unwrap();
+        
+        let indices: Vec<u32> = (0..seq_len).map(|i| (i * 10) % vocab_size as u32).collect();
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        assert_eq!(result.shape(), &[seq_len as usize, embed_dim]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, vocab_size, embed_dim);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_embedding_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical transformer values
+        let embed_data = vec![
+            0.123, -0.456, 0.789, -0.234,
+            0.567, -0.890, 0.345, -0.678,
+            0.901, -0.123, 0.456, -0.789,
+        ];
+        
+        let embeddings = Tensor::from_vec_on(embed_data.clone(), vec![3, 4], device).await.unwrap();
+        let indices = vec![2, 1, 0, 1, 2];
+        let result = embeddings.embedding(indices.clone()).unwrap();
+        
+        let output = result.to_vec().unwrap();
+        let expected = embedding_cpu(&embed_data, &indices, 3, 4);
+        
+        // Verify FP32 precision (embeddings are direct lookups, should be exact)
+        let max_error = output.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
     }
 }
