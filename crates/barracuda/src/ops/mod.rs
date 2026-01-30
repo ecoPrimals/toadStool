@@ -139,6 +139,14 @@ pub mod adadelta;
 // Attention mechanisms
 pub mod scaled_dot_product_attention;
 pub mod multi_head_attention;
+pub mod flash_attention;
+pub mod causal_attention;
+pub mod cross_attention;
+pub mod grouped_query_attention;
+pub mod rotary_embedding;
+pub mod alibi_position;
+pub mod local_attention;
+pub mod sparse_attention;
 
 // RNN/LSTM cells
 pub mod lstm_cell;
@@ -152,7 +160,57 @@ pub mod glu;
 pub mod softsign;
 pub mod tanhshrink;
 
-// Utility operations (extended)
+// Advanced convolutions
+pub mod dilated_conv2d;
+pub mod grouped_conv2d;
+pub mod separable_conv2d;
+pub mod avgpool3d;
+pub mod maxpool3d;
+pub mod reflection_pad2d;
+pub mod replication_pad2d;
+pub mod circular_pad2d;
+
+// Advanced loss functions
+pub mod kl_divergence;
+pub mod contrastive_loss;
+pub mod triplet_loss;
+pub mod hinge_loss;
+pub mod cosine_embedding_loss;
+pub mod margin_ranking_loss;
+pub mod multi_margin_loss;
+
+// Advanced normalization
+pub mod weight_normalization;
+pub mod spectral_normalization;
+pub mod adaptive_instance_norm;
+pub mod local_response_norm;
+pub mod filter_response_norm;
+
+// Advanced utilities
+pub mod interpolate;
+pub mod grid_sample;
+pub mod affine_grid;
+pub mod index_select;
+pub mod masked_select;
+pub mod nonzero;
+pub mod unique;
+pub mod bincount;
+pub mod unfold;
+pub mod fold;
+pub mod histc;
+pub mod bucketize;
+pub mod searchsorted;
+pub mod cdist;
+pub mod pdist;
+pub mod normalize;
+pub mod renorm;
+pub mod logsumexp;
+pub mod trace;
+pub mod diag;
+pub mod triu;
+pub mod tril;
+
+// Utility operations (original)
 pub mod layer_scale;
 pub mod channel_shuffle;
 pub mod pixel_shuffle;
