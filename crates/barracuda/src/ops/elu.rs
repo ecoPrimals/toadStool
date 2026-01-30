@@ -122,30 +122,86 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_elu_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![-2.0, -1.0, 0.0, 1.0, 2.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
-
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device).await.unwrap();
         let output = input.elu().unwrap();
         let result = output.to_vec().unwrap();
 
-        // ELU properties:
-        // ELU(x) = x for x > 0
+        // ELU(x) = x if x > 0, else α(e^x - 1)
         assert!((result[3] - 1.0).abs() < 1e-5);
         assert!((result[4] - 2.0).abs() < 1e-5);
-        // ELU(x) = α(e^x - 1) for x ≤ 0, α typically 1.0
-        // ELU(0) = 0
         assert!(result[2].abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_elu_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![-10.0, -5.0, -1e-6, 0.0, 1e-6], vec![5], device).await.unwrap();
+        let output = input.elu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!(result[0] < -0.99); // ELU(-10) ≈ -1
+        assert!(result[2].abs() < 1e-5); // ELU(~0) ≈ 0
+        assert!(result[3].abs() < 1e-5); // ELU(0) = 0
+        assert!((result[4] - 1e-6).abs() < 1e-12); // ELU(small positive) = x
+    }
+
+    #[tokio::test]
+    async fn test_elu_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -100.0, 0.0, 100.0, f32::INFINITY], vec![5], device).await.unwrap();
+        let output = input.elu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!((result[0] + 1.0).abs() < 1e-5 || result[0].is_nan()); // ELU(-inf) → -1
+        assert!(result[2].abs() < 1e-5); // ELU(0) = 0
+        assert!(result[4].is_infinite() && result[4].is_sign_positive()); // ELU(inf) = inf
+    }
+
+    #[tokio::test]
+    async fn test_elu_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0 - 5.0).collect();
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let output = input.elu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        // Positive values unchanged, negative values in (-1, 0)
+        for (i, &val) in result.iter().enumerate() {
+            let x = (i as f32) / 100.0 - 5.0;
+            if x > 0.0 {
+                assert!((val - x).abs() < 1e-5);
+            } else {
+                assert!(val >= -1.0 && val <= 0.0);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_elu_precision() {
+        let device = get_test_device().await;
+
+        fn elu_cpu(x: f32, alpha: f32) -> f32 {
+            if x > 0.0 { x } else { alpha * (x.exp() - 1.0) }
+        }
+
+        let input_data = vec![-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let output = input.elu().unwrap();
+        let gpu_result = output.to_vec().unwrap();
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| elu_cpu(x, 1.0)).collect();
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }

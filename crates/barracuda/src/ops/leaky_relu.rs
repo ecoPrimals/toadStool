@@ -106,19 +106,78 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn leaky_relu_cpu(x: f32, alpha: f32) -> f32 {
+        if x > 0.0 { x } else { alpha * x }
+    }
 
     #[tokio::test]
     async fn test_leaky_relu_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let input = Tensor::from_vec_on(vec![-10.0, 0.0, 10.0], vec![3], device).await.unwrap();
         let result = input.leaky_relu().unwrap().to_vec().unwrap();
 
-        // LeakyReLU(x) = x for x > 0, 0.01x for x ≤ 0
+        // LeakyReLU(x) = x if x > 0, else 0.01x
         assert!((result[0] - (-0.1)).abs() < 1e-5);
         assert!(result[1].abs() < 1e-5);
         assert!((result[2] - 10.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_leaky_relu_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![-1e-6, 1e-6, -1.0, 1.0], vec![4], device).await.unwrap();
+        let result = input.leaky_relu().unwrap().to_vec().unwrap();
+
+        assert!((result[0] - (-1e-8)).abs() < 1e-12);
+        assert!((result[1] - 1e-6).abs() < 1e-12);
+        assert!((result[2] - (-0.01)).abs() < 1e-6);
+        assert_eq!(result[3], 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_leaky_relu_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY], vec![5], device).await.unwrap();
+        let result = input.leaky_relu().unwrap().to_vec().unwrap();
+
+        assert!(result[0].is_infinite() && result[0].is_sign_negative());
+        assert_eq!(result[2], 0.0);
+        assert!(result[4].is_infinite() && result[4].is_sign_positive());
+    }
+
+    #[tokio::test]
+    async fn test_leaky_relu_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) - 500.0).collect();
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let result = input.leaky_relu().unwrap().to_vec().unwrap();
+
+        // Check negative values are scaled by 0.01
+        for i in 0..500 {
+            let expected = (i as f32 - 500.0) * 0.01;
+            assert!((result[i] - expected).abs() < 1e-3);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_leaky_relu_precision() {
+        let device = get_test_device().await;
+
+        let input_data = vec![-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let result = input.leaky_relu().unwrap().to_vec().unwrap();
+
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| leaky_relu_cpu(x, 0.01)).collect();
+
+        for (i, (&gpu, &cpu)) in result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-6, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
