@@ -138,6 +138,7 @@ impl ModelProgram {
     ///
     /// **Deep Debt**: Capability-based override!
     /// Use actual model requirements instead of estimation.
+    #[must_use]
     pub fn with_npu_config(mut self, config: NpuConfig) -> Self {
         debug!("Setting NPU config: {} NPUs, {} groups",
                config.required_npus, config.execution_groups);
@@ -150,6 +151,10 @@ impl ModelProgram {
     ///
     /// **Deep Debt**: Capability-based validation!
     /// Returns error if device cannot support this program.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is incompatible with device capabilities.
     pub fn validate_for_device(&self, caps: &Capabilities) -> Result<()> {
         // Check memory capacity
         let device_memory_bytes = caps.memory_mb as usize * 1024 * 1024;
@@ -253,14 +258,14 @@ impl ModelLoader {
         
         // Validate if enabled
         if self.config.validate {
-            self.validate_load(program, device, &metrics)?;
+            Self::validate_load(program, device, &metrics)?;
         }
         
         Ok(metrics)
     }
     
     /// Validate successful load
-    fn validate_load(&self, program: &ModelProgram, _device: &mut AkidaDevice, metrics: &LoadMetrics) -> Result<()> {
+    fn validate_load(program: &ModelProgram, _device: &mut AkidaDevice, metrics: &LoadMetrics) -> Result<()> {
         debug!("Validating load...");
         
         // Verify bytes transferred match program size
@@ -312,6 +317,7 @@ fn calculate_throughput(bytes: usize, seconds: f64) -> f64 {
         return 0.0;
     }
     
+    #[allow(clippy::cast_precision_loss)]
     let megabytes = bytes as f64 / 1_048_576.0;
     megabytes / seconds
 }

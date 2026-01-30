@@ -1,6 +1,6 @@
 //! Query detailed board capabilities
 
-use akida_detection_demo::{detect_all_boards, substrate_integration};
+use akida_detection_demo::detect_all_boards;
 use tracing_subscriber;
 
 #[tokio::main]

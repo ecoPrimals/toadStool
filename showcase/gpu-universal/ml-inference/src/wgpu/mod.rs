@@ -52,6 +52,7 @@ pub(crate) mod normalization;
 pub(crate) mod pooling;
 pub(crate) mod reductions;
 pub(crate) mod regularization;
+pub(crate) mod tensor_ops; // NEW: Week 3 neuromorphic operations
 pub(crate) mod training;
 mod types;
 pub(crate) mod utils;
@@ -65,3 +66,14 @@ pub use matmul_strategy::MatMulStrategy;
 // Re-export commonly used items for convenience
 pub use anyhow::{Context, Result};
 pub use wgpu::util::DeviceExt;
+
+// Re-export neuromorphic tensor operations (Week 3 + Phase 2 + Phase 3)
+pub use tensor_ops::{
+    // Phase 1 (Week 3) - 7 ops
+    Argmax, Cast, Pad, PadMode, Reshape, Slice, TopK,
+    // Phase 2 - 10 ops
+    Abs, Clamp, Exp, Expand, Pow, Sqrt, Squeeze, Transpose, Unsqueeze, Where,
+    // Phase 3 - 15 ops
+    Cumsum, GELU, LayerNorm, LogSoftmax, Max, Mean, Min, Norm, Prod, ReLU, Sigmoid, Softmax,
+    Std, Sum, Var,
+};

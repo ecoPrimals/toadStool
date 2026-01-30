@@ -130,7 +130,8 @@ impl PcieConfig {
             2 => 0.5,   // 500 MB/s
             3 => 1.0,   // ~1 GB/s
             4 => 2.0,   // ~2 GB/s
-            5 | _ => 4.0,   // 4 GB/s for Gen5+, default for unknown
+            5 => 4.0,   // 4 GB/s for Gen5
+            _ => 4.0,   // default for unknown generations
         };
         
         per_lane_gbps * f32::from(lanes)
@@ -250,12 +251,12 @@ mod tests {
     #[test]
     fn test_pcie_bandwidth_calculation() {
         let gen2_x4 = PcieConfig::new(2, 4);
-        assert_eq!(gen2_x4.bandwidth_gbps, 2.0);
+        assert!((gen2_x4.bandwidth_gbps - 2.0).abs() < f32::EPSILON);
         
         let gen3_x8 = PcieConfig::new(3, 8);
-        assert_eq!(gen3_x8.bandwidth_gbps, 8.0);
+        assert!((gen3_x8.bandwidth_gbps - 8.0).abs() < f32::EPSILON);
         
         let gen4_x16 = PcieConfig::new(4, 16);
-        assert_eq!(gen4_x16.bandwidth_gbps, 32.0);
+        assert!((gen4_x16.bandwidth_gbps - 32.0).abs() < f32::EPSILON);
     }
 }

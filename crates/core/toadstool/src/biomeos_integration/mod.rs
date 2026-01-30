@@ -8,7 +8,7 @@
 //!
 //! - **Single manifest orchestration**: `biome.yaml` configures all Primals
 //! - **Zero-configuration deployment**: Auto-discovery and configuration
-//! - **Cross-Primal authentication**: `BearDog` token propagation
+//! - **Cross-Primal authentication**: Token propagation via capability discovery
 //! - **Automated provisioning**: Storage and AI agent deployment
 //! - **Sub-60-second bootstrap**: Optimized startup performance
 //!
@@ -16,22 +16,36 @@
 //!
 //! - `types` - Core configuration and state types
 //! - `auth` - Cross-Primal authentication manager (uses auth_backend)
-//! - `auth_backend` - Trait-based auth backends (BearDog, in-memory)
+//! - `auth_backend` - Trait-based auth backends (legacy: BearDog, in-memory)
+//! - `auth_backend_evolved` - Capability-based auth backend (RECOMMENDED)
 //! - `storage` - Storage provisioning manager (uses storage_backend)
-//! - `storage_backend` - Trait-based storage backends (NestGate, in-memory)
+//! - `storage_backend` - Trait-based storage backends (legacy: NestGate, in-memory)
+//! - `storage_backend_evolved` - Capability-based storage backend (RECOMMENDED)
 //! - `agents` - AI agent deployment manager (uses agent_backend)
-//! - `agent_backend` - Trait-based agent backends (Squirrel, in-memory)
+//! - `agent_backend` - Trait-based agent backends (legacy: Squirrel, in-memory)
+//! - `agent_backend_evolved` - Capability-based agent backend (RECOMMENDED)
+//!
+//! ## Deep Debt Evolution
+//!
+//! The `*_evolved` modules represent the new capability-based architecture:
+//! - Runtime discovery instead of hardcoded primal names
+//! - Proper error handling with thiserror
+//! - Semantic method naming (wateringHole standard)
+//! - Zero unwrap() in production code
 
 // Module declarations
 pub mod agent_backend;
+pub mod agent_backend_evolved;
 pub mod agents;
 pub mod auth;
 pub mod auth_backend;
+pub mod auth_backend_evolved;
 pub mod storage;
 pub mod storage_backend;
+pub mod storage_backend_evolved;
 pub mod types;
 
-// Re-export everything for backward compatibility
+// Re-export legacy backends for backward compatibility
 pub use agent_backend::{AgentBackend, InMemoryAgentBackend, SquirrelBackend};
 pub use agents::*;
 pub use auth::*;
@@ -39,3 +53,8 @@ pub use auth_backend::{AuthBackend, BearDogBackend, InMemoryAuthBackend};
 pub use storage::*;
 pub use storage_backend::{InMemoryBackend, NestGateBackend, StorageBackend, VolumeStatus};
 pub use types::*;
+
+// Re-export evolved backends (RECOMMENDED for new code)
+pub use agent_backend_evolved::AgentBackend as AgentBackendEvolved;
+pub use auth_backend_evolved::AuthBackend as AuthBackendEvolved;
+pub use storage_backend_evolved::StorageBackend as StorageBackendEvolved;

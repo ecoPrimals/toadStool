@@ -46,6 +46,7 @@ members = [
     "showcase",                       # Production showcase demos
     "showcase/local-capabilities",    # Local capabilities showcase
     "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase
+    "showcase/gpu-universal/ml-inference",  # barraCUDA ML inference showcase
 ]
 
 [workspace.package]

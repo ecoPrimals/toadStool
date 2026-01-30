@@ -128,43 +128,23 @@ impl MnistDataset {
 }
 
 /// Download MNIST dataset if not present
-pub async fn download_mnist<P: AsRef<Path>>(data_dir: P) -> Result<()> {
-    let data_dir = data_dir.as_ref();
-    std::fs::create_dir_all(data_dir)?;
-
-    let files = [
-        (
-            "train-images-idx3-ubyte.gz",
-            "http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz",
-        ),
-        (
-            "train-labels-idx1-ubyte.gz",
-            "http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz",
-        ),
-        (
-            "t10k-images-idx3-ubyte.gz",
-            "http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz",
-        ),
-        (
-            "t10k-labels-idx1-ubyte.gz",
-            "http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz",
-        ),
-    ];
-
-    for (filename, url) in &files {
-        let path = data_dir.join(filename);
-        if !path.exists() {
-            println!("Downloading {}...", filename);
-            let response = reqwest::get(*url).await?;
-            let bytes = response.bytes().await?;
-            std::fs::write(&path, bytes)?;
-            println!("✓ Downloaded {}", filename);
-        } else {
-            println!("✓ {} already exists", filename);
-        }
-    }
-
-    Ok(())
+///
+/// **Note**: reqwest was removed as part of Pure Rust evolution.
+/// Please download MNIST files manually from http://yann.lecun.com/exdb/mnist/
+/// Or use the download-mnist binary (requires adding reqwest to Cargo.toml).
+pub async fn download_mnist<P: AsRef<Path>>(_data_dir: P) -> Result<()> {
+    anyhow::bail!(
+        "download_mnist requires manual MNIST download.\n\
+         \n\
+         Download files from: http://yann.lecun.com/exdb/mnist/\n\
+         Files needed:\n\
+         - train-images-idx3-ubyte.gz\n\
+         - train-labels-idx1-ubyte.gz\n\
+         - t10k-images-idx3-ubyte.gz\n\
+         - t10k-labels-idx1-ubyte.gz\n\
+         \n\
+         Or use: cargo run --bin download-mnist (requires adding reqwest)"
+    )
 }
 
 #[cfg(test)]

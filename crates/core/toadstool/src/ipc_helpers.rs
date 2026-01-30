@@ -23,17 +23,35 @@ use tracing::{debug, info};
 
 use crate::{ToadStoolError, ToadStoolResult};
 
-/// Default Songbird socket path (standard primal namespace)
-const SONGBIRD_SOCKET: &str = "/primal/songbird";
-
 /// Request timeout for IPC operations
 const IPC_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Get default Songbird socket path using biomeOS standard
+///
+/// biomeOS socket standard: /run/user/$UID/biomeos/songbird.sock
+/// This matches the Tower Atomic validated pattern (BearDog + Songbird)
+fn get_default_songbird_socket() -> String {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+        // Fallback to Linux standard /run/user/<uid>
+        let uid = unsafe { libc::getuid() };
+        format!("/run/user/{}", uid)
+    });
+    format!("{}/biomeos/songbird.sock", runtime_dir)
+}
 
 /// Register ToadStool with Songbird discovery service
 ///
 /// ## Deep Debt Principle: Self-Knowledge
 ///
 /// ToadStool announces its own capabilities, not hardcoded info.
+///
+/// ## Socket Standardization
+///
+/// Uses biomeOS standard socket path for Songbird discovery:
+/// - Default: `/run/user/$UID/biomeos/songbird.sock`
+/// - Override: `SONGBIRD_SOCKET` environment variable
+///
+/// This enables Node Atomic (Tower + Toadstool) integration!
 ///
 /// ## Usage
 ///
@@ -48,8 +66,8 @@ const IPC_TIMEOUT: Duration = Duration::from_secs(5);
 /// ```
 pub async fn register_with_songbird() -> ToadStoolResult<()> {
     // Get Songbird socket path (environment override supported)
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    let socket_path = std::env::var("SONGBIRD_SOCKET")
+        .unwrap_or_else(|_| get_default_songbird_socket());
 
     info!("🌍 Registering with Songbird at {}", socket_path);
 
@@ -116,9 +134,9 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 /// }
 /// ```
 pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
-    // Get Songbird socket path
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    // Get Songbird socket path (biomeOS standard)
+    let socket_path = std::env::var("SONGBIRD_SOCKET")
+        .unwrap_or_else(|_| get_default_songbird_socket());
 
     debug!("🔍 Resolving {} via Songbird", primal_name);
 
@@ -241,9 +259,9 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
 /// }
 /// ```
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
-    // Get Songbird socket path
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| SONGBIRD_SOCKET.to_string());
+    // Get Songbird socket path (biomeOS standard)
+    let socket_path = std::env::var("SONGBIRD_SOCKET")
+        .unwrap_or_else(|_| get_default_songbird_socket());
 
     debug!("🔍 Finding primals with capability: {}", capability);
 

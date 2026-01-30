@@ -38,6 +38,9 @@ num_cpus = "1.16"
 sysinfo = "0.30"
 humantime-serde = "1.1"
 
+# Unix system calls (for socket standardization)
+libc = "0.2"
+
 # Infant discovery dependencies
 async-trait = { workspace = true }
 tokio = { workspace = true }

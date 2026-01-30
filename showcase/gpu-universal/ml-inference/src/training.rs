@@ -1,7 +1,7 @@
 //! Neural network training with backpropagation
 
 use crate::network::SimpleNetwork;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ndarray::{Array1, Array2};
 use rand::seq::SliceRandom;
 
@@ -245,62 +245,92 @@ impl SimpleNetwork {
         let reader = BufReader::new(file);
         let mut lines = reader.lines();
 
+        // Helper to parse line of numbers
+        let parse_line = |line: String, context: &str| -> Result<Vec<f32>> {
+            line.split_whitespace()
+                .map(|s| {
+                    s.parse::<f32>()
+                        .with_context(|| format!("Failed to parse '{}' as f32 in {}", s, context))
+                })
+                .collect()
+        };
+
+        // Helper to parse dimensions
+        let parse_dims = |line: String, context: &str| -> Result<Vec<usize>> {
+            line.split_whitespace()
+                .map(|s| {
+                    s.parse::<usize>()
+                        .with_context(|| format!("Failed to parse '{}' as dimension in {}", s, context))
+                })
+                .collect()
+        };
+
         // Read dimensions
-        let dims1: Vec<usize> = lines
-            .next()
-            .unwrap()?
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
-        let dims2: Vec<usize> = lines
-            .next()
-            .unwrap()?
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
+        let dims1 = parse_dims(
+            lines.next()
+                .ok_or_else(|| anyhow::anyhow!("Missing w1 dimensions"))??,
+            "w1 dimensions"
+        )?;
+        let dims2 = parse_dims(
+            lines.next()
+                .ok_or_else(|| anyhow::anyhow!("Missing w2 dimensions"))??,
+            "w2 dimensions"
+        )?;
+
+        // Validate dimensions
+        anyhow::ensure!(dims1.len() == 2, "w1 dimensions must have 2 values, got {}", dims1.len());
+        anyhow::ensure!(dims2.len() == 2, "w2 dimensions must have 2 values, got {}", dims2.len());
 
         // Read w1
         let mut w1_data = Vec::new();
-        for _ in 0..dims1[0] {
-            let row: Vec<f32> = lines
+        for i in 0..dims1[0] {
+            let line = lines
                 .next()
-                .unwrap()?
-                .split_whitespace()
-                .map(|s| s.parse().unwrap())
-                .collect();
+                .ok_or_else(|| anyhow::anyhow!("Missing w1 row {}/{}", i + 1, dims1[0]))??;
+            let row = parse_line(line, &format!("w1 row {}", i + 1))?;
+            anyhow::ensure!(
+                row.len() == dims1[1],
+                "w1 row {} has {} values, expected {}",
+                i + 1,
+                row.len(),
+                dims1[1]
+            );
             w1_data.extend(row);
         }
-        let w1 = Array2::from_shape_vec((dims1[0], dims1[1]), w1_data)?;
+        let w1 = Array2::from_shape_vec((dims1[0], dims1[1]), w1_data)
+            .with_context(|| format!("Failed to create w1 array with shape {:?}", dims1))?;
 
         // Read b1
-        let b1_data: Vec<f32> = lines
+        let b1_line = lines
             .next()
-            .unwrap()?
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
+            .ok_or_else(|| anyhow::anyhow!("Missing b1 bias vector"))??;
+        let b1_data = parse_line(b1_line, "b1 bias")?;
         let b1 = Array1::from_vec(b1_data);
 
         // Read w2
         let mut w2_data = Vec::new();
-        for _ in 0..dims2[0] {
-            let row: Vec<f32> = lines
+        for i in 0..dims2[0] {
+            let line = lines
                 .next()
-                .unwrap()?
-                .split_whitespace()
-                .map(|s| s.parse().unwrap())
-                .collect();
+                .ok_or_else(|| anyhow::anyhow!("Missing w2 row {}/{}", i + 1, dims2[0]))??;
+            let row = parse_line(line, &format!("w2 row {}", i + 1))?;
+            anyhow::ensure!(
+                row.len() == dims2[1],
+                "w2 row {} has {} values, expected {}",
+                i + 1,
+                row.len(),
+                dims2[1]
+            );
             w2_data.extend(row);
         }
-        let w2 = Array2::from_shape_vec((dims2[0], dims2[1]), w2_data)?;
+        let w2 = Array2::from_shape_vec((dims2[0], dims2[1]), w2_data)
+            .with_context(|| format!("Failed to create w2 array with shape {:?}", dims2))?;
 
         // Read b2
-        let b2_data: Vec<f32> = lines
+        let b2_line = lines
             .next()
-            .unwrap()?
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
+            .ok_or_else(|| anyhow::anyhow!("Missing b2 bias vector"))??;
+        let b2_data = parse_line(b2_line, "b2 bias")?;
         let b2 = Array1::from_vec(b2_data);
 
         println!("✓ Loaded weights from {}", path);

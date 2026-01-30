@@ -79,7 +79,8 @@ impl VulkanExecutor {
             let entry = ash::Entry::load().context("Failed to load Vulkan library")?;
 
             // Create instance
-            let app_name = std::ffi::CString::new("ToadStool ML Inference").unwrap();
+            let app_name = std::ffi::CString::new("ToadStool ML Inference")
+                .expect("App name contains null byte - this is a bug");
             let app_info = vk::ApplicationInfo {
                 p_application_name: app_name.as_ptr(),
                 application_version: vk::make_api_version(0, 1, 0, 0),

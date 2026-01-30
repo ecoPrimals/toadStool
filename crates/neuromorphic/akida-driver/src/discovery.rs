@@ -107,6 +107,10 @@ impl DeviceManager {
     }
 
     /// Get device info by index
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::InvalidIndex` if the index is out of bounds.
     pub fn device(&self, index: usize) -> Result<&DeviceInfo> {
         self.devices.iter().find(|d| d.index == index).ok_or(AkidaError::InvalidIndex {
             index,
@@ -115,18 +119,30 @@ impl DeviceManager {
     }
 
     /// Open device by index
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the device cannot be opened or the index is invalid.
     pub fn open(&self, index: usize) -> Result<AkidaDevice> {
         let info = self.device(index)?;
         AkidaDevice::open(info)
     }
 
     /// Open first available device
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no devices are available or the device cannot be opened.
     pub fn open_first(&self) -> Result<AkidaDevice> {
         let info = self.devices.first().ok_or(AkidaError::NoDevicesFound)?;
         AkidaDevice::open(info)
     }
 
     /// Open all devices
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any device cannot be opened.
     pub fn open_all(&self) -> Result<Vec<AkidaDevice>> {
         self.devices
             .iter()

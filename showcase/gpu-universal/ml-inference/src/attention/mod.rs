@@ -40,8 +40,9 @@ pub use bias::AttentionBias;
 pub use flash::FlashAttention;
 
 // Glob re-exports for test compatibility
-pub use scaled_dot_product::*;
-pub use multi_head::*;
-pub use masks::*;
-pub use bias::*;
-pub use flash::*;
+// Modules not yet exporting public items
+// pub use scaled_dot_product::*;
+// pub use multi_head::*;
+// pub use masks::*;
+// pub use bias::*;
+// pub use flash::*;

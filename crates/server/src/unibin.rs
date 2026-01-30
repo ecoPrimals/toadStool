@@ -2,7 +2,7 @@
 //!
 //! Shared server main logic for both toadstool and toadstool-server binaries
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::signal;
 use tracing::{error, info, warn};
@@ -152,55 +152,100 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Ensure biomeos directory exists with proper permissions
+///
+/// biomeOS socket standard: All sockets in /run/user/$UID/biomeos/ subdirectory
+/// This enables discovery, organization, and security
+fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let biomeos_dir = runtime_dir.join("biomeos");
+    
+    // Create directory if doesn't exist
+    std::fs::create_dir_all(&biomeos_dir)?;
+    
+    // Set permissions to 0700 (user-only access)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o700);
+        std::fs::set_permissions(&biomeos_dir, perms)?;
+    }
+    
+    info!("✅ biomeos directory ensured: {}", biomeos_dir.display());
+    Ok(biomeos_dir)
+}
+
 /// Get socket path following biomeOS-standardized fallback
 ///
 /// Deep debt principle: Agnostic, capability-based, runtime discovery
 ///
-/// Priority order (TRUE PRIMAL standard):
+/// Priority order (5-TIER A++ STANDARD - matching BearDog):
 /// 1. TOADSTOOL_SOCKET env var (primal-specific absolute path) - highest priority
-/// 2. BIOMEOS_SOCKET_PATH env var (orchestrator-provided generic path)
-/// 3. XDG runtime directory (/run/user/<uid>/toadstool-<family>.sock) - user mode
-/// 4. /tmp fallback (/tmp/toadstool-<family>.sock) - system mode
+/// 2. PRIMAL_SOCKET env var (generic primal socket with family suffix)
+/// 3. BIOMEOS_SOCKET_PATH env var (orchestrator-provided generic path)
+/// 4. XDG runtime directory (/run/user/<uid>/biomeos/toadstool.sock) - **STANDARD**
+/// 5. /tmp fallback (/tmp/biomeos/toadstool.sock) - dev/testing only
 fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // 1. HIGHEST PRIORITY: Check TOADSTOOL_SOCKET env var (primal-specific)
     if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
-        info!("   (Orchestrator-provided explicit path - highest priority)");
+        info!("   (Explicit primal-specific path - highest priority)");
         return Ok(PathBuf::from(socket));
     }
 
-    // 2. BIOMEOS_SOCKET_PATH: Generic orchestrator-provided path
+    // 2. PRIMAL_SOCKET: Generic primal socket (with family suffix for multi-family deployments)
+    if let Ok(socket) = std::env::var("PRIMAL_SOCKET") {
+        let socket_with_family = format!("{}-{}", socket, family_id);
+        info!("✅ Using socket path from PRIMAL_SOCKET: {}", socket_with_family);
+        info!("   (Generic primal socket with family suffix - second priority)");
+        return Ok(PathBuf::from(socket_with_family));
+    }
+
+    // 3. BIOMEOS_SOCKET_PATH: Generic orchestrator-provided path
     if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
         info!("✅ Using socket path from BIOMEOS_SOCKET_PATH: {}", socket);
-        info!("   (Generic biomeOS path - second priority)");
+        info!("   (Generic biomeOS path - third priority)");
         return Ok(PathBuf::from(socket));
     }
 
-    // 3. XDG runtime directory (standard for user-mode deployments)
-    // EVOLVED: Pure Rust - no unsafe! Use environment or fallback to /tmp
+    // 4. XDG runtime directory + biomeos subdirectory (***STANDARD PATH***)
+    // EVOLVED: Pure Rust - no unsafe! Use environment or fallback to /run/user/<uid>
     // Primal principle: Prefer environment-based discovery over system calls
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Fallback: Use /tmp with username for multi-user systems
-        // This is safer and works in all environments (containers, etc.)
-        let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
-        format!("/tmp/toadstool-runtime-{}", username)
-    });
+    let runtime_dir = if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+        PathBuf::from(xdg_runtime)
+    } else {
+        // Fallback to Linux standard /run/user/<uid>
+        let uid = unsafe { libc::getuid() };
+        PathBuf::from(format!("/run/user/{}", uid))
+    };
 
-    let xdg_path = PathBuf::from(&runtime_dir).join(format!("toadstool-{}.sock", family_id));
-
-    if PathBuf::from(&runtime_dir).exists() {
-        info!("⚠️  Using XDG runtime directory fallback: {}", runtime_dir);
-        info!("   (User-mode deployment - third priority)");
-        info!("   NOTE: For orchestrator deployments, set TOADSTOOL_SOCKET env var!");
-        return Ok(xdg_path);
+    if runtime_dir.exists() {
+        let biomeos_dir = ensure_biomeos_directory(&runtime_dir)?;
+        let socket_path = biomeos_dir.join("toadstool.sock");
+        
+        info!("✅ Using biomeOS standard socket path: {}", socket_path.display());
+        info!("   (XDG runtime + biomeos subdirectory - **STANDARD**))");
+        info!("   Socket standardization: Tower Atomic compatible!");
+        return Ok(socket_path);
     }
 
-    // 4. /tmp fallback (system-wide deployments, containers, minimal systems)
-    let tmp_path = PathBuf::from("/tmp").join(format!("toadstool-{}.sock", family_id));
+    // 5. /tmp fallback (dev/testing only - NOT RECOMMENDED for production!)
+    // Create biomeos subdirectory in /tmp as well for consistency
+    let tmp_biomeos = PathBuf::from("/tmp/biomeos");
+    std::fs::create_dir_all(&tmp_biomeos)?;
+    
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o700);
+        std::fs::set_permissions(&tmp_biomeos, perms)?;
+    }
+    
+    let tmp_path = tmp_biomeos.join("toadstool.sock");
 
-    info!("⚠️  Using /tmp fallback for system-wide deployment");
-    info!("   (System-mode deployment - lowest priority)");
-    info!("   NOTE: For orchestrator deployments, set TOADSTOOL_SOCKET env var!");
+    info!("⚠️  Using /tmp fallback for dev/testing deployment");
+    info!("   Socket path: {}", tmp_path.display());
+    info!("   (Development mode - lowest priority)");
+    info!("   ⚠️  WARNING: NOT for production! Set TOADSTOOL_SOCKET or XDG_RUNTIME_DIR!");
     Ok(tmp_path)
 }
 

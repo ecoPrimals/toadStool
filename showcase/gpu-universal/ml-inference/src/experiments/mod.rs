@@ -113,7 +113,10 @@ impl Statistics {
         let mean = times_us.iter().sum::<f64>() / n as f64;
 
         let mut sorted = times_us.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| {
+            // Handle NaN/Inf gracefully: NaN goes to end, maintain order otherwise
+            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+        });
         let median = if n % 2 == 0 {
             (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
         } else {

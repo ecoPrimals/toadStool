@@ -14,6 +14,7 @@ use tracing::{info, warn};
 use super::config::DaemonConfig;
 #[cfg(feature = "daemon")]
 use super::http_server;
+use super::jsonrpc_server; // NEW: JSON-RPC over Unix sockets
 use super::workload_manager::WorkloadManager;
 
 /// Daemon server
@@ -75,13 +76,30 @@ impl DaemonServer {
 
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
-        info!("🚀 ToadStool daemon running on port {}", self.config.port);
-        info!("📊 API: http://localhost:{}/api/v1", self.config.port);
-        info!("💚 Health: http://localhost:{}/health", self.config.port);
+        // Determine socket path (prefer Unix socket for primal communication)
+        let socket_path = self.config.socket_path.clone()
+            .unwrap_or_else(|| std::path::PathBuf::from("/primal/toadstool"));
+        
+        info!("🚀 ToadStool daemon running");
+        info!("🍄 JSON-RPC socket: {}", socket_path.display());
+        info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
 
-        // Start HTTP API server in background task
-        #[cfg(feature = "daemon")]
+        // Start JSON-RPC server (EVOLVED: Pure Rust over Unix sockets!)
         {
+            let socket = socket_path.clone();
+            let manager = self.workload_manager.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) = jsonrpc_server::start_jsonrpc_server(&socket, manager).await {
+                    warn!("⚠️  JSON-RPC server stopped: {e}");
+                }
+            });
+        }
+
+        // DEPRECATED: HTTP server (backward compatibility only)
+        #[cfg(feature = "daemon")]
+        if std::env::var("TOADSTOOL_HTTP_COMPAT").is_ok() {
+            warn!("⚠️  HTTP compatibility mode enabled (DEPRECATED)");
             let port = self.config.port;
             let manager = self.workload_manager.clone();
 
@@ -90,12 +108,11 @@ impl DaemonServer {
                     warn!("⚠️  HTTP server stopped: {e}");
                 }
             });
-        }
-
-        #[cfg(not(feature = "daemon"))]
-        {
-            warn!("⚠️  Daemon feature not enabled - HTTP server disabled");
-            info!("⏸️  Waiting for shutdown signal (Ctrl+C)");
+            
+            info!("📊 HTTP API (DEPRECATED): http://localhost:{}/api/v1", self.config.port);
+            info!("💚 HTTP Health (DEPRECATED): http://localhost:{}/health", self.config.port);
+        } else {
+            info!("✨ Pure Unix socket mode - HTTP disabled (set TOADSTOOL_HTTP_COMPAT=1 for old clients)");
         }
 
         // Wait for shutdown signal

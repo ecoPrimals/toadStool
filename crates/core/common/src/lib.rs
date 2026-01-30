@@ -16,6 +16,7 @@ use uuid::Uuid;
 // Public modules
 pub mod auth;
 pub mod capability_discovery; // NEW: Pure infant discovery API (modern interface)
+pub mod capability_provider; // NEW: Deep Debt - Capability-based service provider abstraction
 pub mod config_bases;
 pub mod constants;
 pub mod discovery_defaults; // NEW: Fallback defaults for service discovery (infant pattern)

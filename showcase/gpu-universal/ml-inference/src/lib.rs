@@ -2,6 +2,9 @@
 //!
 //! Production-grade neural network inference with validation
 
+// Comprehensive error handling (Week 1: Safety First)
+pub mod error;
+
 pub mod cnn;
 #[cfg(feature = "opencl")]
 pub mod conv2d_kernels;

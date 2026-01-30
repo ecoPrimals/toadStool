@@ -7,6 +7,7 @@
 //! - Graceful degradation: Works without BearDog (fallback to local crypto)
 
 pub mod client;
+pub mod client_evolved;
 pub mod types;
 
 pub use client::{BearDogClient, BearDogDiscovery};

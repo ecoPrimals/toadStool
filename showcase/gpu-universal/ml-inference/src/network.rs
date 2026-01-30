@@ -31,9 +31,13 @@ impl SimpleNetwork {
             .collect();
 
         Self {
-            w1: Array2::from_shape_vec((784, 128), w1).unwrap(),
+            // SAFETY: We just created vectors with exact lengths (784*128 and 128*10)
+            // These from_shape_vec calls cannot fail as dimensions match perfectly
+            w1: Array2::from_shape_vec((784, 128), w1)
+                .expect("w1 shape mismatch - this is a bug in SimpleNetwork::new"),
             b1: Array1::zeros(128),
-            w2: Array2::from_shape_vec((128, 10), w2).unwrap(),
+            w2: Array2::from_shape_vec((128, 10), w2)
+                .expect("w2 shape mismatch - this is a bug in SimpleNetwork::new"),
             b2: Array1::zeros(10),
         }
     }

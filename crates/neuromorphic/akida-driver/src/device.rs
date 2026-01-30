@@ -132,12 +132,9 @@ mod tests {
 
     #[test]
     fn test_device_open() {
-        let manager = match DeviceManager::discover() {
-            Ok(m) => m,
-            Err(_) => {
-                println!("ℹ️  Skipping test (no hardware)");
-                return;
-            }
+        let Ok(manager) = DeviceManager::discover() else {
+            println!("ℹ️  Skipping test (no hardware)");
+            return;
         };
         
         let device = manager.open_first();

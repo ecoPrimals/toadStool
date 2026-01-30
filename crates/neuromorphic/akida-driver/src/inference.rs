@@ -233,7 +233,7 @@ mod tests {
             4,  // float32 output
         );
         
-        assert_eq!(config.input_size_bytes(), 28 * 28 * 1);
+        assert_eq!(config.input_size_bytes(), 28 * 28);
         assert_eq!(config.output_size_bytes(), 10 * 4);
         assert!(config.timeout_ms > 0);
     }

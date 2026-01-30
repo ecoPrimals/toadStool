@@ -43,8 +43,10 @@ pub use architectures::{BidirectionalRNN, StackedLSTM};
 pub use dropout::RecurrentDropout;
 
 // Glob re-exports for test compatibility
-pub use rnn::*;
-pub use lstm::*;
-pub use gru::*;
-pub use architectures::*;
-pub use dropout::*;
+// Modules not yet exporting public items
+// pub use rnn::*;
+// pub use lstm::*;
+// pub use gru::*;
+// pub use architectures::*;
+// dropout module doesn't export public items yet
+// pub use dropout::*;

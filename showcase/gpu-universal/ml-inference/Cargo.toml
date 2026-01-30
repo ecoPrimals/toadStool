@@ -3,9 +3,10 @@ name = "ml-inference-showcase"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-
 [dependencies]
+# Deep Debt Week 1: Add thiserror for comprehensive error handling
+thiserror = "1.0"
+
 toadstool = { path = "../../../crates/core/toadstool" }
 toadstool-runtime-gpu = { path = "../../../crates/runtime/gpu", features = ["webgpu"] }
 tokio = { version = "1", features = ["full"] }
