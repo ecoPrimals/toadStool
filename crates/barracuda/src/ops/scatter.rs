@@ -131,19 +131,116 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn scatter_cpu(input: &[f32], indices: &[u32], output_size: usize) -> Vec<f32> {
+        let mut result = vec![0.0; output_size];
+        for (i, &idx) in indices.iter().enumerate() {
+            result[idx as usize] = input[i];
+        }
+        result
+    }
 
     #[tokio::test]
     async fn test_scatter_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![10.0, 20.0, 30.0], vec![3], device).await.unwrap();
-        let result = input.scatter(vec![1, 3, 0], 4).unwrap();
+        let input_data = vec![10.0, 20.0, 30.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let indices = vec![1, 3, 0];
+        let result = input.scatter(indices.clone(), 4).unwrap();
         
         let data = result.to_vec().unwrap();
-        assert!((data[0] - 30.0).abs() < 1e-5);
-        assert!((data[1] - 10.0).abs() < 1e-5);
-        assert!((data[3] - 20.0).abs() < 1e-5);
+        let expected = scatter_cpu(&input_data, &indices, 4);
+        
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scatter_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single element
+        let input_data = vec![42.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let indices = vec![2];
+        let result = input.scatter(indices.clone(), 5).unwrap();
+        let data = result.to_vec().unwrap();
+        assert!((data[2] - 42.0).abs() < 1e-6);
+        assert!(data[0].abs() < 1e-6); // Other elements should be 0
+
+        // Sequential indices
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let indices = vec![0, 1, 2, 3];
+        let result = input.scatter(indices.clone(), 4).unwrap();
+        let data = result.to_vec().unwrap();
+        for (d, &orig) in data.iter().zip(input_data.iter()) {
+            assert!((d - orig).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scatter_boundary() {
+        let device = get_test_device().await;
+
+        // Scatter to first and last positions
+        let input_data = vec![99.0, 88.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone()).await.unwrap();
+        let indices = vec![0, 9];
+        let result = input.scatter(indices.clone(), 10).unwrap();
+        let data = result.to_vec().unwrap();
+        assert!((data[0] - 99.0).abs() < 1e-6);
+        assert!((data[9] - 88.0).abs() < 1e-6);
+
+        // Sparse scatter
+        let input_data = vec![10.0, 20.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device).await.unwrap();
+        let indices = vec![2, 7];
+        let result = input.scatter(indices.clone(), 10).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = scatter_cpu(&input_data, &indices, 10);
+        for (d, e) in data.iter().zip(expected.iter()) {
+            assert!((d - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scatter_large_tensor() {
+        let device = get_test_device().await;
+
+        // 100 elements scattered into 1000
+        let input_data: Vec<f32> = (0..100).map(|i| (i as f32) * 0.1).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![100], device).await.unwrap();
+        let indices: Vec<u32> = (0..100).map(|i| (i * 10) as u32).collect();
+        let result = input.scatter(indices.clone(), 1000).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = scatter_cpu(&input_data, &indices, 1000);
+        
+        for (d, e) in data.iter().zip(expected.iter()) {
+            assert!((d - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scatter_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let input_data = vec![1.234, 5.678, 9.012, 3.456];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let indices = vec![3, 0, 5, 2];
+        let result = input.scatter(indices.clone(), 6).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = scatter_cpu(&input_data, &indices, 6);
+        
+        // Verify FP32 precision (scatter is direct copy, should be exact)
+        let max_error = data.iter().zip(expected.iter())
+            .map(|(d, e)| (d - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
     }
 }

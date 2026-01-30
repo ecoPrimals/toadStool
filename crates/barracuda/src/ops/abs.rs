@@ -110,20 +110,101 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn abs_cpu(x: f32) -> f32 {
+        x.abs()
+    }
 
     #[tokio::test]
     async fn test_abs_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-5.0, -2.0, 0.0, 3.0, 7.0], vec![5], device).await.unwrap();
+        let input_data = vec![-5.0, -2.0, 0.0, 3.0, 7.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
         let result = input.abs().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| abs_cpu(x)).collect();
 
-        assert!((result[0] - 5.0).abs() < 1e-5);
-        assert!((result[1] - 2.0).abs() < 1e-5);
-        assert!((result[2] - 0.0).abs() < 1e-5);
-        assert!((result[3] - 3.0).abs() < 1e-5);
-        assert!((result[4] - 7.0).abs() < 1e-5);
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_abs_edge_cases() {
+        let device = get_test_device().await;
+
+        // All negative
+        let input_data = vec![-10.0, -5.0, -1.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let result = input.abs().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| abs_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+
+        // All positive (should be unchanged)
+        let input_data = vec![1.0, 5.0, 10.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.abs().unwrap().to_vec().unwrap();
+        for (r, orig) in result.iter().zip(input_data.iter()) {
+            assert!((r - orig).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_abs_boundary() {
+        let device = get_test_device().await;
+
+        // Zero (boundary case)
+        let input_data = vec![0.0, -0.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone()).await.unwrap();
+        let result = input.abs().unwrap().to_vec().unwrap();
+        for r in result.iter() {
+            assert!(r.abs() < 1e-6);
+        }
+
+        // Very small values
+        let input_data = vec![-1e-10, 1e-10, -1e-6, 1e-6];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.abs().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| abs_cpu(x)).collect();
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-10);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_abs_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| (i as f32 - 500.0) * 0.1).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        
+        let result = input.abs().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| abs_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_abs_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let input_data = vec![-123.456, -78.901, -2.345, 0.0, 1.234, 56.789, 123.456];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let result = input.abs().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| abs_cpu(x)).collect();
+        
+        // Verify FP32 precision (abs is exact operation)
+        let max_error = result.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
     }
 }
