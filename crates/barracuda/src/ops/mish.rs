@@ -111,19 +111,78 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_mish_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let input = Tensor::from_vec_on(vec![-2.0, 0.0, 2.0], vec![3], device).await.unwrap();
         let result = input.mish().unwrap().to_vec().unwrap();
 
-        // Mish(0) ≈ 0
+        // Mish(0) ≈ 0, Mish(x) → x for large x
         assert!(result[1].abs() < 0.01);
-        // Mish is smooth and approaches x for large positive x
         assert!(result[2] > 1.9);
+    }
+
+    #[tokio::test]
+    async fn test_mish_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0], vec![7], device).await.unwrap();
+        let result = input.mish().unwrap().to_vec().unwrap();
+
+        assert!(result[0].abs() < 1e-3); // Mish(-10) ≈ 0
+        assert!(result[3].abs() < 0.01); // Mish(0) ≈ 0
+        assert!((result[5] - 5.0).abs() < 0.05); // Mish(5) ≈ 5
+        assert!((result[6] - 10.0).abs() < 0.05); // Mish(10) ≈ 10
+    }
+
+    #[tokio::test]
+    async fn test_mish_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY], vec![5], device).await.unwrap();
+        let result = input.mish().unwrap().to_vec().unwrap();
+
+        assert!(result[0].abs() < 1e-10 || result[0].is_nan()); // Mish(-inf) → 0
+        assert!(result[2].abs() < 0.01); // Mish(0) ≈ 0
+        assert!(result[3] > 1e9 || result[3].is_infinite()); // Mish(large) ≈ x
+    }
+
+    #[tokio::test]
+    async fn test_mish_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0 - 5.0).collect();
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let result = input.mish().unwrap().to_vec().unwrap();
+
+        // For positive values, should approach identity
+        for (i, &val) in result.iter().enumerate() {
+            let x = (i as f32) / 100.0 - 5.0;
+            if x > 2.0 {
+                assert!((val - x).abs() < 0.1);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mish_precision() {
+        let device = get_test_device().await;
+
+        fn mish_cpu(x: f32) -> f32 {
+            x * (1.0 + x.exp()).ln().tanh()
+        }
+
+        let input_data = vec![-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let result = input.mish().unwrap().to_vec().unwrap();
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| mish_cpu(x)).collect();
+
+        for (i, (&gpu, &cpu)) in result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-4, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
