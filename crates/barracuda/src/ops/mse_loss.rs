@@ -94,10 +94,20 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
+
+    fn mse_loss_cpu(predictions: &[f32], targets: &[f32]) -> f32 {
+        let n = predictions.len() as f32;
+        let sum: f32 = predictions.iter()
+            .zip(targets.iter())
+            .map(|(p, t)| (p - t).powi(2))
+            .sum();
+        sum / n
+    }
 
     #[tokio::test]
     async fn test_mse_loss_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Predictions: [1, 2, 3]
         let pred_data = vec![1.0f32, 2.0, 3.0];
@@ -117,7 +127,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mse_loss_with_error() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Predictions: [2, 4, 6]
         let pred_data = vec![2.0f32, 4.0, 6.0];
@@ -133,5 +143,93 @@ mod tests {
         
         assert_eq!(output.len(), 1);
         assert!((output[0] - 4.67).abs() < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_mse_loss_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Test with zeros
+        let pred_data = vec![0.0f32, 0.0, 0.0];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        let target_data = vec![0.0f32, 0.0, 0.0];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output[0] < 1e-6);
+
+        // Test with negative values
+        let pred_data = vec![-1.0f32, -2.0, -3.0];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        let target_data = vec![-1.5f32, -2.5, -3.5];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        let expected = mse_loss_cpu(&pred_data, &target_data);
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - expected).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_mse_loss_boundary() {
+        let device = get_test_device().await;
+        
+        // Single element
+        let pred_data = vec![5.0f32];
+        let predictions = Tensor::from_data(&pred_data, vec![1], device.clone()).unwrap();
+        let target_data = vec![3.0f32];
+        let targets = Tensor::from_data(&target_data, vec![1], device.clone()).unwrap();
+        let expected = mse_loss_cpu(&pred_data, &target_data);
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - expected).abs() < 1e-5);
+
+        // Large error
+        let pred_data = vec![100.0f32, 200.0, 300.0];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        let target_data = vec![0.0f32, 0.0, 0.0];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        let expected = mse_loss_cpu(&pred_data, &target_data);
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - expected).abs() < 1e-2);
+    }
+
+    #[tokio::test]
+    async fn test_mse_loss_large_tensor() {
+        let device = get_test_device().await;
+        
+        // 1000 elements
+        let pred_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1).collect();
+        let target_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1 + 0.5).collect();
+        
+        let predictions = Tensor::from_data(&pred_data, vec![1000], device.clone()).unwrap();
+        let targets = Tensor::from_data(&target_data, vec![1000], device.clone()).unwrap();
+        
+        let expected = mse_loss_cpu(&pred_data, &target_data);
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 1);
+        assert!((output[0] - expected).abs() < 1e-4);
+    }
+
+    #[tokio::test]
+    async fn test_mse_loss_precision() {
+        let device = get_test_device().await;
+        
+        // Test precision against CPU reference
+        let pred_data = vec![1.234f32, 5.678, 9.012, 3.456, 7.890];
+        let target_data = vec![1.111f32, 6.789, 8.901, 3.333, 8.000];
+        
+        let predictions = Tensor::from_data(&pred_data, vec![5], device.clone()).unwrap();
+        let targets = Tensor::from_data(&target_data, vec![5], device.clone()).unwrap();
+        
+        let expected = mse_loss_cpu(&pred_data, &target_data);
+        let result = predictions.mse_loss(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        // Verify FP32 precision
+        let error = (output[0] - expected).abs();
+        assert!(error < 1e-5, "GPU MSE: {}, CPU MSE: {}, Error: {}", output[0], expected, error);
     }
 }

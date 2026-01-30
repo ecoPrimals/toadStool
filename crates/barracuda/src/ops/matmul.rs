@@ -167,27 +167,173 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn matmul_cpu(a: &[f32], b: &[f32], m: usize, k: usize, n: usize) -> Vec<f32> {
+        let mut result = vec![0.0; m * n];
+        for i in 0..m {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for p in 0..k {
+                    sum += a[i * k + p] * b[p * n + j];
+                }
+                result[i * n + j] = sum;
+            }
+        }
+        result
+    }
 
     #[tokio::test]
     async fn test_matmul_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // 2x3 * 3x2 = 2x2
+        let a_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let b_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        
         let a = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            a_data.clone(),
             vec![2, 3],
             device.clone()
         ).await.unwrap();
         
         let b = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            b_data.clone(),
             vec![3, 2],
-            device
+            device.clone()
         ).await.unwrap();
         
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = matmul_cpu(&a_data, &b_data, 2, 3, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_matmul_edge_cases() {
+        let device = get_test_device().await;
+
+        // Identity matrix
+        let a_data = vec![1.0, 0.0, 0.0, 1.0];
+        let b_data = vec![5.0, 6.0, 7.0, 8.0];
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = matmul_cpu(&a_data, &b_data, 2, 2, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+
+        // Zero matrix
+        let a_data = vec![0.0, 0.0, 0.0, 0.0];
+        let b_data = vec![1.0, 2.0, 3.0, 4.0];
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        for val in output.iter() {
+            assert!(val.abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_matmul_boundary() {
+        let device = get_test_device().await;
+
+        // 1x1 matrices
+        let a_data = vec![5.0];
+        let b_data = vec![3.0];
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![1, 1], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![1, 1], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - 15.0).abs() < 1e-5);
+
+        // Tall matrix: 4x2 * 2x3 = 4x3
+        let a_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let b_data = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![4, 2], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 3], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        assert_eq!(result.shape(), &[4, 3]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = matmul_cpu(&a_data, &b_data, 4, 2, 3);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_matmul_large_tensor() {
+        let device = get_test_device().await;
+
+        // 64x32 * 32x64 = 64x64
+        let m = 64;
+        let k = 32;
+        let n = 64;
+        
+        let a_data: Vec<f32> = (0..m*k).map(|i| (i as f32) * 0.01).collect();
+        let b_data: Vec<f32> = (0..k*n).map(|i| (i as f32) * 0.01).collect();
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![m, k], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![k, n], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        assert_eq!(result.shape(), &[m, n]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = matmul_cpu(&a_data, &b_data, m, k, n);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-3); // Slightly relaxed for large accumulations
+        }
+    }
+
+    #[tokio::test]
+    async fn test_matmul_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical values
+        let a_data = vec![
+            1.234, 2.345, 3.456,
+            4.567, 5.678, 6.789,
+        ];
+        let b_data = vec![
+            0.111, 0.222,
+            0.333, 0.444,
+            0.555, 0.666,
+        ];
+        
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![3, 2], device.clone()).await.unwrap();
+        
+        let result = a.matmul(&b).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = matmul_cpu(&a_data, &b_data, 2, 3, 2);
+        
+        // Verify FP32 precision
+        let max_error = output.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-5, "Max error: {} exceeds FP32 threshold", max_error);
     }
 }

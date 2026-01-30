@@ -155,26 +155,159 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn maxpool2d_cpu(input: &[f32], input_height: usize, input_width: usize, pool_size: usize, stride: usize) -> Vec<f32> {
+        let output_height = input_height / stride;
+        let output_width = input_width / stride;
+        let mut result = vec![f32::NEG_INFINITY; output_height * output_width];
+        
+        for i in 0..output_height {
+            for j in 0..output_width {
+                let mut max_val = f32::NEG_INFINITY;
+                for pi in 0..pool_size {
+                    for pj in 0..pool_size {
+                        let in_i = i * stride + pi;
+                        let in_j = j * stride + pj;
+                        if in_i < input_height && in_j < input_width {
+                            let val = input[in_i * input_width + in_j];
+                            max_val = max_val.max(val);
+                        }
+                    }
+                }
+                result[i * output_width + j] = max_val;
+            }
+        }
+        result
+    }
 
     #[tokio::test]
     async fn test_maxpool2d_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // 4x4 input, 2x2 pool with stride 2 -> 2x2 output
+        let input_data = vec![
+            1.0, 2.0, 3.0, 4.0,
+            5.0, 6.0, 7.0, 8.0,
+            9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0,
+        ];
+        
         let input = Tensor::from_vec_on(
-            vec![
-                1.0, 2.0, 3.0, 4.0,
-                5.0, 6.0, 7.0, 8.0,
-                9.0, 10.0, 11.0, 12.0,
-                13.0, 14.0, 15.0, 16.0,
-            ],
+            input_data.clone(),
             vec![4, 4],
             device
         ).await.unwrap();
         
         let result = input.maxpool2d(2, 2).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = maxpool2d_cpu(&input_data, 4, 4, 2, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_maxpool2d_edge_cases() {
+        let device = get_test_device().await;
+
+        // All same values
+        let input_data = vec![5.0; 16];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device.clone()).await.unwrap();
+        let result = input.maxpool2d(2, 2).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        for val in output.iter() {
+            assert!((val - 5.0).abs() < 1e-5);
+        }
+
+        // Negative values
+        let input_data = vec![
+            -1.0, -2.0, -3.0, -4.0,
+            -5.0, -6.0, -7.0, -8.0,
+            -9.0, -10.0, -11.0, -12.0,
+            -13.0, -14.0, -15.0, -16.0,
+        ];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device.clone()).await.unwrap();
+        let result = input.maxpool2d(2, 2).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = maxpool2d_cpu(&input_data, 4, 4, 2, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_maxpool2d_boundary() {
+        let device = get_test_device().await;
+
+        // Small 2x2 input
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let result = input.maxpool2d(2, 2).unwrap();
+        assert_eq!(result.shape(), &[1, 1]);
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - 4.0).abs() < 1e-5);
+
+        // Large stride relative to pool size
+        let input_data: Vec<f32> = (1..=64).map(|i| i as f32).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![8, 8], device.clone()).await.unwrap();
+        let result = input.maxpool2d(2, 4).unwrap();
+        assert_eq!(result.shape(), &[2, 2]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = maxpool2d_cpu(&input_data, 8, 8, 2, 4);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_maxpool2d_large_tensor() {
+        let device = get_test_device().await;
+
+        // 32x32 input, 2x2 pool with stride 2 -> 16x16 output
+        let input_data: Vec<f32> = (0..1024).map(|i| (i as f32) * 0.1).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![32, 32], device).await.unwrap();
+        
+        let result = input.maxpool2d(2, 2).unwrap();
+        assert_eq!(result.shape(), &[16, 16]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = maxpool2d_cpu(&input_data, 32, 32, 2, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_maxpool2d_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical CNN values
+        let input_data = vec![
+            1.234, 2.345, 3.456, 4.567,
+            5.678, 6.789, 7.890, 8.901,
+            9.012, 10.123, 11.234, 12.345,
+            13.456, 14.567, 15.678, 16.789,
+        ];
+        
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device).await.unwrap();
+        let result = input.maxpool2d(2, 2).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = maxpool2d_cpu(&input_data, 4, 4, 2, 2);
+        
+        // Verify FP32 precision
+        let max_error = output.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-5, "Max error: {} exceeds FP32 threshold", max_error);
     }
 }

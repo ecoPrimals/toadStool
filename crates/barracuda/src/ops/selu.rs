@@ -110,8 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_selu_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device).await.unwrap();
         let result = input.selu().unwrap().to_vec().unwrap();
