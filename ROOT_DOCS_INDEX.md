@@ -1,16 +1,19 @@
 # 📚 ToadStool Documentation Index
 
-**Last Updated**: January 30, 2026 (🏆 100 OPERATIONS - 5% CUDA PARITY! 🏆)  
-**Version**: 5.0.0  
+**Last Updated**: January 30, 2026 (🏆 100 OPS + 🌍 ecoBin v2.0 Evolution!)  
+**Version**: 5.1.0  
 **Status**: 🏆 **PRODUCTION READY** (Grade A+ 97.3/100)  
 **barraCUDA**: ✨ **100 OPERATIONS - 5.0% CUDA PARITY - HISTORIC MILESTONE!** 🎉  
-**Total Documentation**: 80,000+ lines (includes ToadStool + barraCUDA sessions)
+**ecoBin v2.0**: 🌍 **Platform Evolution Path Defined - 80% → 100% Coverage!**  
+**Total Documentation**: 83,000+ lines (includes ToadStool + barraCUDA + ecoBin v2.0 evolution)
 
 ---
 
-## 🦈 **LATEST: barraCUDA 100 OPERATIONS - 5% CUDA PARITY!** 🏆 (Jan 30, 2026)
+## 🌟 **LATEST UPDATES** (January 30, 2026)
 
-### **🎉 HISTORIC MILESTONE: 100 Operations - Complete Training Suite!**
+### **🦈 barraCUDA: 100 OPERATIONS - 5% CUDA PARITY!** 🏆
+
+**🎉 HISTORIC MILESTONE: 100 Operations - Complete Training Suite!**
 
 **Essential Reading** - Start here:
 
@@ -35,6 +38,49 @@
    - Production architectures enabled
    - ~17,200 LOC production code
    - **COMPREHENSIVE STATUS** - Read for full details
+
+---
+
+### **🌍 ecoBin v2.0: Platform-Agnostic Evolution** 🌍
+
+**🎯 NEW: Platform Audit + Deep Debt Evolution Plan**
+
+**Essential Reading** - Cross-Platform Evolution:
+
+1. **[ECOBIN_V2_ACTION_SUMMARY.md](ECOBIN_V2_ACTION_SUMMARY.md)** 📋 **⭐ START HERE ⭐**
+   - **Platform audit results** (49 files with platform assumptions)
+   - **Quick action items** (Q1 2026 timeline)
+   - **Evolution benefits** (80% → 100% platform coverage)
+   - **Deep debt metrics** (unsafe → safe, hardcoded → dynamic)
+   - **THE EXECUTIVE SUMMARY** - Read this first!
+
+2. **[ECOBIN_V2_PLATFORM_AUDIT_JAN30_2026.md](ECOBIN_V2_PLATFORM_AUDIT_JAN30_2026.md)** 🔍 **DETAILED AUDIT**
+   - Complete platform assumption analysis
+   - 49 files with `#[cfg(unix)]`
+   - 78 files with Unix socket code
+   - 3 unsafe blocks identified
+   - Migration impact assessment
+   - ~900 lines comprehensive audit
+
+3. **[ECOBIN_V2_DEEP_DEBT_EVOLUTION_PLAN.md](ECOBIN_V2_DEEP_DEBT_EVOLUTION_PLAN.md)** 🚀 **EVOLUTION GUIDE**
+   - File-by-file migration plan
+   - Before/after code examples
+   - Deep debt principles applied
+   - 8-10 week timeline (Q1 2026)
+   - ~1,100 lines detailed guide
+
+**Why This Matters**:
+- 🌍 Universal portability (Linux, Android, Windows, macOS, iOS, WASM, embedded)
+- 🏆 Eliminate unsafe code (3 blocks → 0 blocks)
+- ✨ Simpler codebase (1,250 lines → 800 lines, 36% reduction)
+- 🔥 LEGENDARY architecture (barraCUDA-level platform agnostic)
+
+**Catalyst**: Pixel 8a deployment revealed Unix socket assumptions (SELinux blocks filesystem sockets)  
+**Solution**: Platform-agnostic IPC layer (biomeos-ipc crate, Q1 2026)  
+**Timeline**: 8-10 weeks coordinated with biomeOS  
+**Status**: Audit complete, evolution path defined ✅
+
+---
 
 **Archived Sessions**:
 - [docs/archive/jan30_2026_90ops_session/](docs/archive/jan30_2026_90ops_session/) - 90-ops Phase 6-7 docs
