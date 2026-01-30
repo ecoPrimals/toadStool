@@ -132,34 +132,89 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn gelu_cpu(x: f32) -> f32 {
+        const SQRT_2_OVER_PI: f32 = 0.7978845608;
+        const GELU_CONSTANT: f32 = 0.044715;
+        let x_cubed = x * x * x;
+        let inner = SQRT_2_OVER_PI * (x + GELU_CONSTANT * x_cubed);
+        0.5 * x * (1.0 + inner.tanh())
+    }
 
     #[tokio::test]
     async fn test_gelu_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        // Test data: [-2, -1, 0, 1, 2]
-        let input = Tensor::from_vec_on(
-            vec![-2.0, -1.0, 0.0, 1.0, 2.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
-
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device).await.unwrap();
         let output = input.gelu().unwrap();
         let result = output.to_vec().unwrap();
 
-        // GELU properties:
-        // GELU(0) ≈ 0
-        // GELU(x) is smooth and monotonic
-        // For positive x, GELU(x) ≈ x
-        // For large negative x, GELU(x) ≈ 0
+        // GELU(0) ≈ 0, monotonic, GELU(x) ≈ x for large positive x
+        assert!(result[2].abs() < 0.01);
+        assert!(result[3] > 0.8 && result[3] < 0.9);
+        assert!(result[4] > 1.9);
+    }
+
+    #[tokio::test]
+    async fn test_gelu_edge_cases() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0], vec![7], device).await.unwrap();
+        let output = input.gelu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert!(result[0].abs() < 1e-10); // GELU(-10) ≈ 0
+        assert!(result[1].abs() < 1e-6); // GELU(-5) ≈ 0
+        assert!(result[3].abs() < 0.01); // GELU(0) ≈ 0
+        assert!((result[5] - 5.0).abs() < 0.01); // GELU(5) ≈ 5
+        assert!((result[6] - 10.0).abs() < 0.01); // GELU(10) ≈ 10
+    }
+
+    #[tokio::test]
+    async fn test_gelu_boundary() {
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY], vec![5], device).await.unwrap();
+        let output = input.gelu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        // GELU(-inf) = 0, GELU(+inf) = +inf
+        assert!(result[0].abs() < 1e-10 || result[0].is_nan()); // Could be 0 or NaN
         assert!(result[2].abs() < 0.01); // GELU(0) ≈ 0
-        assert!(result[3] > 0.8); // GELU(1) ≈ 0.84
-        assert!(result[4] > 1.9); // GELU(2) ≈ 1.95
-        assert!(result[0] > -0.06 && result[0] < 0.0); // GELU(-2) ≈ -0.045
-        assert!(result[1] > -0.2 && result[1] < 0.0); // GELU(-1) ≈ -0.16
+        assert!(result[3] > 1e9 || result[3].is_infinite());
+        assert!(result[4].is_infinite() && result[4].is_sign_positive() || result[4].is_nan());
+    }
+
+    #[tokio::test]
+    async fn test_gelu_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 200.0 - 2.5).collect();
+        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let output = input.gelu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        // Monotonically increasing
+        for i in 1..result.len() {
+            assert!(result[i] >= result[i-1], "GELU not monotonic at {}", i);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_gelu_precision() {
+        let device = get_test_device().await;
+
+        let input_data = vec![-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let output = input.gelu().unwrap();
+        let gpu_result = output.to_vec().unwrap();
+
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| gelu_cpu(x)).collect();
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
