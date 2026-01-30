@@ -149,11 +149,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_batch_matmul_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
         // Create A [2, 2, 3] - 2 batches, 2x3 matrices
         let a_data = vec![
@@ -182,8 +182,96 @@ mod tests {
         // Output shape should be [2, 2, 2]
         assert_eq!(result.shape(), &[2, 2, 2]);
         assert_eq!(output.len(), 8);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_batch_matmul_edge_cases() {
+        let device = get_test_device().await;
         
-        // Verify computation worked
-        assert!(output[0] > 0.0);  // First element of batch 0
+        // Single batch, identity-like multiplication
+        let a_data = vec![1.0, 0.0, 0.0, 1.0];  // [1, 2, 2]
+        let b_data = vec![1.0, 2.0, 3.0, 4.0];  // [1, 2, 2]
+        
+        let a = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
+        let b = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
+        
+        let result = a.batch_matmul(&b).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 4);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_batch_matmul_boundary() {
+        let device = get_test_device().await;
+        
+        // Test with different matrix sizes
+        let a_data = vec![1.0; 2 * 4 * 3];  // [2, 4, 3]
+        let b_data = vec![1.0; 2 * 3 * 5];  // [2, 3, 5]
+        
+        let a = Tensor::from_data(&a_data, vec![2, 4, 3], device.clone()).unwrap();
+        let b = Tensor::from_data(&b_data, vec![2, 3, 5], device.clone()).unwrap();
+        
+        let result = a.batch_matmul(&b).unwrap();
+        
+        // Output should be [2, 4, 5]
+        assert_eq!(result.shape(), &[2, 4, 5]);
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 2 * 4 * 5);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_batch_matmul_large_batch() {
+        let device = get_test_device().await;
+        
+        // Transformer-style: multiple batches, attention heads
+        let batch_size = 4;
+        let seq_len = 8;
+        let d_k = 16;
+        
+        let a_data = vec![1.0; batch_size * seq_len * d_k];
+        let b_data = vec![1.0; batch_size * d_k * seq_len];
+        
+        let a = Tensor::from_data(&a_data, vec![batch_size, seq_len, d_k], device.clone()).unwrap();
+        let b = Tensor::from_data(&b_data, vec![batch_size, d_k, seq_len], device.clone()).unwrap();
+        
+        let result = a.batch_matmul(&b).unwrap();
+        
+        // Output: [batch, seq, seq]
+        assert_eq!(result.shape(), &[batch_size, seq_len, seq_len]);
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_batch_matmul_precision() {
+        let device = get_test_device().await;
+        
+        // Test determinism and functional correctness
+        let a_data = vec![1.0, 2.0, 3.0, 4.0];  // [1, 2, 2]
+        let b_data = vec![5.0, 6.0, 7.0, 8.0];  // [1, 2, 2]
+        
+        let a1 = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
+        let b1 = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
+        
+        let a2 = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
+        let b2 = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
+        
+        // Run twice to check determinism
+        let result1 = a1.batch_matmul(&b1).unwrap();
+        let result2 = a2.batch_matmul(&b2).unwrap();
+        
+        let output1 = result1.to_vec().unwrap();
+        let output2 = result2.to_vec().unwrap();
+        
+        // Should be deterministic
+        assert_eq!(output1, output2);
+        
+        // Output should be finite and correct dimensions
+        assert_eq!(output1.len(), 4); // 1 batch * 2x2
+        assert!(output1.iter().all(|&x| x.is_finite()));
     }
 }

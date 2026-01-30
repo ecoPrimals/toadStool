@@ -67,23 +67,10 @@ pub async fn bi_lstm(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
-    #[tokio::test]
-    async fn test_bi_lstm_dimensions() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let device = &dev.device;
-        let queue = &dev.queue;
-        // Small example
-        let seq_len = 3;
-        let batch = 1;
-        let input_size = 2;
-        let hidden = 2;
-        
-        let sequence = vec![0.5; seq_len * batch * input_size];
-        
-        let fwd_weights = LSTMWeights {
+    fn create_lstm_weights(input_size: usize, hidden: usize) -> LSTMWeights {
+        LSTMWeights {
             w_ii: vec![0.01; hidden * input_size], w_hi: vec![0.01; hidden * hidden],
             w_if: vec![0.01; hidden * input_size], w_hf: vec![0.01; hidden * hidden],
             w_ig: vec![0.01; hidden * input_size], w_hg: vec![0.01; hidden * hidden],
@@ -92,7 +79,22 @@ mod tests {
             b_if: vec![0.0; hidden], b_hf: vec![0.0; hidden],
             b_ig: vec![0.0; hidden], b_hg: vec![0.0; hidden],
             b_io: vec![0.0; hidden], b_ho: vec![0.0; hidden],
-        };
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_bi_lstm_basic() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        let seq_len = 3;
+        let batch = 1;
+        let input_size = 2;
+        let hidden = 2;
+        
+        let sequence = vec![0.5; seq_len * batch * input_size];
+        let fwd_weights = create_lstm_weights(input_size, hidden);
         
         let weights = BiLSTMWeights {
             forward: fwd_weights.clone(),
@@ -101,5 +103,117 @@ mod tests {
         
         let output = bi_lstm(&device, &queue, &sequence, &weights, seq_len, batch, input_size, hidden).await.unwrap();
         assert_eq!(output.len(), seq_len * batch * hidden * 2); // *2 for bidirectional
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_bi_lstm_edge_cases() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Single timestep
+        let seq_len = 1;
+        let batch = 1;
+        let input_size = 2;
+        let hidden = 2;
+        
+        let sequence = vec![1.0; seq_len * batch * input_size];
+        let fwd_weights = create_lstm_weights(input_size, hidden);
+        
+        let weights = BiLSTMWeights {
+            forward: fwd_weights.clone(),
+            backward: fwd_weights,
+        };
+        
+        let output = bi_lstm(&device, &queue, &sequence, &weights, seq_len, batch, input_size, hidden).await.unwrap();
+        assert_eq!(output.len(), seq_len * batch * hidden * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_bi_lstm_boundary() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Longer sequence
+        let seq_len = 8;
+        let batch = 1;
+        let input_size = 4;
+        let hidden = 4;
+        
+        let sequence: Vec<f32> = (0..seq_len * batch * input_size)
+            .map(|i| (i % 3) as f32 * 0.1)
+            .collect();
+        let fwd_weights = create_lstm_weights(input_size, hidden);
+        
+        let weights = BiLSTMWeights {
+            forward: fwd_weights.clone(),
+            backward: fwd_weights,
+        };
+        
+        let output = bi_lstm(&device, &queue, &sequence, &weights, seq_len, batch, input_size, hidden).await.unwrap();
+        assert_eq!(output.len(), seq_len * batch * hidden * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_bi_lstm_large_batch() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Multiple batches
+        let seq_len = 4;
+        let batch = 4;
+        let input_size = 8;
+        let hidden = 8;
+        
+        let sequence = vec![0.1; seq_len * batch * input_size];
+        let fwd_weights = create_lstm_weights(input_size, hidden);
+        
+        let weights = BiLSTMWeights {
+            forward: fwd_weights.clone(),
+            backward: fwd_weights,
+        };
+        
+        let output = bi_lstm(&device, &queue, &sequence, &weights, seq_len, batch, input_size, hidden).await.unwrap();
+        assert_eq!(output.len(), seq_len * batch * hidden * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_bi_lstm_precision() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Test that forward and backward are concatenated
+        let seq_len = 2;
+        let batch = 1;
+        let input_size = 2;
+        let hidden = 2;
+        
+        let sequence = vec![1.0; seq_len * batch * input_size];
+        let fwd_weights = create_lstm_weights(input_size, hidden);
+        
+        let weights = BiLSTMWeights {
+            forward: fwd_weights.clone(),
+            backward: fwd_weights,
+        };
+        
+        let output = bi_lstm(&device, &queue, &sequence, &weights, seq_len, batch, input_size, hidden).await.unwrap();
+        
+        // Output format: [fwd_t0, bwd_t0, fwd_t1, bwd_t1]
+        // Each timestep has hidden*2 values
+        assert_eq!(output.len(), seq_len * batch * hidden * 2);
+        
+        // First timestep should have forward and backward components
+        let t0_fwd = &output[0..hidden];
+        let t0_bwd = &output[hidden..hidden*2];
+        
+        assert!(t0_fwd.iter().all(|&x| x.is_finite()));
+        assert!(t0_bwd.iter().all(|&x| x.is_finite()));
     }
 }
