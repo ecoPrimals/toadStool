@@ -136,6 +136,33 @@ pub mod adam;
 pub mod adagrad;
 pub mod adadelta;
 
+// Attention mechanisms
+pub mod scaled_dot_product_attention;
+pub mod multi_head_attention;
+
+// RNN/LSTM cells
+pub mod lstm_cell;
+pub mod gru_cell;
+pub mod rnn_cell;
+pub mod bi_lstm;
+
+// Advanced activations
+pub mod prelu;
+pub mod glu;
+pub mod softsign;
+pub mod tanhshrink;
+
+// Utility operations (extended)
+pub mod layer_scale;
+pub mod channel_shuffle;
+pub mod pixel_shuffle;
+pub mod upsample;
+pub mod take;
+pub mod put;
+pub mod masked_fill;
+pub mod roll;
+pub mod reshape;
+
 /// Re-exports
 pub use relu::ReLU;
 pub use gelu::GELU;
@@ -190,7 +217,7 @@ pub use batch_norm::BatchNorm;
 pub use dropout::Dropout;
 pub use gather::Gather;
 pub use scatter::Scatter;
-pub use topk::TopK;
+// topk exports functions, not struct
 pub use cast::Cast;
 pub use maxpool2d::MaxPool2D;
 pub use avgpool2d::AvgPool2D;

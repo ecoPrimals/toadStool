@@ -1,0 +1,65 @@
+//! RNN Cell - Basic recurrent neural network cell
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! h_t = tanh(W_ih * x_t + b_ih + W_hh * h_{t-1} + b_hh)
+//! ```
+
+pub struct RNNWeights {
+    pub w_ih: Vec<f32>,
+    pub w_hh: Vec<f32>,
+    pub b_ih: Vec<f32>,
+    pub b_hh: Vec<f32>,
+}
+
+pub async fn rnn_cell(
+    _device: &wgpu::Device,
+    _queue: &wgpu::Queue,
+    input: &[f32],
+    prev_hidden: &[f32],
+    weights: &RNNWeights,
+    batch_size: usize,
+    input_size: usize,
+    hidden_size: usize,
+) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    let mut hidden = vec![0.0f32; batch_size * hidden_size];
+    
+    for b in 0..batch_size {
+        for h in 0..hidden_size {
+            let mut sum = weights.b_ih[h] + weights.b_hh[h];
+            
+            for i in 0..input_size {
+                sum += input[b * input_size + i] * weights.w_ih[h * input_size + i];
+            }
+            
+            for i in 0..hidden_size {
+                sum += prev_hidden[b * hidden_size + i] * weights.w_hh[h * hidden_size + i];
+            }
+            
+            hidden[b * hidden_size + h] = sum.tanh();
+        }
+    }
+    
+    Ok(hidden)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_rnn_cell() {
+        let (device, queue) = crate::test_utils::create_device().await.unwrap();
+        let input = vec![0.5; 2 * 4]; // batch=2, input=4
+        let prev_hidden = vec![0.0; 2 * 8]; // batch=2, hidden=8
+        let weights = RNNWeights {
+            w_ih: vec![0.01; 8 * 4],
+            w_hh: vec![0.01; 8 * 8],
+            b_ih: vec![0.0; 8],
+            b_hh: vec![0.0; 8],
+        };
+        let hidden = rnn_cell(&device, &queue, &input, &prev_hidden, &weights, 2, 4, 8).await.unwrap();
+        assert_eq!(hidden.len(), 16);
+    }
+}
