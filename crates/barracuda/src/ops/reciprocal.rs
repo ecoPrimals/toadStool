@@ -107,19 +107,81 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn reciprocal_cpu(x: f32) -> f32 {
+        1.0 / x
+    }
 
     #[tokio::test]
     async fn test_reciprocal_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
-
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 4.0], vec![3], device).await.unwrap();
-        let result = input.reciprocal().unwrap();
+        let device = get_test_device().await;
+        let input_data = vec![1.0, 2.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let result = input.reciprocal().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| reciprocal_cpu(x)).collect();
         
-        let data = result.to_vec().unwrap();
-        assert!((data[0] - 1.0).abs() < 1e-5);
-        assert!((data[1] - 0.5).abs() < 1e-5);
-        assert!((data[2] - 0.25).abs() < 1e-5);
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6, "Expected {}, got {}", e, r);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_reciprocal_edge_cases() {
+        let device = get_test_device().await;
+        let input_data = vec![1.0, -1.0, 0.5, -0.5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.reciprocal().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| reciprocal_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6, "Expected {}, got {}", e, r);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_reciprocal_boundary() {
+        let device = get_test_device().await;
+        // Avoid division by zero - use small but safe values
+        let input_data = vec![1e-5, 1e5, -1e-5, -1e5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.reciprocal().unwrap().to_vec().unwrap();
+        let expected: Vec<f32> = input_data.iter().map(|&x| reciprocal_cpu(x)).collect();
+        
+        for (r, e) in result.iter().zip(expected.iter()) {
+            let rel_error = if e.abs() > 1e-5 { (r - e).abs() / e.abs() } else { (r - e).abs() };
+            assert!(rel_error < 1e-4, "Expected {}, got {} (rel error {})", e, r, rel_error);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_reciprocal_large_tensor() {
+        let device = get_test_device().await;
+        let size = 1000;
+        let input_data: Vec<f32> = (1..=size).map(|i| i as f32).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+        let result = input.reciprocal().unwrap().to_vec().unwrap();
+        
+        assert_eq!(result.len(), size);
+        for i in 0..10 {
+            let expected = reciprocal_cpu(input_data[i]);
+            assert!((result[i] - expected).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_reciprocal_precision() {
+        let device = get_test_device().await;
+        let input_data = vec![0.5, 1.0, 2.0, 4.0, 8.0, 16.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![6], device).await.unwrap();
+        let gpu_result = input.reciprocal().unwrap().to_vec().unwrap();
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| reciprocal_cpu(x)).collect();
+        
+        let mut max_error = 0.0f32;
+        for (r, e) in gpu_result.iter().zip(cpu_result.iter()) {
+            let error = (r - e).abs();
+            max_error = max_error.max(error);
+        }
+        assert!(max_error < 1e-6, "Max error {} exceeds threshold", max_error);
     }
 }
