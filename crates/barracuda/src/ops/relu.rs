@@ -5,7 +5,6 @@
 
 use crate::tensor::Tensor;
 use crate::error::Result;
-use std::sync::Arc;
 
 /// ReLU activation operation
 pub struct ReLU {
@@ -132,6 +131,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_relu_basic() {

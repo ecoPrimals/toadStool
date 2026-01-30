@@ -160,4 +160,15 @@ pub use avgpool2d::AvgPool2D;
 pub use matmul::MatMul;
 pub use conv2d::Conv2D;
 pub use embedding::Embedding;
+pub use softplus::Softplus;
+pub use one_hot::OneHot;
+pub use broadcast::Broadcast;
+pub use fill::Fill;
+pub use repeat::Repeat;
+pub use flip::Flip;
+pub use cumsum::Cumsum;
+pub use mse_loss::MseLoss;
+pub use cross_entropy::CrossEntropy;
+pub use binary_cross_entropy::BinaryCrossEntropy;
+pub use l1_loss::L1Loss;
 // Note: Reshape is already defined in tensor.rs

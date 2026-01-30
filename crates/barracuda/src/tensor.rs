@@ -65,6 +65,28 @@ impl Tensor {
     pub(crate) fn buffer(&self) -> &wgpu::Buffer {
         &self.buffer
     }
+
+    /// Create tensor from data (for testing and initialization)
+    pub fn from_data<T: bytemuck::Pod>(
+        data: &[T],
+        shape: Vec<usize>,
+        device: Arc<WgpuDevice>,
+    ) -> Result<Self> {
+        use wgpu::util::DeviceExt;
+        
+        let buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Tensor Data"),
+            contents: bytemuck::cast_slice(data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        });
+
+        Ok(Self {
+            buffer,
+            shape,
+            device,
+            name: None,
+        })
+    }
 }
 
 // Implement Clone for Tensor
