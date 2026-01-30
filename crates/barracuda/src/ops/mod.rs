@@ -270,6 +270,66 @@ pub mod masked_fill;
 pub mod roll;
 pub mod reshape;
 
+// Graph Neural Networks (Category 13)
+pub mod graph_conv;
+pub mod gcn_conv;
+pub mod gat_conv;
+pub mod sage_conv;
+pub mod gin_conv;
+pub mod edge_conv;
+pub mod message_passing;
+pub mod global_pooling;
+pub mod graph_norm;
+pub mod graph_batch_norm;
+
+// Advanced Optimizers & Learning (Category 14)
+pub mod adamw;
+pub mod radam;
+pub mod lookahead;
+pub mod lamb;
+pub mod adafactor;
+// pub mod nadam; // Already exists above
+pub mod adabound;
+pub mod sgdw;
+pub mod cyclical_lr;
+pub mod onecycle;
+
+// Audio/Signal Processing (Category 15)
+pub mod stft;
+pub mod istft;
+pub mod mel_scale;
+pub mod mfcc;
+pub mod spectrogram;
+pub mod griffin_lim;
+pub mod time_stretch;
+pub mod pitch_shift;
+pub mod window_function;
+pub mod spectral_norm_1d;
+
+// Advanced Sampling & Augmentation (Category 16)
+pub mod random_crop;
+pub mod random_erasing;
+pub mod cutmix;
+pub mod mixup;
+pub mod mosaic;
+pub mod random_affine;
+pub mod color_jitter;
+pub mod random_perspective;
+pub mod elastic_transform;
+pub mod grid_mask;
+
+// Specialized Losses & Metrics (Category 17)
+pub mod ssim;
+pub mod psnr;
+// pub mod dice_loss; // Already exists above
+pub mod iou_loss;
+pub mod tversky_loss;
+pub mod wasserstein_loss;
+pub mod chamfer_distance;
+pub mod earth_mover_distance;
+pub mod perceptual_loss;
+pub mod center_loss;
+
 /// Re-exports
 pub use relu::ReLU;
 pub use gelu::GELU;
@@ -356,11 +416,11 @@ pub use split::Split;
 pub use adaptive_avgpool2d::AdaptiveAvgPool2D;
 pub use adaptive_maxpool2d::AdaptiveMaxPool2D;
 pub use focal_loss::FocalLoss;
-pub use dice_loss::DiceLoss;
+// pub use dice_loss::DiceLoss; // Function-only module
 pub use huber_loss::HuberLoss;
 pub use sgd::SGD;
 pub use rmsprop::RMSprop;
-pub use nadam::Nadam;
+// pub use nadam::Nadam; // Function-only module with state struct
 pub use adam::Adam;
 pub use adagrad::AdaGrad;
 pub use adadelta::AdaDelta;
