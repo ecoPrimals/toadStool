@@ -1,0 +1,56 @@
+[package]
+name = "akida-models"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team"]
+description = "Akida neural network model parser and loader"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/easilylazy/toadstool"
+keywords = ["akida", "neuromorphic", "model", "parser", "ai"]
+categories = ["parser-implementations", "science"]
+
+[dependencies]
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Binary parsing
+nom = "7"           # Parser combinators for binary formats
+byteorder = "1"     # Endian-aware reading
+
+# Logging
+tracing = "0.1"
+
+# Akida driver integration
+akida-driver = { path = "../akida-driver" }
+
+[dev-dependencies]
+hex = "0.4"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lib]
+crate-type = ["rlib"]
+
+[[example]]
+name = "parse_fbz"
+path = "examples/parse_fbz.rs"
+
+[[example]]
+name = "benchmark_parser"
+path = "examples/benchmark_parser.rs"
+
+[[example]]
+name = "load_to_device"
+path = "examples/load_to_device.rs"
+
+[[example]]
+name = "benchmark_loading"
+path = "examples/benchmark_loading.rs"
+
+[[example]]
+name = "run_inference"
+path = "examples/run_inference.rs"
+
+[[example]]
+name = "benchmark_inference"
+path = "examples/benchmark_inference.rs"

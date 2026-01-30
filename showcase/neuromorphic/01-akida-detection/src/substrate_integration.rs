@@ -1,7 +1,7 @@
 //! Integration with ToadStool's UniversalSubstrate
 
 use anyhow::Result;
-use toadstool_distributed::universal::types::neuromorphic::NeuromorphicPlatform;
+use toadstool_distributed::NeuromorphicPlatform;
 
 use crate::{AkidaBoard, AkidaMesh};
 

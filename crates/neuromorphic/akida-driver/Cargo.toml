@@ -1,0 +1,50 @@
+[package]
+name = "akida-driver"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team"]
+description = "Pure Rust driver for BrainChip Akida neuromorphic processors"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/easilylazy/toadstool"
+keywords = ["akida", "neuromorphic", "ai", "driver", "hardware"]
+categories = ["hardware-support", "science"]
+
+[dependencies]
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+
+# Async runtime (optional)
+tokio = { version = "1", features = ["fs", "io-util"], optional = true }
+
+# Unix-specific
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+nix = { version = "0.27", features = ["fs", "ioctl"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+criterion = "0.5"
+
+[features]
+default = []
+async = ["tokio"]
+
+[[example]]
+name = "enumerate_devices"
+path = "examples/enumerate_devices.rs"
+
+[[example]]
+name = "basic_io"
+path = "examples/basic_io.rs"
+
+[[example]]
+name = "device_info"
+path = "examples/device_info.rs"
+
+[lib]
+crate-type = ["rlib"]

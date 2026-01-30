@@ -30,6 +30,13 @@ members = [
     "crates/runtime/wasm",
     "crates/runtime/secure_enclave",  # NEW: Zero-knowledge compute (Dec 22, 2025)
     "crates/runtime/universal",       # NEW: Universal compute runtime (Jan 8, 2026)
+    
+    # Neuromorphic hardware
+    "crates/neuromorphic/akida-driver",  # NEW: Pure Rust Akida driver (Jan 29, 2026) 🧠
+    "crates/neuromorphic/akida-models",  # NEW: Model parser (Jan 29, 2026) 🧠
+    "crates/neuromorphic/cross-substrate-validation",  # NEW: Cross-substrate benchmark (Jan 29, 2026) 🧠
+    "crates/neuromorphic/akida-reservoir-research",  # NEW: Reservoir computing research (Jan 29, 2026) 🔬
+    
     "crates/security/monitoring",
     "crates/security/policies",
     "crates/security/sandbox",
@@ -38,6 +45,7 @@ members = [
     "examples",
     "showcase",                       # Production showcase demos
     "showcase/local-capabilities",    # Local capabilities showcase
+    "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase
 ]
 
 [workspace.package]

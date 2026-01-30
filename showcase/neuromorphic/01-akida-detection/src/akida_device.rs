@@ -1,6 +1,6 @@
 //! Akida device querying and management
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::PathBuf;
 
 use crate::pcie_scan::PcieDevice;

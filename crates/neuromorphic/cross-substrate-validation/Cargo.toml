@@ -1,0 +1,32 @@
+[package]
+name = "cross-substrate-validation"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Contributors"]
+description = "Cross-substrate validation benchmark: CPU vs GPU vs Neuromorphic"
+
+[dependencies]
+# ToadStool runtimes
+toadstool-runtime-universal = { path = "../../runtime/universal" }
+akida-driver = { path = "../akida-driver" }
+akida-models = { path = "../akida-models" }
+
+# Core
+anyhow = "1.0"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# No extra dependencies - keep it simple
+
+[lib]
+name = "cross_substrate_validation"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cross-substrate-benchmark"
+path = "src/main.rs"
+
+[[bin]]
+name = "comprehensive-benchmark"
+path = "src/bin/comprehensive_benchmark.rs"

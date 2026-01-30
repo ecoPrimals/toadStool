@@ -1,8 +1,8 @@
 # Toadstool-Compute Specifications
 
-## ✅ **CURRENT STATUS** (December 2025)
+## ✅ **CURRENT STATUS** (January 2026)
 
-**ToadStool is PRODUCTION READY with A- grade (90/100).**
+**ToadStool is PRODUCTION READY with A- grade (90/100) + CUTTING-EDGE RESEARCH!**
 
 **For current status, read these first**:
 1. **`../STATUS.md`** ⭐ Start here! - Current status (A- 90/100)
@@ -10,9 +10,14 @@
 3. **`../ULTIMATE_STATUS_DEC_19_2025.md`** - Comprehensive status report
 4. **`../COMPREHENSIVE_CODE_AUDIT_DEC_20_2025.md`** - Latest audit (Dec 20, 2025)
 
-**Latest Achievement**: A- grade (90/100), 787/787 tests passing (100%), world-class unsafe code (A+ 98/100), production ready NOW!
+**Latest Achievement**: 
+- A- grade (90/100), 787/787 tests passing (100%)
+- **NEW**: Neuromorphic computing 100% complete (2x Akida AKD1000, 160 NPUs)
+- **NEW**: Reservoir computing research active (echo state networks on neuromorphic hardware)
+- **NEW**: BarraCUDA tensor operations (vendor-free CUDA replacement)
+- Production ready + active research!
 
-The specs below provide architectural context and remain valid.
+The specs below provide architectural context and remain valid, with new neuromorphic and reservoir computing specs added.
 
 ---
 
@@ -88,7 +93,9 @@ Toadstool-Compute serves as the **universal compute platform** that:
 - [PRODUCTION_READINESS_SUMMARY.md](./PRODUCTION_READINESS_SUMMARY.md) - Production overview
 - [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) - Platform architecture
 - [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) - Quality standards
-- [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - ⭐ **NEW** Unified memory architecture (Jan 2026)
+- [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - Unified memory architecture (Jan 2026)
+- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - Vendor-free CUDA replacement
+- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - ⭐ **NEW** BarraCUDA extensions for neuromorphic reservoir computing (Jan 29, 2026)
 
 ### Core Specifications (Historical - Preserved for Context)
 - [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) - Project overview and architecture

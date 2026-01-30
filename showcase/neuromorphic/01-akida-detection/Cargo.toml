@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Pure Rust Akida driver (evolved from mocks!)
+akida-driver = { path = "../../../crates/neuromorphic/akida-driver" }
+
 toadstool-distributed = { path = "../../../crates/distributed" }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
@@ -33,4 +36,8 @@ path = "examples/query_capabilities.rs"
 [[example]]
 name = "health_check"
 path = "examples/health_check.rs"
+
+[[example]]
+name = "detect_akida_real"
+path = "examples/detect_akida_real.rs"
 
