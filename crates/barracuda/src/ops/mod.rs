@@ -81,6 +81,9 @@ pub mod topk;
 pub mod cast;
 pub mod maxpool2d;
 pub mod avgpool2d;
+pub mod adaptive_avgpool2d;
+pub mod adaptive_maxpool2d;
+pub mod global_maxpool;
 pub mod matmul;
 pub mod conv2d;
 pub mod embedding;
@@ -98,6 +101,9 @@ pub mod mse_loss;
 pub mod cross_entropy;
 pub mod binary_cross_entropy;
 pub mod l1_loss;
+pub mod focal_loss;
+pub mod dice_loss;
+pub mod huber_loss;
 
 // Advanced normalization
 pub mod rmsnorm;
@@ -114,6 +120,11 @@ pub mod transposed_conv2d;
 pub mod batch_matmul;
 pub mod global_avgpool;
 pub mod split;
+
+// Optimizers
+pub mod sgd;
+pub mod rmsprop;
+pub mod nadam;
 
 /// Re-exports
 pub use relu::ReLU;
@@ -196,5 +207,14 @@ pub use depthwise_conv2d::DepthwiseConv2D;
 pub use transposed_conv2d::TransposedConv2D;
 pub use batch_matmul::BatchMatMul;
 pub use global_avgpool::GlobalAvgPool;
+pub use global_maxpool::GlobalMaxPool;
 pub use split::Split;
+pub use adaptive_avgpool2d::AdaptiveAvgPool2D;
+pub use adaptive_maxpool2d::AdaptiveMaxPool2D;
+pub use focal_loss::FocalLoss;
+pub use dice_loss::DiceLoss;
+pub use huber_loss::HuberLoss;
+pub use sgd::SGD;
+pub use rmsprop::RMSprop;
+pub use nadam::Nadam;
 // Note: Reshape is already defined in tensor.rs
