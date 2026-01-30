@@ -131,19 +131,115 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn gather_cpu(input: &[f32], indices: &[u32]) -> Vec<f32> {
+        indices.iter().map(|&idx| input[idx as usize]).collect()
+    }
 
     #[tokio::test]
     async fn test_gather_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![10.0, 20.0, 30.0, 40.0], vec![4], device).await.unwrap();
-        let result = input.gather(vec![2, 0, 3]).unwrap();
+        let input_data = vec![10.0, 20.0, 30.0, 40.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let indices = vec![2, 0, 3];
+        let result = input.gather(indices.clone()).unwrap();
         
         let data = result.to_vec().unwrap();
-        assert!((data[0] - 30.0).abs() < 1e-5);
-        assert!((data[1] - 10.0).abs() < 1e-5);
-        assert!((data[2] - 40.0).abs() < 1e-5);
+        let expected = gather_cpu(&input_data, &indices);
+        
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_gather_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single index
+        let input_data = vec![5.0, 10.0, 15.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let indices = vec![1];
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        assert!((data[0] - 10.0).abs() < 1e-6);
+
+        // Repeated indices
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let indices = vec![0, 0, 2, 2];
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = gather_cpu(&input_data, &indices);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_gather_boundary() {
+        let device = get_test_device().await;
+
+        // Gather all elements in order
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device.clone()).await.unwrap();
+        let indices = vec![0, 1, 2, 3, 4];
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = gather_cpu(&input_data, &indices);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+
+        // Gather in reverse
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device.clone()).await.unwrap();
+        let indices = vec![4, 3, 2, 1, 0];
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = gather_cpu(&input_data, &indices);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_gather_large_tensor() {
+        let device = get_test_device().await;
+
+        // Large input tensor, selective gathering
+        let input_data: Vec<f32> = (0..1000).map(|i| (i as f32) * 0.1).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        
+        // Gather every 10th element
+        let indices: Vec<u32> = (0..100).map(|i| (i * 10) as u32).collect();
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = gather_cpu(&input_data, &indices);
+        
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_gather_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let input_data = vec![1.234, 5.678, 9.012, 3.456, 7.890, 2.345, 6.789];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let indices = vec![6, 2, 4, 1, 0];
+        let result = input.gather(indices.clone()).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = gather_cpu(&input_data, &indices);
+        
+        // Verify FP32 precision (gather is direct copy, should be exact)
+        let max_error = data.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
     }
 }
