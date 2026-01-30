@@ -142,18 +142,114 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn batch_norm_cpu(input: &[f32], epsilon: f32) -> Vec<f32> {
+        let n = input.len() as f32;
+        let mean: f32 = input.iter().sum::<f32>() / n;
+        let variance: f32 = input.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
+        let std = (variance + epsilon).sqrt();
+        input.iter().map(|x| (x - mean) / std).collect()
+    }
 
     #[tokio::test]
     async fn test_batch_norm_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device).await.unwrap();
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
         let result = input.batch_norm(1e-5).unwrap();
         
-        // BatchNorm should normalize to mean=0, std=1
         let data = result.to_vec().unwrap();
         assert_eq!(data.len(), 4);
+        
+        let expected = batch_norm_cpu(&input_data, 1e-5);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_norm_edge_cases() {
+        let device = get_test_device().await;
+
+        // All same values (zero variance)
+        let input_data = vec![5.0, 5.0, 5.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        let data = result.to_vec().unwrap();
+        // Should be all zeros (normalized to mean)
+        for val in data.iter() {
+            assert!(val.abs() < 1e-3);
+        }
+
+        // Negative values
+        let input_data = vec![-2.0, -1.0, 1.0, 2.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = batch_norm_cpu(&input_data, 1e-5);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_norm_boundary() {
+        let device = get_test_device().await;
+
+        // Single element
+        let input_data = vec![5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        let data = result.to_vec().unwrap();
+        assert!(data[0].abs() < 1e-3); // Should be ~0
+
+        // Wide range of values
+        let input_data = vec![-100.0, -50.0, 0.0, 50.0, 100.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device.clone()).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        let data = result.to_vec().unwrap();
+        let expected = batch_norm_cpu(&input_data, 1e-5);
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_norm_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| i as f32 * 0.1).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        
+        let data = result.to_vec().unwrap();
+        let expected = batch_norm_cpu(&input_data, 1e-5);
+        
+        for (r, e) in data.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-3);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_norm_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision
+        let input_data = vec![1.234, 5.678, 9.012, 3.456, 7.890];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let result = input.batch_norm(1e-5).unwrap();
+        
+        let data = result.to_vec().unwrap();
+        let expected = batch_norm_cpu(&input_data, 1e-5);
+        
+        // Verify FP32 precision
+        let max_error = data.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-4, "Max error: {} exceeds FP32 threshold", max_error);
     }
 }

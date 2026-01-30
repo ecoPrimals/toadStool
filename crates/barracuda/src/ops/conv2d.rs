@@ -171,32 +171,164 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn conv2d_cpu(input: &[f32], kernel: &[f32], input_h: usize, input_w: usize, kernel_h: usize, kernel_w: usize) -> Vec<f32> {
+        let output_h = input_h - kernel_h + 1;
+        let output_w = input_w - kernel_w + 1;
+        let mut result = vec![0.0; output_h * output_w];
+        
+        for i in 0..output_h {
+            for j in 0..output_w {
+                let mut sum = 0.0;
+                for ki in 0..kernel_h {
+                    for kj in 0..kernel_w {
+                        let input_idx = (i + ki) * input_w + (j + kj);
+                        let kernel_idx = ki * kernel_w + kj;
+                        sum += input[input_idx] * kernel[kernel_idx];
+                    }
+                }
+                result[i * output_w + j] = sum;
+            }
+        }
+        result
+    }
 
     #[tokio::test]
     async fn test_conv2d_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // 4x4 input, 2x2 kernel -> 3x3 output
-        let input = Tensor::from_vec_on(
-            vec![
-                1.0, 2.0, 3.0, 4.0,
-                5.0, 6.0, 7.0, 8.0,
-                9.0, 10.0, 11.0, 12.0,
-                13.0, 14.0, 15.0, 16.0,
-            ],
-            vec![4, 4],
-            device.clone()
-        ).await.unwrap();
+        let input_data = vec![
+            1.0, 2.0, 3.0, 4.0,
+            5.0, 6.0, 7.0, 8.0,
+            9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0,
+        ];
+        let kernel_data = vec![1.0, 0.0, 0.0, 1.0];
         
-        let kernel = Tensor::from_vec_on(
-            vec![1.0, 0.0, 0.0, 1.0],
-            vec![2, 2],
-            device
-        ).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![2, 2], device).await.unwrap();
         
         let result = input.conv2d(&kernel).unwrap();
         assert_eq!(result.shape(), &[3, 3]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = conv2d_cpu(&input_data, &kernel_data, 4, 4, 2, 2);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_conv2d_edge_cases() {
+        let device = get_test_device().await;
+
+        // Identity kernel
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let kernel_data = vec![1.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![1, 1], device.clone()).await.unwrap();
+        let result = input.conv2d(&kernel).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output, input_data);
+
+        // Zero kernel
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let kernel_data = vec![0.0, 0.0, 0.0, 0.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3, 3], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let result = input.conv2d(&kernel).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        for val in output.iter() {
+            assert!(val.abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_conv2d_boundary() {
+        let device = get_test_device().await;
+
+        // Minimal convolution (2x2 input, 2x2 kernel -> 1x1 output)
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let kernel_data = vec![0.5, 0.5, 0.5, 0.5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![2, 2], device.clone()).await.unwrap();
+        let result = input.conv2d(&kernel).unwrap();
+        assert_eq!(result.shape(), &[1, 1]);
+        let output = result.to_vec().unwrap();
+        let expected = conv2d_cpu(&input_data, &kernel_data, 2, 2, 2, 2);
+        assert!((output[0] - expected[0]).abs() < 1e-5);
+
+        // 3x3 kernel (edge detection filter)
+        let input_data: Vec<f32> = (1..=25).map(|i| i as f32).collect();
+        let kernel_data = vec![-1.0, -1.0, -1.0, -1.0, 8.0, -1.0, -1.0, -1.0, -1.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5, 5], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![3, 3], device.clone()).await.unwrap();
+        let result = input.conv2d(&kernel).unwrap();
+        assert_eq!(result.shape(), &[3, 3]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = conv2d_cpu(&input_data, &kernel_data, 5, 5, 3, 3);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_conv2d_large_tensor() {
+        let device = get_test_device().await;
+
+        // 16x16 input, 3x3 kernel -> 14x14 output
+        let input_data: Vec<f32> = (0..256).map(|i| (i as f32) * 0.01).collect();
+        let kernel_data = vec![
+            0.0, 0.125, 0.0,
+            0.125, 0.5, 0.125,
+            0.0, 0.125, 0.0,
+        ];
+        
+        let input = Tensor::from_vec_on(input_data.clone(), vec![16, 16], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![3, 3], device).await.unwrap();
+        
+        let result = input.conv2d(&kernel).unwrap();
+        assert_eq!(result.shape(), &[14, 14]);
+        
+        let output = result.to_vec().unwrap();
+        let expected = conv2d_cpu(&input_data, &kernel_data, 16, 16, 3, 3);
+        
+        for (r, e) in output.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_conv2d_precision() {
+        let device = get_test_device().await;
+
+        // Test FP32 precision with typical CNN values
+        let input_data = vec![
+            0.123, 0.234, 0.345, 0.456,
+            0.567, 0.678, 0.789, 0.890,
+            0.901, 0.012, 0.123, 0.234,
+            0.345, 0.456, 0.567, 0.678,
+        ];
+        let kernel_data = vec![0.1, 0.2, 0.3, 0.4];
+        
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4, 4], device.clone()).await.unwrap();
+        let kernel = Tensor::from_vec_on(kernel_data.clone(), vec![2, 2], device).await.unwrap();
+        
+        let result = input.conv2d(&kernel).unwrap();
+        let output = result.to_vec().unwrap();
+        let expected = conv2d_cpu(&input_data, &kernel_data, 4, 4, 2, 2);
+        
+        // Verify FP32 precision
+        let max_error = output.iter().zip(expected.iter())
+            .map(|(r, e)| (r - e).abs())
+            .fold(0.0f32, f32::max);
+        
+        assert!(max_error < 1e-5, "Max error: {} exceeds FP32 threshold", max_error);
     }
 }
