@@ -104,17 +104,76 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
+
+    fn norm_cpu(input: &[f32]) -> f32 {
+        let sum_sq: f32 = input.iter().map(|&x| x * x).sum();
+        sum_sq.sqrt()
+    }
 
     #[tokio::test]
     async fn test_norm_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
-
-        let input = Tensor::from_vec_on(vec![3.0, 4.0], vec![2], device).await.unwrap();
+        let device = get_test_device().await;
+        let input_data = vec![3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device).await.unwrap();
         let result = input.norm().unwrap().to_vec().unwrap();
+        let expected = norm_cpu(&input_data);
+        
+        assert!((result[0] - expected).abs() < 1e-5, "Expected {}, got {}", expected, result[0]);
+    }
 
-        // ||[3,4]|| = sqrt(9 + 16) = 5
-        assert!((result[0] - 5.0).abs() < 1e-5);
+    #[tokio::test]
+    async fn test_norm_edge_cases() {
+        let device = get_test_device().await;
+        
+        // All zeros (norm = 0)
+        let input_data = vec![0.0, 0.0, 0.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let result = input.norm().unwrap().to_vec().unwrap();
+        assert!(result[0].abs() < 1e-6);
+        
+        // Single element
+        let input_data = vec![5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device).await.unwrap();
+        let result = input.norm().unwrap().to_vec().unwrap();
+        let expected = norm_cpu(&input_data);
+        assert!((result[0] - expected).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_norm_boundary() {
+        let device = get_test_device().await;
+        let input_data = vec![1e5, 1e-5, -1e5, 1e-5];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let result = input.norm().unwrap().to_vec().unwrap();
+        let expected = norm_cpu(&input_data);
+        
+        let rel_error = (result[0] - expected).abs() / expected;
+        assert!(rel_error < 1e-3, "Expected {}, got {} (rel error {})", expected, result[0], rel_error);
+    }
+
+    #[tokio::test]
+    async fn test_norm_large_tensor() {
+        let device = get_test_device().await;
+        let size = 100;
+        let input_data: Vec<f32> = (1..=size).map(|i| i as f32).collect();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+        let result = input.norm().unwrap().to_vec().unwrap();
+        let expected = norm_cpu(&input_data);
+        
+        let rel_error = (result[0] - expected).abs() / expected;
+        assert!(rel_error < 1e-3, "Expected {}, got {}", expected, result[0]);
+    }
+
+    #[tokio::test]
+    async fn test_norm_precision() {
+        let device = get_test_device().await;
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let gpu_result = input.norm().unwrap().to_vec().unwrap();
+        let cpu_result = norm_cpu(&input_data);
+        
+        let error = (gpu_result[0] - cpu_result).abs();
+        assert!(error < 1e-4, "Error {} exceeds threshold", error);
     }
 }
