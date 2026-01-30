@@ -131,12 +131,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_relu_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // Test data: [-2, -1, 0, 1, 2]
         let input = Tensor::from_vec_on(
@@ -156,5 +155,103 @@ mod tests {
         assert!((result[2] - 0.0).abs() < 1e-5);
         assert!((result[3] - 1.0).abs() < 1e-5);
         assert!((result[4] - 2.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_relu_edge_cases() {
+        // Edge cases: very small values near zero
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(
+            vec![-1e-6, -1e-10, 0.0, 1e-10, 1e-6],
+            vec![5],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.relu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert_eq!(result[0], 0.0);  // Small negative → 0
+        assert_eq!(result[1], 0.0);  // Tiny negative → 0
+        assert_eq!(result[2], 0.0);  // Zero → 0
+        assert!(result[3] >= 0.0);   // Tiny positive → positive
+        assert!(result[4] > 0.0);    // Small positive → positive
+    }
+
+    #[tokio::test]
+    async fn test_relu_boundary() {
+        // Boundary: infinities and large values
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.relu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        assert_eq!(result[0], 0.0);  // -inf → 0
+        assert_eq!(result[1], 0.0);  // Large negative → 0
+        assert_eq!(result[2], 0.0);  // 0 → 0
+        assert_eq!(result[3], 1e10); // Large positive → unchanged
+        assert!(result[4].is_infinite() && result[4].is_sign_positive()); // +inf → +inf
+    }
+
+    #[tokio::test]
+    async fn test_relu_large_tensor() {
+        // Stress test: 1000 elements
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let input_data: Vec<f32> = (0..size).map(|i| (i as f32) - 500.0).collect();
+        
+        let input = Tensor::from_vec_on(
+            input_data.clone(),
+            vec![size],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.relu().unwrap();
+        let result = output.to_vec().unwrap();
+
+        // Verify all elements correct
+        for (i, &out) in result.iter().enumerate() {
+            let expected = input_data[i].max(0.0);
+            assert!((out - expected).abs() < 1e-6);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_relu_precision() {
+        // Precision: GPU vs CPU reference
+        let device = get_test_device().await;
+
+        let input_data = vec![-5.0, -2.5, -1.0, -0.5, 0.0, 0.5, 1.0, 2.5, 5.0];
+        let input = Tensor::from_vec_on(
+            input_data.clone(),
+            vec![9],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = input.relu().unwrap();
+        let gpu_result = output.to_vec().unwrap();
+
+        // CPU reference
+        let cpu_result: Vec<f32> = input_data.iter().map(|&x| x.max(0.0)).collect();
+
+        // Should be exact (no numerical error in ReLU)
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert_eq!(gpu, cpu, "Mismatch at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }
