@@ -6,6 +6,7 @@ members = [
     "crates/core/config", 
     "crates/core/toadstool",
     "crates/auto_config",  # Re-enabled for zero-touch demo
+    "crates/barracuda",     # NEW: Hardware-agnostic tensor compute (Jan 30, 2026) 🦈
     
     # API and interfaces
     "crates/cli",

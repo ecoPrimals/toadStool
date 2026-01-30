@@ -1,0 +1,30 @@
+[package]
+name = "barracuda"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Team <team@toadstool.bio>"]
+description = "Hardware-agnostic tensor compute library using WebGPU (WGSL)"
+license = "MIT"
+
+[dependencies]
+# Core
+anyhow = "1.0"
+thiserror = "1.0"
+
+# GPU compute (WebGPU - hardware agnostic, handles CPU/GPU/NPU/TPU!)
+wgpu = { version = "0.19", features = ["wgsl"] }
+futures = "0.3"
+bytemuck = { version = "1.14", features = ["derive"] }
+
+# Logging
+log = "0.4"
+
+# Utilities
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["full"] }
+approx = "0.5"
+
+[features]
+default = []
