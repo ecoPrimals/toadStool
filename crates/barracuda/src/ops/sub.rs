@@ -134,12 +134,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_sub_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let lhs = Tensor::from_vec_on(vec![10.0, 20.0, 30.0], vec![3], device.clone()).await.unwrap();
         let rhs = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device).await.unwrap();
@@ -148,5 +147,65 @@ mod tests {
         assert!((result[0] - 9.0).abs() < 1e-5);
         assert!((result[1] - 18.0).abs() < 1e-5);
         assert!((result[2] - 27.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_sub_edge_cases() {
+        let device = get_test_device().await;
+
+        let lhs = Tensor::from_vec_on(vec![0.0, 1e-6, -1e-6, 1.0, -1.0], vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![0.0, 1e-6, -1e-6, 1.0, -1.0], vec![5], device).await.unwrap();
+
+        let result = lhs.sub(&rhs).unwrap().to_vec().unwrap();
+        assert!(result[0].abs() < 1e-12);
+        assert!(result[1].abs() < 1e-12);
+        assert!(result[2].abs() < 1e-12);
+    }
+
+    #[tokio::test]
+    async fn test_sub_boundary() {
+        let device = get_test_device().await;
+
+        let lhs = Tensor::from_vec_on(vec![f32::INFINITY, 1e10, 0.0], vec![3], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(vec![100.0, 100.0, 100.0], vec![3], device).await.unwrap();
+
+        let result = lhs.sub(&rhs).unwrap().to_vec().unwrap();
+        assert!(result[0].is_infinite() && result[0].is_sign_positive());
+        assert_eq!(result[2], -100.0);
+    }
+
+    #[tokio::test]
+    async fn test_sub_large_tensor() {
+        let device = get_test_device().await;
+
+        let size = 1000;
+        let lhs_data: Vec<f32> = (0..size).map(|i| (i as f32) * 2.0).collect();
+        let rhs_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
+
+        let lhs = Tensor::from_vec_on(lhs_data, vec![size], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data, vec![size], device).await.unwrap();
+
+        let result = lhs.sub(&rhs).unwrap().to_vec().unwrap();
+        for (i, &val) in result.iter().enumerate() {
+            assert!((val - i as f32).abs() < 1e-4);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sub_precision() {
+        let device = get_test_device().await;
+
+        let lhs_data = vec![5.0, 2.5, 1.0, 0.0, -1.0];
+        let rhs_data = vec![2.0, 1.5, 0.5, 0.0, -0.5];
+
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![5], device.clone()).await.unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![5], device).await.unwrap();
+
+        let gpu_result = lhs.sub(&rhs).unwrap().to_vec().unwrap();
+        let cpu_result: Vec<f32> = lhs_data.iter().zip(rhs_data.iter()).map(|(&a, &b)| a - b).collect();
+
+        for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
+            assert!((gpu - cpu).abs() < 1e-6, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+        }
     }
 }

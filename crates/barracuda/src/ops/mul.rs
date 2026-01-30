@@ -143,6 +143,7 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_mul_basic() {
@@ -155,7 +156,7 @@ mod tests {
         let result = output.to_vec().unwrap();
 
         let expected = vec![2.0, 6.0, 12.0, 20.0, 30.0];
-        for (i, (&r, &e)) in result.iter().zip(expected.iter()).enumerate() {
+        for (&r, &e) in result.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-5);
         }
     }
