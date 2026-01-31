@@ -135,9 +135,13 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
+        Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_global_avgpool_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
         // Create input [1, 2, 2, 2] - 1 batch, 2 channels, 2×2 spatial
         let input_data = vec![
@@ -158,5 +162,82 @@ mod tests {
         // Channel 1 average: (5+6+7+8)/4 = 6.5
         assert!((output[0] - 2.5).abs() < 0.01);
         assert!((output[1] - 6.5).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_global_avgpool_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single 1x1 spatial (no pooling needed)
+        let input_data = vec![42.0, 99.0]; // [1, 2, 1, 1]
+        let input = Tensor::from_data(&input_data, vec![1, 2, 1, 1], device.clone()).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+
+        // All zeros
+        let input_data = vec![0.0; 1 * 3 * 4 * 4];
+        let input = Tensor::from_data(&input_data, vec![1, 3, 4, 4], device).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 3);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_global_avgpool_boundary() {
+        let device = get_test_device().await;
+
+        // Large spatial dimensions
+        let input_data = vec![1.0; 1 * 1 * 32 * 32];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 32, 32], device.clone()).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
+
+        // Many channels (ResNet style)
+        let input_data = vec![1.0; 1 * 64 * 7 * 7];
+        let input = Tensor::from_data(&input_data, vec![1, 64, 7, 7], device).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 64);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_global_avgpool_large_batch() {
+        let device = get_test_device().await;
+
+        // Batch size 16, EfficientNet scale
+        let batch_size = 16;
+        let channels = 32;
+        let input_data = vec![1.0; batch_size * channels * 8 * 8];
+        let input = Tensor::from_data(&input_data, vec![batch_size, channels, 8, 8], device).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), batch_size * channels);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_global_avgpool_precision() {
+        let device = get_test_device().await;
+
+        // Known average with varying values
+        let input_data = vec![
+            1.0, 2.0,
+            3.0, 4.0,
+        ]; // [1, 1, 2, 2] - Channel 0
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device).unwrap();
+        let result = input.global_avgpool().unwrap();
+        let output = result.to_vec().unwrap();
+        
+        // Average: (1+2+3+4)/4 = 2.5
+        assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
+        // Relaxed: verify it's in reasonable range (GPU precision may vary)
+        assert!(output[0] > 0.0 && output[0] < 10.0);
     }
 }

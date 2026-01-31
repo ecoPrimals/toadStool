@@ -66,11 +66,81 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_fold() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_fold_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 27 * 36]; // Folded 1x3x8x8 with 3x3 kernel
         let output = fold(&dev.device, &dev.queue, &input, 1, 3, 8, 8, 3, 3, 1).await.unwrap();
         assert_eq!(output.len(), 1 * 3 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_fold_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Small kernel (2x2)
+        let input = vec![1.0; 1 * 4 * 16]; // 1 batch, 1 channel, 4x4 patches with 2x2 kernel
+        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 5, 5, 2, 2, 1).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 5 * 5);
+
+        // Single channel
+        let input = vec![1.0; 1 * 9 * 9]; // 1x1x4x4 with 3x3 kernel
+        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 3, 3, 1).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_fold_boundary() {
+        let dev = get_test_device().await;
+
+        // Stride > 1 (non-overlapping patches)
+        // Simplified: smaller dimensions
+        let input = vec![1.0; 1 * 4 * 9]; // Simplified input
+        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 6, 6, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 6 * 6);
+
+        // Single batch, single channel
+        let input = vec![1.0; 1 * 9 * 4]; // Simplified
+        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 2, 2, 1).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_fold_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4
+        let batch_size = 4;
+        let channels = 3;
+        let out_h = 8;
+        let out_w = 8;
+        let kernel_h = 3;
+        let kernel_w = 3;
+        let num_patches = (out_h - kernel_h + 1) * (out_w - kernel_w + 1);
+        let input = vec![1.0; batch_size * channels * kernel_h * kernel_w * num_patches];
+        
+        let output = fold(&dev.device, &dev.queue, &input, batch_size, channels, out_h, out_w, kernel_h, kernel_w, 1).await.unwrap();
+        assert_eq!(output.len(), batch_size * channels * out_h * out_w);
+    }
+
+    #[tokio::test]
+    async fn test_fold_precision() {
+        let dev = get_test_device().await;
+
+        // Test averaging of overlapping regions
+        let input = vec![1.0; 1 * 9 * 9]; // 9 patches of 3x3
+        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 5, 5, 3, 3, 1).await.unwrap();
+        assert_eq!(output.len(), 25);
+        
+        // All outputs should be finite and non-negative
+        assert!(output.iter().all(|&x| x.is_finite() && x >= 0.0));
+        
+        // Center elements should have higher counts (more overlap) but same value (all 1.0)
+        // With uniform input, output should be uniform
+        assert!(output.iter().all(|&x| (x - 1.0).abs() < 0.1));
     }
 }
