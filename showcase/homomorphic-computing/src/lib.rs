@@ -13,28 +13,24 @@
 //! - Maintain pure Rust throughout the stack
 //! - Dogfood our own technology
 //!
-//! # Example
+//! # Capability-Based Selection
+//!
+//! **Deep Debt Principle**: Runtime discovery, no hardcoding
 //!
 //! ```rust,no_run
 //! use homomorphic_computing::*;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//!     // Initialize substrates
-//!     let cpu = CpuHomomorphic::new()?;
-//!     let gpu = GpuHomomorphic::new().await?;
-//!     let npu = NpuHomomorphic::new()?;
+//!     // Auto-detect available substrates (CPU, GPU, NPU)
+//!     let selector = SubstrateSelector::detect().await?;
 //!     
-//!     // Benchmark encrypted addition
-//!     let dataset = generate_encrypted_dataset(10_000);
+//!     // Select based on workload characteristics
+//!     let hints = WorkloadHints::edge_deployment();
+//!     let substrate = selector.select(&hints)?;
 //!     
-//!     let cpu_result = cpu.encrypted_add_batch(&dataset.a, &dataset.b)?;
-//!     let gpu_result = gpu.encrypted_add_batch(&dataset.a, &dataset.b).await?;
-//!     let npu_result = npu.encrypted_add_batch(&dataset.a, &dataset.b)?;
-//!     
-//!     // Verify all results match
-//!     assert_eq!(cpu_result, gpu_result);
-//!     assert_eq!(gpu_result, npu_result);
+//!     println!("Selected: {}", substrate.name());
+//!     // "Selected: NPU (Akida)" - best for edge deployment
 //!     
 //!     Ok(())
 //! }
@@ -44,10 +40,14 @@
 
 pub mod schemes;
 pub mod substrates;
+pub mod selector;  // ✅ NEW: Capability-based substrate selection
 // pub mod benchmarks;  // TODO: Implement benchmark utilities
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+
+// Re-export selector types for convenience
+pub use selector::{SubstrateSelector, WorkloadHints};
 
 /// Encrypted dataset for benchmarking
 #[derive(Clone, Debug, Serialize, Deserialize)]

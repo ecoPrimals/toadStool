@@ -43,3 +43,7 @@ proptest = "1.4"
 [[example]]
 name = "cross_substrate_comparison"
 path = "examples/cross_substrate_comparison.rs"
+
+[[example]]
+name = "capability_selection"
+path = "examples/capability_selection.rs"
