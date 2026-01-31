@@ -9,7 +9,7 @@
 //! - Falls back to wgpu for non-neuromorphic operations
 //! - Maintains zero hardcoding principle
 
-use crate::error::{BarracudaError, Result};
+use crate::error::Result;
 use std::path::PathBuf;
 
 /// Akida board information
@@ -85,8 +85,6 @@ pub struct AkidaCapabilities {
 ///
 /// **Deep Debt**: Runtime discovery, zero hardcoding
 pub fn detect_akida_boards() -> Result<AkidaCapabilities> {
-    use std::fs;
-    
     log::info!("Detecting Akida NPU boards...");
     
     // Scan PCIe bus for BrainChip devices
@@ -152,14 +150,12 @@ struct PcieDevice {
 
 /// Scan PCIe bus for BrainChip Akida devices
 fn scan_pcie_for_akida() -> Result<Vec<PcieDevice>> {
-    use std::fs;
-    
     let mut devices = Vec::new();
     
     // Scan /sys/bus/pci/devices for BrainChip vendor ID (0x1e7c)
     let pci_dir = "/sys/bus/pci/devices";
     
-    if let Ok(entries) = fs::read_dir(pci_dir) {
+    if let Ok(entries) = std::fs::read_dir(pci_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             let address = entry.file_name().to_string_lossy().to_string();
@@ -169,8 +165,8 @@ fn scan_pcie_for_akida() -> Result<Vec<PcieDevice>> {
             let device_path = path.join("device");
             
             if let (Ok(vendor_str), Ok(device_str)) = (
-                fs::read_to_string(&vendor_path),
-                fs::read_to_string(&device_path),
+                std::fs::read_to_string(&vendor_path),
+                std::fs::read_to_string(&device_path),
             ) {
                 // Parse hex values
                 let vendor_id = u16::from_str_radix(vendor_str.trim().trim_start_matches("0x"), 16)
@@ -285,12 +281,10 @@ fn estimate_temperature(index: usize) -> f64 {
 
 /// Check board health
 fn check_board_health(address: &str) -> Result<BoardHealth> {
-    use std::fs;
-    
     // Check if device is accessible
     let base_path = format!("/sys/bus/pci/devices/{}", address);
     
-    if fs::metadata(&base_path).is_ok() {
+    if std::fs::metadata(&base_path).is_ok() {
         // Device exists and is accessible
         Ok(BoardHealth::Healthy)
     } else {

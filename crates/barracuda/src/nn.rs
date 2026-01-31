@@ -48,7 +48,6 @@ use crate::ops::matmul::MatMul;
 use crate::ops::add::Add;
 use crate::ops::mul::Mul;
 use crate::ops::sub::Sub;
-use crate::ops::sum::Sum;
 use crate::ops::transpose::Transpose;
 use crate::ops::broadcast::Broadcast;
 use crate::ops::relu::ReLU;
@@ -849,7 +848,7 @@ impl NeuralNetworkBuilder {
                     let bias_data = vec![0.0; *out_features];
                     let bias = Tensor::from_data(&bias_data, vec![*out_features], Arc::new(self.device.clone()))?;
                     
-                    prev_output_size = Some(*out_features);
+                    let _ = prev_output_size.replace(*out_features);  // Track for validation
                     
                     LayerState {
                         weights: Some(weights),
