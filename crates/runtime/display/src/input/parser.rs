@@ -44,6 +44,11 @@ impl EventParser {
     pub fn set_focused_window(&mut self, window: Option<WindowId>) {
         self.focused_window = window;
     }
+    
+    /// Get current modifiers (for testing)
+    pub fn modifiers(&self) -> Modifiers {
+        self.modifiers
+    }
 
     /// Parse an evdev InputEvent into our InputEvent
     ///
@@ -122,7 +127,9 @@ impl EventParser {
     }
 
     /// Update modifier key state
-    fn update_modifiers(&mut self, key_code: evdev::KeyCode, value: i32) {
+    ///
+    /// **Exposed for testing**
+    pub fn update_modifiers(&mut self, key_code: evdev::KeyCode, value: i32) {
         let pressed = value != 0;
 
         match key_code {
@@ -253,6 +260,8 @@ impl EventParser {
     /// Handle mouse button event
     ///
     /// Note: This is called separately when we detect BTN_LEFT/RIGHT/MIDDLE
+    ///
+    /// **Exposed for testing**
     pub fn handle_mouse_button(
         &mut self,
         button: evdev::KeyCode,

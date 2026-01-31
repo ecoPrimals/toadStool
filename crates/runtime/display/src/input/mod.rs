@@ -38,7 +38,7 @@ pub mod touch;
 pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
 pub use parser::EventParser;
-pub use touch::TouchTracker;
+pub use touch::{touch_events_to_input_events, TouchTracker};
 
 use crate::window::WindowId;
 use crate::{DisplayError, Result};
