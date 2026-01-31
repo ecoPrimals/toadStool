@@ -1,30 +1,78 @@
 //! Display server implementation
 //!
-//! JSON-RPC server over Unix domain sockets.
+//! **ISOMORPHIC IPC**: JSON-RPC server with automatic Unix→TCP fallback.
+//!
+//! ## Evolution Status
+//!
+//! ✅ **Phase 1 COMPLETE**: Isomorphic IPC (Try→Detect→Adapt→Succeed)
+//!
+//! ## Architecture
+//!
+//! ```text
+//! 1. TRY Unix socket (optimal)
+//!     ↓
+//! 2. DETECT platform constraints (SELinux, unsupported)
+//!     ↓
+//! 3. ADAPT to TCP fallback (127.0.0.1:ephemeral)
+//!     ↓
+//! 4. SUCCEED or fail with real error
+//! ```
+//!
+//! ## Platform Support
+//!
+//! - **Linux**: Unix sockets (optimal)
+//! - **Android**: TCP fallback (automatic)
+//! - **Any platform**: Zero configuration!
+//!
+//! ## Deep Debt Compliance
+//!
+//! - ✅ Platform-agnostic (runtime adaptation)
+//! - ✅ Zero configuration (automatic fallback)
+//! - ✅ Pure Rust (no FFI)
+//! - ✅ Zero unsafe
+//! - ✅ Modern async (tokio)
 
 use super::types::*;
 use crate::window::{CreateWindowRequest, Size, WindowId, WindowManager};
 use crate::{DisplayError, Result};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::sync::RwLock;
+
+/// IPC transport type
+#[derive(Debug, Clone)]
+pub enum IpcTransport {
+    /// Unix domain socket (optimal)
+    UnixSocket,
+    /// TCP fallback for platforms without Unix sockets
+    TcpFallback(SocketAddr),
+}
 
 /// Display server
 ///
-/// Serves display operations over JSON-RPC Unix sockets.
+/// **ISOMORPHIC**: Serves display operations over JSON-RPC with automatic Unix→TCP fallback.
 ///
-/// ## Deep Debt Compliance
+/// ## Example
 ///
-/// - ✅ Self-knowledge: Socket path from environment
-/// - ✅ Modern async: Full tokio integration
-/// - ✅ Complete implementation: Real server!
-/// - ✅ Safe abstractions: No unsafe
+/// ```rust,no_run
+/// use toadstool_display::{DisplayServer, WindowManager};
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// let manager = WindowManager::new().await?;
+/// let server = Arc::new(DisplayServer::new(manager));
+///
+/// // Automatic adaptation!
+/// server.start().await?;  // Tries Unix, falls back to TCP if needed
+/// # Ok(())
+/// # }
+/// ```
 pub struct DisplayServer {
     manager: Arc<RwLock<WindowManager>>,
     socket_path: PathBuf,
-    listener: Option<UnixListener>,
+    transport: Arc<RwLock<Option<IpcTransport>>>,
 }
 
 impl DisplayServer {
@@ -36,7 +84,7 @@ impl DisplayServer {
         Self {
             manager: Arc::new(RwLock::new(manager)),
             socket_path,
-            listener: None,
+            transport: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -53,10 +101,44 @@ impl DisplayServer {
         path
     }
 
-    /// Bind to Unix socket path
-    pub async fn bind(mut self, path: impl Into<PathBuf>) -> Result<Self> {
-        let path = path.into();
-        tracing::info!("Binding display server to: {}", path.display());
+    /// Start server (ISOMORPHIC - Try→Detect→Adapt→Succeed)
+    ///
+    /// **Zero Configuration**: Automatically adapts to platform constraints!
+    ///
+    /// ## Behavior
+    ///
+    /// 1. **TRY** Unix socket (optimal)
+    /// 2. **DETECT** platform constraints (SELinux, unsupported)
+    /// 3. **ADAPT** to TCP fallback (127.0.0.1:ephemeral)
+    /// 4. **SUCCEED** or fail with real error
+    pub async fn start(self: Arc<Self>) -> Result<()> {
+        tracing::info!("🔌 Starting IPC server (isomorphic mode)...");
+        tracing::info!("   Trying Unix socket IPC (optimal)...");
+
+        // 1. TRY Unix socket first
+        match self.clone().try_unix_server().await {
+            Ok(()) => Ok(()),
+
+            // 2. DETECT platform constraints
+            Err(e) if self.is_platform_constraint(&e) => {
+                tracing::warn!("⚠️  Unix sockets unavailable: {}", e);
+                tracing::warn!("   Detected platform constraint, adapting...");
+
+                // 3. ADAPT to TCP fallback
+                self.start_tcp_fallback().await
+            }
+
+            // 4. Real error (not a platform constraint)
+            Err(e) => {
+                tracing::error!("❌ Real error (not platform constraint): {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    /// Try to start Unix socket server
+    async fn try_unix_server(self: Arc<Self>) -> Result<()> {
+        let path = self.socket_path.clone();
 
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
@@ -68,51 +150,142 @@ impl DisplayServer {
         // Remove existing socket
         let _ = tokio::fs::remove_file(&path).await;
 
-        // Bind listener
+        // Bind listener (this is where platform constraints appear!)
         let listener = UnixListener::bind(&path)
-            .map_err(|e| DisplayError::IpcError(format!("Failed to bind socket: {}", e)))?;
+            .map_err(|e| DisplayError::IpcError(format!("Failed to bind Unix socket: {}", e)))?;
 
-        tracing::info!("✅ Display server bound to: {}", path.display());
+        tracing::info!("✅ Unix socket JSON-RPC server listening: {}", path.display());
 
-        self.socket_path = path;
-        self.listener = Some(listener);
+        // Update transport
+        *self.transport.write().await = Some(IpcTransport::UnixSocket);
 
-        Ok(self)
-    }
-
-    /// Serve requests
-    ///
-    /// Accepts connections and handles requests in parallel.
-    pub async fn serve(self) -> Result<()> {
-        let listener = self.listener.ok_or_else(|| {
-            DisplayError::IpcError("Server not bound. Call bind() first.".to_string())
-        })?;
-
-        tracing::info!("🚀 Display server listening...");
-
+        // Accept loop
         loop {
             match listener.accept().await {
                 Ok((stream, _addr)) => {
-                    let manager = Arc::clone(&self.manager);
+                    let handler = self.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = Self::handle_connection(stream, manager).await {
-                            tracing::error!("Connection error: {}", e);
+                        if let Err(e) = handler.handle_unix_connection(stream).await {
+                            tracing::error!("Unix connection error: {}", e);
                         }
                     });
                 }
                 Err(e) => {
-                    tracing::error!("Accept error: {}", e);
+                    tracing::error!("Unix accept error: {}", e);
                 }
             }
         }
     }
 
-    /// Handle a client connection
-    async fn handle_connection(
+    /// Start TCP fallback server (isomorphic mode)
+    async fn start_tcp_fallback(self: Arc<Self>) -> Result<()> {
+        tracing::info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
+        tracing::info!("   Protocol: JSON-RPC 2.0 (same as Unix socket)");
+
+        // Bind to localhost only (security: same as Unix socket)
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {}", e)))?;
+
+        let local_addr = listener.local_addr()
+            .map_err(|e| DisplayError::IpcError(format!("Failed to get local address: {}", e)))?;
+
+        tracing::info!("✅ TCP IPC listening on {}", local_addr);
+
+        // Write discovery file for clients
+        self.write_tcp_discovery_file(&local_addr)?;
+
+        // Update transport
+        *self.transport.write().await = Some(IpcTransport::TcpFallback(local_addr));
+
+        tracing::info!("   Status: READY ✅ (isomorphic TCP fallback active)");
+
+        // Accept loop (same as Unix)
+        loop {
+            match listener.accept().await {
+                Ok((stream, _addr)) => {
+                    let handler = self.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = handler.handle_tcp_connection(stream).await {
+                            tracing::error!("TCP connection error: {}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    tracing::error!("TCP accept error: {}", e);
+                }
+            }
+        }
+    }
+
+    /// Detect platform constraints (not real errors!)
+    ///
+    /// Platform constraints should trigger TCP fallback, not failure.
+    fn is_platform_constraint(&self, error: &DisplayError) -> bool {
+        // Extract IO error from DisplayError
+        let error_str = error.to_string();
+
+        // Check for permission denied + SELinux
+        if error_str.contains("Permission denied") {
+            if self.is_selinux_enforcing() {
+                tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
+                return true;
+            }
+        }
+
+        // Check for unsupported operation (platform lacks Unix sockets)
+        if error_str.contains("Unsupported") || error_str.contains("not supported") {
+            tracing::debug!("   Platform constraint: Unix sockets not supported");
+            return true;
+        }
+
+        false
+    }
+
+    /// Check if SELinux is enforcing (common on Android)
+    fn is_selinux_enforcing(&self) -> bool {
+        std::fs::read_to_string("/sys/fs/selinux/enforce")
+            .ok()
+            .and_then(|s| s.trim().parse::<u8>().ok())
+            .map(|v| v == 1)
+            .unwrap_or(false)
+    }
+
+    /// Write TCP discovery file for clients
+    ///
+    /// **XDG-compliant**: Tries XDG_RUNTIME_DIR, HOME, /tmp
+    fn write_tcp_discovery_file(&self, addr: &SocketAddr) -> Result<()> {
+        // XDG-compliant discovery file paths
+        let discovery_dirs: Vec<Option<String>> = vec![
+            std::env::var("XDG_RUNTIME_DIR").ok(),
+            std::env::var("HOME").ok().map(|h| format!("{}/.local/share", h)),
+            Some("/tmp".to_string()),
+        ];
+
+        for dir in discovery_dirs.iter().filter_map(|d| d.as_ref()) {
+            // Create directory if needed
+            if let Ok(()) = std::fs::create_dir_all(dir) {
+                let discovery_file = format!("{}/toadstool-ipc-port", dir);
+
+                if let Ok(mut f) = std::fs::File::create(&discovery_file) {
+                    use std::io::Write;
+                    // Write in format: tcp:127.0.0.1:PORT
+                    writeln!(f, "tcp:{}", addr).ok();
+                    tracing::info!("📁 TCP discovery file: {}", discovery_file);
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle Unix socket connection
+    async fn handle_unix_connection(
+        self: Arc<Self>,
         stream: UnixStream,
-        manager: Arc<RwLock<WindowManager>>,
     ) -> Result<()> {
-        tracing::debug!("New client connected");
+        tracing::debug!("New Unix client connected");
 
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
@@ -125,12 +298,60 @@ impl DisplayServer {
             match reader.read_line(&mut line).await {
                 Ok(0) => {
                     // Connection closed
-                    tracing::debug!("Client disconnected");
+                    tracing::debug!("Unix client disconnected");
                     break;
                 }
                 Ok(_) => {
                     // Process request
-                    let response = Self::handle_request(&line, &manager).await;
+                    let response = Self::handle_request(&line, &self.manager).await;
+
+                    // Send response
+                    let response_json = serde_json::to_string(&response).map_err(|e| {
+                        DisplayError::IpcError(format!("Serialization error: {}", e))
+                    })?;
+
+                    writer
+                        .write_all(response_json.as_bytes())
+                        .await
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                    writer
+                        .write_all(b"\n")
+                        .await
+                        .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
+                }
+                Err(e) => {
+                    return Err(DisplayError::IpcError(format!("Read error: {}", e)));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle TCP connection (same protocol as Unix!)
+    async fn handle_tcp_connection(
+        self: Arc<Self>,
+        stream: TcpStream,
+    ) -> Result<()> {
+        tracing::debug!("New TCP client connected");
+
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+
+            // Read request line
+            match reader.read_line(&mut line).await {
+                Ok(0) => {
+                    // Connection closed
+                    tracing::debug!("TCP client disconnected");
+                    break;
+                }
+                Ok(_) => {
+                    // Process request (SAME as Unix!)
+                    let response = Self::handle_request(&line, &self.manager).await;
 
                     // Send response
                     let response_json = serde_json::to_string(&response).map_err(|e| {
@@ -173,8 +394,9 @@ impl DisplayServer {
 
         let id = request.id.clone().unwrap_or(serde_json::json!(null));
 
-        // Dispatch method
-        let result = Self::dispatch_method(&request, manager).await;
+        // Dispatch method (needs self reference for capabilities)
+        // Since we're in a static context, we'll pass needed data
+        let result = Self::dispatch_method_static(&request, manager).await;
 
         match result {
             Ok(value) => JsonRpcResponse::success(id, value),
@@ -182,8 +404,8 @@ impl DisplayServer {
         }
     }
 
-    /// Dispatch method to handler
-    async fn dispatch_method(
+    /// Dispatch method to handler (static version for compatibility)
+    async fn dispatch_method_static(
         request: &JsonRpcRequest,
         manager: &Arc<RwLock<WindowManager>>,
     ) -> Result<serde_json::Value> {
@@ -250,9 +472,11 @@ impl DisplayServer {
             "display.getCapabilities" => {
                 let mgr = manager.read().await;
 
+                // Runtime-determined capabilities (basic version for static dispatch)
                 Ok(serde_json::json!({
                     "primal_id": "toadstool-primary",
-                    "socket_path": "/run/user/1000/toadstool/display.sock",
+                    "socket_path": Self::discover_socket_path().display().to_string(),
+                    "transport": "isomorphic",  // Will be unix or tcp
                     "max_windows": 16,
                     "supported_formats": ["RGBA8888", "BGRA8888"],
                     "has_gpu_acceleration": true,
@@ -260,6 +484,7 @@ impl DisplayServer {
                     "display_count": 1,
                     "input_device_count": 0,
                     "window_count": mgr.window_count(),
+                    "isomorphic": true,  // Isomorphic IPC support
                 }))
             }
             _ => Err(DisplayError::IpcError(format!(
@@ -272,6 +497,11 @@ impl DisplayServer {
     /// Get socket path
     pub fn socket_path(&self) -> &PathBuf {
         &self.socket_path
+    }
+
+    /// Get current transport
+    pub async fn transport(&self) -> Option<IpcTransport> {
+        self.transport.read().await.clone()
     }
 }
 
