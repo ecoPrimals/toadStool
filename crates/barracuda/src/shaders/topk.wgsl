@@ -4,7 +4,6 @@
 
 struct TopKParams {
     k: u32,
-    _padding: vec3<u32>,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;

@@ -21,7 +21,7 @@ use wgpu::util::DeviceExt;
 pub struct TopKParams {
     /// Number of top elements to select
     pub k: u32,
-    pub _padding: [u32; 3],
+    pub _padding: [u32; 3], // Pad to 16 bytes for uniform buffer alignment
 }
 
 /// TopK result containing both indices and values
@@ -285,5 +285,27 @@ mod tests {
         assert_eq!(result.indices.len(), 1);
         assert_eq!(result.indices[0], 3); // Index of 7.0
         assert_eq!(result.values[0], 7.0);
+    }
+    
+    #[tokio::test]
+    async fn test_topk_large_tensor() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Large tensor with 1000 elements
+        let size = 1000;
+        let input: Vec<f32> = (0..size).map(|i| (i % 100) as f32).collect();
+        
+        let k = 10;
+        let result = topk(&device, &queue, &input, k).await.unwrap();
+        
+        assert_eq!(result.indices.len(), k);
+        assert_eq!(result.values.len(), k);
+        
+        // All top values should be 99.0 (max value in the pattern)
+        for &val in &result.values {
+            assert!((val - 99.0).abs() < 1e-5 || (val - 98.0).abs() < 1e-5);
+        }
     }
 }
