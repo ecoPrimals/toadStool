@@ -60,6 +60,10 @@ pub struct WasmRuntimeConfig {
 
     /// Fuel limit for execution (None = unlimited)
     pub fuel_limit: Option<u64>,
+
+    /// Component model configuration (optional)
+    /// EVOLVED: Added for complete component model support
+    pub component_model: Option<crate::component_model::ComponentModelConfig>,
 }
 
 impl Default for WasmRuntimeConfig {
@@ -77,6 +81,8 @@ impl Default for WasmRuntimeConfig {
             execution_timeout_ms: 30000,
             module_load_timeout_ms: 10000,
             fuel_limit: Some(1_000_000),
+            // Component model disabled by default for backward compatibility
+            component_model: None,
         }
     }
 }
@@ -121,6 +127,8 @@ pub struct WasmRuntimeConfigBuilder {
     execution_timeout_ms: Option<u64>,
     module_load_timeout_ms: Option<u64>,
     fuel_limit: Option<Option<u64>>,
+    /// EVOLVED: Component model configuration
+    component_model: Option<crate::component_model::ComponentModelConfig>,
 }
 
 impl WasmRuntimeConfigBuilder {
@@ -166,6 +174,13 @@ impl WasmRuntimeConfigBuilder {
         self
     }
 
+    /// Enable component model support
+    /// EVOLVED: Complete component model integration
+    pub fn with_component_model(mut self, config: crate::component_model::ComponentModelConfig) -> Self {
+        self.component_model = Some(config);
+        self
+    }
+
     /// Build the configuration
     pub fn build(self) -> WasmRuntimeConfig {
         let default = WasmRuntimeConfig::default();
@@ -181,6 +196,7 @@ impl WasmRuntimeConfigBuilder {
                 .module_load_timeout_ms
                 .unwrap_or(default.module_load_timeout_ms),
             fuel_limit: self.fuel_limit.unwrap_or(default.fuel_limit),
+            component_model: self.component_model.or(default.component_model),
         }
     }
 }

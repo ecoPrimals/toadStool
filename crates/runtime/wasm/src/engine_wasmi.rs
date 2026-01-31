@@ -59,6 +59,10 @@ pub struct WasmRuntimeEngine {
     /// Module executor
     executor: Arc<ModuleExecutor>,
 
+    /// Component registry (when component model is enabled)
+    /// EVOLVED: Complete integration for component model support
+    component_registry: Option<Arc<crate::component_model::ComponentRegistry>>,
+
     /// Initialized flag
     initialized: bool,
 }
@@ -69,6 +73,7 @@ impl std::fmt::Debug for WasmRuntimeEngine {
             .field("config", &self.config)
             .field("engine", &"<wasmi::Engine>")
             .field("metrics", &"<MetricsCollector>")
+            .field("component_registry", &self.component_registry.as_ref().map(|_| "<ComponentRegistry>"))
             .field("initialized", &self.initialized)
             .finish()
     }
@@ -87,18 +92,25 @@ impl WasmRuntimeEngine {
 
         // Initialize components
         let metrics = Arc::new(MetricsCollector::new());
-        let config = Arc::new(config);
-        let cache = Arc::new(ModuleCache::new(config.cache.max_entries as usize));
-        let loader = Arc::new(ModuleLoader::new(engine.clone(), (*config).clone()));
-        let executor = Arc::new(ModuleExecutor::new(engine.clone(), (*config).clone()));
+        let config_arc = Arc::new(config.clone());
+        let cache = Arc::new(ModuleCache::new(config_arc.cache.max_entries as usize));
+        let loader = Arc::new(ModuleLoader::new(engine.clone(), config.clone()));
+        let executor = Arc::new(ModuleExecutor::new(engine.clone(), config.clone()));
+
+        // EVOLVED: Initialize component registry if component model is enabled
+        let component_registry = config.component_model.as_ref().map(|cm_config| {
+            info!("✅ Component model enabled - initializing registry");
+            Arc::new(crate::component_model::ComponentRegistry::new(cm_config.clone()))
+        });
 
         Ok(Self {
             engine,
-            config,
+            config: config_arc,
             metrics,
             cache,
             loader,
             executor,
+            component_registry,
             initialized: false,
         })
     }
@@ -133,6 +145,12 @@ impl WasmRuntimeEngine {
     /// Get configuration
     pub fn config(&self) -> &WasmRuntimeConfig {
         &self.config
+    }
+
+    /// Get component registry (if component model is enabled)
+    /// EVOLVED: Public accessor for component model support
+    pub fn component_registry(&self) -> Option<&Arc<crate::component_model::ComponentRegistry>> {
+        self.component_registry.as_ref()
     }
 }
 

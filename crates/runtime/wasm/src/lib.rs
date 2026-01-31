@@ -49,8 +49,8 @@ pub mod metrics;
 pub mod module_loader;
 pub mod wasi_context;
 
-// Component model: Phase 2 (orchestrate wasmtime subprocess)
-#[cfg(feature = "component-model")]
+// Component model: Always available, enabled/disabled at runtime (not compile-time!)
+// EVOLVED: From feature-gated to runtime capability-based
 pub mod component_model;
 
 // Re-export public API
@@ -62,7 +62,7 @@ pub use execution_wasmi::ModuleExecutor;
 pub use module_loader::ModuleLoader;
 pub use wasi_context::{create_wasi_context, WasiConfig};
 
-#[cfg(feature = "component-model")]
+// EVOLVED: Component model always exported, capability detected at runtime
 pub use component_model::*;
 
 // Helper function for error conversion
