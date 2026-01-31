@@ -121,9 +121,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_fill_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Fill [3, 4] tensor with 7.5
         let result = Tensor::fill(vec![3, 4], 7.5, device).unwrap();
@@ -133,6 +137,77 @@ mod tests {
         assert_eq!(output.len(), 12);
         for val in output.iter() {
             assert_eq!(*val, 7.5);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fill_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single element
+        let result = Tensor::fill(vec![1], 99.0, device.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 99.0);
+
+        // Fill with zero
+        let result = Tensor::fill(vec![5, 5], 0.0, device.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 25);
+        assert!(output.iter().all(|&x| x == 0.0));
+
+        // Negative value
+        let result = Tensor::fill(vec![3], -5.5, device).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x == -5.5));
+    }
+
+    #[tokio::test]
+    async fn test_fill_boundary() {
+        let device = get_test_device().await;
+
+        // Very small value
+        let result = Tensor::fill(vec![4], 1e-10, device.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| (x - 1e-10).abs() < 1e-15));
+
+        // Very large value
+        let result = Tensor::fill(vec![4], 1e10, device.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| (x - 1e10).abs() < 1e5));
+
+        // Different shapes
+        let result = Tensor::fill(vec![2, 3, 4], 3.14, device).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 24);
+        assert!(output.iter().all(|&x| (x - 3.14).abs() < 1e-6));
+    }
+
+    #[tokio::test]
+    async fn test_fill_large_batch() {
+        let device = get_test_device().await;
+
+        // Large tensor
+        let result = Tensor::fill(vec![100, 100], 42.0, device).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 10_000);
+        assert!(output.iter().all(|&x| x == 42.0));
+    }
+
+    #[tokio::test]
+    async fn test_fill_precision() {
+        let device = get_test_device().await;
+
+        // Fractional value with exact FP32 representation
+        let result = Tensor::fill(vec![10], 2.5, device.clone()).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x == 2.5));
+
+        // Value requiring precision
+        let result = Tensor::fill(vec![5], 1.234567, device).unwrap();
+        let output = result.to_vec().unwrap();
+        for val in output.iter() {
+            assert!((val - 1.234567).abs() < 1e-6);
         }
     }
 }

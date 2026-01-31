@@ -124,10 +124,13 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
+        Arc::new(crate::device::Auto::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_eq_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
         let b = Tensor::from_vec_on(vec![1.0, 2.1, 3.0], vec![3], device).await.unwrap();
@@ -136,5 +139,78 @@ mod tests {
         assert!((result[0] - 1.0).abs() < 1e-5); // equal
         assert!((result[1] - 0.0).abs() < 1e-5); // not equal
         assert!((result[2] - 1.0).abs() < 1e-5); // equal
+    }
+
+    #[tokio::test]
+    async fn test_eq_edge_cases() {
+        let device = get_test_device().await;
+
+        // All equal
+        let a = Tensor::from_vec_on(vec![5.0, 5.0, 5.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![5.0, 5.0, 5.0], vec![3], device.clone()).await.unwrap();
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+
+        // None equal
+        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![4.0, 5.0, 6.0], vec![3], device).await.unwrap();
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        assert!(result.iter().all(|&x| x.abs() < 1e-5));
+    }
+
+    #[tokio::test]
+    async fn test_eq_boundary() {
+        let device = get_test_device().await;
+
+        // Negative values
+        let a = Tensor::from_vec_on(vec![-1.0, -2.0, -3.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![-1.0, -2.0, -3.0], vec![3], device.clone()).await.unwrap();
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+
+        // Zero comparison
+        let a = Tensor::from_vec_on(vec![0.0, 0.0, 1.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![0.0, 0.0, 1.0], vec![3], device).await.unwrap();
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+    }
+
+    #[tokio::test]
+    async fn test_eq_large_tensor() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let a_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
+        let b_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
+        
+        let a = Tensor::from_vec_on(a_data, vec![1000], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(b_data, vec![1000], device).await.unwrap();
+        
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 1000);
+        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+    }
+
+    #[tokio::test]
+    async fn test_eq_precision() {
+        let device = get_test_device().await;
+
+        // Test exact equality with known values
+        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        // All should be equal
+        assert!(result.iter().all(|&x| (x - 1.0).abs() < 1e-5));
+
+        // Test with clearly different values
+        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        let b = Tensor::from_vec_on(vec![1.0, 5.0, 3.0], vec![3], device).await.unwrap();
+        
+        let result = a.eq(&b).unwrap().to_vec().unwrap();
+        // First and third equal, second not equal
+        assert!((result[0] - 1.0).abs() < 1e-5);
+        assert!(result[1].abs() < 1e-5);
+        assert!((result[2] - 1.0).abs() < 1e-5);
     }
 }
