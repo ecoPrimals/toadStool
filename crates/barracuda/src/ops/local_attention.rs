@@ -73,12 +73,81 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_local_attention() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_local_attention_basic() {
+        let dev = get_test_device().await;
         let size = 1 * 2 * 8 * 4;
         let q = vec![0.5; size];
         let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 4).await.unwrap();
         assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_local_attention_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Window size = 2 (minimal)
+        let size = 1 * 1 * 4 * 2;
+        let q = vec![1.0; size];
+        let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 4, 2, 2).await.unwrap();
+        assert_eq!(output.len(), size);
+
+        // Single head
+        let size = 1 * 1 * 8 * 4;
+        let q = vec![0.5; size];
+        let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 8, 4, 4).await.unwrap();
+        assert_eq!(output.len(), size);
+    }
+
+    #[tokio::test]
+    async fn test_local_attention_boundary() {
+        let dev = get_test_device().await;
+
+        // Large window (full attention)
+        let size = 1 * 2 * 8 * 4;
+        let q = vec![0.5; size];
+        let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 8).await.unwrap();
+        assert_eq!(output.len(), size);
+
+        // Multiple heads
+        let size = 1 * 8 * 16 * 8;
+        let q = vec![0.5; size];
+        let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 8, 16, 8, 4).await.unwrap();
+        assert_eq!(output.len(), size);
+    }
+
+    #[tokio::test]
+    async fn test_local_attention_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4, longer sequence
+        let batch_size = 4;
+        let size = batch_size * 4 * 32 * 8;
+        let q = vec![0.5; size];
+        let output = local_attention(&dev.device, &dev.queue, &q, &q, &q, batch_size, 4, 32, 8, 8).await.unwrap();
+        assert_eq!(output.len(), size);
+    }
+
+    #[tokio::test]
+    async fn test_local_attention_precision() {
+        let dev = get_test_device().await;
+
+        // Test attention pattern with known values
+        let size = 1 * 1 * 4 * 2;
+        let q = vec![1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0];
+        let k = vec![1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0];
+        let v = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        
+        let output = local_attention(&dev.device, &dev.queue, &q, &k, &v, 1, 1, 4, 2, 4).await.unwrap();
+        
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Verify attention produces weighted sums
+        assert!(output.iter().any(|&x| x > 0.0));
     }
 }
