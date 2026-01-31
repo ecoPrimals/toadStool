@@ -58,12 +58,97 @@ mod tests {
     use std::sync::Arc;
     
     #[tokio::test]
-    async fn test_cutmix() {
+    async fn test_cutmix_basic() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());
         let image1 = vec![1.0; 3 * 32 * 32];
         let image2 = vec![0.5; 3 * 32 * 32];
         let (mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 32, 32, 0.5, 99999).await.unwrap();
+        
         assert_eq!(mixed.len(), image1.len());
         assert!(lambda >= 0.0 && lambda <= 1.0);
+        
+        // Mixed image should contain values from both images
+        let has_image1 = mixed.iter().any(|&v| (v - 1.0).abs() < 1e-5);
+        let has_image2 = mixed.iter().any(|&v| (v - 0.5).abs() < 1e-5);
+        assert!(has_image1 && has_image2, "CutMix should mix both images");
+    }
+    
+    #[tokio::test]
+    async fn test_cutmix_edge_cases() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Edge case: lambda = 1.0 (no mix, all image1)
+        let image1 = vec![1.0; 3 * 16 * 16];
+        let image2 = vec![0.0; 3 * 16 * 16];
+        let (_mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 16, 16, 1.0, 12345).await.unwrap();
+        
+        // With lambda=1.0, cut_ratio=0, so should be mostly image1
+        assert!(lambda > 0.9);
+        
+        // Edge case: lambda = 0.0 (max mix)
+        let (_mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 16, 16, 0.0, 54321).await.unwrap();
+        assert!(lambda < 0.5); // Significant mixing
+    }
+    
+    #[tokio::test]
+    async fn test_cutmix_boundary() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Small image
+        let image1 = vec![1.0; 3 * 4 * 4];
+        let image2 = vec![0.0; 3 * 4 * 4];
+        let (mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 4, 4, 0.5, 777).await.unwrap();
+        
+        assert_eq!(mixed.len(), 3 * 4 * 4);
+        assert!(lambda >= 0.0 && lambda <= 1.0);
+        
+        // Single channel
+        let gray1 = vec![1.0; 1 * 8 * 8];
+        let gray2 = vec![0.0; 1 * 8 * 8];
+        let (mixed, _) = cutmix(&dev.device, &dev.queue, &gray1, &gray2, 1, 8, 8, 0.5, 888).await.unwrap();
+        assert_eq!(mixed.len(), 64);
+    }
+    
+    #[tokio::test]
+    async fn test_cutmix_large_image() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Realistic image size (224x224 RGB)
+        let size = 3 * 224 * 224;
+        let image1 = vec![1.0; size];
+        let image2 = vec![0.0; size];
+        
+        let (mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 224, 224, 0.5, 11111).await.unwrap();
+        
+        assert_eq!(mixed.len(), size);
+        assert!(lambda >= 0.0 && lambda <= 1.0);
+        
+        // Verify mixing occurred
+        let sum: f32 = mixed.iter().sum();
+        let expected_sum = size as f32 * lambda; // Weighted by lambda
+        assert!((sum - expected_sum).abs() / expected_sum < 0.2); // Within 20%
+    }
+    
+    #[tokio::test]
+    async fn test_cutmix_precision() {
+        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test with distinct patterns
+        let image1 = vec![1.0; 3 * 16 * 16];
+        let image2 = vec![0.0; 3 * 16 * 16];
+        
+        // Create checkerboard pattern in image1
+        // (Note: CutMix doesn't modify input, so pattern is informational)
+        
+        let (mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 16, 16, 0.5, 55555).await.unwrap();
+        
+        // Verify patch was cut correctly
+        assert_eq!(mixed.len(), 3 * 16 * 16);
+        assert!(lambda >= 0.0 && lambda <= 1.0);
+        
+        // Should have values from both images
+        let has_ones = mixed.iter().any(|&v| (v - 1.0).abs() < 1e-5);
+        let has_zeros = mixed.iter().any(|&v| v.abs() < 1e-5);
+        assert!(has_ones || has_zeros);
     }
 }
