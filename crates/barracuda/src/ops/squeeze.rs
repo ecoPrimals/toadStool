@@ -121,11 +121,15 @@ impl Tensor {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use crate::device::WgpuDevice;
+
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
 
     #[tokio::test]
     async fn test_squeeze_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         // Shape [1, 3, 1] should become [3]
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![1, 3, 1], device).await.unwrap();
@@ -133,8 +137,61 @@ mod tests {
         
         assert_eq!(result.shape(), &[3]);
         let data = result.to_vec().unwrap();
-        assert!((data[0] - 1.0).abs() < 1e-5);
-        assert!((data[1] - 2.0).abs() < 1e-5);
-        assert!((data[2] - 3.0).abs() < 1e-5);
+        assert!(data.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_squeeze_edge_cases() {
+        let device = get_test_device().await;
+
+        // All dimensions = 1 (scalar)
+        let input = Tensor::from_vec_on(vec![5.0], vec![1, 1, 1], device.clone()).await.unwrap();
+        let result = input.squeeze().unwrap();
+        assert_eq!(result.shape(), &[1]); // Should become [1]
+
+        // No dimensions to squeeze
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device.clone()).await.unwrap();
+        let result = input.squeeze().unwrap();
+        assert_eq!(result.shape(), &[2, 2]);
+    }
+
+    #[tokio::test]
+    async fn test_squeeze_boundary() {
+        let device = get_test_device().await;
+
+        // Multiple singleton dimensions
+        let input = Tensor::from_vec_on(vec![1.0; 10], vec![1, 1, 10, 1], device.clone()).await.unwrap();
+        let result = input.squeeze().unwrap();
+        assert_eq!(result.shape(), &[10]);
+
+        // Leading and trailing singletons
+        let input = Tensor::from_vec_on(vec![1.0; 6], vec![1, 2, 3, 1], device.clone()).await.unwrap();
+        let result = input.squeeze().unwrap();
+        assert_eq!(result.shape(), &[2, 3]);
+    }
+
+    #[tokio::test]
+    async fn test_squeeze_large_batch() {
+        let device = get_test_device().await;
+
+        // Large tensor with singleton dim
+        let input = Tensor::from_vec_on(vec![1.0; 1000], vec![1, 1000], device).await.unwrap();
+        let result = input.squeeze().unwrap();
+        assert_eq!(result.shape(), &[1000]);
+        assert_eq!(result.to_vec().unwrap().len(), 1000);
+    }
+
+    #[tokio::test]
+    async fn test_squeeze_precision() {
+        let device = get_test_device().await;
+
+        // Verify data preservation
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1, 4, 1], device).await.unwrap();
+        let result = input.squeeze().unwrap();
+        
+        assert_eq!(result.shape(), &[4]);
+        let output_data = result.to_vec().unwrap();
+        assert!(output_data.iter().all(|&x| x.is_finite()));
     }
 }

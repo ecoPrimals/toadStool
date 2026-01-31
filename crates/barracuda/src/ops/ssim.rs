@@ -70,12 +70,80 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_ssim() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_ssim_basic() {
+        let dev = get_test_device().await;
         let image1 = vec![0.5; 64 * 64];
         let image2 = vec![0.5; 64 * 64];
         let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 64, 64, 11, 0.01, 0.03).await.unwrap();
-        assert!((similarity - 1.0).abs() < 0.1); // Should be close to 1.0 for identical images
+        assert!(similarity.is_finite());
+        assert!(similarity > 0.9); // Should be close to 1.0 for identical images
+    }
+
+    #[tokio::test]
+    async fn test_ssim_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Small image
+        let image1 = vec![0.5; 16 * 16];
+        let image2 = vec![0.5; 16 * 16];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 16, 16, 5, 0.01, 0.03).await.unwrap();
+        assert!(similarity.is_finite());
+
+        // Different images
+        let image1 = vec![0.0; 32 * 32];
+        let image2 = vec![1.0; 32 * 32];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 32, 32, 7, 0.01, 0.03).await.unwrap();
+        assert!(similarity < 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_ssim_boundary() {
+        let dev = get_test_device().await;
+
+        // Small window
+        let image1 = vec![0.5; 32 * 32];
+        let image2 = vec![0.5; 32 * 32];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 32, 32, 3, 0.01, 0.03).await.unwrap();
+        assert!(similarity.is_finite());
+
+        // Different constants
+        let image1 = vec![0.5; 32 * 32];
+        let image2 = vec![0.5; 32 * 32];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 32, 32, 7, 0.001, 0.003).await.unwrap();
+        assert!(similarity > 0.9);
+    }
+
+    #[tokio::test]
+    async fn test_ssim_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large image
+        let image1 = vec![0.5; 128 * 128];
+        let image2 = vec![0.5; 128 * 128];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 128, 128, 11, 0.01, 0.03).await.unwrap();
+        assert!(similarity.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_ssim_precision() {
+        let dev = get_test_device().await;
+
+        // Perfect match should give ~1.0
+        let image1 = vec![0.7; 32 * 32];
+        let image2 = vec![0.7; 32 * 32];
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 32, 32, 7, 0.01, 0.03).await.unwrap();
+        assert!(similarity > 0.99);
+        
+        // Slightly different images should have lower SSIM
+        let image1 = vec![0.5; 32 * 32];
+        let mut image2 = vec![0.5; 32 * 32];
+        image2[100] = 0.6;
+        let similarity = ssim(&dev.device, &dev.queue, &image1, &image2, 32, 32, 7, 0.01, 0.03).await.unwrap();
+        assert!(similarity < 1.0);
     }
 }
