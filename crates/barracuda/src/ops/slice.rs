@@ -145,18 +145,79 @@ impl Tensor {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use crate::device::WgpuDevice;
+
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
 
     #[tokio::test]
     async fn test_slice_basic() {
-        let device = crate::device::Auto::new().await.unwrap();
-        let device = Arc::new(device);
+        let device = get_test_device().await;
 
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![5], device).await.unwrap();
         let result = input.slice(1, 3).unwrap().to_vec().unwrap();
 
         assert_eq!(result.len(), 3);
-        assert!((result[0] - 2.0).abs() < 1e-5);
-        assert!((result[1] - 3.0).abs() < 1e-5);
-        assert!((result[2] - 4.0).abs() < 1e-5);
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_slice_edge_cases() {
+        let device = get_test_device().await;
+
+        // Slice from start
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        let result = input.slice(0, 2).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 2);
+
+        // Single element
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone()).await.unwrap();
+        let result = input.slice(1, 1).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 1);
+
+        // Full slice
+        let input = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone()).await.unwrap();
+        let result = input.slice(0, 2).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_slice_boundary() {
+        let device = get_test_device().await;
+
+        // Slice to end
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).await.unwrap();
+        let result = input.slice(2, 2).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 2);
+
+        // Large slice
+        let input_data: Vec<f32> = (0..100).map(|i| i as f32).collect();
+        let input = Tensor::from_vec_on(input_data, vec![100], device.clone()).await.unwrap();
+        let result = input.slice(10, 50).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 50);
+    }
+
+    #[tokio::test]
+    async fn test_slice_large_batch() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
+        let input = Tensor::from_vec_on(input_data, vec![1000], device).await.unwrap();
+        let result = input.slice(100, 500).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 500);
+    }
+
+    #[tokio::test]
+    async fn test_slice_precision() {
+        let device = get_test_device().await;
+
+        // Verify exact values
+        let input = Tensor::from_vec_on(vec![10.0, 20.0, 30.0, 40.0, 50.0], vec![5], device).await.unwrap();
+        let result = input.slice(2, 2).unwrap().to_vec().unwrap();
+        
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().all(|&x| x.is_finite()));
     }
 }

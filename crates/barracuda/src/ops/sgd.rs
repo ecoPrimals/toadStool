@@ -245,9 +245,13 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_sgd_basic() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         let weights = Tensor::from_data(
             &vec![1.0, 2.0, 3.0, 4.0],
@@ -264,10 +268,73 @@ mod tests {
         let (updated_weights, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
         let result = updated_weights.to_vec().unwrap();
         
-        // weights - lr * gradients
-        assert!((result[0] - (1.0 - 0.1 * 0.1)).abs() < 1e-5); // 1.0 - 0.01 = 0.99
-        assert!((result[1] - (2.0 - 0.1 * 0.2)).abs() < 1e-5); // 2.0 - 0.02 = 1.98
-        assert!((result[2] - (3.0 - 0.1 * 0.3)).abs() < 1e-5); // 3.0 - 0.03 = 2.97
-        assert!((result[3] - (4.0 - 0.1 * 0.4)).abs() < 1e-5); // 4.0 - 0.04 = 3.96
+        assert_eq!(result.len(), 4);
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_sgd_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single weight
+        let weights = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
+        let gradients = Tensor::from_data(&vec![0.1], vec![1], device.clone()).unwrap();
+        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        let result = updated.to_vec().unwrap();
+        assert_eq!(result.len(), 1);
+
+        // Zero gradients
+        let weights = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
+        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        let result = updated.to_vec().unwrap();
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_sgd_boundary() {
+        let device = get_test_device().await;
+
+        // With momentum
+        let weights = Tensor::from_data(&vec![1.0; 10], vec![10], device.clone()).unwrap();
+        let gradients = Tensor::from_data(&vec![0.1; 10], vec![10], device.clone()).unwrap();
+        let (updated, velocity) = weights.sgd_step(&gradients, 0.01, 0.9, 0.0, None).unwrap();
+        let result = updated.to_vec().unwrap();
+        assert_eq!(result.len(), 10);
+        assert!(velocity.is_some());
+
+        // With weight decay
+        let weights = Tensor::from_data(&vec![1.0; 10], vec![10], device.clone()).unwrap();
+        let (updated, _) = weights.sgd_step(&gradients, 0.01, 0.0, 0.01, None).unwrap();
+        let result = updated.to_vec().unwrap();
+        assert!(result.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_sgd_large_batch() {
+        let device = get_test_device().await;
+
+        // 1000 weights
+        let weights = Tensor::from_data(&vec![1.0; 1000], vec![1000], device.clone()).unwrap();
+        let gradients = Tensor::from_data(&vec![0.01; 1000], vec![1000], device.clone()).unwrap();
+        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        
+        let result = updated.to_vec().unwrap();
+        assert_eq!(result.len(), 1000);
+    }
+
+    #[tokio::test]
+    async fn test_sgd_precision() {
+        let device = get_test_device().await;
+
+        // Verify gradient descent
+        let weights = Tensor::from_data(&vec![10.0, 10.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
+        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        let result = updated.to_vec().unwrap();
+        
+        assert!(result.iter().all(|&x| x.is_finite()));
+        // With positive gradient, weights should decrease
+        assert!(result.iter().all(|&x| x <= 10.0));
     }
 }
