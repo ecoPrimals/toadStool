@@ -110,6 +110,8 @@ mod tests {
     
     #[tokio::test]
     async fn test_performance_profiler() {
+        use std::time::Duration;
+        
         let profiler = PerformanceProfiler::new();
         
         // Profile a simple operation
