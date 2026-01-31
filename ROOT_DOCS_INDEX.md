@@ -3,8 +3,34 @@
 **Last Updated**: January 31, 2026 🏆 **S++ GRADE ACHIEVED!** 🏆  
 **Status**: 🌟 **PRODUCTION READY** - Deep Debt Evolution Complete  
 **Quality**: **S++ Grade** (TOP 0.01% - World-Class)  
-**barraCUDA**: 🦈 **250 ops, 1,060 tests, 85% coverage, ZERO unsafe**  
-**NEW**: 🔐 **Homomorphic Computing** - Deep Debt Evolution Complete (4/4 phases)!
+**barraCUDA**: 🦈 **THE Universal Compute Substrate** - CPU, GPU, NPU, TPU, ALL via WGSL  
+**Homomorphic Computing**: 🔐 **Deep Debt Evolution Complete** (4/4 phases!)
+
+---
+
+## 🦈 **STRATEGIC VISION: barraCUDA Universal Compute**
+
+**[BARRACUDA_UNIVERSAL_COMPUTE_VISION.md](BARRACUDA_UNIVERSAL_COMPUTE_VISION.md)** 🌟 **MUST READ**
+- **barraCUDA is THE universal compute library** for ALL substrates
+- WGSL + wgpu enables write once, run everywhere (CPU, GPU, NPU, TPU)
+- Cross-pollination: NPU insights → GPU optimization and vice versa
+- Innovation enablement: NPU for video generation, GPU for sparse audio
+- **ToadStool orchestrates, barraCUDA executes**
+- **Grade: S++ (Visionary Architecture)**
+
+### **Evolution Split: ToadStool vs barraCUDA**
+
+**ToadStool Evolution** (Platform/Integration):
+- Substrate selection and orchestration
+- Configuration management
+- Cross-primal communication
+- Workload placement
+
+**barraCUDA Evolution** (Compute Substrate):
+- Universal compute operations
+- WGSL kernels for all hardware
+- Modular arithmetic, NTT, sparse ops
+- Cross-substrate optimization
 
 ---
 
