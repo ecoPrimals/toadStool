@@ -10,8 +10,8 @@
 //! - ✅ Modern Rust (pattern matching)
 
 use crate::input::events::{InputEvent, KeyCode, Modifiers, MouseButton};
+use crate::input::touch::TouchTracker;
 use crate::window::WindowId;
-use std::collections::HashMap;
 
 /// Event parser state
 ///
@@ -22,12 +22,8 @@ pub struct EventParser {
     /// Current mouse position (relative accumulation)
     mouse_x: i32,
     mouse_y: i32,
-    /// Active touch points (slot -> touch ID) - Priority 4
-    #[allow(dead_code)]
-    touch_slots: HashMap<i32, u32>,
-    /// Next touch ID to assign - Priority 4
-    #[allow(dead_code)]
-    next_touch_id: u32,
+    /// Touch tracker for multi-touch
+    touch_tracker: TouchTracker,
     /// Currently focused window
     focused_window: Option<WindowId>,
 }
@@ -39,8 +35,7 @@ impl EventParser {
             modifiers: Modifiers::none(),
             mouse_x: 0,
             mouse_y: 0,
-            touch_slots: HashMap::new(),
-            next_touch_id: 0,
+            touch_tracker: TouchTracker::new(),
             focused_window: None,
         }
     }
@@ -52,13 +47,14 @@ impl EventParser {
 
     /// Parse an evdev InputEvent into our InputEvent
     ///
-    /// Returns None if the event should be ignored (e.g., SYN events).
+    /// Returns None if the event should be ignored (e.g., SYN events without updates).
     ///
     /// **Deep Debt Compliance:**
     /// - ✅ Complete parsing (all event types)
     /// - ✅ State tracking (modifiers, mouse, touch)
     /// - ✅ Type-safe (strong typing)
-    pub fn parse(&mut self, event: &evdev::InputEvent) -> Option<InputEvent> {
+    /// - ✅ Multi-touch support (Priority 4!)
+    pub fn parse(&mut self, event: &evdev::InputEvent) -> Option<Vec<InputEvent>> {
         use evdev::EventSummary;
 
         // Get focused window or return None
@@ -69,11 +65,13 @@ impl EventParser {
             // Keyboard events
             EventSummary::Key(_, key_code, value) => {
                 self.handle_key_event(key_code, value, window)
+                    .map(|e| vec![e])
             }
 
             // Mouse movement (relative axes)
             EventSummary::RelativeAxis(_, axis, value) => {
                 self.handle_relative_axis(axis, value, window)
+                    .map(|e| vec![e])
             }
 
             // Absolute axes (touchscreen/touchpad)
@@ -81,8 +79,10 @@ impl EventParser {
                 self.handle_absolute_axis(axis, value, window)
             }
 
-            // Synchronization events (end of frame) - ignore
-            EventSummary::Synchronization(_, _, _) => None,
+            // Synchronization events (end of frame)
+            EventSummary::Synchronization(_, _, _) => {
+                self.handle_sync(window)
+            }
 
             // Other events - ignore for now
             _ => None,
@@ -182,40 +182,72 @@ impl EventParser {
 
     /// Handle absolute axis event (touchscreen/touchpad)
     ///
-    /// Note: Multi-touch tracking is handled in Priority 4 (separate TouchTracker)
+    /// **Priority 4 COMPLETE**: Now handles multi-touch (ABS_MT_*)!
     fn handle_absolute_axis(
         &mut self,
         axis: evdev::AbsoluteAxisCode,
         value: i32,
         window: WindowId,
-    ) -> Option<InputEvent> {
+    ) -> Option<Vec<InputEvent>> {
+        // Check if this is a multi-touch event
+        if matches!(
+            axis,
+            evdev::AbsoluteAxisCode::ABS_MT_SLOT
+                | evdev::AbsoluteAxisCode::ABS_MT_TRACKING_ID
+                | evdev::AbsoluteAxisCode::ABS_MT_POSITION_X
+                | evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y
+        ) {
+            // Pass to touch tracker (accumulates until SYN)
+            self.touch_tracker.process_mt_event(axis, value);
+            return None;
+        }
+
+        // Handle single-touch absolute axes
         match axis {
             evdev::AbsoluteAxisCode::ABS_X => {
                 self.mouse_x = value;
-                Some(InputEvent::MouseMove {
+                Some(vec![InputEvent::MouseMove {
                     x: self.mouse_x,
                     y: self.mouse_y,
                     window,
-                })
+                }])
             }
             evdev::AbsoluteAxisCode::ABS_Y => {
                 self.mouse_y = value;
-                Some(InputEvent::MouseMove {
+                Some(vec![InputEvent::MouseMove {
                     x: self.mouse_x,
                     y: self.mouse_y,
                     window,
-                })
-            }
-            // Multi-touch events - will be handled by TouchTracker in Priority 4
-            evdev::AbsoluteAxisCode::ABS_MT_SLOT |
-            evdev::AbsoluteAxisCode::ABS_MT_TRACKING_ID |
-            evdev::AbsoluteAxisCode::ABS_MT_POSITION_X |
-            evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y => {
-                // TODO: Priority 4 - pass to TouchTracker
-                None
+                }])
             }
             _ => None,
         }
+    }
+
+    /// Handle synchronization event (SYN_REPORT)
+    ///
+    /// **Priority 4**: Finalizes touch updates!
+    fn handle_sync(&mut self, window: WindowId) -> Option<Vec<InputEvent>> {
+        // Finalize any pending touch updates
+        let touch_events = self.touch_tracker.finalize_updates();
+        
+        if touch_events.is_empty() {
+            return None;
+        }
+
+        // Convert to InputEvents
+        Some(
+            touch_events
+                .into_iter()
+                .map(|(id, phase, x, y)| InputEvent::Touch {
+                    id,
+                    phase,
+                    x,
+                    y,
+                    window,
+                })
+                .collect(),
+        )
     }
 
     /// Handle mouse button event

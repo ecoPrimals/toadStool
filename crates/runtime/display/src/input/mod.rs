@@ -32,11 +32,13 @@
 pub mod device;
 pub mod events;
 pub mod parser;
+pub mod touch;
 
 // Re-exports
 pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
 pub use parser::EventParser;
+pub use touch::TouchTracker;
 
 use crate::window::WindowId;
 use crate::{DisplayError, Result};
@@ -155,12 +157,14 @@ impl InputManager {
             match events_result {
                 Ok(events) => {
                     for event in events {
-                        // Parse evdev event → InputEvent
-                        if let Some(input_event) = parser.parse(&event) {
-                            // Send to manager channel
-                            if tx.send(input_event).await.is_err() {
-                                tracing::warn!("Event channel closed, stopping device stream");
-                                return Ok(());
+                        // Parse evdev event → InputEvent(s)
+                        if let Some(input_events) = parser.parse(&event) {
+                            // Send each event to manager channel
+                            for input_event in input_events {
+                                if tx.send(input_event).await.is_err() {
+                                    tracing::warn!("Event channel closed, stopping device stream");
+                                    return Ok(());
+                                }
                             }
                         }
                     }
