@@ -13,6 +13,10 @@ pub mod lif_neuron;
 pub mod temporal_pool;
 pub mod sparse_matmul_quantized;
 
+// Pattern matching operations (Bioinformatics)
+pub mod pattern_match;
+pub mod gc_content;
+
 // Activation operations
 pub mod relu;
 pub mod gelu;
