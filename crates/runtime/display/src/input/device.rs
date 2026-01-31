@@ -395,11 +395,11 @@ impl Device {
         }
     }
     
-    /// Get underlying evdev device
+    /// Get underlying evdev device (mutable)
     ///
-    /// Provides access to raw evdev device for event reading.
-    pub fn evdev_device(&self) -> &evdev::Device {
-        &self.evdev_device
+    /// Provides mutable access to raw evdev device for event streaming.
+    pub fn evdev_device_mut(&mut self) -> &mut evdev::Device {
+        &mut self.evdev_device
     }
     
     /// Get device vendor and product IDs
