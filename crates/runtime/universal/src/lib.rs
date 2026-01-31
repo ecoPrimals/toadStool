@@ -53,9 +53,11 @@
 pub mod backends;
 pub mod capabilities;
 pub mod runtime;
+pub mod substrate;  // ✅ NEW: Simplified substrate abstraction
 pub mod types;
 
 pub use backends::*;
 pub use capabilities::*;
 pub use runtime::*;
+pub use substrate::*;  // ✅ Export substrate traits
 pub use types::*;

@@ -10,6 +10,9 @@ barracuda = { path = "../../crates/barracuda" }
 # ToadStool internal - Configuration system ⭐
 toadstool-config = { path = "../../crates/core/config" }
 
+# ToadStool internal - Universal runtime (substrate abstraction) ⭐
+toadstool-runtime-universal = { path = "../../crates/runtime/universal" }
+
 # Core async
 tokio = { version = "1.40", features = ["full"] }
 async-trait = "0.1"
