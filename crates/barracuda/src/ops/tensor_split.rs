@@ -66,11 +66,69 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_tensor_split() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_tensor_split_basic() {
+        let dev = get_test_device().await;
         let input: Vec<f32> = (0..10).map(|i| i as f32).collect();
         let splits = tensor_split(&dev.device, &dev.queue, &input, &[3, 7], 0, &[10]).await.unwrap();
         assert_eq!(splits.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_split_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single split
+        let input: Vec<f32> = (0..10).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[5], 0, &[10]).await.unwrap();
+        assert_eq!(splits.len(), 2);
+
+        // No splits (just copy)
+        let input: Vec<f32> = (0..5).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[], 0, &[5]).await.unwrap();
+        assert_eq!(splits.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_split_boundary() {
+        let dev = get_test_device().await;
+
+        // Split at boundaries
+        let input: Vec<f32> = (0..10).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[1, 9], 0, &[10]).await.unwrap();
+        assert_eq!(splits.len(), 3);
+
+        // Many small splits
+        let input: Vec<f32> = (0..10).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[2, 4, 6, 8], 0, &[10]).await.unwrap();
+        assert_eq!(splits.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_split_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large tensor
+        let input: Vec<f32> = (0..1000).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[250, 500, 750], 0, &[1000]).await.unwrap();
+        assert_eq!(splits.len(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_split_precision() {
+        let dev = get_test_device().await;
+
+        // Verify split sizes
+        let input: Vec<f32> = (0..12).map(|i| i as f32).collect();
+        let splits = tensor_split(&dev.device, &dev.queue, &input, &[4, 8], 0, &[12]).await.unwrap();
+        
+        assert_eq!(splits.len(), 3);
+        assert_eq!(splits[0].len(), 4); // [0..4]
+        assert_eq!(splits[1].len(), 4); // [4..8]
+        assert_eq!(splits[2].len(), 4); // [8..12]
     }
 }

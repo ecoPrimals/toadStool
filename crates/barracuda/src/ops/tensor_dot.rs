@@ -39,13 +39,74 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_tensor_dot() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_tensor_dot_basic() {
+        let dev = get_test_device().await;
         let a = vec![1.0, 2.0, 3.0];
         let b = vec![4.0, 5.0, 6.0];
         let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[3], &[3]).await.unwrap();
         assert_eq!(output.len(), 1);
-        assert_eq!(output[0], 32.0); // 1*4 + 2*5 + 3*6
+        assert!((output[0] - 32.0).abs() < 1e-5); // 1*4 + 2*5 + 3*6
+    }
+
+    #[tokio::test]
+    async fn test_tensor_dot_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single element
+        let a = vec![5.0];
+        let b = vec![3.0];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[1], &[1]).await.unwrap();
+        assert!((output[0] - 15.0).abs() < 1e-5);
+
+        // Zero vectors
+        let a = vec![0.0, 0.0, 0.0];
+        let b = vec![1.0, 2.0, 3.0];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[3], &[3]).await.unwrap();
+        assert!((output[0] - 0.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_dot_boundary() {
+        let dev = get_test_device().await;
+
+        // Large vectors
+        let a = vec![1.0; 100];
+        let b = vec![2.0; 100];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[100], &[100]).await.unwrap();
+        assert!((output[0] - 200.0).abs() < 1e-5);
+
+        // Negative values
+        let a = vec![-1.0, -2.0, -3.0];
+        let b = vec![1.0, 2.0, 3.0];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[3], &[3]).await.unwrap();
+        assert!((output[0] - (-14.0)).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_dot_large_batch() {
+        let dev = get_test_device().await;
+
+        // 1000 elements
+        let a = vec![1.0; 1000];
+        let b = vec![1.0; 1000];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[1000], &[1000]).await.unwrap();
+        assert!((output[0] - 1000.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_tensor_dot_precision() {
+        let dev = get_test_device().await;
+
+        // Known result
+        let a = vec![2.0, 3.0, 4.0];
+        let b = vec![1.0, 0.0, -1.0];
+        let output = tensor_dot(&dev.device, &dev.queue, &a, &b, &[0], &[0], &[3], &[3]).await.unwrap();
+        // 2*1 + 3*0 + 4*(-1) = 2 + 0 - 4 = -2
+        assert!((output[0] - (-2.0)).abs() < 1e-5);
     }
 }
