@@ -68,6 +68,7 @@ pub mod device;
 pub mod error;
 pub mod ops;
 pub mod tensor;
+pub mod esn; // High-level Echo State Network API
 
 // Re-export commonly used operations
 pub use ops::spike_encode::spike_encode;
@@ -88,4 +89,5 @@ pub mod prelude {
     pub use crate::device::{Auto, WgpuDevice};
     pub use crate::error::{BarracudaError, Result};
     pub use crate::tensor::Tensor;
+    pub use crate::esn::{ESN, ESNConfig};
 }
