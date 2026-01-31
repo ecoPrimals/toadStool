@@ -258,7 +258,7 @@ impl WindowManager {
         // Allocate framebuffer (32-bit RGBA)
         let framebuffer = self.drm.create_dumb_buffer(req.width, req.height, 32)?;
 
-        tracing::debug!("Allocated framebuffer: {:?}", framebuffer);
+        tracing::debug!("Allocated framebuffer: {}x{}", req.width, req.height);
 
         // Create window
         let window = Window::new(id, framebuffer, req.width, req.height, req.title);

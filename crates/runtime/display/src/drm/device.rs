@@ -54,8 +54,11 @@ impl AsFd for Device {
     }
 }
 
-// Implement drm::Device trait (this gives us all DRM methods!)
+// Implement drm::Device trait (this gives us all basic DRM methods!)
 impl DrmDeviceTrait for Device {}
+
+// Implement drm::control::Device trait (this gives us modesetting + buffer methods!)
+impl drm::control::Device for Device {}
 
 impl Device {
     /// Open a DRM device
