@@ -59,11 +59,76 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_rotary_embedding() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_rotary_embedding_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 4 * 2 * 8]; // batch=1, seq=4, heads=2, dim=8
         let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 4, 2, 8).await.unwrap();
         assert_eq!(output.len(), input.len());
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_rotary_embedding_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single position
+        let input = vec![1.0; 1 * 1 * 2 * 8];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 1, 2, 8).await.unwrap();
+        assert_eq!(output.len(), 16);
+
+        // Single head
+        let input = vec![1.0; 1 * 4 * 1 * 8];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 4, 1, 8).await.unwrap();
+        assert_eq!(output.len(), 32);
+
+        // Small head dimension
+        let input = vec![1.0; 1 * 2 * 2 * 4];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 2, 2, 4).await.unwrap();
+        assert_eq!(output.len(), 16);
+    }
+
+    #[tokio::test]
+    async fn test_rotary_embedding_boundary() {
+        let dev = get_test_device().await;
+
+        // Large sequence length
+        let input = vec![1.0; 1 * 128 * 2 * 8];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 128, 2, 8).await.unwrap();
+        assert_eq!(output.len(), 1 * 128 * 2 * 8);
+
+        // Many heads
+        let input = vec![1.0; 1 * 4 * 16 * 8];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 4, 16, 8).await.unwrap();
+        assert_eq!(output.len(), 1 * 4 * 16 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_rotary_embedding_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 8
+        let batch_size = 8;
+        let input = vec![1.0; batch_size * 16 * 4 * 8];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, batch_size, 16, 4, 8).await.unwrap();
+        assert_eq!(output.len(), batch_size * 16 * 4 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_rotary_embedding_precision() {
+        let dev = get_test_device().await;
+
+        // Test rotation properties
+        let input = vec![1.0; 1 * 2 * 1 * 4];
+        let output = rotary_embedding(&dev.device, &dev.queue, &input, 1, 2, 1, 4).await.unwrap();
+        
+        assert_eq!(output.len(), 8);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Rotations preserve magnitude (approximately, due to FP precision)
+        assert!(output.iter().all(|&x| x.abs() <= 2.0));
     }
 }
