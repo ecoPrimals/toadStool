@@ -112,12 +112,11 @@ pub async fn cross_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_cross_attention() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_cross_attention_basic() {
+        let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
         
@@ -136,5 +135,113 @@ mod tests {
         
         let output = cross_attention(device, queue, &query, &key, &value, batch, heads, dec_len, enc_len, dim).await.unwrap();
         assert_eq!(output.len(), q_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_cross_attention_edge_cases() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Single token decoder, single token encoder
+        let batch = 1;
+        let heads = 1;
+        let dec_len = 1;
+        let enc_len = 1;
+        let dim = 4;
+        
+        let q_size = batch * heads * dec_len * dim;
+        let kv_size = batch * heads * enc_len * dim;
+        
+        let query = vec![1.0; q_size];
+        let key = vec![1.0; kv_size];
+        let value = vec![2.0; kv_size];
+        
+        let output = cross_attention(device, queue, &query, &key, &value, batch, heads, dec_len, enc_len, dim).await.unwrap();
+        
+        assert_eq!(output.len(), q_size);
+        // With single encoder token, should attend fully to it
+        assert!(output.iter().all(|&x| (x - 2.0).abs() < 0.1));
+    }
+
+    #[tokio::test]
+    async fn test_cross_attention_boundary() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Asymmetric lengths (decoder shorter than encoder)
+        let batch = 2;
+        let heads = 4;
+        let dec_len = 8;
+        let enc_len = 32; // Much longer encoder
+        let dim = 8;
+        
+        let q_size = batch * heads * dec_len * dim;
+        let kv_size = batch * heads * enc_len * dim;
+        
+        let query = vec![0.7; q_size];
+        let key = vec![0.5; kv_size];
+        let value = vec![1.0; kv_size];
+        
+        let output = cross_attention(device, queue, &query, &key, &value, batch, heads, dec_len, enc_len, dim).await.unwrap();
+        
+        assert_eq!(output.len(), q_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_cross_attention_large_batch() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // T5/BART style dimensions
+        let batch = 4;
+        let heads = 8;
+        let dec_len = 16;
+        let enc_len = 64;
+        let dim = 64;
+        
+        let q_size = batch * heads * dec_len * dim;
+        let kv_size = batch * heads * enc_len * dim;
+        
+        let query: Vec<f32> = (0..q_size).map(|i| (i % 100) as f32 * 0.01).collect();
+        let key: Vec<f32> = (0..kv_size).map(|i| (i % 100) as f32 * 0.01).collect();
+        let value: Vec<f32> = (0..kv_size).map(|i| (i % 100) as f32 * 0.01).collect();
+        
+        let output = cross_attention(device, queue, &query, &key, &value, batch, heads, dec_len, enc_len, dim).await.unwrap();
+        
+        assert_eq!(output.len(), q_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_cross_attention_precision() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Test attention distribution
+        let batch = 1;
+        let heads = 1;
+        let dec_len = 2;
+        let enc_len = 3;
+        let dim = 2;
+        
+        let q_size = batch * heads * dec_len * dim;
+        let _kv_size = batch * heads * enc_len * dim;
+        
+        let query = vec![1.0, 0.0, 0.0, 1.0]; // 2 decoder tokens
+        let key = vec![1.0, 0.0, 0.0, 1.0, 0.5, 0.5]; // 3 encoder tokens
+        let value = vec![1.0, 0.0, 2.0, 0.0, 3.0, 0.0]; // Distinct values
+        
+        let output = cross_attention(device, queue, &query, &key, &value, batch, heads, dec_len, enc_len, dim).await.unwrap();
+        
+        assert_eq!(output.len(), q_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Output should be a weighted combination of encoder values
+        assert!(output.iter().all(|&x| x >= 0.0 && x <= 3.0));
     }
 }
