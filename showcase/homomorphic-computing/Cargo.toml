@@ -7,6 +7,9 @@ edition = "2021"
 # ToadStool internal - barraCUDA (our GPU framework) ⭐
 barracuda = { path = "../../crates/barracuda" }
 
+# ToadStool internal - Configuration system ⭐
+toadstool-config = { path = "../../crates/core/config" }
+
 # Core async
 tokio = { version = "1.40", features = ["full"] }
 async-trait = "0.1"

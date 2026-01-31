@@ -23,7 +23,21 @@
 //!
 //! Centralized configuration management for eliminating hardcoded values
 //! and providing a unified configuration interface across the entire platform.
+//!
+//! ## Builder Pattern
+//!
+//! **Deep Debt**: All configurations support builder pattern for runtime flexibility
+//!
+//! ```rust,no_run
+//! use toadstool_config::builder::*;
+//!
+//! let config = ProfilerConfigBuilder::new()
+//!     .warmup_iterations(20)
+//!     .parallel()
+//!     .build()?;
+//! ```
 
+pub mod builder;  // ✅ NEW: Unified configuration builders
 pub mod config_utils;
 pub mod constants;
 pub mod defaults;

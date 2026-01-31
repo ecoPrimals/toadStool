@@ -3,6 +3,20 @@
 //! **Deep Debt**: Profile actual performance, don't hardcode estimates!
 //!
 //! This module implements real performance profiling for homomorphic operations.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use toadstool_config::builder::*;
+//!
+//! // Use builder pattern for configuration
+//! let config = ProfilerConfigBuilder::new()
+//!     .warmup_iterations(20)
+//!     .parallel()
+//!     .build()?;
+//!
+//! let profiler = PerformanceProfiler::with_config(config);
+//! ```
 
 use anyhow::Result;
 use std::time::Instant;
@@ -32,18 +46,70 @@ pub struct PerformanceMetrics {
 /// Performance profiler for substrates
 ///
 /// **Deep Debt**: Measure actual performance at runtime
+///
+/// # Configuration
+///
+/// ```rust,no_run
+/// use toadstool_config::builder::*;
+///
+/// // Use builder for custom config
+/// let config = ProfilerConfigBuilder::new()
+///     .warmup_iterations(20)
+///     .benchmark_iterations(500)
+///     .parallel()
+///     .build()?;
+///
+/// let profiler = PerformanceProfiler::with_config(config);
+///
+/// // Or use presets
+/// let profiler = PerformanceProfiler::quick();     // Fast benchmarks
+/// let profiler = PerformanceProfiler::thorough();  // Comprehensive
+/// ```
 pub struct PerformanceProfiler {
     warmup_iterations: usize,
     benchmark_iterations: usize,
 }
 
 impl PerformanceProfiler {
-    /// Create new performance profiler
+    /// Create new performance profiler with default configuration
+    ///
+    /// **Deprecated**: Use `with_config()` for runtime flexibility
     pub fn new() -> Self {
         Self {
             warmup_iterations: 10,
             benchmark_iterations: 100,
         }
+    }
+    
+    /// Create with custom configuration
+    ///
+    /// **Deep Debt**: Runtime configurable via builder pattern
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use toadstool_config::builder::*;
+    ///
+    /// let config = ProfilerConfigBuilder::new()
+    ///     .warmup_iterations(20)
+    ///     .build()?;
+    ///
+    /// let profiler = PerformanceProfiler::with_config(config);
+    /// ```
+    pub fn with_config(config: toadstool_config::builder::ProfilerConfig) -> Self {
+        Self {
+            warmup_iterations: config.warmup_iterations,
+            benchmark_iterations: config.benchmark_iterations,
+        }
+    }
+    
+    /// Quick profiler for fast benchmarks
+    pub fn quick() -> Self {
+        Self::with_config(toadstool_config::builder::ProfilerConfig::quick())
+    }
+    
+    /// Thorough profiler for comprehensive benchmarks
+    pub fn thorough() -> Self {
+        Self::with_config(toadstool_config::builder::ProfilerConfig::thorough())
     }
     
     /// Profile a substrate's performance
