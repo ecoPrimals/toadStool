@@ -105,6 +105,84 @@ impl WgpuDevice {
         self.adapter_info.device_type == wgpu::DeviceType::Cpu
     }
 
+    /// Access underlying wgpu device
+    ///
+    /// **Deep Debt**: Enables external consumers to use barraCUDA infrastructure
+    /// for custom operations (e.g., homomorphic computing, neuromorphic, etc.)
+    ///
+    /// # Safety
+    /// External users must ensure proper synchronization with the queue.
+    /// Use `queue()` for command submission.
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    /// Access command queue
+    ///
+    /// **Deep Debt**: Enables external consumers to submit custom compute passes
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
+    /// Create storage buffer (convenience helper)
+    ///
+    /// **Deep Debt**: Reduces boilerplate for external barraCUDA users
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use barracuda::prelude::*;
+    /// # async fn example() -> Result<()> {
+    /// let device = WgpuDevice::new().await?;
+    /// let buffer = device.create_storage_buffer("my_data", &[1u8, 2, 3, 4]);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn create_storage_buffer(&self, label: &str, data: &[u8]) -> wgpu::Buffer {
+        use wgpu::util::DeviceExt;
+        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(label),
+            contents: data,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+        })
+    }
+
+    /// Create uniform buffer (convenience helper)
+    ///
+    /// **Deep Debt**: Type-safe uniform buffer creation
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use barracuda::prelude::*;
+    /// # use bytemuck::{Pod, Zeroable};
+    /// # async fn example() -> Result<()> {
+    /// #[repr(C)]
+    /// #[derive(Copy, Clone, Pod, Zeroable)]
+    /// struct Params {
+    ///     width: u32,
+    ///     height: u32,
+    /// }
+    ///
+    /// let device = WgpuDevice::new().await?;
+    /// let params = Params { width: 1920, height: 1080 };
+    /// let buffer = device.create_uniform_buffer("params", &params);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn create_uniform_buffer<T: bytemuck::Pod>(
+        &self,
+        label: &str,
+        data: &T,
+    ) -> wgpu::Buffer {
+        use wgpu::util::DeviceExt;
+        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(label),
+            contents: bytemuck::bytes_of(data),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        })
+    }
+
     /// Allocate buffer for f32 data
     pub fn create_buffer_f32(&self, size: usize) -> Result<wgpu::Buffer> {
         Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
