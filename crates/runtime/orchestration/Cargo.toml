@@ -1,0 +1,32 @@
+[package]
+name = "toadstool-runtime-orchestration"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Contributors"]
+description = "Intelligent workload orchestration across compute substrates"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/toadStool"
+keywords = ["orchestration", "runtime", "workload", "scheduling"]
+categories = ["development-tools", "hardware-support"]
+
+[dependencies]
+# Core dependencies
+anyhow = "1.0"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+
+# ToadStool internal
+toadstool-runtime-universal = { path = "../universal" }
+toadstool-config = { path = "../../core/config" }
+
+# Concurrency
+futures = "0.3"
+parking_lot = "0.12"
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
