@@ -64,11 +64,70 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_maxpool3d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_maxpool3d_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 2 * 4 * 4 * 4];
         let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 2, 4, 4, 4, 2, 2).await.unwrap();
         assert_eq!(output.len(), 1 * 2 * 2 * 2 * 2);
+    }
+
+    #[tokio::test]
+    async fn test_maxpool3d_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Minimal volume
+        let input = vec![1.0; 1 * 1 * 2 * 2 * 2];
+        let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 1, 2, 2, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1);
+
+        // Single channel
+        let input = vec![2.0; 1 * 1 * 4 * 4 * 4];
+        let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 4, 2, 2).await.unwrap();
+        assert!(output.iter().all(|&x| x == 2.0));
+    }
+
+    #[tokio::test]
+    async fn test_maxpool3d_boundary() {
+        let dev = get_test_device().await;
+
+        // Different stride
+        let input = vec![1.0; 1 * 3 * 8 * 8 * 8];
+        let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 3, 8, 8, 8, 2, 4).await.unwrap();
+        assert!(output.len() > 0);
+
+        // Many channels
+        let input = vec![1.0; 1 * 16 * 6 * 6 * 6];
+        let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 16, 6, 6, 6, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 16 * 3 * 3 * 3);
+    }
+
+    #[tokio::test]
+    async fn test_maxpool3d_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4
+        let batch_size = 4;
+        let input = vec![1.0; batch_size * 8 * 10 * 10 * 10];
+        let output = maxpool3d(&dev.device, &dev.queue, &input, batch_size, 8, 10, 10, 10, 2, 2).await.unwrap();
+        assert_eq!(output.len(), batch_size * 8 * 5 * 5 * 5);
+    }
+
+    #[tokio::test]
+    async fn test_maxpool3d_precision() {
+        let dev = get_test_device().await;
+
+        // Test max selection with varying values
+        let mut input = vec![0.0; 1 * 1 * 2 * 2 * 2];
+        input[0] = 10.0; // This should be the max
+        
+        let output = maxpool3d(&dev.device, &dev.queue, &input, 1, 1, 2, 2, 2, 2, 2).await.unwrap();
+        
+        assert_eq!(output.len(), 1);
+        assert!((output[0] - 10.0).abs() < 0.1);
     }
 }
