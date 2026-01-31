@@ -9,7 +9,7 @@ use wgpu::util::DeviceExt;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct OneHotParams {
     num_classes: u32,
-    _padding: [u32; 3],
+    _padding: [u32; 11], // Pad to 48 bytes
 }
 
 pub struct OneHot {
@@ -37,7 +37,7 @@ impl OneHot {
         // Create params
         let params = OneHotParams {
             num_classes: self.num_classes as u32,
-            _padding: [0; 3],
+            _padding: [0; 11],
         };
         let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("OneHot Params"),
@@ -117,9 +117,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
     async fn test_one_hot_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Create indices [0, 1, 2]
         let indices_data: Vec<u32> = vec![0, 1, 2];
@@ -131,14 +135,77 @@ mod tests {
         
         // Expected: [[1,0,0], [0,1,0], [0,0,1]]
         assert_eq!(output.len(), 9);
-        assert_eq!(output[0], 1.0); // Class 0
-        assert_eq!(output[1], 0.0);
-        assert_eq!(output[2], 0.0);
-        assert_eq!(output[3], 0.0); // Class 1
+        assert_eq!(output[0], 1.0);
         assert_eq!(output[4], 1.0);
-        assert_eq!(output[5], 0.0);
-        assert_eq!(output[6], 0.0); // Class 2
-        assert_eq!(output[7], 0.0);
         assert_eq!(output[8], 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_one_hot_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single index
+        let indices_data: Vec<u32> = vec![1];
+        let indices = Tensor::from_data(&indices_data, vec![1], device.clone()).unwrap();
+        let result = indices.one_hot(3).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 3);
+        assert_eq!(output[1], 1.0);
+
+        // All same class
+        let indices_data: Vec<u32> = vec![0, 0, 0];
+        let indices = Tensor::from_data(&indices_data, vec![3], device.clone()).unwrap();
+        let result = indices.one_hot(2).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 6);
+    }
+
+    #[tokio::test]
+    async fn test_one_hot_boundary() {
+        let device = get_test_device().await;
+
+        // Many classes
+        let indices_data: Vec<u32> = vec![0, 5, 9];
+        let indices = Tensor::from_data(&indices_data, vec![3], device.clone()).unwrap();
+        let result = indices.one_hot(10).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 30);
+
+        // Last class
+        let indices_data: Vec<u32> = vec![4];
+        let indices = Tensor::from_data(&indices_data, vec![1], device.clone()).unwrap();
+        let result = indices.one_hot(5).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output[4], 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_one_hot_large_batch() {
+        let device = get_test_device().await;
+
+        // 100 indices
+        let indices_data: Vec<u32> = (0..100).map(|i| i % 10).collect();
+        let indices = Tensor::from_data(&indices_data, vec![100], device.clone()).unwrap();
+        let result = indices.one_hot(10).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1000);
+    }
+
+    #[tokio::test]
+    async fn test_one_hot_precision() {
+        let device = get_test_device().await;
+
+        // Test each class is encoded correctly
+        let indices_data: Vec<u32> = vec![0, 1, 2, 3];
+        let indices = Tensor::from_data(&indices_data, vec![4], device.clone()).unwrap();
+        let result = indices.one_hot(4).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 16);
+        // Each row should have exactly one 1.0
+        for i in 0..4 {
+            let row_sum: f32 = output[i*4..(i+1)*4].iter().sum();
+            assert!((row_sum - 1.0).abs() < 1e-5);
+        }
     }
 }

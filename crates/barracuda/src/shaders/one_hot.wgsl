@@ -4,6 +4,9 @@
 struct OneHotParams {
     num_classes: u32,
     _padding: vec3<u32>,
+    _padding2: vec4<u32>,
+    _padding3: vec4<u32>,
+    _padding4: vec4<u32>, // Total 64 bytes
 }
 
 @group(0) @binding(0) var<storage, read> indices: array<u32>;

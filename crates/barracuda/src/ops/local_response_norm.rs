@@ -51,11 +51,76 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_local_response_norm() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_local_response_norm_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 4 * 4 * 4];
         let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 4, 4, 4, 3, 0.0001, 0.75, 1.0).await.unwrap();
         assert_eq!(output.len(), input.len());
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_local_response_norm_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single channel (no cross-channel normalization)
+        let input = vec![1.0; 1 * 1 * 4 * 4];
+        let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 3, 0.0001, 0.75, 1.0).await.unwrap();
+        assert_eq!(output.len(), 16);
+
+        // Small window size (1)
+        let input = vec![1.0; 1 * 4 * 4 * 4];
+        let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 4, 4, 4, 1, 0.0001, 0.75, 1.0).await.unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_local_response_norm_boundary() {
+        let dev = get_test_device().await;
+
+        // Large window (covers all channels)
+        let input = vec![1.0; 1 * 4 * 4 * 4];
+        let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 4, 4, 4, 5, 0.0001, 0.75, 1.0).await.unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+
+        // Different alpha/beta/k values
+        let input = vec![1.0; 1 * 8 * 4 * 4];
+        let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 8, 4, 4, 5, 0.001, 0.5, 2.0).await.unwrap();
+        assert_eq!(output.len(), input.len());
+    }
+
+    #[tokio::test]
+    async fn test_local_response_norm_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4, AlexNet style
+        let batch_size = 4;
+        let channels = 8;
+        let input = vec![1.0; batch_size * channels * 8 * 8];
+        let output = local_response_norm(&dev.device, &dev.queue, &input, batch_size, channels, 8, 8, 5, 0.0001, 0.75, 1.0).await.unwrap();
+        assert_eq!(output.len(), input.len());
+    }
+
+    #[tokio::test]
+    async fn test_local_response_norm_precision() {
+        let dev = get_test_device().await;
+
+        // Test normalization with known values
+        let mut input = vec![0.0; 1 * 3 * 2 * 2];
+        input[0..4].fill(1.0);   // Channel 0
+        input[4..8].fill(2.0);   // Channel 1
+        input[8..12].fill(3.0);  // Channel 2
+        
+        let output = local_response_norm(&dev.device, &dev.queue, &input, 1, 3, 2, 2, 3, 0.0001, 0.75, 1.0).await.unwrap();
+        
+        assert_eq!(output.len(), 12);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Normalized values should be less than original (divisive normalization)
+        assert!(output[4] <= 2.0); // Channel 1 should be normalized down
     }
 }

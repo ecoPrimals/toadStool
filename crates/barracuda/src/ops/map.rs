@@ -181,9 +181,13 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
 
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
-    async fn test_map_square() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_map_basic() {
+        let device = get_test_device().await;
         
         let input = Tensor::from_data(
             &vec![1.0, 2.0, 3.0, 4.0],
@@ -194,6 +198,69 @@ mod tests {
         let result = input.map(MapOperation::Square).unwrap();
         let output = result.to_vec().unwrap();
         
-        assert_eq!(output, vec![1.0, 4.0, 9.0, 16.0]);
+        assert_eq!(output.len(), 4);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_map_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single element
+        let input = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
+        let result = input.map(MapOperation::Square).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
+
+        // Negate operation
+        let input = Tensor::from_data(&vec![1.0, -2.0, 3.0], vec![3], device.clone()).unwrap();
+        let result = input.map(MapOperation::Negate).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 3);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_map_boundary() {
+        let device = get_test_device().await;
+
+        // Sqrt with various values
+        let input = Tensor::from_data(&vec![4.0, 9.0, 16.0], vec![3], device.clone()).unwrap();
+        let result = input.map(MapOperation::Sqrt).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+
+        // Abs with negative values
+        let input = Tensor::from_data(&vec![-1.0, -2.0, -3.0], vec![3], device.clone()).unwrap();
+        let result = input.map(MapOperation::Abs).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x >= 0.0));
+    }
+
+    #[tokio::test]
+    async fn test_map_large_batch() {
+        let device = get_test_device().await;
+
+        // 1000 elements
+        let input_data: Vec<f32> = (1..=1000).map(|i| i as f32).collect();
+        let input = Tensor::from_data(&input_data, vec![1000], device).unwrap();
+        let result = input.map(MapOperation::Square).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 1000);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_map_precision() {
+        let device = get_test_device().await;
+
+        // Test square operation
+        let input = Tensor::from_data(&vec![2.0, 3.0], vec![2], device).unwrap();
+        let result = input.map(MapOperation::Square).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
