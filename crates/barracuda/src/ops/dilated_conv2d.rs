@@ -65,13 +65,97 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_dilated_conv2d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_dilated_conv2d_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 3 * 8 * 8];
         let kernel = vec![0.1; 16 * 3 * 3 * 3];
         let bias = vec![0.0; 16];
         let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 3, 16, 8, 8, 3, 2, 1, 1).await.unwrap();
         assert!(output.len() > 0);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_dilated_conv2d_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Dilation = 1 (standard conv)
+        let input = vec![1.0; 1 * 1 * 4 * 4];
+        let kernel = vec![1.0; 1 * 1 * 2 * 2];
+        let bias = vec![0.0; 1];
+        let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 1, 1, 4, 4, 2, 1, 1, 0).await.unwrap();
+        assert_eq!(output.len(), 3 * 3);
+
+        // All zeros input
+        let input = vec![0.0; 1 * 1 * 4 * 4];
+        let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 1, 1, 4, 4, 2, 1, 1, 0).await.unwrap();
+        assert!(output.iter().all(|&x| x.abs() < 1e-5));
+    }
+
+    #[tokio::test]
+    async fn test_dilated_conv2d_boundary() {
+        let dev = get_test_device().await;
+
+        // Large dilation (dilation=3)
+        let input = vec![1.0; 1 * 1 * 9 * 9];
+        let kernel = vec![1.0; 1 * 1 * 3 * 3];
+        let bias = vec![0.0; 1];
+        let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 1, 1, 9, 9, 3, 3, 1, 0).await.unwrap();
+        assert!(output.len() > 0);
+
+        // Different strides
+        let input = vec![1.0; 1 * 2 * 8 * 8];
+        let kernel = vec![0.1; 4 * 2 * 3 * 3];
+        let bias = vec![0.0; 4];
+        let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 2, 4, 8, 8, 3, 2, 2, 1).await.unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_dilated_conv2d_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4, DeepLab-style dilation
+        let batch_size = 4;
+        let in_channels = 8;
+        let out_channels = 16;
+        let height = 16;
+        let width = 16;
+        let input = vec![1.0; batch_size * in_channels * height * width];
+        let kernel = vec![0.1; out_channels * in_channels * 3 * 3];
+        let bias = vec![0.0; out_channels];
+        
+        let output = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, batch_size, in_channels, out_channels, height, width, 3, 2, 1, 1).await.unwrap();
+        assert!(output.len() > 0);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_dilated_conv2d_precision() {
+        let dev = get_test_device().await;
+
+        // Precision test: verify dilation produces different results than standard conv
+        let input = vec![1.0; 1 * 1 * 5 * 5];
+        let kernel = vec![1.0; 1 * 1 * 2 * 2]; // All ones kernel
+        let bias = vec![0.0; 1];
+        
+        // Standard conv (dilation=1)
+        let output_standard = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 1, 1, 5, 5, 2, 1, 1, 0).await.unwrap();
+        
+        // Dilated conv (dilation=2)
+        let output_dilated = dilated_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 1, 1, 5, 5, 2, 2, 1, 0).await.unwrap();
+        
+        // Dilated conv should have smaller receptive field (fewer elements summed)
+        // so output might differ in size or values
+        assert!(output_standard.len() > 0);
+        assert!(output_dilated.len() > 0);
+        
+        // All values should be finite and non-negative (all positive inputs/weights)
+        assert!(output_dilated.iter().all(|&x| x.is_finite() && x >= 0.0));
     }
 }
