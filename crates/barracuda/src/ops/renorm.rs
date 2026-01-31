@@ -44,13 +44,77 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_renorm() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_renorm_basic() {
+        let dev = get_test_device().await;
         let input = vec![3.0, 4.0]; // Norm = 5.0
         let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2]).await.unwrap();
         // Should be clamped to unit norm
         let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
         assert!((norm - 1.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_renorm_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Already below max_norm (no change)
+        let input = vec![0.3, 0.4]; // Norm = 0.5
+        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2]).await.unwrap();
+        assert!((output[0] - 0.3).abs() < 1e-5);
+        assert!((output[1] - 0.4).abs() < 1e-5);
+
+        // Zero vector
+        let input = vec![0.0, 0.0];
+        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2]).await.unwrap();
+        assert_eq!(output, vec![0.0, 0.0]);
+    }
+
+    #[tokio::test]
+    async fn test_renorm_boundary() {
+        let dev = get_test_device().await;
+
+        // Large norm clamped to small max_norm
+        let input = vec![10.0, 10.0]; // Norm = 14.14
+        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2]).await.unwrap();
+        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-5);
+
+        // Multi-dimensional
+        let input = vec![3.0, 4.0, 6.0, 8.0]; // 2 vectors
+        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 1, &[2, 2]).await.unwrap();
+        assert_eq!(output.len(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_renorm_large_batch() {
+        let dev = get_test_device().await;
+
+        // 100 elements
+        let input: Vec<f32> = (0..100).map(|i| i as f32).collect();
+        let output = renorm(&dev.device, &dev.queue, &input, 10.0, 0, &[100]).await.unwrap();
+        assert_eq!(output.len(), 100);
+        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
+        assert!(norm <= 10.0 + 1e-4);
+    }
+
+    #[tokio::test]
+    async fn test_renorm_precision() {
+        let dev = get_test_device().await;
+
+        // Test exact scaling
+        let input = vec![6.0, 8.0]; // Norm = 10.0
+        let output = renorm(&dev.device, &dev.queue, &input, 5.0, 0, &[2]).await.unwrap();
+        
+        // Should be scaled by 0.5
+        assert!((output[0] - 3.0).abs() < 1e-5);
+        assert!((output[1] - 4.0).abs() < 1e-5);
+        
+        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 5.0).abs() < 1e-5);
     }
 }

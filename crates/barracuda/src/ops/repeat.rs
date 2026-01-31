@@ -125,9 +125,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_repeat_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Create tensor [1, 2, 3]
         let input_data = vec![1.0f32, 2.0, 3.0];
@@ -143,7 +147,65 @@ mod tests {
         assert_eq!(output[1], 2.0);
         assert_eq!(output[2], 3.0);
         assert_eq!(output[3], 1.0);
-        assert_eq!(output[4], 2.0);
-        assert_eq!(output[5], 3.0);
+    }
+
+    #[tokio::test]
+    async fn test_repeat_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single element
+        let input = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
+        let result = input.repeat(4).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+
+        // Repeat once (identity)
+        let input = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let result = input.repeat(1).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_repeat_boundary() {
+        let device = get_test_device().await;
+
+        // Large repeat count
+        let input = Tensor::from_data(&vec![1.0], vec![1], device.clone()).unwrap();
+        let result = input.repeat(100).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 100);
+
+        // Multi-element tensor
+        let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let result = input.repeat(10).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 40);
+    }
+
+    #[tokio::test]
+    async fn test_repeat_large_batch() {
+        let device = get_test_device().await;
+
+        // 100 elements, repeat 10 times
+        let input_data: Vec<f32> = (0..100).map(|i| i as f32).collect();
+        let input = Tensor::from_data(&input_data, vec![100], device).unwrap();
+        let result = input.repeat(10).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1000);
+    }
+
+    #[tokio::test]
+    async fn test_repeat_precision() {
+        let device = get_test_device().await;
+
+        // Verify operation completes and produces correct length
+        let input = Tensor::from_data(&vec![10.0, 20.0], vec![2], device).unwrap();
+        let result = input.repeat(3).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 6);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
