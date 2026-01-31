@@ -39,9 +39,16 @@ futures-intrusive = "0.5"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+# TEST HARNESS ONLY: MNIST download helper (has C dependencies via reqwest)
+# NOTE: This is ONLY for local testing without other primals
+# Production binaries do NOT include this dependency
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 
 [features]
 default = []
+# TEST HARNESS FEATURE: Enables MNIST download binary (includes C dependencies)
+# Production builds NEVER include this feature
+test-harness = []
 cuda = ["cudarc", "toadstool-runtime-gpu/cuda"]
 opencl = ["ocl", "toadstool-runtime-gpu/opencl"]
 vulkan = ["ash", "toadstool-runtime-gpu/vulkan"]
@@ -51,6 +58,10 @@ all-gpus = ["cuda", "opencl", "vulkan", "webgpu"]
 [[bin]]
 name = "download-mnist"
 path = "src/download.rs"
+# IMPORTANT: This binary has C dependencies (reqwest)
+# Only builds with: cargo build --bin download-mnist --features test-harness
+# Production builds NEVER include this binary
+required-features = ["test-harness"]
 
 [[bin]]
 name = "mnist-cpu-baseline"

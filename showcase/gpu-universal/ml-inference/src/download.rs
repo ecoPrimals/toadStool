@@ -1,4 +1,15 @@
 //! Download MNIST dataset
+//!
+//! **IMPORTANT: TEST HARNESS ONLY**
+//!
+//! This binary includes `reqwest` which has C dependencies (OpenSSL/native-tls).
+//! It is **ONLY** for local testing without other primals supporting downloads.
+//!
+//! **Production Binaries**: NEVER include this binary (feature-gated)
+//!
+//! **Build**: `cargo build --bin download-mnist --features test-harness`
+//!
+//! **At Runtime**: ToadStool has access via TOWER atomic (pure Rust unix sockets)
 
 use anyhow::Result;
 use std::fs;
@@ -12,7 +23,7 @@ fn download_file(url: &str, path: &Path) -> Result<()> {
     }
 
     println!("Downloading {}...", url);
-    let response = reqwest::blocking::get(url)?;
+    let response = reqwest::blocking::get(url)?;  // ⚠️ C DEPENDENCIES
     let bytes = response.bytes()?;
 
     let mut file = fs::File::create(path)?;
