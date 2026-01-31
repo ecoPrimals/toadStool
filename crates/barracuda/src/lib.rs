@@ -72,6 +72,8 @@ pub mod esn; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
 pub mod snn; // High-level Spiking Neural Network API
 pub mod nn; // High-level Neural Network Training API
+pub mod vision; // High-level Computer Vision API
+pub mod timeseries; // High-level Time Series API
 
 // Re-export commonly used operations
 pub use ops::spike_encode::spike_encode;
