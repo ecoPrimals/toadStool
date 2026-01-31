@@ -20,6 +20,9 @@ pub mod complexity_filter;
 
 // Reservoir computing operations (Echo State Networks)
 pub mod reservoir_init;
+pub mod reservoir_update;
+pub mod spectral_radius;
+pub mod ridge_regression;
 
 // Activation operations
 pub mod relu;

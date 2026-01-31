@@ -79,6 +79,9 @@ pub use ops::pattern_match::pattern_match;
 pub use ops::gc_content::gc_content;
 pub use ops::complexity_filter::complexity_filter;
 pub use ops::reservoir_init::reservoir_init;
+pub use ops::reservoir_update::reservoir_update;
+pub use ops::spectral_radius::spectral_radius;
+pub use ops::ridge_regression::ridge_regression;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
