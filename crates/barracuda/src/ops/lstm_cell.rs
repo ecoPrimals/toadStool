@@ -224,21 +224,12 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
-    #[tokio::test]
-    async fn test_lstm_cell_dimensions() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let device = &dev.device;
-        let queue = &dev.queue;
-        
-        let batch_size = 2;
-        let input_size = 4;
-        let hidden_size = 8;
-        
-        let input = vec![0.5; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-        let prev_cell = vec![0.0; batch_size * hidden_size];
-        
-        let weights = LSTMWeights {
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
+    fn create_lstm_weights(input_size: usize, hidden_size: usize) -> LSTMWeights {
+        LSTMWeights {
             w_ii: vec![0.01; hidden_size * input_size],
             w_hi: vec![0.01; hidden_size * hidden_size],
             w_if: vec![0.01; hidden_size * input_size],
@@ -255,7 +246,24 @@ mod tests {
             b_hg: vec![0.0; hidden_size],
             b_io: vec![0.0; hidden_size],
             b_ho: vec![0.0; hidden_size],
-        };
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_lstm_cell_basic() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        let batch_size = 2;
+        let input_size = 4;
+        let hidden_size = 8;
+        
+        let input = vec![0.5; batch_size * input_size];
+        let prev_hidden = vec![0.0; batch_size * hidden_size];
+        let prev_cell = vec![0.0; batch_size * hidden_size];
+        
+        let weights = create_lstm_weights(input_size, hidden_size);
         
         let state = lstm_cell(
             &device, &queue,
@@ -266,5 +274,83 @@ mod tests {
         
         assert_eq!(state.hidden.len(), batch_size * hidden_size);
         assert_eq!(state.cell.len(), batch_size * hidden_size);
+    }
+
+    #[tokio::test]
+    async fn test_lstm_cell_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Batch size 1, minimal hidden
+        let batch_size = 1;
+        let input_size = 2;
+        let hidden_size = 2;
+        
+        let input = vec![1.0; batch_size * input_size];
+        let prev_hidden = vec![0.0; batch_size * hidden_size];
+        let prev_cell = vec![0.0; batch_size * hidden_size];
+        let weights = create_lstm_weights(input_size, hidden_size);
+        
+        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+        assert_eq!(state.hidden.len(), 2);
+        assert_eq!(state.cell.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_lstm_cell_boundary() {
+        let dev = get_test_device().await;
+
+        // Large hidden state
+        let batch_size = 1;
+        let input_size = 16;
+        let hidden_size = 64;
+        
+        let input = vec![0.5; batch_size * input_size];
+        let prev_hidden = vec![0.0; batch_size * hidden_size];
+        let prev_cell = vec![0.0; batch_size * hidden_size];
+        let weights = create_lstm_weights(input_size, hidden_size);
+        
+        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+        assert_eq!(state.hidden.len(), 64);
+        assert!(state.hidden.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_lstm_cell_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large batch
+        let batch_size = 32;
+        let input_size = 8;
+        let hidden_size = 16;
+        
+        let input = vec![0.5; batch_size * input_size];
+        let prev_hidden = vec![0.0; batch_size * hidden_size];
+        let prev_cell = vec![0.0; batch_size * hidden_size];
+        let weights = create_lstm_weights(input_size, hidden_size);
+        
+        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+        assert_eq!(state.hidden.len(), batch_size * hidden_size);
+    }
+
+    #[tokio::test]
+    async fn test_lstm_cell_precision() {
+        let dev = get_test_device().await;
+
+        // Test state propagation (non-zero previous state)
+        let batch_size = 1;
+        let input_size = 4;
+        let hidden_size = 8;
+        
+        let input = vec![1.0; batch_size * input_size];
+        let prev_hidden = vec![0.5; batch_size * hidden_size];
+        let prev_cell = vec![0.3; batch_size * hidden_size];
+        let weights = create_lstm_weights(input_size, hidden_size);
+        
+        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+        
+        assert_eq!(state.hidden.len(), 8);
+        assert_eq!(state.cell.len(), 8);
+        // Cell state should be influenced by previous state
+        assert!(state.cell.iter().any(|&x| x.abs() > 0.01));
     }
 }
