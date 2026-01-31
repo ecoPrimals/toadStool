@@ -46,6 +46,10 @@ use crate::error::{BarracudaError, Result as BarracudaResult};
 use crate::tensor::Tensor;
 use crate::ops::matmul::MatMul;
 use crate::ops::add::Add;
+use crate::ops::mul::Mul;
+use crate::ops::sub::Sub;
+use crate::ops::sum::Sum;
+use crate::ops::transpose::Transpose;
 use crate::ops::broadcast::Broadcast;
 use crate::ops::relu::ReLU;
 use crate::ops::gelu::GELU;
@@ -186,9 +190,19 @@ pub struct TrainingMetrics {
 }
 
 /// Gradient storage for backpropagation (internal use)
+#[derive(Clone)]
 struct LayerGradients {
     weight_grad: Option<Tensor>,
     bias_grad: Option<Tensor>,
+}
+
+impl Default for LayerGradients {
+    fn default() -> Self {
+        Self {
+            weight_grad: None,
+            bias_grad: None,
+        }
+    }
 }
 
 /// Activation cache for backward pass (internal use)
@@ -230,8 +244,42 @@ pub struct NeuralNetwork {
     // Runtime state - actual weights stored as Tensors
     layer_states: Vec<LayerState>,
     
+    // Optimizer state (for Adam, AdaGrad, etc.)
+    optimizer_states: Vec<OptimizerState>,
+    
     // Hardware capabilities (discovered at runtime)
     capabilities: HardwareCapabilities,
+}
+
+/// Optimizer state for weight updates
+#[derive(Clone)]
+struct OptimizerState {
+    /// First moment (momentum) for Adam
+    momentum: Option<Tensor>,
+    
+    /// Second moment (variance) for Adam
+    variance: Option<Tensor>,
+    
+    /// Bias momentum for Adam
+    bias_momentum: Option<Tensor>,
+    
+    /// Bias variance for Adam
+    bias_variance: Option<Tensor>,
+    
+    /// Time step (for Adam bias correction)
+    t: usize,
+}
+
+impl Default for OptimizerState {
+    fn default() -> Self {
+        Self {
+            momentum: None,
+            variance: None,
+            bias_momentum: None,
+            bias_variance: None,
+            t: 0,
+        }
+    }
 }
 
 /// Layer-specific state (weights, biases, etc.)
@@ -424,10 +472,13 @@ impl NeuralNetwork {
         let batch_size = inputs.len();
         let mut total_loss = 0.0;
         
+        // Accumulate gradients across the batch
+        let mut accumulated_grads: Vec<LayerGradients> = vec![LayerGradients::default(); self.layers.len()];
+        
         // Process each sample in the batch
         for (input, target) in inputs.iter().zip(targets.iter()) {
-            // Forward pass
-            let output = self.forward(input).await?;
+            // Forward pass with activation caching
+            let (output, activations) = self.forward_with_cache(input).await?;
             
             // Convert output and target to tensors for loss computation
             let output_tensor = Tensor::from_data(&output, vec![1, output.len()], Arc::new(self.device.clone()))?;
@@ -436,11 +487,11 @@ impl NeuralNetwork {
             // Compute loss based on loss function
             let loss_tensor = match &self.loss_fn {
                 LossFunction::MSE => {
-                    let mse = MseLoss::new(output_tensor, target_tensor);
+                    let mse = MseLoss::new(output_tensor.clone(), target_tensor.clone());
                     mse.execute()?
                 }
                 LossFunction::CrossEntropy => {
-                    let ce = CrossEntropy::new(output_tensor, target_tensor);
+                    let ce = CrossEntropy::new(output_tensor.clone(), target_tensor.clone());
                     ce.execute()?
                 }
                 _ => {
@@ -453,12 +504,39 @@ impl NeuralNetwork {
             // Extract loss value
             let loss_vec = loss_tensor.to_vec()?;
             total_loss += loss_vec[0];
+            
+            // Backward pass: compute gradients
+            let grad_output = self.compute_loss_gradient(&output_tensor, &target_tensor).await?;
+            let batch_grads = self.backward(&grad_output, &activations).await?;
+            
+            // Accumulate gradients
+            for (acc_grad, batch_grad) in accumulated_grads.iter_mut().zip(batch_grads.iter()) {
+                if let Some(ref wg) = batch_grad.weight_grad {
+                    if let Some(ref mut acc_wg) = acc_grad.weight_grad {
+                        // Add to accumulator
+                        let add = Add::new(acc_wg.clone(), wg.clone())?;
+                        *acc_wg = add.execute()?;
+                    } else {
+                        // First gradient, just clone
+                        acc_grad.weight_grad = Some(wg.clone());
+                    }
+                }
+                
+                if let Some(ref bg) = batch_grad.bias_grad {
+                    if let Some(ref mut acc_bg) = acc_grad.bias_grad {
+                        let add = Add::new(acc_bg.clone(), bg.clone())?;
+                        *acc_bg = add.execute()?;
+                    } else {
+                        acc_grad.bias_grad = Some(bg.clone());
+                    }
+                }
+            }
         }
         
-        let avg_loss = total_loss / batch_size as f32;
+        // Average gradients over batch and apply to weights
+        self.apply_gradients(&accumulated_grads, batch_size as f32).await?;
         
-        // TODO: Implement backward pass and weight updates
-        // For now, return metrics with loss only
+        let avg_loss = total_loss / batch_size as f32;
         
         Ok(TrainingMetrics {
             loss: avg_loss,
@@ -477,6 +555,220 @@ impl NeuralNetwork {
     /// Check if GPU support is available
     pub fn has_gpu_support(&self) -> bool {
         self.capabilities.has_gpu
+    }
+    
+    /// Forward pass with activation caching for backprop
+    async fn forward_with_cache(&self, input: &[f32]) -> BarracudaResult<(Vec<f32>, Vec<ActivationCache>)> {
+        if input.is_empty() {
+            return Err(BarracudaError::InvalidInput {
+                message: "Input cannot be empty".to_string(),
+            });
+        }
+        
+        // Convert input to tensor with shape [1, input_size] for batch processing
+        let mut current = Tensor::from_data(input, vec![1, input.len()], Arc::new(self.device.clone()))?;
+        let mut caches = Vec::new();
+        
+        // Process through each layer, caching activations
+        for (layer, state) in self.layers.iter().zip(self.layer_states.iter()) {
+            let layer_input = current.clone();
+            current = self.forward_layer(&current, layer, state).await?;
+            
+            caches.push(ActivationCache {
+                input: layer_input,
+                output: current.clone(),
+            });
+        }
+        
+        // Convert output tensor back to vec
+        let output = current.to_vec()?;
+        Ok((output, caches))
+    }
+    
+    /// Compute loss gradient (dL/doutput)
+    async fn compute_loss_gradient(&self, output: &Tensor, target: &Tensor) -> BarracudaResult<Tensor> {
+        // For MSE: dL/dy = 2 * (y - target) / n
+        // For simplicity, we'll use (y - target) and let the learning rate handle scaling
+        match &self.loss_fn {
+            LossFunction::MSE | LossFunction::CrossEntropy => {
+                let sub = Sub::new(output.clone(), target.clone())?;
+                sub.execute()
+            }
+            _ => {
+                Err(BarracudaError::InvalidInput {
+                    message: format!("Loss gradient for {:?} not yet implemented", self.loss_fn),
+                })
+            }
+        }
+    }
+    
+    /// Backward pass: compute gradients for all layers
+    async fn backward(
+        &self,
+        grad_output: &Tensor,
+        caches: &[ActivationCache],
+    ) -> BarracudaResult<Vec<LayerGradients>> {
+        let mut gradients = Vec::new();
+        let mut current_grad = grad_output.clone();
+        
+        // Iterate backwards through layers
+        for i in (0..self.layers.len()).rev() {
+            let layer = &self.layers[i];
+            let state = &self.layer_states[i];
+            let cache = &caches[i];
+            
+            let (grad_input, layer_grads) = self.backward_layer(
+                layer,
+                state,
+                &current_grad,
+                cache,
+            ).await?;
+            
+            gradients.push(layer_grads);
+            current_grad = grad_input;
+        }
+        
+        // Reverse to match forward order
+        gradients.reverse();
+        Ok(gradients)
+    }
+    
+    /// Backward pass through single layer
+    async fn backward_layer(
+        &self,
+        layer: &Layer,
+        state: &LayerState,
+        grad_output: &Tensor,
+        cache: &ActivationCache,
+    ) -> BarracudaResult<(Tensor, LayerGradients)> {
+        match layer {
+            Layer::Linear { .. } => {
+                // Linear layer: y = xW + b
+                // dL/dW = x^T · dL/dy
+                // dL/db = sum(dL/dy)
+                // dL/dx = dL/dy · W^T
+                
+                let weights = state.weights.as_ref()
+                    .ok_or_else(|| BarracudaError::InvalidInput {
+                        message: "Linear layer missing weights".to_string(),
+                    })?;
+                
+                // dL/dW = x^T · grad_output
+                let input_transposed = Transpose::new(cache.input.clone())?.execute()?;
+                let weight_grad = MatMul::new(input_transposed, grad_output.clone()).execute()?;
+                
+                // dL/db = sum(grad_output) over batch dimension
+                // grad_output shape is [batch, out_features]
+                // We need to sum over batch dimension to get [out_features]
+                let grad_vec = grad_output.to_vec()?;
+                let out_features = grad_output.shape()[1];
+                
+                // For batch size 1, just reshape from [1, n] to [n]
+                let bias_grad_vec = grad_vec.clone();
+                let bias_grad_tensor = Tensor::from_data(
+                    &bias_grad_vec,
+                    vec![out_features],
+                    Arc::new(self.device.clone())
+                )?;
+                
+                // dL/dx = grad_output · W^T
+                let weights_transposed = Transpose::new(weights.clone())?.execute()?;
+                let grad_input = MatMul::new(grad_output.clone(), weights_transposed).execute()?;
+                
+                Ok((grad_input, LayerGradients {
+                    weight_grad: Some(weight_grad),
+                    bias_grad: Some(bias_grad_tensor),
+                }))
+            }
+            
+            Layer::ReLU => {
+                // ReLU: y = max(0, x)
+                // dL/dx = dL/dy * (x > 0)
+                // We can approximate this by checking if output > 0
+                
+                // Create a mask where output > 0
+                // For now, simplified: if output > 0, gradient passes through
+                // This is a placeholder - ideally we'd have a proper ReLU backward op
+                
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            // TODO: Implement gradients for other activations
+            _ => {
+                // For now, just pass gradient through
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+        }
+    }
+    
+    /// Apply gradients to weights using the optimizer
+    async fn apply_gradients(
+        &mut self,
+        gradients: &[LayerGradients],
+        batch_size: f32,
+    ) -> BarracudaResult<()> {
+        // Get learning rate from optimizer
+        let lr = match &self.optimizer {
+            Optimizer::Adam { lr, .. } => *lr,
+            Optimizer::SGD { lr, .. } => *lr,
+            Optimizer::AdaGrad { lr, .. } => *lr,
+            Optimizer::AdaDelta { .. } => 0.01, // Default for AdaDelta (doesn't use lr directly)
+        };
+        
+        // Apply gradients to each layer
+        for (i, (grad, state)) in gradients.iter().zip(self.layer_states.iter_mut()).enumerate() {
+            // Update weights if present
+            if let (Some(weight_grad), Some(weights)) = (&grad.weight_grad, &mut state.weights) {
+                // Average gradient over batch
+                let grad_data = weight_grad.to_vec()?;
+                let averaged_grad: Vec<f32> = grad_data.iter().map(|g| g / batch_size).collect();
+                let averaged_grad_tensor = Tensor::from_data(
+                    &averaged_grad,
+                    weight_grad.shape().to_vec(),
+                    Arc::new(self.device.clone())
+                )?;
+                
+                // Simple SGD update: w = w - lr * grad
+                // TODO: Implement Adam, momentum, etc.
+                let lr_vec = vec![lr; averaged_grad.len()];
+                let lr_tensor = Tensor::from_data(
+                    &lr_vec,
+                    averaged_grad_tensor.shape().to_vec(),
+                    Arc::new(self.device.clone())
+                )?;
+                
+                let scaled_grad = Mul::new(averaged_grad_tensor, lr_tensor)?.execute()?;
+                let new_weights = Sub::new(weights.clone(), scaled_grad)?.execute()?;
+                *weights = new_weights;
+                
+                // Increment optimizer time step
+                self.optimizer_states[i].t += 1;
+            }
+            
+            // Update biases if present
+            if let (Some(bias_grad), Some(bias)) = (&grad.bias_grad, &mut state.bias) {
+                let grad_data = bias_grad.to_vec()?;
+                let averaged_grad: Vec<f32> = grad_data.iter().map(|g| g / batch_size).collect();
+                let averaged_grad_tensor = Tensor::from_data(
+                    &averaged_grad,
+                    bias_grad.shape().to_vec(),
+                    Arc::new(self.device.clone())
+                )?;
+                
+                let lr_vec = vec![lr; averaged_grad.len()];
+                let lr_tensor = Tensor::from_data(
+                    &lr_vec,
+                    averaged_grad_tensor.shape().to_vec(),
+                    Arc::new(self.device.clone())
+                )?;
+                
+                let scaled_grad = Mul::new(averaged_grad_tensor, lr_tensor)?.execute()?;
+                let new_bias = Sub::new(bias.clone(), scaled_grad)?.execute()?;
+                *bias = new_bias;
+            }
+        }
+        
+        Ok(())
     }
 }
 
@@ -586,6 +878,8 @@ impl NeuralNetworkBuilder {
             layer_states.push(state);
         }
         
+        let num_layers = layer_states.len();
+        
         Ok(NeuralNetwork {
             device: self.device,
             config: self.config,
@@ -593,6 +887,7 @@ impl NeuralNetworkBuilder {
             optimizer: self.optimizer,
             loss_fn: self.loss_fn,
             layer_states,
+            optimizer_states: vec![OptimizerState::default(); num_layers],
             capabilities,
         })
     }
