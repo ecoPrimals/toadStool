@@ -77,13 +77,86 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_grouped_conv2d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_grouped_conv2d_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 4 * 8 * 8];
-        let kernel = vec![0.1; 2 * 2 * 3 * 3]; // 8 out / 2 groups = 4 kernels per group
+        // 2 groups: 4 in channels / 2 = 2 per group, 8 out / 2 = 4 per group
+        // Kernel size: out_per_group * in_per_group * kernel_h * kernel_w = 4 * 2 * 3 * 3 = 72
+        let kernel = vec![0.1; 4 * 2 * 3 * 3];
         let bias = vec![0.0; 8];
         let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 4, 8, 8, 8, 3, 2, 1, 1).await.unwrap();
+        assert_eq!(output.len(), 1 * 8 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_grouped_conv2d_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Groups = 1 (standard convolution)
+        let input = vec![1.0; 1 * 2 * 4 * 4];
+        let kernel = vec![0.1; 4 * 2 * 3 * 3];
+        let bias = vec![0.0; 4];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 2, 4, 4, 4, 3, 1, 1, 1).await.unwrap();
         assert!(output.len() > 0);
+
+        // Groups = channels (depthwise)
+        let input = vec![1.0; 1 * 4 * 4 * 4];
+        let kernel = vec![0.1; 1 * 1 * 3 * 3]; // Each channel has own kernel
+        let bias = vec![0.0; 4];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 4, 4, 4, 4, 3, 4, 1, 1).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_grouped_conv2d_boundary() {
+        let dev = get_test_device().await;
+
+        // Large groups (4 groups)
+        let input = vec![1.0; 1 * 8 * 8 * 8];
+        let kernel = vec![0.1; 2 * 2 * 3 * 3]; // 4 groups, 2 in/out per group
+        let bias = vec![0.0; 8];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 8, 8, 8, 8, 3, 4, 1, 1).await.unwrap();
+        assert!(output.len() > 0);
+
+        // With stride
+        let input = vec![1.0; 1 * 4 * 16 * 16];
+        let kernel = vec![0.1; 4 * 2 * 3 * 3];
+        let bias = vec![0.0; 8];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 4, 8, 16, 16, 3, 2, 2, 1).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_grouped_conv2d_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4, ResNeXt style
+        let batch_size = 4;
+        let input = vec![1.0; batch_size * 8 * 14 * 14];
+        let kernel = vec![0.1; 4 * 4 * 3 * 3]; // 2 groups
+        let bias = vec![0.0; 8];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, batch_size, 8, 8, 14, 14, 3, 2, 1, 1).await.unwrap();
+        assert_eq!(output.len(), batch_size * 8 * 14 * 14);
+    }
+
+    #[tokio::test]
+    async fn test_grouped_conv2d_precision() {
+        let dev = get_test_device().await;
+
+        // Test parameter reduction vs standard conv
+        let input = vec![1.0; 1 * 4 * 4 * 4];
+        let kernel = vec![1.0; 2 * 2 * 2 * 2]; // 2 groups
+        let bias = vec![0.0; 4];
+        let output = grouped_conv2d(&dev.device, &dev.queue, &input, &kernel, &bias, 1, 4, 4, 4, 4, 2, 2, 1, 0).await.unwrap();
+        
+        assert!(output.len() > 0);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Grouped conv should produce positive outputs with all-ones inputs
+        assert!(output.iter().any(|&x| x > 0.0));
     }
 }

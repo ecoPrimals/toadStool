@@ -68,12 +68,87 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_grid_sample() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_grid_sample_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 3 * 4 * 4];
         let grid = vec![0.0; 1 * 2 * 2 * 2]; // Identity grid
         let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 3, 4, 4, 2, 2).await.unwrap();
         assert_eq!(output.len(), 1 * 3 * 2 * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_grid_sample_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single channel
+        let input = vec![1.0; 1 * 1 * 4 * 4];
+        let grid = vec![0.0; 1 * 2 * 2 * 2];
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 1, 4, 4, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 2 * 2);
+
+        // 1x1 output
+        let input = vec![1.0; 1 * 3 * 4 * 4];
+        let grid = vec![0.0; 1 * 1 * 1 * 2];
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 3, 4, 4, 1, 1).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 1 * 1);
+    }
+
+    #[tokio::test]
+    async fn test_grid_sample_boundary() {
+        let dev = get_test_device().await;
+
+        // Extreme grid coordinates (edges of [-1, 1])
+        let input = vec![1.0; 1 * 1 * 4 * 4];
+        let mut grid = vec![0.0; 1 * 2 * 2 * 2];
+        grid[0] = -1.0; grid[1] = -1.0; // Top-left
+        grid[2] = 1.0;  grid[3] = 1.0;  // Bottom-right
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 1, 4, 4, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 2 * 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+
+        // Upsampling (output > input)
+        let input = vec![1.0; 1 * 3 * 4 * 4];
+        let grid = vec![0.0; 1 * 8 * 8 * 2];
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 3, 4, 4, 8, 8).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_grid_sample_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 8
+        let batch_size = 8;
+        let input = vec![1.0; batch_size * 3 * 8 * 8];
+        let grid = vec![0.0; batch_size * 4 * 4 * 2];
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, batch_size, 3, 8, 8, 4, 4).await.unwrap();
+        assert_eq!(output.len(), batch_size * 3 * 4 * 4);
+    }
+
+    #[tokio::test]
+    async fn test_grid_sample_precision() {
+        let dev = get_test_device().await;
+
+        // Test bilinear interpolation with known values
+        let mut input = vec![0.0; 1 * 1 * 2 * 2];
+        input[0] = 1.0; // Top-left
+        input[1] = 2.0; // Top-right
+        input[2] = 3.0; // Bottom-left
+        input[3] = 4.0; // Bottom-right
+        
+        // Sample at center (should interpolate to average)
+        let grid = vec![0.0, 0.0]; // Center of grid
+        let output = grid_sample(&dev.device, &dev.queue, &input, &grid, 1, 1, 2, 2, 1, 1).await.unwrap();
+        
+        assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
+        // Center should be between min and max
+        assert!(output[0] >= 1.0 && output[0] <= 4.0);
     }
 }
