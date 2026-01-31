@@ -197,11 +197,22 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
+    fn create_weights(d_model: usize) -> (Vec<f32>, Vec<f32>, Vec<f32>, Vec<f32>) {
+        let weight_size = d_model * d_model;
+        let w_q = vec![0.01; weight_size];
+        let w_k = w_q.clone();
+        let w_v = w_q.clone();
+        let w_o = w_q.clone();
+        (w_q, w_k, w_v, w_o)
+    }
+    
     #[tokio::test]
-    async fn test_multi_head_attention_dimensions() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let device = &dev.device;
-        let queue = &dev.queue;
+    async fn test_multi_head_attention_basic() {
+        let dev = get_test_device().await;
         
         let batch = 1;
         let seq_len = 4;
@@ -209,24 +220,89 @@ mod tests {
         let num_heads = 2;
         
         let input_size = batch * seq_len * d_model;
-        let weight_size = d_model * d_model;
-        
         let query = vec![0.5; input_size];
         let key = query.clone();
         let value = query.clone();
         
-        let w_q = vec![0.01; weight_size];
-        let w_k = w_q.clone();
-        let w_v = w_q.clone();
-        let w_o = w_q.clone();
+        let (w_q, w_k, w_v, w_o) = create_weights(d_model);
         
-        let output = multi_head_attention(
-            &device, &queue,
-            &query, &key, &value,
-            &w_q, &w_k, &w_v, &w_o,
-            batch, seq_len, d_model, num_heads
-        ).await.unwrap();
+        let output = multi_head_attention(&dev.device, &dev.queue, &query, &key, &value, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
         
         assert_eq!(output.len(), input_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_multi_head_attention_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Minimal sequence
+        let batch = 1;
+        let seq_len = 1;
+        let d_model = 4;
+        let num_heads = 1;
+        
+        let input_size = batch * seq_len * d_model;
+        let query = vec![1.0; input_size];
+        let (w_q, w_k, w_v, w_o) = create_weights(d_model);
+        
+        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+        assert_eq!(output.len(), input_size);
+    }
+
+    #[tokio::test]
+    async fn test_multi_head_attention_boundary() {
+        let dev = get_test_device().await;
+
+        // Many heads
+        let batch = 2;
+        let seq_len = 8;
+        let d_model = 16;
+        let num_heads = 8;
+        
+        let input_size = batch * seq_len * d_model;
+        let query = vec![0.5; input_size];
+        let (w_q, w_k, w_v, w_o) = create_weights(d_model);
+        
+        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+        assert_eq!(output.len(), input_size);
+    }
+
+    #[tokio::test]
+    async fn test_multi_head_attention_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch processing
+        let batch = 8;
+        let seq_len = 16;
+        let d_model = 32;
+        let num_heads = 4;
+        
+        let input_size = batch * seq_len * d_model;
+        let query = vec![0.5; input_size];
+        let (w_q, w_k, w_v, w_o) = create_weights(d_model);
+        
+        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+        assert_eq!(output.len(), input_size);
+    }
+
+    #[tokio::test]
+    async fn test_multi_head_attention_precision() {
+        let dev = get_test_device().await;
+
+        // Test with known values
+        let batch = 1;
+        let seq_len = 2;
+        let d_model = 4;
+        let num_heads = 2;
+        
+        let input_size = batch * seq_len * d_model;
+        let query = vec![1.0; input_size];
+        let (w_q, w_k, w_v, w_o) = create_weights(d_model);
+        
+        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+        
+        assert_eq!(output.len(), input_size);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }

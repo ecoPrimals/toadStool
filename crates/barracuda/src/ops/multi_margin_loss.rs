@@ -41,12 +41,76 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_multi_margin_loss() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_multi_margin_loss_basic() {
+        let dev = get_test_device().await;
         let predictions = vec![0.9, 0.1, 0.1, 0.1, 0.8, 0.2];
         let targets = vec![0, 1];
         let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
         assert!(loss >= 0.0);
+        assert!(loss.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_multi_margin_loss_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Perfect predictions (loss should be 0)
+        let predictions = vec![10.0, 0.0, 0.0];
+        let targets = vec![0];
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        assert!(loss < 0.1);
+
+        // Single sample
+        let predictions = vec![0.5, 0.5, 0.5];
+        let targets = vec![0];
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        assert!(loss >= 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_multi_margin_loss_boundary() {
+        let dev = get_test_device().await;
+
+        // Different margins
+        let predictions = vec![0.7, 0.3, 0.2];
+        let targets = vec![0];
+        let loss1 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 0.5).await.unwrap();
+        let loss2 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 2.0).await.unwrap();
+        assert!(loss2 > loss1); // Larger margin = larger loss
+    }
+
+    #[tokio::test]
+    async fn test_multi_margin_loss_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch of 100
+        let mut predictions = Vec::new();
+        let mut targets = Vec::new();
+        for i in 0..100 {
+            predictions.extend(vec![0.8, 0.1, 0.1]);
+            targets.push(i % 3);
+        }
+        
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        assert!(loss >= 0.0);
+        assert!(loss.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_multi_margin_loss_precision() {
+        let dev = get_test_device().await;
+
+        // Test loss calculation
+        let predictions = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+        let targets = vec![0, 1];
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        
+        // For perfect predictions, loss should be near 0
+        assert!(loss < 0.5);
     }
 }

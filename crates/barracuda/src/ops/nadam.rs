@@ -53,9 +53,13 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_nadam() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_nadam_basic() {
+        let dev = get_test_device().await;
         let params = vec![1.0; 100];
         let grads = vec![0.01; 100];
         let mut state = NAdamState {
@@ -65,5 +69,105 @@ mod tests {
         };
         let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
         assert_eq!(new_params.len(), 100);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // Parameters should decrease with positive gradients
+        assert!(new_params[0] < params[0]);
+    }
+
+    #[tokio::test]
+    async fn test_nadam_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Zero gradients (no update)
+        let params = vec![1.0; 10];
+        let grads = vec![0.0; 10];
+        let mut state = NAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 0,
+        };
+        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        // With zero grads, params should remain close to original
+        assert!((new_params[0] - params[0]).abs() < 0.01);
+
+        // Single parameter
+        let params = vec![5.0];
+        let grads = vec![0.1];
+        let mut state = NAdamState {
+            m: vec![0.0],
+            v: vec![0.0],
+            step: 0,
+        };
+        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
+        assert_eq!(new_params.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_nadam_boundary() {
+        let dev = get_test_device().await;
+
+        // High learning rate
+        let params = vec![1.0; 10];
+        let grads = vec![0.01; 10];
+        let mut state = NAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 0,
+        };
+        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(new_params[0] < params[0]);
+
+        // Multiple steps
+        let mut params = vec![1.0; 10];
+        let grads = vec![0.01; 10];
+        let mut state = NAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 0,
+        };
+        for _ in 0..5 {
+            params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        }
+        assert_eq!(state.step, 5);
+    }
+
+    #[tokio::test]
+    async fn test_nadam_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large parameter vector
+        let params = vec![1.0; 10000];
+        let grads = vec![0.01; 10000];
+        let mut state = NAdamState {
+            m: vec![0.0; 10000],
+            v: vec![0.0; 10000],
+            step: 0,
+        };
+        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        assert_eq!(new_params.len(), 10000);
+    }
+
+    #[tokio::test]
+    async fn test_nadam_precision() {
+        let dev = get_test_device().await;
+
+        // Test momentum accumulation
+        let mut params = vec![10.0; 10];
+        let grads = vec![1.0; 10];
+        let mut state = NAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 0,
+        };
+        
+        // First step
+        let new_params1 = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        // Second step
+        params = new_params1;
+        let new_params2 = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        // Parameters should continue decreasing
+        assert!(new_params2[0] < params[0]);
     }
 }
