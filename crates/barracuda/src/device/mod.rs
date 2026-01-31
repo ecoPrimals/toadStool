@@ -10,9 +10,11 @@ use crate::error::Result;
 
 pub mod wgpu_device;
 pub mod akida;
+pub mod akida_executor;
 
 pub use wgpu_device::WgpuDevice;
 pub use akida::{AkidaBoard, AkidaCapabilities, BoardHealth, detect_akida_boards};
+pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
 
 #[cfg(test)]
 pub mod test_pool;
