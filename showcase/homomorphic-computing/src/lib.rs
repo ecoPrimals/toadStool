@@ -40,7 +40,8 @@
 
 pub mod schemes;
 pub mod substrates;
-pub mod selector;  // ✅ NEW: Capability-based substrate selection
+pub mod selector;  // ✅ Capability-based substrate selection
+pub mod measurement;  // ✅ Real hardware measurement (Phase 4)
 // pub mod benchmarks;  // TODO: Implement benchmark utilities
 
 use anyhow::Result;
@@ -48,6 +49,9 @@ use serde::{Deserialize, Serialize};
 
 // Re-export selector types for convenience
 pub use selector::{SubstrateSelector, WorkloadHints};
+
+// Re-export measurement types
+pub use measurement::{CpuPowerMonitor, GpuPowerMonitor, NpuPowerMonitor, PowerMeasurement};
 
 /// Encrypted dataset for benchmarking
 #[derive(Clone, Debug, Serialize, Deserialize)]

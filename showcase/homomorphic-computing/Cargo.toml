@@ -47,3 +47,7 @@ path = "examples/cross_substrate_comparison.rs"
 [[example]]
 name = "capability_selection"
 path = "examples/capability_selection.rs"
+
+[[example]]
+name = "real_measurements"
+path = "examples/real_measurements.rs"

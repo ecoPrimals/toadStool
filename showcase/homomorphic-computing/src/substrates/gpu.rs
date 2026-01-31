@@ -244,28 +244,28 @@ mod tests {
     
     #[tokio::test]
     async fn test_gpu_encrypted_add() {
-        let gpu = GpuHomomorphic::new().unwrap();
+        let gpu = GpuHomomorphic::new().await.unwrap();
         
         let a = vec![10, 20, 30];
         let b = vec![5, 10, 15];
         
-        let result = gpu.encrypted_add_batch(&a, &b).await.unwrap();
+        let result: Vec<u64> = gpu.encrypted_add_batch(&a, &b).await.unwrap();
         assert!(!result.is_empty());
     }
     
     #[tokio::test]
     async fn test_gpu_polynomial_operations() {
-        let gpu = GpuHomomorphic::new().unwrap();
+        let gpu = GpuHomomorphic::new().await.unwrap();
         
         let a = vec![100, 200, 300];
         let b = vec![10, 20, 30];
         
         // Test addition
-        let sum = gpu.gpu_polynomial_add(&a, &b).await.unwrap();
+        let sum: Vec<u64> = gpu.gpu_polynomial_add(&a, &b).await.unwrap();
         assert_eq!(sum.len(), a.len());
         
         // Test multiplication
-        let product = gpu.gpu_polynomial_multiply(&a, &b).await.unwrap();
+        let product: Vec<u64> = gpu.gpu_polynomial_multiply(&a, &b).await.unwrap();
         assert_eq!(product.len(), a.len());
     }
 }
