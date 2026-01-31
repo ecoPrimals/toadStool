@@ -1,26 +1,74 @@
 //! Display client implementation
 //!
-//! JSON-RPC client for connecting to display server.
+//! **ISOMORPHIC IPC**: JSON-RPC client with automatic Unix/TCP discovery.
+//!
+//! ## Evolution Status
+//!
+//! ✅ **Phase 2 COMPLETE**: Isomorphic client (polymorphic discovery)
+//!
+//! ## Architecture
+//!
+//! ```text
+//! 1. DISCOVER endpoint (Unix socket OR TCP)
+//!     ↓
+//! 2. CONNECT via discovered transport
+//!     ↓
+//! 3. COMMUNICATE (same JSON-RPC protocol)
+//! ```
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use toadstool_display::ipc::DisplayClient;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Zero configuration - automatic discovery!
+//! let mut client = DisplayClient::discover().await?;
+//!
+//! // Works whether server is using Unix sockets OR TCP fallback!
+//! # Ok(())
+//! # }
+//! ```
 
 use super::types::*;
 use crate::window::{CreateWindowRequest, WindowId, WindowInfo};
 use crate::{DisplayError, Result};
+use std::net::SocketAddr;
 use std::path::PathBuf;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::net::{TcpStream, UnixStream};
+
+/// IPC endpoint (polymorphic - Unix OR TCP)
+#[derive(Debug, Clone)]
+pub enum IpcEndpoint {
+    /// Unix domain socket
+    UnixSocket(PathBuf),
+    /// TCP socket (fallback mode)
+    TcpLocal(SocketAddr),
+}
+
+/// Polymorphic async stream trait
+///
+/// Allows DisplayClient to work with both UnixStream and TcpStream transparently.
+trait AsyncStream: AsyncRead + AsyncWrite + Unpin + Send {}
+
+// Implement for both stream types
+impl AsyncStream for UnixStream {}
+impl AsyncStream for TcpStream {}
 
 /// Display client
 ///
-/// Connects to display server via Unix sockets.
+/// **ISOMORPHIC**: Connects via Unix sockets OR TCP automatically.
 ///
-/// ## Example
+/// ## Example (Automatic Discovery)
 ///
 /// ```rust,no_run
 /// use toadstool_display::ipc::DisplayClient;
 /// use toadstool_display::window::CreateWindowRequest;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut client = DisplayClient::connect("/run/user/1000/toadstool/display.sock").await?;
+/// // Automatic discovery!
+/// let mut client = DisplayClient::discover().await?;
 ///
 /// let window_id = client.create_window(CreateWindowRequest::default()).await?;
 /// println!("Created window: {}", window_id);
@@ -28,13 +76,192 @@ use tokio::net::UnixStream;
 /// # }
 /// ```
 pub struct DisplayClient {
-    stream: UnixStream,
+    stream: Box<dyn AsyncStream>,
+    endpoint: IpcEndpoint,
 }
 
 impl DisplayClient {
-    /// Connect to display server
+    /// Discover and connect to display server (ISOMORPHIC!)
     ///
-    /// **Capability-based**: Discovers socket path if not provided!
+    /// **Zero Configuration**: Automatically discovers Unix socket OR TCP endpoint!
+    ///
+    /// ## Behavior
+    ///
+    /// 1. Try Unix socket paths (optimal)
+    /// 2. Try TCP discovery file (fallback)
+    /// 3. Connect via discovered endpoint
+    ///
+    /// ## Example
+    ///
+    /// ```rust,no_run
+    /// # use toadstool_display::ipc::DisplayClient;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = DisplayClient::discover().await?;
+    /// // Works on Linux (Unix) AND Android (TCP)!
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn discover() -> Result<Self> {
+        tracing::info!("🔍 Discovering display server endpoint (isomorphic mode)...");
+
+        let endpoint = Self::discover_endpoint()?;
+
+        match &endpoint {
+            IpcEndpoint::UnixSocket(path) => {
+                tracing::info!("   Found Unix socket: {}", path.display());
+            }
+            IpcEndpoint::TcpLocal(addr) => {
+                tracing::info!("   Found TCP endpoint: {}", addr);
+            }
+        }
+
+        Self::connect_endpoint(endpoint).await
+    }
+
+    /// Discover IPC endpoint (Unix OR TCP)
+    ///
+    /// **Capability-based**: Tries multiple discovery methods!
+    fn discover_endpoint() -> Result<IpcEndpoint> {
+        // 1. Try Unix socket paths (optimal)
+        let socket_paths = Self::get_socket_paths();
+        for path in socket_paths {
+            if path.exists() {
+                tracing::debug!("   Unix socket found: {}", path.display());
+                return Ok(IpcEndpoint::UnixSocket(path));
+            }
+        }
+
+        // 2. Try TCP discovery file (fallback mode)
+        if let Ok(endpoint) = Self::discover_tcp_endpoint() {
+            tracing::debug!("   TCP endpoint discovered from file");
+            return Ok(endpoint);
+        }
+
+        Err(DisplayError::IpcError(
+            "Could not discover display server endpoint (tried Unix sockets and TCP discovery)".to_string()
+        ))
+    }
+
+    /// Get candidate Unix socket paths
+    ///
+    /// **XDG-compliant**: Tries XDG_RUNTIME_DIR, HOME, /tmp
+    fn get_socket_paths() -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+
+        // XDG_RUNTIME_DIR (preferred)
+        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+            let mut path = PathBuf::from(runtime_dir);
+            path.push("toadstool");
+            path.push("display.sock");
+            paths.push(path);
+        }
+
+        // HOME/.local/share
+        if let Ok(home) = std::env::var("HOME") {
+            let mut path = PathBuf::from(home);
+            path.push(".local");
+            path.push("share");
+            path.push("toadstool");
+            path.push("display.sock");
+            paths.push(path);
+        }
+
+        // /tmp fallback
+        paths.push(PathBuf::from("/tmp/toadstool/display.sock"));
+
+        paths
+    }
+
+    /// Discover TCP endpoint from discovery file
+    ///
+    /// **Fallback mode**: Reads TCP port from server's discovery file
+    fn discover_tcp_endpoint() -> Result<IpcEndpoint> {
+        let discovery_files = Self::get_tcp_discovery_file_candidates();
+
+        for file in discovery_files {
+            if let Ok(contents) = std::fs::read_to_string(&file) {
+                // Parse format: tcp:127.0.0.1:PORT
+                if let Some(addr_str) = contents.trim().strip_prefix("tcp:") {
+                    if let Ok(addr) = addr_str.parse::<SocketAddr>() {
+                        tracing::debug!("   TCP discovery file: {}", file.display());
+                        return Ok(IpcEndpoint::TcpLocal(addr));
+                    }
+                }
+            }
+        }
+
+        Err(DisplayError::IpcError(
+            "No TCP discovery file found".to_string()
+        ))
+    }
+
+    /// Get candidate TCP discovery file paths
+    ///
+    /// **XDG-compliant**: Same paths as server writes to
+    fn get_tcp_discovery_file_candidates() -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+
+        // XDG_RUNTIME_DIR (preferred)
+        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+            let mut path = PathBuf::from(runtime_dir);
+            path.push("toadstool-ipc-port");
+            paths.push(path);
+        }
+
+        // HOME/.local/share
+        if let Ok(home) = std::env::var("HOME") {
+            let mut path = PathBuf::from(home);
+            path.push(".local");
+            path.push("share");
+            path.push("toadstool-ipc-port");
+            paths.push(path);
+        }
+
+        // /tmp fallback
+        paths.push(PathBuf::from("/tmp/toadstool-ipc-port"));
+
+        paths
+    }
+
+    /// Connect to endpoint (polymorphic!)
+    ///
+    /// **Works with both Unix and TCP transparently**
+    async fn connect_endpoint(endpoint: IpcEndpoint) -> Result<Self> {
+        match &endpoint {
+            IpcEndpoint::UnixSocket(path) => {
+                tracing::info!("🔌 Connecting via Unix socket...");
+
+                let stream = UnixStream::connect(path)
+                    .await
+                    .map_err(|e| DisplayError::IpcError(format!("Unix connection failed: {}", e)))?;
+
+                tracing::info!("✅ Connected to display server (Unix socket)");
+
+                Ok(Self {
+                    stream: Box::new(stream),
+                    endpoint,
+                })
+            }
+            IpcEndpoint::TcpLocal(addr) => {
+                tracing::info!("🌐 Connecting via TCP fallback...");
+
+                let stream = TcpStream::connect(addr)
+                    .await
+                    .map_err(|e| DisplayError::IpcError(format!("TCP connection failed: {}", e)))?;
+
+                tracing::info!("✅ Connected to display server (TCP fallback)");
+
+                Ok(Self {
+                    stream: Box::new(stream),
+                    endpoint,
+                })
+            }
+        }
+    }
+
+    /// Connect to specific path (backward compatibility)
+    ///
+    /// **Legacy method**: Use `discover()` for automatic discovery!
     pub async fn connect(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
         tracing::info!("Connecting to display server: {}", path.display());
@@ -45,10 +272,20 @@ impl DisplayClient {
 
         tracing::info!("✅ Connected to display server");
 
-        Ok(Self { stream })
+        Ok(Self {
+            stream: Box::new(stream),
+            endpoint: IpcEndpoint::UnixSocket(path),
+        })
     }
 
-    /// Send a request and receive response
+    /// Get connected endpoint
+    pub fn endpoint(&self) -> &IpcEndpoint {
+        &self.endpoint
+    }
+
+    /// Send a request and receive response (polymorphic!)
+    ///
+    /// **Works with both Unix and TCP streams transparently**
     async fn send_request(&mut self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         // Serialize request
         let request_json = serde_json::to_string(&request)
@@ -64,9 +301,8 @@ impl DisplayClient {
             .await
             .map_err(|e| DisplayError::IpcError(format!("Write error: {}", e)))?;
 
-        // Read response
-        let (reader, _writer) = self.stream.split();
-        let mut reader = BufReader::new(reader);
+        // Read response (using BufReader directly on the stream)
+        let mut reader = BufReader::new(&mut self.stream);
         let mut line = String::new();
 
         reader

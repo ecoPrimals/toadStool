@@ -63,16 +63,16 @@ pub mod server;
 pub mod types;
 
 // Re-exports
-pub use client::DisplayClient;
-pub use server::DisplayServer;
+pub use client::{DisplayClient, IpcEndpoint};
+pub use server::{DisplayServer, IpcTransport};
 pub use types::{
     DisplayCapabilitiesInfo, DisplayMethod, DisplayResult, JsonRpcError, JsonRpcRequest,
     JsonRpcResponse,
 };
 
-// ✅ Phase 1 COMPLETE:
-// - JSON-RPC protocol types
-// - Unix socket server
-// - Client library
-// - Complete method implementations
+// ✅ Phase 1 COMPLETE: Server-side isomorphic IPC
+// ✅ Phase 2 COMPLETE: Client-side polymorphic discovery
+// - Automatic Unix→TCP fallback
+// - Zero configuration required
+// - Works on Linux AND Android!
 // - Deep Debt compliant!
