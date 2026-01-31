@@ -70,12 +70,77 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_sparse_attention() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_sparse_attention_basic() {
+        let dev = get_test_device().await;
         let size = 1 * 2 * 8 * 4;
         let q = vec![0.5; size];
         let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 2).await.unwrap();
         assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_sparse_attention_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single head
+        let size = 1 * 1 * 4 * 4;
+        let q = vec![1.0; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 4, 4, 2).await.unwrap();
+        assert_eq!(output.len(), size);
+
+        // Small sequence (stride 1 = full attention)
+        let size = 1 * 2 * 4 * 4;
+        let q = vec![0.5; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 4, 4, 1).await.unwrap();
+        assert_eq!(output.len(), size);
+    }
+
+    #[tokio::test]
+    async fn test_sparse_attention_boundary() {
+        let dev = get_test_device().await;
+
+        // Large stride
+        let size = 1 * 2 * 16 * 8;
+        let q = vec![0.5; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 16, 8, 4).await.unwrap();
+        assert_eq!(output.len(), size);
+
+        // Stride equals sequence length (attend to first token only)
+        let size = 1 * 1 * 8 * 4;
+        let q = vec![1.0; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 8, 4, 8).await.unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_sparse_attention_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4
+        let size = 4 * 4 * 16 * 8;
+        let q = vec![0.5; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 4, 4, 16, 8, 2).await.unwrap();
+        assert_eq!(output.len(), size);
+    }
+
+    #[tokio::test]
+    async fn test_sparse_attention_precision() {
+        let dev = get_test_device().await;
+
+        // Verify attention output properties
+        let size = 1 * 1 * 4 * 4;
+        let q = vec![1.0; size];
+        let k = vec![0.5; size];
+        let v = vec![2.0; size];
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &k, &v, 1, 1, 4, 4, 2).await.unwrap();
+        
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
