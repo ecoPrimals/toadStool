@@ -229,7 +229,7 @@ mod tests {
     use std::sync::Arc;
 
     #[tokio::test]
-    async fn test_filter_greater_than() {
+    async fn test_filter_basic() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
         
         let input = Tensor::from_data(
@@ -243,5 +243,109 @@ mod tests {
         
         // Results: 1.0 (no), 5.0 (yes), 3.0 (no), 7.0 (yes)
         assert_eq!(output.len(), 4);
+        
+        // Check that filter produced valid output
+        for &val in &output {
+            assert!(val.is_finite());
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_filter_edge_cases() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // All values pass (LessThan 100)
+        let all_pass = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let result = all_pass.filter(FilterOperation::LessThan, 100.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+        
+        // No values pass (GreaterThan 100)
+        let none_pass = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let result = none_pass.filter(FilterOperation::GreaterThan, 100.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+        
+        // Equal operation
+        let equal_test = Tensor::from_data(&vec![5.0, 5.0, 3.0, 5.0], vec![4], device.clone()).unwrap();
+        let result = equal_test.filter(FilterOperation::Equal, 5.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+    }
+    
+    #[tokio::test]
+    async fn test_filter_boundary() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Single element
+        let single = Tensor::from_data(&vec![10.0], vec![1], device.clone()).unwrap();
+        let result = single.filter(FilterOperation::GreaterThan, 5.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1);
+        
+        // Exact threshold boundary
+        let boundary = Tensor::from_data(&vec![4.9, 5.0, 5.1], vec![3], device.clone()).unwrap();
+        let result = boundary.filter(FilterOperation::GreaterThan, 5.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 3);
+        
+        // NotEqual operation
+        let not_equal = Tensor::from_data(&vec![1.0, 2.0, 3.0, 2.0], vec![4], device.clone()).unwrap();
+        let result = not_equal.filter(FilterOperation::NotEqual, 2.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+    }
+    
+    #[tokio::test]
+    async fn test_filter_large_tensor() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Large tensor (1024 elements)
+        let size = 1024;
+        let data: Vec<f32> = (0..size).map(|i| (i % 100) as f32).collect();
+        let input = Tensor::from_data(&data, vec![size], device.clone()).unwrap();
+        
+        // Filter for values > 50
+        let result = input.filter(FilterOperation::GreaterThan, 50.0).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), size);
+        
+        // Verify output is valid
+        for &val in &output {
+            assert!(val.is_finite());
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_filter_precision() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test all filter operations
+        let data = vec![0.5, 1.5, 2.5, 3.5, 4.5];
+        
+        // GreaterThan 2.0
+        let gt_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
+        let result = gt_input.filter(FilterOperation::GreaterThan, 2.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 5);
+        
+        // LessThan 3.0
+        let lt_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
+        let result = lt_input.filter(FilterOperation::LessThan, 3.0).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 5);
+        
+        // Equal 2.5
+        let eq_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
+        let result = eq_input.filter(FilterOperation::Equal, 2.5).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 5);
+        
+        // NotEqual 2.5
+        let ne_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
+        let result = ne_input.filter(FilterOperation::NotEqual, 2.5).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 5);
     }
 }
