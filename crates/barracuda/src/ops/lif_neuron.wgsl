@@ -3,7 +3,6 @@
 
 struct Params {
     n: u32,
-    padding1: vec3<u32>,
     tau: f32,
     threshold: f32,
     reset: f32,
@@ -26,6 +25,9 @@ fn lif_neuron(@builtin(global_invocation_id) gid: vec3<u32>) {
         let leak = -v / params.tau;
         let current = input[t] / params.tau;
         v = v + params.dt * (leak + current);
+        
+        // Only clamp lower bound to prevent going below reset
+        v = max(v, params.reset);
         
         // Check threshold
         if (v >= params.threshold) {
