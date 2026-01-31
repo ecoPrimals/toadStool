@@ -59,9 +59,13 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_radam() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_radam_basic() {
+        let dev = get_test_device().await;
         let params = vec![1.0; 100];
         let grads = vec![0.01; 100];
         let mut state = RAdamState {
@@ -71,5 +75,93 @@ mod tests {
         };
         let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
         assert_eq!(new_params.len(), 100);
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_radam_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single parameter
+        let params = vec![5.0];
+        let grads = vec![0.1];
+        let mut state = RAdamState {
+            m: vec![0.0],
+            v: vec![0.0],
+            step: 0,
+        };
+        let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        assert_eq!(new_params.len(), 1);
+
+        // Zero gradients (no update)
+        let params = vec![1.0; 10];
+        let grads = vec![0.0; 10];
+        let mut state = RAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 5,
+        };
+        let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_radam_boundary() {
+        let dev = get_test_device().await;
+
+        // Early steps (variance not tractable)
+        let params = vec![1.0; 50];
+        let grads = vec![0.1; 50];
+        let mut state = RAdamState {
+            m: vec![0.0; 50],
+            v: vec![0.0; 50],
+            step: 0,
+        };
+        let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+
+        // Later steps (variance tractable, adaptive LR)
+        state.step = 100;
+        let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_radam_large_batch() {
+        let dev = get_test_device().await;
+
+        // 1000 parameters
+        let params = vec![1.0; 1000];
+        let grads = vec![0.01; 1000];
+        let mut state = RAdamState {
+            m: vec![0.0; 1000],
+            v: vec![0.0; 1000],
+            step: 0,
+        };
+        
+        // Multiple steps
+        for _ in 0..10 {
+            let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+            assert_eq!(new_params.len(), 1000);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_radam_precision() {
+        let dev = get_test_device().await;
+
+        // Verify update decreases parameters (positive gradient)
+        let params = vec![10.0; 10];
+        let grads = vec![1.0; 10];
+        let mut state = RAdamState {
+            m: vec![0.0; 10],
+            v: vec![0.0; 10],
+            step: 10, // Enough steps for adaptive LR
+        };
+        let new_params = radam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
+        
+        assert!(new_params.iter().all(|&x| x.is_finite()));
+        // With positive gradient, params should decrease
+        assert!(new_params[0] < params[0]);
     }
 }

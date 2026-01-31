@@ -52,11 +52,67 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_random_crop() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_random_crop_basic() {
+        let dev = get_test_device().await;
         let image = vec![1.0; 3 * 32 * 32];
         let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 24, 24, 4, 12345).await.unwrap();
         assert_eq!(cropped.len(), 3 * 24 * 24);
+    }
+
+    #[tokio::test]
+    async fn test_random_crop_edge_cases() {
+        let dev = get_test_device().await;
+
+        // No padding
+        let image = vec![1.0; 3 * 32 * 32];
+        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 0, 12345).await.unwrap();
+        assert_eq!(cropped.len(), 3 * 16 * 16);
+
+        // Full image (crop = input size)
+        let image = vec![1.0; 3 * 8 * 8];
+        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 8, 8, 8, 8, 0, 12345).await.unwrap();
+        assert_eq!(cropped.len(), 3 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_random_crop_boundary() {
+        let dev = get_test_device().await;
+
+        // Large padding
+        let image = vec![1.0; 3 * 16 * 16];
+        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 16, 16, 20, 20, 4, 12345).await.unwrap();
+        assert_eq!(cropped.len(), 3 * 20 * 20);
+
+        // Single channel
+        let image = vec![1.0; 1 * 32 * 32];
+        let cropped = random_crop(&dev.device, &dev.queue, &image, 1, 32, 32, 24, 24, 4, 12345).await.unwrap();
+        assert_eq!(cropped.len(), 24 * 24);
+    }
+
+    #[tokio::test]
+    async fn test_random_crop_large_batch() {
+        let dev = get_test_device().await;
+
+        // High resolution
+        let image = vec![1.0; 3 * 256 * 256];
+        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 256, 256, 224, 224, 4, 12345).await.unwrap();
+        assert_eq!(cropped.len(), 3 * 224 * 224);
+    }
+
+    #[tokio::test]
+    async fn test_random_crop_precision() {
+        let dev = get_test_device().await;
+
+        // Verify deterministic with same seed
+        let image = vec![1.0; 3 * 32 * 32];
+        let cropped1 = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 4, 12345).await.unwrap();
+        let cropped2 = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 4, 12345).await.unwrap();
+        assert_eq!(cropped1, cropped2);
+        assert_eq!(cropped1.len(), 3 * 16 * 16);
     }
 }
