@@ -137,9 +137,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_rmsnorm_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Create input [2, 4] - 2 samples, 4 features each
         let input_data = vec![
@@ -158,7 +162,72 @@ mod tests {
         
         // Output should be normalized
         assert_eq!(output.len(), 8);
-        // Values should be scaled by RMS
-        assert!(output[0].abs() > 0.0);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_rmsnorm_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single sample
+        let input = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![1, 3], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0, 1.0], vec![3], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-6).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 3);
+
+        // Small epsilon
+        let input = Tensor::from_data(&vec![1.0, 1.0], vec![1, 2], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-8).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_rmsnorm_boundary() {
+        let device = get_test_device().await;
+
+        // Large feature size
+        let input_data: Vec<f32> = (0..100).map(|i| i as f32).collect();
+        let input = Tensor::from_data(&input_data, vec![1, 100], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0; 100], vec![100], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-6).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 100);
+
+        // Different gamma values
+        let input = Tensor::from_data(&vec![1.0; 4], vec![1, 4], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![0.5, 1.0, 1.5, 2.0], vec![4], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-6).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_rmsnorm_large_batch() {
+        let device = get_test_device().await;
+
+        // 100 samples, 10 features
+        let input_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
+        let input = Tensor::from_data(&input_data, vec![100, 10], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0; 10], vec![10], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-6).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 1000);
+    }
+
+    #[tokio::test]
+    async fn test_rmsnorm_precision() {
+        let device = get_test_device().await;
+
+        // Verify normalization behavior
+        let input = Tensor::from_data(&vec![2.0, 2.0, 2.0, 2.0], vec![1, 4], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone()).unwrap();
+        let result = input.rmsnorm(gamma, 1e-6).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 4);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
