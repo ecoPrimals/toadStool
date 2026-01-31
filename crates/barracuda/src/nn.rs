@@ -46,11 +46,14 @@ use crate::error::{BarracudaError, Result as BarracudaResult};
 use crate::tensor::Tensor;
 use crate::ops::matmul::MatMul;
 use crate::ops::add::Add;
+use crate::ops::broadcast::Broadcast;
 use crate::ops::relu::ReLU;
 use crate::ops::gelu::GELU;
 use crate::ops::tanh::Tanh;
 use crate::ops::sigmoid::Sigmoid;
 use crate::ops::softmax::Softmax;
+use crate::ops::mse_loss::MseLoss;
+use crate::ops::cross_entropy::CrossEntropy;
 use std::sync::Arc;
 
 /// Network configuration (runtime, no hardcoding)
@@ -182,6 +185,18 @@ pub struct TrainingMetrics {
     pub batch: usize,
 }
 
+/// Gradient storage for backpropagation (internal use)
+struct LayerGradients {
+    weight_grad: Option<Tensor>,
+    bias_grad: Option<Tensor>,
+}
+
+/// Activation cache for backward pass (internal use)
+struct ActivationCache {
+    input: Tensor,
+    output: Tensor,
+}
+
 /// Training history (runtime accumulation)
 #[derive(Debug, Clone, Default)]
 pub struct TrainHistory {
@@ -282,16 +297,26 @@ impl NeuralNetwork {
             });
         }
         
-        // Convert input to tensor
-        let mut current = Tensor::from_data(input, vec![input.len()], Arc::new(self.device.clone()))?;
+        // Convert input to tensor with shape [1, input_size] for batch processing
+        let mut current = Tensor::from_data(input, vec![1, input.len()], Arc::new(self.device.clone()))?;
         
         // Process through each layer
         for (layer, state) in self.layers.iter().zip(self.layer_states.iter()) {
             current = self.forward_layer(&current, layer, state).await?;
         }
         
-        // Convert output tensor back to vec
-        Ok(current.to_vec()?)
+        // Convert output tensor back to vec (flatten batch dimension)
+        let output = current.to_vec()?;
+        
+        // Remove batch dimension if present
+        let final_output = if current.shape()[0] == 1 && current.shape().len() == 2 {
+            // Shape is [1, n], return just the [n] part
+            output
+        } else {
+            output
+        };
+        
+        Ok(final_output)
     }
     
     /// Forward pass through single layer
@@ -309,13 +334,17 @@ impl NeuralNetwork {
                         message: "Linear layer missing weights".to_string(),
                     })?;
                 
-                // Matrix multiplication
+                // Matrix multiplication: [batch, in] × [in, out] = [batch, out]
                 let matmul = MatMul::new(input.clone(), weights.clone());
                 let mut output = matmul.execute()?;
                 
-                // Add bias if present
+                // Add bias if present (broadcast [out] to [batch, out])
                 if let Some(bias) = &state.bias {
-                    let add = Add::new(output, bias.clone())?;
+                    // Broadcast bias to match output shape
+                    let broadcast = Broadcast::new(bias.clone(), output.shape().to_vec());
+                    let broadcasted_bias = broadcast.execute()?;
+                    
+                    let add = Add::new(output, broadcasted_bias)?;
                     output = add.execute()?;
                 }
                 
@@ -369,14 +398,73 @@ impl NeuralNetwork {
     /// # Returns
     ///
     /// Training metrics for this batch
-    pub async fn train_step(&mut self, _inputs: &[Vec<f32>], _targets: &[Vec<f32>]) -> BarracudaResult<TrainingMetrics> {
-        // TODO: Implement training step (forward + backward + optimize)
-        // For now, scaffold returns placeholder
+    /// Training step: forward + backward + optimization
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - Batch of training inputs
+    /// * `targets` - Batch of training targets
+    ///
+    /// # Returns
+    ///
+    /// Training metrics for this batch
+    pub async fn train_step(&mut self, inputs: &[Vec<f32>], targets: &[Vec<f32>]) -> BarracudaResult<TrainingMetrics> {
+        if inputs.is_empty() || targets.is_empty() {
+            return Err(BarracudaError::InvalidInput {
+                message: "Inputs and targets cannot be empty".to_string(),
+            });
+        }
+        
+        if inputs.len() != targets.len() {
+            return Err(BarracudaError::InvalidInput {
+                message: format!("Batch size mismatch: {} inputs vs {} targets", inputs.len(), targets.len()),
+            });
+        }
+        
+        let batch_size = inputs.len();
+        let mut total_loss = 0.0;
+        
+        // Process each sample in the batch
+        for (input, target) in inputs.iter().zip(targets.iter()) {
+            // Forward pass
+            let output = self.forward(input).await?;
+            
+            // Convert output and target to tensors for loss computation
+            let output_tensor = Tensor::from_data(&output, vec![1, output.len()], Arc::new(self.device.clone()))?;
+            let target_tensor = Tensor::from_data(target, vec![1, target.len()], Arc::new(self.device.clone()))?;
+            
+            // Compute loss based on loss function
+            let loss_tensor = match &self.loss_fn {
+                LossFunction::MSE => {
+                    let mse = MseLoss::new(output_tensor, target_tensor);
+                    mse.execute()?
+                }
+                LossFunction::CrossEntropy => {
+                    let ce = CrossEntropy::new(output_tensor, target_tensor);
+                    ce.execute()?
+                }
+                _ => {
+                    return Err(BarracudaError::InvalidInput {
+                        message: format!("Loss function {:?} not yet implemented", self.loss_fn),
+                    });
+                }
+            };
+            
+            // Extract loss value
+            let loss_vec = loss_tensor.to_vec()?;
+            total_loss += loss_vec[0];
+        }
+        
+        let avg_loss = total_loss / batch_size as f32;
+        
+        // TODO: Implement backward pass and weight updates
+        // For now, return metrics with loss only
+        
         Ok(TrainingMetrics {
-            loss: 0.0,
-            accuracy: None,
-            epoch: 0,
-            batch: 0,
+            loss: avg_loss,
+            accuracy: None, // TODO: Compute accuracy
+            epoch: 0,       // TODO: Track epoch
+            batch: 0,       // TODO: Track batch
         })
     }
     
@@ -593,24 +681,52 @@ mod tests {
         assert!(result.is_err());
     }
     
-    // TODO: Fix forward pass test - need to handle matrix dimensions properly
-    // #[tokio::test]
-    // async fn test_forward_pass() {
-    //     let device = WgpuDevice::new().await.unwrap();
-    //     let network = NeuralNetwork::builder(&device)
-    //         .add_layer(Layer::Linear { in_features: 3, out_features: 2 })
-    //         .add_layer(Layer::ReLU)
-    //         .build()
-    //         .await
-    //         .unwrap();
-    //     
-    //     // Test forward pass
-    //     let input = vec![1.0, 2.0, 3.0];
-    //     let output = network.forward(&input).await.unwrap();
-    //     
-    //     assert_eq!(output.len(), 2);
-    //     assert!(output.iter().all(|&x| x.is_finite()));
-    //     // ReLU should make all values non-negative
-    //     assert!(output.iter().all(|&x| x >= 0.0));
-    // }
+    #[tokio::test]
+    async fn test_forward_pass() {
+        let device = WgpuDevice::new().await.unwrap();
+        let network = NeuralNetwork::builder(&device)
+            .add_layer(Layer::Linear { in_features: 3, out_features: 2 })
+            .add_layer(Layer::ReLU)
+            .build()
+            .await
+            .unwrap();
+        
+        // Test forward pass
+        let input = vec![1.0, 2.0, 3.0];
+        let output = network.forward(&input).await.unwrap();
+        
+        assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // ReLU should make all values non-negative
+        assert!(output.iter().all(|&x| x >= 0.0));
+    }
+    
+    #[tokio::test]
+    async fn test_train_step_loss_computation() {
+        let device = WgpuDevice::new().await.unwrap();
+        let mut network = NeuralNetwork::builder(&device)
+            .add_layer(Layer::Linear { in_features: 2, out_features: 2 })
+            .add_layer(Layer::ReLU)
+            .loss(LossFunction::MSE)
+            .build()
+            .await
+            .unwrap();
+        
+        // Prepare simple batch
+        let inputs = vec![
+            vec![1.0, 2.0],
+            vec![3.0, 4.0],
+        ];
+        let targets = vec![
+            vec![0.5, 0.5],
+            vec![0.8, 0.2],
+        ];
+        
+        // Test train step
+        let metrics = network.train_step(&inputs, &targets).await.unwrap();
+        
+        // Loss should be computed and finite
+        assert!(metrics.loss.is_finite());
+        assert!(metrics.loss >= 0.0); // MSE is always non-negative
+    }
 }
