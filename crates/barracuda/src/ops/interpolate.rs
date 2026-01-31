@@ -85,11 +85,76 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_interpolate() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_interpolate_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0; 1 * 3 * 4 * 4];
         let output = interpolate(&dev.device, &dev.queue, &input, &[1, 3, 4, 4], &[1, 3, 8, 8], InterpolateMode::Bilinear).await.unwrap();
         assert_eq!(output.len(), 1 * 3 * 8 * 8);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Nearest mode
+        let input = vec![1.0; 1 * 1 * 2 * 2];
+        let output = interpolate(&dev.device, &dev.queue, &input, &[1, 1, 2, 2], &[1, 1, 4, 4], InterpolateMode::Nearest).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 4 * 4);
+
+        // No resize (same size)
+        let input = vec![1.0; 1 * 3 * 8 * 8];
+        let output = interpolate(&dev.device, &dev.queue, &input, &[1, 3, 8, 8], &[1, 3, 8, 8], InterpolateMode::Bilinear).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_boundary() {
+        let dev = get_test_device().await;
+
+        // Downsampling
+        let input = vec![1.0; 1 * 3 * 16 * 16];
+        let output = interpolate(&dev.device, &dev.queue, &input, &[1, 3, 16, 16], &[1, 3, 8, 8], InterpolateMode::Bilinear).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 8 * 8);
+
+        // Large upsampling
+        let input = vec![1.0; 1 * 3 * 4 * 4];
+        let output = interpolate(&dev.device, &dev.queue, &input, &[1, 3, 4, 4], &[1, 3, 32, 32], InterpolateMode::Bilinear).await.unwrap();
+        assert_eq!(output.len(), 1 * 3 * 32 * 32);
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 8
+        let batch_size = 8;
+        let input = vec![1.0; batch_size * 3 * 8 * 8];
+        let output = interpolate(&dev.device, &dev.queue, &input, &[batch_size, 3, 8, 8], &[batch_size, 3, 16, 16], InterpolateMode::Bilinear).await.unwrap();
+        assert_eq!(output.len(), batch_size * 3 * 16 * 16);
+    }
+
+    #[tokio::test]
+    async fn test_interpolate_precision() {
+        let dev = get_test_device().await;
+
+        // Test bilinear interpolation with known values
+        let mut input = vec![0.0; 1 * 1 * 2 * 2];
+        input[0] = 1.0; // Top-left
+        input[1] = 2.0; // Top-right
+        input[2] = 3.0; // Bottom-left
+        input[3] = 4.0; // Bottom-right
+        
+        let output = interpolate(&dev.device, &dev.queue, &input, &[1, 1, 2, 2], &[1, 1, 3, 3], InterpolateMode::Bilinear).await.unwrap();
+        
+        assert_eq!(output.len(), 9);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Values should be interpolated between 1-4
+        assert!(output.iter().all(|&x| x >= 1.0 && x <= 4.0));
     }
 }
