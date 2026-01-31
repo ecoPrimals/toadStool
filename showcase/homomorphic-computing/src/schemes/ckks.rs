@@ -1,21 +1,44 @@
 //! CKKS (Cheon-Kim-Kim-Song) Homomorphic Encryption Scheme
 //!
+//! ⚠️ **PROOF OF CONCEPT - NOT CRYPTOGRAPHICALLY SECURE** ⚠️
+//!
+//! This implementation demonstrates the **structure** of CKKS homomorphic encryption
+//! but is **NOT suitable for production use**. It uses simplified encryption that
+//! does NOT provide actual security guarantees.
+//!
+//! **For Production:** Integrate `concrete-rs` CKKS implementation.
+//!
+//! # What CKKS Is
+//!
 //! CKKS is an approximate homomorphic encryption scheme optimized for
 //! real/complex number arithmetic and machine learning workloads.
 //!
-//! # Use Cases
+//! ## Use Cases (with Real FHE)
 //! - Machine learning inference on encrypted data
 //! - Statistical analysis
 //! - Signal processing
 //! - Medical AI (approximate results acceptable)
 //!
-//! # Key Feature
+//! ## Key Feature
 //! - Supports approximate arithmetic (small errors acceptable)
 //! - More efficient than BFV for ML workloads
 //! - Native support for floating-point-like operations
 //!
+//! ## Production Integration Path
+//!
+//! ```rust,ignore
+//! // Phase 1: Proof of Concept (CURRENT)
+//! let scheme = CkksScheme::new()?;  // Simplified, not secure
+//!
+//! // Phase 2: Production (FUTURE - integrate concrete-rs)
+//! use concrete::*;
+//! let config = CKKSConfig::default();
+//! let scheme = CKKSScheme::from_config(config)?;  // Real, secure FHE
+//! ```
+//!
 //! # Reference
 //! - https://eprint.iacr.org/2016/421.pdf
+//! - https://github.com/zama-ai/concrete (Production Rust FHE library)
 
 #![allow(dead_code)]
 

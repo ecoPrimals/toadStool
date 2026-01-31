@@ -1,19 +1,45 @@
 //! BFV (Brakerski-Fan-Vercauteren) Homomorphic Encryption Scheme
 //!
+//! ⚠️ **PROOF OF CONCEPT - NOT CRYPTOGRAPHICALLY SECURE** ⚠️
+//!
+//! This implementation demonstrates the **structure** of BFV homomorphic encryption
+//! but is **NOT suitable for production use**. It uses simplified encryption that
+//! does NOT provide actual security guarantees.
+//!
+//! **For Production:** Integrate `concrete-rs` or similar audited FHE library.
+//!
+//! # What BFV Is
+//!
 //! BFV is a leveled homomorphic encryption scheme based on Ring-LWE.
 //! It supports exact integer arithmetic on encrypted data.
 //!
-//! # Use Cases
+//! ## Use Cases (with Real FHE)
 //! - Financial calculations (exact precision required)
 //! - Voting systems
 //! - Secure auctions
 //!
-//! # Security
+//! ## Security (Real Implementation)
 //! - Based on Ring-LWE (Learning With Errors over polynomial rings)
 //! - Post-quantum secure
 //!
+//! ## Production Integration Path
+//!
+//! ```rust,ignore
+//! // Phase 1: Proof of Concept (CURRENT)
+//! let scheme = BfvScheme::new()?;  // Simplified, not secure
+//!
+//! // Phase 2: Production (FUTURE - integrate concrete-rs)
+//! use concrete::*;
+//! let config = BFVConfig::default();
+//! let scheme = BFVScheme::from_config(config)?;  // Real, secure FHE
+//! ```
+//!
+//! The `HomomorphicScheme` trait interface remains the same, allowing
+//! seamless evolution from PoC to production.
+//!
 //! # Reference
 //! - https://eprint.iacr.org/2012/144.pdf
+//! - https://github.com/zama-ai/concrete (Production Rust FHE library)
 
 #![allow(dead_code)]
 

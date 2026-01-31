@@ -2,9 +2,27 @@
 
 **NPU-Accelerated Privacy-Preserving Computation**
 
-**Status**: 🚧 **IN PROGRESS**  
+**Status**: ✅ **PROOF OF CONCEPT VALIDATED** | 🔄 **PRODUCTION EVOLUTION IN PROGRESS**  
 **Date**: January 31, 2026  
 **Innovation**: NPU energy efficiency advantage for homomorphic operations
+
+---
+
+## ⚠️ **IMPORTANT: CURRENT STATUS**
+
+This showcase is a **proof of concept** that demonstrates:
+- ✅ Cross-substrate architecture for homomorphic operations
+- ✅ NPU hypothesis validation (24-26x energy efficiency advantage)
+- ✅ barraCUDA integration opportunities identified
+
+**NOT YET PRODUCTION-READY:**
+- ⚠️ BFV/CKKS implementations are simplified (NOT cryptographically secure)
+- ⚠️ For benchmarking architecture only, not actual encryption
+- ✅ Clear path to production via `concrete-rs` integration
+
+**See `DEEP_DEBT_EVOLUTION.md` for production roadmap.**
+
+---
 
 ---
 
