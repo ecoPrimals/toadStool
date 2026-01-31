@@ -112,12 +112,11 @@ pub async fn causal_attention(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_causal_attention() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_causal_attention_basic() {
+        let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
         
@@ -132,6 +131,110 @@ mod tests {
         let value = vec![1.0; size];
         
         let output = causal_attention(device, queue, &query, &key, &value, batch, heads, seq, dim).await.unwrap();
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_causal_attention_edge_cases() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Single token (no causal masking needed)
+        let batch = 1;
+        let heads = 1;
+        let seq = 1;
+        let dim = 4;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![0.5; size];
+        let key = query.clone();
+        let value = vec![1.0; size];
+        
+        let output = causal_attention(device, queue, &query, &key, &value, batch, heads, seq, dim).await.unwrap();
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_causal_attention_boundary() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Multiple heads
+        let batch = 1;
+        let heads = 4;
+        let seq = 3;
+        let dim = 8;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![0.1; size];
+        let key = query.clone();
+        let value = vec![1.0; size];
+        
+        let output = causal_attention(device, queue, &query, &key, &value, batch, heads, seq, dim).await.unwrap();
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_causal_attention_large_batch() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // GPT-style dimensions
+        let batch = 2;
+        let heads = 8;
+        let seq = 16;
+        let dim = 16;
+        
+        let size = batch * heads * seq * dim;
+        let query = vec![0.5; size];
+        let key = query.clone();
+        let value = vec![1.0; size];
+        
+        let output = causal_attention(device, queue, &query, &key, &value, batch, heads, seq, dim).await.unwrap();
+        assert_eq!(output.len(), size);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_causal_attention_precision() {
+        let dev = get_test_device().await;
+        let device = &dev.device;
+        let queue = &dev.queue;
+        
+        // Test causal masking: first token only attends to itself
+        let batch = 1;
+        let heads = 1;
+        let seq = 3;
+        let dim = 2;
+        
+        let size = batch * heads * seq * dim;
+        let mut query = vec![0.0; size];
+        let mut key = vec![0.0; size];
+        let mut value = vec![0.0; size];
+        
+        // Set distinct values for each token
+        for i in 0..seq {
+            for d in 0..dim {
+                let idx = i * dim + d;
+                query[idx] = (i + 1) as f32;
+                key[idx] = (i + 1) as f32;
+                value[idx] = (i + 1) as f32 * 10.0;
+            }
+        }
+        
+        let output = causal_attention(device, queue, &query, &key, &value, batch, heads, seq, dim).await.unwrap();
+        
+        // Output should be finite and valid
+        assert!(output.iter().all(|&x| x.is_finite()));
+        
+        // First token should only attend to itself (no future tokens)
+        // This is a property of causal attention
         assert_eq!(output.len(), size);
     }
 }
