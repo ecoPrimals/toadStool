@@ -75,14 +75,84 @@ pub async fn color_jitter(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_color_jitter() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_color_jitter_basic() {
+        let dev = get_test_device().await;
         let image = vec![0.5; 3 * 128 * 128];
         let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, 128, 128, 0.2, 0.2, 0.2, 0.1, 88888).await.unwrap();
         assert_eq!(jittered.len(), image.len());
+        assert!(jittered.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    }
+
+    #[tokio::test]
+    async fn test_color_jitter_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // No augmentation (all factors = 0)
+        let image = vec![0.5; 3 * 4 * 4];
+        let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, 4, 4, 0.0, 0.0, 0.0, 0.0, 12345).await.unwrap();
+        // Should be similar to input (minor numerical differences allowed)
+        assert_eq!(jittered.len(), image.len());
+        
+        // Grayscale image (R=G=B)
+        let image = vec![0.3; 3 * 4 * 4];
+        let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, 4, 4, 0.1, 0.1, 0.1, 0.1, 99999).await.unwrap();
+        assert!(jittered.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    }
+
+    #[tokio::test]
+    async fn test_color_jitter_boundary() {
+        let dev = get_test_device().await;
+        
+        // Maximum augmentation
+        let image = vec![0.5; 3 * 8 * 8];
+        let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, 8, 8, 1.0, 1.0, 1.0, 1.0, 77777).await.unwrap();
+        assert!(jittered.iter().all(|&x| x >= 0.0 && x <= 1.0));
+        
+        // Extreme values (black and white)
+        let mut image = vec![0.0; 3 * 4 * 4];
+        for i in (3 * 4 * 4 / 2)..(3 * 4 * 4) {
+            image[i] = 1.0;
+        }
+        let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, 4, 4, 0.3, 0.3, 0.3, 0.3, 55555).await.unwrap();
+        assert!(jittered.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    }
+
+    #[tokio::test]
+    async fn test_color_jitter_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Large image
+        let width = 256;
+        let height = 256;
+        let image: Vec<f32> = (0..3 * width * height)
+            .map(|i| ((i % 100) as f32) / 100.0)
+            .collect();
+        
+        let jittered = color_jitter(&dev.device, &dev.queue, &image, 3, height, width, 0.4, 0.4, 0.4, 0.2, 11111).await.unwrap();
+        
+        assert_eq!(jittered.len(), image.len());
+        assert!(jittered.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    }
+
+    #[tokio::test]
+    async fn test_color_jitter_precision() {
+        let dev = get_test_device().await;
+        
+        // Test determinism with same seed
+        let image = vec![0.6; 3 * 16 * 16];
+        let seed = 42424;
+        
+        let jittered1 = color_jitter(&dev.device, &dev.queue, &image, 3, 16, 16, 0.3, 0.3, 0.3, 0.2, seed).await.unwrap();
+        let jittered2 = color_jitter(&dev.device, &dev.queue, &image, 3, 16, 16, 0.3, 0.3, 0.3, 0.2, seed).await.unwrap();
+        
+        // Same seed should produce identical results
+        assert_eq!(jittered1, jittered2);
+        
+        // Different seed should produce different results
+        let jittered3 = color_jitter(&dev.device, &dev.queue, &image, 3, 16, 16, 0.3, 0.3, 0.3, 0.2, seed + 1).await.unwrap();
+        assert_ne!(jittered1, jittered3);
     }
 }
