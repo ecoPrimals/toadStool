@@ -10,6 +10,7 @@
 pub mod spike_encode;
 pub mod spike_decode;
 pub mod lif_neuron;
+pub mod temporal_pool;
 
 // Activation operations
 pub mod relu;

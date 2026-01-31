@@ -73,6 +73,7 @@ pub mod tensor;
 pub use ops::spike_encode::spike_encode;
 pub use ops::spike_decode::spike_decode;
 pub use ops::lif_neuron::lif_neuron;
+pub use ops::temporal_pool::temporal_pool;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
