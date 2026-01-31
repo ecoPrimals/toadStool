@@ -49,12 +49,79 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_stft() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_stft_basic() {
+        let dev = get_test_device().await;
         let signal = vec![0.0; 1024];
         let window = vec![1.0; 512]; // Rectangular window
         let output = stft(&dev.device, &dev.queue, &signal, 512, 256, &window).await.unwrap();
         assert!(output.len() > 0);
+        assert!(output.iter().all(|(r, i)| r.is_finite() && i.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_stft_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Small signal
+        let signal = vec![0.5; 256];
+        let window = vec![1.0; 128];
+        let output = stft(&dev.device, &dev.queue, &signal, 128, 64, &window).await.unwrap();
+        assert!(output.len() > 0);
+
+        // Single frame
+        let signal = vec![1.0; 512];
+        let window = vec![1.0; 512];
+        let output = stft(&dev.device, &dev.queue, &signal, 512, 512, &window).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_stft_boundary() {
+        let dev = get_test_device().await;
+
+        // Small hop (50% overlap)
+        let signal = vec![0.5; 512];
+        let window = vec![1.0; 256];
+        let output = stft(&dev.device, &dev.queue, &signal, 256, 128, &window).await.unwrap();
+        assert!(output.len() > 0);
+
+        // Large hop (no overlap)
+        let signal = vec![0.5; 1024];
+        let window = vec![1.0; 256];
+        let output = stft(&dev.device, &dev.queue, &signal, 256, 256, &window).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_stft_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large signal
+        let signal = vec![0.5; 8192];
+        let window = vec![1.0; 1024];
+        let output = stft(&dev.device, &dev.queue, &signal, 1024, 512, &window).await.unwrap();
+        assert!(output.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_stft_precision() {
+        let dev = get_test_device().await;
+
+        // Verify output format (complex pairs)
+        let signal = vec![1.0; 512];
+        let window = vec![1.0; 256];
+        let output = stft(&dev.device, &dev.queue, &signal, 256, 128, &window).await.unwrap();
+        
+        assert!(output.len() > 0);
+        // Each output is (real, imag) pair
+        for (real, imag) in &output {
+            assert!(real.is_finite());
+            assert!(imag.is_finite());
+        }
     }
 }
