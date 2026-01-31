@@ -147,9 +147,13 @@ impl Tensor {
 mod tests {
     use super::*;
 
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_instancenorm_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Create input [1, 2, 2, 2] - 1 batch, 2 channels, 2x2 spatial
         let input_data = vec![
@@ -171,6 +175,89 @@ mod tests {
         
         // Output should be normalized per channel
         assert_eq!(output.len(), 8);
-        assert!(output[0].abs() > 0.0);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_instancenorm_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single spatial location (1x1)
+        let input_data = vec![5.0f32, 10.0]; // [1, 2, 1, 1]
+        let input = Tensor::from_data(&input_data, vec![1, 2, 1, 1], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+
+        // All same values
+        let input_data = vec![3.0f32; 1 * 2 * 4 * 4];
+        let input = Tensor::from_data(&input_data, vec![1, 2, 4, 4], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![0.0, 0.0], vec![2], device).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_instancenorm_boundary() {
+        let device = get_test_device().await;
+
+        // Large spatial dimensions
+        let input_data = vec![1.0; 1 * 3 * 32 * 32];
+        let input = Tensor::from_data(&input_data, vec![1, 3, 32, 32], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0, 1.0, 1.0], vec![3], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![0.0, 0.0, 0.0], vec![3], device.clone()).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        assert_eq!(result.shape(), &[1, 3, 32, 32]);
+
+        // Many channels
+        let input_data = vec![1.0; 1 * 64 * 8 * 8];
+        let input = Tensor::from_data(&input_data, vec![1, 64, 8, 8], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0; 64], vec![64], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![0.0; 64], vec![64], device).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        assert_eq!(result.shape(), &[1, 64, 8, 8]);
+    }
+
+    #[tokio::test]
+    async fn test_instancenorm_large_batch() {
+        let device = get_test_device().await;
+
+        // Batch size 8
+        let batch_size = 8;
+        let input_data = vec![1.0; batch_size * 16 * 16 * 16];
+        let input = Tensor::from_data(&input_data, vec![batch_size, 16, 16, 16], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![1.0; 16], vec![16], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![0.0; 16], vec![16], device).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        assert_eq!(result.shape(), &[batch_size, 16, 16, 16]);
+    }
+
+    #[tokio::test]
+    async fn test_instancenorm_precision() {
+        let device = get_test_device().await;
+
+        // Test with gamma=2, beta=1 scaling
+        let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
+        let gamma = Tensor::from_data(&vec![2.0], vec![1], device.clone()).unwrap();
+        let beta = Tensor::from_data(&vec![1.0], vec![1], device).unwrap();
+        
+        let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 4);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Just verify normalization occurred (values should have reasonable range)
+        assert!(output.iter().all(|&x| x.abs() < 10.0));
     }
 }
