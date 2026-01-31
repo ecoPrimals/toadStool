@@ -67,43 +67,362 @@ impl GpuHomomorphic {
     
     /// Execute polynomial addition on GPU using barraCUDA
     ///
-    /// ⚠️ TEMPORARY FALLBACK: Full GPU implementation blocked by barraCUDA API
-    ///    See BARRACUDA_EVOLUTION_INSIGHTS.md for required API changes
-    ///    
-    ///    Using CPU fallback for now to demonstrate capability selection
+    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCUDA evolved APIs!
+    ///
+    /// Modular addition: (a + b) mod q for each coefficient
+    /// Highly parallel - perfect for GPU!
     async fn gpu_polynomial_add(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
-        // TEMPORARY: CPU fallback until barraCUDA API evolution complete
-        let modulus = 1u64 << 60;
-        let result: Vec<u64> = a.iter()
-            .zip(b.iter())
-            .map(|(&x, &y)| ((x as u128 + y as u128) % modulus as u128) as u64)
-            .collect();
+        let size = a.len();
+        
+        // ✅ Use barraCUDA's buffer creation helpers!
+        let input_a = self.device.create_storage_buffer(
+            "poly_a",
+            bytemuck::cast_slice(a),
+        );
+        
+        let input_b = self.device.create_storage_buffer(
+            "poly_b",
+            bytemuck::cast_slice(b),
+        );
+        
+        // Create output buffer
+        let output_size = (size * std::mem::size_of::<u64>()) as u64;
+        let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("poly_output"),
+            size: output_size,
+            usage: wgpu::BufferUsages::STORAGE 
+                | wgpu::BufferUsages::COPY_SRC 
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        // WGSL shader for modular addition
+        let shader = r#"
+            @group(0) @binding(0) var<storage, read> a: array<u64>;
+            @group(0) @binding(1) var<storage, read> b: array<u64>;
+            @group(0) @binding(2) var<storage, read_write> output: array<u64>;
+            
+            // Modulus: 2^60 (safe for u64 arithmetic)
+            const MODULUS: u64 = 1152921504606846976u;
+            
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                let idx = id.x;
+                if (idx >= arrayLength(&a)) {
+                    return;
+                }
+                
+                // Modular addition
+                let sum = a[idx] + b[idx];
+                output[idx] = sum % MODULUS;
+            }
+        "#;
+        
+        // ✅ Use barraCUDA's public device access!
+        let bind_group_layout = self.device.device()
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("modular_add_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        
+        let bind_group = self.device.device().create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("modular_add_bind_group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: input_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output.as_entire_binding(),
+                },
+            ],
+        });
+        
+        // Compile shader and create pipeline
+        let shader_module = self.device.compile_shader(shader, Some("modular_add_shader"));
+        
+        let pipeline_layout = self.device.device()
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("modular_add_pipeline_layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+        
+        let pipeline = self.device.device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("modular_add_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
+        
+        // Execute on GPU!
+        let mut encoder = self.device.device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("modular_add_encoder"),
+            });
+        
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("modular_add_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+        }
+        
+        self.device.queue().submit(Some(encoder.finish()));
+        
+        // Read back results
+        // ✅ Use barraCUDA's buffer readback!
+        // Note: read_buffer_f32 is for f32, we need u64 version
+        // For now, create staging buffer manually (future: add read_buffer_u64 to barraCUDA)
+        let staging_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("staging"),
+            size: output_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.device().create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(&output, 0, &staging_buffer, 0, output_size);
+        self.device.queue().submit(Some(encoder.finish()));
+        
+        // Map and read
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).ok();
+        });
+        
+        self.device.device().poll(wgpu::Maintain::Wait);
+        receiver.await??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<u64> = bytemuck::cast_slice(&data).to_vec();
+        
+        drop(data);
+        staging_buffer.unmap();
         
         Ok(result)
-        
-        // FUTURE: Full GPU implementation (see BARRACUDA_EVOLUTION_INSIGHTS.md)
-        // Waiting for barraCUDA API improvements:
-        // 1. Public device/queue access
-        // 2. Buffer creation helpers
-        // 3. Multi-buffer bind group support
     }
     
-    /// Execute polynomial multiplication on GPU using NTT
+    /// Execute polynomial multiplication on GPU using element-wise modular multiplication
     ///
-    /// ⚠️ TEMPORARY FALLBACK: Full GPU implementation blocked by barraCUDA API
-    ///    See BARRACUDA_EVOLUTION_INSIGHTS.md for required API changes
+    /// ✅ **REAL GPU IMPLEMENTATION** - Uses barraCUDA evolved APIs!
+    ///
+    /// Note: This is element-wise multiplication, not true polynomial multiplication.
+    /// True polynomial multiplication requires NTT (Number Theoretic Transform).
+    /// For homomorphic encryption demo, element-wise is sufficient.
     async fn gpu_polynomial_multiply(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>> {
-        // TEMPORARY: CPU fallback until barraCUDA API evolution complete
-        let modulus = 1u64 << 60;
-        let result: Vec<u64> = a.iter()
-            .zip(b.iter())
-            .map(|(&x, &y)| ((x as u128 * y as u128) % modulus as u128) as u64)
-            .collect();
+        let size = a.len();
+        
+        // ✅ Use barraCUDA's buffer creation helpers!
+        let input_a = self.device.create_storage_buffer(
+            "poly_a_mul",
+            bytemuck::cast_slice(a),
+        );
+        
+        let input_b = self.device.create_storage_buffer(
+            "poly_b_mul",
+            bytemuck::cast_slice(b),
+        );
+        
+        // Create output buffer
+        let output_size = (size * std::mem::size_of::<u64>()) as u64;
+        let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("poly_output_mul"),
+            size: output_size,
+            usage: wgpu::BufferUsages::STORAGE 
+                | wgpu::BufferUsages::COPY_SRC 
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        // WGSL shader for modular multiplication
+        let shader = r#"
+            @group(0) @binding(0) var<storage, read> a: array<u64>;
+            @group(0) @binding(1) var<storage, read> b: array<u64>;
+            @group(0) @binding(2) var<storage, read_write> output: array<u64>;
+            
+            // Modulus: 2^60 (safe for u64 arithmetic)
+            const MODULUS: u64 = 1152921504606846976u;
+            
+            @compute @workgroup_size(256)
+            fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+                let idx = id.x;
+                if (idx >= arrayLength(&a)) {
+                    return;
+                }
+                
+                // Element-wise modular multiplication
+                // Note: For large values, this may overflow u64
+                // Production FHE would use Barrett reduction or Montgomery form
+                let product = a[idx] * b[idx];
+                output[idx] = product % MODULUS;
+            }
+        "#;
+        
+        // ✅ Use barraCUDA's public device access!
+        let bind_group_layout = self.device.device()
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("modular_mul_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        
+        let bind_group = self.device.device().create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("modular_mul_bind_group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: input_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output.as_entire_binding(),
+                },
+            ],
+        });
+        
+        // Compile shader and create pipeline
+        let shader_module = self.device.compile_shader(shader, Some("modular_mul_shader"));
+        
+        let pipeline_layout = self.device.device()
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("modular_mul_pipeline_layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+        
+        let pipeline = self.device.device()
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("modular_mul_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
+        
+        // Execute on GPU!
+        let mut encoder = self.device.device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("modular_mul_encoder"),
+            });
+        
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("modular_mul_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+        }
+        
+        self.device.queue().submit(Some(encoder.finish()));
+        
+        // Read back results
+        let staging_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("staging_mul"),
+            size: output_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        
+        let mut encoder = self.device.device().create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(&output, 0, &staging_buffer, 0, output_size);
+        self.device.queue().submit(Some(encoder.finish()));
+        
+        // Map and read
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).ok();
+        });
+        
+        self.device.device().poll(wgpu::Maintain::Wait);
+        receiver.await??;
+        
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<u64> = bytemuck::cast_slice(&data).to_vec();
+        
+        drop(data);
+        staging_buffer.unmap();
         
         Ok(result)
-        
-        // FUTURE: Full NTT-based GPU implementation
-        // Will require barraCUDA butterfly pattern support
     }
 }
 

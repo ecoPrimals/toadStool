@@ -16,6 +16,7 @@ toadstool-runtime-universal = { path = "../../crates/runtime/universal" }
 # Core async
 tokio = { version = "1.40", features = ["full"] }
 async-trait = "0.1"
+futures = "0.3"
 
 # Error handling
 anyhow = "1.0"
@@ -36,7 +37,7 @@ num-traits = "0.2"
 num-complex = "0.4"
 
 # GPU (via wgpu - barraCUDA's backend)
-wgpu = "22.1"
+wgpu = "0.19"
 bytemuck = "1.20"
 
 [dev-dependencies]
