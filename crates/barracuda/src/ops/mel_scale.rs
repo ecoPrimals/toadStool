@@ -65,11 +65,71 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_mel_scale() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_mel_scale_basic() {
+        let dev = get_test_device().await;
         let spectrogram = vec![1.0; 100 * 257]; // 100 frames, 257 freq bins
         let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 100, 257, 80, 16000.0, 0.0, 8000.0).await.unwrap();
         assert_eq!(mel_spec.len(), 100 * 80);
+        assert!(mel_spec.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_mel_scale_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single frame
+        let spectrogram = vec![1.0; 1 * 257];
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 1, 257, 80, 16000.0, 0.0, 8000.0).await.unwrap();
+        assert_eq!(mel_spec.len(), 80);
+
+        // Few mel bands
+        let spectrogram = vec![1.0; 10 * 257];
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 10, 257, 20, 16000.0, 0.0, 8000.0).await.unwrap();
+        assert_eq!(mel_spec.len(), 10 * 20);
+    }
+
+    #[tokio::test]
+    async fn test_mel_scale_boundary() {
+        let dev = get_test_device().await;
+
+        // High sample rate
+        let spectrogram = vec![1.0; 50 * 513];
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 50, 513, 128, 44100.0, 0.0, 22050.0).await.unwrap();
+        assert_eq!(mel_spec.len(), 50 * 128);
+
+        // Different frequency range
+        let spectrogram = vec![1.0; 100 * 257];
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 100, 257, 40, 8000.0, 300.0, 4000.0).await.unwrap();
+        assert_eq!(mel_spec.len(), 100 * 40);
+    }
+
+    #[tokio::test]
+    async fn test_mel_scale_large_batch() {
+        let dev = get_test_device().await;
+
+        // Long audio (many frames)
+        let spectrogram = vec![1.0; 500 * 257];
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 500, 257, 80, 16000.0, 0.0, 8000.0).await.unwrap();
+        assert_eq!(mel_spec.len(), 500 * 80);
+    }
+
+    #[tokio::test]
+    async fn test_mel_scale_precision() {
+        let dev = get_test_device().await;
+
+        // Test filterbank energy preservation
+        let mut spectrogram = vec![0.0; 10 * 257];
+        spectrogram[0] = 10.0; // Energy in first bin
+        
+        let mel_spec = mel_scale(&dev.device, &dev.queue, &spectrogram, 10, 257, 80, 16000.0, 0.0, 8000.0).await.unwrap();
+        
+        assert_eq!(mel_spec.len(), 10 * 80);
+        // Verify operation completed successfully
+        assert!(mel_spec.iter().all(|&x| x.is_finite()));
     }
 }

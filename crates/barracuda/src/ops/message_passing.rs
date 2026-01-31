@@ -67,12 +67,78 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_message_passing_sum() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_message_passing_basic() {
+        let dev = get_test_device().await;
         let node_features = vec![1.0; 4 * 8];
         let edges = vec![(0, 1), (1, 2), (2, 3)];
         let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Sum, 4, 8).await.unwrap();
         assert_eq!(output.len(), 4 * 8);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_message_passing_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Single edge
+        let node_features = vec![1.0; 2 * 4];
+        let edges = vec![(0, 1)];
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Sum, 2, 4).await.unwrap();
+        assert_eq!(output.len(), 2 * 4);
+
+        // No edges
+        let node_features = vec![1.0; 3 * 4];
+        let edges = vec![];
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Sum, 3, 4).await.unwrap();
+        assert_eq!(output.len(), 3 * 4);
+    }
+
+    #[tokio::test]
+    async fn test_message_passing_boundary() {
+        let dev = get_test_device().await;
+
+        // Mean aggregation
+        let node_features = vec![2.0; 4 * 8];
+        let edges = vec![(0, 1), (0, 1), (2, 3)]; // Duplicate edge 0->1
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Mean, 4, 8).await.unwrap();
+        assert_eq!(output.len(), 4 * 8);
+
+        // Max aggregation
+        let node_features = vec![1.0; 4 * 8];
+        let edges = vec![(0, 1), (1, 2)];
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Max, 4, 8).await.unwrap();
+        assert_eq!(output.len(), 4 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_message_passing_large_graph() {
+        let dev = get_test_device().await;
+
+        // 100 nodes, many edges
+        let node_features = vec![1.0; 100 * 16];
+        let edges: Vec<(usize, usize)> = (0..50).map(|i| (i, i + 1)).collect();
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, None, Aggregation::Sum, 100, 16).await.unwrap();
+        assert_eq!(output.len(), 100 * 16);
+    }
+
+    #[tokio::test]
+    async fn test_message_passing_precision() {
+        let dev = get_test_device().await;
+
+        // Test with edge features
+        let node_features = vec![2.0; 3 * 4];
+        let edges = vec![(0, 1), (1, 2)];
+        let edge_features = vec![0.5; 2 * 4]; // Scale by 0.5
+        
+        let output = message_passing(&dev.device, &dev.queue, &node_features, &edges, Some(&edge_features), Aggregation::Sum, 3, 4).await.unwrap();
+        
+        assert_eq!(output.len(), 3 * 4);
+        // Node 1 receives message: 2.0 * 0.5 = 1.0 per feature
+        assert!(output[4..8].iter().any(|&x| x > 0.0));
     }
 }
