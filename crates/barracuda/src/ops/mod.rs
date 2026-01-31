@@ -16,6 +16,7 @@ pub mod sparse_matmul_quantized;
 // Pattern matching operations (Bioinformatics)
 pub mod pattern_match;
 pub mod gc_content;
+pub mod complexity_filter;
 
 // Activation operations
 pub mod relu;

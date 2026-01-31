@@ -77,6 +77,7 @@ pub use ops::temporal_pool::temporal_pool;
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 pub use ops::pattern_match::pattern_match;
 pub use ops::gc_content::gc_content;
+pub use ops::complexity_filter::complexity_filter;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
