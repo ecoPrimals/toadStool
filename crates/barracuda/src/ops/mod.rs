@@ -6,6 +6,9 @@
 //! - Single implementation per operation
 //! - Zero duplication
 
+// Neuromorphic operations (NPU/GPU/CPU universal)
+pub mod spike_encode;
+
 // Activation operations
 pub mod relu;
 pub mod gelu;

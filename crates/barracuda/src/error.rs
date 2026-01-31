@@ -32,6 +32,12 @@ pub enum BarracudaError {
     #[error("Operation not supported on device: {op} on {device}")]
     UnsupportedOperation { op: String, device: String },
 
+    #[error("Invalid input: {message}")]
+    InvalidInput { message: String },
+
+    #[error("Execution error: {message}")]
+    ExecutionError { message: String },
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

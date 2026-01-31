@@ -69,6 +69,9 @@ pub mod error;
 pub mod ops;
 pub mod tensor;
 
+// Re-export commonly used operations
+pub use ops::spike_encode::spike_encode;
+
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
     pub use crate::device::{Auto, WgpuDevice};
