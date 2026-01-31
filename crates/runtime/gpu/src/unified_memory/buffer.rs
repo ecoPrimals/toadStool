@@ -138,21 +138,21 @@ impl UnifiedBuffer {
     /// - Pointer is validated (not null, properly aligned, allocation exists)
     /// - Size is valid (checked at creation and validation)
     /// - Exclusive access via &mut self
-    #[allow(clippy::mut_from_ref)]
-    fn as_cpu_slice_mut(&mut self) -> &mut [u8] {
+    ///
+    /// # DEEP DEBT EVOLUTION:
+    /// EVOLVED: Returns Result instead of panicking!
+    /// From: Panic on error (not composable)
+    /// To: Result (caller handles error)
+    fn as_cpu_slice_mut(&mut self) -> ToadStoolResult<&mut [u8]> {
         // DEEP DEBT: Validate before every use!
-        if let Err(e) = self.validate_cpu_ptr() {
-            // Can't return error from this function, so panic with clear message
-            // TODO: Change API to return Result<&mut [u8]> in Phase 2
-            panic!("CPU pointer validation failed: {}. This is a safety violation - buffer was used after being freed or with invalid pointer.", e);
-        }
+        self.validate_cpu_ptr()?;
 
         // SAFETY:
         // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
         // - size is validated at buffer creation and in validate_cpu_ptr()
         // - We have exclusive &mut self (Rust borrow checker guarantees)
         // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
-        unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) }
+        Ok(unsafe { std::slice::from_raw_parts_mut(self.cpu_ptr.as_ptr(), self.size) })
     }
 
     /// Get safe immutable slice from CPU pointer (internal helper)
@@ -165,20 +165,21 @@ impl UnifiedBuffer {
     /// - Pointer is validated (not null, properly aligned, allocation exists)
     /// - Size is valid (checked at creation and validation)
     /// - Shared access via &self (Rust ensures no concurrent writes)
-    fn as_cpu_slice(&self) -> &[u8] {
+    ///
+    /// # DEEP DEBT EVOLUTION:
+    /// EVOLVED: Returns Result instead of panicking!
+    /// From: Panic on error (not composable)
+    /// To: Result (caller handles error)
+    fn as_cpu_slice(&self) -> ToadStoolResult<&[u8]> {
         // DEEP DEBT: Validate before every use!
-        if let Err(e) = self.validate_cpu_ptr() {
-            // Can't return error from this function, so panic with clear message
-            // TODO: Change API to return Result<&[u8]> in Phase 2
-            panic!("CPU pointer validation failed: {}. This is a safety violation - buffer was used after being freed or with invalid pointer.", e);
-        }
+        self.validate_cpu_ptr()?;
 
         // SAFETY:
         // - cpu_ptr validated above (NonNull guarantees non-null, validated for alignment and allocation)
         // - size is validated at buffer creation and in validate_cpu_ptr()
         // - We have &self, Rust guarantees no concurrent mutation
         // DEEP DEBT: NonNull.as_ptr() is zero-cost - same performance, better safety
-        unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) }
+        Ok(unsafe { std::slice::from_raw_parts(self.cpu_ptr.as_ptr(), self.size) })
     }
 
     /// Create new unified buffer (internal use only)
@@ -308,7 +309,7 @@ impl UnifiedBuffer {
 
         // Deep Debt: Use safe slice operations instead of raw pointers!
         // Get safe mutable slice (unsafe encapsulated in helper method)
-        let buffer_slice = self.as_cpu_slice_mut();
+        let buffer_slice = self.as_cpu_slice_mut()?;
         let target_slice = &mut buffer_slice[offset..offset + data.len()];
 
         // Now use safe slice copy (no unsafe here!)
@@ -385,7 +386,7 @@ impl UnifiedBuffer {
 
         // Deep Debt: Use safe slice operations instead of raw pointers!
         // Get safe immutable slice (unsafe encapsulated in helper method)
-        let buffer_slice = self.as_cpu_slice();
+        let buffer_slice = self.as_cpu_slice()?;
         let source_slice = &buffer_slice[offset..offset + len];
 
         // Now use safe Vec::from to copy (no unsafe here!)
@@ -515,7 +516,7 @@ impl UnifiedBuffer {
         // NonNull makes this impossible by construction
 
         // Deep Debt: Use safe slice fill instead of write_bytes!
-        let buffer_slice = self.as_cpu_slice_mut();
+        let buffer_slice = self.as_cpu_slice_mut()?;
         buffer_slice.fill(value);
 
         *self.sync_state.write() = SyncState::CpuModified;
