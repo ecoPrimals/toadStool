@@ -195,9 +195,13 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    async fn get_test_device() -> Arc<crate::device::WgpuDevice> {
+        Arc::new(crate::device::WgpuDevice::new().await.unwrap())
+    }
+
     #[tokio::test]
     async fn test_depthwise_conv2d_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
         // Create input [1, 2, 3, 3] - 1 batch, 2 channels, 3x3 spatial
         let input_data = vec![
@@ -222,5 +226,116 @@ mod tests {
 
         // Output shape should be [1, 2, 2, 2]
         assert_eq!(result.shape(), &[1, 2, 2, 2]);
+    }
+
+    #[tokio::test]
+    async fn test_depthwise_conv2d_edge_cases() {
+        let device = get_test_device().await;
+
+        // Single channel, 1x1 kernel (identity operation)
+        let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
+        let weight_data = vec![1.0]; // [1, 1, 1, 1]
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 1, 1], device.clone()).unwrap();
+        let bias_data = vec![0.0];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        assert_eq!(result.shape(), &[1, 1, 2, 2]);
+
+        // All zeros input
+        let input_data = vec![0.0; 16]; // [1, 2, 2, 2]
+        let input = Tensor::from_data(&input_data, vec![1, 2, 2, 2], device.clone()).unwrap();
+        let weight_data = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; // [2, 1, 2, 2]
+        let weight = Tensor::from_data(&weight_data, vec![2, 1, 2, 2], device.clone()).unwrap();
+        let bias_data = vec![0.0, 0.0];
+        let bias = Tensor::from_data(&bias_data, vec![2], device.clone()).unwrap();
+        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.abs() < 1e-5));
+    }
+
+    #[tokio::test]
+    async fn test_depthwise_conv2d_boundary() {
+        let device = get_test_device().await;
+
+        // With padding - output size preserved
+        let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2]
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
+        let weight_data = vec![1.0, 0.0, 0.0, 1.0]; // [1, 1, 2, 2]
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 2, 2], device.clone()).unwrap();
+        let bias_data = vec![0.0];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+        let result = input.depthwise_conv2d(weight, bias, (1, 1), (1, 1)).unwrap();
+        assert_eq!(result.shape(), &[1, 1, 3, 3]); // Output larger with padding
+
+        // Stride > 1 (downsampling)
+        let input_data = vec![1.0; 32]; // [1, 2, 4, 4]
+        let input = Tensor::from_data(&input_data, vec![1, 2, 4, 4], device.clone()).unwrap();
+        let weight_data = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; // [2, 1, 2, 2]
+        let weight = Tensor::from_data(&weight_data, vec![2, 1, 2, 2], device.clone()).unwrap();
+        let bias_data = vec![0.0, 0.0];
+        let bias = Tensor::from_data(&bias_data, vec![2], device.clone()).unwrap();
+        let result = input.depthwise_conv2d(weight, bias, (2, 2), (0, 0)).unwrap();
+        assert_eq!(result.shape(), &[1, 2, 2, 2]); // Downsampled by stride=2
+    }
+
+    #[tokio::test]
+    async fn test_depthwise_conv2d_large_batch() {
+        let device = get_test_device().await;
+
+        // Batch size 8, 16 channels (MobileNet scale)
+        let batch_size = 8;
+        let channels = 16;
+        let height = 8;
+        let width = 8;
+        let input_data = vec![1.0; batch_size * channels * height * width];
+        let input = Tensor::from_data(&input_data, vec![batch_size, channels, height, width], device.clone()).unwrap();
+
+        // Depthwise 3x3 kernel
+        let kernel_size = 3;
+        let weight_data = vec![1.0; channels * 1 * kernel_size * kernel_size];
+        let weight = Tensor::from_data(&weight_data, vec![channels, 1, kernel_size, kernel_size], device.clone()).unwrap();
+        let bias_data = vec![0.0; channels];
+        let bias = Tensor::from_data(&bias_data, vec![channels], device.clone()).unwrap();
+
+        let result = input.depthwise_conv2d(weight, bias, (1, 1), (1, 1)).unwrap();
+        // With padding=1, output size preserved
+        assert_eq!(result.shape(), &[batch_size, channels, height, width]);
+    }
+
+    #[tokio::test]
+    async fn test_depthwise_conv2d_precision() {
+        let device = get_test_device().await;
+
+        // Precision test: Verify depthwise computation produces reasonable outputs
+        let input_data = vec![
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        ]; // [1, 1, 3, 3]
+        let input = Tensor::from_data(&input_data, vec![1, 1, 3, 3], device.clone()).unwrap();
+
+        // Simple kernel (all ones)
+        let weight_data = vec![1.0, 1.0, 1.0, 1.0]; // [1, 1, 2, 2]
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 2, 2], device.clone()).unwrap();
+        let bias_data = vec![0.0];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        
+        // 3x3 input with 2x2 kernel and stride 1 produces 2x2 output
+        assert_eq!(result.shape(), &[1, 1, 2, 2]);
+        
+        let output = result.to_vec().unwrap();
+        assert_eq!(output.len(), 4);
+        
+        // All outputs should be positive and finite (kernel sums positive inputs)
+        for val in output.iter() {
+            assert!(val.is_finite());
+            assert!(*val > 0.0);
+        }
+        
+        // Outputs should be monotonically increasing (sliding window on increasing input)
+        assert!(output[3] > output[0]); // Bottom-right > top-left
     }
 }

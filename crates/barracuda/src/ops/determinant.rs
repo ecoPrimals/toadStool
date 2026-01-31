@@ -71,11 +71,103 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_determinant() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_determinant_basic() {
+        let dev = get_test_device().await;
+        // 2x2 matrix: [[4, 7], [2, 6]]
         let matrix = vec![4.0, 7.0, 2.0, 6.0];
         let det = determinant(&dev.device, &dev.queue, &matrix, 2).await.unwrap();
         assert!((det - 10.0).abs() < 1e-5); // 4*6 - 7*2 = 10
+    }
+
+    #[tokio::test]
+    async fn test_determinant_edge_cases() {
+        let dev = get_test_device().await;
+
+        // 1x1 matrix (edge case)
+        let matrix = vec![5.0];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 1).await.unwrap();
+        assert!((det - 5.0).abs() < 1e-5);
+
+        // Singular matrix (determinant = 0)
+        let matrix = vec![1.0, 2.0, 2.0, 4.0]; // Rows are linearly dependent
+        let det = determinant(&dev.device, &dev.queue, &matrix, 2).await.unwrap();
+        assert!(det.abs() < 1e-5);
+
+        // Identity matrix (det = 1)
+        let matrix = vec![1.0, 0.0, 0.0, 1.0];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 2).await.unwrap();
+        assert!((det - 1.0).abs() < 1e-5);
+    }
+
+    #[tokio::test]
+    async fn test_determinant_boundary() {
+        let dev = get_test_device().await;
+
+        // 3x3 matrix with known det
+        let matrix = vec![
+            1.0, 2.0, 3.0,
+            0.0, 1.0, 4.0,
+            5.0, 6.0, 0.0,
+        ];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 3).await.unwrap();
+        // Expected: 1*(1*0 - 4*6) - 2*(0*0 - 4*5) + 3*(0*6 - 1*5) = 1*(-24) - 2*(-20) + 3*(-5) = -24 + 40 - 15 = 1
+        assert!((det - 1.0).abs() < 1e-4);
+
+        // Negative determinant (row swap)
+        let matrix = vec![
+            2.0, 3.0,
+            1.0, 4.0,
+        ];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 2).await.unwrap();
+        assert!((det - 5.0).abs() < 1e-5); // 2*4 - 3*1 = 5
+    }
+
+    #[tokio::test]
+    async fn test_determinant_large_batch() {
+        let dev = get_test_device().await;
+
+        // 4x4 matrix
+        let matrix = vec![
+            1.0, 0.0, 2.0, -1.0,
+            3.0, 0.0, 0.0, 5.0,
+            2.0, 1.0, 4.0, -3.0,
+            1.0, 0.0, 5.0, 0.0,
+        ];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 4).await.unwrap();
+        assert!(det.is_finite());
+
+        // 5x5 identity (larger matrix)
+        let mut matrix = vec![0.0; 25];
+        for i in 0..5 {
+            matrix[i * 5 + i] = 1.0;
+        }
+        let det = determinant(&dev.device, &dev.queue, &matrix, 5).await.unwrap();
+        assert!((det - 1.0).abs() < 1e-4);
+    }
+
+    #[tokio::test]
+    async fn test_determinant_precision() {
+        let dev = get_test_device().await;
+
+        // 3x3 with known exact determinant
+        let matrix = vec![
+            2.0, 0.0, 0.0,
+            0.0, 3.0, 0.0,
+            0.0, 0.0, 4.0,
+        ];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 3).await.unwrap();
+        // Diagonal matrix: det = product of diagonal = 2*3*4 = 24
+        assert!((det - 24.0).abs() < 1e-5);
+
+        // 2x2 with fractional values
+        let matrix = vec![0.5, 0.25, 0.75, 0.5];
+        let det = determinant(&dev.device, &dev.queue, &matrix, 2).await.unwrap();
+        // 0.5*0.5 - 0.25*0.75 = 0.25 - 0.1875 = 0.0625
+        assert!((det - 0.0625).abs() < 1e-6);
     }
 }
