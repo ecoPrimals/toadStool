@@ -341,8 +341,9 @@ impl DisplayCapabilities {
         }
 
         // Fallback: /tmp/toadstool-<uid>/
-        let uid = unsafe { libc::getuid() };
-        let dir = PathBuf::from(format!("/tmp/toadstool-{}", uid));
+        // Use rustix to get UID (Pure Rust!)
+        let uid = rustix::process::getuid();
+        let dir = PathBuf::from(format!("/tmp/toadstool-{}", uid.as_raw()));
         Ok(dir.join("display.sock"))
     }
 

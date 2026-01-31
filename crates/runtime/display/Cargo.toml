@@ -10,15 +10,16 @@ keywords = ["display", "input", "drm", "evdev", "pure-rust"]
 categories = ["gui", "graphics", "hardware-support"]
 
 [dependencies]
-# Display management (Pure Rust!)
-linux-drm = { version = "0.5", features = ["stable_polyfill"] }  # DRM/KMS bindings (NO C!) with stable Rust support
-rustix = { version = "0.38", features = ["fs", "mm", "process"] }  # Syscall wrapper (fallback)
+# Display management (Pure Rust! ARM64 compatible!)
+drm = "0.14"                # Safe DRM/KMS bindings (Pure Rust, no linux-unsafe!)
+drm-fourcc = "2.2"          # Pixel format definitions (Pure Rust!)
+rustix = { version = "0.38", features = ["fs", "mm", "process", "io_uring"] }  # Safe system calls (Pure Rust!)
 
 # Input handling (Pure Rust!)
 evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
 
-# Low-level system operations
-libc = "0.2"                # Standard C library bindings (for mmap, close, etc.)
+# Optional: GPU buffer management (Pure Rust!)
+gbm = { version = "0.15", optional = true }  # For zero-copy GPU rendering
 
 # Async runtime
 tokio = { workspace = true }
