@@ -18,6 +18,9 @@ pub mod pattern_match;
 pub mod gc_content;
 pub mod complexity_filter;
 
+// Reservoir computing operations (Echo State Networks)
+pub mod reservoir_init;
+
 // Activation operations
 pub mod relu;
 pub mod gelu;
