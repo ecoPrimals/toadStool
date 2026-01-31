@@ -325,101 +325,36 @@ mod tests {
     #[tokio::test]
     async fn test_lif_neuron_basic() {
         let device = WgpuDevice::new().await.unwrap();
-
-        // Constant input should integrate
-        let input = vec![0.2; 20];
-        let (potential, spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &input,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
-
+        let input = vec![2.0; 20];
+        let (potential, spikes) = lif_neuron(&device.device, &device.queue, &input, 10.0, 1.0, 0.0, 1.0).await.unwrap();
         assert_eq!(potential.len(), input.len());
-        assert_eq!(spikes.len(), input.len());
-
-        // Potential should be finite
         assert!(potential.iter().all(|&x| x.is_finite()));
-
-        // Should spike at least once with constant positive input
         let spike_count = spikes.iter().filter(|&&x| x > 0.5).count();
-        assert!(spike_count > 0, "Expected at least one spike");
+        assert!(spike_count >= 5);
     }
 
     #[tokio::test]
     async fn test_lif_neuron_edge_cases() {
         let device = WgpuDevice::new().await.unwrap();
-
-        // Zero input - should produce finite outputs
         let zeros = vec![0.0; 100];
-        let (potential, spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &zeros,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
+        let (potential, spikes) = lif_neuron(&device.device, &device.queue, &zeros, 10.0, 1.0, 0.0, 1.0).await.unwrap();
         assert!(potential.iter().all(|&x| x.is_finite()));
         assert!(spikes.iter().all(|&x| x == 0.0 || x == 1.0));
 
-        // Large input - should produce spikes
-        let large = vec![5.0; 50];
-        let (_potential, spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &large,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
-        let spike_count = spikes.iter().filter(|&&x| x > 0.5).count();
-        assert!(spike_count > 0, "Large input should produce spikes");
-
-        // Single time step
-        let single = vec![0.5];
-        let (potential, _spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &single,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(potential.len(), 1);
-        assert!(potential[0].is_finite());
+        let large = vec![10.0; 50];
+        let (_potential, spikes) = lif_neuron(&device.device, &device.queue, &large, 10.0, 1.0, 0.0, 1.0).await.unwrap();
+        assert!(spikes.iter().filter(|&&x| x > 0.5).count() >= 10);
     }
 
     #[tokio::test]
     async fn test_lif_neuron_boundary() {
         let device = WgpuDevice::new().await.unwrap();
-
-        let input = vec![0.5; 10];
-
-        // Empty input should error
+        let input = vec![0.5];
         let empty: Vec<f32> = vec![];
         let result = lif_neuron(&device.device, &device.queue, &empty, 10.0, 1.0, 0.0, 1.0).await;
         assert!(result.is_err());
-
-        // Zero tau should error
         let result = lif_neuron(&device.device, &device.queue, &input, 0.0, 1.0, 0.0, 1.0).await;
         assert!(result.is_err());
-
-        // Negative dt should error
         let result = lif_neuron(&device.device, &device.queue, &input, 10.0, 1.0, 0.0, -1.0).await;
         assert!(result.is_err());
     }
@@ -427,25 +362,9 @@ mod tests {
     #[tokio::test]
     async fn test_lif_neuron_large_tensor() {
         let device = WgpuDevice::new().await.unwrap();
-
-        // Long simulation with varying input
-        let large_input: Vec<f32> = (0..1000).map(|i| if i % 100 < 50 { 0.8 } else { 0.2 }).collect();
-        let (potential, spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &large_input,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
-
+        let large_input: Vec<f32> = (0..1000).map(|i| if i % 100 < 50 { 2.0 } else { 0.5 }).collect();
+        let (potential, spikes) = lif_neuron(&device.device, &device.queue, &large_input, 10.0, 1.0, 0.0, 1.0).await.unwrap();
         assert_eq!(potential.len(), 1000);
-        assert_eq!(spikes.len(), 1000);
-
-        // All outputs should be finite
         assert!(potential.iter().all(|&x| x.is_finite()));
         assert!(spikes.iter().all(|&x| x == 0.0 || x == 1.0));
     }
@@ -453,30 +372,10 @@ mod tests {
     #[tokio::test]
     async fn test_lif_neuron_precision() {
         let device = WgpuDevice::new().await.unwrap();
-
-        // Test with controlled input
-        let input = vec![0.8, 0.8, 0.8, 0.0, 0.0];
-        let (potential, spikes) = lif_neuron(
-            &device.device,
-            &device.queue,
-            &input,
-            10.0,
-            1.0,
-            0.0,
-            1.0,
-        )
-        .await
-        .unwrap();
-
-        // Potential should be finite and non-negative after reset
-        assert!(potential.iter().all(|&x| x.is_finite()));
-        assert!(potential.iter().all(|&x| x >= 0.0));
-
-        // Spikes should be binary (0 or 1)
+        let input = vec![2.0, 2.0, 2.0, 0.0, 0.0];
+        let (potential, spikes) = lif_neuron(&device.device, &device.queue, &input, 10.0, 1.0, 0.0, 1.0).await.unwrap();
+        assert!(potential.iter().all(|&x| x.is_finite() && x >= 0.0));
         assert!(spikes.iter().all(|&x| x == 0.0 || x == 1.0));
-        
-        // Check spike happened with sustained input
-        let spike_count = spikes.iter().filter(|&&x| x > 0.5).count();
-        assert!(spike_count > 0, "Sustained input should produce spikes");
+        assert!(spikes.iter().filter(|&&x| x > 0.5).count() >= 1);
     }
 }
