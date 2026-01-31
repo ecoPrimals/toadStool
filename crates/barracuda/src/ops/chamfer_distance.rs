@@ -58,15 +58,86 @@ pub async fn chamfer_distance(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_chamfer_distance() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_chamfer_distance_basic() {
+        let dev = get_test_device().await;
         let points1 = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0]; // 2 points
         let points2 = vec![0.1, 0.1, 0.1, 0.9, 0.1, 0.1]; // 2 points
         let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2).await.unwrap();
         assert!(dist > 0.0);
+        assert!(dist.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_chamfer_distance_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Identical point clouds (zero distance)
+        let points1 = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let points2 = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2).await.unwrap();
+        assert!(dist.abs() < 1e-6);
+        
+        // Single point
+        let points1 = vec![0.0, 0.0, 0.0];
+        let points2 = vec![1.0, 1.0, 1.0];
+        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 1, 1).await.unwrap();
+        assert!(dist > 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_chamfer_distance_boundary() {
+        let dev = get_test_device().await;
+        
+        // Asymmetric point clouds (different sizes)
+        let points1 = vec![0.0, 0.0, 0.0];
+        let points2 = vec![
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0,
+        ];
+        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 1, 3).await.unwrap();
+        assert!(dist > 0.0);
+        assert!(dist.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_chamfer_distance_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Larger point clouds
+        let n = 50;
+        let m = 60;
+        
+        let points1: Vec<f32> = (0..n * 3).map(|i| (i % 10) as f32 * 0.1).collect();
+        let points2: Vec<f32> = (0..m * 3).map(|i| (i % 12) as f32 * 0.1).collect();
+        
+        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, n, m).await.unwrap();
+        assert!(dist >= 0.0);
+        assert!(dist.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_chamfer_distance_precision() {
+        let dev = get_test_device().await;
+        
+        // Test with known geometry
+        let points1 = vec![
+            0.0, 0.0, 0.0,  // Origin
+            1.0, 0.0, 0.0,  // Unit x
+        ];
+        let points2 = vec![
+            0.0, 0.0, 0.0,  // Origin (matches)
+            0.0, 1.0, 0.0,  // Unit y
+        ];
+        
+        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2).await.unwrap();
+        
+        // Forward: origin→origin (0) + unitX→origin (1) = avg 0.5
+        // Backward: origin→origin (0) + unitY→origin (1) = avg 0.5
+        // Total = 1.0
+        assert!((dist - 1.0).abs() < 0.01);
     }
 }
