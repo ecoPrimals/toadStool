@@ -8,6 +8,8 @@
 
 // Neuromorphic operations (NPU/GPU/CPU universal)
 pub mod spike_encode;
+pub mod spike_decode;
+pub mod lif_neuron;
 
 // Activation operations
 pub mod relu;
