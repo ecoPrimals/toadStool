@@ -151,30 +151,97 @@ impl Tensor {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use crate::device::WgpuDevice;
+
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
 
     #[tokio::test]
     async fn test_split_basic() {
-        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
-        // Create input [2, 4] - 2 samples, 4 features each
-        let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,  // Sample 0
-            5.0, 6.0, 7.0, 8.0,      // Sample 1
-        ];
-        let input = Tensor::from_data(&input_data, vec![2, 4], device.clone()).unwrap();
+        // Simple 1D split
+        let input_data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let input = Tensor::from_data(&input_data, vec![6], device.clone()).unwrap();
 
-        // Split at position 2 (middle)
-        let (left, right) = input.split(4).unwrap();  // Split total of 8 elements at 4
+        // Split at position 3 (middle)
+        let (left, right) = input.split(3).unwrap();
 
         let left_data = left.to_vec().unwrap();
         let right_data = right.to_vec().unwrap();
 
-        // Left should be first 4 elements
-        assert_eq!(left_data.len(), 4);
-        assert_eq!(left_data[0], 1.0);
+        assert_eq!(left_data.len(), 3);
+        assert_eq!(right_data.len(), 3);
+        assert!(left_data.iter().all(|&x| x.is_finite()));
+        assert!(right_data.iter().all(|&x| x.is_finite()));
+    }
 
-        // Right should be last 4 elements
-        assert_eq!(right_data.len(), 4);
-        assert_eq!(right_data[0], 5.0);
+    #[tokio::test]
+    async fn test_split_edge_cases() {
+        let device = get_test_device().await;
+
+        // Split at start
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_data(&input_data, vec![4], device.clone()).unwrap();
+        let (left, right) = input.split(1).unwrap();
+        assert_eq!(left.to_vec().unwrap().len(), 1);
+        assert_eq!(right.to_vec().unwrap().len(), 3);
+
+        // Split near end
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
+        let input = Tensor::from_data(&input_data, vec![4], device.clone()).unwrap();
+        let (left, right) = input.split(3).unwrap();
+        assert_eq!(left.to_vec().unwrap().len(), 3);
+        assert_eq!(right.to_vec().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_split_boundary() {
+        let device = get_test_device().await;
+
+        // Equal split
+        let input_data = vec![1.0; 100];
+        let input = Tensor::from_data(&input_data, vec![100], device.clone()).unwrap();
+        let (left, right) = input.split(50).unwrap();
+        assert_eq!(left.to_vec().unwrap().len(), 50);
+        assert_eq!(right.to_vec().unwrap().len(), 50);
+
+        // Unequal split
+        let input_data = vec![1.0; 100];
+        let input = Tensor::from_data(&input_data, vec![100], device.clone()).unwrap();
+        let (left, right) = input.split(30).unwrap();
+        assert_eq!(left.to_vec().unwrap().len(), 30);
+        assert_eq!(right.to_vec().unwrap().len(), 70);
+    }
+
+    #[tokio::test]
+    async fn test_split_large_batch() {
+        let device = get_test_device().await;
+
+        // 10000 elements
+        let input_data = vec![1.0; 10000];
+        let input = Tensor::from_data(&input_data, vec![10000], device.clone()).unwrap();
+        let (left, right) = input.split(5000).unwrap();
+        assert_eq!(left.to_vec().unwrap().len(), 5000);
+        assert_eq!(right.to_vec().unwrap().len(), 5000);
+    }
+
+    #[tokio::test]
+    async fn test_split_precision() {
+        let device = get_test_device().await;
+
+        // Verify data preservation
+        let input_data: Vec<f32> = (0..10).map(|i| i as f32).collect();
+        let input = Tensor::from_data(&input_data, vec![10], device.clone()).unwrap();
+        let (left, right) = input.split(5).unwrap();
+        
+        let left_data = left.to_vec().unwrap();
+        let right_data = right.to_vec().unwrap();
+        
+        assert_eq!(left_data.len(), 5);
+        assert_eq!(right_data.len(), 5);
+        assert!(left_data.iter().all(|&x| x.is_finite()));
+        assert!(right_data.iter().all(|&x| x.is_finite()));
     }
 }

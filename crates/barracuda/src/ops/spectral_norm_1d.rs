@@ -74,11 +74,70 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_spectral_norm_1d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_spectral_norm_1d_basic() {
+        let dev = get_test_device().await;
         let weights = vec![1.0; 64 * 32 * 3]; // [64, 32, 3]
         let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 64, 32, 3, 1).await.unwrap();
         assert_eq!(normalized.len(), weights.len());
+        assert!(normalized.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_spectral_norm_1d_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Small kernel
+        let weights = vec![1.0; 4 * 4 * 1];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 4, 4, 1, 1).await.unwrap();
+        assert_eq!(normalized.len(), 16);
+
+        // Single output channel
+        let weights = vec![2.0; 1 * 8 * 3];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 1, 8, 3, 1).await.unwrap();
+        assert_eq!(normalized.len(), 24);
+    }
+
+    #[tokio::test]
+    async fn test_spectral_norm_1d_boundary() {
+        let dev = get_test_device().await;
+
+        // More power iterations
+        let weights = vec![1.0; 32 * 16 * 5];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 32, 16, 5, 5).await.unwrap();
+        assert_eq!(normalized.len(), 32 * 16 * 5);
+
+        // Large kernel
+        let weights = vec![1.0; 16 * 16 * 7];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 16, 16, 7, 2).await.unwrap();
+        assert!(normalized.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_spectral_norm_1d_large_batch() {
+        let dev = get_test_device().await;
+
+        // Large layer: 128 out, 128 in, kernel 7
+        let weights = vec![1.0; 128 * 128 * 7];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 128, 128, 7, 1).await.unwrap();
+        assert_eq!(normalized.len(), 128 * 128 * 7);
+    }
+
+    #[tokio::test]
+    async fn test_spectral_norm_1d_precision() {
+        let dev = get_test_device().await;
+
+        // Verify normalization (largest singular value should be ~1)
+        let weights = vec![2.0; 8 * 8 * 3];
+        let normalized = spectral_norm_1d(&dev.device, &dev.queue, &weights, 8, 8, 3, 3).await.unwrap();
+        
+        assert_eq!(normalized.len(), weights.len());
+        assert!(normalized.iter().all(|&x| x.is_finite()));
+        // Normalized weights should be smaller than original
+        assert!(normalized.iter().all(|&x| x.abs() <= 2.0));
     }
 }
