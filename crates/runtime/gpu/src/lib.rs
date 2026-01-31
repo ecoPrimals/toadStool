@@ -29,6 +29,8 @@ pub mod universal;
 pub mod unified_memory;
 
 // Real GPU backends (no mocks)
+// EVOLVED: Feature gates are CORRECT here - they enable optional optimizations
+// WebGPU (wgpu) is the universal default, always available without features
 #[cfg(feature = "opencl")]
 pub mod backends;
 
