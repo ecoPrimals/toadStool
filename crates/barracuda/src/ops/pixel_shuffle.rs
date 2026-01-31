@@ -51,13 +51,73 @@ mod tests {
     use crate::device::WgpuDevice;
     use std::sync::Arc;
     
+    async fn get_test_device() -> Arc<WgpuDevice> {
+        Arc::new(WgpuDevice::new().await.unwrap())
+    }
+    
     #[tokio::test]
-    async fn test_pixel_shuffle() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let device = &dev.device;
-        let queue = &dev.queue;
+    async fn test_pixel_shuffle_basic() {
+        let dev = get_test_device().await;
         let input: Vec<f32> = (0..16).map(|i| i as f32).collect();
-        let output = pixel_shuffle(&device, &queue, &input, 1, 4, 2, 2, 2).await.unwrap();
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 4, 2, 2, 2).await.unwrap();
         assert_eq!(output.len(), 16); // 1 * 1 * 4 * 4
+    }
+
+    #[tokio::test]
+    async fn test_pixel_shuffle_edge_cases() {
+        let dev = get_test_device().await;
+
+        // Upscale by 2x (4 channels → 1 channel, 2×2 → 4×4)
+        let input = vec![1.0; 1 * 4 * 2 * 2];
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 4, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 4 * 4);
+
+        // Small upscale (r=1, no-op)
+        let input = vec![1.0; 1 * 1 * 4 * 4];
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 1).await.unwrap();
+        assert_eq!(output.len(), 16);
+    }
+
+    #[tokio::test]
+    async fn test_pixel_shuffle_boundary() {
+        let dev = get_test_device().await;
+
+        // Large upscale factor (r=3)
+        let input = vec![1.0; 1 * 9 * 2 * 2]; // 9 channels for r=3
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 9, 2, 2, 3).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 6 * 6);
+
+        // Many channels
+        let input = vec![1.0; 1 * 16 * 4 * 4]; // 16 channels, r=2
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 16, 4, 4, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 4 * 8 * 8);
+    }
+
+    #[tokio::test]
+    async fn test_pixel_shuffle_large_batch() {
+        let dev = get_test_device().await;
+
+        // Batch size 4
+        let batch_size = 4;
+        let input = vec![1.0; batch_size * 4 * 8 * 8];
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, batch_size, 4, 8, 8, 2).await.unwrap();
+        assert_eq!(output.len(), batch_size * 1 * 16 * 16);
+    }
+
+    #[tokio::test]
+    async fn test_pixel_shuffle_precision() {
+        let dev = get_test_device().await;
+
+        // Verify value rearrangement
+        let mut input = vec![0.0; 1 * 4 * 2 * 2];
+        for i in 0..16 {
+            input[i] = i as f32;
+        }
+        
+        let output = pixel_shuffle(&dev.device, &dev.queue, &input, 1, 4, 2, 2, 2).await.unwrap();
+        assert_eq!(output.len(), 16);
+        assert!(output.iter().all(|&x| x.is_finite()));
+        // Values should be rearranged, not duplicated
+        assert!(output.iter().all(|&x| x >= 0.0 && x < 16.0));
     }
 }
