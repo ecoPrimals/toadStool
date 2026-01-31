@@ -44,14 +44,86 @@ pub async fn circular_pad2d(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_circular_pad2d() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_circular_pad2d_basic() {
+        let dev = get_test_device().await;
         let input = vec![1.0, 2.0, 3.0, 4.0];
         let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 2, 2, 1, 1, 1, 1).await.unwrap();
         assert_eq!(output.len(), 1 * 1 * 4 * 4);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_circular_pad2d_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // No padding (no-op)
+        let input = vec![1.0, 2.0, 3.0, 4.0];
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 2, 2, 0, 0, 0, 0).await.unwrap();
+        assert_eq!(output, input);
+        
+        // Single pixel input
+        let input = vec![5.0];
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 1, 1, 1, 1, 1, 1).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 3 * 3);
+        // All should be 5.0 (wrapping around)
+        assert!(output.iter().all(|&x| (x - 5.0).abs() < 1e-6));
+    }
+
+    #[tokio::test]
+    async fn test_circular_pad2d_boundary() {
+        let dev = get_test_device().await;
+        
+        // Pad only one side
+        let input: Vec<f32> = (0..9).map(|i| i as f32).collect(); // 3×3
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 3, 3, 1, 0, 0, 0).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 4 * 3);
+        
+        // Asymmetric padding
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 3, 3, 1, 2, 1, 2).await.unwrap();
+        assert_eq!(output.len(), 1 * 1 * 6 * 6);
+    }
+
+    #[tokio::test]
+    async fn test_circular_pad2d_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Multiple batches and channels
+        let batch_size = 2;
+        let channels = 3;
+        let height = 4;
+        let width = 4;
+        
+        let input: Vec<f32> = (0..batch_size * channels * height * width)
+            .map(|i| (i % 10) as f32)
+            .collect();
+        
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, batch_size, channels, height, width, 1, 1, 1, 1).await.unwrap();
+        
+        assert_eq!(output.len(), batch_size * channels * 6 * 6);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_circular_pad2d_precision() {
+        let dev = get_test_device().await;
+        
+        // Test wrapping behavior with distinct values
+        let input = vec![
+            1.0, 2.0,  // Row 0
+            3.0, 4.0,  // Row 1
+        ];
+        
+        let output = circular_pad2d(&dev.device, &dev.queue, &input, 1, 1, 2, 2, 1, 0, 1, 0).await.unwrap();
+        
+        // Output is 3×3: top row wraps from bottom
+        assert_eq!(output.len(), 1 * 1 * 3 * 3);
+        
+        // Top-left should wrap from bottom-right
+        assert!((output[0] - 4.0).abs() < 1e-6);
+        // Top-middle should wrap from bottom-left
+        assert!((output[1] - 3.0).abs() < 1e-6);
     }
 }
