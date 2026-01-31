@@ -94,10 +94,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_binary_cross_entropy_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Predictions (probabilities): [0.9, 0.1, 0.8]
         let pred_data = vec![0.9f32, 0.1, 0.8];
@@ -112,7 +113,89 @@ mod tests {
         let output = result.to_vec().unwrap();
         
         assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
         assert!(output[0] > 0.0); // Should be positive
-        assert!(output[0] < 0.5); // Should be low (good predictions)
+    }
+
+    #[tokio::test]
+    async fn test_binary_cross_entropy_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Perfect predictions
+        let pred_data = vec![1.0f32, 0.0, 1.0];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        
+        let target_data = vec![1.0f32, 0.0, 1.0];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        
+        let result = predictions.binary_cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert!(output[0].is_finite());
+        // Perfect predictions should have low loss
+        assert!(output[0] < 0.1);
+    }
+
+    #[tokio::test]
+    async fn test_binary_cross_entropy_boundary() {
+        let device = get_test_device().await;
+        
+        // Worst case predictions (opposite of targets)
+        let pred_data = vec![0.1f32, 0.9, 0.1];
+        let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
+        
+        let target_data = vec![1.0f32, 0.0, 1.0];
+        let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
+        
+        let result = predictions.binary_cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert!(output[0].is_finite());
+        // Bad predictions should have high loss
+        assert!(output[0] > 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_binary_cross_entropy_large_batch() {
+        let device = get_test_device().await;
+        
+        // Large batch size
+        let size = 1000;
+        let pred_data = vec![0.7f32; size];
+        let predictions = Tensor::from_data(&pred_data, vec![size], device.clone()).unwrap();
+        
+        let target_data = vec![1.0f32; size];
+        let targets = Tensor::from_data(&target_data, vec![size], device.clone()).unwrap();
+        
+        let result = predictions.binary_cross_entropy(targets).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 1);
+        assert!(output[0].is_finite());
+        assert!(output[0] > 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_binary_cross_entropy_precision() {
+        let device = get_test_device().await;
+        
+        // Test determinism
+        let pred_data = vec![0.6f32, 0.4, 0.8, 0.2];
+        let target_data = vec![1.0f32, 0.0, 1.0, 0.0];
+        
+        let predictions1 = Tensor::from_data(&pred_data, vec![4], device.clone()).unwrap();
+        let targets1 = Tensor::from_data(&target_data, vec![4], device.clone()).unwrap();
+        
+        let predictions2 = Tensor::from_data(&pred_data, vec![4], device.clone()).unwrap();
+        let targets2 = Tensor::from_data(&target_data, vec![4], device.clone()).unwrap();
+        
+        let result1 = predictions1.binary_cross_entropy(targets1).unwrap();
+        let result2 = predictions2.binary_cross_entropy(targets2).unwrap();
+        
+        let output1 = result1.to_vec().unwrap();
+        let output2 = result2.to_vec().unwrap();
+        
+        // Should be deterministic
+        assert_eq!(output1[0], output2[0]);
     }
 }

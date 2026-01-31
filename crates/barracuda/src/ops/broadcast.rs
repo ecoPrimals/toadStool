@@ -92,10 +92,11 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_broadcast_basic() {
-        let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
         
         // Create scalar [5.0]
         let input_data = vec![5.0f32];
@@ -110,5 +111,71 @@ mod tests {
         for val in output.iter() {
             assert_eq!(*val, 5.0);
         }
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_edge_cases() {
+        let device = get_test_device().await;
+        
+        // Broadcast single element to multiple
+        let input_data = vec![9.0f32];
+        let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
+        
+        let result = input.broadcast(vec![5]).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 5);
+        assert!(output.iter().all(|&x| x == 9.0));
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_boundary() {
+        let device = get_test_device().await;
+        
+        // Small to large broadcast
+        let input_data = vec![7.0f32];
+        let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
+        
+        let result = input.broadcast(vec![100]).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 100);
+        assert!(output.iter().all(|&x| x == 7.0));
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_large_batch() {
+        let device = get_test_device().await;
+        
+        // Broadcast to large size
+        let input_data = vec![3.14f32];
+        let input = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
+        
+        let result = input.broadcast(vec![1000]).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        assert_eq!(output.len(), 1000);
+        assert!(output.iter().all(|&x| (x - 3.14).abs() < 1e-6));
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_precision() {
+        let device = get_test_device().await;
+        
+        // Test determinism
+        let input_data = vec![2.5f32];
+        
+        let input1 = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
+        let input2 = Tensor::from_data(&input_data, vec![1], device.clone()).unwrap();
+        
+        let result1 = input1.broadcast(vec![5]).unwrap();
+        let result2 = input2.broadcast(vec![5]).unwrap();
+        
+        let output1 = result1.to_vec().unwrap();
+        let output2 = result2.to_vec().unwrap();
+        
+        // Should be deterministic
+        assert_eq!(output1, output2);
+        assert_eq!(output1, vec![2.5, 2.5, 2.5, 2.5, 2.5]);
     }
 }

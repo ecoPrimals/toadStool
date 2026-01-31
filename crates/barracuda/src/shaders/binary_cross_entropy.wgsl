@@ -16,8 +16,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invo
         var sum = 0.0;
         for (var i = 0u; i < size; i = i + 1u) {
             let pred = clamp(predictions[i], 1e-7, 1.0 - 1e-7);
-            let target = targets[i];
-            sum = sum + target * log(pred) + (1.0 - target) * log(1.0 - pred);
+            let tgt = targets[i];
+            sum = sum + tgt * log(pred) + (1.0 - tgt) * log(1.0 - pred);
         }
         shared_loss = -sum / f32(size);
     }
