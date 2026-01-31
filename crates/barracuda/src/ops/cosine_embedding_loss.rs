@@ -38,15 +38,91 @@ pub async fn cosine_embedding_loss(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
     
     #[tokio::test]
-    async fn test_cosine_embedding_loss() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
+    async fn test_cosine_embedding_loss_basic() {
+        let dev = get_test_device().await;
         let input1 = vec![1.0, 0.0, 0.0];
         let input2 = vec![0.9, 0.1, 0.0];
         let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
         assert!(loss >= 0.0);
+        assert!(loss.is_finite());
+    }
+
+    #[tokio::test]
+    async fn test_cosine_embedding_loss_edge_cases() {
+        let dev = get_test_device().await;
+        
+        // Identical embeddings (zero loss for similar pairs)
+        let input1 = vec![1.0, 2.0, 3.0];
+        let input2 = vec![1.0, 2.0, 3.0];
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
+        assert!(loss.abs() < 1e-6);
+        
+        // Orthogonal vectors (cosine similarity = 0)
+        let input1 = vec![1.0, 0.0, 0.0];
+        let input2 = vec![0.0, 1.0, 0.0];
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
+        assert!((loss - 1.0).abs() < 0.01); // Loss = 1 - 0 = 1
+    }
+
+    #[tokio::test]
+    async fn test_cosine_embedding_loss_boundary() {
+        let dev = get_test_device().await;
+        
+        // Dissimilar pairs (target = -1)
+        let input1 = vec![1.0, 0.0, 0.0];
+        let input2 = vec![0.0, 1.0, 0.0];
+        
+        // With margin=0.5, dissimilar loss = max(0, cosine_sim - margin)
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, -1.0, 0.5).await.unwrap();
+        assert!(loss >= 0.0);
+        assert!(loss.is_finite());
+        
+        // Similar pairs vs dissimilar pairs
+        let input3 = vec![1.0, 1.0, 1.0];
+        let input4 = vec![1.0, 1.0, 1.0];
+        
+        let loss_similar = cosine_embedding_loss(&dev.device, &dev.queue, &input3, &input4, 1.0, 0.0).await.unwrap();
+        let loss_dissimilar = cosine_embedding_loss(&dev.device, &dev.queue, &input3, &input4, -1.0, 0.0).await.unwrap();
+        
+        // Similar should be near zero, dissimilar should be higher
+        assert!(loss_similar < 0.01);
+        assert!(loss_dissimilar > loss_similar);
+    }
+
+    #[tokio::test]
+    async fn test_cosine_embedding_loss_large_batch() {
+        let dev = get_test_device().await;
+        
+        // Large embedding dimension
+        let dim = 128;
+        let input1: Vec<f32> = (0..dim).map(|i| (i % 10) as f32 * 0.1).collect();
+        let input2: Vec<f32> = (0..dim).map(|i| ((i + 1) % 10) as f32 * 0.1).collect();
+        
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
+        
+        assert!(loss.is_finite());
+        assert!(loss >= 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_cosine_embedding_loss_precision() {
+        let dev = get_test_device().await;
+        
+        // Test with known cosine similarity
+        let input1 = vec![1.0, 0.0];  // Unit vector along x
+        let input2 = vec![0.0, 1.0];  // Unit vector along y
+        
+        // Cosine similarity = 0 (perpendicular)
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
+        assert!((loss - 1.0).abs() < 0.01); // Loss = 1 - 0 = 1
+        
+        // Opposite vectors (cosine similarity = -1)
+        let input1 = vec![1.0, 0.0];
+        let input2 = vec![-1.0, 0.0];
+        let loss = cosine_embedding_loss(&dev.device, &dev.queue, &input1, &input2, 1.0, 0.0).await.unwrap();
+        assert!((loss - 2.0).abs() < 0.01); // Loss = 1 - (-1) = 2
     }
 }

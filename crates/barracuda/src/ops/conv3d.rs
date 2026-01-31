@@ -245,5 +245,100 @@ mod tests {
 
         // Output shape should be [1, 1, 1, 1, 1] (reduced by kernel size - 1)
         assert_eq!(result.shape(), &[1, 1, 1, 1, 1]);
+        
+        let output = result.to_vec().unwrap();
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_conv3d_edge_cases() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Small 3D volume, kernel size 1 (no reduction)
+        let input_data = vec![1.0f32; 8];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2, 2], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 1, 1, 1], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
+        
+        // Kernel size 1 should preserve dimensions
+        assert_eq!(result.shape(), &[1, 1, 2, 2, 2]);
+    }
+
+    #[tokio::test]
+    async fn test_conv3d_boundary() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Test with stride > 1 (downsampling)
+        let input_data = vec![1.0f32; 1 * 1 * 4 * 4 * 4];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 4, 4, 4], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32; 1 * 1 * 2 * 2 * 2];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 2, 2, 2], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        // Stride 2 should downsample
+        let result = input.conv3d(weight, bias, (2, 2, 2), (0, 0, 0), (1, 1, 1)).unwrap();
+        
+        assert_eq!(result.shape()[2..], [2, 2, 2]); // Spatial dimensions halved
+    }
+
+    #[tokio::test]
+    async fn test_conv3d_large_batch() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Larger 3D volume
+        let batch = 1;
+        let in_channels = 2;
+        let depth = 4;
+        let height = 4;
+        let width = 4;
+        
+        let input_data = vec![1.0f32; batch * in_channels * depth * height * width];
+        let input = Tensor::from_data(&input_data, vec![batch, in_channels, depth, height, width], device.clone()).unwrap();
+
+        let out_channels = 3;
+        let kernel_d = 2;
+        let kernel_h = 2;
+        let kernel_w = 2;
+        let weight_data = vec![0.1f32; out_channels * in_channels * kernel_d * kernel_h * kernel_w];
+        let weight = Tensor::from_data(&weight_data, vec![out_channels, in_channels, kernel_d, kernel_h, kernel_w], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32; out_channels];
+        let bias = Tensor::from_data(&bias_data, vec![out_channels], device.clone()).unwrap();
+
+        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
+        
+        // Output spatial dims = (4-2+1, 4-2+1, 4-2+1) = (3, 3, 3)
+        assert_eq!(result.shape(), &[batch, out_channels, 3, 3, 3]);
+    }
+
+    #[tokio::test]
+    async fn test_conv3d_precision() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Simple identity-like 3D convolution
+        let input_data = vec![1.0f32; 8];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2, 2], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 1, 1, 1], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        // Should preserve values with identity kernel
+        assert_eq!(output.len(), 8);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }

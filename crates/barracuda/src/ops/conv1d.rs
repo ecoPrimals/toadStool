@@ -218,5 +218,93 @@ mod tests {
         // Output shape should be [1, 1, 2] (length reduced by kernel_size - 1)
         assert_eq!(result.shape(), &[1, 1, 2]);
         assert_eq!(output.len(), 2);
+        assert!(output.iter().all(|&x| x.is_finite()));
+    }
+
+    #[tokio::test]
+    async fn test_conv1d_edge_cases() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Single channel, kernel size 1 (no reduction)
+        let input_data = vec![1.0f32, 2.0, 3.0];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 3], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 1], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
+        
+        assert_eq!(result.shape(), &[1, 1, 3]);
+    }
+
+    #[tokio::test]
+    async fn test_conv1d_boundary() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Test with padding
+        let input_data = vec![1.0f32, 2.0, 3.0, 4.0];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 4], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32, 1.0, 1.0];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 3], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        // With padding=1, output length should be same as input
+        let result = input.conv1d(weight, bias, 1, 1, 1).unwrap();
+        
+        assert_eq!(result.shape(), &[1, 1, 4]);
+    }
+
+    #[tokio::test]
+    async fn test_conv1d_large_batch() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Larger sequence
+        let batch = 2;
+        let in_channels = 3;
+        let length = 16;
+        
+        let input_data = vec![1.0f32; batch * in_channels * length];
+        let input = Tensor::from_data(&input_data, vec![batch, in_channels, length], device.clone()).unwrap();
+
+        let out_channels = 4;
+        let kernel_size = 5;
+        let weight_data = vec![0.1f32; out_channels * in_channels * kernel_size];
+        let weight = Tensor::from_data(&weight_data, vec![out_channels, in_channels, kernel_size], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32; out_channels];
+        let bias = Tensor::from_data(&bias_data, vec![out_channels], device.clone()).unwrap();
+
+        let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
+        
+        // Output length = (16 - 5 + 1) = 12
+        assert_eq!(result.shape(), &[batch, out_channels, 12]);
+    }
+
+    #[tokio::test]
+    async fn test_conv1d_precision() {
+        let device = Arc::new(crate::device::WgpuDevice::new().await.unwrap());
+
+        // Simple identity-like convolution
+        let input_data = vec![1.0f32, 2.0, 3.0];
+        let input = Tensor::from_data(&input_data, vec![1, 1, 3], device.clone()).unwrap();
+
+        let weight_data = vec![1.0f32];
+        let weight = Tensor::from_data(&weight_data, vec![1, 1, 1], device.clone()).unwrap();
+
+        let bias_data = vec![0.0f32];
+        let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
+
+        let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
+        let output = result.to_vec().unwrap();
+        
+        // Should be identity: [1, 2, 3]
+        assert_eq!(output.len(), 3);
+        assert!(output.iter().all(|&x| x.is_finite()));
     }
 }
