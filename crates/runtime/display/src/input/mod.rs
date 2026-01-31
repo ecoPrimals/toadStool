@@ -31,10 +31,12 @@
 
 pub mod device;
 pub mod events;
+pub mod parser;
 
 // Re-exports
 pub use device::{Device, DeviceCapability, DeviceInfo, DeviceType};
 pub use events::{InputEvent, KeyCode, Modifiers, MouseButton, TouchPhase};
+pub use parser::EventParser;
 
 use crate::window::WindowId;
 #[cfg(test)]
