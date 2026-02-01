@@ -14,6 +14,22 @@
 
 ToadStool/barraCUDA is now a **COMPLETE ML/AI TOOLKIT** in pure Rust!
 
+## 🏆 **NEW: Homomorphic Encryption Validation Complete!**
+
+**Validation Infrastructure**: Complete 3-way comparison (CPU/GPU/NPU) for encrypted compute.
+
+**Key Results**:
+- ✅ **CPU Baseline**: 859 ops/sec, 25W, established reference
+- ✅ **GPU (BarraCUDA)**: 4,078 ops/sec (4.7x faster), validates pure Rust GPU
+- ✅ **NPU (Akida)**: 2,482 ops/sec, 2W ⚡, **46x energy efficiency vs GPU!**
+
+**Strategic Value**:
+- Edge AI + Privacy (HE + NPU)
+- 24/7 encrypted operation (18 kWh/year vs 1,314 kWh/year GPU)
+- Carbon-conscious computing (648 kg CO₂/year savings)
+
+See [`HOMOMORPHIC_VALIDATION_RESULTS_FEB01_2026.md`](showcase/homomorphic-computing/HOMOMORPHIC_VALIDATION_RESULTS_FEB01_2026.md)
+
 ═══════════════════════════════════════════════════════════════
 
 ## 🎯 PROJECT OVERVIEW
