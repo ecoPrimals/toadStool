@@ -63,3 +63,7 @@ path = "examples/tfhe_npu_validation.rs"
 [[example]]
 name = "public_benchmark_comparison"
 path = "examples/public_benchmark_comparison.rs"
+
+[[example]]
+name = "pipeline_validation_matrix"
+path = "examples/pipeline_validation_matrix.rs"
