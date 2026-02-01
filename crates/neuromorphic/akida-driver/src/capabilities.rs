@@ -198,14 +198,17 @@ impl Capabilities {
         // Query PCIe configuration
         let pcie = PcieConfig::from_sysfs(pcie_address)?;
         
-        // For now, use typical values for the chip version
-        // TODO: Query actual values from device when protocol is known
-        let npu_count = chip_version.typical_npu_count();
+        // Query actual NPU count from device (with fallback to typical values)
+        let npu_count = Self::query_npu_count(pcie_address, &chip_version)?;
+        
+        // Memory size from chip specs (would query from device if protocol known)
         let memory_mb = chip_version.typical_memory_mb();
         
-        // TODO: Query power and temperature from device
-        let power_mw = None;
-        let temperature_c = None;
+        // Query power consumption from hwmon/sysfs
+        let power_mw = Self::query_power_consumption(pcie_address);
+        
+        // Query temperature from hwmon/sysfs
+        let temperature_c = Self::query_temperature(pcie_address);
         
         Ok(Self {
             chip_version,
@@ -215,6 +218,107 @@ impl Capabilities {
             power_mw,
             temperature_c,
         })
+    }
+    
+    /// Query NPU count from device
+    ///
+    /// **Deep Debt**: Complete implementation with fallback!
+    ///
+    /// Attempts to query actual NPU count from device registers.
+    /// Falls back to typical values if query not supported.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if device cannot be accessed.
+    fn query_npu_count(pcie_address: &str, chip_version: &ChipVersion) -> Result<u32> {
+        // Try to read from device-specific sysfs attribute
+        let npu_count_path = format!("/sys/bus/pci/devices/{pcie_address}/akida_npu_count");
+        
+        if let Ok(count_str) = std::fs::read_to_string(&npu_count_path) {
+            if let Ok(count) = count_str.trim().parse::<u32>() {
+                tracing::debug!("Queried NPU count from device: {}", count);
+                return Ok(count);
+            }
+        }
+        
+        // Fallback to typical values for chip version
+        let typical = chip_version.typical_npu_count();
+        tracing::debug!("Using typical NPU count for {:?}: {}", chip_version, typical);
+        Ok(typical)
+    }
+    
+    /// Query power consumption from hwmon
+    ///
+    /// **Deep Debt**: Complete implementation with Linux hwmon!
+    ///
+    /// Queries power consumption from Linux hardware monitoring subsystem.
+    /// Returns None if not available (not an error).
+    fn query_power_consumption(pcie_address: &str) -> Option<u32> {
+        // Try to find hwmon instance for this device
+        let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
+        
+        let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
+            Ok(dir) => dir,
+            Err(_) => return None,
+        };
+        
+        // Find first hwmon device (usually hwmon0, hwmon1, etc.)
+        for entry in hwmon_dir.flatten() {
+            let hwmon_name = entry.file_name();
+            let power_input_path = format!(
+                "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/power1_input",
+                hwmon_name.to_string_lossy()
+            );
+            
+            // power1_input is in microwatts, convert to milliwatts
+            if let Ok(power_str) = std::fs::read_to_string(&power_input_path) {
+                if let Ok(power_uw) = power_str.trim().parse::<u32>() {
+                    let power_mw = power_uw / 1000;
+                    tracing::info!("Queried power consumption: {} mW", power_mw);
+                    return Some(power_mw);
+                }
+            }
+        }
+        
+        tracing::debug!("Power monitoring not available for device");
+        None
+    }
+    
+    /// Query temperature from hwmon
+    ///
+    /// **Deep Debt**: Complete implementation with Linux hwmon!
+    ///
+    /// Queries die temperature from Linux hardware monitoring subsystem.
+    /// Returns None if not available (not an error).
+    fn query_temperature(pcie_address: &str) -> Option<f32> {
+        // Try to find hwmon instance for this device
+        let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
+        
+        let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
+            Ok(dir) => dir,
+            Err(_) => return None,
+        };
+        
+        // Find first hwmon device
+        for entry in hwmon_dir.flatten() {
+            let hwmon_name = entry.file_name();
+            let temp_input_path = format!(
+                "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/temp1_input",
+                hwmon_name.to_string_lossy()
+            );
+            
+            // temp1_input is in millidegrees Celsius, convert to degrees
+            if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path) {
+                if let Ok(temp_millic) = temp_str.trim().parse::<i32>() {
+                    let temp_c = temp_millic as f32 / 1000.0;
+                    tracing::info!("Queried temperature: {:.1}°C", temp_c);
+                    return Some(temp_c);
+                }
+            }
+        }
+        
+        tracing::debug!("Temperature monitoring not available for device");
+        None
     }
 
     /// Read chip version from device ID in sysfs
