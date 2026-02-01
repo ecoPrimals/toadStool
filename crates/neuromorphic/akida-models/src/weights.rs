@@ -41,6 +41,7 @@ impl WeightData {
     }
     
     /// Set weight shape
+    #[must_use]
     pub fn with_shape(mut self, shape: Vec<usize>) -> Self {
         self.shape = Some(shape);
         self
@@ -67,10 +68,10 @@ impl WeightData {
         let mut weights = Vec::with_capacity(weight_count);
         
         match self.quantization.bits {
-            1 => self.decode_1bit(&mut weights)?,
-            2 => self.decode_2bit(&mut weights)?,
-            4 => self.decode_4bit(&mut weights)?,
-            8 => self.decode_8bit(&mut weights)?,
+            1 => self.decode_1bit(&mut weights),
+            2 => self.decode_2bit(&mut weights),
+            4 => self.decode_4bit(&mut weights),
+            8 => self.decode_8bit(&mut weights),
             _ => {
                 return Err(AkidaModelError::parse_error(
                     format!("Unsupported bit width: {}", self.quantization.bits)
@@ -82,52 +83,58 @@ impl WeightData {
     }
     
     /// Decode 1-bit weights
-    fn decode_1bit(&self, weights: &mut Vec<f32>) -> Result<()> {
+    fn decode_1bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
             for bit_idx in 0..8 {
                 let bit = (byte >> bit_idx) & 1;
                 let quantized = i32::from(bit) - self.quantization.offset;
-                weights.push(quantized as f32 * self.quantization.scale);
+                #[allow(clippy::cast_precision_loss)]
+                let weight = quantized as f32 * self.quantization.scale;
+                weights.push(weight);
             }
         }
-        Ok(())
     }
     
     /// Decode 2-bit weights
-    fn decode_2bit(&self, weights: &mut Vec<f32>) -> Result<()> {
+    fn decode_2bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
             for shift in (0..8).step_by(2) {
                 let value = (byte >> shift) & 0b11;
                 let quantized = i32::from(value) - self.quantization.offset;
-                weights.push(quantized as f32 * self.quantization.scale);
+                #[allow(clippy::cast_precision_loss)]
+                let weight = quantized as f32 * self.quantization.scale;
+                weights.push(weight);
             }
         }
-        Ok(())
     }
     
     /// Decode 4-bit weights
-    fn decode_4bit(&self, weights: &mut Vec<f32>) -> Result<()> {
+    fn decode_4bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
             // Low nibble
             let low = byte & 0x0F;
             let quantized_low = i32::from(low) - self.quantization.offset;
-            weights.push(quantized_low as f32 * self.quantization.scale);
+            #[allow(clippy::cast_precision_loss)]
+            let weight_low = quantized_low as f32 * self.quantization.scale;
+            weights.push(weight_low);
             
             // High nibble
             let high = (byte >> 4) & 0x0F;
             let quantized_high = i32::from(high) - self.quantization.offset;
-            weights.push(quantized_high as f32 * self.quantization.scale);
+            #[allow(clippy::cast_precision_loss)]
+            let weight_high = quantized_high as f32 * self.quantization.scale;
+            weights.push(weight_high);
         }
-        Ok(())
     }
     
     /// Decode 8-bit weights
-    fn decode_8bit(&self, weights: &mut Vec<f32>) -> Result<()> {
+    fn decode_8bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
             let quantized = i32::from(byte) - self.quantization.offset;
-            weights.push(quantized as f32 * self.quantization.scale);
+            #[allow(clippy::cast_precision_loss)]
+            let weight = quantized as f32 * self.quantization.scale;
+            weights.push(weight);
         }
-        Ok(())
     }
 }
 
@@ -195,8 +202,8 @@ mod tests {
         
         let decoded = weights.decode().unwrap();
         assert_eq!(decoded.len(), 8);
-        assert_eq!(decoded[0], 1.0); // bit 0
-        assert_eq!(decoded[1], 0.0); // bit 1
+        assert!((decoded[0] - 1.0).abs() < 0.01); // bit 0
+        assert!((decoded[1] - 0.0).abs() < 0.01); // bit 1
     }
 
     #[test]

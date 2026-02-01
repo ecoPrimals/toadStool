@@ -16,7 +16,7 @@ pub enum AkidaModelError {
         path: PathBuf,
     },
 
-    /// Invalid FlatBuffers magic bytes
+    /// Invalid `FlatBuffers` magic bytes
     #[error("Invalid FlatBuffers header: expected magic bytes \\x80D\\x04\\x10")]
     InvalidHeader,
 

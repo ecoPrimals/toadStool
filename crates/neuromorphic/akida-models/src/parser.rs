@@ -4,7 +4,7 @@
 
 use crate::error::{AkidaModelError, Result};
 
-/// FlatBuffers magic bytes for Akida models
+/// `FlatBuffers` magic bytes for Akida models
 pub const FLATBUFFERS_MAGIC: [u8; 4] = [0x80, 0x44, 0x04, 0x10];
 
 /// Parsed model header
@@ -30,7 +30,7 @@ pub fn parse_header(data: &[u8]) -> Result<ModelHeader> {
     }
     
     // Check FlatBuffers magic
-    if &data[0..4] != FLATBUFFERS_MAGIC {
+    if data[0..4] != FLATBUFFERS_MAGIC {
         tracing::error!("Invalid magic bytes: {:02x?}", &data[0..4]);
         return Err(AkidaModelError::InvalidHeader);
     }
@@ -109,11 +109,7 @@ fn estimate_layer_count(data: &[u8]) -> usize {
 }
 
 /// Extract layer names from model data
-///
-/// # Errors
-///
-/// Returns error if parsing fails.
-pub fn extract_layer_names(data: &[u8]) -> Result<Vec<String>> {
+pub fn extract_layer_names(data: &[u8]) -> Vec<String> {
     let mut names = Vec::new();
     let mut seen = std::collections::HashSet::new();
     
@@ -135,7 +131,7 @@ pub fn extract_layer_names(data: &[u8]) -> Result<Vec<String>> {
         i += 1;
     }
     
-    Ok(names)
+    names
 }
 
 /// Try to extract null-terminated string at offset
@@ -177,7 +173,7 @@ fn is_valid_layer_name(s: &str) -> bool {
         "filters", "neurons", "quantization", "scale", "offset"
     ];
     
-    if metadata_keys.iter().any(|&key| s == key) {
+    if metadata_keys.contains(&s) {
         return false;
     }
     

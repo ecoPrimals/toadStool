@@ -6,7 +6,7 @@
 //!
 //! Akida models are stored in `FlatBuffers` binary format with the following structure:
 //!
-//! - **Header** (16 bytes): FlatBuffers magic and table offsets
+//! - **Header** (16 bytes): `FlatBuffers` magic and table offsets
 //! - **Version**: SDK version string (e.g., "2.18.2")
 //! - **Metadata**: Model configuration and layer information
 //! - **Layers**: Array of layer definitions

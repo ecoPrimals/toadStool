@@ -56,7 +56,7 @@ impl Model {
         tracing::info!("Running inference on device {}", device.index());
         
         // Get model input/output shapes (self-knowledge!)
-        let (input_shape, output_shape) = self.get_io_shapes()?;
+        let (input_shape, output_shape) = Self::get_io_shapes();
         
         // Create inference config from model metadata
         let config = InferenceConfig::new(
@@ -72,7 +72,7 @@ impl Model {
         // Execute inference
         let executor = InferenceExecutor::new(config);
         let result = executor.infer(input, device)
-            .map_err(|e| AkidaModelError::loading_failed(format!("Inference failed: {}", e)))?;
+            .map_err(|e| AkidaModelError::loading_failed(format!("Inference failed: {e}")))?;
         
         tracing::info!("✅ Inference complete: {:?}", result.total_duration);
         Ok(result)
@@ -84,10 +84,8 @@ impl Model {
     /// Model knows its own input requirements.
     pub fn input_size(&self) -> usize {
         // Use the same logic as get_io_shapes for consistency
-        if let Ok((input_shape, _)) = self.get_io_shapes() {
-            return input_shape.iter().product();
-        }
-        8  // Fallback
+        let (input_shape, _) = Self::get_io_shapes();
+        input_shape.iter().product()
     }
     
     /// Get output size in bytes
@@ -96,17 +94,15 @@ impl Model {
     /// Model knows its own output shape.
     pub fn output_size(&self) -> usize {
         // Use the same logic as get_io_shapes for consistency
-        if let Ok((_, output_shape)) = self.get_io_shapes() {
-            return output_shape.iter().product();
-        }
-        4  // Fallback
+        let (_, output_shape) = Self::get_io_shapes();
+        output_shape.iter().product()
     }
     
     /// Get input and output shapes from model
     ///
     /// **Deep Debt**: Self-knowledge!
     /// Extract actual shapes from model structure, not hardcoded.
-    fn get_io_shapes(&self) -> Result<(Vec<usize>, Vec<usize>)> {
+    fn get_io_shapes() -> (Vec<usize>, Vec<usize>) {
         // For minimal models, use simple shapes
         // In production, these would be extracted from layer metadata
         
@@ -117,7 +113,7 @@ impl Model {
         tracing::debug!("Using default I/O shapes: input={:?}, output={:?}",
                        input_shape, output_shape);
         
-        Ok((input_shape, output_shape))
+        (input_shape, output_shape)
     }
 }
 

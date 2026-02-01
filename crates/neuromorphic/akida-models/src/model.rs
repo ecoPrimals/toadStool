@@ -96,7 +96,7 @@ impl Model {
         tracing::debug!("Layer count: {}", header.layer_count);
         
         // Extract layer names
-        let layer_names = parser::extract_layer_names(data)?;
+        let layer_names = parser::extract_layer_names(data);
         
         // Create layers (simplified for now)
         let layers = layer_names.into_iter().map(|name| {
@@ -156,7 +156,7 @@ impl Model {
     /// Get total weight count across all blocks
     #[must_use]
     pub fn total_weight_count(&self) -> usize {
-        self.weights.iter().map(|w| w.weight_count()).sum()
+        self.weights.iter().map(WeightData::weight_count).sum()
     }
     
     /// Get raw model data
@@ -195,7 +195,7 @@ impl std::fmt::Display for LayerType {
             Self::Conv2D => write!(f, "Conv2D"),
             Self::DepthwiseConv2D => write!(f, "DepthwiseConv2D"),
             Self::Pooling => write!(f, "Pooling"),
-            Self::Unknown(s) => write!(f, "Unknown({})", s),
+            Self::Unknown(s) => write!(f, "Unknown({s})"),
         }
     }
 }

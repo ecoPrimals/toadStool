@@ -49,7 +49,7 @@ impl std::fmt::Display for Shape {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{}", dim)?;
+            write!(f, "{dim}")?;
         }
         write!(f, "]")
     }
@@ -57,7 +57,7 @@ impl std::fmt::Display for Shape {
 
 /// Extract shapes from model data
 ///
-/// Looks for common shape patterns in FlatBuffers metadata.
+/// Looks for common shape patterns in `FlatBuffers` metadata.
 ///
 /// # Errors
 ///
@@ -133,7 +133,7 @@ fn is_valid_shape(shape: &Shape) -> bool {
     }
     
     // All dimensions must be > 0
-    if shape.dims.iter().any(|&d| d == 0) {
+    if shape.dims.contains(&0) {
         return false;
     }
     
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_shape_display() {
         let shape = Shape::new(vec![1, 224, 224, 3]);
-        assert_eq!(format!("{}", shape), "[1, 224, 224, 3]");
+        assert_eq!(format!("{shape}"), "[1, 224, 224, 3]");
     }
 
     #[test]

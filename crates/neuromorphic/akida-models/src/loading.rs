@@ -62,7 +62,7 @@ impl Model {
         // Load using driver (complete implementation, no mocks!)
         let loader = ModelLoader::new(config);
         let metrics = loader.load(&program, device)
-            .map_err(|e| AkidaModelError::loading_failed(format!("Device loading failed: {}", e)))?;
+            .map_err(|e| AkidaModelError::loading_failed(format!("Device loading failed: {e}")))?;
         
         tracing::info!("✅ Model loaded successfully");
         Ok(metrics)
