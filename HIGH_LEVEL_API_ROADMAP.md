@@ -1,9 +1,10 @@
 # 🏗️ High-Level API Roadmap
 
-**Date**: January 31, 2026  
-**Status**: Planning Phase  
+**Date**: February 1, 2026  
+**Status**: Active Implementation Phase  
 **Current APIs**: 1 (ESN - Complete ✅)  
-**Target APIs**: 5 total
+**Target APIs**: 5 total  
+**Recent Progress**: NN Training Metrics complete (accuracy, epoch, batch tracking)
 
 ---
 
@@ -125,10 +126,16 @@ pub enum SNNLayer {
 
 ---
 
-## 3. **🎓 Neural Network Training API** (READY TO BUILD)
+## 3. **🎓 Neural Network Training API** (IN PROGRESS - 60% COMPLETE)
 
 ### **Purpose**
 High-level interface for training deep neural networks end-to-end.
+
+### **Recent Progress** (February 1, 2026)
+- ✅ **Training metrics complete**: accuracy, epoch, batch tracking
+- ✅ **TrainingMetrics struct**: Returns loss, accuracy, epoch, batch
+- ✅ **Epoch management**: `start_epoch()`, `reset_metrics()`
+- ⏳ **Remaining**: Additional layer types, gradient implementations
 
 ### **Available Operations** (50+ ops)
 - ✅ Layers: `conv2d`, `linear` (matmul), `maxpool2d`
@@ -180,8 +187,9 @@ pub enum Layer {
 - Transfer learning
 - Model fine-tuning
 
-### **Implementation Effort**: 6-8 hours
+### **Implementation Effort**: 6-8 hours (60% complete - ~3 hours remaining)
 ### **Priority**: ⭐⭐⭐⭐⭐ (CRITICAL - enables full ML workflows)
+### **Status**: ⏳ IN PROGRESS (aligned with DEEP_DEBT_EXECUTION_PLAN)
 
 ---
 
@@ -333,16 +341,21 @@ pub enum TimeSeriesModel {
 
 ## 🎯 **IMMEDIATE NEXT STEP**
 
-### **Recommendation: Start with Bioinformatics API**
+### **Recommendation: Complete Neural Network Training API**
 
-**Why**:
-1. ✅ **Quick win** (3-4 hours) - Operations already tested
-2. ✅ **Completes story** - Rounds out neuromorphic migration
-3. ✅ **Unique value** - GPU-accelerated genomics is rare
-4. ✅ **Clear use case** - Scientific computing, drug discovery
-5. ✅ **Momentum** - Builds on today's neuromorphic work
+**Why Priority Changed** (February 1, 2026):
+1. ✅ **Already 60% complete** - Training metrics implemented
+2. ✅ **Deep debt alignment** - Next 3 TODOs are all barracuda/NN related
+3. ✅ **High impact** - Enables full ML workflows
+4. ✅ **Momentum** - Continuing active work stream
+5. ✅ **Clear path** - 2.5-3.5 hours to completion
 
-**Then**: Neural Network Training API (biggest impact)
+**Next 3 TODOs** (from DEEP_DEBT_EXECUTION_PLAN):
+- ⏳ Zero-copy tensor reshape (1 hour)
+- ⏳ Remaining layer types (30 min - 1 hour)
+- ⏳ Gradient implementations (30 min - 1 hour)
+
+**Then**: Bioinformatics API (quick win, completes neuromorphic story)
 
 ---
 
