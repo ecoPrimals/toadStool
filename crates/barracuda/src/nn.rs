@@ -57,6 +57,11 @@ use crate::ops::sigmoid::Sigmoid;
 use crate::ops::softmax::Softmax;
 use crate::ops::mse_loss::MseLoss;
 use crate::ops::cross_entropy::CrossEntropy;
+use crate::ops::conv2d::Conv2D;
+use crate::ops::maxpool2d::MaxPool2D;
+use crate::ops::batch_norm::BatchNorm as BatchNormOp;
+use crate::ops::layer_norm::LayerNorm as LayerNormOp;
+use crate::ops::dropout::Dropout as DropoutOp;
 use std::sync::Arc;
 
 /// Network configuration (runtime, no hardcoding)
@@ -432,10 +437,57 @@ impl NeuralNetwork {
                 softmax.execute()
             }
             
-            // TODO: Implement remaining layers
-            _ => Err(BarracudaError::InvalidInput {
-                message: format!("Layer {:?} not yet implemented", layer),
-            }),
+            Layer::Conv2D { .. } => {
+                // 2D Convolution
+                // Note: The actual Conv2D op signature is simpler: Conv2D::new(input, kernel)
+                // The layer parameters (in_channels, out_channels, kernel_size) are used
+                // to determine weight shape during initialization
+                let weights = state.weights.as_ref()
+                    .ok_or_else(|| BarracudaError::InvalidInput {
+                        message: "Conv2D layer missing weights".to_string(),
+                    })?;
+                
+                let conv = Conv2D::new(input.clone(), weights.clone());
+                let mut output = conv.execute()?;
+                
+                // Add bias if present
+                if let Some(bias) = &state.bias {
+                    let broadcast = Broadcast::new(bias.clone(), output.shape().to_vec());
+                    let broadcasted_bias = broadcast.execute()?;
+                    let add = Add::new(output, broadcasted_bias)?;
+                    output = add.execute()?;
+                }
+                
+                Ok(output)
+            }
+            
+            Layer::MaxPool2D { kernel_size, stride } => {
+                // Max pooling 2D
+                let pool = MaxPool2D::new(input.clone(), *kernel_size, *stride);
+                pool.execute()
+            }
+            
+            Layer::BatchNorm { .. } => {
+                // Batch normalization
+                // Actual API: BatchNormOp::new(input, epsilon)
+                let bn = BatchNormOp::new(input.clone(), 1e-5);
+                bn.execute()
+            }
+            
+            Layer::LayerNorm { .. } => {
+                // Layer normalization
+                // Actual API: LayerNormOp::new(input, epsilon)
+                let ln = LayerNormOp::new(input.clone(), 1e-5);
+                ln.execute()
+            }
+            
+            Layer::Dropout { rate } => {
+                // Dropout
+                // Actual API: DropoutOp::new(input, rate, seed)
+                // Use a deterministic seed for now (could be randomized)
+                let dropout = DropoutOp::new(input.clone(), *rate, 42);
+                dropout.execute()
+            }
         }
     }
     
@@ -778,9 +830,40 @@ impl NeuralNetwork {
                 Ok((grad_output.clone(), LayerGradients::default()))
             }
             
-            // TODO: Implement gradients for other activations
-            _ => {
-                // For now, just pass gradient through
+            Layer::GELU | Layer::Tanh | Layer::Sigmoid => {
+                // For now, pass gradient through
+                // Full implementation would compute activation-specific gradients
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            Layer::Softmax => {
+                // Softmax gradient is complex (Jacobian matrix)
+                // For now, pass gradient through
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            Layer::Conv2D { .. } => {
+                // Conv2D backward pass is complex (requires im2col or similar)
+                // For now, pass gradient through
+                // Full implementation would compute weight and input gradients
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            Layer::MaxPool2D { .. } => {
+                // MaxPool backward requires remembering max indices
+                // For now, pass gradient through
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            Layer::BatchNorm { .. } | Layer::LayerNorm { .. } => {
+                // Normalization backward requires stored statistics
+                // For now, pass gradient through
+                Ok((grad_output.clone(), LayerGradients::default()))
+            }
+            
+            Layer::Dropout { .. } => {
+                // Dropout backward requires stored mask
+                // For now, pass gradient through
                 Ok((grad_output.clone(), LayerGradients::default()))
             }
         }
@@ -952,12 +1035,75 @@ impl NeuralNetworkBuilder {
                     }
                 }
                 
-                // TODO: Implement weight initialization for other layer types
-                _ => LayerState {
-                    weights: None,
-                    bias: None,
-                    extra: LayerExtraState::default(),
-                },
+                Layer::Conv2D { in_channels, out_channels, kernel_size } => {
+                    // Kaiming/He initialization for Conv2D
+                    let fan_in = in_channels * kernel_size * kernel_size;
+                    let limit = (2.0 / fan_in as f32).sqrt();
+                    let num_weights = in_channels * out_channels * kernel_size * kernel_size;
+                    
+                    let weights_data: Vec<f32> = (0..num_weights)
+                        .map(|i| {
+                            let x = (i as f32 * 0.1).sin();
+                            x * limit
+                        })
+                        .collect();
+                    
+                    let weights = Tensor::from_data(
+                        &weights_data,
+                        vec![*out_channels, *in_channels, *kernel_size, *kernel_size],
+                        Arc::new(self.device.clone())
+                    )?;
+                    
+                    // Zero-initialize biases
+                    let bias_data = vec![0.0; *out_channels];
+                    let bias = Tensor::from_data(&bias_data, vec![*out_channels], Arc::new(self.device.clone()))?;
+                    
+                    LayerState {
+                        weights: Some(weights),
+                        bias: Some(bias),
+                        extra: LayerExtraState::default(),
+                    }
+                }
+                
+                Layer::BatchNorm { num_features } => {
+                    // BatchNorm: gamma (scale) initialized to 1, beta (shift) to 0
+                    let gamma_data = vec![1.0; *num_features];
+                    let gamma = Tensor::from_data(&gamma_data, vec![*num_features], Arc::new(self.device.clone()))?;
+                    
+                    let beta_data = vec![0.0; *num_features];
+                    let beta = Tensor::from_data(&beta_data, vec![*num_features], Arc::new(self.device.clone()))?;
+                    
+                    LayerState {
+                        weights: Some(gamma),
+                        bias: Some(beta),
+                        extra: LayerExtraState::default(),
+                    }
+                }
+                
+                Layer::LayerNorm { normalized_shape } => {
+                    // LayerNorm: gamma initialized to 1, beta to 0
+                    let num_params: usize = normalized_shape.iter().product();
+                    let gamma_data = vec![1.0; num_params];
+                    let gamma = Tensor::from_data(&gamma_data, normalized_shape.clone(), Arc::new(self.device.clone()))?;
+                    
+                    let beta_data = vec![0.0; num_params];
+                    let beta = Tensor::from_data(&beta_data, normalized_shape.clone(), Arc::new(self.device.clone()))?;
+                    
+                    LayerState {
+                        weights: Some(gamma),
+                        bias: Some(beta),
+                        extra: LayerExtraState::default(),
+                    }
+                }
+                
+                // Layers without learnable parameters
+                Layer::MaxPool2D { .. } | Layer::Dropout { .. } => {
+                    LayerState {
+                        weights: None,
+                        bias: None,
+                        extra: LayerExtraState::default(),
+                    }
+                }
             };
             
             layer_states.push(state);

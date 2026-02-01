@@ -18,6 +18,11 @@ use std::sync::Arc;
 /// - Operations execute on tensor's device automatically
 /// - Explicit device transfer when needed
 ///
+/// **Deep Debt Excellence**:
+/// - Zero-copy reshape via Arc<Buffer> sharing
+/// - Safe Rust (no unsafe needed)
+/// - Fast (metadata-only operations)
+///
 /// ## Examples
 ///
 /// ```rust,ignore
@@ -33,8 +38,9 @@ use std::sync::Arc;
 /// println!("Executed on: {}", x.device().name());
 /// ```
 pub struct Tensor {
-    /// GPU buffer (wgpu handles CPU/GPU/NPU/TPU automatically!)
-    buffer: wgpu::Buffer,
+    /// GPU buffer wrapped in Arc for zero-copy operations
+    /// (wgpu handles CPU/GPU/NPU/TPU automatically!)
+    buffer: Arc<wgpu::Buffer>,
 
     /// Tensor shape (dimensions)
     shape: Vec<usize>,
@@ -54,7 +60,7 @@ impl Tensor {
         device: Arc<WgpuDevice>,
     ) -> Self {
         Self {
-            buffer,
+            buffer: Arc::new(buffer),
             shape,
             device,
             name: None,
@@ -81,7 +87,7 @@ impl Tensor {
         });
 
         Ok(Self {
-            buffer,
+            buffer: Arc::new(buffer),
             shape,
             device,
             name: None,
@@ -92,13 +98,28 @@ impl Tensor {
 // Implement Clone for Tensor
 impl Clone for Tensor {
     fn clone(&self) -> Self {
-        // Create a new buffer and copy data
+        // **Zero-Copy Clone**: Arc makes this cheap!
+        // Both tensors share the same GPU buffer memory.
+        Self {
+            buffer: self.buffer.clone(), // Arc clone - just increments reference count
+            shape: self.shape.clone(),
+            device: self.device.clone(),
+            name: self.name.clone(),
+        }
+    }
+}
+
+impl Tensor {
+    /// Deep clone - creates a new buffer with copied data
+    ///
+    /// Use this when you need independent buffers.
+    /// Regular `.clone()` is zero-copy (shared buffer).
+    pub fn deep_clone(&self) -> Result<Self> {
         let size = self.len();
-        let new_buffer = self.device.create_buffer_f32(size).unwrap();
+        let new_buffer = self.device.create_buffer_f32(size)?;
         
-        // Copy data from old buffer to new buffer
         let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Tensor Clone Encoder"),
+            label: Some("Tensor Deep Clone Encoder"),
         });
         
         encoder.copy_buffer_to_buffer(
@@ -111,12 +132,12 @@ impl Clone for Tensor {
         
         self.device.queue.submit(Some(encoder.finish()));
         
-        Self {
-            buffer: new_buffer,
+        Ok(Self {
+            buffer: Arc::new(new_buffer),
             shape: self.shape.clone(),
             device: self.device.clone(),
             name: self.name.clone(),
-        }
+        })
     }
 }
 
@@ -147,7 +168,7 @@ impl Tensor {
         device.write_buffer_f32(&buffer, &data)?;
 
         Ok(Self {
-            buffer,
+            buffer: Arc::new(buffer),
             shape,
             device,
             name: None,
@@ -222,7 +243,19 @@ impl Tensor {
         Self::from_vec_on(data, self.shape.clone(), target_device).await
     }
 
-    /// Reshape tensor (zero-copy when possible)
+    /// Reshape tensor (zero-copy via Arc buffer sharing)
+    ///
+    /// **Deep Debt Excellence**:
+    /// - True zero-copy: shares same GPU buffer via Arc
+    /// - Just metadata change (shape update)
+    /// - Fast AND safe (no unsafe code needed)
+    /// - Modern idiomatic Rust (Arc for shared ownership)
+    ///
+    /// ## Example
+    /// ```rust,ignore
+    /// let x = Tensor::zeros([2, 3, 4]).await?;  // [2, 3, 4]
+    /// let y = x.reshape([6, 4])?;                // [6, 4] - same buffer!
+    /// ```
     pub fn reshape(&self, new_shape: Vec<usize>) -> Result<Self> {
         // Validate element count matches
         let old_size: usize = self.shape.iter().product();
@@ -232,10 +265,23 @@ impl Tensor {
             return Err(BarracudaError::shape_mismatch(vec![new_size], vec![old_size]));
         }
 
-        // For now, simple implementation: read and recreate
-        // TODO: Zero-copy reshape when striding allows
-        let data = self.to_vec()?;
-        futures::executor::block_on(Self::from_vec_on(data, new_shape, self.device.clone()))
+        // **Zero-Copy Implementation**: wgpu buffers are always contiguous,
+        // so reshape is always safe and zero-copy - we just update metadata!
+        //
+        // The Arc<Buffer> is cloned (cheap ref count increment), not the buffer.
+        // Both tensors share the same GPU memory.
+        //
+        // This is safe because:
+        // 1. Element count is validated (old_size == new_size)
+        // 2. wgpu buffers are always contiguous (no striding issues)
+        // 3. Arc provides safe shared ownership
+        // 4. No unsafe code needed!
+        Ok(Self {
+            buffer: self.buffer.clone(), // Arc clone - zero-copy!
+            shape: new_shape,
+            device: self.device.clone(),
+            name: self.name.clone(),
+        })
     }
 }
 
