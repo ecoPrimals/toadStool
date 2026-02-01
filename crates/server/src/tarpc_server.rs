@@ -364,8 +364,8 @@ impl StandaloneExecutor {
                     available_memory_bytes: available_memory,
                     total_gpu_memory_bytes: None,
                     available_gpu_memory_bytes: None,
-                    cpu_utilization: 0.0,    // TODO: Query actual utilization
-                    memory_utilization: 0.0, // TODO: Query actual utilization
+                    cpu_utilization: Self::query_cpu_utilization(&mut system),
+                    memory_utilization: Self::query_memory_utilization(&system),
                     gpu_utilization: None,
                 },
                 metadata: std::collections::HashMap::new(),
@@ -378,6 +378,37 @@ impl StandaloneExecutor {
     /// Rough estimate: modern CPU core ~0.1 TFLOPS
     fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
         Some((cores as f64) * 0.1)
+    }
+
+    /// Query actual CPU utilization (pure Rust via sysinfo)
+    ///
+    /// Deep debt principle: Runtime discovery, no hardcoding
+    fn query_cpu_utilization(system: &mut sysinfo::System) -> f32 {
+        system.refresh_cpu_all();
+        
+        // Average utilization across all CPUs
+        let cpus = system.cpus();
+        if cpus.is_empty() {
+            return 0.0;
+        }
+        
+        let total_usage: f32 = cpus.iter().map(|cpu| cpu.cpu_usage()).sum();
+        total_usage / cpus.len() as f32
+    }
+
+    /// Query actual memory utilization (pure Rust via sysinfo)
+    ///
+    /// Deep debt principle: Runtime discovery, no hardcoding
+    fn query_memory_utilization(system: &sysinfo::System) -> f32 {
+        let total = system.total_memory();
+        let available = system.available_memory();
+        
+        if total == 0 {
+            return 0.0;
+        }
+        
+        let used = total.saturating_sub(available);
+        ((used as f64 / total as f64) * 100.0) as f32
     }
 }
 

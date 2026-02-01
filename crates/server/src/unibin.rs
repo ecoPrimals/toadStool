@@ -217,8 +217,35 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
         PathBuf::from(xdg_runtime)
     } else {
         // Fallback to Linux standard /run/user/<uid>
-        let uid = unsafe { libc::getuid() };
-        PathBuf::from(format!("/run/user/{}", uid))
+        // EVOLVED: Pure Rust UID detection (no unsafe!)
+        // Try /proc/self first (Linux standard)
+        if let Ok(uid_str) = std::fs::read_to_string("/proc/self/loginuid") {
+            if let Ok(uid) = uid_str.trim().parse::<u32>() {
+                PathBuf::from(format!("/run/user/{}", uid))
+            } else {
+                // Fallback: check USER environment
+                std::env::var("USER")
+                    .ok()
+                    .and_then(|user| {
+                        // Try to read /etc/passwd for UID
+                        std::fs::read_to_string("/etc/passwd")
+                            .ok()
+                            .and_then(|passwd| {
+                                passwd
+                                    .lines()
+                                    .find(|line| line.starts_with(&format!("{}:", user)))
+                                    .and_then(|line| {
+                                        line.split(':').nth(2).and_then(|uid| uid.parse::<u32>().ok())
+                                    })
+                                    .map(|uid| PathBuf::from(format!("/run/user/{}", uid)))
+                            })
+                    })
+                    .unwrap_or_else(|| PathBuf::from("/tmp"))
+            }
+        } else {
+            // Ultimate fallback if /proc not available
+            PathBuf::from("/tmp")
+        }
     };
 
     if runtime_dir.exists() {
