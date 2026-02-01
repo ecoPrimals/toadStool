@@ -201,9 +201,10 @@ fn main() -> Result<()> {
                 iterations,
             )?;
             
-            println!("    ✓ Time: {:.2}ms, Throughput: {:.0} ops/s, Efficiency: {:.0} ops/J",
+            println!("    ✓ Time: {:.2}ms, Throughput: {:.0} ops/s, Energy: {:.6}J, Efficiency: {:.1} ops/J",
                      result.total_time_us as f64 / 1000.0,
                      result.throughput_ops_per_sec,
+                     result.total_energy_joules,
                      result.ops_per_joule);
             
             all_results.push(result);
@@ -438,6 +439,13 @@ fn run_pipeline_benchmark(
         0.0
     };
     
+    // Debug: Log energy calculation
+    if total_energy > 0.0 && total_energy < 0.001 {
+        eprintln!("⚠️  DEBUG: Very small energy detected: {} J (this may display as 0 with low precision)", total_energy);
+        eprintln!("   Chip times: {:?}", chip_times);
+        eprintln!("   Chip power: {:?}", chip_power);
+    }
+    
     let transfer_overhead = if total_time > 0 {
         (transfer_time as f32 / total_time as f32) * 100.0
     } else {
@@ -490,8 +498,8 @@ fn generate_matrix_report(results: &[BenchmarkResult]) -> Result<()> {
             report.push_str(&format!("    Sparsity: {:.1}%\n", result.sparsity * 100.0));
             report.push_str(&format!("    Total Time: {:.2} ms\n", result.total_time_us as f64 / 1000.0));
             report.push_str(&format!("    Throughput: {:.0} ops/sec\n", result.throughput_ops_per_sec));
-            report.push_str(&format!("    Energy: {:.4} J\n", result.total_energy_joules));
-            report.push_str(&format!("    Efficiency: {:.0} ops/J\n", result.ops_per_joule));
+            report.push_str(&format!("    Energy: {:.6} J\n", result.total_energy_joules));
+            report.push_str(&format!("    Efficiency: {:.1} ops/J\n", result.ops_per_joule));
             report.push_str(&format!("    Transfer Overhead: {:.2}%\n", result.transfer_overhead_percent));
             report.push_str(&format!("    Chip Ordering: {}\n", result.chip_ordering.join(" → ")));
             report.push_str("\n");
