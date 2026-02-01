@@ -313,15 +313,88 @@ async fn create_executor(
 
 /// Query local GPU and compute capabilities
 ///
-/// Deep debt principle: Self-knowledge only
+/// **Deep Debt**: Complete implementation using pure Rust hardware detection!
+///
+/// This implementation:
+/// 1. Uses existing pure Rust dependencies (sysinfo, wgpu)
+/// 2. Discovers actual system capabilities at runtime
+/// 3. Returns only what THIS node can provide (self-knowledge)
+/// 4. No hardcoding, no HTTP dependencies
 async fn query_local_capabilities() -> Vec<String> {
-    // TEMPORARY: Return basic capabilities until we implement pure Rust capability query
-    // TODO: Implement capability discovery without HTTP dependencies
-    vec![
-        "compute".to_string(),
-        "cpu".to_string(),
-        "orchestration".to_string(),
-    ]
+    let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
+    
+    // Detect CPU capabilities (pure Rust via sysinfo!)
+    let cpus = num_cpus::get();
+    if cpus >= 16 {
+        capabilities.push("high-core-count".to_string());
+        tracing::info!("✅ High core count detected: {} cores", cpus);
+    }
+    
+    // Detect memory capabilities (pure Rust via sysinfo!)
+    let mut sys = sysinfo::System::new_all();
+    sys.refresh_memory();
+    let total_memory_gb = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+    if total_memory_gb >= 32.0 {
+        capabilities.push("high-memory".to_string());
+        tracing::info!("✅ High memory detected: {:.1} GB", total_memory_gb);
+    }
+    
+    // Detect GPU capabilities (pure Rust via wgpu!)
+    #[cfg(feature = "gpu-discovery")]
+    {
+        let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
+        if !adapters.is_empty() {
+            capabilities.push("gpu".to_string());
+            
+            for adapter in adapters {
+                let info = adapter.get_info();
+                tracing::info!("✅ Detected GPU: {} ({:?})", info.name, info.backend);
+                
+                // Add backend-specific capabilities
+                match info.backend {
+                    wgpu::Backend::Vulkan => {
+                        if !capabilities.contains(&"vulkan".to_string()) {
+                            capabilities.push("vulkan".to_string());
+                        }
+                    }
+                    wgpu::Backend::Metal => {
+                        if !capabilities.contains(&"metal".to_string()) {
+                            capabilities.push("metal".to_string());
+                        }
+                    }
+                    wgpu::Backend::Dx12 => {
+                        if !capabilities.contains(&"dx12".to_string()) {
+                            capabilities.push("dx12".to_string());
+                        }
+                    }
+                    _ => {}
+                }
+                
+                // Detect vendor-specific capabilities from name
+                let name_lower = info.name.to_lowercase();
+                if name_lower.contains("nvidia") && !capabilities.contains(&"cuda".to_string()) {
+                    capabilities.push("cuda".to_string());
+                } else if name_lower.contains("amd") && !capabilities.contains(&"rocm".to_string()) {
+                    capabilities.push("rocm".to_string());
+                } else if name_lower.contains("intel") && !capabilities.contains(&"oneapi".to_string()) {
+                    capabilities.push("oneapi".to_string());
+                }
+            }
+        } else {
+            tracing::info!("No GPUs detected (CPU-only mode)");
+        }
+    }
+    
+    #[cfg(not(feature = "gpu-discovery"))]
+    {
+        tracing::info!("GPU discovery disabled (compile with --features gpu-discovery)");
+    }
+    
+    // Always include orchestration capability
+    capabilities.push("orchestration".to_string());
+    
+    tracing::info!("📊 Local capabilities: {:?}", capabilities);
+    capabilities
 }
 
 // DISABLED: HTTP-based ecosystem registration (legacy)
