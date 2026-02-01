@@ -256,6 +256,10 @@ pub struct DisplayCapabilitiesInfo {
     pub display_count: usize,
     /// Number of input devices
     pub input_device_count: usize,
+    /// Current window count (Phase 3)
+    pub window_count: usize,
+    /// Isomorphic IPC support (Phase 3)
+    pub isomorphic: bool,
 }
 
 #[cfg(test)]

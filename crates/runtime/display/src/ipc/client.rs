@@ -424,6 +424,26 @@ impl DisplayClient {
             Err(DisplayError::IpcError("Invalid response".to_string()))
         }
     }
+
+    /// Get endpoint string for display purposes
+    ///
+    /// **Helper for health checks and monitoring**
+    pub fn endpoint_string(&self) -> String {
+        match &self.endpoint {
+            IpcEndpoint::UnixSocket(path) => path.display().to_string(),
+            IpcEndpoint::TcpLocal(addr) => addr.to_string(),
+        }
+    }
+
+    /// Get transport name for display purposes
+    ///
+    /// **Helper for health checks and monitoring**
+    pub fn transport_name(&self) -> &str {
+        match &self.endpoint {
+            IpcEndpoint::UnixSocket(_) => "unix",
+            IpcEndpoint::TcpLocal(_) => "tcp",
+        }
+    }
 }
 
 #[cfg(test)]

@@ -52,6 +52,7 @@ pub mod error;
 pub mod execution;
 pub mod fractal_integration;
 pub mod ipc_helpers;
+pub mod launcher; // Phase 3: Deployment coordination
 pub mod layer_adaptation;
 pub mod multi_workload_compositor;
 pub mod os_layer;
