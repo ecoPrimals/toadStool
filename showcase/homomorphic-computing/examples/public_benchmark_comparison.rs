@@ -10,6 +10,7 @@ use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint8, FheUint16};
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BenchResult {
     operation: String,
     substrate: String,
@@ -148,8 +149,8 @@ fn bench_bool_and(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 25.0,
-            ops_per_joule: (iterations as f32) / (25.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 25.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
@@ -171,8 +172,8 @@ fn bench_bool_and(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 150.0,
-            ops_per_joule: (iterations as f32) / (150.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 150.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
@@ -194,8 +195,8 @@ fn bench_bool_and(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 2.0,
-            ops_per_joule: (iterations as f32) / (2.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 2.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
@@ -231,8 +232,8 @@ fn bench_u8_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 25.0,
-            ops_per_joule: (iterations as f32) / (25.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 25.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
@@ -254,8 +255,8 @@ fn bench_u8_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 150.0,
-            ops_per_joule: (iterations as f32) / (150.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 150.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
@@ -277,8 +278,8 @@ fn bench_u8_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 2.0,
-            ops_per_joule: (iterations as f32) / (2.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 2.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
@@ -314,8 +315,8 @@ fn bench_u8_mul(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 25.0,
-            ops_per_joule: (iterations as f32) / (25.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 25.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
@@ -337,8 +338,8 @@ fn bench_u8_mul(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 150.0,
-            ops_per_joule: (iterations as f32) / (150.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 150.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
@@ -360,8 +361,8 @@ fn bench_u8_mul(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 2.0,
-            ops_per_joule: (iterations as f32) / (2.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 2.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
@@ -397,8 +398,8 @@ fn bench_u16_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 25.0,
-            ops_per_joule: (iterations as f32) / (25.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 25.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
@@ -420,8 +421,8 @@ fn bench_u16_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 150.0,
-            ops_per_joule: (iterations as f32) / (150.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 150.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
@@ -443,8 +444,8 @@ fn bench_u16_add(
             iterations,
             compute_time_us: compute_time,
             throughput: (iterations as f64) / (compute_time as f64 / 1_000_000.0),
-            power_w: 2.0,
-            ops_per_joule: (iterations as f32) / (2.0 * compute_time as f32 / 1_000_000.0),
+            power_w: 2.0f32,
+            ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
         
         println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 

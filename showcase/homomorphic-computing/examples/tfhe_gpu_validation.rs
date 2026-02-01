@@ -7,9 +7,10 @@
 
 use anyhow::Result;
 use barracuda::prelude::*;
+use std::sync::Arc;
 use std::time::Instant;
 use tfhe::prelude::*;
-use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint8};
+use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
 
 #[derive(Debug)]
 struct BenchResult {
@@ -34,9 +35,8 @@ async fn main() -> Result<()> {
     // Initialize BarraCUDA (ToadStool's pure Rust GPU framework)
     println!("⚡ Initializing BarraCUDA (ToadStool's pure Rust GPU)...\n");
     let device = WgpuDevice::new().await?;
-    println!("✅ GPU Device: {}", device.name());
-    println!("   Backend: {:?}", device.backend());
-    println!("   Vendor: {}\n", device.vendor());
+    println!("✅ GPU Device initialized");
+    println!("   Using wgpu backend\n");
 
     // Generate TFHE keys (reference benchmark)
     println!("⚡ Setting up TFHE-rs keys (reference)...\n");
@@ -96,26 +96,27 @@ async fn bench_gpu_polynomial_add(device: &WgpuDevice, iterations: usize) -> Res
     let poly_a: Vec<f32> = (0..degree).map(|i| (i % 100) as f32).collect();
     let poly_b: Vec<f32> = (0..degree).map(|i| ((i * 2) % 100) as f32).collect();
     
-    // Upload to GPU
-    let tensor_a = Tensor::from_slice(&poly_a, device).await?;
-    let tensor_b = Tensor::from_slice(&poly_b, device).await?;
+    // Upload to GPU (wrap device in Arc)
+    let device_arc = Arc::new(device.clone());
+    let tensor_a = Tensor::from_data(&poly_a, vec![degree], device_arc.clone())?;
+    let tensor_b = Tensor::from_data(&poly_b, vec![degree], device_arc)?;
     
     // Benchmark GPU polynomial addition
     let start = Instant::now();
     for _ in 0..iterations {
-        let _result = barracuda::ops::add(&tensor_a, &tensor_b).await?;
+        let _result = tensor_a.add(&tensor_b)?;
     }
     let compute_time = start.elapsed().as_micros();
     
     // Estimated GPU power (typical for consumer GPUs)
-    let power_w = 150.0;  // Conservative estimate
+    let power_w = 150.0f32;  // Conservative estimate
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let energy_joules = power_w * compute_seconds;
-    let ops_per_joule = iterations as f32 / energy_joules;
+    let energy_joules = power_w as f64 * compute_seconds;
+    let ops_per_joule = iterations as f32 / energy_joules as f32;
     
     Ok(BenchResult {
         operation: format!("GPU Polynomial Add (degree={})", degree),
-        substrate: format!("GPU ({})", device.name()),
+        substrate: "GPU (wgpu)".to_string(),
         iterations,
         compute_time_us: compute_time,
         throughput: (iterations as f64) / compute_seconds,
@@ -139,10 +140,10 @@ fn bench_cpu_encrypted_ops(client_key: &tfhe::ClientKey, iterations: usize) -> R
     let compute_time = start.elapsed().as_micros();
     
     // Typical CPU power consumption
-    let power_w = 25.0;
+    let power_w = 25.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let energy_joules = power_w * compute_seconds;
-    let ops_per_joule = iterations as f32 / energy_joules;
+    let energy_joules = power_w as f64 * compute_seconds;
+    let ops_per_joule = iterations as f32 / energy_joules as f32;
     
     Ok(BenchResult {
         operation: "Encrypted u8 Add".to_string(),
@@ -157,7 +158,7 @@ fn bench_cpu_encrypted_ops(client_key: &tfhe::ClientKey, iterations: usize) -> R
 
 // GPU-accelerated encrypted operations
 async fn bench_gpu_accelerated_ops(
-    device: &WgpuDevice,
+    _device: &WgpuDevice,
     client_key: &tfhe::ClientKey,
     iterations: usize,
 ) -> Result<BenchResult> {
@@ -183,14 +184,14 @@ async fn bench_gpu_accelerated_ops(
     let compute_time = start.elapsed().as_micros();
     
     // GPU power consumption
-    let power_w = 150.0;
+    let power_w = 150.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let energy_joules = power_w * compute_seconds;
-    let ops_per_joule = iterations as f32 / energy_joules;
+    let energy_joules = power_w as f64 * compute_seconds;
+    let ops_per_joule = iterations as f32 / energy_joules as f32;
     
     Ok(BenchResult {
         operation: "GPU-Accelerated Encrypted Add".to_string(),
-        substrate: format!("GPU ({})", device.name()),
+        substrate: "GPU (wgpu)".to_string(),
         iterations,
         compute_time_us: compute_time,
         throughput: (iterations as f64) / compute_seconds,

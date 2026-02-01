@@ -11,6 +11,7 @@ use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BenchResult {
     operation: String,
     substrate: String,
@@ -112,9 +113,9 @@ fn bench_cpu(client_key: &tfhe::ClientKey, iterations: usize) -> Result<BenchRes
     }
     let compute_time = start.elapsed().as_micros();
     
-    let power_w = 25.0;
+    let power_w = 25.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let ops_per_joule = iterations as f32 / (power_w * compute_seconds);
+    let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
     
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
@@ -140,9 +141,9 @@ fn bench_gpu_simulated(client_key: &tfhe::ClientKey, iterations: usize) -> Resul
     
     // GPU is ~4.5x faster but uses more power
     let compute_time = cpu_time / 4.5 as u128;
-    let power_w = 150.0;
+    let power_w = 150.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let ops_per_joule = iterations as f32 / (power_w * compute_seconds);
+    let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
     
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
@@ -169,9 +170,9 @@ fn bench_npu_simulated(client_key: &tfhe::ClientKey, iterations: usize) -> Resul
     
     // NPU characteristics
     let compute_time = cpu_time / 2.7 as u128;
-    let power_w = 2.0;  // ⚡ Key advantage!
+    let power_w = 2.0f32;  // ⚡ Key advantage!
     let compute_seconds = compute_time as f64 / 1_000_000.0;
-    let ops_per_joule = iterations as f32 / (power_w * compute_seconds);
+    let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
     
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
@@ -196,9 +197,9 @@ fn bench_npu_real(_client_key: &tfhe::ClientKey, iterations: usize) -> Result<Be
     
     // Placeholder for real implementation
     let compute_time_us = (iterations as f64 / 3200.0 * 1_000_000.0) as u128;
-    let power_w = 2.0;
+    let power_w = 2.0f32;
     let compute_seconds = compute_time_us as f64 / 1_000_000.0;
-    let ops_per_joule = iterations as f32 / (power_w * compute_seconds);
+    let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
     
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),

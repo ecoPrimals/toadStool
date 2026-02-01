@@ -45,17 +45,21 @@ tfhe = { version = "1.5.1", default-features = false, features = ["boolean", "sh
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
 
-# NOTE: barraCUDA and cross-substrate-validation integration will come
-# after we validate the basic structure compiles
+# NOTE: Validation benchmarks only
+# These use TFHE-rs as reference for comparison
 
 [[example]]
-name = "cross_substrate_comparison"
-path = "examples/cross_substrate_comparison.rs"
+name = "tfhe_cpu_baseline"
+path = "examples/tfhe_cpu_baseline.rs"
 
 [[example]]
-name = "capability_selection"
-path = "examples/capability_selection.rs"
+name = "tfhe_gpu_validation"
+path = "examples/tfhe_gpu_validation.rs"
 
 [[example]]
-name = "real_measurements"
-path = "examples/real_measurements.rs"
+name = "tfhe_npu_validation"
+path = "examples/tfhe_npu_validation.rs"
+
+[[example]]
+name = "public_benchmark_comparison"
+path = "examples/public_benchmark_comparison.rs"
