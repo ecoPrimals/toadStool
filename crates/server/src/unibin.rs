@@ -94,33 +94,33 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Start manual JSON-RPC server on Unix socket (for universal compatibility)
-    info!("Starting manual JSON-RPC 2.0 server on Unix socket (UNIVERSAL)...");
+    // Start servers with isomorphic IPC (Try→Detect→Adapt→Succeed)
+    info!("🔌 Starting IPC servers (isomorphic mode)...");
+    info!("   Protocol: tarpc (PRIMARY) + JSON-RPC 2.0 (UNIVERSAL)");
+    
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
     let jsonrpc_server = ManualJsonRpcServer::new(Arc::clone(&executor), version.clone());
-    let jsonrpc_socket_clone = jsonrpc_socket.clone();
-    tokio::spawn(async move {
-        if let Err(e) = jsonrpc_server.serve(jsonrpc_socket_clone).await {
-            error!("JSON-RPC server error: {}", e);
-        }
-    });
-
-    info!("Starting tarpc server on Unix socket (PRIMARY protocol)...");
-    info!("✅ ToadStool server ready");
-    info!("Socket (tarpc): {:?}", socket_path);
-    info!("Socket (JSON-RPC): {:?}", jsonrpc_socket);
-    info!("Protocol: tarpc (binary RPC, PRIMARY)");
-    info!("Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
-    info!("Family: {}", family_id);
-    info!("Capabilities: compute, gpu, orchestration");
-
-    // Clone socket path for cleanup later
-    let socket_path_clone = socket_path.clone();
-
-    // Start server (blocking)
+    
+    // Clone for server startup
+    let socket_path_for_server = socket_path.clone();
+    let jsonrpc_socket_for_server = jsonrpc_socket.clone();
+    
+    // Start both servers with fallback support
     let server_handle = tokio::spawn(async move {
-        if let Err(e) = server.serve_unix(&socket_path).await {
-            error!("tarpc server error: {}", e);
+        match start_servers_with_fallback(
+            server,
+            jsonrpc_server,
+            socket_path_for_server,
+            jsonrpc_socket_for_server,
+        )
+        .await
+        {
+            Ok(()) => {
+                info!("✅ Servers stopped gracefully");
+            }
+            Err(e) => {
+                error!("❌ Server error: {}", e);
+            }
         }
     });
 
@@ -139,13 +139,16 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Shutting down ToadStool server...");
     server_handle.abort();
 
-    // Clean up socket files
-    if let Err(e) = tokio::fs::remove_file(&socket_path_clone).await {
-        warn!("Failed to remove tarpc socket: {}", e);
+    // Clean up socket files (if they exist - TCP fallback won't have them)
+    if socket_path.exists() {
+        if let Err(e) = tokio::fs::remove_file(&socket_path).await {
+            warn!("Failed to remove tarpc socket: {}", e);
+        }
     }
-    let jsonrpc_socket = socket_path_clone.with_extension("jsonrpc.sock");
-    if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
-        warn!("Failed to remove JSON-RPC socket: {}", e);
+    if jsonrpc_socket.exists() {
+        if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
+            warn!("Failed to remove JSON-RPC socket: {}", e);
+        }
     }
 
     info!("ToadStool server stopped");
@@ -395,6 +398,186 @@ async fn query_local_capabilities() -> Vec<String> {
     
     tracing::info!("📊 Local capabilities: {:?}", capabilities);
     capabilities
+}
+
+/// Start servers with isomorphic IPC fallback (Try→Detect→Adapt→Succeed)
+///
+/// **Zero Configuration**: Automatically adapts to platform constraints!
+///
+/// ## Behavior
+///
+/// 1. **TRY** Unix sockets (optimal)
+/// 2. **DETECT** platform constraints (SELinux, unsupported)
+/// 3. **ADAPT** to TCP fallback (127.0.0.1:ephemeral)
+/// 4. **SUCCEED** or fail with real error
+async fn start_servers_with_fallback(
+    server: ToadStoolTarpcServer,
+    jsonrpc_server: ManualJsonRpcServer,
+    socket_path: PathBuf,
+    jsonrpc_socket: PathBuf,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    info!("   Trying Unix socket IPC (optimal)...");
+
+    // 1. TRY Unix sockets first
+    match try_unix_servers(&server, &jsonrpc_server, &socket_path, &jsonrpc_socket).await {
+        Ok(()) => Ok(()),
+
+        // 2. DETECT platform constraints
+        Err(e) => {
+            let error_str = e.to_string();
+            if is_platform_constraint_str(&error_str) {
+                warn!("⚠️  Unix sockets unavailable: {}", error_str);
+                warn!("   Detected platform constraint, adapting...");
+
+                // 3. ADAPT to TCP fallback
+                start_tcp_servers(server, jsonrpc_server).await
+            } else {
+                // 4. Real error (not a platform constraint)
+                error!("❌ Real error (not platform constraint): {}", error_str);
+                Err(e)
+            }
+        }
+    }
+}
+
+/// Try to start Unix socket servers
+async fn try_unix_servers(
+    server: &ToadStoolTarpcServer,
+    jsonrpc_server: &ManualJsonRpcServer,
+    socket_path: &PathBuf,
+    jsonrpc_socket: &PathBuf,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Create parent directories
+    if let Some(parent) = socket_path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    if let Some(parent) = jsonrpc_socket.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+
+    // Remove existing sockets
+    let _ = tokio::fs::remove_file(&socket_path).await;
+    let _ = tokio::fs::remove_file(&jsonrpc_socket).await;
+
+    info!("✅ ToadStool server ready (Unix sockets)");
+    info!("   Socket (tarpc): {:?}", socket_path);
+    info!("   Socket (JSON-RPC): {:?}", jsonrpc_socket);
+    info!("   Protocol: tarpc (binary RPC, PRIMARY)");
+    info!("   Protocol: JSON-RPC 2.0 (universal, FALLBACK)");
+    info!("   Status: READY ✅ (optimal Unix socket mode)");
+
+    // Start JSON-RPC server
+    let jsonrpc_server_clone = jsonrpc_server.clone();
+    let jsonrpc_socket_clone = jsonrpc_socket.clone();
+    tokio::spawn(async move {
+        if let Err(e) = jsonrpc_server_clone.serve(jsonrpc_socket_clone).await {
+            error!("JSON-RPC server error: {}", e);
+        }
+    });
+
+    // Start tarpc server (blocking) - clone to move into ownership
+    server.clone().serve_unix(&socket_path).await?;
+
+    Ok(())
+}
+
+/// Start TCP fallback servers (isomorphic mode)
+async fn start_tcp_servers(
+    server: ToadStoolTarpcServer,
+    jsonrpc_server: ManualJsonRpcServer,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::net::TcpListener;
+
+    info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
+    info!("   Protocol: tarpc + JSON-RPC 2.0 (same as Unix)");
+
+    // Bind to localhost only (security: same as Unix socket)
+    let tarpc_listener = TcpListener::bind("127.0.0.1:0").await?;
+    let tarpc_addr = tarpc_listener.local_addr()?;
+
+    let jsonrpc_listener = TcpListener::bind("127.0.0.1:0").await?;
+    let jsonrpc_addr = jsonrpc_listener.local_addr()?;
+
+    info!("✅ TCP IPC listening:");
+    info!("   tarpc (PRIMARY): {}", tarpc_addr);
+    info!("   JSON-RPC (FALLBACK): {}", jsonrpc_addr);
+
+    // Write discovery files for clients
+    write_tcp_discovery_file("toadstool-ipc-port", &tarpc_addr)?;
+    write_tcp_discovery_file("toadstool-jsonrpc-port", &jsonrpc_addr)?;
+
+    info!("   Status: READY ✅ (isomorphic TCP fallback active)");
+
+    // Start JSON-RPC server
+    tokio::spawn(async move {
+        if let Err(e) = jsonrpc_server.serve_tcp(jsonrpc_listener).await {
+            error!("JSON-RPC TCP server error: {}", e);
+        }
+    });
+
+    // Start tarpc server (blocking) - clone to move into ownership
+    server.clone().serve_tcp(tarpc_listener).await?;
+
+    Ok(())
+}
+
+/// Check if error string indicates a platform constraint (SELinux, etc.)
+///
+/// Platform constraints should trigger TCP fallback, not failure.
+fn is_platform_constraint_str(error_str: &str) -> bool {
+    // Android/SELinux errors
+    if error_str.contains("Permission denied") || error_str.contains("Operation not permitted") {
+        // Check for SELinux
+        if is_selinux_enforcing() {
+            tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
+            return true;
+        }
+    }
+
+    // Platform lacks Unix sockets
+    if error_str.contains("Unsupported")
+        || error_str.contains("not supported")
+        || error_str.contains("protocol not available")
+    {
+        tracing::debug!("   Platform constraint: Unix sockets not supported");
+        return true;
+    }
+
+    false
+}
+
+/// Check if SELinux is enforcing (common on Android)
+fn is_selinux_enforcing() -> bool {
+    std::fs::read_to_string("/sys/fs/selinux/enforce")
+        .ok()
+        .and_then(|s| s.trim().parse::<u8>().ok())
+        .map(|enforce| enforce == 1)
+        .unwrap_or(false)
+}
+
+/// Write TCP discovery file (XDG-compliant)
+fn write_tcp_discovery_file(
+    filename: &str,
+    addr: &std::net::SocketAddr,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use std::env;
+    use std::fs;
+
+    let content = format!("tcp:{}", addr);
+
+    // Try XDG_RUNTIME_DIR first (standard)
+    if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+        let path = PathBuf::from(runtime_dir).join(filename);
+        fs::write(&path, &content)?;
+        info!("📁 TCP discovery file: {}", path.display());
+        return Ok(());
+    }
+
+    // Fallback to /tmp (dev/testing)
+    let path = PathBuf::from("/tmp").join(filename);
+    fs::write(&path, &content)?;
+    info!("📁 TCP discovery file: {}", path.display());
+    Ok(())
 }
 
 // DISABLED: HTTP-based ecosystem registration (legacy)

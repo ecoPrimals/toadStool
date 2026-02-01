@@ -108,7 +108,7 @@ impl ToadStoolTarpcServer {
     pub async fn serve_unix(
         self,
         socket_path: impl AsRef<std::path::Path>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         use tarpc::server::{BaseChannel, Channel};
         use tokio::net::UnixListener;
         use tokio_serde::formats::Json;
@@ -180,6 +180,36 @@ impl ToadStoolTarpcServer {
         // JSON-RPC works for all current use cases
 
         Err("tarpc TCP server not implemented - use serve_unix() instead".into())
+    }
+
+    /// Start tarpc server on TCP listener (isomorphic fallback)
+    ///
+    /// **ISOMORPHIC MODE**: Automatic fallback for platforms without Unix sockets.
+    ///
+    /// This method is used only when Unix sockets fail due to platform constraints
+    /// (SELinux, Android, etc.). The listener is pre-bound to 127.0.0.1:0 for security.
+    pub async fn serve_tcp(
+        self,
+        listener: tokio::net::TcpListener,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use tarpc::server::{BaseChannel, Channel};
+        use tokio_serde::formats::Json;
+
+        let local_addr = listener.local_addr()?;
+        info!("✅ tarpc server listening on TCP: {}", local_addr);
+
+        loop {
+            let (stream, _addr) = listener.accept().await?;
+            let server = self.clone();
+
+            tokio::spawn(async move {
+                let framed = tokio_util::codec::LengthDelimitedCodec::builder().new_framed(stream);
+                let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
+
+                let channel = BaseChannel::with_defaults(transport);
+                channel.execute(server.serve()).await;
+            });
+        }
     }
 }
 

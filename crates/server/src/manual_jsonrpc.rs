@@ -106,6 +106,18 @@ pub struct ManualJsonRpcServer {
     optimizer: ResourceOptimizer,
 }
 
+impl Clone for ManualJsonRpcServer {
+    fn clone(&self) -> Self {
+        Self {
+            executor: Arc::clone(&self.executor),
+            version: self.version.clone(),
+            estimator: ResourceEstimator::new(),
+            validator: ResourceValidator::new(),
+            optimizer: ResourceOptimizer::new(),
+        }
+    }
+}
+
 impl ManualJsonRpcServer {
     /// Create new manual JSON-RPC server
     pub fn new(executor: Arc<dyn WorkloadExecutor + Send + Sync>, version: String) -> Self {
@@ -177,6 +189,164 @@ impl ManualJsonRpcServer {
                 }
             }
         }
+    }
+
+    /// Start server on TCP listener (isomorphic fallback)
+    ///
+    /// **ISOMORPHIC MODE**: Automatic fallback for platforms without Unix sockets.
+    ///
+    /// This method is used only when Unix sockets fail due to platform constraints
+    /// (SELinux, Android, etc.). The listener is pre-bound to 127.0.0.1:0 for security.
+    pub async fn serve_tcp(
+        self,
+        listener: tokio::net::TcpListener,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let local_addr = listener.local_addr()?;
+        info!("✅ Manual JSON-RPC 2.0 server listening on TCP: {}", local_addr);
+
+        let server = Arc::new(self);
+
+        // Accept connections loop
+        loop {
+            match listener.accept().await {
+                Ok((stream, _addr)) => {
+                    let server = Arc::clone(&server);
+                    tokio::spawn(async move {
+                        if let Err(e) = server.handle_tcp_connection(stream).await {
+                            error!("TCP connection error: {}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    error!("TCP accept error: {}", e);
+                }
+            }
+        }
+    }
+
+    /// Handle a single TCP connection
+    async fn handle_tcp_connection(
+        &self,
+        stream: tokio::net::TcpStream,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+
+        // Peek at first line to detect format
+        let mut first_line = String::new();
+        reader.read_line(&mut first_line).await?;
+
+        let (body, is_http) = if first_line.starts_with("POST")
+            || first_line.starts_with("GET")
+            || first_line.starts_with("HTTP")
+        {
+            // HTTP-wrapped request - read remaining headers and body
+            let (_headers, body) = self.read_http_request_continuation_tcp(&mut reader).await?;
+            (body, true)
+        } else {
+            // Raw JSON-RPC request - the first line IS the request
+            (first_line.trim().to_string(), false)
+        };
+
+        // Parse JSON-RPC request
+        let response_body = match serde_json::from_str::<JsonRpcRequest>(&body) {
+            Ok(request) => {
+                // Handle JSON-RPC request
+                let response = self.handle_jsonrpc_request(request).await;
+                serde_json::to_string(&response)?
+            }
+            Err(e) => {
+                // Parse error
+                let error_response = JsonRpcErrorResponse {
+                    jsonrpc: "2.0".to_string(),
+                    error: JsonRpcError {
+                        code: PARSE_ERROR,
+                        message: format!("Parse error: {}", e),
+                        data: None,
+                    },
+                    id: None,
+                };
+                serde_json::to_string(&error_response)?
+            }
+        };
+
+        // Write response in appropriate format
+        if is_http {
+            self.write_http_response_tcp(&mut writer, &response_body)
+                .await?;
+        } else {
+            // Raw JSON-RPC - just send the JSON followed by newline
+            writer.write_all(response_body.as_bytes()).await?;
+            writer.write_all(b"\n").await?;
+            writer.flush().await?;
+        }
+
+        Ok(())
+    }
+
+    /// Read HTTP request continuation for TCP (after first line already read)
+    async fn read_http_request_continuation_tcp(
+        &self,
+        reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+    ) -> Result<(HashMap<String, String>, String), Box<dyn std::error::Error>> {
+        use std::collections::HashMap;
+        use tokio::io::AsyncBufReadExt;
+
+        let mut headers = HashMap::new();
+        let mut line = String::new();
+
+        // Read headers (request line already consumed)
+        loop {
+            line.clear();
+            let n = reader.read_line(&mut line).await?;
+            if n == 0 || line == "\r\n" || line == "\n" {
+                break; // End of headers
+            }
+
+            // Parse header (Name: Value)
+            if let Some((name, value)) = line.split_once(':') {
+                headers.insert(name.trim().to_lowercase(), value.trim().to_string());
+            }
+        }
+
+        // Read body (based on Content-Length)
+        let content_length: usize = headers
+            .get("content-length")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+
+        let mut body = vec![0u8; content_length];
+        tokio::io::AsyncReadExt::read_exact(reader, &mut body).await?;
+        let body = String::from_utf8(body)?;
+
+        Ok((headers, body))
+    }
+
+    /// Write HTTP response for TCP
+    async fn write_http_response_tcp(
+        &self,
+        writer: &mut tokio::net::tcp::OwnedWriteHalf,
+        body: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use tokio::io::AsyncWriteExt;
+
+        let response = format!(
+            "HTTP/1.1 200 OK\r\n\
+             Content-Type: application/json\r\n\
+             Content-Length: {}\r\n\
+             Connection: close\r\n\
+             \r\n\
+             {}",
+            body.len(),
+            body
+        );
+
+        writer.write_all(response.as_bytes()).await?;
+        writer.flush().await?;
+
+        Ok(())
     }
 
     /// Handle a single connection
