@@ -39,6 +39,7 @@ num-complex = "0.4"
 # GPU (via wgpu - barraCUDA's backend)
 wgpu = "0.19"
 bytemuck = "1.20"
+tfhe = { version = "1.5.1", default-features = false, features = ["boolean", "shortint", "integer"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
