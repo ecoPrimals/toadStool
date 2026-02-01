@@ -84,9 +84,6 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
 
-# Unix socket support (libc for getuid)
-libc = "0.2"
-
 # System info - Pure Rust Evolution (Jan 17, 2026)
 # OLD: sys-info = "0.9" (C dependency, blocked ARM cross-compilation)
 # NEW: sysinfo (100% Pure Rust, cross-platform, better maintained)

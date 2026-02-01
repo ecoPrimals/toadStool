@@ -84,9 +84,10 @@ pub use state::*;
 // pub use jsonrpc_server::{start_jsonrpc_server, start_jsonrpc_unix_server};
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
-// Backward compatibility alias
+// EVOLVED: MockExecutor isolated to testing (deep debt principle)
+// Backward compatibility alias for test code
+#[cfg(test)]
 #[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
-#[allow(deprecated)]
 pub use tarpc_server::MockExecutor;
 
 // ⚠️ IMPORTANT: Protocol Priority
@@ -97,6 +98,7 @@ pub use tarpc_server::MockExecutor;
 // See tarpc_server::serve_unix() and manual_jsonrpc::ManualJsonRpcServer::serve()
 // for correct implementations.
 
+// EVOLVED: Test exports properly isolated
 #[cfg(test)]
 pub use mocks::*;
 
@@ -120,9 +122,11 @@ pub mod handlers;
 // ✅ PURE RUST: Manual JSON-RPC 2.0 over Unix sockets (no jsonrpsee!)
 pub mod manual_jsonrpc;
 
-// ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
+// ✅ EVOLVED: Mocks isolated to testing (deep debt principle)
 #[cfg(test)]
 pub mod mocks;
+
+// ✅ PURE RUST: BearDog's pattern for JSON-RPC 2.0 (no jsonrpsee!)
 pub mod pure_jsonrpc;
 pub mod resource_estimator; // NEW: Resource estimation for graphs
 pub mod resource_optimizer;
