@@ -248,6 +248,10 @@ pub struct NeuralNetwork {
     
     // Hardware capabilities (discovered at runtime)
     capabilities: HardwareCapabilities,
+    
+    // Training tracking (runtime metrics)
+    current_epoch: usize,
+    current_batch: usize,
 }
 
 /// Optimizer state for weight updates
@@ -537,12 +541,94 @@ impl NeuralNetwork {
         
         let avg_loss = total_loss / batch_size as f32;
         
+        // Compute accuracy for classification tasks
+        let accuracy = self.compute_batch_accuracy(inputs, targets).await?;
+        
+        // Increment batch counter
+        self.current_batch += 1;
+        
         Ok(TrainingMetrics {
             loss: avg_loss,
-            accuracy: None, // TODO: Compute accuracy
-            epoch: 0,       // TODO: Track epoch
-            batch: 0,       // TODO: Track batch
+            accuracy: Some(accuracy),
+            epoch: self.current_epoch,
+            batch: self.current_batch,
         })
+    }
+    
+    /// Compute accuracy for a batch (classification)
+    ///
+    /// **Deep Debt**: Complete implementation, not a placeholder!
+    ///
+    /// For classification: accuracy = (correct predictions) / (total samples)
+    /// For regression: returns 0.0 (accuracy not meaningful)
+    async fn compute_batch_accuracy(&self, inputs: &[Vec<f32>], targets: &[Vec<f32>]) -> BarracudaResult<f32> {
+        // Only compute accuracy for classification tasks (CrossEntropy loss)
+        if !matches!(self.loss_fn, LossFunction::CrossEntropy) {
+            return Ok(0.0); // Accuracy not meaningful for regression
+        }
+        
+        let mut correct = 0;
+        let total = inputs.len();
+        
+        for (input, target) in inputs.iter().zip(targets.iter()) {
+            // Forward pass
+            let output = self.forward(input).await?;
+            
+            // Get predicted class (argmax)
+            let predicted_class = output.iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
+            
+            // Get target class (argmax for one-hot, or index for single value)
+            let target_class = if target.len() == 1 {
+                target[0] as usize
+            } else {
+                target.iter()
+                    .enumerate()
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(idx, _)| idx)
+                    .unwrap_or(0)
+            };
+            
+            if predicted_class == target_class {
+                correct += 1;
+            }
+        }
+        
+        Ok(correct as f32 / total as f32)
+    }
+    
+    /// Start a new epoch (resets batch counter)
+    ///
+    /// **Deep Debt**: Complete tracking implementation!
+    ///
+    /// Call this at the beginning of each training epoch to properly
+    /// track progress through the dataset.
+    pub fn start_epoch(&mut self) {
+        self.current_epoch += 1;
+        self.current_batch = 0;
+    }
+    
+    /// Reset training metrics to initial state
+    ///
+    /// **Deep Debt**: Complete reset implementation!
+    ///
+    /// Useful when starting a new training run or resuming training.
+    pub fn reset_metrics(&mut self) {
+        self.current_epoch = 0;
+        self.current_batch = 0;
+    }
+    
+    /// Get current epoch number
+    pub fn current_epoch(&self) -> usize {
+        self.current_epoch
+    }
+    
+    /// Get current batch number within epoch
+    pub fn current_batch(&self) -> usize {
+        self.current_batch
     }
     
     /// Get network capabilities (runtime info)
@@ -888,6 +974,8 @@ impl NeuralNetworkBuilder {
             layer_states,
             optimizer_states: vec![OptimizerState::default(); num_layers],
             capabilities,
+            current_epoch: 0,
+            current_batch: 0,
         })
     }
 }
