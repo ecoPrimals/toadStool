@@ -39,7 +39,7 @@
 
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
-use crate::esn::{ESNConfig, ESN};
+use crate::esn_v2::{ESNConfig, ESN};
 
 /// Time series model types (capability-based, runtime-configured)
 #[derive(Debug, Clone)]
@@ -181,7 +181,7 @@ impl TimeSeriesAnalyzer {
                     seed: 42,
                 };
 
-                self.esn_instance = Some(ESN::new(config)?);
+                self.esn_instance = Some(ESN::new(config).await?);
                 break; // Only create one ESN instance
             }
         }
@@ -369,16 +369,16 @@ impl TimeSeriesAnalyzer {
         let sequence: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[0]]).collect();
         let targets: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[1]]).collect();
 
-        // Train ESN on historical data (pure Rust - no await!)
-        esn.train(&sequence, &targets)?;
+        // Train ESN on historical data (ESN v2 - async!)
+        let _training_error = esn.train(&sequence, &targets).await?;
 
         // Generate forecast by feeding predictions back
         let mut forecast_values = Vec::with_capacity(horizon);
         let mut current_input = vec![history[history.len() - 1]];
 
         for _ in 0..horizon {
-            let prediction = esn.predict(&[current_input.clone()])?;
-            let next_value = prediction[0][0];
+            let prediction = esn.predict(&current_input).await?;
+            let next_value = prediction[0];
             forecast_values.push(next_value);
             current_input = vec![next_value];
         }
