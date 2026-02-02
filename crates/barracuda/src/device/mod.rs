@@ -1,19 +1,29 @@
-//! Device module - Pure WGSL via WebGPU
+//! Device module - Unified Hardware Abstraction
 //!
-//! **Pure WGSL Architecture**:
-//! - WGSL shaders only (no separate CPU code!)
-//! - wgpu handles CPU/GPU/NPU/TPU automatically
-//! - Single implementation per operation
-//! - Hardware-agnostic via WebGPU
+//! **Phase 2: Unified Device Architecture**:
+//! - Single Device enum for ALL hardware
+//! - Automatic device selection
+//! - Explicit routing when needed
+//! - Flexible fallback chains
+//! - Runtime capability discovery
+//!
+//! **Hardware Types**:
+//! - CPU: Pure Rust execution
+//! - GPU: WGSL shaders via wgpu
+//! - NPU: Akida neuromorphic
+//! - TPU: Tensor Processing Units (future)
+//! - Auto: Smart selection
 
 use crate::error::Result;
 
 pub mod akida;
 pub mod akida_executor;
+pub mod unified;
 pub mod wgpu_device;
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
+pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
 
 #[cfg(test)]

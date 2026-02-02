@@ -38,6 +38,9 @@ pub enum BarracudaError {
     #[error("Execution error: {message}")]
     ExecutionError { message: String },
 
+    #[error("Device not available: {device} - {reason}")]
+    DeviceNotAvailable { device: String, reason: String },
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

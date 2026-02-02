@@ -82,7 +82,9 @@ pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
-    pub use crate::device::{Auto, WgpuDevice};
+    pub use crate::device::{
+        Auto, Capability, Device, DeviceContext, DeviceInfo, WgpuDevice, WorkloadHint,
+    };
     pub use crate::error::{BarracudaError, Result};
     pub use crate::esn::{ESNConfig, ESN};
     pub use crate::genomics::{
