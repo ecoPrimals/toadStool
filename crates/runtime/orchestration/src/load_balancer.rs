@@ -8,6 +8,7 @@
 #[derive(Debug)]
 pub struct LoadBalancer {
     /// Balancing strategy
+    #[allow(dead_code)]  // Used in future for multi-instance load balancing
     strategy: BalancingStrategy,
 }
 

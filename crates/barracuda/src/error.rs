@@ -46,6 +46,14 @@ impl BarracudaError {
     pub fn device(msg: impl Into<String>) -> Self {
         Self::Device(msg.into())
     }
+    
+    pub fn device_not_found(msg: impl Into<String>) -> Self {
+        Self::Device(msg.into())
+    }
+    
+    pub fn execution_failed(msg: impl Into<String>) -> Self {
+        Self::ExecutionError { message: msg.into() }
+    }
 
     pub fn shape_mismatch(expected: Vec<usize>, actual: Vec<usize>) -> Self {
         Self::ShapeMismatch { expected, actual }

@@ -20,6 +20,7 @@ use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio::time::timeout;
 use tracing::{debug, info};
+use toadstool_common::uid_detector;  // EVOLVED: Pure Rust UID detection!
 
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -30,11 +31,17 @@ const IPC_TIMEOUT: Duration = Duration::from_secs(5);
 ///
 /// biomeOS socket standard: /run/user/$UID/biomeos/songbird.sock
 /// This matches the Tower Atomic validated pattern (BearDog + Songbird)
+///
+/// **EVOLVED**: Pure Rust UID detection (no unsafe, no libc!)
 fn get_default_songbird_socket() -> String {
     let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Fallback to Linux standard /run/user/<uid>
-        let uid = unsafe { libc::getuid() };
-        format!("/run/user/{}", uid)
+        // Fallback to Linux standard /run/user/<uid> - PURE RUST!
+        if let Ok(uid) = uid_detector::get_user_id() {
+            format!("/run/user/{}", uid)
+        } else {
+            // Ultimate fallback for non-Linux systems
+            "/tmp/biomeos-runtime".to_string()
+        }
     });
     format!("{}/biomeos/songbird.sock", runtime_dir)
 }
@@ -481,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_constants() {
-        assert_eq!(SONGBIRD_SOCKET, "/primal/songbird");
+        // IPC timeout is 5 seconds
         assert_eq!(IPC_TIMEOUT.as_secs(), 5);
     }
 

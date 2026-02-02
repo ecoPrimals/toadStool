@@ -26,20 +26,23 @@ use std::path::PathBuf;
 /// 3. /tmp with username fallback (dev/testing only)
 ///
 /// **TRUE PRIMAL**: Environment-based, no hardcoding
+///
+/// **EVOLVED**: Pure Rust UID detection (no unsafe, no libc!)
 pub fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Try Linux standard path first
-        let uid = unsafe { libc::getuid() };
-        let linux_standard = format!("/run/user/{}", uid);
-        
-        // Check if Linux standard path exists
-        if std::path::Path::new(&linux_standard).exists() {
-            linux_standard
-        } else {
-            // Fallback to /tmp for dev/testing (containers, etc.)
-            let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
-            format!("/tmp/toadstool-runtime-{}", username)
+        // Try Linux standard path first - EVOLVED to pure Rust!
+        if let Ok(uid) = crate::uid_detector::get_user_id() {
+            let linux_standard = format!("/run/user/{}", uid);
+            
+            // Check if Linux standard path exists
+            if std::path::Path::new(&linux_standard).exists() {
+                return linux_standard;
+            }
         }
+        
+        // Fallback to /tmp for dev/testing (containers, etc.)
+        let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
+        format!("/tmp/toadstool-runtime-{}", username)
     })
 }
 

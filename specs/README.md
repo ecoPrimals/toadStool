@@ -89,13 +89,28 @@ Toadstool-Compute serves as the **universal compute platform** that:
 - **[../SONGBIRD_INTEGRATION_PLAN_DEC_19_2025.md](../SONGBIRD_INTEGRATION_PLAN_DEC_19_2025.md)** - Integration roadmap
 
 ### 📊 **Architectural Specifications** (Valid & Current)
+
+#### ⭐ BarraCUDA Universal Compute (v2.0) - February 2026
+- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** ⭐ **NEW!** - Complete v2.0 spec (CPU, GPU, NPU)
+  - Automatic device selection (96+ test decision matrix)
+  - Energy-aware compute (7× ML efficiency on NPU!)
+  - Sparsity analysis & workload classification
+  - Event-driven NPU execution
+- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - v1.x spec (GPU focus, 21 operations)
+- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - Neuromorphic extensions
+
+#### Platform & Architecture
+
+#### ⭐ BarraCUDA Universal Compute (v2.0) - February 2026
+- **[BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md](./BARRACUDA_NPU_UNIVERSAL_COMPUTE_V2.md)** ⭐ **NEW!** - Universal tensor operations (CPU, GPU, NPU)
+- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - Pure Rust tensor ops (v1.x, GPU focus)
+- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - Neuromorphic extensions (Jan 29, 2026)
+
+#### Platform & Architecture
 - [PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md) - Capability system (implemented)
-- [PRODUCTION_READINESS_SUMMARY.md](./PRODUCTION_READINESS_SUMMARY.md) - Production overview
 - [UNIVERSAL_COMPUTE_PLATFORM.md](./UNIVERSAL_COMPUTE_PLATFORM.md) - Platform architecture
-- [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) - Quality standards
 - [UNIVERSAL_UNIFIED_MEMORY.md](./UNIVERSAL_UNIFIED_MEMORY.md) - Unified memory architecture (Jan 2026)
-- [BARRACUDA_PURE_RUST_TENSOR_OPS.md](./BARRACUDA_PURE_RUST_TENSOR_OPS.md) - Vendor-free CUDA replacement
-- [RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md](./RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS.md) - ⭐ **NEW** BarraCUDA extensions for neuromorphic reservoir computing (Jan 29, 2026)
+- [SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md](./SOVEREIGN_SCIENCE_GRADE_ACHIEVEMENT.md) - Quality standards
 
 ### Core Specifications (Historical - Preserved for Context)
 - [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) - Project overview and architecture

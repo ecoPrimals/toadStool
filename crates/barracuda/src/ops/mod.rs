@@ -24,6 +24,11 @@ pub mod reservoir_update;
 pub mod spectral_radius;
 pub mod ridge_regression;
 
+// Homomorphic encryption operations (FHE - GPU accelerated)
+pub mod fhe_poly_add;
+pub mod fhe_poly_sub;
+pub mod fhe_poly_mul;
+
 // Activation operations
 pub mod relu;
 pub mod gelu;

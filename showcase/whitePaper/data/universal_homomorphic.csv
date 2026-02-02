@@ -1,0 +1,5 @@
+platform,backend,operation,input_a,input_b,expected,actual,correct,latency_ms,throughput_ops_per_sec,power_w,energy_j,ops_per_j
+CPU,TFHE-rs v0.4+,ADD,42,17,59,59,true,122.013,8.2,25.0,305.032,0.3
+CPU,TFHE-rs v0.4+,AND,42,17,0,0,true,35.138,28.5,25.0,87.845,1.1
+CPU,TFHE-rs v0.4+,OR,42,17,59,59,true,37.071,27.0,25.0,92.678,1.1
+CPU,TFHE-rs v0.4+,XOR,42,17,59,59,true,37.899,26.4,25.0,94.747,1.1

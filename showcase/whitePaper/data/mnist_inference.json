@@ -1,0 +1,80 @@
+[
+  {
+    "substrate": "CPU",
+    "model": "MLP",
+    "batch_size": 1,
+    "total_time_ms": 16.3364,
+    "images_per_sec": 6121.299674346857,
+    "latency_ms_per_image": 0.163364,
+    "power_watts": 5.0,
+    "energy_joules": 0.081682,
+    "energy_per_image_mj": 0.81681997,
+    "accuracy": null,
+    "actual_hardware": true
+  },
+  {
+    "substrate": "GPU",
+    "model": "MLP",
+    "batch_size": 1,
+    "total_time_ms": 6.809721000000001,
+    "images_per_sec": 14684.889439670142,
+    "latency_ms_per_image": 0.06809721,
+    "power_watts": 250.0,
+    "energy_joules": 1.7024302,
+    "energy_per_image_mj": 17.024303,
+    "accuracy": null,
+    "actual_hardware": true
+  },
+  {
+    "substrate": "CPU",
+    "model": "MLP",
+    "batch_size": 32,
+    "total_time_ms": 514.104216,
+    "images_per_sec": 6224.418902645218,
+    "latency_ms_per_image": 0.1606575675,
+    "power_watts": 5.0,
+    "energy_joules": 2.5705214,
+    "energy_per_image_mj": 0.80328786,
+    "accuracy": null,
+    "actual_hardware": true
+  },
+  {
+    "substrate": "GPU",
+    "model": "MLP",
+    "batch_size": 32,
+    "total_time_ms": 8.361913,
+    "images_per_sec": 382687.550085728,
+    "latency_ms_per_image": 0.0026130978125,
+    "power_watts": 250.0,
+    "energy_joules": 2.0904784,
+    "energy_per_image_mj": 0.65327454,
+    "accuracy": null,
+    "actual_hardware": true
+  },
+  {
+    "substrate": "CPU",
+    "model": "MLP",
+    "batch_size": 128,
+    "total_time_ms": 2056.9164299999998,
+    "images_per_sec": 6222.907169835773,
+    "latency_ms_per_image": 0.16069659609374998,
+    "power_watts": 5.0,
+    "energy_joules": 10.284582,
+    "energy_per_image_mj": 0.80348295,
+    "accuracy": null,
+    "actual_hardware": true
+  },
+  {
+    "substrate": "GPU",
+    "model": "MLP",
+    "batch_size": 128,
+    "total_time_ms": 9.619148,
+    "images_per_sec": 1330679.1828132805,
+    "latency_ms_per_image": 0.0007514959375,
+    "power_watts": 250.0,
+    "energy_joules": 2.404787,
+    "energy_per_image_mj": 0.18787399,
+    "accuracy": null,
+    "actual_hardware": true
+  }
+]

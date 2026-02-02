@@ -1,0 +1,491 @@
+[
+  {
+    "pipeline_config": "Single_CPU",
+    "chip_ordering": [
+      "CPU"
+    ],
+    "workload_type": "UltraSparse_99.9%",
+    "workload_size": 100,
+    "sparsity": 0.999,
+    "total_time_us": 13012865,
+    "throughput_ops_per_sec": 7.684702792198336,
+    "chip_times_us": [
+      [
+        "CPU",
+        13012846
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "CPU",
+        25.0
+      ]
+    ],
+    "total_energy_joules": 325.32114,
+    "ops_per_joule": 0.30738857,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_CPU",
+    "chip_ordering": [
+      "CPU"
+    ],
+    "workload_type": "HighSparse_95%",
+    "workload_size": 100,
+    "sparsity": 0.95,
+    "total_time_us": 12554812,
+    "throughput_ops_per_sec": 7.965073471430715,
+    "chip_times_us": [
+      [
+        "CPU",
+        12554810
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "CPU",
+        25.0
+      ]
+    ],
+    "total_energy_joules": 313.87024,
+    "ops_per_joule": 0.318603,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_CPU",
+    "chip_ordering": [
+      "CPU"
+    ],
+    "workload_type": "Dense_<20%",
+    "workload_size": 100,
+    "sparsity": 0.15,
+    "total_time_us": 12934029,
+    "throughput_ops_per_sec": 7.731542893556215,
+    "chip_times_us": [
+      [
+        "CPU",
+        12934027
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "CPU",
+        25.0
+      ]
+    ],
+    "total_energy_joules": 323.35068,
+    "ops_per_joule": 0.30926177,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_GPU_BarraCUDA",
+    "chip_ordering": [
+      "GPU (BarraCUDA)"
+    ],
+    "workload_type": "UltraSparse_99.9%",
+    "workload_size": 100,
+    "sparsity": 0.999,
+    "total_time_us": 499312,
+    "throughput_ops_per_sec": 200.27557919697506,
+    "chip_times_us": [
+      [
+        "GPU (BarraCUDA)",
+        499311
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 124.82775,
+    "ops_per_joule": 0.8011039,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_GPU_BarraCUDA",
+    "chip_ordering": [
+      "GPU (BarraCUDA)"
+    ],
+    "workload_type": "HighSparse_95%",
+    "workload_size": 100,
+    "sparsity": 0.95,
+    "total_time_us": 460029,
+    "throughput_ops_per_sec": 217.3776001078193,
+    "chip_times_us": [
+      [
+        "GPU (BarraCUDA)",
+        460028
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 115.006996,
+    "ops_per_joule": 0.8695123,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_GPU_BarraCUDA",
+    "chip_ordering": [
+      "GPU (BarraCUDA)"
+    ],
+    "workload_type": "Dense_<20%",
+    "workload_size": 100,
+    "sparsity": 0.15,
+    "total_time_us": 457219,
+    "throughput_ops_per_sec": 218.7135705209101,
+    "chip_times_us": [
+      [
+        "GPU (BarraCUDA)",
+        457218
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 114.3045,
+    "ops_per_joule": 0.87485623,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": false
+  },
+  {
+    "pipeline_config": "Single_NPU_Akida",
+    "chip_ordering": [
+      "NPU (Akida)"
+    ],
+    "workload_type": "UltraSparse_99.9%",
+    "workload_size": 100,
+    "sparsity": 0.999,
+    "total_time_us": 108778,
+    "throughput_ops_per_sec": 919.3035356413981,
+    "chip_times_us": [
+      [
+        "NPU (Akida)",
+        108777
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 0.217554,
+    "ops_per_joule": 459.65598,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "Single_NPU_Akida",
+    "chip_ordering": [
+      "NPU (Akida)"
+    ],
+    "workload_type": "HighSparse_95%",
+    "workload_size": 100,
+    "sparsity": 0.95,
+    "total_time_us": 107023,
+    "throughput_ops_per_sec": 934.3785915177112,
+    "chip_times_us": [
+      [
+        "NPU (Akida)",
+        107022
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 0.214044,
+    "ops_per_joule": 467.19366,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "Single_NPU_Akida",
+    "chip_ordering": [
+      "NPU (Akida)"
+    ],
+    "workload_type": "Dense_<20%",
+    "workload_size": 100,
+    "sparsity": 0.15,
+    "total_time_us": 113200,
+    "throughput_ops_per_sec": 883.3922261484099,
+    "chip_times_us": [
+      [
+        "NPU (Akida)",
+        113199
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 0.226398,
+    "ops_per_joule": 441.7,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": false,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "NPU→GPU",
+    "chip_ordering": [
+      "NPU",
+      "GPU"
+    ],
+    "workload_type": "UltraSparse_99.9%",
+    "workload_size": 100,
+    "sparsity": 0.999,
+    "total_time_us": 259468,
+    "throughput_ops_per_sec": 385.4039804523101,
+    "chip_times_us": [
+      [
+        "NPU",
+        1123
+      ],
+      [
+        "GPU",
+        258343
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ],
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 64.588,
+    "ops_per_joule": 1.5482752,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "NPU→GPU",
+    "chip_ordering": [
+      "NPU",
+      "GPU"
+    ],
+    "workload_type": "HighSparse_95%",
+    "workload_size": 100,
+    "sparsity": 0.95,
+    "total_time_us": 233049,
+    "throughput_ops_per_sec": 429.0943106385352,
+    "chip_times_us": [
+      [
+        "NPU",
+        1103
+      ],
+      [
+        "GPU",
+        231944
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ],
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 57.988205,
+    "ops_per_joule": 1.7244886,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "NPU→GPU",
+    "chip_ordering": [
+      "NPU",
+      "GPU"
+    ],
+    "workload_type": "Dense_<20%",
+    "workload_size": 100,
+    "sparsity": 0.15,
+    "total_time_us": 239318,
+    "throughput_ops_per_sec": 417.8540686450664,
+    "chip_times_us": [
+      [
+        "NPU",
+        5143
+      ],
+      [
+        "GPU",
+        234173
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "NPU",
+        2.0
+      ],
+      [
+        "GPU",
+        250.0
+      ]
+    ],
+    "total_energy_joules": 58.553535,
+    "ops_per_joule": 1.7078388,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "GPU→NPU",
+    "chip_ordering": [
+      "GPU",
+      "NPU"
+    ],
+    "workload_type": "UltraSparse_99.9%",
+    "workload_size": 100,
+    "sparsity": 0.999,
+    "total_time_us": 234043,
+    "throughput_ops_per_sec": 427.27191157180516,
+    "chip_times_us": [
+      [
+        "GPU",
+        232935
+      ],
+      [
+        "NPU",
+        1106
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ],
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 58.235962,
+    "ops_per_joule": 1.717152,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "GPU→NPU",
+    "chip_ordering": [
+      "GPU",
+      "NPU"
+    ],
+    "workload_type": "HighSparse_95%",
+    "workload_size": 100,
+    "sparsity": 0.95,
+    "total_time_us": 237799,
+    "throughput_ops_per_sec": 420.52321498408315,
+    "chip_times_us": [
+      [
+        "GPU",
+        236655
+      ],
+      [
+        "NPU",
+        1142
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ],
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 59.166035,
+    "ops_per_joule": 1.6901588,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  },
+  {
+    "pipeline_config": "GPU→NPU",
+    "chip_ordering": [
+      "GPU",
+      "NPU"
+    ],
+    "workload_type": "Dense_<20%",
+    "workload_size": 100,
+    "sparsity": 0.15,
+    "total_time_us": 239375,
+    "throughput_ops_per_sec": 417.75456919060053,
+    "chip_times_us": [
+      [
+        "GPU",
+        234203
+      ],
+      [
+        "NPU",
+        5171
+      ]
+    ],
+    "chip_power_w": [
+      [
+        "GPU",
+        250.0
+      ],
+      [
+        "NPU",
+        2.0
+      ]
+    ],
+    "total_energy_joules": 58.561092,
+    "ops_per_joule": 1.7076185,
+    "inter_chip_transfer_us": 0,
+    "transfer_overhead_percent": 0.0,
+    "uses_actual_gpu": true,
+    "uses_actual_npu": true
+  }
+]

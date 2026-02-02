@@ -38,8 +38,8 @@ num_cpus = "1.16"
 sysinfo = "0.30"
 humantime-serde = "1.1"
 
-# Unix system calls (for socket standardization)
-libc = "0.2"
+# EVOLVED: Pure Rust UID detection (removed libc dependency!)
+# libc = "0.2"  # NO LONGER NEEDED - using pure Rust uid_detector!
 
 # Infant discovery dependencies
 async-trait = { workspace = true }

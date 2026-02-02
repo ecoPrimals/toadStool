@@ -19,6 +19,9 @@ bytemuck = { version = "1.14", features = ["derive"] }
 # Async runtime (needed for neuromorphic operations)
 tokio = { version = "1.35", features = ["sync"] }
 
+# NPU support (pure Rust Akida driver)
+akida-driver = { path = "../neuromorphic/akida-driver" }
+
 # Logging
 log = "0.4"
 

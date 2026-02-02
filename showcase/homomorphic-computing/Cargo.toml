@@ -13,6 +13,9 @@ toadstool-config = { path = "../../crates/core/config" }
 # ToadStool internal - Universal runtime (substrate abstraction) ⭐
 toadstool-runtime-universal = { path = "../../crates/runtime/universal" }
 
+# ToadStool internal - Akida neuromorphic driver ⭐
+akida-driver = { path = "../../crates/neuromorphic/akida-driver" }
+
 # Core async
 tokio = { version = "1.40", features = ["full"] }
 async-trait = "0.1"
@@ -31,6 +34,10 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Random
 rand = "0.8"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
 
 # Math (for homomorphic schemes)
 num-traits = "0.2"
@@ -67,3 +74,15 @@ path = "examples/public_benchmark_comparison.rs"
 [[example]]
 name = "pipeline_validation_matrix"
 path = "examples/pipeline_validation_matrix.rs"
+
+[[example]]
+name = "pipeline_validation_actual_gpu"
+path = "examples/pipeline_validation_actual_gpu.rs"
+
+[[example]]
+name = "pipeline_validation_actual_npu"
+path = "examples/pipeline_validation_actual_npu.rs"
+
+[[example]]
+name = "pipeline_validation_actual_hardware"
+path = "examples/pipeline_validation_actual_hardware.rs"

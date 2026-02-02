@@ -1,0 +1,30 @@
+[
+  {
+    "substrate_name": "GPU (BarraCUDA)",
+    "hardware_type": "NVIDIA RTX 3090",
+    "operation": "Polynomial Addition (degree=4096)",
+    "total_time_us": 968702,
+    "throughput_ops_per_sec": 211416892.7157659,
+    "avg_latency_us": 19.37404,
+    "power_watts": 150.0,
+    "total_energy_joules": 145.30531,
+    "ops_per_joule": 1409446.0,
+    "gpu_backend": "wgpu (NVIDIA RTX 3090)",
+    "polynomial_degree": 4096,
+    "iterations": 50000
+  },
+  {
+    "substrate_name": "CPU (TFHE-rs)",
+    "hardware_type": "x86_64",
+    "operation": "FheUint8 Addition",
+    "total_time_us": 127718123,
+    "throughput_ops_per_sec": 7.829742329709308,
+    "avg_latency_us": 127718.123,
+    "power_watts": 25.0,
+    "total_energy_joules": 3192.9531,
+    "ops_per_joule": 0.3131897,
+    "gpu_backend": "N/A",
+    "polynomial_degree": 4096,
+    "iterations": 1000
+  }
+]

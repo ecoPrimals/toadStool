@@ -74,6 +74,8 @@ pub mod snn; // High-level Spiking Neural Network API
 pub mod nn; // High-level Neural Network Training API
 pub mod vision; // High-level Computer Vision API
 pub mod timeseries; // High-level Time Series API
+pub mod workload; // NEW v2.0: Workload analysis & device selection
+pub mod npu;      // NEW v2.0: NPU backend for event-driven ML
 
 // Re-export commonly used operations
 pub use ops::spike_encode::spike_encode;
@@ -98,4 +100,11 @@ pub mod prelude {
     pub use crate::genomics::{SequenceAnalyzer, SequenceConfig, CompositionReport, MotifMatch, QualityReport};
     pub use crate::snn::{SpikingNetwork, SNNConfig, SNNLayer};
     pub use crate::nn::{NeuralNetwork, Layer, Optimizer, LossFunction};
+    
+    // NEW v2.0: Workload analysis & NPU backend
+    pub use crate::workload::{
+        WorkloadType, ComputeDevice, Priority, DeviceHint,
+        SparsityAnalyzer, WorkloadClassifier, DeviceSelector,
+    };
+    pub use crate::npu::{NpuMlBackend, EventCodec};
 }
