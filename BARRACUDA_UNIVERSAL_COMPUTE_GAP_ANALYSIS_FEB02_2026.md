@@ -514,46 +514,139 @@ model.forward(&input).auto_device()?;     // Best device automatically
 
 ═══════════════════════════════════════════════════════════════
 
-## 🎯 SUMMARY: What's Incomplete?
+## 🎯 SUMMARY: What Needs to Evolve?
 
-### **1. NPU API Isolation** ⚠️
-- NPU ops have different API than CPU/GPU
-- Cannot easily compare same workload
-- Manual device management required
+### **1. Eliminate Specialized Hardware Ops** ⚠️ CRITICAL
+**Current**:
+- `reservoir_*.wgsl` - Assumes GPU/NPU
+- `spike_*.wgsl` - Assumes neuromorphic
+- `lif_neuron.wgsl` - Assumes NPU
+- `gc_content.wgsl` - Assumes GPU
+- `pattern_match.wgsl` - Assumes GPU
 
-### **2. Limited NPU Coverage** ⚠️
-- Only 5 NPU ops (vs 119 CPU/GPU ops)
-- Missing 266 operations for NPU
-- Cannot run full models on NPU
+**Should Be**:
+- High-level APIs built FROM core tensor ops
+- Core ops run on any hardware
+- Specialized performance comes from hardware, not code
 
-### **3. No Unified Device Abstraction** ⚠️
-- No `Device` enum
-- No automatic device selection
-- No easy device transfer
+### **2. Unify NPU into Tensor API** ⚠️ CRITICAL
+**Current**:
+```rust
+npu_matmul(&a, &b, m, k, n, &mut npu)?  // Different API
+```
 
-### **4. No Workload Analysis Integration** ⚠️
-- WorkloadAnalyzer exists but not integrated
-- No automatic device selection based on workload
-- Manual device choice required
+**Should Be**:
+```rust
+tensor.matmul(&other)?  // Same API, NPU selected automatically
+```
+
+**Implementation**: NPU event codec consumes WGSL shaders
+
+### **3. One Shader Library, Universal Compilation** ⚠️ HIGH
+**Current**:
+- 119 WGSL shaders work on CPU (wgpu) + GPU (native)
+- NPU has separate implementation
+
+**Should Be**:
+```
+WGSL Shader (single source)
+    ↓
+Compilation:
+├── CPU: wgpu software rasterizer
+├── GPU: wgpu native (Vulkan/Metal/DX12)
+├── NPU: Event codec translation
+└── TPU: Future backend
+```
+
+### **4. Flexible Hardware Routing** ⚠️ HIGH
+**Current**:
+- User chooses device explicitly
+- No automatic selection
+- No dynamic rerouting
+
+**Should Be**:
+```rust
+// Automatic selection
+let result = tensor.matmul(&other)?;
+// Routes to best available: NPU > GPU > CPU
+
+// Override if needed
+let result = tensor.on(Device::CPU)?.matmul(&other)?;
+
+// Fallback on unavailable
+let result = tensor
+    .prefer(Device::NPU)
+    .fallback(Device::GPU)
+    .fallback(Device::CPU)
+    .matmul(&other)?;
+```
 
 ═══════════════════════════════════════════════════════════════
 
-## 🏆 RECOMMENDATIONS
+## 🏆 EVOLUTION ROADMAP
 
-### **Immediate (This Week)**:
-1. ✅ Create unified `Device` abstraction
-2. ✅ Integrate 5 existing NPU ops with Tensor API
-3. ✅ Implement `Tensor::on(Device)` for device transfer
+### **Phase 1: Core Principle - Eliminate Specialized Ops** (1-2 weeks)
 
-### **Short-Term (Next 2 Weeks)**:
-1. ✅ Add 10 more NPU operations (basic + conv/pooling)
-2. ✅ Integrate WorkloadAnalyzer with automatic device selection
-3. ✅ Validate numerical equivalence across all devices
+**Actions**:
+1. ✅ **Audit specialized WGSL shaders**
+   - Identify: reservoir, SNN, genomics, etc.
+   - Document what core ops they use
+   
+2. ✅ **Create high-level APIs from core ops**
+   ```rust
+   // Instead of reservoir_update.wgsl
+   pub fn reservoir_update(state: &Tensor, input: &Tensor) -> Tensor {
+       state.mul(&leak).add(&input.matmul(&weights)).tanh()
+   }
+   ```
 
-### **Medium-Term (Next Month)**:
-1. ✅ Expand NPU operations to match CPU/GPU coverage
-2. ✅ Optimize NPU event codec performance
-3. ✅ Create comprehensive cross-platform benchmark suite
+3. ✅ **Remove specialized WGSL shaders**
+   - Move to high-level Rust APIs
+   - Built from core tensor ops
+   - Hardware-agnostic automatically
+
+**Impact**: Code runs on ANY hardware, no assumptions!
+
+### **Phase 2: Unified Device Abstraction** (1 week)
+
+**Actions**:
+1. ✅ Create `Device` enum (CPU, GPU, NPU, TPU, Auto)
+2. ✅ Implement automatic device selection
+3. ✅ Add `Tensor::on(Device)` and `Tensor::prefer(Device)`
+4. ✅ Flexible fallback chains
+
+**Impact**: Same tensor API, all hardware!
+
+### **Phase 3: NPU Consumes WGSL** (2-3 weeks)
+
+**Actions**:
+1. ✅ **WGSL → Event Codec Bridge**
+   - Parse WGSL compute shader
+   - Extract computational structure
+   - Generate NPU event stream
+   
+2. ✅ **Remove NPU-specific ops**
+   - Delete `npu/ops/matmul.rs`, etc.
+   - NPU uses same WGSL as GPU
+   
+3. ✅ **Validate equivalence**
+   - Same WGSL, all hardware
+   - Numerical correctness
+   - Performance measurement
+
+**Impact**: One shader library, universal execution!
+
+### **Phase 4: Complete Core Op Coverage** (1-2 weeks)
+
+**Ensure all 119 WGSL shaders are truly core operations**:
+- ✅ Basic: add, mul, sub, div, matmul
+- ✅ Activations: relu, gelu, softmax, tanh
+- ✅ Normalization: layer_norm, batch_norm
+- ✅ Convolution: conv2d, maxpool, avgpool
+- ✅ Transformers: attention, positional encoding
+- ✅ Training: optimizers (adam, sgd), losses
+
+**NO specialized workloads** - just foundational building blocks!
 
 ═══════════════════════════════════════════════════════════════
 
