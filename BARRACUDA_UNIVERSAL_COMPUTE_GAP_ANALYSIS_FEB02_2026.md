@@ -1,10 +1,13 @@
 # 🦈 BarraCUDA Universal Compute Gap Analysis - February 2, 2026
 
-## 🎯 GOAL: Same Tensor System Across CPU, GPU, NPU via Unified API
+## 🎯 GOAL: One Shader Library, All Hardware
 
-**Vision**: Universal compute abstraction where the **same API** works across CPU (via wgpu fallback), GPU (via WGPU/WGSL), and NPU (via event codec), enabling true workload comparison.
+**Vision**: **Single BarraCUDA WGSL shader library** that compiles and runs across CPU, GPU, NPU, TPU, and any future hardware. Hardware does the specialization, not the code.
 
-**Current State**: **PARTIALLY COMPLETE** - CPU/GPU unified (119 WGSL shaders), NPU isolated (5 ops, different API)
+**Philosophy**:
+> "We don't want specialized workloads. Just because a workload performs better on specific hardware doesn't mean that hardware will be available, or that we won't have situations to route differently."
+
+**Current State**: **PARTIALLY COMPLETE** - 119 core WGSL shaders exist, but NPU has separate API and specialized ops exist
 
 ═══════════════════════════════════════════════════════════════
 
@@ -51,11 +54,11 @@ let c = npu_matmul(&a, &b, 2, 2, 2, &mut npu)?;  // ← Different API!
 
 ## 🔍 Detailed Gap Analysis
 
-### **1. Core Operations Coverage**
+### **1. Core Tensor Operations** (Universal Foundation)
 
-#### ✅ **CPU/GPU (WGSL) - EXCELLENT** (119 shaders)
+#### ✅ **WGSL Shaders - EXCELLENT** (119 core operations)
 
-**Fully Implemented**:
+**Foundational Operations** (build everything from these):
 ```
 ✅ matmul.wgsl              ✅ layer_norm.wgsl
 ✅ add.wgsl (elementwise)   ✅ batch_norm.wgsl
@@ -68,24 +71,43 @@ let c = npu_matmul(&a, &b, 2, 2, 2, &mut npu)?;  // ← Different API!
 ✅ ...and 101 more!
 ```
 
-**All use unified Tensor API** - CPU/GPU automatic!
+**These are the ONLY ops needed** - everything else builds from these!
 
-#### ⚠️ **NPU (Event-Driven) - LIMITED** (5 ops only)
+**Current Hardware Support**:
+- **CPU**: ✅ Via wgpu automatic fallback
+- **GPU**: ✅ Via wgpu native (Vulkan/Metal/DX12)
+- **NPU**: ⚠️ Via separate API (needs WGSL bridge)
+
+#### ⚠️ **Specialized Hardware Ops** (ANTI-PATTERN - Should not exist!)
 
 ```
-⚠️ npu/ops/matmul.rs      - Event codec, different API
-⚠️ npu/ops/relu.rs        - Event codec, different API
-⚠️ npu/ops/layer_norm.rs  - Event codec, different API
-⚠️ npu/ops/softmax.rs     - Event codec, different API
-⚠️ npu/ops/gelu.rs        - Event codec, different API
+❌ ops/reservoir_*.wgsl    - Reservoir computing (specialized)
+❌ ops/spike_*.wgsl        - Spiking neural nets (specialized)
+❌ ops/lif_neuron.wgsl     - Neuromorphic (specialized)
+❌ ops/gc_content.wgsl     - Bioinformatics (specialized)
+❌ ops/pattern_match.wgsl  - Genomics (specialized)
 ```
 
-**Missing for NPU**:
-- No add, mul, sub, transpose
-- No conv2d, pooling
-- No batch_matmul
-- No normalization except layer_norm
-- **Total: 266 operations missing NPU versions!**
+**Problem**: These assume specific hardware will execute them!
+
+**Solution**: Remove specialized ops, build from core tensor ops instead:
+- Reservoir computing → matmul + tanh + sparse patterns
+- SNNs → threshold + accumulate + reset (all tensor ops)
+- Bioinformatics → string ops as tensors
+
+#### ⚠️ **NPU Isolation** (Separate API - WRONG!)
+
+```
+❌ npu/ops/matmul.rs      - Different API than Tensor::matmul
+❌ npu/ops/relu.rs        - Different API than Tensor::relu
+❌ npu/ops/layer_norm.rs  - Different API than Tensor::layer_norm
+❌ npu/ops/softmax.rs     - Different API than Tensor::softmax
+❌ npu/ops/gelu.rs        - Different API than Tensor::gelu
+```
+
+**Problem**: Cannot route workloads flexibly if APIs differ!
+
+**Solution**: NPU must consume the SAME WGSL shaders, just translate to events
 
 ### **2. API Inconsistency**
 
@@ -132,7 +154,27 @@ let mut npu = NpuMlBackend::new()?;
 
 ## 🚨 CRITICAL ISSUES
 
-### **Issue 1: Cannot Compare Same Workload Across Platforms**
+### **Issue 1: Specialized Ops Assume Hardware**
+
+**Current Problem**:
+```rust
+// Reservoir computing assumes GPU/NPU will execute
+reservoir_update.wgsl  // What if only CPU available?
+lif_neuron.wgsl        // What if NPU unavailable?
+```
+
+**Correct Approach**:
+```rust
+// Build from core ops - runs anywhere!
+fn reservoir_update(state: &Tensor, input: &Tensor, weights: &Tensor) -> Tensor {
+    state.mul(&leak_rate)             // Core tensor op
+         .add(&input.matmul(weights)) // Core tensor ops
+         .tanh()                       // Core tensor op
+}
+// Automatically runs on best available hardware!
+```
+
+### **Issue 2: Cannot Route Workloads Flexibly**
 
 **What You Want**:
 ```rust
@@ -162,25 +204,26 @@ let npu_result = npu_matmul(
 // Different types, different APIs, no easy comparison!
 ```
 
-### **Issue 2: NPU Operations Severely Limited**
+### **Issue 3: NPU Has Different API**
 
-Only 5 operations available:
-- ✅ matmul
-- ✅ relu
-- ✅ layer_norm
-- ✅ softmax
-- ✅ gelu
+**Current**:
+```rust
+// CPU/GPU (unified)
+let result = tensor.matmul(&other)?;
 
-Missing **266 operations**:
-- ❌ Basic element-wise (add, mul, sub, div)
-- ❌ Convolutions (conv2d, conv3d)
-- ❌ Pooling (maxpool, avgpool)
-- ❌ Attention mechanisms
-- ❌ Advanced activations
-- ❌ All optimizers
-- ❌ All loss functions
+// NPU (different API!)
+let result = npu_matmul(&a, &b, m, k, n, &mut npu)?;
+```
 
-### **Issue 3: No Workload Portability**
+**Correct**:
+```rust
+// Same API, all hardware!
+let result = tensor.matmul(&other)?;
+// Hardware selected automatically or explicitly:
+// - tensor.on(Device::NPU)?.matmul(&other)?
+```
+
+### **Issue 4: No Workload Portability**
 
 **CPU/GPU workloads** (119 ops):
 ```rust
@@ -207,7 +250,12 @@ let final = npu_softmax(&out, &mut npu)?;
 
 ═══════════════════════════════════════════════════════════════
 
-## 🎯 SOLUTION: Unified Tensor API for NPU
+## 🎯 SOLUTION: One Shader Library, All Hardware
+
+### **Core Principle**:
+> **Hardware does the specialization, not the code.**
+> 
+> If reservoir computing performs better on NPU, great! But the code shouldn't know that. The same tensor operations should route to the best available hardware automatically.
 
 ### **Goal Architecture**:
 
