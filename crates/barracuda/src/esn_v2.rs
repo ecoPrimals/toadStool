@@ -611,4 +611,197 @@ mod tests {
         let device = esn.query_device();
         assert!(matches!(device, Device::CPU | Device::GPU | Device::Auto));
     }
+
+    #[tokio::test]
+    async fn test_esn_train_simple() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 20,
+            output_size: 1,
+            spectral_radius: 0.9,
+            connectivity: 0.1,
+            leak_rate: 0.3,
+            regularization: 1e-6,
+            seed: 42,
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Simple sequence: increasing values
+        let inputs = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0], vec![4.0]];
+        let targets = vec![vec![1.0], vec![2.0], vec![3.0], vec![4.0], vec![5.0]];
+
+        // Train should succeed
+        let error = esn.train(&inputs, &targets).await.unwrap();
+        assert!(error >= 0.0);
+        assert!(esn.is_trained());
+        assert!(esn.w_out.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_esn_predict_after_train() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 30,
+            output_size: 1,
+            spectral_radius: 0.95,
+            connectivity: 0.15,
+            leak_rate: 0.3,
+            regularization: 1e-5,
+            seed: 42,
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Train on simple pattern
+        let inputs = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]];
+        let targets = vec![vec![2.0], vec![3.0], vec![4.0], vec![5.0]]; // f(x) = x + 2
+
+        esn.train(&inputs, &targets).await.unwrap();
+
+        // Predict
+        let prediction = esn.predict(&vec![10.0]).await.unwrap();
+        assert_eq!(prediction.len(), 1);
+        // Should approximate f(10) = 12, but reservoir is chaotic so just check reasonable range
+        assert!(prediction[0] > 5.0 && prediction[0] < 20.0);
+    }
+
+    #[tokio::test]
+    async fn test_esn_train_mismatched_lengths() {
+        let config = ESNConfig::default();
+        let mut esn = ESN::new(config).await.unwrap();
+
+        let inputs = vec![vec![0.0], vec![1.0]];
+        let targets = vec![vec![1.0]]; // Mismatch!
+
+        let result = esn.train(&inputs, &targets).await;
+        assert!(result.is_err());
+        assert!(!esn.is_trained());
+    }
+
+    #[tokio::test]
+    async fn test_esn_train_empty_data() {
+        let config = ESNConfig::default();
+        let mut esn = ESN::new(config).await.unwrap();
+
+        let inputs: Vec<Vec<f32>> = vec![];
+        let targets: Vec<Vec<f32>> = vec![];
+
+        let result = esn.train(&inputs, &targets).await;
+        assert!(result.is_err());
+        assert!(!esn.is_trained());
+    }
+
+    #[tokio::test]
+    async fn test_esn_predict_untrained() {
+        let config = ESNConfig::default();
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Should error when not trained
+        let result = esn.predict(&vec![1.0]).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_esn_predict_wrong_input_size() {
+        let config = ESNConfig {
+            input_size: 2,
+            reservoir_size: 20,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Train with correct size
+        let inputs = vec![vec![0.0, 0.0], vec![1.0, 1.0]];
+        let targets = vec![vec![1.0], vec![2.0]];
+        esn.train(&inputs, &targets).await.unwrap();
+
+        // Predict with wrong size
+        let result = esn.predict(&vec![1.0]).await; // Wrong! Should be 2D
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_esn_multiple_outputs() {
+        let config = ESNConfig {
+            input_size: 2,
+            reservoir_size: 40,
+            output_size: 3,
+            spectral_radius: 0.9,
+            connectivity: 0.1,
+            leak_rate: 0.3,
+            regularization: 1e-5,
+            seed: 42,
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Train on multi-output task
+        let inputs = vec![
+            vec![0.0, 0.0],
+            vec![1.0, 0.0],
+            vec![0.0, 1.0],
+            vec![1.0, 1.0],
+        ];
+        let targets = vec![
+            vec![0.0, 0.0, 0.0],
+            vec![1.0, 0.0, 1.0],
+            vec![0.0, 1.0, 1.0],
+            vec![1.0, 1.0, 2.0],
+        ];
+
+        let error = esn.train(&inputs, &targets).await.unwrap();
+        assert!(error >= 0.0);
+        assert!(esn.is_trained());
+
+        // Predict
+        let prediction = esn.predict(&vec![0.5, 0.5]).await.unwrap();
+        assert_eq!(prediction.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_esn_state_persistence() {
+        let config = ESNConfig {
+            input_size: 1,
+            reservoir_size: 20,
+            output_size: 1,
+            ..Default::default()
+        };
+
+        let mut esn = ESN::new(config).await.unwrap();
+
+        // Train
+        let inputs = vec![vec![1.0], vec![2.0], vec![3.0]];
+        let targets = vec![vec![2.0], vec![3.0], vec![4.0]];
+        esn.train(&inputs, &targets).await.unwrap();
+
+        // First prediction
+        let pred1 = esn.predict(&vec![5.0]).await.unwrap();
+
+        // Second prediction (state should be different)
+        let pred2 = esn.predict(&vec![5.0]).await.unwrap();
+
+        // Predictions should differ because state evolves
+        assert_ne!(pred1, pred2, "State should evolve between predictions");
+    }
+
+    #[tokio::test]
+    async fn test_esn_large_reservoir() {
+        let config = ESNConfig {
+            input_size: 5,
+            reservoir_size: 200,
+            output_size: 2,
+            spectral_radius: 0.95,
+            connectivity: 0.05,
+            leak_rate: 0.2,
+            regularization: 1e-4,
+            seed: 42,
+        };
+
+        // Should handle larger reservoirs
+        let esn = ESN::new(config).await.unwrap();
+        assert_eq!(esn.state().shape(), &[200, 1]);
+    }
 }
