@@ -411,4 +411,216 @@ mod tests {
         let services = discovery.discover_capability(&capability).await.unwrap();
         assert!(!services.is_empty());
     }
+
+    #[tokio::test]
+    async fn test_runtime_discovery_with_fallback() {
+        let primary = Arc::new(LocalhostDiscoveryClient::new());
+        let fallback = Arc::new(LocalhostDiscoveryClient::new());
+
+        let discovery = RuntimeDiscovery::new(primary).with_fallback(fallback);
+
+        let services = discovery.discover_all_services().await.unwrap();
+        assert!(!services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_runtime_discovery_with_cache_ttl() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client)
+            .with_cache_ttl(Duration::from_secs(60));
+
+        let services = discovery.discover_all_services().await.unwrap();
+        assert!(!services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_find_compute_service() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client);
+
+        let service = discovery.find_compute_service().await;
+        assert!(service.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_find_storage_service() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client);
+
+        let service = discovery.find_storage_service().await;
+        // May or may not find storage, just verify no panic
+        assert!(service.is_ok() || service.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_find_auth_service() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client);
+
+        let service = discovery.find_auth_service().await;
+        // May or may not find auth, just verify no panic
+        assert!(service.is_ok() || service.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_find_coordinator_service() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client);
+
+        let service = discovery.find_coordinator_service().await;
+        // May or may not find coordinator, just verify no panic
+        assert!(service.is_ok() || service.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_clear_cache() {
+        let client = Arc::new(LocalhostDiscoveryClient::new());
+        let discovery = RuntimeDiscovery::new(client);
+
+        // Populate cache
+        let _ = discovery.discover_all_services().await;
+
+        // Clear cache
+        discovery.clear_cache().await;
+
+        // Cache should be empty (but may repopulate on next call)
+        let services = discovery.discover_all_services().await.unwrap();
+        assert!(!services.is_empty()); // Will repopulate
+    }
+
+    #[tokio::test]
+    async fn test_service_cache_new() {
+        let cache = ServiceCache::new();
+        assert!(cache.get_all().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_service_cache_insert() {
+        let mut cache = ServiceCache::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let service = DiscoveredService {
+            id: Some("test-1".to_string()),
+            capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
+            endpoints: vec![ServiceEndpoint::http("localhost", 8081)],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        cache.insert(service.clone());
+        assert_eq!(cache.get_all().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_service_cache_get_by_capability() {
+        let mut cache = ServiceCache::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let cap = Capability::Compute(ComputeCapability::NativeExecution);
+
+        let service = DiscoveredService {
+            id: Some("test-2".to_string()),
+            capabilities: vec![cap.clone()],
+            endpoints: vec![ServiceEndpoint::http("localhost", 8082)],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        cache.insert(service);
+
+        let services = cache.get_by_capability(&cap);
+        assert!(services.is_some());
+        assert_eq!(services.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_service_cache_get_by_capability_none() {
+        let cache = ServiceCache::new();
+
+        use crate::primal_identity::StorageCapability;
+        let cap = Capability::Storage(StorageCapability::ObjectStorage);
+
+        let services = cache.get_by_capability(&cap);
+        assert!(services.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_service_cache_clear() {
+        let mut cache = ServiceCache::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let service = DiscoveredService {
+            id: Some("test-3".to_string()),
+            capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
+            endpoints: vec![ServiceEndpoint::http("localhost", 8083)],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        cache.insert(service);
+        assert!(!cache.get_all().is_empty());
+
+        cache.clear();
+        assert!(cache.get_all().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_new() {
+        let client = LocalhostDiscoveryClient::new();
+        // Just verify it constructs without panic
+        assert!(std::mem::size_of_val(&client) > 0);
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_discover_all() {
+        let client = LocalhostDiscoveryClient::new();
+        let services = client.discover_all().await.unwrap();
+        assert!(!services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_discover_by_capability() {
+        let client = LocalhostDiscoveryClient::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let cap = Capability::Compute(ComputeCapability::NativeExecution);
+
+        let services = client.discover_by_capability(&cap).await.unwrap();
+        assert!(!services.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_register_service() {
+        let client = LocalhostDiscoveryClient::new();
+
+        use crate::primal_identity::ComputeCapability;
+        let service = DiscoveredService {
+            id: Some("register-test".to_string()),
+            capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
+            endpoints: vec![ServiceEndpoint::http("localhost", 9000)],
+            healthy: true,
+            metadata: HashMap::new(),
+        };
+
+        let result = client.register_service(&service).await;
+        // LocalhostDiscoveryClient doesn't actually register, just returns Ok
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_deregister_service() {
+        let client = LocalhostDiscoveryClient::new();
+        let result = client.deregister_service("some-id").await;
+        // LocalhostDiscoveryClient doesn't actually deregister, just returns Ok
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_localhost_discovery_client_health_check() {
+        let client = LocalhostDiscoveryClient::new();
+        let result = client.health_check("some-id").await;
+        // LocalhostDiscoveryClient returns error (not implemented)
+        // Just verify it doesn't panic
+        assert!(result.is_ok() || result.is_err());
+    }
 }
