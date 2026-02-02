@@ -24,7 +24,7 @@ struct Params {
     degree: u32,        // Polynomial degree (N)
     modulus_lo: u32,    // q lower 32 bits
     modulus_hi: u32,    // q upper 32 bits
-    padding: [u32; 5],  // Alignment
+    _pad0: u32,         // Alignment padding
 }
 
 @group(0) @binding(0) var<storage, read> poly_a: array<u32>;      // First polynomial (2×degree for u64)

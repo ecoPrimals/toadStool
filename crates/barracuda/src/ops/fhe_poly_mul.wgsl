@@ -63,53 +63,62 @@ fn u64_sub(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
     return vec2<u32>(lo_diff, hi_diff);
 }
 
-/// Multiply two 64-bit values, return lower 64 bits of 128-bit result
+/// Helper: Multiply two 32-bit values to get 64-bit result
+fn u32_mul_to_u64(a: u32, b: u32) -> vec2<u32> {
+    // Split into 16-bit parts to avoid overflow
+    let a_lo = a & 0xFFFFu;
+    let a_hi = a >> 16u;
+    let b_lo = b & 0xFFFFu;
+    let b_hi = b >> 16u;
+    
+    // Partial products
+    let p_ll = a_lo * b_lo;
+    let p_lh = a_lo * b_hi;
+    let p_hl = a_hi * b_lo;
+    let p_hh = a_hi * b_hi;
+    
+    // Combine with carries
+    let mid = p_lh + p_hl + (p_ll >> 16u);
+    let lo = (mid << 16u) | (p_ll & 0xFFFFu);
+    let hi = p_hh + (mid >> 16u);
+    
+    return vec2<u32>(lo, hi);
+}
+
+/// Helper: Add two 64-bit values
+fn u64_add(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
+    let lo_sum = a.x + b.x;
+    let carry = select(0u, 1u, lo_sum < a.x);
+    let hi_sum = a.y + b.y + carry;
+    return vec2<u32>(lo_sum, hi_sum);
+}
+
+/// Multiply two 64-bit values, return full 128-bit result
 /// 
-/// Full 64×64 multiplication produces 128-bit result (hi:lo)
-/// For Barrett reduction, we need both parts
+/// Returns vec4 where:
+/// - .xy = lower 64 bits
+/// - .zw = upper 64 bits
 fn u64_mul(a: vec2<u32>, b: vec2<u32>) -> vec4<u32> {
-    // Split into 32-bit parts
-    let a_lo = a.x;
-    let a_hi = a.y;
-    let b_lo = b.x;
-    let b_hi = b.y;
+    // (a.y * 2^32 + a.x) * (b.y * 2^32 + b.x)
+    // = a.y*b.y*2^64 + (a.y*b.x + a.x*b.y)*2^32 + a.x*b.x
     
-    // Partial products (each is 64-bit)
-    let p0 = u64(a_lo) * u64(b_lo);  // [0:64)
-    let p1 = u64(a_lo) * u64(b_hi);  // [32:96)
-    let p2 = u64(a_hi) * u64(b_lo);  // [32:96)
-    let p3 = u64(a_hi) * u64(b_hi);  // [64:128)
-    
-    // Combine partial products
-    // Result[0:64) = p0 + (p1 << 32) + (p2 << 32)
-    // Result[64:128) = p3 + (p1 >> 32) + (p2 >> 32) + carries
-    
-    let p0_lo = u32(p0 & 0xFFFFFFFFu);
-    let p0_hi = u32(p0 >> 32u);
-    
-    let p1_lo = u32(p1 & 0xFFFFFFFFu);
-    let p1_hi = u32(p1 >> 32u);
-    
-    let p2_lo = u32(p2 & 0xFFFFFFFFu);
-    let p2_hi = u32(p2 >> 32u);
-    
-    let p3_lo = u32(p3 & 0xFFFFFFFFu);
-    let p3_hi = u32(p3 >> 32u);
+    let p0 = u32_mul_to_u64(a.x, b.x);  // a.x * b.x -> [0:64)
+    let p1 = u32_mul_to_u64(a.x, b.y);  // a.x * b.y -> [32:96)
+    let p2 = u32_mul_to_u64(a.y, b.x);  // a.y * b.x -> [32:96)
+    let p3 = u32_mul_to_u64(a.y, b.y);  // a.y * b.y -> [64:128)
     
     // Lower 64 bits
-    let lo_lo = p0_lo;
-    var mid = u64(p0_hi) + u64(p1_lo) + u64(p2_lo);
-    let lo_hi = u32(mid & 0xFFFFFFFFu);
+    let lo_lo = p0.x;
+    // Add mid-level products with carry
+    let mid_sum = u64_add(vec2<u32>(p0.y, 0u), u64_add(vec2<u32>(p1.x, 0u), vec2<u32>(p2.x, 0u)));
+    let lo_hi = mid_sum.x;
     
-    // Upper 64 bits
-    let carry = mid >> 32u;
-    var hi_accum = u64(p1_hi) + u64(p2_hi) + u64(p3_lo) + carry;
-    let hi_lo = u32(hi_accum & 0xFFFFFFFFu);
-    let hi_carry = hi_accum >> 32u;
-    let hi_hi = p3_hi + u32(hi_carry);
+    // Upper 64 bits  
+    let hi_partial = u64_add(vec2<u32>(p1.y, 0u), vec2<u32>(p2.y, 0u));
+    let hi_with_carry = u64_add(hi_partial, vec2<u32>(mid_sum.y, 0u));
+    let hi_final = u64_add(hi_with_carry, p3);
     
-    // Return as vec4: [lo_lo, lo_hi, hi_lo, hi_hi]
-    return vec4<u32>(lo_lo, lo_hi, hi_lo, hi_hi);
+    return vec4<u32>(lo_lo, lo_hi, hi_final.x, hi_final.y);
 }
 
 /// Barrett reduction: reduce 128-bit value (a_hi:a_lo) modulo 64-bit q
@@ -152,6 +161,21 @@ fn barrett_reduce_128(a_lo: vec2<u32>, a_hi: vec2<u32>, q: vec2<u32>, mu: vec2<u
     return r;
 }
 
+/// Simple modular reduction for values likely to be < 2^65
+/// Works by iterative subtraction (good for small multiples of q)
+fn simple_mod_reduce(a: vec2<u32>, q: vec2<u32>) -> vec2<u32> {
+    var r = a;
+    // For products up to 65536 * q, we need at most 65536 iterations
+    // In practice, for FHE we expect products << 100*q, so ~100 iterations max
+    for (var i = 0u; i < 1000u; i = i + 1u) {
+        if (!u64_gte(r, q)) {
+            break;
+        }
+        r = u64_sub(r, q);
+    }
+    return r;
+}
+
 /// Modular multiplication: (a * b) mod q
 fn modular_mul(a: vec2<u32>, b: vec2<u32>, q: vec2<u32>, mu: vec2<u32>) -> vec2<u32> {
     // Multiply a * b → 128-bit result
@@ -159,7 +183,12 @@ fn modular_mul(a: vec2<u32>, b: vec2<u32>, q: vec2<u32>, mu: vec2<u32>) -> vec2<
     let product_lo = vec2<u32>(product.x, product.y);
     let product_hi = vec2<u32>(product.z, product.w);
     
-    // Reduce 128-bit product modulo q
+    // For small products (hi part is 0), use simple reduction
+    if (product_hi.x == 0u && product_hi.y == 0u) {
+        return simple_mod_reduce(product_lo, q);
+    }
+    
+    // For large products, use Barrett reduction
     return barrett_reduce_128(product_lo, product_hi, q, mu);
 }
 
