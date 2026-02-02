@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: Swish(x) = x * σ(x) = x / (1 + e^(-x))
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 /// Swish activation operation
 pub struct Swish {
@@ -29,31 +29,34 @@ impl Swish {
 
         let output_buffer = device.create_buffer_f32(size)?;
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Swish Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Swish Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Swish Bind Group"),
@@ -72,22 +75,29 @@ impl Swish {
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Swish"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Swish Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Swish Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Swish Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Swish Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Swish Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Swish Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -128,7 +138,9 @@ mod tests {
     async fn test_swish_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device)
+            .await
+            .unwrap();
         let output = input.swish().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -141,7 +153,13 @@ mod tests {
     async fn test_swish_edge_cases() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0], vec![7], device).await.unwrap();
+        let input = Tensor::from_vec_on(
+            vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0],
+            vec![7],
+            device,
+        )
+        .await
+        .unwrap();
         let output = input.swish().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -155,7 +173,13 @@ mod tests {
     async fn test_swish_boundary() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY], vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device,
+        )
+        .await
+        .unwrap();
         let output = input.swish().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -170,7 +194,9 @@ mod tests {
 
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0 - 5.0).collect();
-        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data, vec![size], device)
+            .await
+            .unwrap();
         let output = input.swish().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -192,13 +218,21 @@ mod tests {
         }
 
         let input_data = vec![-5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device)
+            .await
+            .unwrap();
         let output = input.swish().unwrap();
         let gpu_result = output.to_vec().unwrap();
         let cpu_result: Vec<f32> = input_data.iter().map(|&x| swish_cpu(x)).collect();
 
         for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
-            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+            assert!(
+                (gpu - cpu).abs() < 1e-5,
+                "Error at {}: GPU={}, CPU={}",
+                i,
+                gpu,
+                cpu
+            );
         }
     }
 }

@@ -1,8 +1,8 @@
 //! OneHot operation - Convert indices to one-hot encoded vectors
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -19,7 +19,10 @@ pub struct OneHot {
 
 impl OneHot {
     pub fn new(indices: Tensor, num_classes: usize) -> Self {
-        Self { indices, num_classes }
+        Self {
+            indices,
+            num_classes,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -39,25 +42,31 @@ impl OneHot {
             num_classes: self.num_classes as u32,
             _padding: [0; 11],
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("OneHot Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("OneHot Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("OneHot Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("OneHot Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("OneHot Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("OneHot Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -81,9 +90,11 @@ impl OneHot {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("OneHot Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("OneHot Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("OneHot Pass"),
@@ -120,19 +131,19 @@ mod tests {
     async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
         std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_one_hot_basic() {
         let device = get_test_device().await;
-        
+
         // Create indices [0, 1, 2]
         let indices_data: Vec<u32> = vec![0, 1, 2];
         let indices = Tensor::from_data(&indices_data, vec![3], device.clone()).unwrap();
-        
+
         // One-hot encode with 3 classes
         let result = indices.one_hot(3).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Expected: [[1,0,0], [0,1,0], [0,0,1]]
         assert_eq!(output.len(), 9);
         assert_eq!(output[0], 1.0);
@@ -200,11 +211,11 @@ mod tests {
         let indices = Tensor::from_data(&indices_data, vec![4], device.clone()).unwrap();
         let result = indices.one_hot(4).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 16);
         // Each row should have exactly one 1.0
         for i in 0..4 {
-            let row_sum: f32 = output[i*4..(i+1)*4].iter().sum();
+            let row_sum: f32 = output[i * 4..(i + 1) * 4].iter().sum();
             assert!((row_sum - 1.0).abs() < 1e-5);
         }
     }

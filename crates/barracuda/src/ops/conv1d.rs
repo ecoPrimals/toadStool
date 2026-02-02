@@ -7,8 +7,8 @@
 //! Used in: WaveNet, temporal CNNs, sequence models, audio processing
 //! Benefits: Captures temporal/sequential patterns efficiently
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -72,7 +72,9 @@ impl Conv1D {
         let kernel_size = weight_shape[2];
 
         // Calculate output length
-        let out_length = (in_length + 2 * self.padding - self.dilation * (kernel_size - 1) - 1) / self.stride + 1;
+        let out_length = (in_length + 2 * self.padding - self.dilation * (kernel_size - 1) - 1)
+            / self.stride
+            + 1;
 
         let output_size = batch * out_channels * out_length;
 
@@ -91,25 +93,31 @@ impl Conv1D {
             dilation: self.dilation as u32,
             out_length: out_length as u32,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Conv1D Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Conv1D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Conv1D Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Conv1D Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Conv1D Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Conv1D Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -141,9 +149,11 @@ impl Conv1D {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Conv1D Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Conv1D Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Conv1D Pass"),
@@ -195,15 +205,15 @@ mod tests {
 
         // Create input [1, 2, 4] - 1 batch, 2 channels, length 4
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,  // Channel 0
-            5.0, 6.0, 7.0, 8.0,      // Channel 1
+            1.0f32, 2.0, 3.0, 4.0, // Channel 0
+            5.0, 6.0, 7.0, 8.0, // Channel 1
         ];
         let input = Tensor::from_data(&input_data, vec![1, 2, 4], device.clone()).unwrap();
 
         // Create weight [1, 2, 3] - 1 output channel, 2 input channels, kernel size 3
         let weight_data = vec![
-            1.0f32, 0.0, -1.0,  // For input channel 0
-            0.5, 0.5, 0.5,       // For input channel 1
+            1.0f32, 0.0, -1.0, // For input channel 0
+            0.5, 0.5, 0.5, // For input channel 1
         ];
         let weight = Tensor::from_data(&weight_data, vec![1, 2, 3], device.clone()).unwrap();
 
@@ -236,7 +246,7 @@ mod tests {
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
         let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
-        
+
         assert_eq!(result.shape(), &[1, 1, 3]);
     }
 
@@ -256,7 +266,7 @@ mod tests {
 
         // With padding=1, output length should be same as input
         let result = input.conv1d(weight, bias, 1, 1, 1).unwrap();
-        
+
         assert_eq!(result.shape(), &[1, 1, 4]);
     }
 
@@ -268,20 +278,30 @@ mod tests {
         let batch = 2;
         let in_channels = 3;
         let length = 16;
-        
+
         let input_data = vec![1.0f32; batch * in_channels * length];
-        let input = Tensor::from_data(&input_data, vec![batch, in_channels, length], device.clone()).unwrap();
+        let input = Tensor::from_data(
+            &input_data,
+            vec![batch, in_channels, length],
+            device.clone(),
+        )
+        .unwrap();
 
         let out_channels = 4;
         let kernel_size = 5;
         let weight_data = vec![0.1f32; out_channels * in_channels * kernel_size];
-        let weight = Tensor::from_data(&weight_data, vec![out_channels, in_channels, kernel_size], device.clone()).unwrap();
+        let weight = Tensor::from_data(
+            &weight_data,
+            vec![out_channels, in_channels, kernel_size],
+            device.clone(),
+        )
+        .unwrap();
 
         let bias_data = vec![0.0f32; out_channels];
         let bias = Tensor::from_data(&bias_data, vec![out_channels], device.clone()).unwrap();
 
         let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
-        
+
         // Output length = (16 - 5 + 1) = 12
         assert_eq!(result.shape(), &[batch, out_channels, 12]);
     }
@@ -302,7 +322,7 @@ mod tests {
 
         let result = input.conv1d(weight, bias, 1, 0, 1).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Should be identity: [1, 2, 3]
         assert_eq!(output.len(), 3);
         assert!(output.iter().all(|&x| x.is_finite()));

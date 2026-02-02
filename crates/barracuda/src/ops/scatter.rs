@@ -1,8 +1,8 @@
 //! Scatter operation - Scatter writes
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct Scatter {
     input: Tensor,
@@ -12,7 +12,11 @@ pub struct Scatter {
 
 impl Scatter {
     pub fn new(input: Tensor, indices: Vec<u32>, output_size: usize) -> Self {
-        Self { input, indices, output_size }
+        Self {
+            input,
+            indices,
+            output_size,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -30,43 +34,48 @@ impl Scatter {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&indices_buffer, 0, bytemuck::cast_slice(&self.indices));
+        device
+            .queue
+            .write_buffer(&indices_buffer, 0, bytemuck::cast_slice(&self.indices));
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Scatter BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Scatter BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Scatter BG"),
@@ -88,22 +97,29 @@ impl Scatter {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Scatter"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Scatter PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Scatter PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Scatter Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Scatter Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Scatter Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Scatter Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -118,7 +134,11 @@ impl Scatter {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(output_buffer, vec![self.output_size], device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![self.output_size],
+            device.clone(),
+        ))
     }
 }
 
@@ -146,13 +166,15 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![10.0, 20.0, 30.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
+            .await
+            .unwrap();
         let indices = vec![1, 3, 0];
         let result = input.scatter(indices.clone(), 4).unwrap();
-        
+
         let data = result.to_vec().unwrap();
         let expected = scatter_cpu(&input_data, &indices, 4);
-        
+
         for (r, e) in data.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-6);
         }
@@ -164,7 +186,9 @@ mod tests {
 
         // Single element
         let input_data = vec![42.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone())
+            .await
+            .unwrap();
         let indices = vec![2];
         let result = input.scatter(indices.clone(), 5).unwrap();
         let data = result.to_vec().unwrap();
@@ -173,7 +197,9 @@ mod tests {
 
         // Sequential indices
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let indices = vec![0, 1, 2, 3];
         let result = input.scatter(indices.clone(), 4).unwrap();
         let data = result.to_vec().unwrap();
@@ -188,7 +214,9 @@ mod tests {
 
         // Scatter to first and last positions
         let input_data = vec![99.0, 88.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone())
+            .await
+            .unwrap();
         let indices = vec![0, 9];
         let result = input.scatter(indices.clone(), 10).unwrap();
         let data = result.to_vec().unwrap();
@@ -197,7 +225,9 @@ mod tests {
 
         // Sparse scatter
         let input_data = vec![10.0, 20.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device)
+            .await
+            .unwrap();
         let indices = vec![2, 7];
         let result = input.scatter(indices.clone(), 10).unwrap();
         let data = result.to_vec().unwrap();
@@ -213,12 +243,14 @@ mod tests {
 
         // 100 elements scattered into 1000
         let input_data: Vec<f32> = (0..100).map(|i| (i as f32) * 0.1).collect();
-        let input = Tensor::from_vec_on(input_data.clone(), vec![100], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![100], device)
+            .await
+            .unwrap();
         let indices: Vec<u32> = (0..100).map(|i| (i * 10) as u32).collect();
         let result = input.scatter(indices.clone(), 1000).unwrap();
         let data = result.to_vec().unwrap();
         let expected = scatter_cpu(&input_data, &indices, 1000);
-        
+
         for (d, e) in data.iter().zip(expected.iter()) {
             assert!((d - e).abs() < 1e-5);
         }
@@ -230,17 +262,25 @@ mod tests {
 
         // Test FP32 precision
         let input_data = vec![1.234, 5.678, 9.012, 3.456];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let indices = vec![3, 0, 5, 2];
         let result = input.scatter(indices.clone(), 6).unwrap();
         let data = result.to_vec().unwrap();
         let expected = scatter_cpu(&input_data, &indices, 6);
-        
+
         // Verify FP32 precision (scatter is direct copy, should be exact)
-        let max_error = data.iter().zip(expected.iter())
+        let max_error = data
+            .iter()
+            .zip(expected.iter())
             .map(|(d, e)| (d - e).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
+
+        assert!(
+            max_error < 1e-6,
+            "Max error: {} exceeds threshold",
+            max_error
+        );
     }
 }

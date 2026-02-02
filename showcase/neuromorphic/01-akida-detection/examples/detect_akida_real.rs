@@ -15,15 +15,20 @@ fn main() -> Result<()> {
     // Runtime discovery (no mocks, no hardcoding!)
     let manager = DeviceManager::discover()?;
 
-    println!("✅ Discovered {} Akida neuromorphic processor(s)\n", manager.device_count());
+    println!(
+        "✅ Discovered {} Akida neuromorphic processor(s)\n",
+        manager.device_count()
+    );
 
     // Total compute capacity
-    let total_npus: u32 = manager.devices()
+    let total_npus: u32 = manager
+        .devices()
         .iter()
         .map(|d| d.capabilities().npu_count)
         .sum();
-    
-    let total_memory_mb: u32 = manager.devices()
+
+    let total_memory_mb: u32 = manager
+        .devices()
         .iter()
         .map(|d| d.capabilities().memory_mb)
         .sum();
@@ -35,17 +40,17 @@ fn main() -> Result<()> {
 
     for device in manager.devices() {
         let caps = device.capabilities();
-        
+
         println!("┌─ Device {} ─────────────────────────────", device.index());
         println!("│  Path:         {}", device.path().display());
         println!("│  PCIe:         {}", device.pcie_address());
         println!("│  Chip:         {:?}", caps.chip_version);
         println!("│  NPUs:         {}", caps.npu_count);
         println!("│  SRAM:         {} MB", caps.memory_mb);
-        println!("│  PCIe Link:    Gen{} x{} ({:.1} GB/s)",
-                 caps.pcie.generation,
-                 caps.pcie.lanes,
-                 caps.pcie.bandwidth_gbps);
+        println!(
+            "│  PCIe Link:    Gen{} x{} ({:.1} GB/s)",
+            caps.pcie.generation, caps.pcie.lanes, caps.pcie.bandwidth_gbps
+        );
         println!("└────────────────────────────────────────");
         println!();
     }

@@ -29,18 +29,18 @@
 //! - Time series forecasting
 //! - Music generation
 
-mod rnn;
-mod lstm;
-mod gru;
 mod architectures;
 mod dropout;
+mod gru;
+mod lstm;
+mod rnn;
 
 // Re-export all public types for backward compatibility
-pub use rnn::RNNCell;
-pub use lstm::{LSTMCell, LSTMLayer};
-pub use gru::{GRUCell, GRULayer};
 pub use architectures::{BidirectionalRNN, StackedLSTM};
 pub use dropout::RecurrentDropout;
+pub use gru::{GRUCell, GRULayer};
+pub use lstm::{LSTMCell, LSTMLayer};
+pub use rnn::RNNCell;
 
 // Glob re-exports for test compatibility
 // Modules not yet exporting public items

@@ -19,17 +19,17 @@ fn main() -> Result<()> {
 
     for device in manager.devices() {
         let caps = device.capabilities();
-        
+
         println!("📟 Device {}:", device.index());
         println!("   Path:       {}", device.path().display());
         println!("   PCIe:       {}", device.pcie_address());
         println!("   Chip:       {:?}", caps.chip_version);
         println!("   NPUs:       {}", caps.npu_count);
         println!("   Memory:     {} MB SRAM", caps.memory_mb);
-        println!("   PCIe:       Gen{} x{} ({:.1} GB/s)", 
-                 caps.pcie.generation,
-                 caps.pcie.lanes,
-                 caps.pcie.bandwidth_gbps);
+        println!(
+            "   PCIe:       Gen{} x{} ({:.1} GB/s)",
+            caps.pcie.generation, caps.pcie.lanes, caps.pcie.bandwidth_gbps
+        );
         println!();
     }
 

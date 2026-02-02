@@ -112,7 +112,7 @@ impl WgpuExecutor {
         .await
         .context("No NVIDIA GPU found")
     }
-    
+
     /// Create executor with Intel GPU (for research/testing)
     pub async fn new_intel() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
@@ -123,14 +123,14 @@ impl WgpuExecutor {
         .await
         .context("No Intel GPU found")
     }
-    
+
     /// Create executor with Apple GPU (for research/testing)
     pub async fn new_apple() -> Result<Self> {
         Self::new_with_backend_and_filter(wgpu::Backends::all(), |info| {
-            info.name.to_lowercase().contains("apple") ||
-            info.name.to_lowercase().contains("m1") ||
-            info.name.to_lowercase().contains("m2") ||
-            info.name.to_lowercase().contains("m3")
+            info.name.to_lowercase().contains("apple")
+                || info.name.to_lowercase().contains("m1")
+                || info.name.to_lowercase().contains("m2")
+                || info.name.to_lowercase().contains("m3")
         })
         .await
         .context("No Apple GPU found")

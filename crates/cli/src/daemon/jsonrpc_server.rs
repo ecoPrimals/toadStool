@@ -15,7 +15,7 @@
 //! ```text
 //! POST /api/v1/workload/submit HTTP/1.1
 //! Content-Type: application/json
-//! 
+//!
 //! {"biome_yaml": "..."}
 //! ```
 //!
@@ -55,7 +55,7 @@ use super::workload_manager::WorkloadManager;
 pub struct ServerState {
     /// Server start time
     pub start_time: Instant,
-    
+
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
 }
@@ -99,7 +99,7 @@ mod error_codes {
     pub const METHOD_NOT_FOUND: i32 = -32601;
     pub const INVALID_PARAMS: i32 = -32602;
     pub const INTERNAL_ERROR: i32 = -32603;
-    
+
     // Custom error codes (application-specific)
     pub const WORKLOAD_NOT_FOUND: i32 = -32000;
     pub const WORKLOAD_SUBMIT_FAILED: i32 = -32001;
@@ -124,17 +124,17 @@ pub async fn start_jsonrpc_server(
         start_time: Instant::now(),
         workload_manager,
     };
-    
+
     // Remove existing socket if present
     if socket_path.exists() {
         std::fs::remove_file(socket_path)?;
     }
-    
+
     // Ensure parent directory exists
     if let Some(parent) = socket_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     // Bind Unix socket
     let listener = UnixListener::bind(socket_path)?;
     info!("🍄 JSON-RPC server listening on {}", socket_path.display());
@@ -145,7 +145,7 @@ pub async fn start_jsonrpc_server(
     info!("   daemon.get_workload");
     info!("   daemon.delete_workload");
     info!("   daemon.list_workloads");
-    
+
     // Accept connections
     loop {
         match listener.accept().await {
@@ -169,16 +169,16 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> anyhow::Re
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
-    
+
     loop {
         line.clear();
         let n = reader.read_line(&mut line).await?;
-        
+
         if n == 0 {
             // Connection closed
             break;
         }
-        
+
         let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
             Ok(request) => handle_request(request, &state).await,
             Err(e) => JsonRpcResponse {
@@ -192,14 +192,14 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> anyhow::Re
                 id: None,
             },
         };
-        
+
         // Send response
         let response_json = serde_json::to_string(&response)?;
         writer.write_all(response_json.as_bytes()).await?;
         writer.write_all(b"\n").await?;
         writer.flush().await?;
     }
-    
+
     Ok(())
 }
 
@@ -218,7 +218,7 @@ async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpc
             data: None,
         }),
     };
-    
+
     match result {
         Ok(value) => JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
@@ -239,7 +239,7 @@ async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpc
 async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
     let uptime_secs = state.start_time.elapsed().as_secs();
     let active_workloads = state.workload_manager.active_workload_count().await;
-    
+
     Ok(json!({
         "status": "ok",
         "version": env!("CARGO_PKG_VERSION"),
@@ -252,12 +252,12 @@ async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
 /// Metrics handler
 async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
     let workload_ids = state.workload_manager.list_workloads().await;
-    
+
     let mut queued = 0;
     let mut running = 0;
     let mut completed = 0;
     let mut failed = 0;
-    
+
     for id in &workload_ids {
         if let Some(status_resp) = state.workload_manager.get_workload_status(id).await {
             match status_resp.status {
@@ -269,7 +269,7 @@ async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
             }
         }
     }
-    
+
     Ok(json!({
         "uptime_secs": state.start_time.elapsed().as_secs(),
         "workloads": {
@@ -284,13 +284,13 @@ async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
 
 /// Submit workload handler
 async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let request: SubmitWorkloadRequest = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError {
+    let request: SubmitWorkloadRequest =
+        serde_json::from_value(params).map_err(|e| JsonRpcError {
             code: error_codes::INVALID_PARAMS,
             message: format!("Invalid params: {}", e),
             data: None,
         })?;
-    
+
     match state.workload_manager.submit_workload(request).await {
         Ok(response) => Ok(serde_json::to_value(response).unwrap()),
         Err(e) => Err(JsonRpcError {
@@ -303,15 +303,17 @@ async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Va
 
 /// Get workload handler
 async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_id = params["id"]
-        .as_str()
-        .ok_or_else(|| JsonRpcError {
-            code: error_codes::INVALID_PARAMS,
-            message: "Missing or invalid 'id' parameter".to_string(),
-            data: None,
-        })?;
-    
-    match state.workload_manager.get_workload_status(workload_id).await {
+    let workload_id = params["id"].as_str().ok_or_else(|| JsonRpcError {
+        code: error_codes::INVALID_PARAMS,
+        message: "Missing or invalid 'id' parameter".to_string(),
+        data: None,
+    })?;
+
+    match state
+        .workload_manager
+        .get_workload_status(workload_id)
+        .await
+    {
         Some(status) => Ok(serde_json::to_value(status).unwrap()),
         None => Err(JsonRpcError {
             code: error_codes::WORKLOAD_NOT_FOUND,
@@ -323,14 +325,12 @@ async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value
 
 /// Delete workload handler
 async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_id = params["id"]
-        .as_str()
-        .ok_or_else(|| JsonRpcError {
-            code: error_codes::INVALID_PARAMS,
-            message: "Missing or invalid 'id' parameter".to_string(),
-            data: None,
-        })?;
-    
+    let workload_id = params["id"].as_str().ok_or_else(|| JsonRpcError {
+        code: error_codes::INVALID_PARAMS,
+        message: "Missing or invalid 'id' parameter".to_string(),
+        data: None,
+    })?;
+
     match state.workload_manager.cancel_workload(workload_id).await {
         Ok(()) => Ok(json!({"success": true, "workload_id": workload_id})),
         Err(e) => Err(JsonRpcError {
@@ -344,14 +344,14 @@ async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Va
 /// List workloads handler
 async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcError> {
     let workload_ids = state.workload_manager.list_workloads().await;
-    
+
     let mut workloads = Vec::new();
     for id in workload_ids {
         if let Some(status) = state.workload_manager.get_workload_status(&id).await {
             workloads.push(status);
         }
     }
-    
+
     Ok(json!({
         "workloads": workloads,
         "count": workloads.len(),
@@ -361,7 +361,7 @@ async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcErro
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_jsonrpc_request_parsing() {
         let json = r#"{"jsonrpc":"2.0","method":"daemon.health","params":{},"id":1}"#;
@@ -369,7 +369,7 @@ mod tests {
         assert_eq!(request.jsonrpc, "2.0");
         assert_eq!(request.method, "daemon.health");
     }
-    
+
     #[test]
     fn test_jsonrpc_response_serialization() {
         let response = JsonRpcResponse {

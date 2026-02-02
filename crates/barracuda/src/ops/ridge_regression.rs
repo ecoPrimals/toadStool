@@ -103,7 +103,12 @@ pub async fn ridge_regression(
 
     if targets.len() != (t * m) as usize {
         return Err(BarracudaError::InvalidInput {
-            message: format!("Targets must be {}×{} (got {} elements)", t, m, targets.len()),
+            message: format!(
+                "Targets must be {}×{} (got {} elements)",
+                t,
+                m,
+                targets.len()
+            ),
         });
     }
 
@@ -146,7 +151,12 @@ pub async fn ridge_regression(
         regularization: f32,
     }
 
-    let params = Params { n, t, m, regularization };
+    let params = Params {
+        n,
+        t,
+        m,
+        regularization,
+    };
 
     let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Params"),
@@ -257,15 +267,29 @@ pub async fn ridge_regression(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (n * m * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (n * m * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -286,11 +310,26 @@ mod tests {
         // Simple linear relationship: y = 2*x
         let states = vec![1.0, 2.0, 3.0, 4.0, 5.0]; // 5×1 (t=5, n=1)
         let targets = vec![2.0, 4.0, 6.0, 8.0, 10.0]; // 5×1 (t=5, m=1)
-        
-        let result = ridge_regression(&device.device, &device.queue, &states, &targets, 1, 5, 1, 1e-6).await.unwrap();
+
+        let result = ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            5,
+            1,
+            1e-6,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), 1);
         // Should learn weight ≈ 2.0
-        assert!((result[0] - 2.0).abs() < 0.5, "Expected weight ≈2.0, got {}", result[0]);
+        assert!(
+            (result[0] - 2.0).abs() < 0.5,
+            "Expected weight ≈2.0, got {}",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -299,8 +338,19 @@ mod tests {
         // Multiple outputs
         let states = vec![1.0, 2.0, 3.0]; // 3×1
         let targets = vec![1.0, 0.5, 2.0, 1.0, 3.0, 1.5]; // 3×2
-        
-        let result = ridge_regression(&device.device, &device.queue, &states, &targets, 1, 3, 2, 1e-6).await.unwrap();
+
+        let result = ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            3,
+            2,
+            1e-6,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), 2); // 1×2 weights
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -310,14 +360,58 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let states = vec![1.0; 10];
         let targets = vec![1.0; 10];
-        
+
         // Invalid dimensions
-        assert!(ridge_regression(&device.device, &device.queue, &states, &targets, 0, 10, 1, 1e-6).await.is_err());
-        assert!(ridge_regression(&device.device, &device.queue, &states, &targets, 1, 0, 1, 1e-6).await.is_err());
-        
+        assert!(ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            0,
+            10,
+            1,
+            1e-6
+        )
+        .await
+        .is_err());
+        assert!(ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            0,
+            1,
+            1e-6
+        )
+        .await
+        .is_err());
+
         // Invalid regularization
-        assert!(ridge_regression(&device.device, &device.queue, &states, &targets, 1, 10, 1, 0.0).await.is_err());
-        assert!(ridge_regression(&device.device, &device.queue, &states, &targets, 1, 10, 1, -0.1).await.is_err());
+        assert!(ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            10,
+            1,
+            0.0
+        )
+        .await
+        .is_err());
+        assert!(ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            10,
+            1,
+            -0.1
+        )
+        .await
+        .is_err());
     }
 
     #[tokio::test]
@@ -328,8 +422,19 @@ mod tests {
         let m = 5;
         let states = vec![0.1; (t * n) as usize];
         let targets = vec![0.5; (t * m) as usize];
-        
-        let result = ridge_regression(&device.device, &device.queue, &states, &targets, n, t, m, 1e-6).await.unwrap();
+
+        let result = ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            n,
+            t,
+            m,
+            1e-6,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), (n * m) as usize);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -340,11 +445,26 @@ mod tests {
         // Perfect linear fit with noise
         let states = vec![1.0, 2.0, 3.0, 4.0];
         let targets = vec![3.0, 5.0, 7.0, 9.0]; // y = 2x + 1
-        
-        let result = ridge_regression(&device.device, &device.queue, &states, &targets, 1, 4, 1, 1e-8).await.unwrap();
-        
+
+        let result = ridge_regression(
+            &device.device,
+            &device.queue,
+            &states,
+            &targets,
+            1,
+            4,
+            1,
+            1e-8,
+        )
+        .await
+        .unwrap();
+
         // With very low regularization, should fit closely
         // Note: Without bias term, best fit will be y ≈ 2.3x
-        assert!(result[0] > 1.5 && result[0] < 3.0, "Weight should be reasonable, got {}", result[0]);
+        assert!(
+            result[0] > 1.5 && result[0] < 3.0,
+            "Weight should be reasonable, got {}",
+            result[0]
+        );
     }
 }

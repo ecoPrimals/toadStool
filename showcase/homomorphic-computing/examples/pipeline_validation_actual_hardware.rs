@@ -6,10 +6,10 @@
 // using ACTUAL hardware measurements for scientific validation.
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use std::time::Instant;
-use std::fs;
 use barracuda::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::time::Instant;
 use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
 use tracing_subscriber;
@@ -22,23 +22,23 @@ struct BenchmarkResult {
     workload_type: String,
     workload_size: usize,
     sparsity: f32,
-    
+
     // Performance metrics (ACTUAL HARDWARE!)
     total_time_us: u128,
     throughput_ops_per_sec: f64,
-    
+
     // Per-chip breakdown
     chip_times_us: Vec<(String, u128)>,
     chip_power_w: Vec<(String, f32)>,
-    
+
     // Energy metrics
     total_energy_joules: f32,
     ops_per_joule: f32,
-    
+
     // Transfer overhead
     inter_chip_transfer_us: u128,
     transfer_overhead_percent: f32,
-    
+
     // Hardware validation flags
     uses_actual_gpu: bool,
     uses_actual_npu: bool,
@@ -51,16 +51,16 @@ enum PipelineConfig {
     SingleCpu,
     SingleGpu,
     SingleNpu,
-    
+
     // Sequential pipelines (test ordering impact)
-    NpuGpu,           // NPU preprocessing → GPU compute
-    GpuNpu,           // GPU compute → NPU postprocessing
-    
+    NpuGpu, // NPU preprocessing → GPU compute
+    GpuNpu, // GPU compute → NPU postprocessing
+
     // Complex sequential
-    NpuGpuNpu,        // NPU → GPU → NPU (bookends)
-    
+    NpuGpuNpu, // NPU → GPU → NPU (bookends)
+
     // Parallel configurations (if dual hardware available)
-    DualNpu,          // 2 NPUs in parallel (we have 2 Akida chips!)
+    DualNpu, // 2 NPUs in parallel (we have 2 Akida chips!)
 }
 
 impl PipelineConfig {
@@ -75,7 +75,7 @@ impl PipelineConfig {
             PipelineConfig::DualNpu => "Dual_NPU_Parallel".to_string(),
         }
     }
-    
+
     fn chip_ordering(&self) -> Vec<String> {
         match self {
             PipelineConfig::SingleCpu => vec!["CPU".to_string()],
@@ -83,7 +83,9 @@ impl PipelineConfig {
             PipelineConfig::SingleNpu => vec!["NPU (Akida)".to_string()],
             PipelineConfig::NpuGpu => vec!["NPU".to_string(), "GPU".to_string()],
             PipelineConfig::GpuNpu => vec!["GPU".to_string(), "NPU".to_string()],
-            PipelineConfig::NpuGpuNpu => vec!["NPU".to_string(), "GPU".to_string(), "NPU".to_string()],
+            PipelineConfig::NpuGpuNpu => {
+                vec!["NPU".to_string(), "GPU".to_string(), "NPU".to_string()]
+            }
             PipelineConfig::DualNpu => vec!["NPU₁".to_string(), "NPU₂".to_string()],
         }
     }
@@ -109,7 +111,7 @@ impl WorkloadType {
             WorkloadType::Dense => "Dense_<20%".to_string(),
         }
     }
-    
+
     fn sparsity(&self) -> f32 {
         match self {
             WorkloadType::UltraSparse => 0.999,
@@ -130,7 +132,7 @@ struct HardwareContext {
 impl HardwareContext {
     async fn initialize() -> Result<Self> {
         println!("⚡ Initializing Hardware Context...\n");
-        
+
         // Initialize GPU (BarraCUDA)
         print!("  GPU: ");
         let gpu_device = match WgpuDevice::new().await {
@@ -143,7 +145,7 @@ impl HardwareContext {
                 None
             }
         };
-        
+
         // Initialize NPU (Akida)
         print!("  NPU: ");
         let npu_devices = match akida_driver::DeviceManager::discover() {
@@ -161,26 +163,26 @@ impl HardwareContext {
                 vec![]
             }
         };
-        
+
         // Setup TFHE keys
         print!("  CPU: ");
         println!("✅ TFHE-rs keys will be generated on demand");
-        
+
         println!();
         Ok(Self {
             gpu_device,
             npu_devices,
         })
     }
-    
+
     fn has_gpu(&self) -> bool {
         self.gpu_device.is_some()
     }
-    
+
     fn has_npu(&self) -> bool {
         !self.npu_devices.is_empty()
     }
-    
+
     fn npu_count(&self) -> usize {
         self.npu_devices.len()
     }
@@ -188,10 +190,8 @@ impl HardwareContext {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter("info")
-        .init();
-    
+    tracing_subscriber::fmt().with_env_filter("info").init();
+
     println!("╔══════════════════════════════════════════════════════════════════╗");
     println!("║  🔥 HETEROGENEOUS PIPELINE VALIDATION - ACTUAL HARDWARE          ║");
     println!("║  ✅ CPU (TFHE-rs) + GPU (BarraCUDA) + NPU (Akida)               ║");
@@ -199,15 +199,20 @@ async fn main() -> Result<()> {
 
     // Initialize all hardware
     let hardware = HardwareContext::initialize().await?;
-    
+
     println!("📊 Hardware Summary:");
     println!("  CPU:  ✅ Available (AMD Ryzen 9 5950X)");
-    println!("  GPU:  {} Available", if hardware.has_gpu() { "✅" } else { "⚠️ " });
-    println!("  NPU:  {} {} Akida chip(s)", 
-             if hardware.has_npu() { "✅" } else { "⚠️ " },
-             hardware.npu_count());
+    println!(
+        "  GPU:  {} Available",
+        if hardware.has_gpu() { "✅" } else { "⚠️ " }
+    );
+    println!(
+        "  NPU:  {} {} Akida chip(s)",
+        if hardware.has_npu() { "✅" } else { "⚠️ " },
+        hardware.npu_count()
+    );
     println!();
-    
+
     // Define test matrix
     let pipelines = vec![
         PipelineConfig::SingleCpu,
@@ -216,67 +221,90 @@ async fn main() -> Result<()> {
         PipelineConfig::NpuGpu,
         PipelineConfig::GpuNpu,
     ];
-    
+
     let workloads = vec![
         WorkloadType::UltraSparse,
         WorkloadType::HighSparse,
         WorkloadType::Dense,
     ];
-    
+
     let total_tests = pipelines.len() * workloads.len();
-    println!("📊 Test Matrix: {} pipelines × {} workloads = {} tests\n",
-             pipelines.len(), workloads.len(), total_tests);
-    
+    println!(
+        "📊 Test Matrix: {} pipelines × {} workloads = {} tests\n",
+        pipelines.len(),
+        workloads.len(),
+        total_tests
+    );
+
     // Setup TFHE once
     println!("⚡ Setting up TFHE-rs keys...");
     let config = ConfigBuilder::default().build();
     let (client_key, server_key) = generate_keys(config);
     set_server_key(server_key.clone());
     println!("✅ Keys generated\n");
-    
+
     // Run validation matrix
     println!("═══════════════════════════════════════════════════════════════════\n");
     println!("🔄 Starting Validation Matrix...\n");
-    
+
     let mut results = Vec::new();
     let mut test_num = 0;
-    
+
     for pipeline in &pipelines {
         for workload in &workloads {
             test_num += 1;
-            
+
             // Skip configurations if hardware unavailable
-            let needs_gpu = matches!(pipeline, 
-                PipelineConfig::SingleGpu | 
-                PipelineConfig::NpuGpu | 
-                PipelineConfig::GpuNpu | 
-                PipelineConfig::NpuGpuNpu
+            let needs_gpu = matches!(
+                pipeline,
+                PipelineConfig::SingleGpu
+                    | PipelineConfig::NpuGpu
+                    | PipelineConfig::GpuNpu
+                    | PipelineConfig::NpuGpuNpu
             );
-            
-            let needs_npu = matches!(pipeline,
-                PipelineConfig::SingleNpu |
-                PipelineConfig::NpuGpu |
-                PipelineConfig::GpuNpu |
-                PipelineConfig::NpuGpuNpu |
-                PipelineConfig::DualNpu
+
+            let needs_npu = matches!(
+                pipeline,
+                PipelineConfig::SingleNpu
+                    | PipelineConfig::NpuGpu
+                    | PipelineConfig::GpuNpu
+                    | PipelineConfig::NpuGpuNpu
+                    | PipelineConfig::DualNpu
             );
-            
+
             if needs_gpu && !hardware.has_gpu() {
-                println!("[{}/{}] ⏭️  Skipping {} + {} (GPU unavailable)",
-                         test_num, total_tests, pipeline.name(), workload.name());
+                println!(
+                    "[{}/{}] ⏭️  Skipping {} + {} (GPU unavailable)",
+                    test_num,
+                    total_tests,
+                    pipeline.name(),
+                    workload.name()
+                );
                 continue;
             }
-            
+
             if needs_npu && !hardware.has_npu() {
-                println!("[{}/{}] ⏭️  Skipping {} + {} (NPU unavailable)",
-                         test_num, total_tests, pipeline.name(), workload.name());
+                println!(
+                    "[{}/{}] ⏭️  Skipping {} + {} (NPU unavailable)",
+                    test_num,
+                    total_tests,
+                    pipeline.name(),
+                    workload.name()
+                );
                 continue;
             }
-            
-            println!("[{}/{}] 🔄 Testing: {} + {}",
-                     test_num, total_tests, pipeline.name(), workload.name());
-            
-            match run_pipeline_benchmark(&hardware, pipeline, workload, &client_key, &server_key).await {
+
+            println!(
+                "[{}/{}] 🔄 Testing: {} + {}",
+                test_num,
+                total_tests,
+                pipeline.name(),
+                workload.name()
+            );
+
+            match run_pipeline_benchmark(&hardware, pipeline, workload, &client_key, &server_key)
+                .await
+            {
                 Ok(result) => {
                     println!("    ✓ Time: {:.2}ms, Throughput: {:.0} ops/s, Energy: {:.6}J, Efficiency: {:.1} ops/J",
                              result.total_time_us as f64 / 1000.0,
@@ -292,18 +320,22 @@ async fn main() -> Result<()> {
         }
         println!();
     }
-    
+
     println!("═══════════════════════════════════════════════════════════════════\n");
-    println!("✅ Validation Complete: {}/{} tests successful\n", results.len(), total_tests);
-    
+    println!(
+        "✅ Validation Complete: {}/{} tests successful\n",
+        results.len(),
+        total_tests
+    );
+
     // Generate reports
     generate_reports(&results)?;
-    
+
     println!("📊 Reports Generated:");
     println!("   • pipeline_validation_actual_hardware.txt");
     println!("   • pipeline_validation_actual_hardware.csv");
     println!("   • pipeline_validation_actual_hardware.json\n");
-    
+
     println!("═══════════════════════════════════════════════════════════════════\n");
     println!("🏆 HETEROGENEOUS VALIDATION COMPLETE - ACTUAL HARDWARE!");
     println!("═══════════════════════════════════════════════════════════════════\n");
@@ -321,18 +353,18 @@ async fn run_pipeline_benchmark(
 ) -> Result<BenchmarkResult> {
     let iterations = 100; // Adjust based on workload
     let sparsity = workload.sparsity();
-    
+
     // Encrypt test data
     let enc_a = FheUint8::try_encrypt(42u8, client_key)?;
     let enc_b = FheUint8::try_encrypt(23u8, client_key)?;
-    
+
     let mut chip_times = Vec::new();
     let mut chip_power = Vec::new();
     let mut uses_actual_gpu = false;
     let mut uses_actual_npu = false;
-    
+
     let total_start = Instant::now();
-    
+
     match pipeline {
         PipelineConfig::SingleCpu => {
             let start = Instant::now();
@@ -343,59 +375,59 @@ async fn run_pipeline_benchmark(
             chip_times.push(("CPU".to_string(), time));
             chip_power.push(("CPU".to_string(), 25.0)); // Ryzen 9 5950X single-core
         }
-        
+
         PipelineConfig::SingleGpu => {
             if let Some(gpu) = &hardware.gpu_device {
                 uses_actual_gpu = true;
-                
+
                 // ACTUAL GPU execution via BarraCUDA!
                 let degree = 1024;
                 let start = Instant::now();
-                
+
                 for _ in 0..iterations {
                     // Execute actual GPU polynomial add
                     let _ = execute_gpu_polynomial_add(gpu, degree).await?;
                 }
-                
+
                 let time = start.elapsed().as_micros();
                 chip_times.push(("GPU (BarraCUDA)".to_string(), time));
                 chip_power.push(("GPU".to_string(), 250.0)); // RTX 3090 measured
             }
         }
-        
+
         PipelineConfig::SingleNpu => {
             if !hardware.npu_devices.is_empty() {
                 uses_actual_npu = true;
-                
+
                 // ACTUAL NPU execution via Akida!
                 let _device = &hardware.npu_devices[0];
                 let start = Instant::now();
-                
+
                 // Sparse event processing simulation
                 // TODO: Wire actual Akida inference
                 for _ in 0..iterations {
                     let events = (iterations as f32 * (1.0 - sparsity)) as u64;
                     tokio::time::sleep(tokio::time::Duration::from_micros(events)).await;
                 }
-                
+
                 let time = start.elapsed().as_micros();
                 chip_times.push(("NPU (Akida)".to_string(), time));
                 chip_power.push(("NPU".to_string(), 2.0)); // Akida measured
             }
         }
-        
+
         PipelineConfig::NpuGpu => {
             // NPU preprocessing → GPU compute
             if !hardware.npu_devices.is_empty() && hardware.gpu_device.is_some() {
                 uses_actual_npu = true;
                 uses_actual_gpu = true;
-                
+
                 // NPU stage (sparse preprocessing)
                 let npu_start = Instant::now();
                 let events = (iterations as f32 * (1.0 - sparsity)) as u64;
                 tokio::time::sleep(tokio::time::Duration::from_micros(events * 50)).await;
                 let npu_time = npu_start.elapsed().as_micros();
-                
+
                 // GPU stage (dense compute)
                 let gpu_start = Instant::now();
                 if let Some(gpu) = &hardware.gpu_device {
@@ -404,20 +436,20 @@ async fn run_pipeline_benchmark(
                     }
                 }
                 let gpu_time = gpu_start.elapsed().as_micros();
-                
+
                 chip_times.push(("NPU".to_string(), npu_time));
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_power.push(("NPU".to_string(), 2.0));
                 chip_power.push(("GPU".to_string(), 250.0));
             }
         }
-        
+
         PipelineConfig::GpuNpu => {
             // GPU compute → NPU postprocessing
             if !hardware.npu_devices.is_empty() && hardware.gpu_device.is_some() {
                 uses_actual_gpu = true;
                 uses_actual_npu = true;
-                
+
                 // GPU stage
                 let gpu_start = Instant::now();
                 if let Some(gpu) = &hardware.gpu_device {
@@ -426,20 +458,20 @@ async fn run_pipeline_benchmark(
                     }
                 }
                 let gpu_time = gpu_start.elapsed().as_micros();
-                
+
                 // NPU stage
                 let npu_start = Instant::now();
                 let events = (iterations as f32 * (1.0 - sparsity)) as u64;
                 tokio::time::sleep(tokio::time::Duration::from_micros(events * 50)).await;
                 let npu_time = npu_start.elapsed().as_micros();
-                
+
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_times.push(("NPU".to_string(), npu_time));
                 chip_power.push(("GPU".to_string(), 250.0));
                 chip_power.push(("NPU".to_string(), 2.0));
             }
         }
-        
+
         _ => {
             // Fallback for unimplemented configs
             let start = Instant::now();
@@ -450,25 +482,26 @@ async fn run_pipeline_benchmark(
             chip_power.push(("CPU".to_string(), 25.0));
         }
     }
-    
+
     let total_time = total_start.elapsed().as_micros();
-    
+
     // Calculate energy
-    let total_energy = chip_times.iter()
+    let total_energy = chip_times
+        .iter()
         .zip(chip_power.iter())
         .map(|((_, time), (_, power))| {
             let time_seconds = *time as f32 / 1_000_000.0;
             power * time_seconds
         })
         .sum::<f32>();
-    
+
     let throughput = (iterations as f64) / (total_time as f64 / 1_000_000.0);
     let ops_per_joule = if total_energy > 0.0 {
         iterations as f32 / total_energy
     } else {
         0.0
     };
-    
+
     Ok(BenchmarkResult {
         pipeline_config: pipeline.name(),
         chip_ordering: pipeline.chip_ordering(),
@@ -492,22 +525,22 @@ async fn run_pipeline_benchmark(
 async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Result<Vec<f32>> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
-    
+
     // Generate test data
     let poly_a: Vec<f32> = (0..degree).map(|_| rng.gen_range(0.0..10000.0)).collect();
     let poly_b: Vec<f32> = (0..degree).map(|_| rng.gen_range(0.0..10000.0)).collect();
-    
+
     // Create GPU buffers with BarraCUDA API
     let buffer_a = device.create_storage_buffer("poly_a", bytemuck::cast_slice(&poly_a));
     let buffer_b = device.create_storage_buffer("poly_b", bytemuck::cast_slice(&poly_b));
-    
+
     let output_buffer = device.device().create_buffer(&wgpu::BufferDescriptor {
         label: Some("output"),
         size: (degree * std::mem::size_of::<f32>()) as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
-    
+
     // WGSL shader for polynomial addition
     let shader = r#"
         @group(0) @binding(0) var<storage, read> a: array<f32>;
@@ -521,30 +554,43 @@ async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Resul
             output[idx] = a[idx] + b[idx];
         }
     "#;
-    
+
     // Compile shader
     let shader_module = device.compile_shader(shader, Some("fhe_poly_add"));
-    
+
     // Create pipeline
-    let pipeline = device.device().create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("fhe_add_pipeline"),
-        layout: None,
-        module: &shader_module,
-        entry_point: "main",
-    });
-    
+    let pipeline = device
+        .device()
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("fhe_add_pipeline"),
+            layout: None,
+            module: &shader_module,
+            entry_point: "main",
+        });
+
     // Create bind group
     let bind_group_layout = pipeline.get_bind_group_layout(0);
-    let bind_group = device.device().create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("fhe_add_bind_group"),
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: buffer_a.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: buffer_b.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 2, resource: output_buffer.as_entire_binding() },
-        ],
-    });
-    
+    let bind_group = device
+        .device()
+        .create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fhe_add_bind_group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buffer_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
     // Execute
     let mut encoder = device.device().create_command_encoder(&Default::default());
     {
@@ -558,10 +604,10 @@ async fn execute_gpu_polynomial_add(device: &WgpuDevice, degree: usize) -> Resul
     }
     device.queue().submit(Some(encoder.finish()));
     device.device().poll(wgpu::Maintain::Wait);
-    
+
     // Read results
     let result = device.read_buffer_f32(&output_buffer, degree)?;
-    
+
     Ok(result)
 }
 
@@ -571,41 +617,57 @@ fn generate_reports(results: &[BenchmarkResult]) -> Result<()> {
     report.push_str("═══════════════════════════════════════════════════════════════════\n");
     report.push_str("  HETEROGENEOUS PIPELINE VALIDATION - ACTUAL HARDWARE RESULTS\n");
     report.push_str("═══════════════════════════════════════════════════════════════════\n\n");
-    
+
     for result in results {
         report.push_str(&format!("\nPipeline: {}\n", result.pipeline_config));
-        report.push_str(&format!("Workload: {} (sparsity: {:.1}%)\n", 
-                                 result.workload_type, result.sparsity * 100.0));
-        report.push_str(&format!("  Total Time: {:.2} ms\n", result.total_time_us as f64 / 1000.0));
-        report.push_str(&format!("  Throughput: {:.0} ops/s\n", result.throughput_ops_per_sec));
+        report.push_str(&format!(
+            "Workload: {} (sparsity: {:.1}%)\n",
+            result.workload_type,
+            result.sparsity * 100.0
+        ));
+        report.push_str(&format!(
+            "  Total Time: {:.2} ms\n",
+            result.total_time_us as f64 / 1000.0
+        ));
+        report.push_str(&format!(
+            "  Throughput: {:.0} ops/s\n",
+            result.throughput_ops_per_sec
+        ));
         report.push_str(&format!("  Energy: {:.6} J\n", result.total_energy_joules));
-        report.push_str(&format!("  Efficiency: {:.1} ops/J\n", result.ops_per_joule));
-        report.push_str(&format!("  Hardware: GPU={}, NPU={}\n", 
-                                 result.uses_actual_gpu, result.uses_actual_npu));
+        report.push_str(&format!(
+            "  Efficiency: {:.1} ops/J\n",
+            result.ops_per_joule
+        ));
+        report.push_str(&format!(
+            "  Hardware: GPU={}, NPU={}\n",
+            result.uses_actual_gpu, result.uses_actual_npu
+        ));
         report.push_str("─────────────────────────────────────────────────────────────────\n");
     }
-    
+
     fs::write("pipeline_validation_actual_hardware.txt", report)?;
-    
+
     // CSV
     let mut csv = String::from("Pipeline,Workload,Sparsity,Time_us,Throughput_ops_s,Energy_J,Efficiency_ops_J,ActualGPU,ActualNPU\n");
     for result in results {
-        csv.push_str(&format!("{},{},{:.3},{},{:.0},{:.6},{:.1},{},{}\n",
-                              result.pipeline_config,
-                              result.workload_type,
-                              result.sparsity,
-                              result.total_time_us,
-                              result.throughput_ops_per_sec,
-                              result.total_energy_joules,
-                              result.ops_per_joule,
-                              result.uses_actual_gpu,
-                              result.uses_actual_npu));
+        csv.push_str(&format!(
+            "{},{},{:.3},{},{:.0},{:.6},{:.1},{},{}\n",
+            result.pipeline_config,
+            result.workload_type,
+            result.sparsity,
+            result.total_time_us,
+            result.throughput_ops_per_sec,
+            result.total_energy_joules,
+            result.ops_per_joule,
+            result.uses_actual_gpu,
+            result.uses_actual_npu
+        ));
     }
     fs::write("pipeline_validation_actual_hardware.csv", csv)?;
-    
+
     // JSON
     let json = serde_json::to_string_pretty(&results)?;
     fs::write("pipeline_validation_actual_hardware.json", json)?;
-    
+
     Ok(())
 }

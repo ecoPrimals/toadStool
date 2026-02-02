@@ -18,17 +18,17 @@ pub async fn glu(
     if input.len() % 2 != 0 {
         return Err("Input length must be even for GLU".into());
     }
-    
+
     let half = input.len() / 2;
     let mut output = Vec::with_capacity(half);
-    
+
     for i in 0..half {
         let a = input[i];
         let b = input[half + i];
         let sigmoid_b = 1.0 / (1.0 + (-b).exp());
         output.push(a * sigmoid_b);
     }
-    
+
     Ok(output)
 }
 
@@ -37,11 +37,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_glu_basic() {
         let dev = get_test_device().await;
@@ -113,7 +113,7 @@ mod tests {
         // Test sigmoid gating with known values
         let input = vec![2.0, 4.0, 0.0, 0.0]; // a=[2,4], b=[0,0]
         let output = glu(&dev.device, &dev.queue, &input).await.unwrap();
-        
+
         // sigmoid(0) = 0.5
         // output = [2*0.5, 4*0.5] = [1.0, 2.0]
         assert_eq!(output.len(), 2);

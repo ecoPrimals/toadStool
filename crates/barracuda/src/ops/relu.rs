@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: ReLU(x) = max(0, x)
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 /// ReLU activation operation
 pub struct ReLU {
@@ -31,31 +31,34 @@ impl ReLU {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ReLU Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ReLU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -77,23 +80,30 @@ impl ReLU {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("ReLU"));
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ReLU Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ReLU Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("ReLU Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ReLU Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("ReLU Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ReLU Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -138,13 +148,9 @@ mod tests {
         let device = get_test_device().await;
 
         // Test data: [-2, -1, 0, 1, 2]
-        let input = Tensor::from_vec_on(
-            vec![-2.0, -1.0, 0.0, 1.0, 2.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device)
+            .await
+            .unwrap();
 
         let output = input.relu().unwrap();
         let result = output.to_vec().unwrap();
@@ -162,22 +168,18 @@ mod tests {
         // Edge cases: very small values near zero
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![-1e-6, -1e-10, 0.0, 1e-10, 1e-6],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-1e-6, -1e-10, 0.0, 1e-10, 1e-6], vec![5], device)
+            .await
+            .unwrap();
 
         let output = input.relu().unwrap();
         let result = output.to_vec().unwrap();
 
-        assert_eq!(result[0], 0.0);  // Small negative → 0
-        assert_eq!(result[1], 0.0);  // Tiny negative → 0
-        assert_eq!(result[2], 0.0);  // Zero → 0
-        assert!(result[3] >= 0.0);   // Tiny positive → positive
-        assert!(result[4] > 0.0);    // Small positive → positive
+        assert_eq!(result[0], 0.0); // Small negative → 0
+        assert_eq!(result[1], 0.0); // Tiny negative → 0
+        assert_eq!(result[2], 0.0); // Zero → 0
+        assert!(result[3] >= 0.0); // Tiny positive → positive
+        assert!(result[4] > 0.0); // Small positive → positive
     }
 
     #[tokio::test]
@@ -196,9 +198,9 @@ mod tests {
         let output = input.relu().unwrap();
         let result = output.to_vec().unwrap();
 
-        assert_eq!(result[0], 0.0);  // -inf → 0
-        assert_eq!(result[1], 0.0);  // Large negative → 0
-        assert_eq!(result[2], 0.0);  // 0 → 0
+        assert_eq!(result[0], 0.0); // -inf → 0
+        assert_eq!(result[1], 0.0); // Large negative → 0
+        assert_eq!(result[2], 0.0); // 0 → 0
         assert_eq!(result[3], 1e10); // Large positive → unchanged
         assert!(result[4].is_infinite() && result[4].is_sign_positive()); // +inf → +inf
     }
@@ -210,14 +212,10 @@ mod tests {
 
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) - 500.0).collect();
-        
-        let input = Tensor::from_vec_on(
-            input_data.clone(),
-            vec![size],
-            device,
-        )
-        .await
-        .unwrap();
+
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
+            .await
+            .unwrap();
 
         let output = input.relu().unwrap();
         let result = output.to_vec().unwrap();
@@ -235,13 +233,9 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![-5.0, -2.5, -1.0, -0.5, 0.0, 0.5, 1.0, 2.5, 5.0];
-        let input = Tensor::from_vec_on(
-            input_data.clone(),
-            vec![9],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![9], device)
+            .await
+            .unwrap();
 
         let output = input.relu().unwrap();
         let gpu_result = output.to_vec().unwrap();

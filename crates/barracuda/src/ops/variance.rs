@@ -1,7 +1,7 @@
 //! Variance reduction - Pure WGSL
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct Variance {
     input: Tensor,
@@ -20,31 +20,34 @@ impl Variance {
         let device = self.input.device();
         let output_buffer = device.create_buffer_f32(1)?;
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Var BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Var BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Var BG"),
@@ -62,22 +65,29 @@ impl Variance {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Var"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Var PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Var PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Var Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Var Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Var Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Var Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -108,7 +118,8 @@ mod tests {
 
     fn variance_cpu(input: &[f32]) -> f32 {
         let mean: f32 = input.iter().sum::<f32>() / input.len() as f32;
-        let variance: f32 = input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
+        let variance: f32 =
+            input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
         variance
     }
 
@@ -116,26 +127,37 @@ mod tests {
     async fn test_variance_basic() {
         let device = get_test_device().await;
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
+            .await
+            .unwrap();
         let result = input.var().unwrap().to_vec().unwrap();
         let expected = variance_cpu(&input_data);
-        
-        assert!((result[0] - expected).abs() < 1e-4, "Expected {}, got {}", expected, result[0]);
+
+        assert!(
+            (result[0] - expected).abs() < 1e-4,
+            "Expected {}, got {}",
+            expected,
+            result[0]
+        );
     }
 
     #[tokio::test]
     async fn test_variance_edge_cases() {
         let device = get_test_device().await;
-        
+
         // All zeros (variance = 0)
         let input_data = vec![0.0, 0.0, 0.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone())
+            .await
+            .unwrap();
         let result = input.var().unwrap().to_vec().unwrap();
         assert!(result[0].abs() < 1e-6);
-        
+
         // All same value (variance = 0)
         let input_data = vec![5.0, 5.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
+            .await
+            .unwrap();
         let result = input.var().unwrap().to_vec().unwrap();
         assert!(result[0].abs() < 1e-6);
     }
@@ -144,10 +166,12 @@ mod tests {
     async fn test_variance_boundary() {
         let device = get_test_device().await;
         let input_data = vec![0.0, 10.0, 20.0, 30.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let result = input.var().unwrap().to_vec().unwrap();
         let expected = variance_cpu(&input_data);
-        
+
         let rel_error = if expected > 1e-5 {
             (result[0] - expected).abs() / expected
         } else {
@@ -161,10 +185,12 @@ mod tests {
         let device = get_test_device().await;
         let size = 100;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) * 0.5).collect();
-        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
+            .await
+            .unwrap();
         let result = input.var().unwrap().to_vec().unwrap();
         let expected = variance_cpu(&input_data);
-        
+
         let rel_error = (result[0] - expected).abs() / expected;
         assert!(rel_error < 1e-2, "Expected {}, got {}", expected, result[0]);
     }
@@ -173,10 +199,12 @@ mod tests {
     async fn test_variance_precision() {
         let device = get_test_device().await;
         let input_data = vec![2.0, 4.0, 6.0, 8.0, 10.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
+            .await
+            .unwrap();
         let gpu_result = input.var().unwrap().to_vec().unwrap();
         let cpu_result = variance_cpu(&input_data);
-        
+
         let error = (gpu_result[0] - cpu_result).abs();
         assert!(error < 1e-3, "Error {} exceeds threshold", error);
     }

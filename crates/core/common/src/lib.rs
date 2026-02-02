@@ -32,11 +32,11 @@ pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
 pub mod primal_identity;
 pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod primal_sockets;
-pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
 pub mod runtime_discovery; // UPDATED: Zero-hardcoding capability-based discovery
 pub mod runtime_ports; // NEW: Deep Debt compliant dynamic port discovery
 pub mod self_identity; // Self-aware primal identity and capability discovery
 pub mod service_discovery; // NEW: Capability-based service discovery (infant pattern)
+pub mod uid_detector; // NEW: Pure Rust unix socket path discovery (100% pure Rust!)
 pub mod universal_adapter;
 pub mod unix_jsonrpc_client; // NEW: JSON-RPC 2.0 over unix sockets (pure Rust!) // NEW: Phase 1B - Capability-based primal discovery (infant discovery)
 

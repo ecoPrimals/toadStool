@@ -7,8 +7,8 @@
 //! Key difference from LayerNorm: No mean subtraction, only RMS scaling
 //! Benefits: Faster computation, similar performance
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -22,13 +22,17 @@ struct RMSNormParams {
 
 pub struct RMSNorm {
     input: Tensor,
-    gamma: Tensor,  // Scale parameters
+    gamma: Tensor, // Scale parameters
     epsilon: f32,
 }
 
 impl RMSNorm {
     pub fn new(input: Tensor, gamma: Tensor, epsilon: f32) -> Self {
-        Self { input, gamma, epsilon }
+        Self {
+            input,
+            gamma,
+            epsilon,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -38,7 +42,7 @@ impl RMSNorm {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // Assume input shape is [batch_size, feature_size]
         let batch_size = shape[0];
         let feature_size = shape[1];
@@ -54,25 +58,31 @@ impl RMSNorm {
             epsilon: self.epsilon,
             _padding: 0,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("RMSNorm Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RMSNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("RMSNorm Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("RMSNorm Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("RMSNorm Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("RMSNorm Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -100,9 +110,11 @@ impl RMSNorm {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("RMSNorm Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("RMSNorm Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("RMSNorm Pass"),
@@ -144,22 +156,22 @@ mod tests {
     #[tokio::test]
     async fn test_rmsnorm_basic() {
         let device = get_test_device().await;
-        
+
         // Create input [2, 4] - 2 samples, 4 features each
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,  // Sample 1
-            2.0, 4.0, 6.0, 8.0,      // Sample 2
+            1.0f32, 2.0, 3.0, 4.0, // Sample 1
+            2.0, 4.0, 6.0, 8.0, // Sample 2
         ];
         let input = Tensor::from_data(&input_data, vec![2, 4], device.clone()).unwrap();
-        
+
         // Create gamma (scale) parameters - one per feature
         let gamma_data = vec![1.0f32, 1.0, 1.0, 1.0];
         let gamma = Tensor::from_data(&gamma_data, vec![4], device.clone()).unwrap();
-        
+
         // Apply RMSNorm
         let result = input.rmsnorm(gamma, 1e-6).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Output should be normalized
         assert_eq!(output.len(), 8);
         assert!(output.iter().all(|&x| x.is_finite()));
@@ -222,11 +234,12 @@ mod tests {
         let device = get_test_device().await;
 
         // Verify normalization behavior
-        let input = Tensor::from_data(&vec![2.0, 2.0, 2.0, 2.0], vec![1, 4], device.clone()).unwrap();
+        let input =
+            Tensor::from_data(&vec![2.0, 2.0, 2.0, 2.0], vec![1, 4], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone()).unwrap();
         let result = input.rmsnorm(gamma, 1e-6).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 4);
         assert!(output.iter().all(|&x| x.is_finite()));
     }

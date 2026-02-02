@@ -73,7 +73,13 @@ impl std::fmt::Debug for WasmRuntimeEngine {
             .field("config", &self.config)
             .field("engine", &"<wasmi::Engine>")
             .field("metrics", &"<MetricsCollector>")
-            .field("component_registry", &self.component_registry.as_ref().map(|_| "<ComponentRegistry>"))
+            .field(
+                "component_registry",
+                &self
+                    .component_registry
+                    .as_ref()
+                    .map(|_| "<ComponentRegistry>"),
+            )
             .field("initialized", &self.initialized)
             .finish()
     }
@@ -100,7 +106,9 @@ impl WasmRuntimeEngine {
         // EVOLVED: Initialize component registry if component model is enabled
         let component_registry = config.component_model.as_ref().map(|cm_config| {
             info!("✅ Component model enabled - initializing registry");
-            Arc::new(crate::component_model::ComponentRegistry::new(cm_config.clone()))
+            Arc::new(crate::component_model::ComponentRegistry::new(
+                cm_config.clone(),
+            ))
         });
 
         Ok(Self {

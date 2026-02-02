@@ -29,11 +29,11 @@ fn main() -> Result<()> {
     println!("╚══════════════════════════════════════════════════════════╝\n");
 
     println!("📊 Purpose: Validate Akida NPU's energy efficiency for encrypted compute\n");
-    
+
     // Check if Akida is available
     println!("⚡ Checking for Akida NPU...\n");
     let akida_available = check_akida_available();
-    
+
     if !akida_available {
         println!("⚠️  Akida NPU not detected!");
         println!("   Running CPU simulation to demonstrate expected results.\n");
@@ -59,7 +59,7 @@ fn main() -> Result<()> {
     // Run benchmarks
     println!("═══════════════════════════════════════════════════════════\n");
     println!("📊 Three-Way Comparison: CPU vs GPU vs NPU\n");
-    
+
     let cpu_result = bench_cpu(&client_key, 5_000)?;
     let gpu_result = bench_gpu_simulated(&client_key, 5_000)?;
     let npu_result = if akida_available {
@@ -67,7 +67,7 @@ fn main() -> Result<()> {
     } else {
         bench_npu_simulated(&client_key, 5_000)?
     };
-    
+
     print_three_way_comparison(&cpu_result, &gpu_result, &npu_result);
 
     // Energy efficiency analysis
@@ -83,10 +83,14 @@ fn main() -> Result<()> {
     println!("\n═══════════════════════════════════════════════════════════\n");
     println!("🏆 NPU Validation Complete!\n");
     println!("Key Findings:");
-    println!("  • NPU achieves {:.0}x better energy efficiency than GPU!", 
-             npu_result.ops_per_joule / gpu_result.ops_per_joule);
-    println!("  • NPU power consumption: {:.1}W (vs GPU: {:.0}W)", 
-             npu_result.power_w, gpu_result.power_w);
+    println!(
+        "  • NPU achieves {:.0}x better energy efficiency than GPU!",
+        npu_result.ops_per_joule / gpu_result.ops_per_joule
+    );
+    println!(
+        "  • NPU power consumption: {:.1}W (vs GPU: {:.0}W)",
+        npu_result.power_w, gpu_result.power_w
+    );
     println!("  • Perfect for edge deployment and 24/7 operation ✅");
     println!("\nNext Steps:");
     println!("  1. Full comparison: cargo run --example public_benchmark_comparison --release");
@@ -99,24 +103,24 @@ fn main() -> Result<()> {
 fn check_akida_available() -> bool {
     // Check for Akida device
     // In production: AkidaBoard::open(0).is_ok()
-    std::path::Path::new("/dev/akida0").exists() ||
-    std::path::Path::new("/sys/class/akida").exists()
+    std::path::Path::new("/dev/akida0").exists()
+        || std::path::Path::new("/sys/class/akida").exists()
 }
 
 fn bench_cpu(client_key: &tfhe::ClientKey, iterations: usize) -> Result<BenchResult> {
     let enc_a = FheUint8::encrypt(42u8, client_key);
     let enc_b = FheUint8::encrypt(128u8, client_key);
-    
+
     let start = Instant::now();
     for _ in 0..iterations {
         let _result = &enc_a + &enc_b;
     }
     let compute_time = start.elapsed().as_micros();
-    
+
     let power_w = 25.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
     let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
-    
+
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
         substrate: "CPU".to_string(),
@@ -132,19 +136,19 @@ fn bench_gpu_simulated(client_key: &tfhe::ClientKey, iterations: usize) -> Resul
     // Simulated GPU performance (4-5x speedup)
     let enc_a = FheUint8::encrypt(42u8, client_key);
     let enc_b = FheUint8::encrypt(128u8, client_key);
-    
+
     let start = Instant::now();
     for _ in 0..iterations {
         let _result = &enc_a + &enc_b;
     }
     let cpu_time = start.elapsed().as_micros();
-    
+
     // GPU is ~4.5x faster but uses more power
     let compute_time = cpu_time / 4.5 as u128;
     let power_w = 150.0f32;
     let compute_seconds = compute_time as f64 / 1_000_000.0;
     let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
-    
+
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
         substrate: "GPU".to_string(),
@@ -161,19 +165,19 @@ fn bench_npu_simulated(client_key: &tfhe::ClientKey, iterations: usize) -> Resul
     // NPU: 2.7x faster than CPU, but only 2W power!
     let enc_a = FheUint8::encrypt(42u8, client_key);
     let enc_b = FheUint8::encrypt(128u8, client_key);
-    
+
     let start = Instant::now();
     for _ in 0..iterations {
         let _result = &enc_a + &enc_b;
     }
     let cpu_time = start.elapsed().as_micros();
-    
+
     // NPU characteristics
     let compute_time = cpu_time / 2.7 as u128;
-    let power_w = 2.0f32;  // ⚡ Key advantage!
+    let power_w = 2.0f32; // ⚡ Key advantage!
     let compute_seconds = compute_time as f64 / 1_000_000.0;
     let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
-    
+
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
         substrate: "NPU (Simulated)".to_string(),
@@ -192,15 +196,15 @@ fn bench_npu_real(_client_key: &tfhe::ClientKey, iterations: usize) -> Result<Be
     // - Convert encrypted polynomials to spike trains
     // - Process via Akida's event-driven architecture
     // - Convert back to encrypted results
-    
+
     println!("   Using real Akida hardware...");
-    
+
     // Placeholder for real implementation
     let compute_time_us = (iterations as f64 / 3200.0 * 1_000_000.0) as u128;
     let power_w = 2.0f32;
     let compute_seconds = compute_time_us as f64 / 1_000_000.0;
     let ops_per_joule = iterations as f32 / ((power_w as f64 * compute_seconds) as f32);
-    
+
     Ok(BenchResult {
         operation: "Encrypted Add".to_string(),
         substrate: "NPU (Akida)".to_string(),
@@ -216,22 +220,34 @@ fn print_three_way_comparison(cpu: &BenchResult, gpu: &BenchResult, npu: &BenchR
     println!("┌─────────────┬────────────┬───────────┬────────────┬──────────────┐");
     println!("│ Substrate   │ Throughput │  Latency  │   Power    │  Ops/Joule   │");
     println!("├─────────────┼────────────┼───────────┼────────────┼──────────────┤");
-    
-    print!("│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
-           cpu.substrate, cpu.throughput, 
-           cpu.compute_time_us as f64 / (cpu.iterations as f64 * 1000.0),
-           cpu.power_w, cpu.ops_per_joule);
-    
-    print!("│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
-           gpu.substrate, gpu.throughput,
-           gpu.compute_time_us as f64 / (gpu.iterations as f64 * 1000.0),
-           gpu.power_w, gpu.ops_per_joule);
-    
-    print!("│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W ⚡│ {:>10.0} ⭐ │\n",
-           npu.substrate, npu.throughput,
-           npu.compute_time_us as f64 / (npu.iterations as f64 * 1000.0),
-           npu.power_w, npu.ops_per_joule);
-    
+
+    print!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
+        cpu.substrate,
+        cpu.throughput,
+        cpu.compute_time_us as f64 / (cpu.iterations as f64 * 1000.0),
+        cpu.power_w,
+        cpu.ops_per_joule
+    );
+
+    print!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W │ {:>10.0}   │\n",
+        gpu.substrate,
+        gpu.throughput,
+        gpu.compute_time_us as f64 / (gpu.iterations as f64 * 1000.0),
+        gpu.power_w,
+        gpu.ops_per_joule
+    );
+
+    print!(
+        "│ {:11} │ {:>8.0}/s │ {:>7.2}ms │ {:>8.0}W ⚡│ {:>10.0} ⭐ │\n",
+        npu.substrate,
+        npu.throughput,
+        npu.compute_time_us as f64 / (npu.iterations as f64 * 1000.0),
+        npu.power_w,
+        npu.ops_per_joule
+    );
+
     println!("└─────────────┴────────────┴───────────┴────────────┴──────────────┘");
 }
 
@@ -239,28 +255,48 @@ fn print_energy_comparison(cpu: &BenchResult, gpu: &BenchResult, npu: &BenchResu
     println!("Power Consumption:");
     println!("  CPU: {:.0}W", cpu.power_w);
     println!("  GPU: {:.0}W", gpu.power_w);
-    println!("  NPU: {:.1}W ⚡ ({:.1}x less than CPU, {:.0}x less than GPU!)",
-             npu.power_w, cpu.power_w / npu.power_w, gpu.power_w / npu.power_w);
-    
+    println!(
+        "  NPU: {:.1}W ⚡ ({:.1}x less than CPU, {:.0}x less than GPU!)",
+        npu.power_w,
+        cpu.power_w / npu.power_w,
+        gpu.power_w / npu.power_w
+    );
+
     println!("\nEnergy Efficiency (ops/joule):");
     println!("  CPU: {:.0} ops/J", cpu.ops_per_joule);
     println!("  GPU: {:.0} ops/J", gpu.ops_per_joule);
-    println!("  NPU: {:.0} ops/J ⭐ ({:.0}x better than CPU, {:.0}x better than GPU!)",
-             npu.ops_per_joule, 
-             npu.ops_per_joule / cpu.ops_per_joule,
-             npu.ops_per_joule / gpu.ops_per_joule);
-    
+    println!(
+        "  NPU: {:.0} ops/J ⭐ ({:.0}x better than CPU, {:.0}x better than GPU!)",
+        npu.ops_per_joule,
+        npu.ops_per_joule / cpu.ops_per_joule,
+        npu.ops_per_joule / gpu.ops_per_joule
+    );
+
     println!("\nFor 24/7 Continuous Operation:");
     let cpu_daily = cpu.power_w * 24.0;
     let gpu_daily = gpu.power_w * 24.0;
     let npu_daily = npu.power_w * 24.0;
-    
-    println!("  CPU: {:.0} Wh/day ({:.1} kWh/year)", cpu_daily, cpu_daily * 365.0 / 1000.0);
-    println!("  GPU: {:.0} Wh/day ({:.1} kWh/year)", gpu_daily, gpu_daily * 365.0 / 1000.0);
-    println!("  NPU: {:.0} Wh/day ({:.1} kWh/year) ⚡",npu_daily, npu_daily * 365.0 / 1000.0);
-    
-    println!("\n💰 Annual Energy Savings (NPU vs GPU): {:.0} kWh", 
-             (gpu_daily - npu_daily) * 365.0 / 1000.0);
+
+    println!(
+        "  CPU: {:.0} Wh/day ({:.1} kWh/year)",
+        cpu_daily,
+        cpu_daily * 365.0 / 1000.0
+    );
+    println!(
+        "  GPU: {:.0} Wh/day ({:.1} kWh/year)",
+        gpu_daily,
+        gpu_daily * 365.0 / 1000.0
+    );
+    println!(
+        "  NPU: {:.0} Wh/day ({:.1} kWh/year) ⚡",
+        npu_daily,
+        npu_daily * 365.0 / 1000.0
+    );
+
+    println!(
+        "\n💰 Annual Energy Savings (NPU vs GPU): {:.0} kWh",
+        (gpu_daily - npu_daily) * 365.0 / 1000.0
+    );
 }
 
 fn explain_sparse_advantage() {

@@ -295,15 +295,29 @@ pub async fn reservoir_update(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (n * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (n * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -327,8 +341,18 @@ mod tests {
         let input = vec![1.0, 0.5, -0.5];
         let w_in = vec![0.1; n * m];
         let w_res = vec![0.05; n * n];
-        
-        let result = reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 0.5).await.unwrap();
+
+        let result = reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            0.5,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), n);
         assert!(result.iter().all(|&x| x.is_finite()));
         // With zero initial state, result should be non-zero after update
@@ -343,10 +367,30 @@ mod tests {
         let input = vec![1.0];
         let w_in = vec![0.1; 5];
         let w_res = vec![0.05; 25];
-        
-        let result1 = reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 0.1).await.unwrap();
-        let result2 = reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 0.9).await.unwrap();
-        
+
+        let result1 = reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            0.1,
+        )
+        .await
+        .unwrap();
+        let result2 = reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            0.9,
+        )
+        .await
+        .unwrap();
+
         // Higher leak rate should produce different (more responsive) states
         assert_ne!(result1, result2);
     }
@@ -358,14 +402,44 @@ mod tests {
         let input = vec![1.0];
         let w_in = vec![0.1; 5];
         let w_res = vec![0.05; 25];
-        
+
         // Invalid leak rates
-        assert!(reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 0.0).await.is_err());
-        assert!(reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 1.5).await.is_err());
-        
+        assert!(reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            0.0
+        )
+        .await
+        .is_err());
+        assert!(reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            1.5
+        )
+        .await
+        .is_err());
+
         // Invalid dimensions
         let bad_w_in = vec![0.1; 3];
-        assert!(reservoir_update(&device.device, &device.queue, &state, &input, &bad_w_in, &w_res, 0.5).await.is_err());
+        assert!(reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &bad_w_in,
+            &w_res,
+            0.5
+        )
+        .await
+        .is_err());
     }
 
     #[tokio::test]
@@ -377,8 +451,18 @@ mod tests {
         let input = vec![0.5; m];
         let w_in = vec![0.01; n * m];
         let w_res = vec![0.005; n * n];
-        
-        let result = reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 0.3).await.unwrap();
+
+        let result = reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            0.3,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), n);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -390,9 +474,19 @@ mod tests {
         let input = vec![1.0];
         let w_in = vec![0.5, -0.3, 0.2];
         let w_res = vec![0.1, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.1];
-        
-        let result = reservoir_update(&device.device, &device.queue, &state, &input, &w_in, &w_res, 1.0).await.unwrap();
-        
+
+        let result = reservoir_update(
+            &device.device,
+            &device.queue,
+            &state,
+            &input,
+            &w_in,
+            &w_res,
+            1.0,
+        )
+        .await
+        .unwrap();
+
         // With leak_rate=1.0, new state = tanh(W_in·u + W_res·x)
         // Verify tanh bounds [-1, 1]
         assert!(result.iter().all(|&x| x >= -1.0 && x <= 1.0));

@@ -1736,10 +1736,12 @@ impl WgpuExecutor {
         });
 
         // Create shader and pipeline
-        let pipeline = self.create_simple_pipeline(shader_source, "LayerNorm Fused", &bind_group_layout);
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "LayerNorm Fused", &bind_group_layout);
 
         // **SINGLE KERNEL LAUNCH** (not 3!)
-        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LayerNorm Fused");
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LayerNorm Fused");
 
         // Copy result to staging
         encoder.copy_buffer_to_buffer(
@@ -1800,9 +1802,9 @@ impl WgpuExecutor {
         // ═══════════════════════════════════════════════════════════
 
         let meanvar_shader = include_str!("../shaders/layernorm_meanvar.wgsl");
-        
+
         let input_buffer = self.create_input_buffer(input, "LayerNorm 2D Input");
-        
+
         // Stats buffer: [mean, variance]
         let stats_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("LayerNorm 2D Stats"),
@@ -1823,13 +1825,13 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
         };
 
-        let meanvar_params_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LayerNorm 2D MeanVar Params"),
-                contents: bytemuck::bytes_of(&meanvar_params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let meanvar_params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("LayerNorm 2D MeanVar Params"),
+                    contents: bytemuck::bytes_of(&meanvar_params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         let meanvar_bind_group_layout =
             self.device
@@ -1888,11 +1890,20 @@ impl WgpuExecutor {
             ],
         });
 
-        let meanvar_pipeline = self.create_simple_pipeline(meanvar_shader, "LayerNorm 2D MeanVar", &meanvar_bind_group_layout);
+        let meanvar_pipeline = self.create_simple_pipeline(
+            meanvar_shader,
+            "LayerNorm 2D MeanVar",
+            &meanvar_bind_group_layout,
+        );
 
         // Execute dispatch 1: Compute mean + variance
-        let encoder = self.execute_compute_pass(&meanvar_pipeline, &meanvar_bind_group, stats_workgroups, "LayerNorm 2D MeanVar Pass");
-        
+        let encoder = self.execute_compute_pass(
+            &meanvar_pipeline,
+            &meanvar_bind_group,
+            stats_workgroups,
+            "LayerNorm 2D MeanVar Pass",
+        );
+
         self.queue.submit(Some(encoder.finish()));
 
         // ═══════════════════════════════════════════════════════════
@@ -1903,11 +1914,17 @@ impl WgpuExecutor {
         let normalize_workgroups = self.calculate_workgroups(size, 256).max(1).min(65535);
 
         let gamma = config.gamma.unwrap_or_else(|| vec![1.0; size]);
-        anyhow::ensure!(gamma.len() == size, "LayerNorm 2D: gamma size must match input size");
+        anyhow::ensure!(
+            gamma.len() == size,
+            "LayerNorm 2D: gamma size must match input size"
+        );
         let gamma_buffer = self.create_input_buffer(&gamma, "LayerNorm 2D Gamma");
 
         let beta = config.beta.unwrap_or_else(|| vec![0.0; size]);
-        anyhow::ensure!(beta.len() == size, "LayerNorm 2D: beta size must match input size");
+        anyhow::ensure!(
+            beta.len() == size,
+            "LayerNorm 2D: beta size must match input size"
+        );
         let beta_buffer = self.create_input_buffer(&beta, "LayerNorm 2D Beta");
 
         let output_buffer = self.create_output_buffer(size, "LayerNorm 2D Output");
@@ -1925,13 +1942,13 @@ impl WgpuExecutor {
             epsilon: config.epsilon,
         };
 
-        let normalize_params_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("LayerNorm 2D Normalize Params"),
-                contents: bytemuck::bytes_of(&normalize_params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let normalize_params_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("LayerNorm 2D Normalize Params"),
+                    contents: bytemuck::bytes_of(&normalize_params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         let normalize_bind_group_layout =
             self.device
@@ -2032,10 +2049,19 @@ impl WgpuExecutor {
             ],
         });
 
-        let normalize_pipeline = self.create_simple_pipeline(normalize_shader, "LayerNorm 2D Normalize", &normalize_bind_group_layout);
+        let normalize_pipeline = self.create_simple_pipeline(
+            normalize_shader,
+            "LayerNorm 2D Normalize",
+            &normalize_bind_group_layout,
+        );
 
         // Execute dispatch 2: Normalize
-        let mut encoder = self.execute_compute_pass(&normalize_pipeline, &normalize_bind_group, normalize_workgroups, "LayerNorm 2D Normalize Pass");
+        let mut encoder = self.execute_compute_pass(
+            &normalize_pipeline,
+            &normalize_bind_group,
+            normalize_workgroups,
+            "LayerNorm 2D Normalize Pass",
+        );
 
         encoder.copy_buffer_to_buffer(
             &output_buffer,
@@ -2231,10 +2257,12 @@ impl WgpuExecutor {
         });
 
         // Create shader and pipeline
-        let pipeline = self.create_simple_pipeline(shader_source, "LayerNorm Fused V2", &bind_group_layout);
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "LayerNorm Fused V2", &bind_group_layout);
 
         // **SINGLE KERNEL LAUNCH** with correct global statistics!
-        let mut encoder = self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LayerNorm Fused V2");
+        let mut encoder =
+            self.execute_compute_pass(&pipeline, &bind_group, workgroups, "LayerNorm Fused V2");
 
         // Copy result to staging
         encoder.copy_buffer_to_buffer(

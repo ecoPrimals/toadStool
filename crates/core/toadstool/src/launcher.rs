@@ -189,14 +189,18 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
     }
 
     // Spawn process
-    info!("   Spawning process: {:?} {:?}", config.binary_path, config.args);
-    let mut child = cmd
-        .spawn()
-        .context("Failed to spawn toadstool process")?;
+    info!(
+        "   Spawning process: {:?} {:?}",
+        config.binary_path, config.args
+    );
+    let mut child = cmd.spawn().context("Failed to spawn toadstool process")?;
 
     // Wait for startup (with timeout)
-    info!("   Waiting for startup (timeout: {:?})...", config.startup_timeout);
-    
+    info!(
+        "   Waiting for startup (timeout: {:?})...",
+        config.startup_timeout
+    );
+
     // Give the server time to start
     tokio::time::sleep(Duration::from_secs(2)).await;
 
@@ -212,17 +216,14 @@ pub async fn launch_toadstool(config: LaunchConfig) -> Result<()> {
             info!("   ✅ Process started successfully");
         }
         Err(e) => {
-            return Err(anyhow::anyhow!(
-                "Failed to check process status: {}",
-                e
-            ));
+            return Err(anyhow::anyhow!("Failed to check process status: {}", e));
         }
     }
 
     // Try to discover endpoint (with retries)
     let start = std::time::Instant::now();
     let mut last_error = None;
-    
+
     while start.elapsed() < config.startup_timeout {
         match discover_toadstool_endpoint().await {
             Ok(endpoint) => {

@@ -3,10 +3,10 @@
 //! Discovers Akida devices at runtime by scanning `/dev/akida*` and PCIe sysfs.
 //! No hardcoded device lists—pure runtime discovery following primal self-knowledge pattern.
 
-use std::path::{Path, PathBuf};
+use crate::capabilities::Capabilities;
 use crate::device::AkidaDevice;
 use crate::error::{AkidaError, Result};
-use crate::capabilities::Capabilities;
+use std::path::{Path, PathBuf};
 
 /// Device manager for runtime discovery and access
 #[derive(Debug)]
@@ -19,13 +19,13 @@ pub struct DeviceManager {
 pub struct DeviceInfo {
     /// Device index (0, 1, 2, ...)
     pub index: usize,
-    
+
     /// Device file path (/dev/akida0, etc.)
     pub path: PathBuf,
-    
+
     /// PCIe bus address (0000:a1:00.0, etc.)
     pub pcie_address: String,
-    
+
     /// Device capabilities (discovered at runtime)
     pub capabilities: Capabilities,
 }
@@ -41,22 +41,22 @@ impl DeviceManager {
     /// Returns `AkidaError::NoDevicesFound` if no devices are detected.
     pub fn discover() -> Result<Self> {
         tracing::info!("Discovering Akida devices...");
-        
+
         let mut devices = Vec::new();
-        
+
         // Scan for /dev/akida* devices (up to 16)
         for index in 0..16 {
             let path = PathBuf::from(format!("/dev/akida{index}"));
-            
+
             if !path.exists() {
                 continue;
             }
-            
+
             tracing::debug!("Found device file: {}", path.display());
-            
+
             // Find corresponding PCIe address
             let pcie_address = Self::find_pcie_address(index)?;
-            
+
             // Query capabilities
             match Capabilities::query(index, &pcie_address) {
                 Ok(capabilities) => {
@@ -70,7 +70,7 @@ impl DeviceManager {
                         capabilities.npu_count,
                         capabilities.memory_mb
                     );
-                    
+
                     devices.push(DeviceInfo {
                         index,
                         path,
@@ -83,14 +83,14 @@ impl DeviceManager {
                 }
             }
         }
-        
+
         if devices.is_empty() {
             tracing::error!("No Akida devices found");
             return Err(AkidaError::NoDevicesFound);
         }
-        
+
         tracing::info!("Discovered {} Akida device(s)", devices.len());
-        
+
         Ok(Self { devices })
     }
 
@@ -112,10 +112,13 @@ impl DeviceManager {
     ///
     /// Returns `Error::InvalidIndex` if the index is out of bounds.
     pub fn device(&self, index: usize) -> Result<&DeviceInfo> {
-        self.devices.iter().find(|d| d.index == index).ok_or(AkidaError::InvalidIndex {
-            index,
-            count: self.devices.len(),
-        })
+        self.devices
+            .iter()
+            .find(|d| d.index == index)
+            .ok_or(AkidaError::InvalidIndex {
+                index,
+                count: self.devices.len(),
+            })
     }
 
     /// Open device by index
@@ -144,10 +147,7 @@ impl DeviceManager {
     ///
     /// Returns an error if any device cannot be opened.
     pub fn open_all(&self) -> Result<Vec<AkidaDevice>> {
-        self.devices
-            .iter()
-            .map(AkidaDevice::open)
-            .collect()
+        self.devices.iter().map(AkidaDevice::open).collect()
     }
 
     /// Find PCIe address for a device index
@@ -156,23 +156,24 @@ impl DeviceManager {
     fn find_pcie_address(device_index: usize) -> Result<String> {
         const BRAINCHIP_VENDOR_ID: u16 = 0x1E7C;
         const AKIDA_DEVICE_IDS: &[u16] = &[0xBCA1, 0xBCA2]; // AKD1000, AKD1500
-        
+
         let pci_devices_path = Path::new("/sys/bus/pci/devices");
-        
-        let entries = std::fs::read_dir(pci_devices_path)
-            .map_err(|e| AkidaError::capability_query_failed(format!("Cannot read PCIe devices: {e}")))?;
-        
+
+        let entries = std::fs::read_dir(pci_devices_path).map_err(|e| {
+            AkidaError::capability_query_failed(format!("Cannot read PCIe devices: {e}"))
+        })?;
+
         let mut matches = Vec::new();
-        
+
         for entry in entries.flatten() {
             let path = entry.path();
-            
+
             // Read vendor ID
             let vendor_id = Self::read_hex_sysfs(&path.join("vendor")).ok();
-            
+
             // Read device ID
             let device_id = Self::read_hex_sysfs(&path.join("device")).ok();
-            
+
             if let (Some(vendor), Some(device)) = (vendor_id, device_id) {
                 if vendor == BRAINCHIP_VENDOR_ID && AKIDA_DEVICE_IDS.contains(&device) {
                     let pcie_addr = entry.file_name().to_string_lossy().to_string();
@@ -180,24 +181,25 @@ impl DeviceManager {
                 }
             }
         }
-        
+
         // Sort to ensure consistent ordering
         matches.sort();
-        
-        matches.get(device_index)
-            .cloned()
-            .ok_or_else(|| AkidaError::capability_query_failed(
-                format!("No PCIe address found for device {device_index}")
+
+        matches.get(device_index).cloned().ok_or_else(|| {
+            AkidaError::capability_query_failed(format!(
+                "No PCIe address found for device {device_index}"
             ))
+        })
     }
 
     /// Read a hexadecimal value from sysfs
     fn read_hex_sysfs(path: &Path) -> Result<u16> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| AkidaError::capability_query_failed(format!("Cannot read {}: {e}", path.display())))?;
-        
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            AkidaError::capability_query_failed(format!("Cannot read {}: {e}", path.display()))
+        })?;
+
         let trimmed = content.trim().trim_start_matches("0x");
-        
+
         u16::from_str_radix(trimmed, 16)
             .map_err(|e| AkidaError::capability_query_failed(format!("Invalid hex value: {e}")))
     }

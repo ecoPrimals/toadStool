@@ -11,21 +11,21 @@ pub async fn stack(
     if tensors.is_empty() {
         return Err("Cannot stack empty tensor list".into());
     }
-    
+
     let elem_size = tensors[0].len();
     for t in tensors {
         if t.len() != elem_size {
             return Err("All tensors must have same size".into());
         }
     }
-    
+
     let mut output = Vec::with_capacity(tensors.len() * elem_size);
-    
+
     // Simple implementation: concat along new dimension
     for tensor in tensors {
         output.extend_from_slice(tensor);
     }
-    
+
     Ok(output)
 }
 
@@ -34,11 +34,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_stack_basic() {
         let dev = get_test_device().await;
@@ -78,7 +78,9 @@ mod tests {
         let t1 = vec![0.0; 100];
         let t2 = vec![1.0; 100];
         let t3 = vec![2.0; 100];
-        let output = stack(&dev.device, &dev.queue, &[t1, t2, t3], 0).await.unwrap();
+        let output = stack(&dev.device, &dev.queue, &[t1, t2, t3], 0)
+            .await
+            .unwrap();
         assert_eq!(output.len(), 300);
     }
 
@@ -100,8 +102,10 @@ mod tests {
         let t1 = vec![1.0, 2.0];
         let t2 = vec![3.0, 4.0];
         let t3 = vec![5.0, 6.0];
-        let output = stack(&dev.device, &dev.queue, &[t1, t2, t3], 0).await.unwrap();
-        
+        let output = stack(&dev.device, &dev.queue, &[t1, t2, t3], 0)
+            .await
+            .unwrap();
+
         assert_eq!(output.len(), 6);
         assert!(output.iter().all(|&x| x.is_finite()));
         // Verify stacking order

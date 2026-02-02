@@ -23,13 +23,13 @@ pub async fn lamb_step(
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let size = params.len();
     state.step += 1;
-    
+
     // Update moments
     for i in 0..size {
         state.m[i] = beta1 * state.m[i] + (1.0 - beta1) * grads[i];
         state.v[i] = beta2 * state.v[i] + (1.0 - beta2) * grads[i] * grads[i];
     }
-    
+
     // Compute bias-corrected moments and update direction
     let mut update = vec![0.0f32; size];
     for i in 0..size {
@@ -37,24 +37,24 @@ pub async fn lamb_step(
         let v_hat = state.v[i] / (1.0 - beta2.powi(state.step as i32));
         update[i] = m_hat / (v_hat.sqrt() + epsilon) + weight_decay * params[i];
     }
-    
+
     // Compute norms for layer-wise adaptation
     let param_norm: f32 = params.iter().map(|&x| x * x).sum::<f32>().sqrt();
     let update_norm: f32 = update.iter().map(|&x| x * x).sum::<f32>().sqrt();
-    
+
     // Compute trust ratio
     let trust_ratio = if param_norm > 0.0 && update_norm > 0.0 {
         param_norm / update_norm
     } else {
         1.0
     };
-    
+
     // Apply update with trust ratio
     let mut new_params = vec![0.0f32; size];
     for i in 0..size {
         new_params[i] = params[i] - lr * trust_ratio * update[i];
     }
-    
+
     Ok(new_params)
 }
 
@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_lamb() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());
@@ -74,7 +74,20 @@ mod tests {
             v: vec![0.0; 100],
             step: 0,
         };
-        let new_params = lamb_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-6, 0.01).await.unwrap();
+        let new_params = lamb_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.001,
+            0.9,
+            0.999,
+            1e-6,
+            0.01,
+        )
+        .await
+        .unwrap();
         assert_eq!(new_params.len(), 100);
     }
 }

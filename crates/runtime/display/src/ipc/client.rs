@@ -138,7 +138,8 @@ impl DisplayClient {
         }
 
         Err(DisplayError::IpcError(
-            "Could not discover display server endpoint (tried Unix sockets and TCP discovery)".to_string()
+            "Could not discover display server endpoint (tried Unix sockets and TCP discovery)"
+                .to_string(),
         ))
     }
 
@@ -191,7 +192,7 @@ impl DisplayClient {
         }
 
         Err(DisplayError::IpcError(
-            "No TCP discovery file found".to_string()
+            "No TCP discovery file found".to_string(),
         ))
     }
 
@@ -231,9 +232,9 @@ impl DisplayClient {
             IpcEndpoint::UnixSocket(path) => {
                 tracing::info!("🔌 Connecting via Unix socket...");
 
-                let stream = UnixStream::connect(path)
-                    .await
-                    .map_err(|e| DisplayError::IpcError(format!("Unix connection failed: {}", e)))?;
+                let stream = UnixStream::connect(path).await.map_err(|e| {
+                    DisplayError::IpcError(format!("Unix connection failed: {}", e))
+                })?;
 
                 tracing::info!("✅ Connected to display server (Unix socket)");
 

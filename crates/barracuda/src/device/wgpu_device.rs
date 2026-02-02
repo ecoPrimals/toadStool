@@ -139,13 +139,14 @@ impl WgpuDevice {
     /// ```
     pub fn create_storage_buffer(&self, label: &str, data: &[u8]) -> wgpu::Buffer {
         use wgpu::util::DeviceExt;
-        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: data,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC
-                | wgpu::BufferUsages::COPY_DST,
-        })
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: data,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            })
     }
 
     /// Create uniform buffer (convenience helper)
@@ -170,17 +171,14 @@ impl WgpuDevice {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn create_uniform_buffer<T: bytemuck::Pod>(
-        &self,
-        label: &str,
-        data: &T,
-    ) -> wgpu::Buffer {
+    pub fn create_uniform_buffer<T: bytemuck::Pod>(&self, label: &str, data: &T) -> wgpu::Buffer {
         use wgpu::util::DeviceExt;
-        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: bytemuck::bytes_of(data),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        })
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::bytes_of(data),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            })
     }
 
     /// Allocate buffer for f32 data
@@ -314,7 +312,7 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         println!("barraCUDA device: {}", device.name());
         println!("Device type: {:?}", device.device_type());
-        
+
         if device.is_cpu() {
             println!("✓ Using CPU fallback (software rasterizer)");
         } else {

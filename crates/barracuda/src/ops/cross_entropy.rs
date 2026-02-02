@@ -1,8 +1,8 @@
 //! Cross Entropy Loss
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct CrossEntropy {
     predictions: Tensor,
@@ -11,7 +11,10 @@ pub struct CrossEntropy {
 
 impl CrossEntropy {
     pub fn new(predictions: Tensor, targets: Tensor) -> Self {
-        Self { predictions, targets }
+        Self {
+            predictions,
+            targets,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -25,18 +28,22 @@ impl CrossEntropy {
         let output_buffer = device.create_buffer_f32(1)?;
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Cross Entropy Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Cross Entropy Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Cross Entropy Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Cross Entropy Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -60,9 +67,11 @@ impl CrossEntropy {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Cross Entropy Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Cross Entropy Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Cross Entropy Pass"),
@@ -74,11 +83,7 @@ impl CrossEntropy {
         }
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![1],
-            device.clone(),
-        ))
+        Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))
     }
 }
 
@@ -98,7 +103,8 @@ mod tests {
 
     fn cross_entropy_cpu(predictions: &[f32], targets: &[f32]) -> f32 {
         let n = predictions.len() as f32;
-        let sum: f32 = predictions.iter()
+        let sum: f32 = predictions
+            .iter()
             .zip(targets.iter())
             .map(|(p, t)| {
                 if *t > 0.0 {
@@ -114,19 +120,19 @@ mod tests {
     #[tokio::test]
     async fn test_cross_entropy_basic() {
         let device = get_test_device().await;
-        
+
         // Predictions (probabilities): [0.7, 0.2, 0.1]
         let pred_data = vec![0.7f32, 0.2, 0.1];
         let predictions = Tensor::from_data(&pred_data, vec![3], device.clone()).unwrap();
-        
+
         // Targets (one-hot): [1, 0, 0]
         let target_data = vec![1.0f32, 0.0, 0.0];
         let targets = Tensor::from_data(&target_data, vec![3], device.clone()).unwrap();
-        
+
         // Cross entropy = -log(0.7) ≈ 0.357
         let result = predictions.cross_entropy(targets).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 1);
         assert!(output[0] > 0.0); // Should be positive
         let expected = cross_entropy_cpu(&pred_data, &target_data);
@@ -191,14 +197,14 @@ mod tests {
         pred_data[0] = 0.5;
         let mut target_data = vec![0.0f32; 100];
         target_data[0] = 1.0;
-        
+
         let predictions = Tensor::from_data(&pred_data, vec![100], device.clone()).unwrap();
         let targets = Tensor::from_data(&target_data, vec![100], device).unwrap();
-        
+
         let result = predictions.cross_entropy(targets).unwrap();
         let output = result.to_vec().unwrap();
         let expected = cross_entropy_cpu(&pred_data, &target_data);
-        
+
         assert!((output[0] - expected).abs() < 0.1);
     }
 
@@ -209,16 +215,22 @@ mod tests {
         // Test FP32 precision
         let pred_data = vec![0.123, 0.234, 0.345, 0.298];
         let target_data = vec![0.0, 1.0, 0.0, 0.0];
-        
+
         let predictions = Tensor::from_data(&pred_data, vec![4], device.clone()).unwrap();
         let targets = Tensor::from_data(&target_data, vec![4], device).unwrap();
-        
+
         let result = predictions.cross_entropy(targets).unwrap();
         let output = result.to_vec().unwrap();
         let expected = cross_entropy_cpu(&pred_data, &target_data);
-        
+
         // Verify FP32 precision
         let error = (output[0] - expected).abs();
-        assert!(error < 0.01, "GPU CE: {}, CPU CE: {}, Error: {}", output[0], expected, error);
+        assert!(
+            error < 0.01,
+            "GPU CE: {}, CPU CE: {}, Error: {}",
+            output[0],
+            expected,
+            error
+        );
     }
 }

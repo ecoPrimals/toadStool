@@ -44,7 +44,7 @@ use std::sync::Arc;
 #[allow(dead_code)]
 pub struct Device {
     path: PathBuf,
-    fd: Arc<OwnedFd>,  // ✅ Safe wrapper with automatic cleanup!
+    fd: Arc<OwnedFd>, // ✅ Safe wrapper with automatic cleanup!
 }
 
 // Implement AsFd for drm crate integration
@@ -99,9 +99,7 @@ impl Device {
         )
         .map_err(|e| {
             tracing::error!("Failed to open {}: {}", path.display(), e);
-            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(
-                e.raw_os_error() as i32,
-            ))
+            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(e.raw_os_error() as i32))
         })?;
 
         let fd = Arc::new(fd);
@@ -140,7 +138,10 @@ impl Device {
             .map_err(|e| DisplayError::IoctlFailed(format!("Failed to get driver: {}", e)))?;
 
         let driver_name = driver.name().to_string_lossy().into_owned();
-        let driver_version = format!("{}.{}.{}", driver.version.0, driver.version.1, driver.version.2);
+        let driver_version = format!(
+            "{}.{}.{}",
+            driver.version.0, driver.version.1, driver.version.2
+        );
 
         tracing::info!("✅ DRM device: {} {}", driver_name, driver_version);
 

@@ -65,7 +65,10 @@ pub mod types;
 
 // Re-exports
 pub use client::{DisplayClient, IpcEndpoint};
-pub use health::{check_display_health, check_display_health_with_timeout, monitor_display_health, HealthCheckResult, HealthStatus};
+pub use health::{
+    check_display_health, check_display_health_with_timeout, monitor_display_health,
+    HealthCheckResult, HealthStatus,
+};
 pub use server::{DisplayServer, IpcTransport};
 pub use types::{
     DisplayCapabilitiesInfo, DisplayMethod, DisplayResult, JsonRpcError, JsonRpcRequest,

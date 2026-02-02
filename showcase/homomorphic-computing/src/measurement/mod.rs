@@ -32,8 +32,8 @@
 //! // "GPU: 147.3W" (actual measurement via nvidia-smi)
 //! ```
 
-pub mod power;
 pub mod performance;
+pub mod power;
 
+pub use performance::{PerformanceMetrics, PerformanceProfiler};
 pub use power::{CpuPowerMonitor, GpuPowerMonitor, NpuPowerMonitor, PowerMeasurement};
-pub use performance::{PerformanceProfiler, PerformanceMetrics};

@@ -37,7 +37,7 @@
 //!     .build()?;
 //! ```
 
-pub mod builder;  // ✅ NEW: Unified configuration builders
+pub mod builder; // ✅ NEW: Unified configuration builders
 pub mod config_utils;
 pub mod constants;
 pub mod defaults;

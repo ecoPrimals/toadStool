@@ -15,11 +15,11 @@
 //! - Runtime selection (no hardcoding)
 //! - Validated performance (benchmark-driven)
 
+pub mod gelu;
+pub mod layer_norm;
 pub mod matmul;
 pub mod relu;
-pub mod layer_norm;
-pub mod softmax;
-pub mod gelu;       // NEW!
+pub mod softmax; // NEW!
 
 // Future operations (Phase 5c+)
 // pub mod attention;

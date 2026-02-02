@@ -9,9 +9,9 @@
 //! - Zero unsafe code
 //! - Measured performance (not simulated)
 
-pub mod ml_backend;
 pub mod event_codec;
+pub mod ml_backend;
 pub mod ops;
 
-pub use ml_backend::NpuMlBackend;
 pub use event_codec::EventCodec;
+pub use ml_backend::NpuMlBackend;

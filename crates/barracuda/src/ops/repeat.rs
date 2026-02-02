@@ -1,8 +1,8 @@
 //! Repeat operation - Repeat tensor along axis
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -41,25 +41,31 @@ impl Repeat {
             input_size: input_size as u32,
             _padding: [0; 2],
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Repeat Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Repeat Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Repeat Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Repeat Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Repeat Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Repeat Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -83,9 +89,11 @@ impl Repeat {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Repeat Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Repeat Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Repeat Pass"),
@@ -132,15 +140,15 @@ mod tests {
     #[tokio::test]
     async fn test_repeat_basic() {
         let device = get_test_device().await;
-        
+
         // Create tensor [1, 2, 3]
         let input_data = vec![1.0f32, 2.0, 3.0];
         let input = Tensor::from_data(&input_data, vec![3], device.clone()).unwrap();
-        
+
         // Repeat 3 times
         let result = input.repeat(3).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Expected: [1, 2, 3, 1, 2, 3, 1, 2, 3]
         assert_eq!(output.len(), 9);
         assert_eq!(output[0], 1.0);
@@ -204,7 +212,7 @@ mod tests {
         let input = Tensor::from_data(&vec![10.0, 20.0], vec![2], device).unwrap();
         let result = input.repeat(3).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 6);
         assert!(output.iter().all(|&x| x.is_finite()));
     }

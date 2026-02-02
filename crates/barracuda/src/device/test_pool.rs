@@ -82,9 +82,7 @@ mod tests {
     #[tokio::test]
     async fn test_device_pool_concurrent() {
         // Multiple concurrent accesses should all get same device
-        let handles: Vec<_> = (0..10)
-            .map(|_| tokio::spawn(get_test_device()))
-            .collect();
+        let handles: Vec<_> = (0..10).map(|_| tokio::spawn(get_test_device())).collect();
 
         let devices: Vec<_> = futures::future::join_all(handles)
             .await

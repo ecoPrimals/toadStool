@@ -74,7 +74,7 @@ impl ComponentModelSupport for WasmRuntimeEngine {
             composition_enabled: false,
             wit_support: false,
         };
-        
+
         self.config()
             .component_model
             .as_ref()

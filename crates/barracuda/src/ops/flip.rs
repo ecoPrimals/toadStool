@@ -1,8 +1,8 @@
 //! Flip operation - Reverse order of elements
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct Flip {
     input: Tensor,
@@ -25,18 +25,22 @@ impl Flip {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Flip Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Flip Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Flip Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Flip Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -56,9 +60,11 @@ impl Flip {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Flip Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Flip Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Flip Pass"),
@@ -97,15 +103,15 @@ mod tests {
     #[tokio::test]
     async fn test_flip_basic() {
         let device = get_test_device().await;
-        
+
         // Create tensor [1, 2, 3, 4, 5]
         let input_data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0];
         let input = Tensor::from_data(&input_data, vec![5], device.clone()).unwrap();
-        
+
         // Flip
         let result = input.flip().unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Expected: [5, 4, 3, 2, 1]
         assert_eq!(output.len(), 5);
         assert_eq!(output[0], 5.0);
@@ -150,7 +156,8 @@ mod tests {
         assert!(output[2] < 0.0); // Should be negative
 
         // Mixed positive/negative
-        let input = Tensor::from_data(&vec![1.0, -2.0, 3.0, -4.0], vec![4], device.clone()).unwrap();
+        let input =
+            Tensor::from_data(&vec![1.0, -2.0, 3.0, -4.0], vec![4], device.clone()).unwrap();
         let result = input.flip().unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
@@ -165,10 +172,10 @@ mod tests {
         // 1000 elements
         let input_data: Vec<f32> = (0..1000).map(|i| i as f32).collect();
         let input = Tensor::from_data(&input_data, vec![1000], device.clone()).unwrap();
-        
+
         let result = input.flip().unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 1000);
         assert_eq!(output[0], 999.0);
         assert_eq!(output[999], 0.0);
@@ -181,15 +188,18 @@ mod tests {
         // Double flip should return to original
         let input_data = vec![1.5, 2.5, 3.5, 4.5];
         let input = Tensor::from_data(&input_data, vec![4], device.clone()).unwrap();
-        
+
         let flipped_once = input.flip().unwrap();
         let output_once = flipped_once.to_vec().unwrap();
         assert_eq!(output_once, vec![4.5, 3.5, 2.5, 1.5]);
-        
+
         // Flip again
-        let flipped_twice = Tensor::from_data(&output_once, vec![4], device).unwrap().flip().unwrap();
+        let flipped_twice = Tensor::from_data(&output_once, vec![4], device)
+            .unwrap()
+            .flip()
+            .unwrap();
         let output_twice = flipped_twice.to_vec().unwrap();
-        
+
         // Should match original
         for (i, val) in output_twice.iter().enumerate() {
             assert!((val - input_data[i]).abs() < 1e-6);

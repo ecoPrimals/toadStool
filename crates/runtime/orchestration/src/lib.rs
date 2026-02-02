@@ -52,12 +52,12 @@
 //! }
 //! ```
 
+pub mod load_balancer;
 pub mod orchestrator;
 pub mod policy;
 pub mod scheduler;
-pub mod load_balancer;
 
+pub use load_balancer::*;
 pub use orchestrator::*;
 pub use policy::*;
 pub use scheduler::*;
-pub use load_balancer::*;

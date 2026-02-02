@@ -70,35 +70,37 @@ pub fn npu_matmul(
             format!("Matrix B size {} doesn't match dims {}×{}", b.len(), k, n),
         ));
     }
-    
+
     // Analyze sparsity
     let codec = EventCodec::default();
     let sparsity_a = codec.measure_sparsity(a);
     let sparsity_b = codec.measure_sparsity(b);
-    
+
     log::debug!(
         "NPU matmul: {}×{}×{}, sparsity A={:.1}%, B={:.1}%",
-        m, k, n,
+        m,
+        k,
+        n,
         sparsity_a * 100.0,
         sparsity_b * 100.0
     );
-    
+
     // For matmul, we process row-by-row of A against all cols of B
     // This maps naturally to MLP layers: each row of A is an "input"
     let mut result = vec![0.0f32; m * n];
-    
+
     for i in 0..m {
         // Get row i of A
         let row_start = i * k;
         let row_end = row_start + k;
         let a_row = &a[row_start..row_end];
-        
+
         // Process this row against all of B to get row i of C
         // For NPU: treat a_row as input, B as weights, get n outputs
-        
+
         // Convert a_row to events (for future NPU integration)
         let _events = codec.encode_simple(a_row);
-        
+
         // For each column of B, compute dot product
         // (In full implementation, we'd batch this or use NPU's matrix structure)
         for j in 0..n {
@@ -109,18 +111,18 @@ pub fn npu_matmul(
             result[i * n + j] = dot;
         }
     }
-    
+
     // NOTE: This is a simplified version for demonstration
     // Full implementation would:
     // 1. Use npu.execute_mlp_layer() for actual NPU execution
     // 2. Batch multiple rows for efficiency
     // 3. Leverage Akida's convolution layers for matrix ops
-    
+
     // Suppress unused variable warning for now
     let _ = npu;
-    
+
     log::debug!("✅ NPU matmul complete: {}×{} result", m, n);
-    
+
     Ok(result)
 }
 
@@ -132,49 +134,45 @@ pub fn npu_matmul(
 /// - Large batch: GPU may be better
 ///
 /// **Deep Debt**: Data-driven decision from validation
-pub fn should_use_npu_matmul(
-    a: &[f32],
-    b: &[f32],
-    priority: crate::workload::Priority,
-) -> bool {
+pub fn should_use_npu_matmul(a: &[f32], b: &[f32], priority: crate::workload::Priority) -> bool {
     use crate::workload::Priority;
-    
+
     let codec = EventCodec::default();
     let sparsity_a = codec.measure_sparsity(a);
     let sparsity_b = codec.measure_sparsity(b);
     let avg_sparsity = (sparsity_a + sparsity_b) / 2.0;
-    
+
     match priority {
-        Priority::Energy => true, // NPU always for energy
+        Priority::Energy => true,                   // NPU always for energy
         Priority::Latency if a.len() < 128 => true, // NPU good for small, real-time
-        _ => avg_sparsity > 0.5, // Use NPU if sparse
+        _ => avg_sparsity > 0.5,                    // Use NPU if sparse
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_should_use_npu() {
         // Sparse data
         let sparse = vec![0.0, 0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0];
         let dense = vec![1.0, 2.0, 3.0, 4.0];
-        
+
         // Sparse → NPU
         assert!(should_use_npu_matmul(
             &sparse,
             &sparse,
             crate::workload::Priority::Balanced
         ));
-        
+
         // Dense → maybe not NPU (unless energy priority)
         assert!(!should_use_npu_matmul(
             &dense,
             &dense,
             crate::workload::Priority::Throughput
         ));
-        
+
         // Energy priority → always NPU
         assert!(should_use_npu_matmul(
             &dense,
@@ -182,25 +180,23 @@ mod tests {
             crate::workload::Priority::Energy
         ));
     }
-    
+
     #[test]
     fn test_matmul_validation() {
         // Simple 2×2 matmul validation (CPU fallback if no NPU)
         let a = vec![1.0, 2.0, 3.0, 4.0]; // [[1,2], [3,4]]
         let b = vec![5.0, 6.0, 7.0, 8.0]; // [[5,6], [7,8]]
-        // Expected: [[19,22], [43,50]]
-        
+                                          // Expected: [[19,22], [43,50]]
+
         // Test dimension validation
         match npu_matmul(&a, &b, 2, 2, 2, &mut create_mock_npu()) {
-            Ok(_) => {} // Would work if NPU available
+            Ok(_) => {}  // Would work if NPU available
             Err(_) => {} // Expected if no NPU
         }
     }
-    
+
     fn create_mock_npu() -> NpuMlBackend {
         // Try to create, will fail gracefully if no hardware
-        NpuMlBackend::new().unwrap_or_else(|_| {
-            panic!("No NPU available for test")
-        })
+        NpuMlBackend::new().unwrap_or_else(|_| panic!("No NPU available for test"))
     }
 }

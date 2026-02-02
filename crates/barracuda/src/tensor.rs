@@ -79,12 +79,16 @@ impl Tensor {
         device: Arc<WgpuDevice>,
     ) -> Result<Self> {
         use wgpu::util::DeviceExt;
-        
-        let buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tensor Data"),
-            contents: bytemuck::cast_slice(data),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
+
+        let buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tensor Data"),
+                contents: bytemuck::cast_slice(data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
 
         Ok(Self {
             buffer: Arc::new(buffer),
@@ -117,11 +121,14 @@ impl Tensor {
     pub fn deep_clone(&self) -> Result<Self> {
         let size = self.len();
         let new_buffer = self.device.create_buffer_f32(size)?;
-        
-        let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Tensor Deep Clone Encoder"),
-        });
-        
+
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Tensor Deep Clone Encoder"),
+                });
+
         encoder.copy_buffer_to_buffer(
             &self.buffer,
             0,
@@ -129,9 +136,9 @@ impl Tensor {
             0,
             (size * std::mem::size_of::<f32>()) as u64,
         );
-        
+
         self.device.queue.submit(Some(encoder.finish()));
-        
+
         Ok(Self {
             buffer: Arc::new(new_buffer),
             shape: self.shape.clone(),
@@ -262,7 +269,10 @@ impl Tensor {
         let new_size: usize = new_shape.iter().product();
 
         if old_size != new_size {
-            return Err(BarracudaError::shape_mismatch(vec![new_size], vec![old_size]));
+            return Err(BarracudaError::shape_mismatch(
+                vec![new_size],
+                vec![old_size],
+            ));
         }
 
         // **Zero-Copy Implementation**: wgpu buffers are always contiguous,

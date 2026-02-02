@@ -7,7 +7,7 @@
 use anyhow::Result;
 use std::time::Instant;
 use tfhe::prelude::*;
-use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint8, FheUint16};
+use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint16, FheUint8};
 
 #[derive(Debug)]
 struct BenchResult {
@@ -38,25 +38,25 @@ fn main() -> Result<()> {
     // Run benchmarks
     println!("═══════════════════════════════════════════════════════════\n");
     println!("📊 Benchmark 1: Encrypted Boolean AND (10,000 ops)\n");
-    
+
     let bool_result = bench_encrypted_bool_and(&client_key, 10_000)?;
     print_result(&bool_result);
 
     println!("\n═══════════════════════════════════════════════════════════\n");
     println!("📊 Benchmark 2: Encrypted 8-bit Addition (10,000 ops)\n");
-    
+
     let add_result = bench_encrypted_u8_add(&client_key, 10_000)?;
     print_result(&add_result);
 
     println!("\n═══════════════════════════════════════════════════════════\n");
     println!("📊 Benchmark 3: Encrypted 8-bit Multiplication (1,000 ops)\n");
-    
+
     let mul_result = bench_encrypted_u8_mul(&client_key, 1_000)?;
     print_result(&mul_result);
 
     println!("\n═══════════════════════════════════════════════════════════\n");
     println!("📊 Benchmark 4: Encrypted 16-bit Addition (5,000 ops)\n");
-    
+
     let add16_result = bench_encrypted_u16_add(&client_key, 5_000)?;
     print_result(&add16_result);
 
@@ -71,7 +71,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn bench_encrypted_bool_and(client_key: &tfhe::ClientKey, iterations: usize) -> Result<BenchResult> {
+fn bench_encrypted_bool_and(
+    client_key: &tfhe::ClientKey,
+    iterations: usize,
+) -> Result<BenchResult> {
     let clear_a = true;
     let clear_b = false;
 
@@ -219,17 +222,25 @@ fn print_result(result: &BenchResult) {
     println!("Operation: {}", result.operation);
     println!("Iterations: {}", result.iterations);
     println!("─────────────────────────────────────");
-    println!("Encrypt time:  {:>10} μs ({:.2} ms)", 
-             result.encrypt_time_us, 
-             result.encrypt_time_us as f64 / 1000.0);
-    println!("Compute time:  {:>10} μs ({:.2} ms)", 
-             result.compute_time_us, 
-             result.compute_time_us as f64 / 1000.0);
-    println!("Decrypt time:  {:>10} μs ({:.2} ms)", 
-             result.decrypt_time_us, 
-             result.decrypt_time_us as f64 / 1000.0);
+    println!(
+        "Encrypt time:  {:>10} μs ({:.2} ms)",
+        result.encrypt_time_us,
+        result.encrypt_time_us as f64 / 1000.0
+    );
+    println!(
+        "Compute time:  {:>10} μs ({:.2} ms)",
+        result.compute_time_us,
+        result.compute_time_us as f64 / 1000.0
+    );
+    println!(
+        "Decrypt time:  {:>10} μs ({:.2} ms)",
+        result.decrypt_time_us,
+        result.decrypt_time_us as f64 / 1000.0
+    );
     println!("─────────────────────────────────────");
     println!("Throughput:    {:>10.0} ops/sec", result.throughput);
-    println!("Avg latency:   {:>10.2} μs/op", 
-             result.compute_time_us as f64 / result.iterations as f64);
+    println!(
+        "Avg latency:   {:>10.2} μs/op",
+        result.compute_time_us as f64 / result.iterations as f64
+    );
 }

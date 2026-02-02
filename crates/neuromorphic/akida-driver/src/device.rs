@@ -1,8 +1,8 @@
 //! Akida device handle and operations
 
 use std::fs::{File, OpenOptions};
-use std::os::unix::io::{AsRawFd, RawFd};
 use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::Path;
 
 use crate::discovery::DeviceInfo;
@@ -16,10 +16,10 @@ use crate::io::IoHandle;
 pub struct AkidaDevice {
     /// Device information
     info: DeviceInfo,
-    
+
     /// Underlying device handle
     handle: DeviceHandle,
-    
+
     /// I/O operations handler
     io: IoHandle,
 }
@@ -37,12 +37,12 @@ impl AkidaDevice {
     /// Returns error if device cannot be opened or is not accessible.
     pub fn open(info: &DeviceInfo) -> Result<Self> {
         tracing::debug!("Opening device {}: {}", info.index, info.path.display());
-        
+
         let handle = DeviceHandle::open(&info.path, info.index)?;
         let io = IoHandle::new(handle.as_raw_fd());
-        
+
         tracing::info!("Opened device {}: {}", info.index, info.path.display());
-        
+
         Ok(Self {
             info: info.clone(),
             handle,
@@ -103,13 +103,13 @@ impl DeviceHandle {
         if !path.exists() {
             return Err(AkidaError::device_not_found(path));
         }
-        
+
         let file = OpenOptions::new()
             .read(true)
             .write(true)
-            .custom_flags(libc::O_NONBLOCK)  // Match Python SDK behavior
+            .custom_flags(libc::O_NONBLOCK) // Match Python SDK behavior
             .open(path)?;
-        
+
         Ok(Self { file })
     }
 }
@@ -122,7 +122,11 @@ impl AsRawFd for DeviceHandle {
 
 impl Drop for AkidaDevice {
     fn drop(&mut self) {
-        tracing::info!("Closing device {}: {}", self.info.index, self.info.path.display());
+        tracing::info!(
+            "Closing device {}: {}",
+            self.info.index,
+            self.info.path.display()
+        );
     }
 }
 
@@ -136,10 +140,10 @@ mod tests {
             println!("ℹ️  Skipping test (no hardware)");
             return;
         };
-        
+
         let device = manager.open_first();
         assert!(device.is_ok());
-        
+
         let device = device.unwrap();
         println!("✅ Opened device {}", device.index());
     }

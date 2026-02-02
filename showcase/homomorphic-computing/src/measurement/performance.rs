@@ -26,19 +26,19 @@ use std::time::Instant;
 pub struct PerformanceMetrics {
     /// Operations per second (throughput)
     pub ops_per_sec: f64,
-    
+
     /// Average latency in milliseconds
     pub avg_latency_ms: f64,
-    
+
     /// Minimum latency in milliseconds
     pub min_latency_ms: f64,
-    
+
     /// Maximum latency in milliseconds
     pub max_latency_ms: f64,
-    
+
     /// Standard deviation of latency
     pub stddev_latency_ms: f64,
-    
+
     /// Whether this is measured (true) or estimated (false)
     pub is_measured: bool,
 }
@@ -80,7 +80,7 @@ impl PerformanceProfiler {
             benchmark_iterations: 100,
         }
     }
-    
+
     /// Create with custom configuration
     ///
     /// **Deep Debt**: Runtime configurable via builder pattern
@@ -101,17 +101,17 @@ impl PerformanceProfiler {
             benchmark_iterations: config.benchmark_iterations,
         }
     }
-    
+
     /// Quick profiler for fast benchmarks
     pub fn quick() -> Self {
         Self::with_config(toadstool_config::builder::ProfilerConfig::quick())
     }
-    
+
     /// Thorough profiler for comprehensive benchmarks
     pub fn thorough() -> Self {
         Self::with_config(toadstool_config::builder::ProfilerConfig::thorough())
     }
-    
+
     /// Profile a substrate's performance
     ///
     /// **Real Measurement**: Runs actual benchmarks with warmup
@@ -124,35 +124,38 @@ impl PerformanceProfiler {
         for _ in 0..self.warmup_iterations {
             operation().await?;
         }
-        
+
         // Benchmark phase
         let mut latencies = Vec::with_capacity(self.benchmark_iterations);
-        
+
         for _ in 0..self.benchmark_iterations {
             let start = Instant::now();
             operation().await?;
             let elapsed = start.elapsed();
             latencies.push(elapsed);
         }
-        
+
         // Calculate statistics
-        let latencies_ms: Vec<f64> = latencies.iter()
-            .map(|d| d.as_secs_f64() * 1000.0)
-            .collect();
-        
+        let latencies_ms: Vec<f64> = latencies.iter().map(|d| d.as_secs_f64() * 1000.0).collect();
+
         let avg_latency_ms = latencies_ms.iter().sum::<f64>() / latencies_ms.len() as f64;
         let min_latency_ms = latencies_ms.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_latency_ms = latencies_ms.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
+        let max_latency_ms = latencies_ms
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+
         // Calculate standard deviation
-        let variance = latencies_ms.iter()
+        let variance = latencies_ms
+            .iter()
             .map(|&x| (x - avg_latency_ms).powi(2))
-            .sum::<f64>() / latencies_ms.len() as f64;
+            .sum::<f64>()
+            / latencies_ms.len() as f64;
         let stddev_latency_ms = variance.sqrt();
-        
+
         // Calculate throughput (ops/sec)
         let ops_per_sec = 1000.0 / avg_latency_ms;
-        
+
         Ok(PerformanceMetrics {
             ops_per_sec,
             avg_latency_ms,
@@ -173,22 +176,28 @@ impl Default for PerformanceProfiler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_performance_profiler() {
         use std::time::Duration;
-        
+
         let profiler = PerformanceProfiler::new();
-        
+
         // Profile a simple operation
-        let metrics = profiler.profile(|| async {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-            Ok(())
-        }).await.unwrap();
-        
+        let metrics = profiler
+            .profile(|| async {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+                Ok(())
+            })
+            .await
+            .unwrap();
+
         println!("Throughput: {:.2} ops/sec", metrics.ops_per_sec);
-        println!("Latency: {:.2} ± {:.2} ms", metrics.avg_latency_ms, metrics.stddev_latency_ms);
-        
+        println!(
+            "Latency: {:.2} ± {:.2} ms",
+            metrics.avg_latency_ms, metrics.stddev_latency_ms
+        );
+
         // Should be roughly 100 ops/sec (10ms per op)
         assert!(metrics.ops_per_sec > 80.0 && metrics.ops_per_sec < 120.0);
         assert!(metrics.is_measured);

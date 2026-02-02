@@ -7,10 +7,12 @@ pub async fn nonzero(
     _queue: &wgpu::Queue,
     input: &[f32],
 ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
-    let indices: Vec<usize> = input.iter().enumerate()
+    let indices: Vec<usize> = input
+        .iter()
+        .enumerate()
         .filter_map(|(idx, &val)| if val != 0.0 { Some(idx) } else { None })
         .collect();
-    
+
     Ok(indices)
 }
 
@@ -19,7 +21,7 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_nonzero() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());

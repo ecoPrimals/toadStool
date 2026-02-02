@@ -97,9 +97,7 @@ pub async fn gc_content(
         n: u32,
     }
 
-    let params = Params {
-        n,
-    };
+    let params = Params { n };
 
     let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Params Buffer"),
@@ -196,15 +194,29 @@ pub async fn gc_content(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, std::mem::size_of::<u32>() as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        std::mem::size_of::<u32>() as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let gc_count: u32 = bytemuck::cast_slice(&data)[0];
@@ -222,8 +234,10 @@ mod tests {
     #[tokio::test]
     async fn test_gc_content_basic() {
         let device = WgpuDevice::new().await.unwrap();
-        let sequence = b"ATCGATCGATCG";  // 3 G's, 3 C's = 6/12 = 0.5
-        let result = gc_content(&device.device, &device.queue, sequence).await.unwrap();
+        let sequence = b"ATCGATCGATCG"; // 3 G's, 3 C's = 6/12 = 0.5
+        let result = gc_content(&device.device, &device.queue, sequence)
+            .await
+            .unwrap();
         assert!((result - 0.5).abs() < 0.01);
     }
 
@@ -231,11 +245,15 @@ mod tests {
     async fn test_gc_content_edge_cases() {
         let device = WgpuDevice::new().await.unwrap();
         let all_gc = b"GCGCGCGC";
-        let result = gc_content(&device.device, &device.queue, all_gc).await.unwrap();
+        let result = gc_content(&device.device, &device.queue, all_gc)
+            .await
+            .unwrap();
         assert!((result - 1.0).abs() < 0.01);
 
         let no_gc = b"ATATATAT";
-        let result2 = gc_content(&device.device, &device.queue, no_gc).await.unwrap();
+        let result2 = gc_content(&device.device, &device.queue, no_gc)
+            .await
+            .unwrap();
         assert!(result2 < 0.01);
     }
 
@@ -243,32 +261,42 @@ mod tests {
     async fn test_gc_content_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let single = b"G";
-        let result = gc_content(&device.device, &device.queue, single).await.unwrap();
+        let result = gc_content(&device.device, &device.queue, single)
+            .await
+            .unwrap();
         assert!((result - 1.0).abs() < 0.01);
 
         let empty: &[u8] = b"";
-        assert!(gc_content(&device.device, &device.queue, empty).await.is_err());
+        assert!(gc_content(&device.device, &device.queue, empty)
+            .await
+            .is_err());
     }
 
     #[tokio::test]
     async fn test_gc_content_large_tensor() {
         let device = WgpuDevice::new().await.unwrap();
-        let large: Vec<u8> = (0..10000).map(|i| match i % 4 {
-            0 => b'A',
-            1 => b'T',
-            2 => b'G',
-            3 => b'C',
-            _ => unreachable!(),
-        }).collect();
-        let result = gc_content(&device.device, &device.queue, &large).await.unwrap();
+        let large: Vec<u8> = (0..10000)
+            .map(|i| match i % 4 {
+                0 => b'A',
+                1 => b'T',
+                2 => b'G',
+                3 => b'C',
+                _ => unreachable!(),
+            })
+            .collect();
+        let result = gc_content(&device.device, &device.queue, &large)
+            .await
+            .unwrap();
         assert!((result - 0.5).abs() < 0.01);
     }
 
     #[tokio::test]
     async fn test_gc_content_precision() {
         let device = WgpuDevice::new().await.unwrap();
-        let sequence = b"AAAGGGCCC";  // 6 GC out of 9 = 0.666...
-        let result = gc_content(&device.device, &device.queue, sequence).await.unwrap();
+        let sequence = b"AAAGGGCCC"; // 6 GC out of 9 = 0.666...
+        let result = gc_content(&device.device, &device.queue, sequence)
+            .await
+            .unwrap();
         assert!(result >= 0.0 && result <= 1.0);
         assert!((result - 0.666).abs() < 0.01);
     }

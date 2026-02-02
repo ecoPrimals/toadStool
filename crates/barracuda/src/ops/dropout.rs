@@ -1,8 +1,8 @@
 //! Dropout operation - Regularization
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -44,43 +44,48 @@ impl Dropout {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Dropout BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Dropout BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Dropout BG"),
@@ -102,22 +107,29 @@ impl Dropout {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Dropout"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Dropout PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Dropout PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Dropout Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Dropout Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Dropout Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Dropout Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -132,7 +144,11 @@ impl Dropout {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -151,10 +167,12 @@ mod tests {
     async fn test_dropout_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
+            .await
+            .unwrap();
         let result = input.dropout(0.5, 12345).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), 4);
         // With p=0.5, roughly half should be zero, rest scaled by 2.0
         let zeros = data.iter().filter(|&&x| x == 0.0).count();
@@ -166,17 +184,21 @@ mod tests {
         let device = get_test_device().await;
 
         // p=0.0 (no dropout)
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
         let result = input.dropout(0.0, 12345).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         assert_eq!(data, vec![1.0, 2.0, 3.0, 4.0]);
 
         // p=1.0 (all dropped)
-        let input2 = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device).await.unwrap();
+        let input2 = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
+            .await
+            .unwrap();
         let result2 = input2.dropout(1.0, 12345).unwrap();
         let data2 = result2.to_vec().unwrap();
-        
+
         assert!(data2.iter().all(|&x| x == 0.0));
     }
 
@@ -185,18 +207,22 @@ mod tests {
         let device = get_test_device().await;
 
         // Very small p
-        let input = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone())
+            .await
+            .unwrap();
         let result = input.dropout(0.01, 12345).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         let zeros = data.iter().filter(|&&x| x == 0.0).count();
         assert!(zeros < 10); // Should be ~1% zeros
 
         // Very large p
-        let input2 = Tensor::from_vec_on(vec![1.0; 100], vec![100], device).await.unwrap();
+        let input2 = Tensor::from_vec_on(vec![1.0; 100], vec![100], device)
+            .await
+            .unwrap();
         let result2 = input2.dropout(0.99, 12345).unwrap();
         let data2 = result2.to_vec().unwrap();
-        
+
         let zeros2 = data2.iter().filter(|&&x| x == 0.0).count();
         assert!(zeros2 > 90); // Should be ~99% zeros
     }
@@ -207,7 +233,9 @@ mod tests {
 
         let size = 1000;
         let input_data = vec![1.0; size];
-        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data, vec![size], device)
+            .await
+            .unwrap();
         let result = input.dropout(0.5, 12345).unwrap();
         let data = result.to_vec().unwrap();
 
@@ -222,7 +250,9 @@ mod tests {
 
         // Verify scaling: kept values should be scaled by 1/(1-p)
         let input_data = vec![2.0; 100];
-        let input = Tensor::from_vec_on(input_data, vec![100], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data, vec![100], device)
+            .await
+            .unwrap();
         let result = input.dropout(0.5, 12345).unwrap();
         let data = result.to_vec().unwrap();
 

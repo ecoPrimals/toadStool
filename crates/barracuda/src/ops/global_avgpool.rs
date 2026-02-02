@@ -7,8 +7,8 @@
 //! Used in: Modern CNNs (ResNet, EfficientNet) as replacement for FC layers
 //! Benefits: Reduces parameters dramatically, increases spatial invariance
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -55,25 +55,31 @@ impl GlobalAvgPool {
             height: height as u32,
             width: width as u32,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GlobalAvgPool Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GlobalAvgPool Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("GlobalAvgPool Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("GlobalAvgPool Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("GlobalAvgPool Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("GlobalAvgPool Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -97,9 +103,11 @@ impl GlobalAvgPool {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("GlobalAvgPool Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GlobalAvgPool Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("GlobalAvgPool Pass"),
@@ -145,8 +153,8 @@ mod tests {
 
         // Create input [1, 2, 2, 2] - 1 batch, 2 channels, 2×2 spatial
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,  // Channel 0: [[1,2],[3,4]]
-            5.0, 6.0, 7.0, 8.0,      // Channel 1: [[5,6],[7,8]]
+            1.0f32, 2.0, 3.0, 4.0, // Channel 0: [[1,2],[3,4]]
+            5.0, 6.0, 7.0, 8.0, // Channel 1: [[5,6],[7,8]]
         ];
         let input = Tensor::from_data(&input_data, vec![1, 2, 2, 2], device.clone()).unwrap();
 
@@ -214,7 +222,8 @@ mod tests {
         let batch_size = 16;
         let channels = 32;
         let input_data = vec![1.0; batch_size * channels * 8 * 8];
-        let input = Tensor::from_data(&input_data, vec![batch_size, channels, 8, 8], device).unwrap();
+        let input =
+            Tensor::from_data(&input_data, vec![batch_size, channels, 8, 8], device).unwrap();
         let result = input.global_avgpool().unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), batch_size * channels);
@@ -226,14 +235,11 @@ mod tests {
         let device = get_test_device().await;
 
         // Known average with varying values
-        let input_data = vec![
-            1.0, 2.0,
-            3.0, 4.0,
-        ]; // [1, 1, 2, 2] - Channel 0
+        let input_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 1, 2, 2] - Channel 0
         let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device).unwrap();
         let result = input.global_avgpool().unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Average: (1+2+3+4)/4 = 2.5
         assert_eq!(output.len(), 1);
         assert!(output[0].is_finite());

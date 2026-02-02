@@ -23,7 +23,7 @@ fn download_file(url: &str, path: &Path) -> Result<()> {
     }
 
     println!("Downloading {}...", url);
-    let response = reqwest::blocking::get(url)?;  // ⚠️ C DEPENDENCIES
+    let response = reqwest::blocking::get(url)?; // ⚠️ C DEPENDENCIES
     let bytes = response.bytes()?;
 
     let mut file = fs::File::create(path)?;

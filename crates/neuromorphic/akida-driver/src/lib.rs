@@ -42,35 +42,25 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::match_same_arms)]
 
+mod capabilities;
 mod device;
 mod discovery;
 mod error;
-mod io;
-mod capabilities;
-mod loading;
 mod inference;
+mod io;
+mod loading;
 
-pub use device::{AkidaDevice, DeviceHandle};
-pub use discovery::{DeviceManager, DeviceInfo};
-pub use error::{AkidaError, Result};
 pub use capabilities::{Capabilities, ChipVersion, PcieConfig};
-pub use loading::{LoadConfig, ModelProgram, ModelLoader, LoadMetrics, NpuConfig};
+pub use device::{AkidaDevice, DeviceHandle};
+pub use discovery::{DeviceInfo, DeviceManager};
+pub use error::{AkidaError, Result};
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
+pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
 
 /// Re-export commonly used types
 pub mod prelude {
     pub use crate::{
-        AkidaDevice,
-        Capabilities,
-        DeviceManager,
-        InferenceConfig,
-        InferenceExecutor,
-        InferenceResult,
-        LoadConfig,
-        LoadMetrics,
-        ModelLoader,
-        ModelProgram,
-        NpuConfig,
-        Result,
+        AkidaDevice, Capabilities, DeviceManager, InferenceConfig, InferenceExecutor,
+        InferenceResult, LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig, Result,
     };
 }

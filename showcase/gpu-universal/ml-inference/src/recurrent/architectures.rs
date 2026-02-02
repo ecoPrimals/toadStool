@@ -3,7 +3,7 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use super::{RNNCell, LSTMCell};
+use super::{LSTMCell, RNNCell};
 
 /// Bidirectional RNN
 ///
@@ -191,4 +191,3 @@ impl StackedLSTM {
         Ok(Self { layers, num_layers })
     }
 }
-

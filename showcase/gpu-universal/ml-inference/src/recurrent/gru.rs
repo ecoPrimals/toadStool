@@ -335,4 +335,3 @@ impl GRULayer {
         Ok(outputs)
     }
 }
-

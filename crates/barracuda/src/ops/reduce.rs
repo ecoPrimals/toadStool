@@ -41,81 +41,93 @@ impl Reduce {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size = self.input.shape().iter().product::<usize>();
-        
+
         let params = ReduceParams {
             size: size as u32,
             operation: self.operation.to_u32(),
         };
-        
+
         let num_workgroups = ((size + 255) / 256) as u32;
-        
+
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("reduce_output"),
             size: (num_workgroups as usize * std::mem::size_of::<f32>()) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("reduce_params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("reduce_shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
-        
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("reduce_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-        
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("reduce_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-        
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("reduce_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
-        
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("reduce_params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("reduce_shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("reduce_bind_group_layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("reduce_pipeline_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("reduce_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("reduce_bind_group"),
             layout: &bind_group_layout,
@@ -134,11 +146,13 @@ impl Reduce {
                 },
             ],
         });
-        
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("reduce_encoder"),
-        });
-        
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("reduce_encoder"),
+            });
+
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("reduce_pass"),
@@ -146,12 +160,12 @@ impl Reduce {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         // Return partial results (caller can reduce further if needed)
         Ok(Tensor::from_buffer(
             output_buffer,
@@ -184,16 +198,12 @@ mod tests {
     #[tokio::test]
     async fn test_reduce_sum() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
-        let input = Tensor::from_data(
-            &vec![1.0, 2.0, 3.0, 4.0],
-            vec![4],
-            device.clone(),
-        ).unwrap();
-        
+
+        let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+
         let result = input.reduce(ReduceOperation::Sum).unwrap();
         let partial_sums = result.to_vec().unwrap();
-        
+
         // Sum all partial results
         let total: f32 = partial_sums.iter().sum();
         assert!((total - 10.0).abs() < 1e-5);
@@ -202,18 +212,16 @@ mod tests {
     #[tokio::test]
     async fn test_reduce_max() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
-        let input = Tensor::from_data(
-            &vec![1.0, 5.0, 3.0, 2.0],
-            vec![4],
-            device.clone(),
-        ).unwrap();
-        
+
+        let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 2.0], vec![4], device.clone()).unwrap();
+
         let result = input.reduce(ReduceOperation::Max).unwrap();
         let partial_maxes = result.to_vec().unwrap();
-        
+
         // Max of partial results
-        let max_val = partial_maxes.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let max_val = partial_maxes
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
         assert!((max_val - 5.0).abs() < 1e-5);
     }
 }

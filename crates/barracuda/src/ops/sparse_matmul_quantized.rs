@@ -93,7 +93,9 @@ pub async fn sparse_matmul_quantized(
 
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Sparse MatMul Quantized Shader"),
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("sparse_matmul_quantized.wgsl"))),
+        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+            "sparse_matmul_quantized.wgsl"
+        ))),
     });
 
     // Convert i8 to i32 for GPU (WGSL doesn't have i8)
@@ -284,15 +286,29 @@ pub async fn sparse_matmul_quantized(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (output_size * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (output_size * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -314,7 +330,18 @@ mod tests {
         let rows = vec![0, 1, 2];
         let cols = vec![0, 0, 1];
         let dense = vec![10, 20];
-        let result = sparse_matmul_quantized(&device.device, &device.queue, &values, &rows, &cols, &dense, 3, 1.0).await.unwrap();
+        let result = sparse_matmul_quantized(
+            &device.device,
+            &device.queue,
+            &values,
+            &rows,
+            &cols,
+            &dense,
+            3,
+            1.0,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), 3);
         assert!((result[0] - 1270.0).abs() < 1.0);
         assert!((result[1] - -640.0).abs() < 1.0);
@@ -328,7 +355,18 @@ mod tests {
         let rows = vec![0];
         let cols = vec![0];
         let dense = vec![100];
-        let result = sparse_matmul_quantized(&device.device, &device.queue, &values, &rows, &cols, &dense, 1, 1.0).await.unwrap();
+        let result = sparse_matmul_quantized(
+            &device.device,
+            &device.queue,
+            &values,
+            &rows,
+            &cols,
+            &dense,
+            1,
+            1.0,
+        )
+        .await
+        .unwrap();
         assert!(result[0].abs() < 0.1);
     }
 
@@ -336,7 +374,18 @@ mod tests {
     async fn test_sparse_matmul_quantized_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let empty: Vec<i8> = vec![];
-        assert!(sparse_matmul_quantized(&device.device, &device.queue, &empty, &vec![], &vec![], &vec![1], 1, 1.0).await.is_err());
+        assert!(sparse_matmul_quantized(
+            &device.device,
+            &device.queue,
+            &empty,
+            &vec![],
+            &vec![],
+            &vec![1],
+            1,
+            1.0
+        )
+        .await
+        .is_err());
     }
 
     #[tokio::test]
@@ -346,7 +395,18 @@ mod tests {
         let rows: Vec<u32> = (0..1000).map(|i| i % 100).collect();
         let cols: Vec<u32> = (0..1000).map(|i| i % 50).collect();
         let dense: Vec<i8> = (0..50).map(|i| (i % 10) as i8).collect();
-        let result = sparse_matmul_quantized(&device.device, &device.queue, &values, &rows, &cols, &dense, 100, 1.0).await.unwrap();
+        let result = sparse_matmul_quantized(
+            &device.device,
+            &device.queue,
+            &values,
+            &rows,
+            &cols,
+            &dense,
+            100,
+            1.0,
+        )
+        .await
+        .unwrap();
         assert_eq!(result.len(), 100);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -358,7 +418,18 @@ mod tests {
         let rows = vec![0, 0];
         let cols = vec![0, 1];
         let dense = vec![1, 1];
-        let result = sparse_matmul_quantized(&device.device, &device.queue, &values, &rows, &cols, &dense, 1, 1.0).await.unwrap();
+        let result = sparse_matmul_quantized(
+            &device.device,
+            &device.queue,
+            &values,
+            &rows,
+            &cols,
+            &dense,
+            1,
+            1.0,
+        )
+        .await
+        .unwrap();
         assert!((result[0] - 254.0).abs() < 1.0);
     }
 }

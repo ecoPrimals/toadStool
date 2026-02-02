@@ -213,4 +213,3 @@ impl LSTMLayer {
         Ok((outputs, cell))
     }
 }
-

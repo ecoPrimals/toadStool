@@ -59,10 +59,10 @@ pub async fn multi_head_attention(
     query: &[f32],
     key: &[f32],
     value: &[f32],
-    w_q: &[f32],  // Query projection [d_model, d_model]
-    w_k: &[f32],  // Key projection [d_model, d_model]
-    w_v: &[f32],  // Value projection [d_model, d_model]
-    w_o: &[f32],  // Output projection [d_model, d_model]
+    w_q: &[f32], // Query projection [d_model, d_model]
+    w_k: &[f32], // Key projection [d_model, d_model]
+    w_v: &[f32], // Value projection [d_model, d_model]
+    w_o: &[f32], // Output projection [d_model, d_model]
     batch_size: usize,
     seq_len: usize,
     d_model: usize,
@@ -71,31 +71,39 @@ pub async fn multi_head_attention(
     if d_model % num_heads != 0 {
         return Err("d_model must be divisible by num_heads".into());
     }
-    
+
     let head_dim = d_model / num_heads;
     let input_size = batch_size * seq_len * d_model;
-    
+
     // Validate dimensions
     if query.len() != input_size || key.len() != input_size || value.len() != input_size {
         return Err(format!(
             "Input dimension mismatch: expected {}, got Q:{}, K:{}, V:{}",
-            input_size, query.len(), key.len(), value.len()
-        ).into());
+            input_size,
+            query.len(),
+            key.len(),
+            value.len()
+        )
+        .into());
     }
-    
+
     if w_q.len() != d_model * d_model {
-        return Err(format!("Weight dimension mismatch: w_q expected {}, got {}", 
-            d_model * d_model, w_q.len()).into());
+        return Err(format!(
+            "Weight dimension mismatch: w_q expected {}, got {}",
+            d_model * d_model,
+            w_q.len()
+        )
+        .into());
     }
-    
+
     // CPU implementation (reference)
     // Deep Debt Evolution: Replace with fused GPU kernels
-    
+
     // Step 1: Project Q, K, V through their respective weight matrices
     let mut q_proj = vec![0.0f32; input_size];
     let mut k_proj = vec![0.0f32; input_size];
     let mut v_proj = vec![0.0f32; input_size];
-    
+
     for b in 0..batch_size {
         for s in 0..seq_len {
             // Project each position
@@ -103,14 +111,14 @@ pub async fn multi_head_attention(
                 let mut q_sum = 0.0;
                 let mut k_sum = 0.0;
                 let mut v_sum = 0.0;
-                
+
                 for j in 0..d_model {
                     let input_idx = b * seq_len * d_model + s * d_model + j;
                     q_sum += query[input_idx] * w_q[j * d_model + i];
                     k_sum += key[input_idx] * w_k[j * d_model + i];
                     v_sum += value[input_idx] * w_v[j * d_model + i];
                 }
-                
+
                 let out_idx = b * seq_len * d_model + s * d_model + i;
                 q_proj[out_idx] = q_sum;
                 k_proj[out_idx] = k_sum;
@@ -118,30 +126,30 @@ pub async fn multi_head_attention(
             }
         }
     }
-    
+
     // Step 2: Apply scaled dot-product attention for each head
     let mut concat_heads = vec![0.0f32; input_size];
     let scale = (head_dim as f32).sqrt();
-    
+
     for b in 0..batch_size {
         for h in 0..num_heads {
             // Compute attention for this head
             for i in 0..seq_len {
                 // Compute attention scores
                 let mut scores = vec![0.0f32; seq_len];
-                
+
                 for j in 0..seq_len {
                     let mut score = 0.0;
-                    
+
                     for d in 0..head_dim {
                         let q_idx = b * seq_len * d_model + i * d_model + h * head_dim + d;
                         let k_idx = b * seq_len * d_model + j * d_model + h * head_dim + d;
                         score += q_proj[q_idx] * k_proj[k_idx];
                     }
-                    
+
                     scores[j] = score / scale;
                 }
-                
+
                 // Softmax
                 let max_score = scores.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
                 let mut sum = 0.0;
@@ -152,42 +160,42 @@ pub async fn multi_head_attention(
                 for s in &mut scores {
                     *s /= sum;
                 }
-                
+
                 // Apply to values
                 for d in 0..head_dim {
                     let mut weighted_sum = 0.0;
-                    
+
                     for j in 0..seq_len {
                         let v_idx = b * seq_len * d_model + j * d_model + h * head_dim + d;
                         weighted_sum += scores[j] * v_proj[v_idx];
                     }
-                    
+
                     let out_idx = b * seq_len * d_model + i * d_model + h * head_dim + d;
                     concat_heads[out_idx] = weighted_sum;
                 }
             }
         }
     }
-    
+
     // Step 3: Project concatenated heads through output matrix
     let mut output = vec![0.0f32; input_size];
-    
+
     for b in 0..batch_size {
         for s in 0..seq_len {
             for i in 0..d_model {
                 let mut sum = 0.0;
-                
+
                 for j in 0..d_model {
                     let concat_idx = b * seq_len * d_model + s * d_model + j;
                     sum += concat_heads[concat_idx] * w_o[j * d_model + i];
                 }
-                
+
                 let out_idx = b * seq_len * d_model + s * d_model + i;
                 output[out_idx] = sum;
             }
         }
     }
-    
+
     Ok(output)
 }
 
@@ -196,11 +204,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     fn create_weights(d_model: usize) -> (Vec<f32>, Vec<f32>, Vec<f32>, Vec<f32>) {
         let weight_size = d_model * d_model;
         let w_q = vec![0.01; weight_size];
@@ -209,25 +217,41 @@ mod tests {
         let w_o = w_q.clone();
         (w_q, w_k, w_v, w_o)
     }
-    
+
     #[tokio::test]
     async fn test_multi_head_attention_basic() {
         let dev = get_test_device().await;
-        
+
         let batch = 1;
         let seq_len = 4;
         let d_model = 8;
         let num_heads = 2;
-        
+
         let input_size = batch * seq_len * d_model;
         let query = vec![0.5; input_size];
         let key = query.clone();
         let value = query.clone();
-        
+
         let (w_q, w_k, w_v, w_o) = create_weights(d_model);
-        
-        let output = multi_head_attention(&dev.device, &dev.queue, &query, &key, &value, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
-        
+
+        let output = multi_head_attention(
+            &dev.device,
+            &dev.queue,
+            &query,
+            &key,
+            &value,
+            &w_q,
+            &w_k,
+            &w_v,
+            &w_o,
+            batch,
+            seq_len,
+            d_model,
+            num_heads,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(output.len(), input_size);
         assert!(output.iter().all(|&x| x.is_finite()));
     }
@@ -241,12 +265,28 @@ mod tests {
         let seq_len = 1;
         let d_model = 4;
         let num_heads = 1;
-        
+
         let input_size = batch * seq_len * d_model;
         let query = vec![1.0; input_size];
         let (w_q, w_k, w_v, w_o) = create_weights(d_model);
-        
-        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+
+        let output = multi_head_attention(
+            &dev.device,
+            &dev.queue,
+            &query,
+            &query,
+            &query,
+            &w_q,
+            &w_k,
+            &w_v,
+            &w_o,
+            batch,
+            seq_len,
+            d_model,
+            num_heads,
+        )
+        .await
+        .unwrap();
         assert_eq!(output.len(), input_size);
     }
 
@@ -259,12 +299,28 @@ mod tests {
         let seq_len = 8;
         let d_model = 16;
         let num_heads = 8;
-        
+
         let input_size = batch * seq_len * d_model;
         let query = vec![0.5; input_size];
         let (w_q, w_k, w_v, w_o) = create_weights(d_model);
-        
-        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+
+        let output = multi_head_attention(
+            &dev.device,
+            &dev.queue,
+            &query,
+            &query,
+            &query,
+            &w_q,
+            &w_k,
+            &w_v,
+            &w_o,
+            batch,
+            seq_len,
+            d_model,
+            num_heads,
+        )
+        .await
+        .unwrap();
         assert_eq!(output.len(), input_size);
     }
 
@@ -277,12 +333,28 @@ mod tests {
         let seq_len = 16;
         let d_model = 32;
         let num_heads = 4;
-        
+
         let input_size = batch * seq_len * d_model;
         let query = vec![0.5; input_size];
         let (w_q, w_k, w_v, w_o) = create_weights(d_model);
-        
-        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
+
+        let output = multi_head_attention(
+            &dev.device,
+            &dev.queue,
+            &query,
+            &query,
+            &query,
+            &w_q,
+            &w_k,
+            &w_v,
+            &w_o,
+            batch,
+            seq_len,
+            d_model,
+            num_heads,
+        )
+        .await
+        .unwrap();
         assert_eq!(output.len(), input_size);
     }
 
@@ -295,13 +367,29 @@ mod tests {
         let seq_len = 2;
         let d_model = 4;
         let num_heads = 2;
-        
+
         let input_size = batch * seq_len * d_model;
         let query = vec![1.0; input_size];
         let (w_q, w_k, w_v, w_o) = create_weights(d_model);
-        
-        let output = multi_head_attention(&dev.device, &dev.queue, &query, &query, &query, &w_q, &w_k, &w_v, &w_o, batch, seq_len, d_model, num_heads).await.unwrap();
-        
+
+        let output = multi_head_attention(
+            &dev.device,
+            &dev.queue,
+            &query,
+            &query,
+            &query,
+            &w_q,
+            &w_k,
+            &w_v,
+            &w_o,
+            batch,
+            seq_len,
+            d_model,
+            num_heads,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(output.len(), input_size);
         assert!(output.iter().all(|&x| x.is_finite()));
     }

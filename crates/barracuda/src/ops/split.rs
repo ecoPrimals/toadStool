@@ -7,8 +7,8 @@
 //! Used in: Multi-branch networks, Inception modules, ResNeXt
 //! Benefits: Enables parallel processing paths, modular architecture design
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -37,7 +37,7 @@ impl Split {
     pub fn execute(self) -> Result<(Tensor, Tensor)> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // For simplicity, split along the last dimension
         let total_size: usize = shape.iter().product();
         let size1 = self.split_point;
@@ -54,25 +54,31 @@ impl Split {
             _pad: 0,
             _pad2: 0,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Split Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Split Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Split Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Split Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Split Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Split Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -100,9 +106,11 @@ impl Split {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Split Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Split Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Split Pass"),
@@ -120,7 +128,7 @@ impl Split {
         let mut shape2 = shape.to_vec();
         let last_dim = shape.len() - 1;
         let last_size = shape[last_dim];
-        
+
         shape1[last_dim] = self.split_point;
         shape2[last_dim] = last_size - self.split_point;
 
@@ -150,8 +158,8 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use crate::device::WgpuDevice;
+    use std::sync::Arc;
 
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
@@ -235,10 +243,10 @@ mod tests {
         let input_data: Vec<f32> = (0..10).map(|i| i as f32).collect();
         let input = Tensor::from_data(&input_data, vec![10], device.clone()).unwrap();
         let (left, right) = input.split(5).unwrap();
-        
+
         let left_data = left.to_vec().unwrap();
         let right_data = right.to_vec().unwrap();
-        
+
         assert_eq!(left_data.len(), 5);
         assert_eq!(right_data.len(), 5);
         assert!(left_data.iter().all(|&x| x.is_finite()));

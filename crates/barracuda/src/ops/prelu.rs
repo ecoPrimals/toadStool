@@ -34,16 +34,26 @@ pub async fn prelu(
     alpha: &[f32], // Per-channel slopes or single shared slope
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let shared_alpha = alpha.len() == 1;
-    
+
     if !shared_alpha && alpha.len() != input.len() {
-        return Err("Alpha must be either length 1 (shared) or match input length (per-channel)".into());
+        return Err(
+            "Alpha must be either length 1 (shared) or match input length (per-channel)".into(),
+        );
     }
-    
-    let output: Vec<f32> = input.iter().enumerate().map(|(i, &x)| {
-        let a = if shared_alpha { alpha[0] } else { alpha[i] };
-        if x > 0.0 { x } else { a * x }
-    }).collect();
-    
+
+    let output: Vec<f32> = input
+        .iter()
+        .enumerate()
+        .map(|(i, &x)| {
+            let a = if shared_alpha { alpha[0] } else { alpha[i] };
+            if x > 0.0 {
+                x
+            } else {
+                a * x
+            }
+        })
+        .collect();
+
     Ok(output)
 }
 
@@ -54,23 +64,31 @@ mod tests {
 
     fn prelu_cpu(input: &[f32], alpha: &[f32]) -> Vec<f32> {
         let shared_alpha = alpha.len() == 1;
-        input.iter().enumerate().map(|(i, &x)| {
-            let a = if shared_alpha { alpha[0] } else { alpha[i] };
-            if x > 0.0 { x } else { a * x }
-        }).collect()
+        input
+            .iter()
+            .enumerate()
+            .map(|(i, &x)| {
+                let a = if shared_alpha { alpha[0] } else { alpha[i] };
+                if x > 0.0 {
+                    x
+                } else {
+                    a * x
+                }
+            })
+            .collect()
     }
-    
+
     #[tokio::test]
     async fn test_prelu_basic() {
         let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
-        
+
         let input = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
         let alpha = vec![0.25];
         let output = prelu(&device, &queue, &input, &alpha).await.unwrap();
         let expected = prelu_cpu(&input, &alpha);
-        
+
         for (out, exp) in output.iter().zip(expected.iter()) {
             assert!((out - exp).abs() < 1e-6);
         }
@@ -128,7 +146,7 @@ mod tests {
         let alpha = vec![0.2];
         let output = prelu(&device, &queue, &input, &alpha).await.unwrap();
         let expected = prelu_cpu(&input, &alpha);
-        
+
         for (out, exp) in output.iter().zip(expected.iter()) {
             assert!((out - exp).abs() < 1e-5);
         }
@@ -145,12 +163,18 @@ mod tests {
         let alpha = vec![0.123];
         let output = prelu(&device, &queue, &input, &alpha).await.unwrap();
         let expected = prelu_cpu(&input, &alpha);
-        
+
         // Verify FP32 precision
-        let max_error = output.iter().zip(expected.iter())
+        let max_error = output
+            .iter()
+            .zip(expected.iter())
             .map(|(out, exp)| (out - exp).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
+
+        assert!(
+            max_error < 1e-6,
+            "Max error: {} exceeds threshold",
+            max_error
+        );
     }
 }

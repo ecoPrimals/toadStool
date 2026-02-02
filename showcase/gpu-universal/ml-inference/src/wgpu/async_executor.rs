@@ -74,7 +74,7 @@ impl<T> AsyncOp<T> {
 pub struct AsyncBatch {
     /// Command encoder for batching
     encoder: Option<CommandEncoder>,
-    
+
     /// Queued operations
     operations: Vec<Box<dyn FnOnce(&mut CommandEncoder) -> Result<()> + Send>>,
 }
@@ -87,7 +87,7 @@ impl AsyncBatch {
             operations: Vec::new(),
         }
     }
-    
+
     /// Queue an operation (doesn't execute immediately)
     pub fn queue<F, T>(&mut self, operation: F) -> AsyncOp<T>
     where
@@ -95,16 +95,16 @@ impl AsyncBatch {
         T: Send + 'static,
     {
         let (sender, receiver) = oneshot::channel();
-        
+
         self.operations.push(Box::new(move |encoder| {
             let result = operation(encoder);
             let _ = sender.send(result);
             Ok(())
         }));
-        
+
         AsyncOp { receiver }
     }
-    
+
     /// Submit all queued operations in a single batch
     pub async fn submit(mut self) -> Result<()> {
         if let Some(mut encoder) = self.encoder.take() {
@@ -112,7 +112,7 @@ impl AsyncBatch {
             for operation in self.operations {
                 operation(&mut encoder)?;
             }
-            
+
             // Submit entire batch at once
             // self.queue.submit(Some(encoder.finish()));
         }
@@ -152,7 +152,7 @@ impl Default for AsyncBatch {
 pub struct AsyncPipeline {
     /// Maximum in-flight operations
     max_in_flight: usize,
-    
+
     /// Currently in-flight operations
     in_flight: Vec<AsyncOp<Vec<f32>>>,
 }
@@ -165,7 +165,7 @@ impl AsyncPipeline {
             in_flight: Vec::with_capacity(max_in_flight),
         }
     }
-    
+
     /// Submit an operation (may wait if pipeline is full)
     pub async fn submit<F>(&mut self, operation: F) -> Result<()>
     where
@@ -176,22 +176,22 @@ impl AsyncPipeline {
             let oldest = self.in_flight.remove(0);
             let _ = oldest.wait().await?;
         }
-        
+
         // Submit new operation
         let op = operation();
         self.in_flight.push(op);
-        
+
         Ok(())
     }
-    
+
     /// Wait for all in-flight operations
     pub async fn flush(&mut self) -> Result<Vec<Vec<f32>>> {
         let mut results = Vec::new();
-        
+
         for op in self.in_flight.drain(..) {
             results.push(op.wait().await?);
         }
-        
+
         Ok(results)
     }
 }
@@ -201,13 +201,13 @@ impl AsyncPipeline {
 pub struct AsyncStats {
     /// Total operations submitted
     pub total_ops: usize,
-    
+
     /// Operations batched together
     pub batched_ops: usize,
-    
+
     /// Launch overhead saved (ms)
     pub overhead_saved_ms: f32,
-    
+
     /// Speedup factor
     pub speedup_factor: f32,
 }
@@ -221,12 +221,12 @@ impl AsyncStats {
             GpuVendor::Intel => 2.0,
             _ => 3.0,
         };
-        
+
         let synchronous_overhead = single_launch_overhead * num_ops as f32;
-        let async_overhead = single_launch_overhead;  // Only one launch
+        let async_overhead = single_launch_overhead; // Only one launch
         let overhead_saved = synchronous_overhead - async_overhead;
         let speedup = synchronous_overhead / async_overhead;
-        
+
         Self {
             total_ops: num_ops,
             batched_ops: num_ops,
@@ -254,15 +254,15 @@ mod tests {
         let stats = AsyncStats::expected_speedup(10, GpuVendor::NVIDIA);
         assert_eq!(stats.total_ops, 10);
         assert_eq!(stats.overhead_saved_ms, 40.5); // 10 ops × 4.5ms - 1 × 4.5ms
-        assert_eq!(stats.speedup_factor, 10.0);     // 45ms / 4.5ms
+        assert_eq!(stats.speedup_factor, 10.0); // 45ms / 4.5ms
     }
 
     #[test]
     fn test_async_stats_amd() {
         let stats = AsyncStats::expected_speedup(10, GpuVendor::AMD);
         assert_eq!(stats.total_ops, 10);
-        assert_eq!(stats.overhead_saved_ms, 7.2);  // 10 ops × 0.8ms - 1 × 0.8ms
-        assert_eq!(stats.speedup_factor, 10.0);    // 8.0ms / 0.8ms
+        assert_eq!(stats.overhead_saved_ms, 7.2); // 10 ops × 0.8ms - 1 × 0.8ms
+        assert_eq!(stats.speedup_factor, 10.0); // 8.0ms / 0.8ms
     }
 
     #[test]

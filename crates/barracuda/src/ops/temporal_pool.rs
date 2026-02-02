@@ -223,11 +223,14 @@ pub async fn temporal_pool(
         let _ = sender.send(result);
     });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError {
-        message: "Failed to receive buffer mapping result".to_string(),
-    })?.map_err(|e| BarracudaError::ExecutionError {
-        message: format!("Buffer mapping failed: {:?}", e),
-    })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer mapping result".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -246,7 +249,9 @@ mod tests {
     async fn test_temporal_pool_basic() {
         let device = WgpuDevice::new().await.unwrap();
         let spikes = vec![1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0];
-        let result = temporal_pool(&device.device, &device.queue, &spikes, 5).await.unwrap();
+        let result = temporal_pool(&device.device, &device.queue, &spikes, 5)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 2);
         assert!((result[0] - 0.6).abs() < 0.01);
         assert!((result[1] - 0.4).abs() < 0.01);
@@ -256,11 +261,15 @@ mod tests {
     async fn test_temporal_pool_edge_cases() {
         let device = WgpuDevice::new().await.unwrap();
         let zeros = vec![0.0; 20];
-        let result = temporal_pool(&device.device, &device.queue, &zeros, 5).await.unwrap();
+        let result = temporal_pool(&device.device, &device.queue, &zeros, 5)
+            .await
+            .unwrap();
         assert!(result.iter().all(|&x| x < 0.01));
 
         let ones = vec![1.0; 20];
-        let result = temporal_pool(&device.device, &device.queue, &ones, 5).await.unwrap();
+        let result = temporal_pool(&device.device, &device.queue, &ones, 5)
+            .await
+            .unwrap();
         assert!(result.iter().all(|&x| (x - 1.0).abs() < 0.01));
     }
 
@@ -268,20 +277,30 @@ mod tests {
     async fn test_temporal_pool_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let single = vec![1.0];
-        let result = temporal_pool(&device.device, &device.queue, &single, 1).await.unwrap();
+        let result = temporal_pool(&device.device, &device.queue, &single, 1)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 1);
         assert!((result[0] - 1.0).abs() < 0.01);
 
         let empty: Vec<f32> = vec![];
-        assert!(temporal_pool(&device.device, &device.queue, &empty, 5).await.is_err());
-        assert!(temporal_pool(&device.device, &device.queue, &single, 0).await.is_err());
+        assert!(temporal_pool(&device.device, &device.queue, &empty, 5)
+            .await
+            .is_err());
+        assert!(temporal_pool(&device.device, &device.queue, &single, 0)
+            .await
+            .is_err());
     }
 
     #[tokio::test]
     async fn test_temporal_pool_large_tensor() {
         let device = WgpuDevice::new().await.unwrap();
-        let large: Vec<f32> = (0..10000).map(|i| if i % 2 == 0 { 1.0 } else { 0.0 }).collect();
-        let result = temporal_pool(&device.device, &device.queue, &large, 100).await.unwrap();
+        let large: Vec<f32> = (0..10000)
+            .map(|i| if i % 2 == 0 { 1.0 } else { 0.0 })
+            .collect();
+        let result = temporal_pool(&device.device, &device.queue, &large, 100)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 100);
         assert!(result.iter().all(|&x| (x - 0.5).abs() < 0.01));
     }
@@ -290,7 +309,9 @@ mod tests {
     async fn test_temporal_pool_precision() {
         let device = WgpuDevice::new().await.unwrap();
         let pattern = vec![1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0];
-        let result = temporal_pool(&device.device, &device.queue, &pattern, 5).await.unwrap();
+        let result = temporal_pool(&device.device, &device.queue, &pattern, 5)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 2);
         assert!((result[0] - 0.6).abs() < 0.01);
         assert!((result[1] - 0.4).abs() < 0.01);

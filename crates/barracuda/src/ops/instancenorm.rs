@@ -7,8 +7,8 @@
 //! Used in: Style transfer, GANs, real-time image generation
 //! Benefits: No dependency on batch size, works well for style/texture tasks
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -16,20 +16,25 @@ use wgpu::util::DeviceExt;
 struct InstanceNormParams {
     batch: u32,
     channels: u32,
-    spatial_size: u32,  // height * width
+    spatial_size: u32, // height * width
     epsilon: f32,
 }
 
 pub struct InstanceNorm {
     input: Tensor,
-    gamma: Tensor,  // Scale per channel
-    beta: Tensor,   // Shift per channel
+    gamma: Tensor, // Scale per channel
+    beta: Tensor,  // Shift per channel
     epsilon: f32,
 }
 
 impl InstanceNorm {
     pub fn new(input: Tensor, gamma: Tensor, beta: Tensor, epsilon: f32) -> Self {
-        Self { input, gamma, beta, epsilon }
+        Self {
+            input,
+            gamma,
+            beta,
+            epsilon,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -39,7 +44,7 @@ impl InstanceNorm {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // Assume input shape is [batch, channels, height, width]
         let batch = shape[0];
         let channels = shape[1];
@@ -58,25 +63,31 @@ impl InstanceNorm {
             spatial_size: spatial_size as u32,
             epsilon: self.epsilon,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("InstanceNorm Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("InstanceNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("InstanceNorm Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("InstanceNorm Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("InstanceNorm Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("InstanceNorm Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -108,9 +119,11 @@ impl InstanceNorm {
         });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("InstanceNorm Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("InstanceNorm Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("InstanceNorm Pass"),
@@ -154,25 +167,25 @@ mod tests {
     #[tokio::test]
     async fn test_instancenorm_basic() {
         let device = get_test_device().await;
-        
+
         // Create input [1, 2, 2, 2] - 1 batch, 2 channels, 2x2 spatial
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,  // Channel 0
-            5.0, 6.0, 7.0, 8.0,      // Channel 1
+            1.0f32, 2.0, 3.0, 4.0, // Channel 0
+            5.0, 6.0, 7.0, 8.0, // Channel 1
         ];
         let input = Tensor::from_data(&input_data, vec![1, 2, 2, 2], device.clone()).unwrap();
-        
+
         // Create gamma and beta (one per channel)
         let gamma_data = vec![1.0f32, 1.0];
         let gamma = Tensor::from_data(&gamma_data, vec![2], device.clone()).unwrap();
-        
+
         let beta_data = vec![0.0f32, 0.0];
         let beta = Tensor::from_data(&beta_data, vec![2], device.clone()).unwrap();
-        
+
         // Apply InstanceNorm
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Output should be normalized per channel
         assert_eq!(output.len(), 8);
         assert!(output.iter().all(|&x| x.is_finite()));
@@ -187,7 +200,7 @@ mod tests {
         let input = Tensor::from_data(&input_data, vec![1, 2, 1, 1], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 2);
@@ -198,7 +211,7 @@ mod tests {
         let input = Tensor::from_data(&input_data, vec![1, 2, 4, 4], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![0.0, 0.0], vec![2], device).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
@@ -213,7 +226,7 @@ mod tests {
         let input = Tensor::from_data(&input_data, vec![1, 3, 32, 32], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0, 1.0, 1.0], vec![3], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![0.0, 0.0, 0.0], vec![3], device.clone()).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         assert_eq!(result.shape(), &[1, 3, 32, 32]);
 
@@ -222,7 +235,7 @@ mod tests {
         let input = Tensor::from_data(&input_data, vec![1, 64, 8, 8], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0; 64], vec![64], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![0.0; 64], vec![64], device).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         assert_eq!(result.shape(), &[1, 64, 8, 8]);
     }
@@ -234,10 +247,11 @@ mod tests {
         // Batch size 8
         let batch_size = 8;
         let input_data = vec![1.0; batch_size * 16 * 16 * 16];
-        let input = Tensor::from_data(&input_data, vec![batch_size, 16, 16, 16], device.clone()).unwrap();
+        let input =
+            Tensor::from_data(&input_data, vec![batch_size, 16, 16, 16], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![1.0; 16], vec![16], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![0.0; 16], vec![16], device).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         assert_eq!(result.shape(), &[batch_size, 16, 16, 16]);
     }
@@ -251,10 +265,10 @@ mod tests {
         let input = Tensor::from_data(&input_data, vec![1, 1, 2, 2], device.clone()).unwrap();
         let gamma = Tensor::from_data(&vec![2.0], vec![1], device.clone()).unwrap();
         let beta = Tensor::from_data(&vec![1.0], vec![1], device).unwrap();
-        
+
         let result = input.instancenorm(gamma, beta, 1e-5).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 4);
         assert!(output.iter().all(|&x| x.is_finite()));
         // Just verify normalization occurred (values should have reasonable range)

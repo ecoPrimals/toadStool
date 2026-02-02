@@ -7,8 +7,8 @@
 //! Used in: U-Net decoder, image super-resolution, GANs, segmentation
 //! Benefits: Learnable upsampling, preserves spatial relationships
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -81,8 +81,10 @@ impl TransposedConv2D {
         let kernel_w = weight_shape[3];
 
         // Calculate output dimensions
-        let output_h = (input_h - 1) * self.stride.0 - 2 * self.padding.0 + kernel_h + self.output_padding.0;
-        let output_w = (input_w - 1) * self.stride.1 - 2 * self.padding.1 + kernel_w + self.output_padding.1;
+        let output_h =
+            (input_h - 1) * self.stride.0 - 2 * self.padding.0 + kernel_h + self.output_padding.0;
+        let output_w =
+            (input_w - 1) * self.stride.1 - 2 * self.padding.1 + kernel_w + self.output_padding.1;
 
         let output_size = batch_size * out_channels * output_h * output_w;
 
@@ -108,25 +110,31 @@ impl TransposedConv2D {
             output_padding_w: self.output_padding.1 as u32,
             _pad: 0,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("TransposedConv2D Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("TransposedConv2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("TransposedConv2D Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("TransposedConv2D Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("TransposedConv2D Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("TransposedConv2D Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -158,9 +166,11 @@ impl TransposedConv2D {
         });
 
         // Execute with 2D workgroup (16x16)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("TransposedConv2D Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("TransposedConv2D Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("TransposedConv2D Pass"),
@@ -168,7 +178,7 @@ impl TransposedConv2D {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             let workgroups_x = ((output_w + 15) / 16) as u32;
             let workgroups_y = ((output_h + 15) / 16) as u32;
             let workgroups_z = out_channels as u32;
@@ -230,7 +240,9 @@ mod tests {
         let input_w = input.shape()[3];
 
         // Apply TransposedConv2D with stride=2 (upsampling by 2x)
-        let result = input.transposed_conv2d(weight, bias, (2, 2), (0, 0), (0, 0)).unwrap();
+        let result = input
+            .transposed_conv2d(weight, bias, (2, 2), (0, 0), (0, 0))
+            .unwrap();
 
         // Output should be larger than input (upsampled)
         assert!(result.shape()[2] > input_h);

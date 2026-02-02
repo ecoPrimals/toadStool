@@ -385,13 +385,13 @@ impl StandaloneExecutor {
     /// Deep debt principle: Runtime discovery, no hardcoding
     fn query_cpu_utilization(system: &mut sysinfo::System) -> f32 {
         system.refresh_cpu_all();
-        
+
         // Average utilization across all CPUs
         let cpus = system.cpus();
         if cpus.is_empty() {
             return 0.0;
         }
-        
+
         let total_usage: f32 = cpus.iter().map(|cpu| cpu.cpu_usage()).sum();
         total_usage / cpus.len() as f32
     }
@@ -402,11 +402,11 @@ impl StandaloneExecutor {
     fn query_memory_utilization(system: &sysinfo::System) -> f32 {
         let total = system.total_memory();
         let available = system.available_memory();
-        
+
         if total == 0 {
             return 0.0;
         }
-        
+
         let used = total.saturating_sub(available);
         ((used as f64 / total as f64) * 100.0) as f32
     }

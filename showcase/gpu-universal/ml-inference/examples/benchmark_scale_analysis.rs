@@ -25,8 +25,12 @@ async fn main() -> anyhow::Result<()> {
     println!("───────────────────────────────────────────────────────────");
 
     for &size in &sizes {
-        let a: Vec<f32> = (0..size * size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-        let b: Vec<f32> = (0..size * size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+        let a: Vec<f32> = (0..size * size)
+            .map(|i| ((i % 1000) as f32) * 0.001)
+            .collect();
+        let b: Vec<f32> = (0..size * size)
+            .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+            .collect();
 
         // Naive
         let start = Instant::now();
@@ -35,17 +39,22 @@ async fn main() -> anyhow::Result<()> {
 
         // Tiled
         let start = Instant::now();
-        let _r2 = executor.execute_matmul_tiled(&a, &b, size, size, size).await?;
+        let _r2 = executor
+            .execute_matmul_tiled(&a, &b, size, size, size)
+            .await?;
         let tiled = start.elapsed();
 
         let speedup = naive.as_secs_f64() / tiled.as_secs_f64();
-        
-        println!("{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:6.2}x {}",
-            size, size,
+
+        println!(
+            "{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:6.2}x {}",
+            size,
+            size,
             naive.as_secs_f64() * 1000.0,
             tiled.as_secs_f64() * 1000.0,
             speedup,
-            if speedup > 1.0 { "✅" } else { "⚠️" });
+            if speedup > 1.0 { "✅" } else { "⚠️" }
+        );
     }
 
     println!("\n═══════════════════════════════════════════════════════════");
@@ -56,8 +65,12 @@ async fn main() -> anyhow::Result<()> {
     println!("───────────────────────────────────────────────────────────");
 
     for &size in &sizes {
-        let a: Vec<f32> = (0..size * size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-        let b: Vec<f32> = (0..size * size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+        let a: Vec<f32> = (0..size * size)
+            .map(|i| ((i % 1000) as f32) * 0.001)
+            .collect();
+        let b: Vec<f32> = (0..size * size)
+            .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+            .collect();
 
         // Synchronous
         let start = Instant::now();
@@ -79,23 +92,26 @@ async fn main() -> anyhow::Result<()> {
         let async_dur = start.elapsed();
 
         let speedup = sync.as_secs_f64() / async_dur.as_secs_f64();
-        
-        println!("{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:6.2}x",
-            size, size,
+
+        println!(
+            "{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:6.2}x",
+            size,
+            size,
             sync.as_secs_f64() * 1000.0,
             async_dur.as_secs_f64() * 1000.0,
-            speedup);
+            speedup
+        );
     }
 
     println!("\n═══════════════════════════════════════════════════════════");
     println!("💡 Analysis");
     println!("═══════════════════════════════════════════════════════════\n");
-    
+
     println!("Async Execution:");
     println!("  • Provides consistent speedup at ALL scales");
     println!("  • Eliminates launch overhead (4-5ms NVIDIA)");
     println!("  • Best optimization for diverse workloads\n");
-    
+
     println!("Tiled MatMul:");
     println!("  • Benefits increase with matrix size");
     println!("  • Small matrices: Tiling overhead > benefit");

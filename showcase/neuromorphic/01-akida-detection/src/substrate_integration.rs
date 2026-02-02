@@ -23,20 +23,16 @@ pub async fn register_with_substrate(mesh: &AkidaMesh) -> Result<()> {
         "Registering {} Akida board(s) with UniversalSubstrate",
         mesh.boards.len()
     );
-    
+
     // Convert each board to neuromorphic platform
-    let platforms: Vec<_> = mesh
-        .boards
-        .iter()
-        .map(to_neuromorphic_platform)
-        .collect();
-    
+    let platforms: Vec<_> = mesh.boards.iter().map(to_neuromorphic_platform).collect();
+
     // In production, this would call the actual UniversalSubstrate API
     // For now, we'll just log the registration
     for (i, platform) in platforms.iter().enumerate() {
         tracing::info!("Registered board {}: {:?}", i, platform);
     }
-    
+
     Ok(())
 }
 
@@ -59,7 +55,7 @@ mod tests {
     use super::*;
     use crate::{AkidaBoard, BoardHealth};
     use std::path::PathBuf;
-    
+
     #[test]
     fn test_platform_conversion() {
         let board = AkidaBoard {
@@ -76,9 +72,9 @@ mod tests {
             health: BoardHealth::Healthy,
             node_name: None,
         };
-        
+
         let platform = to_neuromorphic_platform(&board);
-        
+
         match platform {
             NeuromorphicPlatform::NeuromorphicChip {
                 chip_name,
@@ -95,7 +91,7 @@ mod tests {
             _ => panic!("Wrong platform type"),
         }
     }
-    
+
     #[test]
     fn test_workload_compatibility() {
         assert!(is_compatible_workload("classification"));
@@ -105,4 +101,3 @@ mod tests {
         assert!(!is_compatible_workload("ray_tracing"));
     }
 }
-

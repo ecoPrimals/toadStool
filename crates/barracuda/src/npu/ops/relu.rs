@@ -47,19 +47,19 @@ type Result<T> = std::result::Result<T, crate::error::BarracudaError>;
 pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
     // ReLU on NPU is trivial: threshold at 0
     let mut output = Vec::with_capacity(input.len());
-    
+
     for &val in input {
         output.push(val.max(0.0));
     }
-    
+
     let sparsity = output.iter().filter(|&&x| x == 0.0).count() as f32 / output.len() as f32;
-    
+
     log::debug!(
         "NPU ReLU: {} activations, {:.1}% sparsity created",
         input.len(),
         sparsity * 100.0
     );
-    
+
     Ok(output)
 }
 
@@ -70,11 +70,11 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
 /// **NPU Implementation**: Similar to ReLU but with scaled negative events
 pub fn npu_leaky_relu(input: &[f32], alpha: f32) -> Result<Vec<f32>> {
     let mut output = Vec::with_capacity(input.len());
-    
+
     for &val in input {
         output.push(if val > 0.0 { val } else { alpha * val });
     }
-    
+
     Ok(output)
 }
 
@@ -87,16 +87,16 @@ pub fn analyze_relu_impact(input: &[f32]) -> (f32, f32, f32) {
     if input.is_empty() {
         return (0.0, 0.0, 0.0);
     }
-    
+
     let codec = EventCodec::default();
     let input_sparsity = codec.measure_sparsity(input);
-    
+
     // Count zeros after ReLU
     let zeros_after = input.iter().filter(|&&x| x <= 0.0).count();
     let output_sparsity = zeros_after as f32 / input.len() as f32;
-    
+
     let sparsity_increase = output_sparsity - input_sparsity;
-    
+
     (input_sparsity, output_sparsity, sparsity_increase)
 }
 
@@ -114,61 +114,73 @@ pub fn should_use_npu_relu() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_npu_relu_basic() {
         let input = vec![-1.0, 2.0, -0.5, 3.0, 0.0, -2.0, 1.5];
         let output = npu_relu(&input).unwrap();
-        
+
         let expected = vec![0.0, 2.0, 0.0, 3.0, 0.0, 0.0, 1.5];
         for (got, &exp) in output.iter().zip(&expected) {
             assert!((got - exp).abs() < 1e-6);
         }
     }
-    
+
     #[test]
     fn test_npu_leaky_relu() {
         let input = vec![-1.0, 2.0, -0.5, 3.0];
         let alpha = 0.01;
         let output = npu_leaky_relu(&input, alpha).unwrap();
-        
+
         assert!((output[0] + 0.01).abs() < 1e-6); // -1.0 * 0.01
-        assert!((output[1] - 2.0).abs() < 1e-6);  // 2.0
+        assert!((output[1] - 2.0).abs() < 1e-6); // 2.0
         assert!((output[2] + 0.005).abs() < 1e-6); // -0.5 * 0.01
-        assert!((output[3] - 3.0).abs() < 1e-6);  // 3.0
+        assert!((output[3] - 3.0).abs() < 1e-6); // 3.0
     }
-    
+
     #[test]
     fn test_relu_sparsity_analysis() {
         // Test with clearly non-sparse input (all values well above threshold)
         let input = vec![1.0, 2.0, 3.0, 4.0]; // All positive, dense
         let (input_sp, output_sp, _) = analyze_relu_impact(&input);
-        
+
         // Input should be dense (low sparsity)
-        assert!(input_sp < 0.1, "Input should be dense, got sparsity {}", input_sp);
-        
+        assert!(
+            input_sp < 0.1,
+            "Input should be dense, got sparsity {}",
+            input_sp
+        );
+
         // Output should also be dense (no negatives to zero out)
-        assert!(output_sp < 0.1, "Output should be dense for all-positive input, got {}", output_sp);
-        
+        assert!(
+            output_sp < 0.1,
+            "Output should be dense for all-positive input, got {}",
+            output_sp
+        );
+
         // Test with all-negative input (creates maximum sparsity)
         let negative = vec![-1.0, -2.0, -3.0, -4.0]; // All negative
         let (_, neg_output_sp, neg_increase) = analyze_relu_impact(&negative);
-        
+
         // Output should be 100% zeros
-        assert!((neg_output_sp - 1.0).abs() < 1e-6, "All-negative output sparsity should be 1.0, got {}", neg_output_sp);
+        assert!(
+            (neg_output_sp - 1.0).abs() < 1e-6,
+            "All-negative output sparsity should be 1.0, got {}",
+            neg_output_sp
+        );
         assert!(neg_increase >= 0.0, "Sparsity should not decrease");
     }
-    
+
     #[test]
     fn test_relu_creates_sparsity() {
         // Normal distribution-like data
         let input = vec![-0.5, -0.2, 0.1, 0.8, -0.3, 1.2, -0.7, 0.4];
         let output = npu_relu(&input).unwrap();
-        
+
         // Count zeros
         let zeros = output.iter().filter(|&&x| x == 0.0).count();
         assert!(zeros > 0, "ReLU should create sparsity");
-        
+
         // Verify correctness
         for (i, &out) in output.iter().enumerate() {
             assert!(out >= 0.0, "ReLU output must be non-negative");
@@ -179,7 +191,7 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_should_use_npu() {
         // ReLU is always beneficial on NPU

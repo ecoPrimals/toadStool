@@ -23,27 +23,27 @@ pub async fn nadam_step(
     let size = params.len();
     state.step += 1;
     let mut new_params = params.to_vec();
-    
+
     let bias_correction1 = 1.0 - beta1.powi(state.step as i32);
     let bias_correction2 = 1.0 - beta2.powi(state.step as i32);
-    
+
     for i in 0..size {
         // Update biased first moment estimate
         state.m[i] = beta1 * state.m[i] + (1.0 - beta1) * grads[i];
-        
+
         // Update biased second moment estimate
         state.v[i] = beta2 * state.v[i] + (1.0 - beta2) * grads[i] * grads[i];
-        
+
         // Compute bias-corrected first moment with Nesterov momentum
         let m_hat = (beta1 * state.m[i] + (1.0 - beta1) * grads[i]) / bias_correction1;
-        
+
         // Compute bias-corrected second moment
         let v_hat = state.v[i] / bias_correction2;
-        
+
         // Update parameters
         new_params[i] = params[i] - lr * m_hat / (v_hat.sqrt() + epsilon);
     }
-    
+
     Ok(new_params)
 }
 
@@ -52,11 +52,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_nadam_basic() {
         let dev = get_test_device().await;
@@ -67,7 +67,19 @@ mod tests {
             v: vec![0.0; 100],
             step: 0,
         };
-        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        let new_params = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.001,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
         assert_eq!(new_params.len(), 100);
         assert!(new_params.iter().all(|&x| x.is_finite()));
         // Parameters should decrease with positive gradients
@@ -86,7 +98,19 @@ mod tests {
             v: vec![0.0; 10],
             step: 0,
         };
-        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        let new_params = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.001,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
         // With zero grads, params should remain close to original
         assert!((new_params[0] - params[0]).abs() < 0.01);
 
@@ -98,7 +122,19 @@ mod tests {
             v: vec![0.0],
             step: 0,
         };
-        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
+        let new_params = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.01,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
         assert_eq!(new_params.len(), 1);
     }
 
@@ -114,7 +150,19 @@ mod tests {
             v: vec![0.0; 10],
             step: 0,
         };
-        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.1, 0.9, 0.999, 1e-8).await.unwrap();
+        let new_params = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.1,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
         assert!(new_params[0] < params[0]);
 
         // Multiple steps
@@ -126,7 +174,19 @@ mod tests {
             step: 0,
         };
         for _ in 0..5 {
-            params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+            params = nadam_step(
+                &dev.device,
+                &dev.queue,
+                &params,
+                &grads,
+                &mut state,
+                0.001,
+                0.9,
+                0.999,
+                1e-8,
+            )
+            .await
+            .unwrap();
         }
         assert_eq!(state.step, 5);
     }
@@ -143,7 +203,19 @@ mod tests {
             v: vec![0.0; 10000],
             step: 0,
         };
-        let new_params = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.001, 0.9, 0.999, 1e-8).await.unwrap();
+        let new_params = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.001,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
         assert_eq!(new_params.len(), 10000);
     }
 
@@ -159,14 +231,38 @@ mod tests {
             v: vec![0.0; 10],
             step: 0,
         };
-        
+
         // First step
-        let new_params1 = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
-        
+        let new_params1 = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.01,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
+
         // Second step
         params = new_params1;
-        let new_params2 = nadam_step(&dev.device, &dev.queue, &params, &grads, &mut state, 0.01, 0.9, 0.999, 1e-8).await.unwrap();
-        
+        let new_params2 = nadam_step(
+            &dev.device,
+            &dev.queue,
+            &params,
+            &grads,
+            &mut state,
+            0.01,
+            0.9,
+            0.999,
+            1e-8,
+        )
+        .await
+        .unwrap();
+
         // Parameters should continue decreasing
         assert!(new_params2[0] < params[0]);
     }

@@ -139,10 +139,7 @@ fn get_uid_from_proc() -> io::Result<u32> {
 fn get_uid_from_passwd() -> io::Result<u32> {
     // Get current username from environment
     let username = std::env::var("USER").map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            "USER environment variable not set",
-        )
+        io::Error::new(io::ErrorKind::NotFound, "USER environment variable not set")
     })?;
 
     // Read /etc/passwd

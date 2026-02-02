@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: C = A / B (element-wise)
 
-use crate::tensor::Tensor;
 use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
 
 pub struct Div {
     lhs: Tensor,
@@ -16,7 +16,7 @@ impl Div {
         if lhs.shape() != rhs.shape() {
             return Err(BarracudaError::shape_mismatch(
                 lhs.shape().to_vec(),
-                rhs.shape().to_vec()
+                rhs.shape().to_vec(),
             ));
         }
         Ok(Self { lhs, rhs })
@@ -31,41 +31,44 @@ impl Div {
         let size = self.lhs.len();
         let output_buffer = device.create_buffer_f32(size)?;
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Div BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Div BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Div BG"),
@@ -87,22 +90,29 @@ impl Div {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Div"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Div PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Div PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Div Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Div Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Div Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Div Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -140,8 +150,12 @@ mod tests {
     async fn test_div_basic() {
         let device = get_test_device().await;
 
-        let lhs = Tensor::from_vec_on(vec![10.0, 20.0, 30.0], vec![3], device.clone()).await.unwrap();
-        let rhs = Tensor::from_vec_on(vec![2.0, 4.0, 5.0], vec![3], device).await.unwrap();
+        let lhs = Tensor::from_vec_on(vec![10.0, 20.0, 30.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let rhs = Tensor::from_vec_on(vec![2.0, 4.0, 5.0], vec![3], device)
+            .await
+            .unwrap();
 
         let result = lhs.div(&rhs).unwrap().to_vec().unwrap();
         assert!((result[0] - 5.0).abs() < 1e-5);
@@ -154,8 +168,12 @@ mod tests {
         let device = get_test_device().await;
 
         // Small values, reciprocals
-        let lhs = Tensor::from_vec_on(vec![1.0, 1e-6, 1.0, 0.0], vec![4], device.clone()).await.unwrap();
-        let rhs = Tensor::from_vec_on(vec![1e6, 1e-6, 2.0, 1.0], vec![4], device).await.unwrap();
+        let lhs = Tensor::from_vec_on(vec![1.0, 1e-6, 1.0, 0.0], vec![4], device.clone())
+            .await
+            .unwrap();
+        let rhs = Tensor::from_vec_on(vec![1e6, 1e-6, 2.0, 1.0], vec![4], device)
+            .await
+            .unwrap();
 
         let result = lhs.div(&rhs).unwrap().to_vec().unwrap();
         assert!((result[0] - 1e-6).abs() < 1e-11); // 1 / 1e6 = 1e-6
@@ -169,8 +187,12 @@ mod tests {
         let device = get_test_device().await;
 
         // Infinities and large values
-        let lhs = Tensor::from_vec_on(vec![f32::INFINITY, 1e10, 1.0], vec![3], device.clone()).await.unwrap();
-        let rhs = Tensor::from_vec_on(vec![2.0, 2.0, f32::INFINITY], vec![3], device).await.unwrap();
+        let lhs = Tensor::from_vec_on(vec![f32::INFINITY, 1e10, 1.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let rhs = Tensor::from_vec_on(vec![2.0, 2.0, f32::INFINITY], vec![3], device)
+            .await
+            .unwrap();
 
         let result = lhs.div(&rhs).unwrap().to_vec().unwrap();
         assert!(result[0].is_infinite() && result[0].is_sign_positive()); // inf / 2 = inf
@@ -186,8 +208,12 @@ mod tests {
         let lhs_data: Vec<f32> = (1..=size).map(|i| (i as f32) * 100.0).collect();
         let rhs_data = vec![10.0; size];
 
-        let lhs = Tensor::from_vec_on(lhs_data, vec![size], device.clone()).await.unwrap();
-        let rhs = Tensor::from_vec_on(rhs_data, vec![size], device).await.unwrap();
+        let lhs = Tensor::from_vec_on(lhs_data, vec![size], device.clone())
+            .await
+            .unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data, vec![size], device)
+            .await
+            .unwrap();
 
         let result = lhs.div(&rhs).unwrap().to_vec().unwrap();
         for (i, &val) in result.iter().enumerate() {
@@ -202,14 +228,28 @@ mod tests {
         let lhs_data = vec![10.0, 5.0, 2.5, 1.0, 0.5];
         let rhs_data = vec![2.0, 2.0, 2.0, 2.0, 2.0];
 
-        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![5], device.clone()).await.unwrap();
-        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![5], device).await.unwrap();
+        let lhs = Tensor::from_vec_on(lhs_data.clone(), vec![5], device.clone())
+            .await
+            .unwrap();
+        let rhs = Tensor::from_vec_on(rhs_data.clone(), vec![5], device)
+            .await
+            .unwrap();
 
         let gpu_result = lhs.div(&rhs).unwrap().to_vec().unwrap();
-        let cpu_result: Vec<f32> = lhs_data.iter().zip(rhs_data.iter()).map(|(&a, &b)| a / b).collect();
+        let cpu_result: Vec<f32> = lhs_data
+            .iter()
+            .zip(rhs_data.iter())
+            .map(|(&a, &b)| a / b)
+            .collect();
 
         for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
-            assert!((gpu - cpu).abs() < 1e-6, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+            assert!(
+                (gpu - cpu).abs() < 1e-6,
+                "Error at {}: GPU={}, CPU={}",
+                i,
+                gpu,
+                cpu
+            );
         }
     }
 }

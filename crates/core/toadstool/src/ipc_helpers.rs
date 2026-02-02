@@ -17,10 +17,10 @@
 
 use serde_json::{json, Value};
 use std::time::Duration;
+use toadstool_common::uid_detector;
 use tokio::net::UnixStream;
 use tokio::time::timeout;
-use tracing::{debug, info};
-use toadstool_common::uid_detector;  // EVOLVED: Pure Rust UID detection!
+use tracing::{debug, info}; // EVOLVED: Pure Rust UID detection!
 
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -73,8 +73,8 @@ fn get_default_songbird_socket() -> String {
 /// ```
 pub async fn register_with_songbird() -> ToadStoolResult<()> {
     // Get Songbird socket path (environment override supported)
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| get_default_songbird_socket());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
 
     info!("🌍 Registering with Songbird at {}", socket_path);
 
@@ -142,8 +142,8 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 /// ```
 pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
     // Get Songbird socket path (biomeOS standard)
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| get_default_songbird_socket());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
 
     debug!("🔍 Resolving {} via Songbird", primal_name);
 
@@ -267,8 +267,8 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
 /// ```
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
     // Get Songbird socket path (biomeOS standard)
-    let socket_path = std::env::var("SONGBIRD_SOCKET")
-        .unwrap_or_else(|_| get_default_songbird_socket());
+    let socket_path =
+        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
 
     debug!("🔍 Finding primals with capability: {}", capability);
 

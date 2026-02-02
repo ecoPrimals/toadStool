@@ -4,8 +4,8 @@
 //! Formula: GELU(x) = x * Φ(x) where Φ is the cumulative distribution function of the standard normal distribution
 //! Approximation: GELU(x) ≈ 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 /// GELU activation operation
 pub struct GELU {
@@ -32,31 +32,34 @@ impl GELU {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("GELU Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GELU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -78,23 +81,30 @@ impl GELU {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("GELU"));
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("GELU Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GELU Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("GELU Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("GELU Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("GELU Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GELU Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -146,7 +156,9 @@ mod tests {
     async fn test_gelu_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device)
+            .await
+            .unwrap();
         let output = input.gelu().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -160,7 +172,13 @@ mod tests {
     async fn test_gelu_edge_cases() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0], vec![7], device).await.unwrap();
+        let input = Tensor::from_vec_on(
+            vec![-10.0, -5.0, -1e-6, 0.0, 1e-6, 5.0, 10.0],
+            vec![7],
+            device,
+        )
+        .await
+        .unwrap();
         let output = input.gelu().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -175,7 +193,13 @@ mod tests {
     async fn test_gelu_boundary() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY], vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(
+            vec![f32::NEG_INFINITY, -1e10, 0.0, 1e10, f32::INFINITY],
+            vec![5],
+            device,
+        )
+        .await
+        .unwrap();
         let output = input.gelu().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -192,13 +216,15 @@ mod tests {
 
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 200.0 - 2.5).collect();
-        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data, vec![size], device)
+            .await
+            .unwrap();
         let output = input.gelu().unwrap();
         let result = output.to_vec().unwrap();
 
         // Monotonically increasing
         for i in 1..result.len() {
-            assert!(result[i] >= result[i-1], "GELU not monotonic at {}", i);
+            assert!(result[i] >= result[i - 1], "GELU not monotonic at {}", i);
         }
     }
 
@@ -207,14 +233,22 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![7], device)
+            .await
+            .unwrap();
         let output = input.gelu().unwrap();
         let gpu_result = output.to_vec().unwrap();
 
         let cpu_result: Vec<f32> = input_data.iter().map(|&x| gelu_cpu(x)).collect();
 
         for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
-            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+            assert!(
+                (gpu - cpu).abs() < 1e-5,
+                "Error at {}: GPU={}, CPU={}",
+                i,
+                gpu,
+                cpu
+            );
         }
     }
 }

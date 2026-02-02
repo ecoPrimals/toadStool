@@ -202,7 +202,10 @@ impl ManualJsonRpcServer {
         listener: tokio::net::TcpListener,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let local_addr = listener.local_addr()?;
-        info!("✅ Manual JSON-RPC 2.0 server listening on TCP: {}", local_addr);
+        info!(
+            "✅ Manual JSON-RPC 2.0 server listening on TCP: {}",
+            local_addr
+        );
 
         let server = Arc::new(self);
 

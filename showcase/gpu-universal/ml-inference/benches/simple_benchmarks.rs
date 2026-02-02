@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 /// Benchmark MatMul - the most critical operation
 fn bench_matmul(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    
+
     // Robust GPU selection using new substrate API
     let executor = if std::env::var("USE_AMD_GPU").is_ok() {
         eprintln!("🔴 Benchmarking on AMD GPU (explicit selection)");

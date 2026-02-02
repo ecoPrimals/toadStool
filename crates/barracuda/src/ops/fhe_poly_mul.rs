@@ -68,7 +68,9 @@ impl FhePolyMul {
     /// Precomputes μ = ⌊2^128 / q⌋ for efficient modular reduction
     pub fn new(device: &WgpuDevice, degree: u32, modulus: u64) -> Result<Self> {
         if modulus == 0 {
-            return Err(BarracudaError::Device("Modulus must be non-zero".to_string()));
+            return Err(BarracudaError::Device(
+                "Modulus must be non-zero".to_string(),
+            ));
         }
 
         // Compute Barrett constant μ = ⌊2^128 / q⌋
@@ -76,7 +78,9 @@ impl FhePolyMul {
         let barrett_mu = if modulus > 0 {
             u64::MAX / modulus
         } else {
-            return Err(BarracudaError::Device("Modulus must be non-zero".to_string()));
+            return Err(BarracudaError::Device(
+                "Modulus must be non-zero".to_string(),
+            ));
         };
 
         // Load WGSL shader
@@ -84,9 +88,7 @@ impl FhePolyMul {
             .device()
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("FHE Polynomial Multiplication Shader"),
-                source: wgpu::ShaderSource::Wgsl(
-                    include_str!("fhe_poly_mul.wgsl").into()
-                ),
+                source: wgpu::ShaderSource::Wgsl(include_str!("fhe_poly_mul.wgsl").into()),
             });
 
         // Create bind group layout
@@ -217,23 +219,23 @@ impl FhePolyMul {
             .collect();
 
         // Create GPU buffers
-        let poly_a_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Poly A Buffer"),
-                contents: bytemuck::cast_slice(&poly_a_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let poly_a_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Poly A Buffer"),
+                    contents: bytemuck::cast_slice(&poly_a_u32),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
-        let poly_b_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Poly B Buffer"),
-                contents: bytemuck::cast_slice(&poly_b_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let poly_b_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Poly B Buffer"),
+                    contents: bytemuck::cast_slice(&poly_b_u32),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let result_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("FHE Result Buffer"),
@@ -263,14 +265,14 @@ impl FhePolyMul {
             _padding: [0; 3],
         };
 
-        let params_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Params Buffer"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let params_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Params Buffer"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         // Create bind group
         let bind_group = self
@@ -308,12 +310,12 @@ impl FhePolyMul {
         });
 
         // Execute compute shader
-        let mut encoder = self
-            .device
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE Poly Mul Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FHE Poly Mul Encoder"),
+                });
 
         {
             let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -322,7 +324,7 @@ impl FhePolyMul {
             });
             cpass.set_pipeline(&self.pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch workgroups
             let workgroup_count = (self.degree + 255) / 256;
             cpass.dispatch_workgroups(workgroup_count, 1, 1);
@@ -368,7 +370,7 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let degree = 8;
         let modulus = 97;
-        
+
         let op = FhePolyMul::new(&device, degree, modulus).unwrap();
 
         // Test: [2, 3, 4, 5, 6, 7, 8, 9] ⊙ [5, 4, 3, 2, 10, 10, 10, 10]
@@ -387,7 +389,7 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let degree = 4;
         let modulus = 100;
-        
+
         let op = FhePolyMul::new(&device, degree, modulus).unwrap();
 
         // Test with values that need modular reduction

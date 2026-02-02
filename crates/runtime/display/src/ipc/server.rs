@@ -154,7 +154,10 @@ impl DisplayServer {
         let listener = UnixListener::bind(&path)
             .map_err(|e| DisplayError::IpcError(format!("Failed to bind Unix socket: {}", e)))?;
 
-        tracing::info!("✅ Unix socket JSON-RPC server listening: {}", path.display());
+        tracing::info!(
+            "✅ Unix socket JSON-RPC server listening: {}",
+            path.display()
+        );
 
         // Update transport
         *self.transport.write().await = Some(IpcTransport::UnixSocket);
@@ -187,7 +190,8 @@ impl DisplayServer {
             .await
             .map_err(|e| DisplayError::IpcError(format!("Failed to bind TCP socket: {}", e)))?;
 
-        let local_addr = listener.local_addr()
+        let local_addr = listener
+            .local_addr()
             .map_err(|e| DisplayError::IpcError(format!("Failed to get local address: {}", e)))?;
 
         tracing::info!("✅ TCP IPC listening on {}", local_addr);
@@ -258,7 +262,9 @@ impl DisplayServer {
         // XDG-compliant discovery file paths
         let discovery_dirs: Vec<Option<String>> = vec![
             std::env::var("XDG_RUNTIME_DIR").ok(),
-            std::env::var("HOME").ok().map(|h| format!("{}/.local/share", h)),
+            std::env::var("HOME")
+                .ok()
+                .map(|h| format!("{}/.local/share", h)),
             Some("/tmp".to_string()),
         ];
 
@@ -281,10 +287,7 @@ impl DisplayServer {
     }
 
     /// Handle Unix socket connection
-    async fn handle_unix_connection(
-        self: Arc<Self>,
-        stream: UnixStream,
-    ) -> Result<()> {
+    async fn handle_unix_connection(self: Arc<Self>, stream: UnixStream) -> Result<()> {
         tracing::debug!("New Unix client connected");
 
         let (reader, mut writer) = stream.into_split();
@@ -329,10 +332,7 @@ impl DisplayServer {
     }
 
     /// Handle TCP connection (same protocol as Unix!)
-    async fn handle_tcp_connection(
-        self: Arc<Self>,
-        stream: TcpStream,
-    ) -> Result<()> {
+    async fn handle_tcp_connection(self: Arc<Self>, stream: TcpStream) -> Result<()> {
         tracing::debug!("New TCP client connected");
 
         let (reader, mut writer) = stream.into_split();

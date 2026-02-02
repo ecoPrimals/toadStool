@@ -7,8 +7,8 @@
 //! Used in: Video analysis, medical imaging (CT/MRI), 3D object recognition
 //! Benefits: Captures spatiotemporal features, volumetric pattern recognition
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -17,9 +17,9 @@ struct Conv3DParams {
     batch_size: u32,
     in_channels: u32,
     out_channels: u32,
-    input_d: u32,      // depth
-    input_h: u32,      // height
-    input_w: u32,      // width
+    input_d: u32, // depth
+    input_h: u32, // height
+    input_w: u32, // width
     output_d: u32,
     output_h: u32,
     output_w: u32,
@@ -89,9 +89,15 @@ impl Conv3D {
         let kernel_w = weight_shape[4];
 
         // Calculate output dimensions
-        let output_d = (input_d + 2 * self.padding.0 - self.dilation.0 * (kernel_d - 1) - 1) / self.stride.0 + 1;
-        let output_h = (input_h + 2 * self.padding.1 - self.dilation.1 * (kernel_h - 1) - 1) / self.stride.1 + 1;
-        let output_w = (input_w + 2 * self.padding.2 - self.dilation.2 * (kernel_w - 1) - 1) / self.stride.2 + 1;
+        let output_d = (input_d + 2 * self.padding.0 - self.dilation.0 * (kernel_d - 1) - 1)
+            / self.stride.0
+            + 1;
+        let output_h = (input_h + 2 * self.padding.1 - self.dilation.1 * (kernel_h - 1) - 1)
+            / self.stride.1
+            + 1;
+        let output_w = (input_w + 2 * self.padding.2 - self.dilation.2 * (kernel_w - 1) - 1)
+            / self.stride.2
+            + 1;
 
         let output_size = batch_size * out_channels * output_d * output_h * output_w;
 
@@ -123,25 +129,31 @@ impl Conv3D {
             dilation_w: self.dilation.2 as u32,
             _pad: 0,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Conv3D Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Conv3D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Conv3D Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Conv3D Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Conv3D Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Conv3D Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -173,9 +185,11 @@ impl Conv3D {
         });
 
         // Execute with 3D workgroup (4x4x4)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Conv3D Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Conv3D Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Conv3D Pass"),
@@ -183,7 +197,7 @@ impl Conv3D {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             let workgroups_x = ((output_w + 3) / 4) as u32;
             let workgroups_y = ((output_h + 3) / 4) as u32;
             let workgroups_z = ((output_d + 3) / 4) as u32;
@@ -241,11 +255,13 @@ mod tests {
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
         // Apply Conv3D
-        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
+        let result = input
+            .conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1))
+            .unwrap();
 
         // Output shape should be [1, 1, 1, 1, 1] (reduced by kernel size - 1)
         assert_eq!(result.shape(), &[1, 1, 1, 1, 1]);
-        
+
         let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
     }
@@ -264,8 +280,10 @@ mod tests {
         let bias_data = vec![0.0f32];
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
-        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
-        
+        let result = input
+            .conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1))
+            .unwrap();
+
         // Kernel size 1 should preserve dimensions
         assert_eq!(result.shape(), &[1, 1, 2, 2, 2]);
     }
@@ -285,8 +303,10 @@ mod tests {
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
         // Stride 2 should downsample
-        let result = input.conv3d(weight, bias, (2, 2, 2), (0, 0, 0), (1, 1, 1)).unwrap();
-        
+        let result = input
+            .conv3d(weight, bias, (2, 2, 2), (0, 0, 0), (1, 1, 1))
+            .unwrap();
+
         assert_eq!(result.shape()[2..], [2, 2, 2]); // Spatial dimensions halved
     }
 
@@ -300,22 +320,34 @@ mod tests {
         let depth = 4;
         let height = 4;
         let width = 4;
-        
+
         let input_data = vec![1.0f32; batch * in_channels * depth * height * width];
-        let input = Tensor::from_data(&input_data, vec![batch, in_channels, depth, height, width], device.clone()).unwrap();
+        let input = Tensor::from_data(
+            &input_data,
+            vec![batch, in_channels, depth, height, width],
+            device.clone(),
+        )
+        .unwrap();
 
         let out_channels = 3;
         let kernel_d = 2;
         let kernel_h = 2;
         let kernel_w = 2;
         let weight_data = vec![0.1f32; out_channels * in_channels * kernel_d * kernel_h * kernel_w];
-        let weight = Tensor::from_data(&weight_data, vec![out_channels, in_channels, kernel_d, kernel_h, kernel_w], device.clone()).unwrap();
+        let weight = Tensor::from_data(
+            &weight_data,
+            vec![out_channels, in_channels, kernel_d, kernel_h, kernel_w],
+            device.clone(),
+        )
+        .unwrap();
 
         let bias_data = vec![0.0f32; out_channels];
         let bias = Tensor::from_data(&bias_data, vec![out_channels], device.clone()).unwrap();
 
-        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
-        
+        let result = input
+            .conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1))
+            .unwrap();
+
         // Output spatial dims = (4-2+1, 4-2+1, 4-2+1) = (3, 3, 3)
         assert_eq!(result.shape(), &[batch, out_channels, 3, 3, 3]);
     }
@@ -334,9 +366,11 @@ mod tests {
         let bias_data = vec![0.0f32];
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
-        let result = input.conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1)).unwrap();
+        let result = input
+            .conv3d(weight, bias, (1, 1, 1), (0, 0, 0), (1, 1, 1))
+            .unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Should preserve values with identity kernel
         assert_eq!(output.len(), 8);
         assert!(output.iter().all(|&x| x.is_finite()));

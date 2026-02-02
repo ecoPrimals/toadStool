@@ -86,8 +86,7 @@ impl Reshape {
     /// - Shapes contain zeros or negatives
     pub fn execute(data: &[f32], old_shape: &[usize], new_shape: &[usize]) -> Result<Vec<f32>> {
         // Validate shapes
-        Self::validate_shapes(old_shape, new_shape)
-            .context("Reshape validation failed")?;
+        Self::validate_shapes(old_shape, new_shape).context("Reshape validation failed")?;
 
         // Compute element counts
         let old_count: usize = old_shape.iter().product();
@@ -97,16 +96,20 @@ impl Reshape {
         if data.len() != old_count {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                format!("Data length {} doesn't match old_shape {} elements", data.len(), old_count)
+                format!(
+                    "Data length {} doesn't match old_shape {} elements",
+                    data.len(),
+                    old_count
+                ),
             ));
         }
 
         // Verify shape compatibility
         if old_count != new_count {
-            return Err(BarracudaError::shape_mismatch(
-                old_shape.to_vec(),
-                new_shape.to_vec()
-            ).with_context("Element counts must match for reshape"));
+            return Err(
+                BarracudaError::shape_mismatch(old_shape.to_vec(), new_shape.to_vec())
+                    .with_context("Element counts must match for reshape"),
+            );
         }
 
         // Zero-copy: just return the same data (shape metadata handled externally)
@@ -120,13 +123,13 @@ impl Reshape {
         if old_shape.is_empty() {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                "Old shape cannot be empty"
+                "Old shape cannot be empty",
             ));
         }
         if new_shape.is_empty() {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                "New shape cannot be empty"
+                "New shape cannot be empty",
             ));
         }
 
@@ -134,13 +137,13 @@ impl Reshape {
         if old_shape.iter().any(|&d| d == 0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                format!("Old shape contains zero: {:?}", old_shape)
+                format!("Old shape contains zero: {:?}", old_shape),
             ));
         }
         if new_shape.iter().any(|&d| d == 0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
-                format!("New shape contains zero: {:?}", new_shape)
+                format!("New shape contains zero: {:?}", new_shape),
             ));
         }
 
@@ -220,12 +223,20 @@ impl Slice {
         Ok(output)
     }
 
-    fn validate_inputs(data: &[f32], shape: &[usize], ranges: &[(usize, usize, usize)]) -> Result<()> {
+    fn validate_inputs(
+        data: &[f32],
+        shape: &[usize],
+        ranges: &[(usize, usize, usize)],
+    ) -> Result<()> {
         // Validate dimensions match
         if shape.len() != ranges.len() {
             return Err(BarracudaError::invalid_params(
                 "Slice",
-                format!("Shape has {} dimensions but got {} range specs", shape.len(), ranges.len())
+                format!(
+                    "Shape has {} dimensions but got {} range specs",
+                    shape.len(),
+                    ranges.len()
+                ),
             ));
         }
 
@@ -234,19 +245,19 @@ impl Slice {
             if step == 0 {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("Step cannot be zero in dimension {}", dim)
+                    format!("Step cannot be zero in dimension {}", dim),
                 ));
             }
             if start >= end {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("Start {} >= end {} in dimension {}", start, end, dim)
+                    format!("Start {} >= end {} in dimension {}", start, end, dim),
                 ));
             }
             if end > size {
                 return Err(BarracudaError::invalid_params(
                     "Slice",
-                    format!("End {} exceeds size {} in dimension {}", end, size, dim)
+                    format!("End {} exceeds size {} in dimension {}", end, size, dim),
                 ));
             }
         }
@@ -256,7 +267,11 @@ impl Slice {
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Slice",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
@@ -277,12 +292,16 @@ impl Slice {
             3 => Self::extract_3d(data, shape, ranges, output),
             _ => Err(BarracudaError::UnsupportedOperation {
                 operation: "Slice".to_string(),
-                reason: format!("Dimensions > 3 not yet implemented (got {})", shape.len())
+                reason: format!("Dimensions > 3 not yet implemented (got {})", shape.len()),
             }),
         }
     }
 
-    fn extract_1d(data: &[f32], ranges: &[(usize, usize, usize)], output: &mut Vec<f32>) -> Result<()> {
+    fn extract_1d(
+        data: &[f32],
+        ranges: &[(usize, usize, usize)],
+        output: &mut Vec<f32>,
+    ) -> Result<()> {
         let (start, end, step) = ranges[0];
         for i in (start..end).step_by(step) {
             output.push(data[i]);
@@ -395,10 +414,12 @@ impl Pad {
             1 => Self::pad_1d(data, shape, padding, mode, &mut output),
             2 => Self::pad_2d(data, shape, padding, mode, &mut output),
             3 => Self::pad_3d(data, shape, padding, mode, &mut output),
-            _ => return Err(BarracudaError::UnsupportedOperation {
-                operation: "Pad".to_string(),
-                reason: format!("Dimensions > 3 not implemented (got {})", shape.len())
-            }),
+            _ => {
+                return Err(BarracudaError::UnsupportedOperation {
+                    operation: "Pad".to_string(),
+                    reason: format!("Dimensions > 3 not implemented (got {})", shape.len()),
+                })
+            }
         }
 
         Ok(output)
@@ -408,7 +429,11 @@ impl Pad {
         if shape.len() != padding.len() {
             return Err(BarracudaError::invalid_params(
                 "Pad",
-                format!("Shape has {} dims but got {} padding specs", shape.len(), padding.len())
+                format!(
+                    "Shape has {} dims but got {} padding specs",
+                    shape.len(),
+                    padding.len()
+                ),
             ));
         }
 
@@ -416,7 +441,11 @@ impl Pad {
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Pad",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
@@ -577,7 +606,10 @@ impl Argmax {
     /// Indices of maximum values
     pub fn execute(data: &[f32], shape: &[usize]) -> Result<Vec<usize>> {
         if shape.is_empty() {
-            return Err(BarracudaError::invalid_params("Argmax", "Shape cannot be empty"));
+            return Err(BarracudaError::invalid_params(
+                "Argmax",
+                "Shape cannot be empty",
+            ));
         }
 
         let last_dim = shape[shape.len() - 1];
@@ -636,15 +668,13 @@ impl TopK {
         if k > data.len() {
             return Err(BarracudaError::invalid_params(
                 "TopK",
-                format!("K ({}) exceeds data length ({})", k, data.len())
+                format!("K ({}) exceeds data length ({})", k, data.len()),
             ));
         }
 
         // Create (value, index) pairs
-        let mut indexed: Vec<(f32, usize)> = data.iter()
-            .enumerate()
-            .map(|(i, &v)| (v, i))
-            .collect();
+        let mut indexed: Vec<(f32, usize)> =
+            data.iter().enumerate().map(|(i, &v)| (v, i)).collect();
 
         // Partial sort to get top K
         indexed.select_nth_unstable_by(k - 1, |a, b| {
@@ -817,12 +847,7 @@ impl Transpose {
     /// # Errors
     ///
     /// Returns error if dimensions are invalid or out of bounds
-    pub fn execute(
-        data: &[f32],
-        shape: &[usize],
-        dim0: usize,
-        dim1: usize,
-    ) -> Result<Vec<f32>> {
+    pub fn execute(data: &[f32], shape: &[usize], dim0: usize, dim1: usize) -> Result<Vec<f32>> {
         // Validate inputs
         Self::validate_inputs(data, shape, dim0, dim1)?;
 
@@ -839,36 +864,36 @@ impl Transpose {
             2 => Self::transpose_2d(data, shape, dim0, dim1, &mut output),
             3 => Self::transpose_3d(data, shape, dim0, dim1, &mut output),
             4 => Self::transpose_4d(data, shape, dim0, dim1, &mut output),
-            _ => return Err(BarracudaError::UnsupportedOperation {
-                operation: "Transpose".to_string(),
-                reason: format!("Only 2D-4D supported, got {}D", shape.len())
-            }),
+            _ => {
+                return Err(BarracudaError::UnsupportedOperation {
+                    operation: "Transpose".to_string(),
+                    reason: format!("Only 2D-4D supported, got {}D", shape.len()),
+                })
+            }
         }
 
         Ok(output)
     }
 
-    fn validate_inputs(
-        data: &[f32],
-        shape: &[usize],
-        dim0: usize,
-        dim1: usize,
-    ) -> Result<()> {
+    fn validate_inputs(data: &[f32], shape: &[usize], dim0: usize, dim1: usize) -> Result<()> {
         if shape.is_empty() {
-            return Err(BarracudaError::invalid_params("Transpose", "Shape cannot be empty"));
+            return Err(BarracudaError::invalid_params(
+                "Transpose",
+                "Shape cannot be empty",
+            ));
         }
 
         if dim0 >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Transpose",
-                format!("dim0 ({}) >= shape length ({})", dim0, shape.len())
+                format!("dim0 ({}) >= shape length ({})", dim0, shape.len()),
             ));
         }
 
         if dim1 >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Transpose",
-                format!("dim1 ({}) >= shape length ({})", dim1, shape.len())
+                format!("dim1 ({}) >= shape length ({})", dim1, shape.len()),
             ));
         }
 
@@ -876,20 +901,18 @@ impl Transpose {
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Transpose",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
         Ok(())
     }
 
-    fn transpose_2d(
-        data: &[f32],
-        shape: &[usize],
-        dim0: usize,
-        dim1: usize,
-        output: &mut [f32],
-    ) {
+    fn transpose_2d(data: &[f32], shape: &[usize], dim0: usize, dim1: usize, output: &mut [f32]) {
         let (rows, cols) = (shape[0], shape[1]);
 
         if dim0 == dim1 {
@@ -908,13 +931,7 @@ impl Transpose {
         }
     }
 
-    fn transpose_3d(
-        data: &[f32],
-        shape: &[usize],
-        dim0: usize,
-        dim1: usize,
-        output: &mut [f32],
-    ) {
+    fn transpose_3d(data: &[f32], shape: &[usize], dim0: usize, dim1: usize, output: &mut [f32]) {
         let (d0, d1, d2) = (shape[0], shape[1], shape[2]);
 
         if dim0 == dim1 {
@@ -950,13 +967,7 @@ impl Transpose {
         }
     }
 
-    fn transpose_4d(
-        data: &[f32],
-        shape: &[usize],
-        dim0: usize,
-        dim1: usize,
-        output: &mut [f32],
-    ) {
+    fn transpose_4d(data: &[f32], shape: &[usize], dim0: usize, dim1: usize, output: &mut [f32]) {
         let (d0, d1, d2, d3) = (shape[0], shape[1], shape[2], shape[3]);
 
         if dim0 == dim1 {
@@ -1041,14 +1052,14 @@ impl Squeeze {
         if dim >= shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Squeeze",
-                format!("Dimension {} out of bounds for shape {:?}", dim, shape)
+                format!("Dimension {} out of bounds for shape {:?}", dim, shape),
             ));
         }
 
         if shape[dim] != 1 {
             return Err(BarracudaError::invalid_params(
                 "Squeeze",
-                format!("Cannot squeeze dimension {} with size {}", dim, shape[dim])
+                format!("Cannot squeeze dimension {} with size {}", dim, shape[dim]),
             ));
         }
 
@@ -1067,14 +1078,21 @@ impl Squeeze {
 
     fn validate_input(data: &[f32], shape: &[usize]) -> Result<()> {
         if shape.is_empty() {
-            return Err(BarracudaError::invalid_params("Squeeze", "Shape cannot be empty"));
+            return Err(BarracudaError::invalid_params(
+                "Squeeze",
+                "Shape cannot be empty",
+            ));
         }
 
         let expected_size: usize = shape.iter().product();
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Squeeze",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
@@ -1107,13 +1125,20 @@ impl Unsqueeze {
 
     fn validate_input(data: &[f32], shape: &[usize], dim: usize) -> Result<()> {
         if shape.is_empty() {
-            return Err(BarracudaError::invalid_params("Unsqueeze", "Shape cannot be empty"));
+            return Err(BarracudaError::invalid_params(
+                "Unsqueeze",
+                "Shape cannot be empty",
+            ));
         }
 
         if dim > shape.len() {
             return Err(BarracudaError::invalid_params(
                 "Unsqueeze",
-                format!("Dimension {} out of bounds (shape len {})", dim, shape.len())
+                format!(
+                    "Dimension {} out of bounds (shape len {})",
+                    dim,
+                    shape.len()
+                ),
             ));
         }
 
@@ -1121,7 +1146,11 @@ impl Unsqueeze {
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Unsqueeze",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
@@ -1146,11 +1175,7 @@ impl Expand {
     ///
     /// Dimensions of size 1 can be expanded to any size.
     /// Other dimensions must match.
-    pub fn execute(
-        data: &[f32],
-        shape: &[usize],
-        target_shape: &[usize],
-    ) -> Result<Vec<f32>> {
+    pub fn execute(data: &[f32], shape: &[usize], target_shape: &[usize]) -> Result<Vec<f32>> {
         Self::validate_inputs(data, shape, target_shape)?;
 
         let output_size: usize = target_shape.iter().product();
@@ -1169,19 +1194,18 @@ impl Expand {
         } else {
             return Err(BarracudaError::UnsupportedOperation {
                 operation: "Expand".to_string(),
-                reason: format!("Shape {} → {} not yet supported", shape.len(), target_shape.len())
+                reason: format!(
+                    "Shape {} → {} not yet supported",
+                    shape.len(),
+                    target_shape.len()
+                ),
             });
         }
 
         Ok(output)
     }
 
-    fn expand_2d(
-        data: &[f32],
-        shape: &[usize],
-        target_shape: &[usize],
-        output: &mut Vec<f32>,
-    ) {
+    fn expand_2d(data: &[f32], shape: &[usize], target_shape: &[usize], output: &mut Vec<f32>) {
         let (src_rows, src_cols) = (shape[0], shape[1]);
         let (tgt_rows, tgt_cols) = (target_shape[0], target_shape[1]);
 
@@ -1199,7 +1223,10 @@ impl Expand {
         if shape.len() != target_shape.len() && !(shape.len() == 1 && target_shape.len() == 2) {
             return Err(BarracudaError::invalid_params(
                 "Expand",
-                format!("Shape ranks must match or be broadcastable: {:?} → {:?}", shape, target_shape)
+                format!(
+                    "Shape ranks must match or be broadcastable: {:?} → {:?}",
+                    shape, target_shape
+                ),
             ));
         }
 
@@ -1211,7 +1238,7 @@ impl Expand {
             if src_dim != tgt_dim && src_dim != 1 {
                 return Err(BarracudaError::invalid_params(
                     "Expand",
-                    format!("Cannot broadcast dim {} from {} to {}", i, src_dim, tgt_dim)
+                    format!("Cannot broadcast dim {} from {} to {}", i, src_dim, tgt_dim),
                 ));
             }
         }
@@ -1220,7 +1247,11 @@ impl Expand {
         if data.len() != expected_size {
             return Err(BarracudaError::invalid_params(
                 "Expand",
-                format!("Data length {} doesn't match shape {} elements", data.len(), expected_size)
+                format!(
+                    "Data length {} doesn't match shape {} elements",
+                    data.len(),
+                    expected_size
+                ),
             ));
         }
 
@@ -1242,11 +1273,7 @@ pub struct Where;
 
 impl Where {
     /// Select elements based on boolean condition
-    pub fn execute(
-        condition: &[bool],
-        true_vals: &[f32],
-        false_vals: &[f32],
-    ) -> Result<Vec<f32>> {
+    pub fn execute(condition: &[bool], true_vals: &[f32], false_vals: &[f32]) -> Result<Vec<f32>> {
         Self::validate_inputs(condition, true_vals, false_vals)?;
 
         let result = condition
@@ -1263,14 +1290,22 @@ impl Where {
         if condition.len() != true_vals.len() {
             return Err(BarracudaError::invalid_params(
                 "Where",
-                format!("Condition length {} != true_vals length {}", condition.len(), true_vals.len())
+                format!(
+                    "Condition length {} != true_vals length {}",
+                    condition.len(),
+                    true_vals.len()
+                ),
             ));
         }
 
         if condition.len() != false_vals.len() {
             return Err(BarracudaError::invalid_params(
                 "Where",
-                format!("Condition length {} != false_vals length {}", condition.len(), false_vals.len())
+                format!(
+                    "Condition length {} != false_vals length {}",
+                    condition.len(),
+                    false_vals.len()
+                ),
             ));
         }
 
@@ -1339,7 +1374,7 @@ impl Sqrt {
         if let Some(&neg) = data.iter().find(|&&x| x < 0.0) {
             return Err(BarracudaError::InvalidParameters {
                 operation: "Sqrt".to_string(),
-                reason: format!("Cannot take sqrt of negative value: {}", neg)
+                reason: format!("Cannot take sqrt of negative value: {}", neg),
             });
         }
 
@@ -1531,32 +1566,35 @@ impl Sum {
         if axis.is_none() {
             return Ok(vec![data.iter().sum()]);
         }
-        
+
         let axis = axis.unwrap();
         if axis >= shape.len() {
-            return Err(BarracudaError::invalid_params("Sum", 
-                format!("Axis {} out of bounds for shape {:?}", axis, shape)));
+            return Err(BarracudaError::invalid_params(
+                "Sum",
+                format!("Axis {} out of bounds for shape {:?}", axis, shape),
+            ));
         }
-        
+
         Self::reduce_along_axis(data, shape, axis, |acc, val| acc + val, 0.0)
     }
-    
+
     fn reduce_along_axis<F>(
-        data: &[f32], 
-        shape: &[usize], 
+        data: &[f32],
+        shape: &[usize],
         axis: usize,
         op: F,
-        init: f32
+        init: f32,
     ) -> Result<Vec<f32>>
-    where F: Fn(f32, f32) -> f32 + Copy
+    where
+        F: Fn(f32, f32) -> f32 + Copy,
     {
         let outer_size: usize = shape[..axis].iter().product();
         let axis_size = shape[axis];
-        let inner_size: usize = shape[axis+1..].iter().product();
+        let inner_size: usize = shape[axis + 1..].iter().product();
         let output_size = outer_size * inner_size;
-        
+
         let mut output = vec![init; output_size];
-        
+
         for outer in 0..outer_size {
             for inner in 0..inner_size {
                 let out_idx = outer * inner_size + inner;
@@ -1566,7 +1604,7 @@ impl Sum {
                 }
             }
         }
-        
+
         Ok(output)
     }
 }
@@ -1577,13 +1615,13 @@ pub struct Mean;
 impl Mean {
     pub fn execute(data: &[f32], shape: &[usize], axis: Option<usize>) -> Result<Vec<f32>> {
         let sum_result = Sum::execute(data, shape, axis)?;
-        
+
         let count = if axis.is_none() {
             data.len() as f32
         } else {
             shape[axis.unwrap()] as f32
         };
-        
+
         Ok(sum_result.iter().map(|&x| x / count).collect())
     }
 }
@@ -1594,19 +1632,24 @@ pub struct Max;
 impl Max {
     pub fn execute(data: &[f32], shape: &[usize], axis: Option<usize>) -> Result<Vec<f32>> {
         if data.is_empty() {
-            return Err(BarracudaError::invalid_params("Max", "Cannot find max of empty array"));
+            return Err(BarracudaError::invalid_params(
+                "Max",
+                "Cannot find max of empty array",
+            ));
         }
-        
+
         if axis.is_none() {
             return Ok(vec![data.iter().copied().fold(f32::NEG_INFINITY, f32::max)]);
         }
-        
+
         let axis = axis.unwrap();
         if axis >= shape.len() {
-            return Err(BarracudaError::invalid_params("Max",
-                format!("Axis {} out of bounds", axis)));
+            return Err(BarracudaError::invalid_params(
+                "Max",
+                format!("Axis {} out of bounds", axis),
+            ));
         }
-        
+
         Sum::reduce_along_axis(data, shape, axis, f32::max, f32::NEG_INFINITY)
     }
 }
@@ -1617,19 +1660,24 @@ pub struct Min;
 impl Min {
     pub fn execute(data: &[f32], shape: &[usize], axis: Option<usize>) -> Result<Vec<f32>> {
         if data.is_empty() {
-            return Err(BarracudaError::invalid_params("Min", "Cannot find min of empty array"));
+            return Err(BarracudaError::invalid_params(
+                "Min",
+                "Cannot find min of empty array",
+            ));
         }
-        
+
         if axis.is_none() {
             return Ok(vec![data.iter().copied().fold(f32::INFINITY, f32::min)]);
         }
-        
+
         let axis = axis.unwrap();
         if axis >= shape.len() {
-            return Err(BarracudaError::invalid_params("Min",
-                format!("Axis {} out of bounds", axis)));
+            return Err(BarracudaError::invalid_params(
+                "Min",
+                format!("Axis {} out of bounds", axis),
+            ));
         }
-        
+
         Sum::reduce_along_axis(data, shape, axis, f32::min, f32::INFINITY)
     }
 }
@@ -1640,22 +1688,21 @@ pub struct Var;
 impl Var {
     pub fn execute(data: &[f32], shape: &[usize], axis: Option<usize>) -> Result<Vec<f32>> {
         let mean = Mean::execute(data, shape, axis)?;
-        
+
         if axis.is_none() {
             let mean_val = mean[0];
-            let variance = data.iter()
-                .map(|&x| (x - mean_val).powi(2))
-                .sum::<f32>() / data.len() as f32;
+            let variance =
+                data.iter().map(|&x| (x - mean_val).powi(2)).sum::<f32>() / data.len() as f32;
             return Ok(vec![variance]);
         }
-        
+
         let axis = axis.unwrap();
         let axis_size = shape[axis];
         let mut squared_diffs = Vec::with_capacity(data.len());
-        
+
         let outer_size: usize = shape[..axis].iter().product();
-        let inner_size: usize = shape[axis+1..].iter().product();
-        
+        let inner_size: usize = shape[axis + 1..].iter().product();
+
         for outer in 0..outer_size {
             for ax in 0..axis_size {
                 for inner in 0..inner_size {
@@ -1666,7 +1713,7 @@ impl Var {
                 }
             }
         }
-        
+
         Mean::execute(&squared_diffs, shape, Some(axis))
     }
 }
@@ -1695,12 +1742,14 @@ pub struct GELU;
 
 impl GELU {
     pub fn execute(data: &[f32]) -> Vec<f32> {
-        data.iter().map(|&x| {
-            // Approximation: 0.5 * x * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
-            let sqrt_2_over_pi = 0.7978845608;
-            let coeff = sqrt_2_over_pi * (x + 0.044715 * x.powi(3));
-            0.5 * x * (1.0 + coeff.tanh())
-        }).collect()
+        data.iter()
+            .map(|&x| {
+                // Approximation: 0.5 * x * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
+                let sqrt_2_over_pi = 0.7978845608;
+                let coeff = sqrt_2_over_pi * (x + 0.044715 * x.powi(3));
+                0.5 * x * (1.0 + coeff.tanh())
+            })
+            .collect()
     }
 }
 
@@ -1719,27 +1768,29 @@ pub struct Softmax;
 impl Softmax {
     pub fn execute(data: &[f32], shape: &[usize], axis: usize) -> Result<Vec<f32>> {
         if axis >= shape.len() {
-            return Err(BarracudaError::invalid_params("Softmax",
-                format!("Axis {} out of bounds", axis)));
+            return Err(BarracudaError::invalid_params(
+                "Softmax",
+                format!("Axis {} out of bounds", axis),
+            ));
         }
-        
+
         let axis_size = shape[axis];
         let outer_size: usize = shape[..axis].iter().product();
-        let inner_size: usize = shape[axis+1..].iter().product();
-        
+        let inner_size: usize = shape[axis + 1..].iter().product();
+
         let mut output = data.to_vec();
-        
+
         for outer in 0..outer_size {
             for inner in 0..inner_size {
                 let start = outer * axis_size * inner_size + inner;
-                
+
                 // Find max for numerical stability
                 let mut max_val = f32::NEG_INFINITY;
                 for ax in 0..axis_size {
                     let idx = start + ax * inner_size;
                     max_val = max_val.max(output[idx]);
                 }
-                
+
                 // Compute exp and sum
                 let mut sum = 0.0;
                 for ax in 0..axis_size {
@@ -1747,7 +1798,7 @@ impl Softmax {
                     output[idx] = (output[idx] - max_val).exp();
                     sum += output[idx];
                 }
-                
+
                 // Normalize
                 for ax in 0..axis_size {
                     let idx = start + ax * inner_size;
@@ -1755,7 +1806,7 @@ impl Softmax {
                 }
             }
         }
-        
+
         Ok(output)
     }
 }
@@ -1776,18 +1827,21 @@ pub struct LayerNorm;
 impl LayerNorm {
     pub fn execute(data: &[f32], shape: &[usize], eps: f32) -> Result<Vec<f32>> {
         if shape.is_empty() {
-            return Err(BarracudaError::invalid_params("LayerNorm", "Shape cannot be empty"));
+            return Err(BarracudaError::invalid_params(
+                "LayerNorm",
+                "Shape cannot be empty",
+            ));
         }
-        
+
         let last_axis = shape.len() - 1;
         let mean = Mean::execute(data, shape, Some(last_axis))?;
         let std = Std::execute(data, shape, Some(last_axis))?;
-        
+
         let feature_size = shape[last_axis];
         let batch_size = data.len() / feature_size;
-        
+
         let mut output = Vec::with_capacity(data.len());
-        
+
         for batch in 0..batch_size {
             let m = mean[batch];
             let s = std[batch];
@@ -1796,7 +1850,7 @@ impl LayerNorm {
                 output.push((data[idx] - m) / (s + eps));
             }
         }
-        
+
         Ok(output)
     }
 }
@@ -1808,18 +1862,21 @@ impl Norm {
     pub fn l1(data: &[f32]) -> f32 {
         data.iter().map(|&x| x.abs()).sum()
     }
-    
+
     pub fn l2(data: &[f32]) -> f32 {
         data.iter().map(|&x| x * x).sum::<f32>().sqrt()
     }
-    
+
     pub fn execute(data: &[f32], p: f32) -> f32 {
         if (p - 1.0).abs() < f32::EPSILON {
             Self::l1(data)
         } else if (p - 2.0).abs() < f32::EPSILON {
             Self::l2(data)
         } else {
-            data.iter().map(|&x| x.abs().powf(p)).sum::<f32>().powf(1.0 / p)
+            data.iter()
+                .map(|&x| x.abs().powf(p))
+                .sum::<f32>()
+                .powf(1.0 / p)
         }
     }
 }
@@ -1847,13 +1904,15 @@ impl Prod {
         if axis.is_none() {
             return Ok(vec![data.iter().product()]);
         }
-        
+
         let axis = axis.unwrap();
         if axis >= shape.len() {
-            return Err(BarracudaError::invalid_params("Prod",
-                format!("Axis {} out of bounds", axis)));
+            return Err(BarracudaError::invalid_params(
+                "Prod",
+                format!("Axis {} out of bounds", axis),
+            ));
         }
-        
+
         Sum::reduce_along_axis(data, shape, axis, |acc, val| acc * val, 1.0)
     }
 }
@@ -1861,7 +1920,7 @@ impl Prod {
 #[cfg(test)]
 mod phase3_tests {
     use super::*;
-    
+
     #[test]
     fn test_sum_all() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
@@ -1869,7 +1928,7 @@ mod phase3_tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![10.0]);
     }
-    
+
     #[test]
     fn test_mean_all() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
@@ -1877,7 +1936,7 @@ mod phase3_tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![2.5]);
     }
-    
+
     #[test]
     fn test_max_all() {
         let data = vec![1.0, 5.0, 3.0, 2.0];
@@ -1885,7 +1944,7 @@ mod phase3_tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![5.0]);
     }
-    
+
     #[test]
     fn test_min_all() {
         let data = vec![1.0, 5.0, 3.0, 2.0];
@@ -1893,7 +1952,7 @@ mod phase3_tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![1.0]);
     }
-    
+
     #[test]
     fn test_var() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
@@ -1902,7 +1961,7 @@ mod phase3_tests {
         let var = result.unwrap()[0];
         assert!((var - 1.25).abs() < 0.01); // Variance = 1.25
     }
-    
+
     #[test]
     fn test_std() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
@@ -1911,21 +1970,21 @@ mod phase3_tests {
         let std = result.unwrap()[0];
         assert!((std - 1.118).abs() < 0.01); // Std ≈ 1.118
     }
-    
+
     #[test]
     fn test_relu() {
         let data = vec![-1.0, 0.0, 1.0, -2.0, 3.0];
         let result = ReLU::execute(&data);
         assert_eq!(result, vec![0.0, 0.0, 1.0, 0.0, 3.0]);
     }
-    
+
     #[test]
     fn test_sigmoid() {
         let data = vec![0.0];
         let result = Sigmoid::execute(&data);
         assert!((result[0] - 0.5).abs() < 0.01);
     }
-    
+
     #[test]
     fn test_softmax() {
         let data = vec![1.0, 2.0, 3.0];
@@ -1935,7 +1994,7 @@ mod phase3_tests {
         let sum: f32 = sm.iter().sum();
         assert!((sum - 1.0).abs() < 0.01); // Should sum to 1
     }
-    
+
     #[test]
     fn test_layer_norm() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
@@ -1946,28 +2005,28 @@ mod phase3_tests {
         let mean: f32 = normalized.iter().sum::<f32>() / normalized.len() as f32;
         assert!(mean.abs() < 0.1);
     }
-    
+
     #[test]
     fn test_norm_l1() {
         let data = vec![1.0, -2.0, 3.0];
         let result = Norm::l1(&data);
         assert_eq!(result, 6.0);
     }
-    
+
     #[test]
     fn test_norm_l2() {
         let data = vec![3.0, 4.0];
         let result = Norm::l2(&data);
         assert!((result - 5.0).abs() < 0.01);
     }
-    
+
     #[test]
     fn test_cumsum() {
         let data = vec![1.0, 2.0, 3.0, 4.0];
         let result = Cumsum::execute(&data);
         assert_eq!(result, vec![1.0, 3.0, 6.0, 10.0]);
     }
-    
+
     #[test]
     fn test_prod() {
         let data = vec![2.0, 3.0, 4.0];
@@ -1975,7 +2034,7 @@ mod phase3_tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![24.0]);
     }
-    
+
     #[test]
     fn test_gelu() {
         let data = vec![0.0];

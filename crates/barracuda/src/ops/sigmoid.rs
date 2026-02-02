@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: σ(x) = 1 / (1 + e^(-x))
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 /// Sigmoid activation operation
 pub struct Sigmoid {
@@ -31,31 +31,34 @@ impl Sigmoid {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Sigmoid Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Sigmoid Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -77,23 +80,30 @@ impl Sigmoid {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Sigmoid"));
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Sigmoid Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Sigmoid Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Sigmoid Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Sigmoid Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Sigmoid Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Sigmoid Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -137,13 +147,9 @@ mod tests {
     async fn test_sigmoid_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![-2.0, -1.0, 0.0, 1.0, 2.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-2.0, -1.0, 0.0, 1.0, 2.0], vec![5], device)
+            .await
+            .unwrap();
 
         let output = input.sigmoid().unwrap();
         let result = output.to_vec().unwrap();
@@ -170,7 +176,7 @@ mod tests {
         let result = output.to_vec().unwrap();
 
         assert!(result[0] < 1e-20); // σ(-100) ≈ 0
-        assert!(result[1] < 1e-3);  // σ(-10) ≈ 0
+        assert!(result[1] < 1e-3); // σ(-10) ≈ 0
         assert!((result[3] - 0.5).abs() < 1e-5); // σ(0) = 0.5
         assert!(result[5] > 0.999); // σ(10) ≈ 1
         assert!(result[6] > 0.999); // σ(100) ≈ 1
@@ -202,8 +208,10 @@ mod tests {
 
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 100.0 - 5.0).collect();
-        
-        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+
+        let input = Tensor::from_vec_on(input_data, vec![size], device)
+            .await
+            .unwrap();
         let output = input.sigmoid().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -211,7 +219,7 @@ mod tests {
         for i in 0..result.len() {
             assert!(result[i] > 0.0 && result[i] < 1.0);
             if i > 0 {
-                assert!(result[i] >= result[i-1]);
+                assert!(result[i] >= result[i - 1]);
             }
         }
     }
@@ -221,15 +229,26 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![-5.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![9], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![9], device)
+            .await
+            .unwrap();
         let output = input.sigmoid().unwrap();
         let gpu_result = output.to_vec().unwrap();
 
         // CPU reference
-        let cpu_result: Vec<f32> = input_data.iter().map(|&x| 1.0 / (1.0 + (-x).exp())).collect();
+        let cpu_result: Vec<f32> = input_data
+            .iter()
+            .map(|&x| 1.0 / (1.0 + (-x).exp()))
+            .collect();
 
         for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
-            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+            assert!(
+                (gpu - cpu).abs() < 1e-5,
+                "Error at {}: GPU={}, CPU={}",
+                i,
+                gpu,
+                cpu
+            );
         }
     }
 }

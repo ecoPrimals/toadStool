@@ -47,16 +47,16 @@ impl FheXor {
     /// Create a new FHE XOR gate operation
     pub fn new(device: &WgpuDevice, degree: u32, modulus: u64) -> Result<Self> {
         if modulus == 0 {
-            return Err(BarracudaError::Device("Modulus must be non-zero".to_string()));
+            return Err(BarracudaError::Device(
+                "Modulus must be non-zero".to_string(),
+            ));
         }
 
         let shader = device
             .device()
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("FHE XOR Gate Shader"),
-                source: wgpu::ShaderSource::Wgsl(
-                    include_str!("fhe_xor.wgsl").into()
-                ),
+                source: wgpu::ShaderSource::Wgsl(include_str!("fhe_xor.wgsl").into()),
             });
 
         let bind_group_layout =
@@ -140,24 +140,32 @@ impl FheXor {
         if poly_a.len() != self.degree as usize || poly_b.len() != self.degree as usize {
             return Err(BarracudaError::Device(format!(
                 "Polynomial length mismatch: expected {}, got {} and {}",
-                self.degree, poly_a.len(), poly_b.len()
+                self.degree,
+                poly_a.len(),
+                poly_b.len()
             )));
         }
 
         let a_u32: Vec<u32> = poly_a.iter().map(|&x| x as u32).collect();
         let b_u32: Vec<u32> = poly_b.iter().map(|&x| x as u32).collect();
 
-        let buffer_a = self.device.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FHE XOR Input A"),
-            contents: bytemuck::cast_slice(&a_u32),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let buffer_a = self
+            .device
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FHE XOR Input A"),
+                contents: bytemuck::cast_slice(&a_u32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
-        let buffer_b = self.device.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FHE XOR Input B"),
-            contents: bytemuck::cast_slice(&b_u32),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let buffer_b = self
+            .device
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FHE XOR Input B"),
+                contents: bytemuck::cast_slice(&b_u32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
         let buffer_output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("FHE XOR Output"),
@@ -172,41 +180,47 @@ impl FheXor {
             (self.modulus >> 32) as u32,
             0u32,
         ];
-        let buffer_params = self.device.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FHE XOR Params"),
-            contents: bytemuck::cast_slice(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let buffer_params =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE XOR Params"),
+                    contents: bytemuck::cast_slice(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
-        let bind_group = self.device.device().create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FHE XOR Bind Group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: buffer_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: buffer_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: buffer_output.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: buffer_params.as_entire_binding(),
-                },
-            ],
-        });
-
-        let mut encoder = self
+        let bind_group = self
             .device
             .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE XOR Encoder"),
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("FHE XOR Bind Group"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: buffer_a.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: buffer_b.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: buffer_output.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: buffer_params.as_entire_binding(),
+                    },
+                ],
             });
+
+        let mut encoder =
+            self.device
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FHE XOR Encoder"),
+                });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -245,7 +259,9 @@ impl FheXor {
 
         self.device.device().poll(wgpu::Maintain::Wait);
         rx.await
-            .map_err(|_| BarracudaError::Device("Failed to receive buffer mapping result".to_string()))?
+            .map_err(|_| {
+                BarracudaError::Device("Failed to receive buffer mapping result".to_string())
+            })?
             .map_err(|e| BarracudaError::Device(format!("Buffer mapping failed: {:?}", e)))?;
 
         let data = buffer_slice.get_mapped_range();
@@ -271,7 +287,10 @@ mod tests {
         // Test: 1 XOR 1 = 0
         let poly_a = vec![1u64; 8];
         let poly_b = vec![1u64; 8];
-        let result = op.execute(&poly_a, &poly_b).await.expect("Execution failed");
+        let result = op
+            .execute(&poly_a, &poly_b)
+            .await
+            .expect("Execution failed");
 
         assert_eq!(result.len(), 8);
         assert!(result.iter().all(|&x| x == 0), "1 XOR 1 should equal 0");
@@ -285,7 +304,10 @@ mod tests {
         // Test: 1 XOR 0 = 1
         let poly_a = vec![1u64; 8];
         let poly_b = vec![0u64; 8];
-        let result = op.execute(&poly_a, &poly_b).await.expect("Execution failed");
+        let result = op
+            .execute(&poly_a, &poly_b)
+            .await
+            .expect("Execution failed");
 
         assert_eq!(result.len(), 8);
         assert!(result.iter().all(|&x| x == 1), "1 XOR 0 should equal 1");
@@ -299,7 +321,10 @@ mod tests {
         // Test: 0 XOR 0 = 0
         let poly_a = vec![0u64; 8];
         let poly_b = vec![0u64; 8];
-        let result = op.execute(&poly_a, &poly_b).await.expect("Execution failed");
+        let result = op
+            .execute(&poly_a, &poly_b)
+            .await
+            .expect("Execution failed");
 
         assert_eq!(result.len(), 8);
         assert!(result.iter().all(|&x| x == 0), "0 XOR 0 should equal 0");

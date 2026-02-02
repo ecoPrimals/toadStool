@@ -35,19 +35,19 @@
 #![allow(clippy::must_use_candidate)]
 
 mod error;
-mod parser;
-mod model;
-mod weights;
-mod shapes;
-mod loading;
 mod inference;
+mod loading;
+mod model;
+mod parser;
+mod shapes;
+mod weights;
 
 pub use error::{AkidaModelError, Result};
-pub use model::{Model, Layer, LayerType};
-pub use weights::{WeightData, QuantizationConfig, extract_weights};
-pub use shapes::{Shape, extract_shapes};
+pub use model::{Layer, LayerType, Model};
+pub use shapes::{extract_shapes, Shape};
+pub use weights::{extract_weights, QuantizationConfig, WeightData};
 
 /// Re-export commonly used types
 pub mod prelude {
-    pub use crate::{Model, Layer, LayerType, Result};
+    pub use crate::{Layer, LayerType, Model, Result};
 }

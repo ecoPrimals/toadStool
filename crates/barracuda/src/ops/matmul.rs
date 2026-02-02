@@ -1,8 +1,8 @@
 //! MatMul operation - Matrix multiplication
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -29,13 +29,13 @@ impl MatMul {
 
     pub fn execute(self) -> Result<Tensor> {
         let device = self.lhs.device();
-        
+
         // Assume lhs: [m, k], rhs: [k, n] -> output: [m, n]
         let m = self.lhs.shape()[0];
         let k = self.lhs.shape()[1];
         let n = self.rhs.shape()[1];
         let output_size = m * n;
-        
+
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         let params = MatMulParams {
@@ -51,53 +51,58 @@ impl MatMul {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("MatMul BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("MatMul BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("MatMul BG"),
@@ -123,22 +128,29 @@ impl MatMul {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("MatMul"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("MatMul PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("MatMul PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("MatMul Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("MatMul Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MatMul Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MatMul Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -154,7 +166,11 @@ impl MatMul {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(output_buffer, vec![m, n], device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![m, n],
+            device.clone(),
+        ))
     }
 }
 
@@ -190,25 +206,21 @@ mod tests {
         // 2x3 * 3x2 = 2x2
         let a_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let b_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        
-        let a = Tensor::from_vec_on(
-            a_data.clone(),
-            vec![2, 3],
-            device.clone()
-        ).await.unwrap();
-        
-        let b = Tensor::from_vec_on(
-            b_data.clone(),
-            vec![3, 2],
-            device.clone()
-        ).await.unwrap();
-        
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 3], device.clone())
+            .await
+            .unwrap();
+
+        let b = Tensor::from_vec_on(b_data.clone(), vec![3, 2], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[2, 2]);
-        
+
         let output = result.to_vec().unwrap();
         let expected = matmul_cpu(&a_data, &b_data, 2, 3, 2);
-        
+
         for (r, e) in output.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-5);
         }
@@ -221,14 +233,18 @@ mod tests {
         // Identity matrix
         let a_data = vec![1.0, 0.0, 0.0, 1.0];
         let b_data = vec![5.0, 6.0, 7.0, 8.0];
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone()).await.unwrap();
-        
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         let output = result.to_vec().unwrap();
         let expected = matmul_cpu(&a_data, &b_data, 2, 2, 2);
-        
+
         for (r, e) in output.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-5);
         }
@@ -236,13 +252,17 @@ mod tests {
         // Zero matrix
         let a_data = vec![0.0, 0.0, 0.0, 0.0];
         let b_data = vec![1.0, 2.0, 3.0, 4.0];
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone()).await.unwrap();
-        
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 2], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 2], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         for val in output.iter() {
             assert!(val.abs() < 1e-6);
         }
@@ -255,10 +275,14 @@ mod tests {
         // 1x1 matrices
         let a_data = vec![5.0];
         let b_data = vec![3.0];
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![1, 1], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![1, 1], device.clone()).await.unwrap();
-        
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![1, 1], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![1, 1], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         let output = result.to_vec().unwrap();
         assert!((output[0] - 15.0).abs() < 1e-5);
@@ -266,16 +290,20 @@ mod tests {
         // Tall matrix: 4x2 * 2x3 = 4x3
         let a_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         let b_data = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![4, 2], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 3], device.clone()).await.unwrap();
-        
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![4, 2], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![2, 3], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[4, 3]);
-        
+
         let output = result.to_vec().unwrap();
         let expected = matmul_cpu(&a_data, &b_data, 4, 2, 3);
-        
+
         for (r, e) in output.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-5);
         }
@@ -289,19 +317,23 @@ mod tests {
         let m = 64;
         let k = 32;
         let n = 64;
-        
-        let a_data: Vec<f32> = (0..m*k).map(|i| (i as f32) * 0.01).collect();
-        let b_data: Vec<f32> = (0..k*n).map(|i| (i as f32) * 0.01).collect();
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![m, k], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![k, n], device.clone()).await.unwrap();
-        
+
+        let a_data: Vec<f32> = (0..m * k).map(|i| (i as f32) * 0.01).collect();
+        let b_data: Vec<f32> = (0..k * n).map(|i| (i as f32) * 0.01).collect();
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![m, k], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![k, n], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         assert_eq!(result.shape(), &[m, n]);
-        
+
         let output = result.to_vec().unwrap();
         let expected = matmul_cpu(&a_data, &b_data, m, k, n);
-        
+
         for (r, e) in output.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-3); // Slightly relaxed for large accumulations
         }
@@ -312,28 +344,31 @@ mod tests {
         let device = get_test_device().await;
 
         // Test FP32 precision with typical values
-        let a_data = vec![
-            1.234, 2.345, 3.456,
-            4.567, 5.678, 6.789,
-        ];
-        let b_data = vec![
-            0.111, 0.222,
-            0.333, 0.444,
-            0.555, 0.666,
-        ];
-        
-        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 3], device.clone()).await.unwrap();
-        let b = Tensor::from_vec_on(b_data.clone(), vec![3, 2], device.clone()).await.unwrap();
-        
+        let a_data = vec![1.234, 2.345, 3.456, 4.567, 5.678, 6.789];
+        let b_data = vec![0.111, 0.222, 0.333, 0.444, 0.555, 0.666];
+
+        let a = Tensor::from_vec_on(a_data.clone(), vec![2, 3], device.clone())
+            .await
+            .unwrap();
+        let b = Tensor::from_vec_on(b_data.clone(), vec![3, 2], device.clone())
+            .await
+            .unwrap();
+
         let result = a.matmul(&b).unwrap();
         let output = result.to_vec().unwrap();
         let expected = matmul_cpu(&a_data, &b_data, 2, 3, 2);
-        
+
         // Verify FP32 precision
-        let max_error = output.iter().zip(expected.iter())
+        let max_error = output
+            .iter()
+            .zip(expected.iter())
             .map(|(r, e)| (r - e).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-5, "Max error: {} exceeds FP32 threshold", max_error);
+
+        assert!(
+            max_error < 1e-5,
+            "Max error: {} exceeds FP32 threshold",
+            max_error
+        );
     }
 }

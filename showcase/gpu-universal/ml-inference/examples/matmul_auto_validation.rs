@@ -40,12 +40,18 @@ async fn main() -> anyhow::Result<()> {
     println!("───────────────────────────────────────────────────────────");
 
     for (size, _) in &test_sizes {
-        let a: Vec<f32> = (0..*size * *size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-        let b: Vec<f32> = (0..*size * *size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+        let a: Vec<f32> = (0..*size * *size)
+            .map(|i| ((i % 1000) as f32) * 0.001)
+            .collect();
+        let b: Vec<f32> = (0..*size * *size)
+            .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+            .collect();
 
         // Auto (intelligent selection)
         let start = Instant::now();
-        let result_auto = executor.execute_matmul_auto(&a, &b, *size, *size, *size).await?;
+        let result_auto = executor
+            .execute_matmul_auto(&a, &b, *size, *size, *size)
+            .await?;
         let auto_time = start.elapsed();
 
         // Naive
@@ -55,34 +61,49 @@ async fn main() -> anyhow::Result<()> {
 
         // Tiled
         let start = Instant::now();
-        let _result_tiled = executor.execute_matmul_tiled(&a, &b, *size, *size, *size).await?;
+        let _result_tiled = executor
+            .execute_matmul_tiled(&a, &b, *size, *size, *size)
+            .await?;
         let tiled_time = start.elapsed();
 
         // Verify correctness
-        let max_diff = result_auto.iter()
+        let max_diff = result_auto
+            .iter()
             .zip(result_naive.iter())
             .map(|(a, n)| (a - n).abs())
             .fold(0.0f32, f32::max);
 
         if max_diff > 1e-4 {
-            println!("⚠️  {}x{}: Correctness issue! max_diff = {}", size, size, max_diff);
+            println!(
+                "⚠️  {}x{}: Correctness issue! max_diff = {}",
+                size, size, max_diff
+            );
         }
 
         // Determine best
-        let best = if naive_time < tiled_time { "Naive" } else { "Tiled" };
-        let best_marker = if auto_time.as_secs_f64() <= naive_time.as_secs_f64().min(tiled_time.as_secs_f64()) * 1.1 {
+        let best = if naive_time < tiled_time {
+            "Naive"
+        } else {
+            "Tiled"
+        };
+        let best_marker = if auto_time.as_secs_f64()
+            <= naive_time.as_secs_f64().min(tiled_time.as_secs_f64()) * 1.1
+        {
             "✅"
         } else {
             "⚠️"
         };
 
-        println!("{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:7.2}ms  {} {}",
-            size, size,
+        println!(
+            "{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:7.2}ms  {} {}",
+            size,
+            size,
             auto_time.as_secs_f64() * 1000.0,
             naive_time.as_secs_f64() * 1000.0,
             tiled_time.as_secs_f64() * 1000.0,
             best,
-            best_marker);
+            best_marker
+        );
     }
 
     println!("\n═══════════════════════════════════════════════════════════");

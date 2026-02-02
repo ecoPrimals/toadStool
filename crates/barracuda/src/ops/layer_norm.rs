@@ -1,8 +1,8 @@
 //! LayerNorm operation - Layer normalization (transformer essential)
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -41,43 +41,48 @@ impl LayerNorm {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("LayerNorm BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("LayerNorm BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("LayerNorm BG"),
@@ -99,22 +104,29 @@ impl LayerNorm {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("LayerNorm"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("LayerNorm PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("LayerNorm PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("LayerNorm Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("LayerNorm Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("LayerNorm Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("LayerNorm Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -129,7 +141,11 @@ impl LayerNorm {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -157,12 +173,14 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![1.0, 2.0, 3.0, 4.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
-        
+
         let data = result.to_vec().unwrap();
         assert_eq!(data.len(), 4);
-        
+
         let expected = layer_norm_cpu(&input_data, 1e-5);
         for (r, e) in data.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-4);
@@ -175,7 +193,9 @@ mod tests {
 
         // All same values (zero variance)
         let input_data = vec![3.0, 3.0, 3.0, 3.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone())
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
         let data = result.to_vec().unwrap();
         // Should be all zeros (normalized to mean)
@@ -185,7 +205,9 @@ mod tests {
 
         // Negative and positive mix
         let input_data = vec![-3.0, -1.0, 1.0, 3.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device.clone())
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
         let data = result.to_vec().unwrap();
         let expected = layer_norm_cpu(&input_data, 1e-5);
@@ -200,14 +222,18 @@ mod tests {
 
         // Single element
         let input_data = vec![7.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone())
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
         let data = result.to_vec().unwrap();
         assert!(data[0].abs() < 1e-3); // Should be ~0
 
         // Large variance
         let input_data = vec![-1000.0, -500.0, 0.0, 500.0, 1000.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device.clone())
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
         let data = result.to_vec().unwrap();
         let expected = layer_norm_cpu(&input_data, 1e-5);
@@ -222,12 +248,14 @@ mod tests {
 
         // 512 elements (typical transformer hidden size)
         let input_data: Vec<f32> = (0..512).map(|i| (i as f32 - 256.0) * 0.01).collect();
-        let input = Tensor::from_vec_on(input_data.clone(), vec![512], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![512], device)
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
-        
+
         let data = result.to_vec().unwrap();
         let expected = layer_norm_cpu(&input_data, 1e-5);
-        
+
         for (r, e) in data.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-3);
         }
@@ -239,17 +267,25 @@ mod tests {
 
         // Test FP32 precision with transformer-typical values
         let input_data = vec![0.123, -0.456, 0.789, -0.234, 0.567, -0.890, 0.345, -0.678];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![8], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![8], device)
+            .await
+            .unwrap();
         let result = input.layer_norm(1e-5).unwrap();
-        
+
         let data = result.to_vec().unwrap();
         let expected = layer_norm_cpu(&input_data, 1e-5);
-        
+
         // Verify FP32 precision
-        let max_error = data.iter().zip(expected.iter())
+        let max_error = data
+            .iter()
+            .zip(expected.iter())
             .map(|(r, e)| (r - e).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-4, "Max error: {} exceeds FP32 threshold", max_error);
+
+        assert!(
+            max_error < 1e-4,
+            "Max error: {} exceeds FP32 threshold",
+            max_error
+        );
     }
 }

@@ -208,15 +208,29 @@ pub async fn reservoir_init(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (n * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (n * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -234,40 +248,71 @@ mod tests {
     #[tokio::test]
     async fn test_reservoir_init_basic() {
         let device = WgpuDevice::new().await.unwrap();
-        let result = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 42).await.unwrap();
+        let result = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 42)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 100);
         assert!(result.iter().all(|&x| x.is_finite()));
         // Check sparsity (approximately 90% zeros)
         let zero_count = result.iter().filter(|&&x| x.abs() < 1e-6).count();
-        assert!(zero_count > 80 && zero_count < 95, "Expected ~90 zeros, got {}", zero_count);
+        assert!(
+            zero_count > 80 && zero_count < 95,
+            "Expected ~90 zeros, got {}",
+            zero_count
+        );
     }
 
     #[tokio::test]
     async fn test_reservoir_init_edge_cases() {
         let device = WgpuDevice::new().await.unwrap();
         // Fully connected (connectivity = 1.0)
-        let result = reservoir_init(&device.device, &device.queue, 5, 0.5, 1.0, 42).await.unwrap();
+        let result = reservoir_init(&device.device, &device.queue, 5, 0.5, 1.0, 42)
+            .await
+            .unwrap();
         let zero_count = result.iter().filter(|&&x| x.abs() < 1e-6).count();
-        assert!(zero_count < 5, "With full connectivity, should have few zeros");
+        assert!(
+            zero_count < 5,
+            "With full connectivity, should have few zeros"
+        );
 
         // Different spectral radius
-        let result2 = reservoir_init(&device.device, &device.queue, 5, 0.1, 0.5, 42).await.unwrap();
+        let result2 = reservoir_init(&device.device, &device.queue, 5, 0.1, 0.5, 42)
+            .await
+            .unwrap();
         assert!(result2.iter().all(|&x| x.abs() < 1.0));
     }
 
     #[tokio::test]
     async fn test_reservoir_init_boundary() {
         let device = WgpuDevice::new().await.unwrap();
-        assert!(reservoir_init(&device.device, &device.queue, 0, 0.9, 0.1, 42).await.is_err());
-        assert!(reservoir_init(&device.device, &device.queue, 10, 0.0, 0.1, 42).await.is_err());
-        assert!(reservoir_init(&device.device, &device.queue, 10, 0.9, 0.0, 42).await.is_err());
-        assert!(reservoir_init(&device.device, &device.queue, 10, 0.9, 1.5, 42).await.is_err());
+        assert!(
+            reservoir_init(&device.device, &device.queue, 0, 0.9, 0.1, 42)
+                .await
+                .is_err()
+        );
+        assert!(
+            reservoir_init(&device.device, &device.queue, 10, 0.0, 0.1, 42)
+                .await
+                .is_err()
+        );
+        assert!(
+            reservoir_init(&device.device, &device.queue, 10, 0.9, 0.0, 42)
+                .await
+                .is_err()
+        );
+        assert!(
+            reservoir_init(&device.device, &device.queue, 10, 0.9, 1.5, 42)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn test_reservoir_init_large_tensor() {
         let device = WgpuDevice::new().await.unwrap();
-        let result = reservoir_init(&device.device, &device.queue, 100, 0.9, 0.1, 42).await.unwrap();
+        let result = reservoir_init(&device.device, &device.queue, 100, 0.9, 0.1, 42)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 10000);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -276,11 +321,18 @@ mod tests {
     async fn test_reservoir_init_precision() {
         let device = WgpuDevice::new().await.unwrap();
         // Test reproducibility with same seed
-        let result1 = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 12345).await.unwrap();
-        let result2 = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 12345).await.unwrap();
+        let result1 = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 12345)
+            .await
+            .unwrap();
+        let result2 = reservoir_init(&device.device, &device.queue, 10, 0.9, 0.1, 12345)
+            .await
+            .unwrap();
         assert_eq!(result1.len(), result2.len());
         for (a, b) in result1.iter().zip(result2.iter()) {
-            assert!((a - b).abs() < 1e-5, "Same seed should produce same results");
+            assert!(
+                (a - b).abs() < 1e-5,
+                "Same seed should produce same results"
+            );
         }
     }
 }

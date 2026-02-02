@@ -11,7 +11,7 @@ pub async fn triu(
     diagonal: isize,
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let mut output = matrix.to_vec();
-    
+
     for i in 0..rows {
         for j in 0..cols {
             if (j as isize) < (i as isize + diagonal) {
@@ -19,7 +19,7 @@ pub async fn triu(
             }
         }
     }
-    
+
     Ok(output)
 }
 
@@ -28,12 +28,14 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_triu() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());
         let matrix = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]; // 3x3
-        let output = triu(&dev.device, &dev.queue, &matrix, 3, 3, 0).await.unwrap();
+        let output = triu(&dev.device, &dev.queue, &matrix, 3, 3, 0)
+            .await
+            .unwrap();
         assert_eq!(output[0], 1.0);
         assert_eq!(output[3], 0.0); // Below diagonal
     }

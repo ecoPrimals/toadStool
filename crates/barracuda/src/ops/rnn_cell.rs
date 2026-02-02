@@ -25,23 +25,23 @@ pub async fn rnn_cell(
     hidden_size: usize,
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let mut hidden = vec![0.0f32; batch_size * hidden_size];
-    
+
     for b in 0..batch_size {
         for h in 0..hidden_size {
             let mut sum = weights.b_ih[h] + weights.b_hh[h];
-            
+
             for i in 0..input_size {
                 sum += input[b * input_size + i] * weights.w_ih[h * input_size + i];
             }
-            
+
             for i in 0..hidden_size {
                 sum += prev_hidden[b * hidden_size + i] * weights.w_hh[h * hidden_size + i];
             }
-            
+
             hidden[b * hidden_size + h] = sum.tanh();
         }
     }
-    
+
     Ok(hidden)
 }
 
@@ -50,11 +50,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_rnn_cell_basic() {
         let dev = get_test_device().await;
@@ -66,7 +66,18 @@ mod tests {
             b_ih: vec![0.0; 8],
             b_hh: vec![0.0; 8],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, 2, 4, 8).await.unwrap();
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            2,
+            4,
+            8,
+        )
+        .await
+        .unwrap();
         assert_eq!(hidden.len(), 16);
         assert!(hidden.iter().all(|&x| x.is_finite()));
     }
@@ -84,7 +95,18 @@ mod tests {
             b_ih: vec![0.0; 4],
             b_hh: vec![0.0; 4],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, 1, 3, 4).await.unwrap();
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            1,
+            3,
+            4,
+        )
+        .await
+        .unwrap();
         assert_eq!(hidden.len(), 4);
 
         // Small hidden size
@@ -96,7 +118,18 @@ mod tests {
             b_ih: vec![0.0; 2],
             b_hh: vec![0.0; 2],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, 2, 5, 2).await.unwrap();
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            2,
+            5,
+            2,
+        )
+        .await
+        .unwrap();
         assert_eq!(hidden.len(), 4);
     }
 
@@ -113,7 +146,18 @@ mod tests {
             b_ih: vec![0.1; 8],
             b_hh: vec![0.1; 8],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, 1, 4, 8).await.unwrap();
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            1,
+            4,
+            8,
+        )
+        .await
+        .unwrap();
         assert!(hidden.iter().all(|&x| x.is_finite()));
         // tanh bounds: -1 < x < 1
         assert!(hidden.iter().all(|&x| x > -1.0 && x < 1.0));
@@ -133,7 +177,18 @@ mod tests {
             b_ih: vec![0.0; 20],
             b_hh: vec![0.0; 20],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, batch_size, 10, 20).await.unwrap();
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            batch_size,
+            10,
+            20,
+        )
+        .await
+        .unwrap();
         assert_eq!(hidden.len(), batch_size * 20);
     }
 
@@ -150,8 +205,19 @@ mod tests {
             b_ih: vec![0.0, 0.0],
             b_hh: vec![0.0, 0.0],
         };
-        let hidden = rnn_cell(&dev.device, &dev.queue, &input, &prev_hidden, &weights, 1, 2, 2).await.unwrap();
-        
+        let hidden = rnn_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &weights,
+            1,
+            2,
+            2,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(hidden.len(), 2);
         assert!(hidden.iter().all(|&x| x.is_finite()));
         // Values should be within tanh bounds

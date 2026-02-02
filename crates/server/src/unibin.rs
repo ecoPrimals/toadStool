@@ -97,14 +97,14 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
     // Start servers with isomorphic IPC (Try→Detect→Adapt→Succeed)
     info!("🔌 Starting IPC servers (isomorphic mode)...");
     info!("   Protocol: tarpc (PRIMARY) + JSON-RPC 2.0 (UNIVERSAL)");
-    
+
     let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
     let jsonrpc_server = ManualJsonRpcServer::new(Arc::clone(&executor), version.clone());
-    
+
     // Clone for server startup
     let socket_path_for_server = socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
-    
+
     // Start both servers with fallback support
     let server_handle = tokio::spawn(async move {
         match start_servers_with_fallback(
@@ -161,10 +161,10 @@ pub async fn run_server_main() -> Result<(), Box<dyn std::error::Error>> {
 /// This enables discovery, organization, and security
 fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let biomeos_dir = runtime_dir.join("biomeos");
-    
+
     // Create directory if doesn't exist
     std::fs::create_dir_all(&biomeos_dir)?;
-    
+
     // Set permissions to 0700 (user-only access)
     #[cfg(unix)]
     {
@@ -172,7 +172,7 @@ fn ensure_biomeos_directory(runtime_dir: &Path) -> Result<PathBuf, Box<dyn std::
         let perms = std::fs::Permissions::from_mode(0o700);
         std::fs::set_permissions(&biomeos_dir, perms)?;
     }
-    
+
     info!("✅ biomeos directory ensured: {}", biomeos_dir.display());
     Ok(biomeos_dir)
 }
@@ -198,7 +198,10 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
     // 2. PRIMAL_SOCKET: Generic primal socket (with family suffix for multi-family deployments)
     if let Ok(socket) = std::env::var("PRIMAL_SOCKET") {
         let socket_with_family = format!("{}-{}", socket, family_id);
-        info!("✅ Using socket path from PRIMAL_SOCKET: {}", socket_with_family);
+        info!(
+            "✅ Using socket path from PRIMAL_SOCKET: {}",
+            socket_with_family
+        );
         info!("   (Generic primal socket with family suffix - second priority)");
         return Ok(PathBuf::from(socket_with_family));
     }
@@ -235,7 +238,9 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
                                     .lines()
                                     .find(|line| line.starts_with(&format!("{}:", user)))
                                     .and_then(|line| {
-                                        line.split(':').nth(2).and_then(|uid| uid.parse::<u32>().ok())
+                                        line.split(':')
+                                            .nth(2)
+                                            .and_then(|uid| uid.parse::<u32>().ok())
                                     })
                                     .map(|uid| PathBuf::from(format!("/run/user/{}", uid)))
                             })
@@ -251,8 +256,11 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
     if runtime_dir.exists() {
         let biomeos_dir = ensure_biomeos_directory(&runtime_dir)?;
         let socket_path = biomeos_dir.join("toadstool.sock");
-        
-        info!("✅ Using biomeOS standard socket path: {}", socket_path.display());
+
+        info!(
+            "✅ Using biomeOS standard socket path: {}",
+            socket_path.display()
+        );
         info!("   (XDG runtime + biomeos subdirectory - **STANDARD**))");
         info!("   Socket standardization: Tower Atomic compatible!");
         return Ok(socket_path);
@@ -262,14 +270,14 @@ fn get_socket_path(family_id: &str, _node_id: &str) -> Result<PathBuf, Box<dyn s
     // Create biomeos subdirectory in /tmp as well for consistency
     let tmp_biomeos = PathBuf::from("/tmp/biomeos");
     std::fs::create_dir_all(&tmp_biomeos)?;
-    
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o700);
         std::fs::set_permissions(&tmp_biomeos, perms)?;
     }
-    
+
     let tmp_path = tmp_biomeos.join("toadstool.sock");
 
     info!("⚠️  Using /tmp fallback for dev/testing deployment");
@@ -352,14 +360,14 @@ async fn create_executor(
 /// 4. No hardcoding, no HTTP dependencies
 async fn query_local_capabilities() -> Vec<String> {
     let mut capabilities = vec!["compute".to_string(), "cpu".to_string()];
-    
+
     // Detect CPU capabilities (pure Rust via sysinfo!)
     let cpus = num_cpus::get();
     if cpus >= 16 {
         capabilities.push("high-core-count".to_string());
         tracing::info!("✅ High core count detected: {} cores", cpus);
     }
-    
+
     // Detect memory capabilities (pure Rust via sysinfo!)
     let mut sys = sysinfo::System::new_all();
     sys.refresh_memory();
@@ -368,18 +376,18 @@ async fn query_local_capabilities() -> Vec<String> {
         capabilities.push("high-memory".to_string());
         tracing::info!("✅ High memory detected: {:.1} GB", total_memory_gb);
     }
-    
+
     // Detect GPU capabilities (pure Rust via wgpu!)
     #[cfg(feature = "gpu-discovery")]
     {
         let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
         if !adapters.is_empty() {
             capabilities.push("gpu".to_string());
-            
+
             for adapter in adapters {
                 let info = adapter.get_info();
                 tracing::info!("✅ Detected GPU: {} ({:?})", info.name, info.backend);
-                
+
                 // Add backend-specific capabilities
                 match info.backend {
                     wgpu::Backend::Vulkan => {
@@ -399,14 +407,17 @@ async fn query_local_capabilities() -> Vec<String> {
                     }
                     _ => {}
                 }
-                
+
                 // Detect vendor-specific capabilities from name
                 let name_lower = info.name.to_lowercase();
                 if name_lower.contains("nvidia") && !capabilities.contains(&"cuda".to_string()) {
                     capabilities.push("cuda".to_string());
-                } else if name_lower.contains("amd") && !capabilities.contains(&"rocm".to_string()) {
+                } else if name_lower.contains("amd") && !capabilities.contains(&"rocm".to_string())
+                {
                     capabilities.push("rocm".to_string());
-                } else if name_lower.contains("intel") && !capabilities.contains(&"oneapi".to_string()) {
+                } else if name_lower.contains("intel")
+                    && !capabilities.contains(&"oneapi".to_string())
+                {
                     capabilities.push("oneapi".to_string());
                 }
             }
@@ -414,15 +425,15 @@ async fn query_local_capabilities() -> Vec<String> {
             tracing::info!("No GPUs detected (CPU-only mode)");
         }
     }
-    
+
     #[cfg(not(feature = "gpu-discovery"))]
     {
         tracing::info!("GPU discovery disabled (compile with --features gpu-discovery)");
     }
-    
+
     // Always include orchestration capability
     capabilities.push("orchestration".to_string());
-    
+
     tracing::info!("📊 Local capabilities: {:?}", capabilities);
     capabilities
 }

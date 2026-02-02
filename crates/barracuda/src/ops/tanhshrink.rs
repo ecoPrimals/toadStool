@@ -25,17 +25,17 @@ mod tests {
     fn tanhshrink_cpu(x: f32) -> f32 {
         x - x.tanh()
     }
-    
+
     #[tokio::test]
     async fn test_tanhshrink_basic() {
         let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
-        
+
         let input = vec![0.0, 1.0, 2.0];
         let output = tanhshrink(&device, &queue, &input).await.unwrap();
         let expected: Vec<f32> = input.iter().map(|&x| tanhshrink_cpu(x)).collect();
-        
+
         for (out, exp) in output.iter().zip(expected.iter()) {
             assert!((out - exp).abs() < 1e-6);
         }
@@ -92,7 +92,7 @@ mod tests {
         let input: Vec<f32> = (0..1000).map(|i| (i as f32 - 500.0) * 0.01).collect();
         let output = tanhshrink(&device, &queue, &input).await.unwrap();
         let expected: Vec<f32> = input.iter().map(|&x| tanhshrink_cpu(x)).collect();
-        
+
         for (out, exp) in output.iter().zip(expected.iter()) {
             assert!((out - exp).abs() < 1e-5);
         }
@@ -108,12 +108,18 @@ mod tests {
         let input = vec![-2.345, -1.234, 0.0, 1.234, 2.345];
         let output = tanhshrink(&device, &queue, &input).await.unwrap();
         let expected: Vec<f32> = input.iter().map(|&x| tanhshrink_cpu(x)).collect();
-        
+
         // Verify FP32 precision
-        let max_error = output.iter().zip(expected.iter())
+        let max_error = output
+            .iter()
+            .zip(expected.iter())
             .map(|(out, exp)| (out - exp).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-6, "Max error: {} exceeds threshold", max_error);
+
+        assert!(
+            max_error < 1e-6,
+            "Max error: {} exceeds threshold",
+            max_error
+        );
     }
 }

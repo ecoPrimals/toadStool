@@ -176,7 +176,10 @@ impl WasmRuntimeConfigBuilder {
 
     /// Enable component model support
     /// EVOLVED: Complete component model integration
-    pub fn with_component_model(mut self, config: crate::component_model::ComponentModelConfig) -> Self {
+    pub fn with_component_model(
+        mut self,
+        config: crate::component_model::ComponentModelConfig,
+    ) -> Self {
         self.component_model = Some(config);
         self
     }

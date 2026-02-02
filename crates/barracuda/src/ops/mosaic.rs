@@ -15,19 +15,19 @@ pub async fn mosaic(
     if images.len() != 4 {
         return Err("Mosaic requires exactly 4 images".into());
     }
-    
+
     for img in images {
         if img.len() != channels * height * width {
             return Err("All images must have same dimensions".into());
         }
     }
-    
+
     let mut output = vec![0.0f32; channels * height * width];
-    
+
     // Random split point
     let split_x = ((seed * 1103515245) % width as u64) as usize;
     let split_y = ((seed * 22695477) % height as u64) as usize;
-    
+
     // Top-left: image 0
     for c in 0..channels {
         for i in 0..split_y {
@@ -38,7 +38,7 @@ pub async fn mosaic(
             }
         }
     }
-    
+
     // Top-right: image 1
     for c in 0..channels {
         for i in 0..split_y {
@@ -49,7 +49,7 @@ pub async fn mosaic(
             }
         }
     }
-    
+
     // Bottom-left: image 2
     for c in 0..channels {
         for i in split_y..height {
@@ -60,7 +60,7 @@ pub async fn mosaic(
             }
         }
     }
-    
+
     // Bottom-right: image 3
     for c in 0..channels {
         for i in split_y..height {
@@ -71,7 +71,7 @@ pub async fn mosaic(
             }
         }
     }
-    
+
     Ok(output)
 }
 
@@ -80,11 +80,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_mosaic_basic() {
         let dev = get_test_device().await;
@@ -94,7 +94,9 @@ mod tests {
             vec![0.6; 3 * 640 * 640],
             vec![0.4; 3 * 640 * 640],
         ];
-        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 640, 640, 77777).await.unwrap();
+        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 640, 640, 77777)
+            .await
+            .unwrap();
         assert_eq!(mosaic_img.len(), 3 * 640 * 640);
         assert!(mosaic_img.iter().all(|&x| x.is_finite()));
     }
@@ -110,7 +112,9 @@ mod tests {
             vec![3.0; 3 * 32 * 32],
             vec![4.0; 3 * 32 * 32],
         ];
-        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 32, 32, 12345).await.unwrap();
+        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 32, 32, 12345)
+            .await
+            .unwrap();
         assert_eq!(mosaic_img.len(), 3 * 32 * 32);
 
         // Single channel (grayscale)
@@ -120,7 +124,9 @@ mod tests {
             vec![3.0; 1 * 64 * 64],
             vec![4.0; 1 * 64 * 64],
         ];
-        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 1, 64, 64, 99999).await.unwrap();
+        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 1, 64, 64, 99999)
+            .await
+            .unwrap();
         assert_eq!(mosaic_img.len(), 1 * 64 * 64);
     }
 
@@ -135,8 +141,12 @@ mod tests {
             vec![3.0; 3 * 128 * 128],
             vec![4.0; 3 * 128 * 128],
         ];
-        let mosaic1 = mosaic(&dev.device, &dev.queue, &images, 3, 128, 128, 111).await.unwrap();
-        let mosaic2 = mosaic(&dev.device, &dev.queue, &images, 3, 128, 128, 222).await.unwrap();
+        let mosaic1 = mosaic(&dev.device, &dev.queue, &images, 3, 128, 128, 111)
+            .await
+            .unwrap();
+        let mosaic2 = mosaic(&dev.device, &dev.queue, &images, 3, 128, 128, 222)
+            .await
+            .unwrap();
         assert_eq!(mosaic1.len(), mosaic2.len());
     }
 
@@ -151,7 +161,9 @@ mod tests {
             vec![0.25; 3 * 1024 * 1024],
             vec![0.0; 3 * 1024 * 1024],
         ];
-        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 1024, 1024, 42).await.unwrap();
+        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 1024, 1024, 42)
+            .await
+            .unwrap();
         assert_eq!(mosaic_img.len(), 3 * 1024 * 1024);
     }
 
@@ -166,8 +178,10 @@ mod tests {
             vec![3.0; 3 * 100 * 100],
             vec![4.0; 3 * 100 * 100],
         ];
-        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 100, 100, 50505).await.unwrap();
-        
+        let mosaic_img = mosaic(&dev.device, &dev.queue, &images, 3, 100, 100, 50505)
+            .await
+            .unwrap();
+
         // Should contain values from all 4 images
         assert_eq!(mosaic_img.len(), 3 * 100 * 100);
         assert!(mosaic_img.iter().all(|&x| x >= 1.0 && x <= 4.0));

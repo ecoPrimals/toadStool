@@ -9,7 +9,7 @@
 //! - **Vulkan** (optional): Modern compute API
 //!
 //! ## DEEP DEBT EVOLUTION NOTES:
-//! 
+//!
 //! **Why Feature Gates Here Are CORRECT:**
 //! - Backend implementations depend on external C libraries (OpenCL, CUDA)
 //! - Feature gates allow **optional optimization** without breaking universal support

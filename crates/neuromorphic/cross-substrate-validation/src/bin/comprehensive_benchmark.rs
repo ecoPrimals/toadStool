@@ -5,17 +5,15 @@
 //! - What does it struggle with?
 //! - Is it a GPU replacement or complementary?
 
-use cross_substrate_validation::{run_comprehensive_benchmark, print_results_summary};
-use toadstool_runtime_universal::UniversalRuntime;
 use akida_driver::DeviceManager;
+use cross_substrate_validation::{print_results_summary, run_comprehensive_benchmark};
+use toadstool_runtime_universal::UniversalRuntime;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter("warn")
-        .init();
-    
+    tracing_subscriber::fmt().with_env_filter("warn").init();
+
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║                                                                              ║");
     println!("║        COMPREHENSIVE CROSS-SUBSTRATE BENCHMARK                              ║");
@@ -23,16 +21,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("║    Understanding Neuromorphic vs GPU Performance Characteristics            ║");
     println!("║                                                                              ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
-    
+
     // Discover all compute substrates
     println!("1️⃣  Discovering compute substrates...\n");
-    
+
     let universal = UniversalRuntime::discover().await?;
     let stats = universal.stats();
-    
+
     println!("   Universal Runtime:");
     println!("{}", stats);
-    
+
     // Discover Akida devices
     let akida_result = DeviceManager::discover();
     match &akida_result {
@@ -48,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!();
-    
+
     // GPU detection
     let gpu_units = universal.units_by_type(toadstool_runtime_universal::ComputeUnitType::GpuWgpu);
     println!("   Detected GPUs:");
@@ -56,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("     GPU {}: {}", i, unit.name());
     }
     println!();
-    
+
     // Run comprehensive benchmark
     println!("2️⃣  Running comprehensive benchmark suite...\n");
     println!("   This will test {} workload types:", 19);
@@ -66,16 +64,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     • Compute-bound operations (MatMul)");
     println!("     • Normalization (LayerNorm, BatchNorm)");
     println!();
-    
+
     let results = run_comprehensive_benchmark(&universal).await;
-    
+
     // Print results
     print_results_summary(&results);
-    
+
     // Analysis
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     println!("🔍 ANALYSIS: Neuromorphic vs GPU\n");
-    
+
     println!("   GPU Strengths:");
     println!("     ✅ Parallel compute (SIMD/MIMD)");
     println!("     ✅ High memory bandwidth");
@@ -83,13 +81,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     ✅ Large workloads (100K+ elements)");
     println!("     ✅ Dynamic computation graphs");
     println!();
-    
+
     println!("   GPU Weaknesses:");
     println!("     ❌ Kernel launch overhead");
     println!("     ❌ Power consumption (100-300W)");
     println!("     ❌ Latency (1-10ms typical)");
     println!();
-    
+
     println!("   Neuromorphic (Akida) Strengths:");
     println!("     ✅ Ultra-low latency (70-96µs)");
     println!("     ✅ Low power consumption (~1-2W)");
@@ -97,14 +95,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     ✅ Fixed inference (no overhead)");
     println!("     ✅ Edge deployment friendly");
     println!();
-    
+
     println!("   Neuromorphic (Akida) Weaknesses:");
     println!("     ❌ Fixed models (not programmable like GPU)");
     println!("     ❌ Limited to inference (no training)");
     println!("     ❌ Model must fit in SRAM (10MB)");
     println!("     ❌ Specific network architectures");
     println!();
-    
+
     println!("   🎯 VERDICT: GPU Replacement or Complementary?\n");
     println!("     ➡️  COMPLEMENTARY, not replacement!");
     println!();
@@ -123,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("       • Real-time inference");
     println!("       • Deterministic timing required");
     println!();
-    
+
     println!("   💡 RECOMMENDATION:\n");
     println!("     Best architecture: GPU + Neuromorphic hybrid!");
     println!("       • Train on GPU");
@@ -131,8 +129,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("       • Use GPU for dynamic inference");
     println!("       • Use Neuromorphic for real-time edge inference");
     println!();
-    
+
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    
+
     Ok(())
 }

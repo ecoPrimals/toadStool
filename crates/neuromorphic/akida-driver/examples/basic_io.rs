@@ -22,14 +22,14 @@ fn main() -> Result<()> {
     // Test pattern write
     let test_data: Vec<u8> = (0..1024).map(|i| (i % 256) as u8).collect();
     println!("📤 Writing {} bytes...", test_data.len());
-    
+
     let written = device.write(&test_data)?;
     println!("✅ Wrote {} bytes", written);
 
     // Test read
     let mut buffer = vec![0u8; 1024];
     println!("\n📥 Reading {} bytes...", buffer.len());
-    
+
     let read_bytes = device.read(&mut buffer)?;
     println!("✅ Read {} bytes", read_bytes);
 

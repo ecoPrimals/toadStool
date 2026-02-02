@@ -33,13 +33,13 @@ pub fn get_runtime_dir() -> String {
         // Try Linux standard path first - EVOLVED to pure Rust!
         if let Ok(uid) = crate::uid_detector::get_user_id() {
             let linux_standard = format!("/run/user/{}", uid);
-            
+
             // Check if Linux standard path exists
             if std::path::Path::new(&linux_standard).exists() {
                 return linux_standard;
             }
         }
-        
+
         // Fallback to /tmp for dev/testing (containers, etc.)
         let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
         format!("/tmp/toadstool-runtime-{}", username)
@@ -66,14 +66,14 @@ pub fn get_biomeos_dir() -> PathBuf {
 pub fn ensure_biomeos_dir() -> std::io::Result<PathBuf> {
     let biomeos_dir = get_biomeos_dir();
     std::fs::create_dir_all(&biomeos_dir)?;
-    
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o700);
         std::fs::set_permissions(&biomeos_dir, perms)?;
     }
-    
+
     Ok(biomeos_dir)
 }
 
@@ -273,19 +273,19 @@ mod tests {
     fn test_runtime_dir_fallback() {
         std::env::remove_var("XDG_RUNTIME_DIR");
         std::env::set_var("USER", "testuser");
-        
+
         // New behavior: Tries Linux standard /run/user/<uid> first
         // If that doesn't exist, falls back to /tmp/toadstool-runtime-<username>
         let runtime_dir = get_runtime_dir();
-        
+
         // Could be either /run/user/<uid> (if it exists) or /tmp fallback
         assert!(
-            runtime_dir.starts_with("/run/user/") || 
-            runtime_dir == "/tmp/toadstool-runtime-testuser",
+            runtime_dir.starts_with("/run/user/")
+                || runtime_dir == "/tmp/toadstool-runtime-testuser",
             "Expected /run/user/<uid> or /tmp fallback, got: {}",
             runtime_dir
         );
-        
+
         std::env::remove_var("USER");
     }
 
@@ -320,10 +320,7 @@ mod tests {
 
         let path = get_songbird_socket_path();
         // biomeOS standard: uses biomeos subdirectory
-        assert_eq!(
-            path,
-            PathBuf::from("/run/user/1000/biomeos/songbird.sock")
-        );
+        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/songbird.sock"));
 
         std::env::remove_var("XDG_RUNTIME_DIR");
     }
@@ -336,10 +333,7 @@ mod tests {
 
         let path = get_toadstool_socket_path();
         // biomeOS standard: uses biomeos subdirectory
-        assert_eq!(
-            path,
-            PathBuf::from("/run/user/1000/biomeos/toadstool.sock")
-        );
+        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/toadstool.sock"));
 
         std::env::remove_var("XDG_RUNTIME_DIR");
     }

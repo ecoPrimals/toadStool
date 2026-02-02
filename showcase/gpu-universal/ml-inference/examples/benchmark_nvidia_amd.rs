@@ -2,7 +2,7 @@
 //!
 //! Measures actual performance on both GPUs with all optimizations
 
-use ml_inference_showcase::wgpu::{WgpuExecutor, NormConfig};
+use ml_inference_showcase::wgpu::{NormConfig, WgpuExecutor};
 use std::time::Instant;
 
 async fn benchmark_gpu(executor: &WgpuExecutor, gpu_name: &str) -> anyhow::Result<()> {
@@ -37,26 +37,40 @@ async fn benchmark_gpu(executor: &WgpuExecutor, gpu_name: &str) -> anyhow::Resul
     let _ = (r1?, r2?, r3?);
     let async_dur = start.elapsed();
     println!("  Async: {:.2}ms", async_dur.as_secs_f64() * 1000.0);
-    println!("  ✅ Speedup: {:.2}x\n", sync.as_secs_f64() / async_dur.as_secs_f64());
+    println!(
+        "  ✅ Speedup: {:.2}x\n",
+        sync.as_secs_f64() / async_dur.as_secs_f64()
+    );
 
     // Test 2: Tiled MatMul (larger size for better results)
     println!("TEST 2: Tiled MatMul (1024x1024 - large enough for tiling)");
     println!("───────────────────────────────────────────────────────────\n");
 
     let large_size = 1024;
-    let la: Vec<f32> = (0..large_size * large_size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-    let lb: Vec<f32> = (0..large_size * large_size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+    let la: Vec<f32> = (0..large_size * large_size)
+        .map(|i| ((i % 1000) as f32) * 0.001)
+        .collect();
+    let lb: Vec<f32> = (0..large_size * large_size)
+        .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+        .collect();
 
     let start = Instant::now();
-    let _r1 = executor.execute_matmul(&la, &lb, large_size, large_size, large_size).await?;
+    let _r1 = executor
+        .execute_matmul(&la, &lb, large_size, large_size, large_size)
+        .await?;
     let naive = start.elapsed();
     println!("  Naive: {:.2}ms", naive.as_secs_f64() * 1000.0);
 
     let start = Instant::now();
-    let _r2 = executor.execute_matmul_tiled(&la, &lb, large_size, large_size, large_size).await?;
+    let _r2 = executor
+        .execute_matmul_tiled(&la, &lb, large_size, large_size, large_size)
+        .await?;
     let tiled = start.elapsed();
     println!("  Tiled: {:.2}ms", tiled.as_secs_f64() * 1000.0);
-    println!("  ✅ Speedup: {:.2}x\n", naive.as_secs_f64() / tiled.as_secs_f64());
+    println!(
+        "  ✅ Speedup: {:.2}x\n",
+        naive.as_secs_f64() / tiled.as_secs_f64()
+    );
 
     // Test 3: LayerNorm 2-Dispatch
     println!("TEST 3: LayerNorm (4096 elements - typical transformer)");
@@ -71,15 +85,25 @@ async fn benchmark_gpu(executor: &WgpuExecutor, gpu_name: &str) -> anyhow::Resul
     };
 
     let start = Instant::now();
-    let _r1 = executor.execute_layernorm(&ln_input, config.clone()).await?;
+    let _r1 = executor
+        .execute_layernorm(&ln_input, config.clone())
+        .await?;
     let original = start.elapsed();
-    println!("  Original (3-pass): {:.2}ms", original.as_secs_f64() * 1000.0);
+    println!(
+        "  Original (3-pass): {:.2}ms",
+        original.as_secs_f64() * 1000.0
+    );
 
     let start = Instant::now();
-    let _r2 = executor.execute_layernorm_2dispatch(&ln_input, config).await?;
+    let _r2 = executor
+        .execute_layernorm_2dispatch(&ln_input, config)
+        .await?;
     let optimized = start.elapsed();
     println!("  2-Dispatch: {:.2}ms", optimized.as_secs_f64() * 1000.0);
-    println!("  ✅ Speedup: {:.2}x\n", original.as_secs_f64() / optimized.as_secs_f64());
+    println!(
+        "  ✅ Speedup: {:.2}x\n",
+        original.as_secs_f64() / optimized.as_secs_f64()
+    );
 
     // Summary
     let async_speedup = sync.as_secs_f64() / async_dur.as_secs_f64();
@@ -96,8 +120,14 @@ async fn benchmark_gpu(executor: &WgpuExecutor, gpu_name: &str) -> anyhow::Resul
     println!("Tiled MatMul (1024x1024) {:6.2}x", tiled_speedup);
     println!("2-Dispatch LayerNorm     {:6.2}x", ln_speedup);
     println!("───────────────────────────────────────────────────────────");
-    println!("Combined MatMul          {:6.2}x (async × tiling)", async_speedup * tiled_speedup);
-    println!("Combined LayerNorm       {:6.2}x (async × 2-dispatch)", async_speedup * ln_speedup);
+    println!(
+        "Combined MatMul          {:6.2}x (async × tiling)",
+        async_speedup * tiled_speedup
+    );
+    println!(
+        "Combined LayerNorm       {:6.2}x (async × 2-dispatch)",
+        async_speedup * ln_speedup
+    );
     println!("\n\n");
 
     Ok(())

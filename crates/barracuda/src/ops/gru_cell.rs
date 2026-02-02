@@ -20,13 +20,13 @@
 /// GRU cell weights
 #[derive(Clone)]
 pub struct GRUWeights {
-    pub w_ir: Vec<f32>,  // Reset gate input weights
-    pub w_hr: Vec<f32>,  // Reset gate hidden weights
-    pub w_iz: Vec<f32>,  // Update gate input weights
-    pub w_hz: Vec<f32>,  // Update gate hidden weights
-    pub w_in: Vec<f32>,  // New gate input weights
-    pub w_hn: Vec<f32>,  // New gate hidden weights
-    
+    pub w_ir: Vec<f32>, // Reset gate input weights
+    pub w_hr: Vec<f32>, // Reset gate hidden weights
+    pub w_iz: Vec<f32>, // Update gate input weights
+    pub w_hz: Vec<f32>, // Update gate hidden weights
+    pub w_in: Vec<f32>, // New gate input weights
+    pub w_hn: Vec<f32>, // New gate hidden weights
+
     pub b_ir: Vec<f32>,
     pub b_hr: Vec<f32>,
     pub b_iz: Vec<f32>,
@@ -92,11 +92,11 @@ pub async fn gru_cell(
     fn sigmoid(x: f32) -> f32 {
         1.0 / (1.0 + (-x).exp())
     }
-    
+
     fn tanh(x: f32) -> f32 {
         x.tanh()
     }
-    
+
     fn matmul_add_bias(
         input: &[f32],
         weights: &[f32],
@@ -116,43 +116,91 @@ pub async fn gru_cell(
             }
         }
     }
-    
+
     // Compute reset gate: r_t = sigmoid(W_ir * x + W_hr * h + b)
     let mut r_input = vec![0.0f32; batch_size * hidden_size];
     let mut r_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_ir, &weights.b_ir, &mut r_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hr, &weights.b_hr, &mut r_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_ir,
+        &weights.b_ir,
+        &mut r_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hr,
+        &weights.b_hr,
+        &mut r_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     let mut r_gate = vec![0.0f32; batch_size * hidden_size];
     for i in 0..r_gate.len() {
         r_gate[i] = sigmoid(r_input[i] + r_hidden[i]);
     }
-    
+
     // Compute update gate: z_t = sigmoid(W_iz * x + W_hz * h + b)
     let mut z_input = vec![0.0f32; batch_size * hidden_size];
     let mut z_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_iz, &weights.b_iz, &mut z_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hz, &weights.b_hz, &mut z_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_iz,
+        &weights.b_iz,
+        &mut z_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hz,
+        &weights.b_hz,
+        &mut z_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     let mut z_gate = vec![0.0f32; batch_size * hidden_size];
     for i in 0..z_gate.len() {
         z_gate[i] = sigmoid(z_input[i] + z_hidden[i]);
     }
-    
+
     // Compute new gate: n_t = tanh(W_in * x + r_t ⊙ (W_hn * h + b))
     let mut n_input = vec![0.0f32; batch_size * hidden_size];
     let mut n_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_in, &weights.b_in, &mut n_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hn, &weights.b_hn, &mut n_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_in,
+        &weights.b_in,
+        &mut n_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hn,
+        &weights.b_hn,
+        &mut n_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     let mut n_gate = vec![0.0f32; batch_size * hidden_size];
     for i in 0..n_gate.len() {
         n_gate[i] = tanh(n_input[i] + r_gate[i] * n_hidden[i]);
     }
-    
+
     // Compute hidden state: h_t = (1 - z_t) ⊙ n_t + z_t ⊙ h_{t-1}
     let mut hidden = vec![0.0f32; batch_size * hidden_size];
     for i in 0..hidden.len() {
         hidden[i] = (1.0 - z_gate[i]) * n_gate[i] + z_gate[i] * prev_hidden[i];
     }
-    
+
     Ok(hidden)
 }
 
@@ -161,20 +209,20 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_gru_cell_dimensions() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());
         let device = &dev.device;
         let queue = &dev.queue;
-        
+
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;
-        
+
         let input = vec![0.5; batch_size * input_size];
         let prev_hidden = vec![0.0; batch_size * hidden_size];
-        
+
         let weights = GRUWeights {
             w_ir: vec![0.01; hidden_size * input_size],
             w_hr: vec![0.01; hidden_size * hidden_size],
@@ -189,14 +237,20 @@ mod tests {
             b_in: vec![0.0; hidden_size],
             b_hn: vec![0.0; hidden_size],
         };
-        
+
         let hidden = gru_cell(
-            &device, &queue,
-            &input, &prev_hidden,
+            &device,
+            &queue,
+            &input,
+            &prev_hidden,
             &weights,
-            batch_size, input_size, hidden_size
-        ).await.unwrap();
-        
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(hidden.len(), batch_size * hidden_size);
     }
 }

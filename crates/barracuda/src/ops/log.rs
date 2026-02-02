@@ -1,8 +1,8 @@
 //! Log operation - Natural logarithm
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct Log {
     input: Tensor,
@@ -22,31 +22,34 @@ impl Log {
         let size = self.input.len();
         let output_buffer = device.create_buffer_f32(size)?;
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Log BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Log BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Log BG"),
@@ -64,22 +67,29 @@ impl Log {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Log"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Log PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Log PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Log Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Log Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Log Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Log Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -94,7 +104,11 @@ impl Log {
 
         device.queue.submit(Some(encoder.finish()));
 
-        Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -118,10 +132,12 @@ mod tests {
         let device = get_test_device().await;
 
         let input_data = vec![1.0, 2.718281828, 7.389056099];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
-        
+
         for (r, e) in result.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-4);
         }
@@ -133,13 +149,17 @@ mod tests {
 
         // ln(1) = 0
         let input_data = vec![1.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1], device.clone())
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         assert!(result[0].abs() < 1e-6);
 
         // Small positive values
         let input_data = vec![0.1, 0.5, 0.9];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
         for (r, e) in result.iter().zip(expected.iter()) {
@@ -153,7 +173,9 @@ mod tests {
 
         // Very small positive (approaches -infinity)
         let input_data = vec![1e-6, 1e-3];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device.clone())
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
         for (r, e) in result.iter().zip(expected.iter()) {
@@ -162,7 +184,9 @@ mod tests {
 
         // Large values
         let input_data = vec![100.0, 1000.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2], device)
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
         for (r, e) in result.iter().zip(expected.iter()) {
@@ -176,11 +200,13 @@ mod tests {
 
         // 1000 elements (all positive)
         let input_data: Vec<f32> = (1..=1000).map(|i| (i as f32) * 0.1).collect();
-        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device).await.unwrap();
-        
+        let input = Tensor::from_vec_on(input_data.clone(), vec![1000], device)
+            .await
+            .unwrap();
+
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
-        
+
         for (r, e) in result.iter().zip(expected.iter()) {
             assert!((r - e).abs() < 1e-4);
         }
@@ -192,15 +218,23 @@ mod tests {
 
         // Test FP32 precision
         let input_data = vec![1.234, 5.678, 9.012, 23.456, 78.901];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
+            .await
+            .unwrap();
         let result = input.log().unwrap().to_vec().unwrap();
         let expected: Vec<f32> = input_data.iter().map(|&x| log_cpu(x)).collect();
-        
+
         // Verify FP32 precision
-        let max_error = result.iter().zip(expected.iter())
+        let max_error = result
+            .iter()
+            .zip(expected.iter())
             .map(|(r, e)| (r - e).abs())
             .fold(0.0f32, f32::max);
-        
-        assert!(max_error < 1e-4, "Max error: {} exceeds threshold", max_error);
+
+        assert!(
+            max_error < 1e-4,
+            "Max error: {} exceeds threshold",
+            max_error
+        );
     }
 }

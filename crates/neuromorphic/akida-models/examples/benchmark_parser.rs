@@ -36,14 +36,19 @@ fn main() -> Result<()> {
         total_size += model.program_size();
 
         // Display results
-        println!("   ⏱️  Parse time:   {:.3}ms", elapsed.as_secs_f64() * 1000.0);
-        println!("   📊 Size:         {} bytes ({:.2} KB)", 
-                 model.program_size(),
-                 model.program_size() as f64 / 1024.0);
+        println!(
+            "   ⏱️  Parse time:   {:.3}ms",
+            elapsed.as_secs_f64() * 1000.0
+        );
+        println!(
+            "   📊 Size:         {} bytes ({:.2} KB)",
+            model.program_size(),
+            model.program_size() as f64 / 1024.0
+        );
         println!("   🏗️  Layers:       {}", model.layer_count());
         println!("   ⚖️  Weight blocks: {}", model.weights().len());
         println!("   📈 Total weights: ~{}", model.total_weight_count());
-        
+
         // Show layers
         if model.layer_count() <= 5 {
             println!("   Layers:");
@@ -51,7 +56,7 @@ fn main() -> Result<()> {
                 println!("      {}. {} ({})", i + 1, layer.name, layer.layer_type);
             }
         }
-        
+
         println!();
     }
 
@@ -59,9 +64,15 @@ fn main() -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📊 Benchmark Summary:");
     println!("   Total time:  {:.3}ms", total_time.as_secs_f64() * 1000.0);
-    println!("   Total size:  {} bytes ({:.2} KB)", total_size, total_size as f64 / 1024.0);
-    println!("   Avg speed:   {:.2} MB/s", 
-             (total_size as f64 / 1024.0 / 1024.0) / total_time.as_secs_f64());
+    println!(
+        "   Total size:  {} bytes ({:.2} KB)",
+        total_size,
+        total_size as f64 / 1024.0
+    );
+    println!(
+        "   Avg speed:   {:.2} MB/s",
+        (total_size as f64 / 1024.0 / 1024.0) / total_time.as_secs_f64()
+    );
     println!("\n✨ Benchmark complete!\n");
 
     Ok(())

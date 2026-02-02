@@ -87,7 +87,12 @@ pub async fn spectral_radius(
 
     if matrix.len() != (size * size) as usize {
         return Err(BarracudaError::InvalidInput {
-            message: format!("Matrix must be {}×{} (got {} elements)", size, size, matrix.len()),
+            message: format!(
+                "Matrix must be {}×{} (got {} elements)",
+                size,
+                size,
+                matrix.len()
+            ),
         });
     }
 
@@ -296,15 +301,29 @@ pub async fn spectral_radius(
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("Copy Encoder"),
     });
-    encoder.copy_buffer_to_buffer(&norm_buffer, 0, &staging_buffer, 0, std::mem::size_of::<f32>() as u64);
+    encoder.copy_buffer_to_buffer(
+        &norm_buffer,
+        0,
+        &staging_buffer,
+        0,
+        std::mem::size_of::<f32>() as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: f32 = bytemuck::cast_slice(&data)[0];
@@ -327,8 +346,14 @@ mod tests {
         for i in 0..5 {
             matrix[i * 5 + i] = 1.0;
         }
-        let result = spectral_radius(&device.device, &device.queue, &matrix, 5, 50).await.unwrap();
-        assert!((result - 1.0).abs() < 0.1, "Identity matrix should have ρ≈1.0, got {}", result);
+        let result = spectral_radius(&device.device, &device.queue, &matrix, 5, 50)
+            .await
+            .unwrap();
+        assert!(
+            (result - 1.0).abs() < 0.1,
+            "Identity matrix should have ρ≈1.0, got {}",
+            result
+        );
     }
 
     #[tokio::test]
@@ -339,21 +364,39 @@ mod tests {
         for i in 0..5 {
             matrix[i * 5 + i] = 0.5;
         }
-        let result = spectral_radius(&device.device, &device.queue, &matrix, 5, 50).await.unwrap();
-        assert!((result - 0.5).abs() < 0.1, "0.5·I should have ρ≈0.5, got {}", result);
+        let result = spectral_radius(&device.device, &device.queue, &matrix, 5, 50)
+            .await
+            .unwrap();
+        assert!(
+            (result - 0.5).abs() < 0.1,
+            "0.5·I should have ρ≈0.5, got {}",
+            result
+        );
     }
 
     #[tokio::test]
     async fn test_spectral_radius_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let matrix = vec![1.0; 25];
-        
+
         // Invalid inputs
-        assert!(spectral_radius(&device.device, &device.queue, &matrix, 0, 50).await.is_err());
-        assert!(spectral_radius(&device.device, &device.queue, &matrix, 5, 0).await.is_err());
-        
+        assert!(
+            spectral_radius(&device.device, &device.queue, &matrix, 0, 50)
+                .await
+                .is_err()
+        );
+        assert!(
+            spectral_radius(&device.device, &device.queue, &matrix, 5, 0)
+                .await
+                .is_err()
+        );
+
         let bad_matrix = vec![1.0; 20];
-        assert!(spectral_radius(&device.device, &device.queue, &bad_matrix, 5, 50).await.is_err());
+        assert!(
+            spectral_radius(&device.device, &device.queue, &bad_matrix, 5, 50)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -364,7 +407,9 @@ mod tests {
         for i in 0..100 {
             matrix[i * 100 + i] = 0.8;
         }
-        let result = spectral_radius(&device.device, &device.queue, &matrix, 100, 50).await.unwrap();
+        let result = spectral_radius(&device.device, &device.queue, &matrix, 100, 50)
+            .await
+            .unwrap();
         assert!((result - 0.8).abs() < 0.1);
     }
 
@@ -376,10 +421,14 @@ mod tests {
         for i in 0..5 {
             matrix[i * 5 + i] = 0.9;
         }
-        
-        let result1 = spectral_radius(&device.device, &device.queue, &matrix, 5, 10).await.unwrap();
-        let result2 = spectral_radius(&device.device, &device.queue, &matrix, 5, 100).await.unwrap();
-        
+
+        let result1 = spectral_radius(&device.device, &device.queue, &matrix, 5, 10)
+            .await
+            .unwrap();
+        let result2 = spectral_radius(&device.device, &device.queue, &matrix, 5, 100)
+            .await
+            .unwrap();
+
         // Both should be close to 0.9, but more iterations = better precision
         assert!((result1 - 0.9).abs() < 0.2);
         assert!((result2 - 0.9).abs() < 0.1);

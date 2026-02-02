@@ -7,8 +7,8 @@
 //! Used in: Transformers, ResNets, style transfer, generative models
 //! Benefits: Batch-size independent, better for small batches than BatchNorm
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -16,7 +16,7 @@ use wgpu::util::DeviceExt;
 struct GroupNormParams {
     batch_size: u32,
     channels: u32,
-    spatial_size: u32,  // H * W
+    spatial_size: u32, // H * W
     num_groups: u32,
     channels_per_group: u32,
     epsilon: f32,
@@ -24,15 +24,27 @@ struct GroupNormParams {
 
 pub struct GroupNorm {
     input: Tensor,
-    gamma: Tensor,  // Scale per channel
-    beta: Tensor,   // Shift per channel
+    gamma: Tensor, // Scale per channel
+    beta: Tensor,  // Shift per channel
     num_groups: usize,
     epsilon: f32,
 }
 
 impl GroupNorm {
-    pub fn new(input: Tensor, gamma: Tensor, beta: Tensor, num_groups: usize, epsilon: f32) -> Self {
-        Self { input, gamma, beta, num_groups, epsilon }
+    pub fn new(
+        input: Tensor,
+        gamma: Tensor,
+        beta: Tensor,
+        num_groups: usize,
+        epsilon: f32,
+    ) -> Self {
+        Self {
+            input,
+            gamma,
+            beta,
+            num_groups,
+            epsilon,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -42,7 +54,7 @@ impl GroupNorm {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // Assume input shape is [batch, channels, height, width]
         let batch_size = shape[0];
         let channels = shape[1];
@@ -54,7 +66,7 @@ impl GroupNorm {
 
         // Create output and stats buffers
         let output_buffer = device.create_buffer_f32(output_size)?;
-        let stats_size = batch_size * self.num_groups * 2;  // mean and variance per group
+        let stats_size = batch_size * self.num_groups * 2; // mean and variance per group
         let stats_buffer = device.create_buffer_f32(stats_size)?;
 
         // Create params
@@ -66,32 +78,42 @@ impl GroupNorm {
             channels_per_group: channels_per_group as u32,
             epsilon: self.epsilon,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GroupNorm Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GroupNorm Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("GroupNorm Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("GroupNorm Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipelines for both passes
-        let stats_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("GroupNorm Stats Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "compute_stats",
-        });
+        let stats_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GroupNorm Stats Pipeline"),
+                    layout: None,
+                    module: &shader,
+                    entry_point: "compute_stats",
+                });
 
-        let norm_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("GroupNorm Normalize Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "normalize",
-        });
+        let norm_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GroupNorm Normalize Pipeline"),
+                    layout: None,
+                    module: &shader,
+                    entry_point: "normalize",
+                });
 
         // Pass 1: Compute group statistics
         {
@@ -127,9 +149,12 @@ impl GroupNorm {
                 ],
             });
 
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GroupNorm Stats Encoder"),
-            });
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("GroupNorm Stats Encoder"),
+                    });
             {
                 let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("GroupNorm Stats Pass"),
@@ -177,9 +202,12 @@ impl GroupNorm {
                 ],
             });
 
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("GroupNorm Normalize Encoder"),
-            });
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("GroupNorm Normalize Encoder"),
+                    });
             {
                 let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("GroupNorm Normalize Pass"),
@@ -208,7 +236,13 @@ impl Tensor {
     /// * `beta` - Shift parameters (shape: [channels])
     /// * `num_groups` - Number of groups to divide channels into
     /// * `epsilon` - Small constant for numerical stability (default: 1e-5)
-    pub fn groupnorm(self, gamma: Tensor, beta: Tensor, num_groups: usize, epsilon: f32) -> Result<Self> {
+    pub fn groupnorm(
+        self,
+        gamma: Tensor,
+        beta: Tensor,
+        num_groups: usize,
+        epsilon: f32,
+    ) -> Result<Self> {
         GroupNorm::new(self, gamma, beta, num_groups, epsilon).execute()
     }
 }
@@ -220,27 +254,27 @@ mod tests {
     #[tokio::test]
     async fn test_groupnorm_basic() {
         let device = std::sync::Arc::new(crate::device::WgpuDevice::new().await.unwrap());
-        
+
         // Create input [1, 4, 2, 2] - 1 batch, 4 channels, 2x2 spatial
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0,    // Channel 0
-            5.0, 6.0, 7.0, 8.0,        // Channel 1
-            9.0, 10.0, 11.0, 12.0,     // Channel 2
-            13.0, 14.0, 15.0, 16.0,    // Channel 3
+            1.0f32, 2.0, 3.0, 4.0, // Channel 0
+            5.0, 6.0, 7.0, 8.0, // Channel 1
+            9.0, 10.0, 11.0, 12.0, // Channel 2
+            13.0, 14.0, 15.0, 16.0, // Channel 3
         ];
         let input = Tensor::from_data(&input_data, vec![1, 4, 2, 2], device.clone()).unwrap();
-        
+
         // Create gamma and beta (one per channel)
         let gamma_data = vec![1.0f32, 1.0, 1.0, 1.0];
         let gamma = Tensor::from_data(&gamma_data, vec![4], device.clone()).unwrap();
-        
+
         let beta_data = vec![0.0f32, 0.0, 0.0, 0.0];
         let beta = Tensor::from_data(&beta_data, vec![4], device.clone()).unwrap();
-        
+
         // Apply GroupNorm with 2 groups (2 channels per group)
         let result = input.groupnorm(gamma, beta, 2, 1e-5).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Output should be normalized per group
         assert_eq!(output.len(), 16);
         assert!(output[0].abs() > 0.0);

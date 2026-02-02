@@ -44,7 +44,7 @@ impl EventParser {
     pub fn set_focused_window(&mut self, window: Option<WindowId>) {
         self.focused_window = window;
     }
-    
+
     /// Get current modifiers (for testing)
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
@@ -68,16 +68,14 @@ impl EventParser {
         // Destructure event to match on type/code/value
         match event.destructure() {
             // Keyboard events
-            EventSummary::Key(_, key_code, value) => {
-                self.handle_key_event(key_code, value, window)
-                    .map(|e| vec![e])
-            }
+            EventSummary::Key(_, key_code, value) => self
+                .handle_key_event(key_code, value, window)
+                .map(|e| vec![e]),
 
             // Mouse movement (relative axes)
-            EventSummary::RelativeAxis(_, axis, value) => {
-                self.handle_relative_axis(axis, value, window)
-                    .map(|e| vec![e])
-            }
+            EventSummary::RelativeAxis(_, axis, value) => self
+                .handle_relative_axis(axis, value, window)
+                .map(|e| vec![e]),
 
             // Absolute axes (touchscreen/touchpad)
             EventSummary::AbsoluteAxis(_, axis, value) => {
@@ -85,9 +83,7 @@ impl EventParser {
             }
 
             // Synchronization events (end of frame)
-            EventSummary::Synchronization(_, _, _) => {
-                self.handle_sync(window)
-            }
+            EventSummary::Synchronization(_, _, _) => self.handle_sync(window),
 
             // Other events - ignore for now
             _ => None,
@@ -237,7 +233,7 @@ impl EventParser {
     fn handle_sync(&mut self, window: WindowId) -> Option<Vec<InputEvent>> {
         // Finalize any pending touch updates
         let touch_events = self.touch_tracker.finalize_updates();
-        
+
         if touch_events.is_empty() {
             return None;
         }
@@ -314,17 +310,17 @@ mod tests {
     #[test]
     fn test_modifier_tracking() {
         let mut parser = EventParser::new();
-        
+
         // Press shift
         parser.update_modifiers(evdev::KeyCode::KEY_LEFTSHIFT, 1);
         assert!(parser.modifiers.shift);
         assert!(!parser.modifiers.ctrl);
-        
+
         // Press ctrl
         parser.update_modifiers(evdev::KeyCode::KEY_LEFTCTRL, 1);
         assert!(parser.modifiers.shift);
         assert!(parser.modifiers.ctrl);
-        
+
         // Release shift
         parser.update_modifiers(evdev::KeyCode::KEY_LEFTSHIFT, 0);
         assert!(!parser.modifiers.shift);
@@ -339,7 +335,7 @@ mod tests {
         // Move mouse
         parser.mouse_x += 10;
         parser.mouse_y += 20;
-        
+
         assert_eq!(parser.mouse_x, 10);
         assert_eq!(parser.mouse_y, 20);
     }

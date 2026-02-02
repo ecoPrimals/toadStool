@@ -107,19 +107,13 @@ impl TouchTracker {
 
             // Touch position X
             evdev::AbsoluteAxisCode::ABS_MT_POSITION_X => {
-                self.pending_updates
-                    .entry(self.current_slot)
-                    .or_default()
-                    .x = Some(value);
+                self.pending_updates.entry(self.current_slot).or_default().x = Some(value);
                 None
             }
 
             // Touch position Y
             evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y => {
-                self.pending_updates
-                    .entry(self.current_slot)
-                    .or_default()
-                    .y = Some(value);
+                self.pending_updates.entry(self.current_slot).or_default().y = Some(value);
                 None
             }
 

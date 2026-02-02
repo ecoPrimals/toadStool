@@ -58,7 +58,9 @@ impl FhePolySub {
     /// - `modulus`: Modulus q (large prime, e.g., 2^60)
     pub fn new(device: &WgpuDevice, degree: u32, modulus: u64) -> Result<Self> {
         if modulus == 0 {
-            return Err(BarracudaError::Device("Modulus must be non-zero".to_string()));
+            return Err(BarracudaError::Device(
+                "Modulus must be non-zero".to_string(),
+            ));
         }
 
         // Load WGSL shader
@@ -66,9 +68,7 @@ impl FhePolySub {
             .device()
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("FHE Polynomial Subtraction Shader"),
-                source: wgpu::ShaderSource::Wgsl(
-                    include_str!("fhe_poly_sub.wgsl").into()
-                ),
+                source: wgpu::ShaderSource::Wgsl(include_str!("fhe_poly_sub.wgsl").into()),
             });
 
         // Create bind group layout (same as addition)
@@ -198,23 +198,23 @@ impl FhePolySub {
             .collect();
 
         // Create GPU buffers
-        let poly_a_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Poly A Buffer"),
-                contents: bytemuck::cast_slice(&poly_a_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let poly_a_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Poly A Buffer"),
+                    contents: bytemuck::cast_slice(&poly_a_u32),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
-        let poly_b_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Poly B Buffer"),
-                contents: bytemuck::cast_slice(&poly_b_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+        let poly_b_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Poly B Buffer"),
+                    contents: bytemuck::cast_slice(&poly_b_u32),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
 
         let result_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("FHE Result Buffer"),
@@ -240,14 +240,14 @@ impl FhePolySub {
             _padding: [0; 5],
         };
 
-        let params_buffer = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE Params Buffer"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let params_buffer =
+            self.device
+                .device()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FHE Params Buffer"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         // Create bind group
         let bind_group = self
@@ -285,12 +285,12 @@ impl FhePolySub {
         });
 
         // Execute compute shader
-        let mut encoder = self
-            .device
-            .device()
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FHE Poly Sub Encoder"),
-            });
+        let mut encoder =
+            self.device
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FHE Poly Sub Encoder"),
+                });
 
         {
             let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -299,7 +299,7 @@ impl FhePolySub {
             });
             cpass.set_pipeline(&self.pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch workgroups
             let workgroup_count = (self.degree + 255) / 256;
             cpass.dispatch_workgroups(workgroup_count, 1, 1);
@@ -345,7 +345,7 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let degree = 8;
         let modulus = 97;
-        
+
         let op = FhePolySub::new(&device, degree, modulus).unwrap();
 
         // Test: [50, 60, 70, 80, 90, 85, 75, 65] - [10, 20, 30, 40, 50, 60, 70, 80]
@@ -364,7 +364,7 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let degree = 4;
         let modulus = 100;
-        
+
         let op = FhePolySub::new(&device, degree, modulus).unwrap();
 
         // Test with values that need wrapping

@@ -7,17 +7,17 @@
 //! Used in: Transformers, multi-head attention, batched inference
 //! Benefits: More efficient than looping MatMul, GPU-optimized parallelism
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct BatchMatMulParams {
     batch_size: u32,
-    m: u32,  // rows of A
-    n: u32,  // cols of B
-    k: u32,  // cols of A / rows of B
+    m: u32, // rows of A
+    n: u32, // cols of B
+    k: u32, // cols of A / rows of B
 }
 
 pub struct BatchMatMul {
@@ -57,25 +57,31 @@ impl BatchMatMul {
             n: n as u32,
             k: k as u32,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("BatchMatMul Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BatchMatMul Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("BatchMatMul Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("BatchMatMul Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("BatchMatMul Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("BatchMatMul Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -103,9 +109,11 @@ impl BatchMatMul {
         });
 
         // Execute with 2D workgroup (16x16 per batch)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("BatchMatMul Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("BatchMatMul Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("BatchMatMul Pass"),
@@ -113,7 +121,7 @@ impl BatchMatMul {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch with 2D grid for matrix dimensions + batch dimension
             let workgroups_x = ((n + 15) / 16) as u32;
             let workgroups_y = ((m + 15) / 16) as u32;
@@ -157,21 +165,18 @@ mod tests {
 
         // Create A [2, 2, 3] - 2 batches, 2x3 matrices
         let a_data = vec![
-            1.0f32, 2.0, 3.0,  // Batch 0, row 0
-            4.0, 5.0, 6.0,      // Batch 0, row 1
-            1.0, 1.0, 1.0,      // Batch 1, row 0
-            2.0, 2.0, 2.0,      // Batch 1, row 1
+            1.0f32, 2.0, 3.0, // Batch 0, row 0
+            4.0, 5.0, 6.0, // Batch 0, row 1
+            1.0, 1.0, 1.0, // Batch 1, row 0
+            2.0, 2.0, 2.0, // Batch 1, row 1
         ];
         let a = Tensor::from_data(&a_data, vec![2, 2, 3], device.clone()).unwrap();
 
         // Create B [2, 3, 2] - 2 batches, 3x2 matrices
         let b_data = vec![
-            1.0f32, 0.0,  // Batch 0
-            0.0, 1.0,
-            1.0, 1.0,
-            2.0, 0.0,     // Batch 1
-            0.0, 2.0,
-            1.0, 1.0,
+            1.0f32, 0.0, // Batch 0
+            0.0, 1.0, 1.0, 1.0, 2.0, 0.0, // Batch 1
+            0.0, 2.0, 1.0, 1.0,
         ];
         let b = Tensor::from_data(&b_data, vec![2, 3, 2], device.clone()).unwrap();
 
@@ -188,17 +193,17 @@ mod tests {
     #[tokio::test]
     async fn test_batch_matmul_edge_cases() {
         let device = get_test_device().await;
-        
+
         // Single batch, identity-like multiplication
-        let a_data = vec![1.0, 0.0, 0.0, 1.0];  // [1, 2, 2]
-        let b_data = vec![1.0, 2.0, 3.0, 4.0];  // [1, 2, 2]
-        
+        let a_data = vec![1.0, 0.0, 0.0, 1.0]; // [1, 2, 2]
+        let b_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 2, 2]
+
         let a = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
         let b = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
-        
+
         let result = a.batch_matmul(&b).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), 4);
         assert!(output.iter().all(|&x| x.is_finite()));
     }
@@ -206,16 +211,16 @@ mod tests {
     #[tokio::test]
     async fn test_batch_matmul_boundary() {
         let device = get_test_device().await;
-        
+
         // Test with different matrix sizes
-        let a_data = vec![1.0; 2 * 4 * 3];  // [2, 4, 3]
-        let b_data = vec![1.0; 2 * 3 * 5];  // [2, 3, 5]
-        
+        let a_data = vec![1.0; 2 * 4 * 3]; // [2, 4, 3]
+        let b_data = vec![1.0; 2 * 3 * 5]; // [2, 3, 5]
+
         let a = Tensor::from_data(&a_data, vec![2, 4, 3], device.clone()).unwrap();
         let b = Tensor::from_data(&b_data, vec![2, 3, 5], device.clone()).unwrap();
-        
+
         let result = a.batch_matmul(&b).unwrap();
-        
+
         // Output should be [2, 4, 5]
         assert_eq!(result.shape(), &[2, 4, 5]);
         let output = result.to_vec().unwrap();
@@ -226,20 +231,20 @@ mod tests {
     #[tokio::test]
     async fn test_batch_matmul_large_batch() {
         let device = get_test_device().await;
-        
+
         // Transformer-style: multiple batches, attention heads
         let batch_size = 4;
         let seq_len = 8;
         let d_k = 16;
-        
+
         let a_data = vec![1.0; batch_size * seq_len * d_k];
         let b_data = vec![1.0; batch_size * d_k * seq_len];
-        
+
         let a = Tensor::from_data(&a_data, vec![batch_size, seq_len, d_k], device.clone()).unwrap();
         let b = Tensor::from_data(&b_data, vec![batch_size, d_k, seq_len], device.clone()).unwrap();
-        
+
         let result = a.batch_matmul(&b).unwrap();
-        
+
         // Output: [batch, seq, seq]
         assert_eq!(result.shape(), &[batch_size, seq_len, seq_len]);
         let output = result.to_vec().unwrap();
@@ -249,27 +254,27 @@ mod tests {
     #[tokio::test]
     async fn test_batch_matmul_precision() {
         let device = get_test_device().await;
-        
+
         // Test determinism and functional correctness
-        let a_data = vec![1.0, 2.0, 3.0, 4.0];  // [1, 2, 2]
-        let b_data = vec![5.0, 6.0, 7.0, 8.0];  // [1, 2, 2]
-        
+        let a_data = vec![1.0, 2.0, 3.0, 4.0]; // [1, 2, 2]
+        let b_data = vec![5.0, 6.0, 7.0, 8.0]; // [1, 2, 2]
+
         let a1 = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
         let b1 = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
-        
+
         let a2 = Tensor::from_data(&a_data, vec![1, 2, 2], device.clone()).unwrap();
         let b2 = Tensor::from_data(&b_data, vec![1, 2, 2], device.clone()).unwrap();
-        
+
         // Run twice to check determinism
         let result1 = a1.batch_matmul(&b1).unwrap();
         let result2 = a2.batch_matmul(&b2).unwrap();
-        
+
         let output1 = result1.to_vec().unwrap();
         let output2 = result2.to_vec().unwrap();
-        
+
         // Should be deterministic
         assert_eq!(output1, output2);
-        
+
         // Output should be finite and correct dimensions
         assert_eq!(output1.len(), 4); // 1 batch * 2x2
         assert!(output1.iter().all(|&x| x.is_finite()));

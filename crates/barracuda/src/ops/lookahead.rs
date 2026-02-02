@@ -13,16 +13,16 @@ pub async fn lookahead_step(
     _queue: &wgpu::Queue,
     fast_weights: &[f32],
     state: &mut LookaheadState,
-    k: usize,  // Sync frequency
+    k: usize,   // Sync frequency
     alpha: f32, // Slow weights step size
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let size = fast_weights.len();
     if state.slow_weights.len() != size {
         return Err("State dimension mismatch".into());
     }
-    
+
     state.k_counter += 1;
-    
+
     // Update slow weights every k steps
     if state.k_counter % k == 0 {
         for i in 0..size {
@@ -39,7 +39,7 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_lookahead() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());
@@ -48,7 +48,9 @@ mod tests {
             slow_weights: vec![0.9; 100],
             k_counter: 0,
         };
-        let result = lookahead_step(&dev.device, &dev.queue, &fast_weights, &mut state, 5, 0.5).await.unwrap();
+        let result = lookahead_step(&dev.device, &dev.queue, &fast_weights, &mut state, 5, 0.5)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 100);
     }
 }

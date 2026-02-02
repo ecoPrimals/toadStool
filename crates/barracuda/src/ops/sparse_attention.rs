@@ -17,24 +17,34 @@ pub async fn sparse_attention(
 ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let mut output = vec![0.0f32; batch_size * num_heads * seq_len * head_dim];
     let scale = (head_dim as f32).sqrt();
-    
+
     for b in 0..batch_size {
         for h in 0..num_heads {
             for i in 0..seq_len {
                 let mut scores = vec![f32::NEG_INFINITY; seq_len];
-                
+
                 // Attend to strided positions: 0, stride, 2*stride, ...
                 for j in (0..seq_len).step_by(stride) {
                     let mut score = 0.0;
                     for d in 0..head_dim {
-                        let q_idx = b * num_heads * seq_len * head_dim + h * seq_len * head_dim + i * head_dim + d;
-                        let k_idx = b * num_heads * seq_len * head_dim + h * seq_len * head_dim + j * head_dim + d;
+                        let q_idx = b * num_heads * seq_len * head_dim
+                            + h * seq_len * head_dim
+                            + i * head_dim
+                            + d;
+                        let k_idx = b * num_heads * seq_len * head_dim
+                            + h * seq_len * head_dim
+                            + j * head_dim
+                            + d;
                         score += query[q_idx] * key[k_idx];
                     }
                     scores[j] = score / scale;
                 }
-                
-                let max_score = scores.iter().filter(|&&s| s.is_finite()).cloned().fold(f32::NEG_INFINITY, f32::max);
+
+                let max_score = scores
+                    .iter()
+                    .filter(|&&s| s.is_finite())
+                    .cloned()
+                    .fold(f32::NEG_INFINITY, f32::max);
                 let mut sum = 0.0;
                 for s in &mut scores {
                     if s.is_finite() {
@@ -47,20 +57,26 @@ pub async fn sparse_attention(
                 for s in &mut scores {
                     *s /= sum;
                 }
-                
+
                 for d in 0..head_dim {
                     let mut weighted_sum = 0.0;
                     for j in 0..seq_len {
-                        let v_idx = b * num_heads * seq_len * head_dim + h * seq_len * head_dim + j * head_dim + d;
+                        let v_idx = b * num_heads * seq_len * head_dim
+                            + h * seq_len * head_dim
+                            + j * head_dim
+                            + d;
                         weighted_sum += scores[j] * value[v_idx];
                     }
-                    let out_idx = b * num_heads * seq_len * head_dim + h * seq_len * head_dim + i * head_dim + d;
+                    let out_idx = b * num_heads * seq_len * head_dim
+                        + h * seq_len * head_dim
+                        + i * head_dim
+                        + d;
                     output[out_idx] = weighted_sum;
                 }
             }
         }
     }
-    
+
     Ok(output)
 }
 
@@ -69,17 +85,19 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_sparse_attention_basic() {
         let dev = get_test_device().await;
         let size = 1 * 2 * 8 * 4;
         let q = vec![0.5; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 2).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 8, 4, 2)
+            .await
+            .unwrap();
         assert_eq!(output.len(), size);
         assert!(output.iter().all(|&x| x.is_finite()));
     }
@@ -91,13 +109,17 @@ mod tests {
         // Single head
         let size = 1 * 1 * 4 * 4;
         let q = vec![1.0; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 4, 4, 2).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 4, 4, 2)
+            .await
+            .unwrap();
         assert_eq!(output.len(), size);
 
         // Small sequence (stride 1 = full attention)
         let size = 1 * 2 * 4 * 4;
         let q = vec![0.5; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 4, 4, 1).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 4, 4, 1)
+            .await
+            .unwrap();
         assert_eq!(output.len(), size);
     }
 
@@ -108,13 +130,17 @@ mod tests {
         // Large stride
         let size = 1 * 2 * 16 * 8;
         let q = vec![0.5; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 16, 8, 4).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 2, 16, 8, 4)
+            .await
+            .unwrap();
         assert_eq!(output.len(), size);
 
         // Stride equals sequence length (attend to first token only)
         let size = 1 * 1 * 8 * 4;
         let q = vec![1.0; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 8, 4, 8).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 1, 1, 8, 4, 8)
+            .await
+            .unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
     }
 
@@ -125,7 +151,9 @@ mod tests {
         // Batch size 4
         let size = 4 * 4 * 16 * 8;
         let q = vec![0.5; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 4, 4, 16, 8, 2).await.unwrap();
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &q, &q, 4, 4, 16, 8, 2)
+            .await
+            .unwrap();
         assert_eq!(output.len(), size);
     }
 
@@ -138,8 +166,10 @@ mod tests {
         let q = vec![1.0; size];
         let k = vec![0.5; size];
         let v = vec![2.0; size];
-        let output = sparse_attention(&dev.device, &dev.queue, &q, &k, &v, 1, 1, 4, 4, 2).await.unwrap();
-        
+        let output = sparse_attention(&dev.device, &dev.queue, &q, &k, &v, 1, 1, 4, 4, 2)
+            .await
+            .unwrap();
+
         assert_eq!(output.len(), size);
         assert!(output.iter().all(|&x| x.is_finite()));
     }

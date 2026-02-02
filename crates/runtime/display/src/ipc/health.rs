@@ -102,9 +102,7 @@ pub async fn check_display_health() -> Result<HealthCheckResult> {
 /// # Ok(())
 /// # }
 /// ```
-pub async fn check_display_health_with_timeout(
-    timeout: Duration,
-) -> Result<HealthCheckResult> {
+pub async fn check_display_health_with_timeout(timeout: Duration) -> Result<HealthCheckResult> {
     tokio::time::timeout(timeout, check_display_health())
         .await
         .map_err(|_| DisplayError::IpcError("Health check timeout".to_string()))?
@@ -127,10 +125,7 @@ pub async fn check_display_health_with_timeout(
 /// # Ok(())
 /// # }
 /// ```
-pub async fn monitor_display_health<F>(
-    interval: Duration,
-    mut callback: F,
-) -> Result<()>
+pub async fn monitor_display_health<F>(interval: Duration, mut callback: F) -> Result<()>
 where
     F: FnMut(&HealthCheckResult),
 {

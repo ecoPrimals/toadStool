@@ -174,7 +174,7 @@ impl WgpuExecutor {
     ///
     /// Modern idiomatic Rust with safe buffer handling.
     /// Deep Debt: Matrix dimensions determined at runtime, not hardcoded.
-    
+
     /// Automatic Matrix Multiplication - Intelligent Strategy Selection
     ///
     /// **RECOMMENDED**: Use this method for automatic best performance!
@@ -196,13 +196,13 @@ impl WgpuExecutor {
         n: usize,
     ) -> Result<Vec<f32>> {
         let strategy = MatMulStrategy::choose(m, k, n);
-        
+
         match strategy {
             MatMulStrategy::Naive => self.execute_matmul(a, b, m, n, k).await,
             MatMulStrategy::Tiled => self.execute_matmul_tiled(a, b, m, k, n).await,
         }
     }
-    
+
     /// Execute MatMul with tiled optimization (memory-optimized)
     ///
     /// **OPTIMIZATION**: Uses shared memory tiling for 70-80% bandwidth utilization
@@ -328,7 +328,8 @@ impl WgpuExecutor {
             ],
         });
 
-        let pipeline = self.create_simple_pipeline(shader_source, "MatMul Tiled", &bind_group_layout);
+        let pipeline =
+            self.create_simple_pipeline(shader_source, "MatMul Tiled", &bind_group_layout);
 
         // 2D workgroup dispatch: (N/16, M/16) workgroups of (16, 16) threads each
         let workgroups_x = (n as u32 + 15) / 16;

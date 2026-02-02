@@ -14,13 +14,13 @@ pub async fn multi_margin_loss(
     if predictions.len() != batch_size * num_classes {
         return Err("Dimension mismatch".into());
     }
-    
+
     let mut total_loss = 0.0;
-    
+
     for i in 0..batch_size {
         let target_class = targets[i];
         let target_score = predictions[i * num_classes + target_class];
-        
+
         let mut class_loss = 0.0;
         for c in 0..num_classes {
             if c != target_class {
@@ -28,10 +28,10 @@ pub async fn multi_margin_loss(
                 class_loss += (margin - target_score + score).max(0.0);
             }
         }
-        
+
         total_loss += class_loss / (num_classes - 1) as f32;
     }
-    
+
     Ok(total_loss / batch_size as f32)
 }
 
@@ -40,17 +40,19 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_multi_margin_loss_basic() {
         let dev = get_test_device().await;
         let predictions = vec![0.9, 0.1, 0.1, 0.1, 0.8, 0.2];
         let targets = vec![0, 1];
-        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0)
+            .await
+            .unwrap();
         assert!(loss >= 0.0);
         assert!(loss.is_finite());
     }
@@ -62,13 +64,17 @@ mod tests {
         // Perfect predictions (loss should be 0)
         let predictions = vec![10.0, 0.0, 0.0];
         let targets = vec![0];
-        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0)
+            .await
+            .unwrap();
         assert!(loss < 0.1);
 
         // Single sample
         let predictions = vec![0.5, 0.5, 0.5];
         let targets = vec![0];
-        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0)
+            .await
+            .unwrap();
         assert!(loss >= 0.0);
     }
 
@@ -79,8 +85,12 @@ mod tests {
         // Different margins
         let predictions = vec![0.7, 0.3, 0.2];
         let targets = vec![0];
-        let loss1 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 0.5).await.unwrap();
-        let loss2 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 2.0).await.unwrap();
+        let loss1 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 0.5)
+            .await
+            .unwrap();
+        let loss2 = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 2.0)
+            .await
+            .unwrap();
         assert!(loss2 > loss1); // Larger margin = larger loss
     }
 
@@ -95,8 +105,10 @@ mod tests {
             predictions.extend(vec![0.8, 0.1, 0.1]);
             targets.push(i % 3);
         }
-        
-        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
+
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0)
+            .await
+            .unwrap();
         assert!(loss >= 0.0);
         assert!(loss.is_finite());
     }
@@ -108,8 +120,10 @@ mod tests {
         // Test loss calculation
         let predictions = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
         let targets = vec![0, 1];
-        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0).await.unwrap();
-        
+        let loss = multi_margin_loss(&dev.device, &dev.queue, &predictions, &targets, 3, 1.0)
+            .await
+            .unwrap();
+
         // For perfect predictions, loss should be near 0
         assert!(loss < 0.5);
     }

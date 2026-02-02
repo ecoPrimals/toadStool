@@ -2,7 +2,7 @@
 //!
 //! Tests all optimizations at very large scales (2048+, 4096+)
 
-use ml_inference_showcase::wgpu::{WgpuExecutor, NormConfig};
+use ml_inference_showcase::wgpu::{NormConfig, WgpuExecutor};
 use std::time::Instant;
 
 #[tokio::main]
@@ -24,10 +24,19 @@ async fn main() -> anyhow::Result<()> {
     println!("───────────────────────────────────────────────────────────");
 
     for size in matmul_sizes {
-        println!("Testing {}x{} ({}M elements)...", size, size, (size * size) / 1_000_000);
-        
-        let a: Vec<f32> = (0..size * size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-        let b: Vec<f32> = (0..size * size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+        println!(
+            "Testing {}x{} ({}M elements)...",
+            size,
+            size,
+            (size * size) / 1_000_000
+        );
+
+        let a: Vec<f32> = (0..size * size)
+            .map(|i| ((i % 1000) as f32) * 0.001)
+            .collect();
+        let b: Vec<f32> = (0..size * size)
+            .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+            .collect();
 
         // Warm-up
         let _ = executor.execute_matmul(&a, &b, size, size, size).await?;
@@ -39,39 +48,50 @@ async fn main() -> anyhow::Result<()> {
 
         // Tiled
         let start = Instant::now();
-        let result_tiled = executor.execute_matmul_tiled(&a, &b, size, size, size).await?;
+        let result_tiled = executor
+            .execute_matmul_tiled(&a, &b, size, size, size)
+            .await?;
         let tiled_time = start.elapsed();
 
         // Auto
         let start = Instant::now();
-        let result_auto = executor.execute_matmul_auto(&a, &b, size, size, size).await?;
+        let result_auto = executor
+            .execute_matmul_auto(&a, &b, size, size, size)
+            .await?;
         let auto_time = start.elapsed();
 
         // Verify correctness
-        let max_diff_tiled = result_naive.iter()
+        let max_diff_tiled = result_naive
+            .iter()
             .zip(result_tiled.iter())
             .map(|(n, t)| (n - t).abs())
             .fold(0.0f32, f32::max);
 
-        let max_diff_auto = result_naive.iter()
+        let max_diff_auto = result_naive
+            .iter()
             .zip(result_auto.iter())
             .map(|(n, a)| (n - a).abs())
             .fold(0.0f32, f32::max);
 
         if max_diff_tiled > 1e-4 || max_diff_auto > 1e-4 {
-            println!("⚠️  Correctness issue! tiled_diff={}, auto_diff={}", 
-                max_diff_tiled, max_diff_auto);
+            println!(
+                "⚠️  Correctness issue! tiled_diff={}, auto_diff={}",
+                max_diff_tiled, max_diff_auto
+            );
         }
 
         let speedup = naive_time.as_secs_f64() / tiled_time.as_secs_f64();
 
-        println!("{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:7.2}ms  {:6.2}x {}",
-            size, size,
+        println!(
+            "{:4}x{:4}  {:7.2}ms  {:7.2}ms  {:7.2}ms  {:6.2}x {}",
+            size,
+            size,
             naive_time.as_secs_f64() * 1000.0,
             tiled_time.as_secs_f64() * 1000.0,
             auto_time.as_secs_f64() * 1000.0,
             speedup,
-            if speedup > 1.0 { "✅" } else { "⚠️" });
+            if speedup > 1.0 { "✅" } else { "⚠️" }
+        );
     }
 
     println!("\n═══════════════════════════════════════════════════════════");
@@ -102,26 +122,35 @@ async fn main() -> anyhow::Result<()> {
         let two_d_time = start.elapsed();
 
         // Verify correctness (relaxed for large scales)
-        let max_diff = result_orig.iter()
+        let max_diff = result_orig
+            .iter()
             .zip(result_2d.iter())
             .map(|(o, t)| (o - t).abs())
             .fold(0.0f32, f32::max);
 
         let tolerance = if size > 8192 { 0.1 } else { 0.01 };
-        
+
         if max_diff > tolerance {
-            println!("⚠️  Size {}: max_diff = {} (tolerance = {})", 
-                size, max_diff, tolerance);
+            println!(
+                "⚠️  Size {}: max_diff = {} (tolerance = {})",
+                size, max_diff, tolerance
+            );
         }
 
         let speedup = orig_time.as_secs_f64() / two_d_time.as_secs_f64();
 
-        println!("{:5}     {:7.2}ms  {:7.2}ms    {:6.2}x {}",
+        println!(
+            "{:5}     {:7.2}ms  {:7.2}ms    {:6.2}x {}",
             size,
             orig_time.as_secs_f64() * 1000.0,
             two_d_time.as_secs_f64() * 1000.0,
             speedup,
-            if max_diff <= tolerance { "✅" } else { "⚠️" });
+            if max_diff <= tolerance {
+                "✅"
+            } else {
+                "⚠️"
+            }
+        );
     }
 
     println!("\n═══════════════════════════════════════════════════════════");
@@ -129,14 +158,24 @@ async fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════\n");
 
     let test_size = 2048;
-    let a: Vec<f32> = (0..test_size * test_size).map(|i| ((i % 1000) as f32) * 0.001).collect();
-    let b: Vec<f32> = (0..test_size * test_size).map(|i| (((i + 1) % 1000) as f32) * 0.001).collect();
+    let a: Vec<f32> = (0..test_size * test_size)
+        .map(|i| ((i % 1000) as f32) * 0.001)
+        .collect();
+    let b: Vec<f32> = (0..test_size * test_size)
+        .map(|i| (((i + 1) % 1000) as f32) * 0.001)
+        .collect();
 
     // Synchronous
     let start = Instant::now();
-    let _r1 = executor.execute_matmul_auto(&a, &b, test_size, test_size, test_size).await?;
-    let _r2 = executor.execute_matmul_auto(&a, &b, test_size, test_size, test_size).await?;
-    let _r3 = executor.execute_matmul_auto(&a, &b, test_size, test_size, test_size).await?;
+    let _r1 = executor
+        .execute_matmul_auto(&a, &b, test_size, test_size, test_size)
+        .await?;
+    let _r2 = executor
+        .execute_matmul_auto(&a, &b, test_size, test_size, test_size)
+        .await?;
+    let _r3 = executor
+        .execute_matmul_auto(&a, &b, test_size, test_size, test_size)
+        .await?;
     let sync_time = start.elapsed();
 
     // Async

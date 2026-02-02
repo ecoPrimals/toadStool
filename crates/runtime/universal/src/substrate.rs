@@ -55,23 +55,20 @@ use std::time::Duration;
 pub trait ComputeSubstrate: Send + Sync {
     /// Human-readable name
     fn name(&self) -> &str;
-    
+
     /// Substrate type (CPU, GPU, NPU, TPU)
     fn substrate_type(&self) -> SubstrateType;
-    
+
     /// Get substrate capabilities
     fn capabilities(&self) -> SubstrateCapabilities {
         SubstrateCapabilities::default_for_type(self.substrate_type())
     }
-    
+
     /// Execute a buffer operation
     ///
     /// **Deep Debt**: Simple, generic operation interface
-    async fn execute_buffer_op(
-        &self,
-        operation: BufferOperation,
-    ) -> Result<BufferOutput>;
-    
+    async fn execute_buffer_op(&self, operation: BufferOperation) -> Result<BufferOutput>;
+
     /// Measure power consumption (optional, returns estimate if unavailable)
     ///
     /// **Deep Debt**: Measure actual power, don't hardcode
@@ -79,18 +76,15 @@ pub trait ComputeSubstrate: Send + Sync {
         // Default: Estimate based on substrate type
         Ok(PowerMeasurement::estimated_for_type(self.substrate_type()))
     }
-    
+
     /// Profile operation performance
     ///
     /// **Deep Debt**: Profile actual performance, don't hardcode
-    async fn profile_operation(
-        &self,
-        operation: &BufferOperation,
-    ) -> Result<PerformanceMetrics> {
+    async fn profile_operation(&self, operation: &BufferOperation) -> Result<PerformanceMetrics> {
         let start = std::time::Instant::now();
         let _ = self.execute_buffer_op(operation.clone()).await?;
         let duration = start.elapsed();
-        
+
         Ok(PerformanceMetrics {
             duration,
             throughput_ops_per_sec: if duration.as_secs_f64() > 0.0 {
@@ -131,25 +125,25 @@ impl SubstrateType {
 pub struct SubstrateCapabilities {
     /// Substrate type
     pub substrate_type: SubstrateType,
-    
+
     /// Average power consumption (watts)
     pub power_watts: f64,
-    
+
     /// Peak throughput (operations/second)
     pub throughput_ops_per_sec: f64,
-    
+
     /// Typical latency (milliseconds)
     pub latency_ms: f64,
-    
+
     /// Best suited for batch operations
     pub best_for_batch: bool,
-    
+
     /// Best suited for low latency
     pub best_for_latency: bool,
-    
+
     /// Best suited for energy efficiency
     pub best_for_energy: bool,
-    
+
     /// Best suited for continuous operation
     pub best_for_continuous: bool,
 }
@@ -216,21 +210,21 @@ pub enum BufferOperation {
         b: Vec<u8>,
         element_size: usize,
     },
-    
+
     /// Multiply two buffers element-wise
     Multiply {
         a: Vec<u8>,
         b: Vec<u8>,
         element_size: usize,
     },
-    
+
     /// Apply unary function to buffer
     Map {
         data: Vec<u8>,
         element_size: usize,
         operation: UnaryOp,
     },
-    
+
     /// Custom operation (substrate-specific)
     Custom {
         name: String,
@@ -267,7 +261,7 @@ pub enum UnaryOp {
 pub struct BufferOutput {
     /// Result data
     pub data: Vec<u8>,
-    
+
     /// Execution metadata
     pub metadata: BufferMetadata,
 }
@@ -277,10 +271,10 @@ pub struct BufferOutput {
 pub struct BufferMetadata {
     /// Execution duration
     pub duration: Duration,
-    
+
     /// Substrate that executed this
     pub substrate_name: String,
-    
+
     /// Power consumed (if measured)
     pub power_consumed_mw: Option<f64>,
 }
@@ -292,10 +286,10 @@ pub struct BufferMetadata {
 pub struct PowerMeasurement {
     /// Power in watts
     pub watts: f64,
-    
+
     /// Whether this is a measured value (true) or estimate (false)
     pub measured: bool,
-    
+
     /// Measurement method (e.g., "RAPL", "nvidia-smi", "estimated")
     pub method: String,
 }
@@ -309,7 +303,7 @@ impl PowerMeasurement {
             SubstrateType::Npu => 2.0,
             SubstrateType::Tpu => 200.0,
         };
-        
+
         Self {
             watts,
             measured: false,
@@ -325,10 +319,10 @@ impl PowerMeasurement {
 pub struct PerformanceMetrics {
     /// Total duration
     pub duration: Duration,
-    
+
     /// Throughput (operations/second)
     pub throughput_ops_per_sec: f64,
-    
+
     /// Latency (milliseconds)
     pub latency_ms: f64,
 }
@@ -360,7 +354,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
             capabilities,
         }
     }
-    
+
     fn convert_capabilities(caps: &SubstrateCapabilities) -> Capabilities {
         let unit_type = match caps.substrate_type {
             SubstrateType::Cpu => ComputeUnitType::Cpu,
@@ -368,7 +362,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
             SubstrateType::Npu => ComputeUnitType::Neuromorphic,
             SubstrateType::Tpu => ComputeUnitType::Custom(1),
         };
-        
+
         let power_profile = if caps.power_watts < 1.0 {
             PowerProfile::UltraLow
         } else if caps.power_watts < 10.0 {
@@ -378,7 +372,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
         } else {
             PowerProfile::High
         };
-        
+
         Capabilities {
             unit_type,
             parallelism: Parallelism {
@@ -409,15 +403,15 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
     fn capabilities(&self) -> &Capabilities {
         &self.capabilities
     }
-    
+
     fn name(&self) -> &str {
         self.substrate.name()
     }
-    
+
     async fn execute(&self, workload: Workload) -> Result<Output, ComputeError> {
         // Convert Workload → BufferOperation
         let buffer_op = self.convert_workload(&workload)?;
-        
+
         // Execute on substrate
         let start = std::time::Instant::now();
         let output = self
@@ -426,7 +420,7 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
             .await
             .map_err(|e| ComputeError::ExecutionFailed(e.to_string()))?;
         let duration = start.elapsed();
-        
+
         // Convert BufferOutput → Output
         Ok(Output {
             data: WorkloadData::Custom(output.data),
@@ -452,7 +446,7 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
             WorkloadData::F32VecPair(a, b) => {
                 let a_bytes = bytemuck::cast_slice(a).to_vec();
                 let b_bytes = bytemuck::cast_slice(b).to_vec();
-                
+
                 match workload.operation {
                     OperationType::ElementwiseBinary => Ok(BufferOperation::Add {
                         a: a_bytes,
@@ -470,23 +464,20 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     struct MockSubstrate;
-    
+
     #[async_trait]
     impl ComputeSubstrate for MockSubstrate {
         fn name(&self) -> &str {
             "Mock Substrate"
         }
-        
+
         fn substrate_type(&self) -> SubstrateType {
             SubstrateType::Cpu
         }
-        
-        async fn execute_buffer_op(
-            &self,
-            operation: BufferOperation,
-        ) -> Result<BufferOutput> {
+
+        async fn execute_buffer_op(&self, operation: BufferOperation) -> Result<BufferOutput> {
             Ok(BufferOutput {
                 data: vec![0; operation.buffer_size()],
                 metadata: BufferMetadata {
@@ -497,42 +488,42 @@ mod tests {
             })
         }
     }
-    
+
     #[tokio::test]
     async fn test_substrate_trait() {
         let substrate = MockSubstrate;
         assert_eq!(substrate.name(), "Mock Substrate");
         assert_eq!(substrate.substrate_type(), SubstrateType::Cpu);
-        
+
         let op = BufferOperation::Add {
             a: vec![1, 2, 3],
             b: vec![4, 5, 6],
             element_size: 1,
         };
-        
+
         let result = substrate.execute_buffer_op(op).await.unwrap();
         assert_eq!(result.data.len(), 6);
     }
-    
+
     #[tokio::test]
     async fn test_substrate_adapter() {
         let substrate = MockSubstrate;
         let adapter = SubstrateAdapter::new(substrate);
-        
+
         assert_eq!(adapter.name(), "Mock Substrate");
         assert_eq!(adapter.capabilities().unit_type, ComputeUnitType::Cpu);
     }
-    
+
     #[test]
     fn test_substrate_capabilities() {
         let cpu_caps = SubstrateCapabilities::default_for_type(SubstrateType::Cpu);
         assert_eq!(cpu_caps.substrate_type, SubstrateType::Cpu);
         assert!(cpu_caps.best_for_latency);
-        
+
         let gpu_caps = SubstrateCapabilities::default_for_type(SubstrateType::Gpu);
         assert_eq!(gpu_caps.substrate_type, SubstrateType::Gpu);
         assert!(gpu_caps.best_for_batch);
-        
+
         let npu_caps = SubstrateCapabilities::default_for_type(SubstrateType::Npu);
         assert_eq!(npu_caps.substrate_type, SubstrateType::Npu);
         assert!(npu_caps.best_for_energy);

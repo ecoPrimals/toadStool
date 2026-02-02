@@ -9,9 +9,9 @@
 //! - **Self-Knowledge**: Models know their input/output requirements
 //! - **Fast AND Safe**: Validated data transfers, efficient execution
 
-use crate::{AkidaDevice, Result, AkidaError};
-use tracing::{debug, info};
+use crate::{AkidaDevice, AkidaError, Result};
 use std::time::Instant;
+use tracing::{debug, info};
 
 /// Inference configuration
 ///
@@ -21,16 +21,16 @@ use std::time::Instant;
 pub struct InferenceConfig {
     /// Input data shape
     pub input_shape: Vec<usize>,
-    
+
     /// Output data shape  
     pub output_shape: Vec<usize>,
-    
+
     /// Input data type (bytes per element)
     pub input_dtype_bytes: usize,
-    
+
     /// Output data type (bytes per element)
     pub output_dtype_bytes: usize,
-    
+
     /// Timeout for inference (ms)
     pub timeout_ms: u64,
 }
@@ -49,10 +49,12 @@ impl InferenceConfig {
         // Calculate timeout based on data size
         let input_size = input_shape.iter().product::<usize>() * input_dtype_bytes;
         let timeout_ms = estimate_inference_timeout(input_size);
-        
-        debug!("Inference config: input {:?}, output {:?}, timeout {}ms",
-               input_shape, output_shape, timeout_ms);
-        
+
+        debug!(
+            "Inference config: input {:?}, output {:?}, timeout {}ms",
+            input_shape, output_shape, timeout_ms
+        );
+
         Self {
             input_shape,
             output_shape,
@@ -61,12 +63,12 @@ impl InferenceConfig {
             timeout_ms,
         }
     }
-    
+
     /// Get total input size in bytes
     pub fn input_size_bytes(&self) -> usize {
         self.input_shape.iter().product::<usize>() * self.input_dtype_bytes
     }
-    
+
     /// Get total output size in bytes
     pub fn output_size_bytes(&self) -> usize {
         self.output_shape.iter().product::<usize>() * self.output_dtype_bytes
@@ -85,14 +87,20 @@ impl InferenceExecutor {
     /// Create executor with configuration
     pub fn new(config: InferenceConfig) -> Self {
         info!("Creating inference executor");
-        debug!("Input: {:?} ({} bytes)", 
-               config.input_shape, config.input_size_bytes());
-        debug!("Output: {:?} ({} bytes)",
-               config.output_shape, config.output_size_bytes());
-        
+        debug!(
+            "Input: {:?} ({} bytes)",
+            config.input_shape,
+            config.input_size_bytes()
+        );
+        debug!(
+            "Output: {:?} ({} bytes)",
+            config.output_shape,
+            config.output_size_bytes()
+        );
+
         Self { config }
     }
-    
+
     /// Execute inference on device
     ///
     /// **Deep Debt**: Complete implementation!
@@ -114,47 +122,55 @@ impl InferenceExecutor {
                 self.config.input_size_bytes()
             )));
         }
-        
+
         debug!("Starting inference with {} byte input", input.len());
         let start = Instant::now();
-        
+
         // Step 1: Transfer input to device
         let transfer_start = Instant::now();
         let bytes_written = device.write(input)?;
         let transfer_duration = transfer_start.elapsed();
-        
+
         if bytes_written != input.len() {
             return Err(AkidaError::transfer_failed(format!(
                 "Input transfer incomplete: {} of {} bytes",
-                bytes_written, input.len()
+                bytes_written,
+                input.len()
             )));
         }
-        
-        debug!("Input transferred: {} bytes in {:?}", bytes_written, transfer_duration);
-        
+
+        debug!(
+            "Input transferred: {} bytes in {:?}",
+            bytes_written, transfer_duration
+        );
+
         // Step 2: NPU execution
         // The kernel driver will execute the loaded model on NPUs
         // This happens automatically after write - the device processes the input
-        
+
         // Step 3: Wait for completion and read output
         let output_start = Instant::now();
         let mut output = vec![0u8; self.config.output_size_bytes()];
         let bytes_read = device.read(&mut output)?;
         let output_duration = output_start.elapsed();
-        
+
         if bytes_read != self.config.output_size_bytes() {
             return Err(AkidaError::transfer_failed(format!(
                 "Output transfer incomplete: {} of {} bytes",
-                bytes_read, self.config.output_size_bytes()
+                bytes_read,
+                self.config.output_size_bytes()
             )));
         }
-        
-        debug!("Output retrieved: {} bytes in {:?}", bytes_read, output_duration);
-        
+
+        debug!(
+            "Output retrieved: {} bytes in {:?}",
+            bytes_read, output_duration
+        );
+
         let total_duration = start.elapsed();
-        
+
         info!("✅ Inference complete in {:?}", total_duration);
-        
+
         Ok(InferenceResult {
             output,
             input_transfer_duration: transfer_duration,
@@ -164,7 +180,7 @@ impl InferenceExecutor {
             output_bytes: bytes_read,
         })
     }
-    
+
     /// Get inference configuration
     pub const fn config(&self) -> &InferenceConfig {
         &self.config
@@ -176,19 +192,19 @@ impl InferenceExecutor {
 pub struct InferenceResult {
     /// Output data
     pub output: Vec<u8>,
-    
+
     /// Input transfer duration
     pub input_transfer_duration: std::time::Duration,
-    
+
     /// Output transfer duration  
     pub output_transfer_duration: std::time::Duration,
-    
+
     /// Total inference duration
     pub total_duration: std::time::Duration,
-    
+
     /// Input bytes transferred
     pub input_bytes: usize,
-    
+
     /// Output bytes transferred
     pub output_bytes: usize,
 }
@@ -201,7 +217,7 @@ impl InferenceResult {
         }
         1.0 / self.total_duration.as_secs_f64()
     }
-    
+
     /// Calculate latency in microseconds
     pub fn latency_us(&self) -> f64 {
         self.total_duration.as_secs_f64() * 1_000_000.0
@@ -223,28 +239,28 @@ fn estimate_inference_timeout(input_size_bytes: usize) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_inference_config_creation() {
         let config = InferenceConfig::new(
             vec![28, 28, 1],
             vec![10],
-            1,  // uint8 input
-            4,  // float32 output
+            1, // uint8 input
+            4, // float32 output
         );
-        
+
         assert_eq!(config.input_size_bytes(), 28 * 28);
         assert_eq!(config.output_size_bytes(), 10 * 4);
         assert!(config.timeout_ms > 0);
     }
-    
+
     #[test]
     fn test_timeout_estimation() {
         // Small input: should be close to base timeout
         let timeout_small = estimate_inference_timeout(100);
         assert!(timeout_small >= 100);
         assert!(timeout_small < 105);
-        
+
         // Large input: should scale
         let timeout_large = estimate_inference_timeout(10_000);
         assert!(timeout_large > timeout_small);

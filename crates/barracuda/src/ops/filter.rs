@@ -43,13 +43,13 @@ impl Filter {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size = self.input.shape().iter().product::<usize>();
-        
+
         let params = FilterParams {
             size: size as u32,
             operation: self.operation.to_u32(),
             threshold: self.threshold,
         };
-        
+
         // This is a simplified version - just evaluates predicate and returns flags
         // Full filter would need multi-pass (predicate + prefix sum + compact)
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -58,101 +58,113 @@ impl Filter {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
+
         let flags_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("filter_flags"),
             size: (size * std::mem::size_of::<u32>()) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
+
         let count_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("filter_count"),
             size: std::mem::size_of::<u32>() as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("filter_params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("filter_shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
-        
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("filter_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-        
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("filter_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-        
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("filter_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "evaluate_predicate",
-        });
-        
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("filter_params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("filter_shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("filter_bind_group_layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("filter_pipeline_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("filter_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "evaluate_predicate",
+            });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("filter_bind_group"),
             layout: &bind_group_layout,
@@ -179,11 +191,13 @@ impl Filter {
                 },
             ],
         });
-        
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("filter_encoder"),
-        });
-        
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("filter_encoder"),
+            });
+
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("filter_pass"),
@@ -191,13 +205,13 @@ impl Filter {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             let workgroups = ((size + 255) / 256) as u32;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         // Return flags buffer as tensor (1.0 for keep, 0.0 for discard)
         Ok(Tensor::from_buffer(
             output_buffer,
@@ -231,117 +245,119 @@ mod tests {
     #[tokio::test]
     async fn test_filter_basic() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
-        let input = Tensor::from_data(
-            &vec![1.0, 5.0, 3.0, 7.0],
-            vec![4],
-            device.clone(),
-        ).unwrap();
-        
+
+        let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 7.0], vec![4], device.clone()).unwrap();
+
         let result = input.filter(FilterOperation::GreaterThan, 4.0).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Results: 1.0 (no), 5.0 (yes), 3.0 (no), 7.0 (yes)
         assert_eq!(output.len(), 4);
-        
+
         // Check that filter produced valid output
         for &val in &output {
             assert!(val.is_finite());
         }
     }
-    
+
     #[tokio::test]
     async fn test_filter_edge_cases() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
+
         // All values pass (LessThan 100)
-        let all_pass = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let all_pass =
+            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
         let result = all_pass.filter(FilterOperation::LessThan, 100.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
-        
+
         // No values pass (GreaterThan 100)
-        let none_pass = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
-        let result = none_pass.filter(FilterOperation::GreaterThan, 100.0).unwrap();
+        let none_pass =
+            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let result = none_pass
+            .filter(FilterOperation::GreaterThan, 100.0)
+            .unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
-        
+
         // Equal operation
-        let equal_test = Tensor::from_data(&vec![5.0, 5.0, 3.0, 5.0], vec![4], device.clone()).unwrap();
+        let equal_test =
+            Tensor::from_data(&vec![5.0, 5.0, 3.0, 5.0], vec![4], device.clone()).unwrap();
         let result = equal_test.filter(FilterOperation::Equal, 5.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
     }
-    
+
     #[tokio::test]
     async fn test_filter_boundary() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
+
         // Single element
         let single = Tensor::from_data(&vec![10.0], vec![1], device.clone()).unwrap();
         let result = single.filter(FilterOperation::GreaterThan, 5.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 1);
-        
+
         // Exact threshold boundary
         let boundary = Tensor::from_data(&vec![4.9, 5.0, 5.1], vec![3], device.clone()).unwrap();
         let result = boundary.filter(FilterOperation::GreaterThan, 5.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 3);
-        
+
         // NotEqual operation
-        let not_equal = Tensor::from_data(&vec![1.0, 2.0, 3.0, 2.0], vec![4], device.clone()).unwrap();
+        let not_equal =
+            Tensor::from_data(&vec![1.0, 2.0, 3.0, 2.0], vec![4], device.clone()).unwrap();
         let result = not_equal.filter(FilterOperation::NotEqual, 2.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
     }
-    
+
     #[tokio::test]
     async fn test_filter_large_tensor() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
+
         // Large tensor (1024 elements)
         let size = 1024;
         let data: Vec<f32> = (0..size).map(|i| (i % 100) as f32).collect();
         let input = Tensor::from_data(&data, vec![size], device.clone()).unwrap();
-        
+
         // Filter for values > 50
         let result = input.filter(FilterOperation::GreaterThan, 50.0).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         assert_eq!(output.len(), size);
-        
+
         // Verify output is valid
         for &val in &output {
             assert!(val.is_finite());
         }
     }
-    
+
     #[tokio::test]
     async fn test_filter_precision() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
+
         // Test all filter operations
         let data = vec![0.5, 1.5, 2.5, 3.5, 4.5];
-        
+
         // GreaterThan 2.0
         let gt_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
         let result = gt_input.filter(FilterOperation::GreaterThan, 2.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 5);
-        
+
         // LessThan 3.0
         let lt_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
         let result = lt_input.filter(FilterOperation::LessThan, 3.0).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 5);
-        
+
         // Equal 2.5
         let eq_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
         let result = eq_input.filter(FilterOperation::Equal, 2.5).unwrap();
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 5);
-        
+
         // NotEqual 2.5
         let ne_input = Tensor::from_data(&data, vec![5], device.clone()).unwrap();
         let result = ne_input.filter(FilterOperation::NotEqual, 2.5).unwrap();

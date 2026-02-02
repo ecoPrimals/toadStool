@@ -38,15 +38,17 @@ async fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════\n");
 
     let non_square = vec![
-        (128, 256, 64),   // Tall A, wide B
-        (256, 64, 128),   // Wide A, tall B
-        (100, 200, 300),  // Non-power-of-2
+        (128, 256, 64),    // Tall A, wide B
+        (256, 64, 128),    // Wide A, tall B
+        (100, 200, 300),   // Non-power-of-2
         (1024, 512, 2048), // Large non-square
     ];
 
     for (m, k, n) in non_square {
         let a: Vec<f32> = (0..m * k).map(|i| ((i % 100) as f32) * 0.01).collect();
-        let b: Vec<f32> = (0..k * n).map(|i| (((i + 1) % 100) as f32) * 0.01).collect();
+        let b: Vec<f32> = (0..k * n)
+            .map(|i| (((i + 1) % 100) as f32) * 0.01)
+            .collect();
 
         match executor.execute_matmul_auto(&a, &b, m, k, n).await {
             Ok(result) => {
@@ -54,8 +56,17 @@ async fn main() -> anyhow::Result<()> {
                 if result.len() == expected {
                     println!("✅ {}x{} @ {}x{} = {}x{}: Correct size", m, k, k, n, m, n);
                 } else {
-                    println!("❌ {}x{} @ {}x{} = {}x{}: Wrong size! Got {}, expected {}", 
-                        m, k, k, n, m, n, result.len(), expected);
+                    println!(
+                        "❌ {}x{} @ {}x{} = {}x{}: Wrong size! Got {}, expected {}",
+                        m,
+                        k,
+                        k,
+                        n,
+                        m,
+                        n,
+                        result.len(),
+                        expected
+                    );
                 }
             }
             Err(e) => {
@@ -71,13 +82,17 @@ async fn main() -> anyhow::Result<()> {
     let odd_sizes = vec![63, 127, 255, 511, 1023, 1537];
 
     for size in odd_sizes {
-        let a: Vec<f32> = (0..size * size).map(|i| ((i % 100) as f32) * 0.01).collect();
-        let b: Vec<f32> = (0..size * size).map(|i| (((i + 1) % 100) as f32) * 0.01).collect();
+        let a: Vec<f32> = (0..size * size)
+            .map(|i| ((i % 100) as f32) * 0.01)
+            .collect();
+        let b: Vec<f32> = (0..size * size)
+            .map(|i| (((i + 1) % 100) as f32) * 0.01)
+            .collect();
 
         match executor.execute_matmul_auto(&a, &b, size, size, size).await {
             Ok(result) => {
                 println!("✅ {}x{}: Computed successfully", size, size);
-                
+
                 // Verify a few values
                 if result.len() == size * size {
                     println!("   Size correct: {} elements", result.len());
@@ -94,21 +109,26 @@ async fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════\n");
 
     let boundaries = vec![
-        (127, 128, 129),  // Around 128
-        (255, 256, 257),  // Around 256
-        (511, 512, 513),  // Around 512
+        (127, 128, 129),    // Around 128
+        (255, 256, 257),    // Around 256
+        (511, 512, 513),    // Around 512
         (1023, 1024, 1025), // Around 1024
         (1535, 1536, 1537), // Around threshold!
     ];
 
     for (below, at, above) in boundaries {
         for size in [below, at, above] {
-            let a: Vec<f32> = (0..size * size).map(|i| ((i % 100) as f32) * 0.01).collect();
-            let b: Vec<f32> = (0..size * size).map(|i| (((i + 1) % 100) as f32) * 0.01).collect();
+            let a: Vec<f32> = (0..size * size)
+                .map(|i| ((i % 100) as f32) * 0.01)
+                .collect();
+            let b: Vec<f32> = (0..size * size)
+                .map(|i| (((i + 1) % 100) as f32) * 0.01)
+                .collect();
 
             match executor.execute_matmul_auto(&a, &b, size, size, size).await {
                 Ok(_) => {
-                    let strategy = ml_inference_showcase::wgpu::MatMulStrategy::choose(size, size, size);
+                    let strategy =
+                        ml_inference_showcase::wgpu::MatMulStrategy::choose(size, size, size);
                     println!("✅ {}x{}: {:?}", size, size, strategy);
                 }
                 Err(e) => {
@@ -124,19 +144,29 @@ async fn main() -> anyhow::Result<()> {
     println!("═══════════════════════════════════════════════════════════\n");
 
     let extreme_ratios = vec![
-        (4096, 4, 4),     // Very tall and thin
-        (4, 4, 4096),     // Very wide
-        (1, 4096, 1),     // Vector-like
+        (4096, 4, 4), // Very tall and thin
+        (4, 4, 4096), // Very wide
+        (1, 4096, 1), // Vector-like
     ];
 
     for (m, k, n) in extreme_ratios {
         let a: Vec<f32> = (0..m * k).map(|i| ((i % 100) as f32) * 0.01).collect();
-        let b: Vec<f32> = (0..k * n).map(|i| (((i + 1) % 100) as f32) * 0.01).collect();
+        let b: Vec<f32> = (0..k * n)
+            .map(|i| (((i + 1) % 100) as f32) * 0.01)
+            .collect();
 
         match executor.execute_matmul_auto(&a, &b, m, k, n).await {
             Ok(result) => {
-                println!("✅ {}x{} @ {}x{} = {}x{}: {} elements", 
-                    m, k, k, n, m, n, result.len());
+                println!(
+                    "✅ {}x{} @ {}x{} = {}x{}: {} elements",
+                    m,
+                    k,
+                    k,
+                    n,
+                    m,
+                    n,
+                    result.len()
+                );
             }
             Err(e) => {
                 println!("❌ {}x{} @ {}x{}: Failed - {}", m, k, k, n, e);

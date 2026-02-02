@@ -196,7 +196,9 @@ fn bench_normalization(c: &mut Criterion) {
             &name,
             |bencher, _| {
                 bencher.iter(|| {
-                    rt.block_on(executor.execute_layernorm_optimized(black_box(&input), config.clone()))
+                    rt.block_on(
+                        executor.execute_layernorm_optimized(black_box(&input), config.clone()),
+                    )
                 });
             },
         );
@@ -216,21 +218,17 @@ fn bench_normalization(c: &mut Criterion) {
             running_var: vec![1.0; channels],
         };
 
-        group.bench_with_input(
-            BenchmarkId::new("BatchNorm", name),
-            &name,
-            |bencher, _| {
-                bencher.iter(|| {
-                    rt.block_on(executor.execute_batchnorm(
-                        black_box(&input),
-                        batch,
-                        channels,
-                        spatial_size,
-                        bn_config.clone(),
-                    ))
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("BatchNorm", name), &name, |bencher, _| {
+            bencher.iter(|| {
+                rt.block_on(executor.execute_batchnorm(
+                    black_box(&input),
+                    batch,
+                    channels,
+                    spatial_size,
+                    bn_config.clone(),
+                ))
+            });
+        });
     }
 
     group.finish();
@@ -346,21 +344,16 @@ fn bench_reductions(c: &mut Criterion) {
         let input: Vec<f32> = vec![0.5; size];
 
         c.bench_function(&format!("ReduceSum_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Sum))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Sum)));
         });
 
         c.bench_function(&format!("ReduceMax_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Max))
-            });
+            bencher.iter(|| rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Max)));
         });
 
         c.bench_function(&format!("ReduceMean_{}", name), |bencher| {
-            bencher.iter(|| {
-                rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Mean))
-            });
+            bencher
+                .iter(|| rt.block_on(executor.execute_reduce(black_box(&input), ReduceOp::Mean)));
         });
     }
 }
@@ -417,7 +410,7 @@ criterion_group!(
     config = Criterion::default()
         .sample_size(20)
         .measurement_time(std::time::Duration::from_secs(10));
-    targets = 
+    targets =
         bench_activations,
         bench_linear_algebra,
         bench_normalization,

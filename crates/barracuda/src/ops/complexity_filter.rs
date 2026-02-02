@@ -210,15 +210,29 @@ pub async fn complexity_filter(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (n * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (n * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -236,8 +250,10 @@ mod tests {
     #[tokio::test]
     async fn test_complexity_filter_basic() {
         let device = WgpuDevice::new().await.unwrap();
-        let sequence = b"AAAAAAATCGATCG";  // Low complexity at start (all A's)
-        let result = complexity_filter(&device.device, &device.queue, sequence, 5, 2).await.unwrap();
+        let sequence = b"AAAAAAATCGATCG"; // Low complexity at start (all A's)
+        let result = complexity_filter(&device.device, &device.queue, sequence, 5, 2)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 14);
         // First positions should be flagged as low complexity
         assert!(result[0] > 0.5, "Position 0 should be low complexity");
@@ -250,38 +266,64 @@ mod tests {
     async fn test_complexity_filter_edge_cases() {
         let device = WgpuDevice::new().await.unwrap();
         let all_same = b"AAAAAAAA";
-        let result = complexity_filter(&device.device, &device.queue, all_same, 4, 2).await.unwrap();
+        let result = complexity_filter(&device.device, &device.queue, all_same, 4, 2)
+            .await
+            .unwrap();
         // Only check positions where window fits (0-4)
-        assert!(result[0..=4].iter().all(|&x| x > 0.5), "Positions 0-4 should be low complexity");
+        assert!(
+            result[0..=4].iter().all(|&x| x > 0.5),
+            "Positions 0-4 should be low complexity"
+        );
 
         let all_diverse = b"ATCGATCG";
-        let result2 = complexity_filter(&device.device, &device.queue, all_diverse, 4, 2).await.unwrap();
+        let result2 = complexity_filter(&device.device, &device.queue, all_diverse, 4, 2)
+            .await
+            .unwrap();
         // All windows have 4 unique bases, should be normal complexity
-        assert!(result2[0..=4].iter().all(|&x| x < 0.5), "Positions 0-4 should be normal complexity");
+        assert!(
+            result2[0..=4].iter().all(|&x| x < 0.5),
+            "Positions 0-4 should be normal complexity"
+        );
     }
 
     #[tokio::test]
     async fn test_complexity_filter_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let empty: &[u8] = b"";
-        assert!(complexity_filter(&device.device, &device.queue, empty, 5, 2).await.is_err());
-        
+        assert!(
+            complexity_filter(&device.device, &device.queue, empty, 5, 2)
+                .await
+                .is_err()
+        );
+
         let short = b"ATCG";
-        assert!(complexity_filter(&device.device, &device.queue, short, 0, 2).await.is_err());
-        assert!(complexity_filter(&device.device, &device.queue, short, 10, 2).await.is_err());
+        assert!(
+            complexity_filter(&device.device, &device.queue, short, 0, 2)
+                .await
+                .is_err()
+        );
+        assert!(
+            complexity_filter(&device.device, &device.queue, short, 10, 2)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn test_complexity_filter_large_tensor() {
         let device = WgpuDevice::new().await.unwrap();
-        let large: Vec<u8> = (0..10000).map(|i| match i % 4 {
-            0 => b'A',
-            1 => b'T',
-            2 => b'G',
-            3 => b'C',
-            _ => unreachable!(),
-        }).collect();
-        let result = complexity_filter(&device.device, &device.queue, &large, 4, 2).await.unwrap();
+        let large: Vec<u8> = (0..10000)
+            .map(|i| match i % 4 {
+                0 => b'A',
+                1 => b'T',
+                2 => b'G',
+                3 => b'C',
+                _ => unreachable!(),
+            })
+            .collect();
+        let result = complexity_filter(&device.device, &device.queue, &large, 4, 2)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 10000);
         assert!(result.iter().all(|&x| x.is_finite()));
         // With ATGC pattern, all windows should have 4 unique bases (normal complexity)
@@ -291,8 +333,10 @@ mod tests {
     #[tokio::test]
     async fn test_complexity_filter_precision() {
         let device = WgpuDevice::new().await.unwrap();
-        let sequence = b"ATATATATAT";  // Only 2 unique bases (A, T)
-        let result = complexity_filter(&device.device, &device.queue, sequence, 5, 3).await.unwrap();
+        let sequence = b"ATATATATAT"; // Only 2 unique bases (A, T)
+        let result = complexity_filter(&device.device, &device.queue, sequence, 5, 3)
+            .await
+            .unwrap();
         assert!(result.iter().all(|&x| x == 0.0 || x == 1.0));
         // With min_unique=3, all windows should be flagged as low complexity
         let low_count = result.iter().filter(|&&x| x > 0.5).count();

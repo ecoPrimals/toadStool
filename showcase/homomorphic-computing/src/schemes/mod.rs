@@ -16,13 +16,13 @@ use anyhow::Result;
 pub trait HomomorphicScheme {
     /// Encrypt a plaintext value
     fn encrypt(&self, plaintext: &[u64]) -> Result<Vec<u64>>;
-    
+
     /// Decrypt a ciphertext value
     fn decrypt(&self, ciphertext: &[u64]) -> Result<Vec<u64>>;
-    
+
     /// Homomorphic addition (on encrypted data)
     fn add(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>>;
-    
+
     /// Homomorphic multiplication (on encrypted data)
     fn multiply(&self, a: &[u64], b: &[u64]) -> Result<Vec<u64>>;
 }

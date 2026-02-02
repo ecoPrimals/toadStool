@@ -112,10 +112,7 @@ pub enum BarracudaError {
 
     /// Timeout waiting for GPU operation
     #[error("GPU operation timed out after {duration_ms}ms: {operation}")]
-    Timeout {
-        operation: String,
-        duration_ms: u64,
-    },
+    Timeout { operation: String, duration_ms: u64 },
 
     /// Out of GPU memory
     #[error("Out of GPU memory: requested {requested} bytes, available {available} bytes")]
@@ -287,7 +284,7 @@ mod tests {
     fn test_error_context() {
         let err = BarracudaError::device_init("Original error");
         let with_ctx = err.with_context("Additional context");
-        
+
         match with_ctx {
             BarracudaError::WithContext { context, .. } => {
                 assert_eq!(context, "Additional context");
@@ -300,7 +297,7 @@ mod tests {
     fn test_result_ext_context() {
         let result: Result<()> = Err(BarracudaError::device_init("Test"));
         let with_ctx = result.context("Operation failed");
-        
+
         assert!(with_ctx.is_err());
     }
 

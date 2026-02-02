@@ -48,7 +48,7 @@ pub enum AkidaModelError {
         #[from]
         source: std::io::Error,
     },
-    
+
     /// Model loading failed
     #[error("Model loading failed: {reason}")]
     LoadingFailed {
@@ -71,7 +71,7 @@ impl AkidaModelError {
             reason: reason.into(),
         }
     }
-    
+
     /// Create a loading error
     pub fn loading_failed(reason: impl Into<String>) -> Self {
         Self::LoadingFailed {

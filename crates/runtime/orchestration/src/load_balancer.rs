@@ -8,7 +8,7 @@
 #[derive(Debug)]
 pub struct LoadBalancer {
     /// Balancing strategy
-    #[allow(dead_code)]  // Used in future for multi-instance load balancing
+    #[allow(dead_code)] // Used in future for multi-instance load balancing
     strategy: BalancingStrategy,
 }
 
@@ -31,10 +31,10 @@ impl Default for LoadBalancer {
 pub enum BalancingStrategy {
     /// Equal distribution
     Equal,
-    
+
     /// Weighted by substrate capacity
     Weighted,
-    
+
     /// Dynamic based on current load
     Dynamic,
 }
@@ -48,7 +48,7 @@ impl Default for BalancingStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_load_balancer_creation() {
         let balancer = LoadBalancer::new();

@@ -36,11 +36,11 @@ impl MatMulStrategy {
     pub fn choose(m: usize, k: usize, n: usize) -> Self {
         // Use maximum dimension to determine strategy
         let max_dim = m.max(k).max(n);
-        
+
         // Conservative threshold: Only use tiling at extreme scales
         // where memory bandwidth is proven critical
         const TILING_THRESHOLD: usize = 3584;
-        
+
         if max_dim >= TILING_THRESHOLD {
             // Extreme scale: Memory bandwidth critical, tiling helps (1.17x measured)
             Self::Tiled
@@ -49,12 +49,12 @@ impl MatMulStrategy {
             Self::Naive
         }
     }
-    
+
     /// Force naive strategy (for testing or user override)
     pub fn force_naive() -> Self {
         Self::Naive
     }
-    
+
     /// Force tiled strategy (for testing or user override)
     pub fn force_tiled() -> Self {
         Self::Tiled
@@ -70,39 +70,72 @@ mod tests {
         // Small matrices should use naive (low overhead)
         assert_eq!(MatMulStrategy::choose(256, 256, 256), MatMulStrategy::Naive);
         assert_eq!(MatMulStrategy::choose(512, 512, 512), MatMulStrategy::Naive);
-        assert_eq!(MatMulStrategy::choose(1024, 1024, 1024), MatMulStrategy::Naive);
+        assert_eq!(
+            MatMulStrategy::choose(1024, 1024, 1024),
+            MatMulStrategy::Naive
+        );
     }
 
     #[test]
     fn test_strategy_production_matrices() {
         // Production scales should use naive (tiling has overhead)
-        assert_eq!(MatMulStrategy::choose(2048, 2048, 2048), MatMulStrategy::Naive);
-        assert_eq!(MatMulStrategy::choose(3072, 3072, 3072), MatMulStrategy::Naive);
+        assert_eq!(
+            MatMulStrategy::choose(2048, 2048, 2048),
+            MatMulStrategy::Naive
+        );
+        assert_eq!(
+            MatMulStrategy::choose(3072, 3072, 3072),
+            MatMulStrategy::Naive
+        );
     }
 
     #[test]
     fn test_strategy_extreme_matrices() {
         // Only at extreme scale (4096+) should use tiling
-        assert_eq!(MatMulStrategy::choose(4096, 4096, 4096), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(8192, 8192, 8192), MatMulStrategy::Tiled);
+        assert_eq!(
+            MatMulStrategy::choose(4096, 4096, 4096),
+            MatMulStrategy::Tiled
+        );
+        assert_eq!(
+            MatMulStrategy::choose(8192, 8192, 8192),
+            MatMulStrategy::Tiled
+        );
     }
 
     #[test]
     fn test_strategy_threshold() {
         // At threshold (3584), should switch to tiling
-        assert_eq!(MatMulStrategy::choose(3584, 3584, 3584), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(3583, 3583, 3583), MatMulStrategy::Naive);
+        assert_eq!(
+            MatMulStrategy::choose(3584, 3584, 3584),
+            MatMulStrategy::Tiled
+        );
+        assert_eq!(
+            MatMulStrategy::choose(3583, 3583, 3583),
+            MatMulStrategy::Naive
+        );
     }
 
     #[test]
     fn test_strategy_mixed_dimensions() {
         // If ANY dimension >= 3584, use tiling
-        assert_eq!(MatMulStrategy::choose(4096, 256, 256), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(256, 4096, 256), MatMulStrategy::Tiled);
-        assert_eq!(MatMulStrategy::choose(256, 256, 4096), MatMulStrategy::Tiled);
-        
+        assert_eq!(
+            MatMulStrategy::choose(4096, 256, 256),
+            MatMulStrategy::Tiled
+        );
+        assert_eq!(
+            MatMulStrategy::choose(256, 4096, 256),
+            MatMulStrategy::Tiled
+        );
+        assert_eq!(
+            MatMulStrategy::choose(256, 256, 4096),
+            MatMulStrategy::Tiled
+        );
+
         // Below threshold, use naive even if one dimension is large-ish
-        assert_eq!(MatMulStrategy::choose(3072, 256, 256), MatMulStrategy::Naive);
+        assert_eq!(
+            MatMulStrategy::choose(3072, 256, 256),
+            MatMulStrategy::Naive
+        );
     }
 
     #[test]

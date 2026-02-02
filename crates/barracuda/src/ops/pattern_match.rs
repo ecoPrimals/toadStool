@@ -228,15 +228,29 @@ pub async fn pattern_match(
         mapped_at_creation: false,
     });
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (target_len * std::mem::size_of::<f32>() as u32) as u64);
+    encoder.copy_buffer_to_buffer(
+        &output_buffer,
+        0,
+        &staging_buffer,
+        0,
+        (target_len * std::mem::size_of::<f32>() as u32) as u64,
+    );
     queue.submit(Some(encoder.finish()));
 
     let buffer_slice = staging_buffer.slice(..);
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = sender.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
-    receiver.await.map_err(|_| BarracudaError::ExecutionError { message: "Failed to receive buffer".to_string() })?
-        .map_err(|e| BarracudaError::ExecutionError { message: format!("Buffer mapping failed: {:?}", e) })?;
+    receiver
+        .await
+        .map_err(|_| BarracudaError::ExecutionError {
+            message: "Failed to receive buffer".to_string(),
+        })?
+        .map_err(|e| BarracudaError::ExecutionError {
+            message: format!("Buffer mapping failed: {:?}", e),
+        })?;
 
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
@@ -256,7 +270,9 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let target = b"ATCGATCGATCG";
         let pattern = b"TCG";
-        let result = pattern_match(&device.device, &device.queue, target, pattern).await.unwrap();
+        let result = pattern_match(&device.device, &device.queue, target, pattern)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 12);
         // Pattern "TCG" starts at positions 1, 5, 9
         // A T C G A T C G A T C G
@@ -274,12 +290,16 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let target = b"AAAAAAA";
         let pattern = b"A";
-        let result = pattern_match(&device.device, &device.queue, target, pattern).await.unwrap();
+        let result = pattern_match(&device.device, &device.queue, target, pattern)
+            .await
+            .unwrap();
         assert!(result.iter().all(|&x| x > 0.5));
 
         let target2 = b"ATCGATCG";
         let pattern2 = b"XYZ";
-        let result2 = pattern_match(&device.device, &device.queue, target2, pattern2).await.unwrap();
+        let result2 = pattern_match(&device.device, &device.queue, target2, pattern2)
+            .await
+            .unwrap();
         assert!(result2.iter().all(|&x| x < 0.5));
     }
 
@@ -287,9 +307,15 @@ mod tests {
     async fn test_pattern_match_boundary() {
         let device = WgpuDevice::new().await.unwrap();
         let empty: &[u8] = b"";
-        assert!(pattern_match(&device.device, &device.queue, empty, b"A").await.is_err());
-        assert!(pattern_match(&device.device, &device.queue, b"A", empty).await.is_err());
-        assert!(pattern_match(&device.device, &device.queue, b"AT", b"ATG").await.is_err());
+        assert!(pattern_match(&device.device, &device.queue, empty, b"A")
+            .await
+            .is_err());
+        assert!(pattern_match(&device.device, &device.queue, b"A", empty)
+            .await
+            .is_err());
+        assert!(pattern_match(&device.device, &device.queue, b"AT", b"ATG")
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -297,7 +323,9 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let large_target: Vec<u8> = (0..10000).map(|i| b'A' + (i % 4) as u8).collect();
         let pattern = b"ABC";
-        let result = pattern_match(&device.device, &device.queue, &large_target, pattern).await.unwrap();
+        let result = pattern_match(&device.device, &device.queue, &large_target, pattern)
+            .await
+            .unwrap();
         assert_eq!(result.len(), 10000);
         assert!(result.iter().all(|&x| x.is_finite()));
     }
@@ -307,7 +335,9 @@ mod tests {
         let device = WgpuDevice::new().await.unwrap();
         let target = b"ABCDEFABCDEF";
         let pattern = b"DEF";
-        let result = pattern_match(&device.device, &device.queue, target, pattern).await.unwrap();
+        let result = pattern_match(&device.device, &device.queue, target, pattern)
+            .await
+            .unwrap();
         assert!(result.iter().all(|&x| x == 0.0 || x == 1.0));
         let match_count = result.iter().filter(|&&x| x > 0.5).count();
         assert_eq!(match_count, 2);

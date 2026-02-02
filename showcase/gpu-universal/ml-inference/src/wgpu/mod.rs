@@ -69,11 +69,39 @@ pub use wgpu::util::DeviceExt;
 
 // Re-export neuromorphic tensor operations (Week 3 + Phase 2 + Phase 3)
 pub use tensor_ops::{
-    // Phase 1 (Week 3) - 7 ops
-    Argmax, Cast, Pad, PadMode, Reshape, Slice, TopK,
     // Phase 2 - 10 ops
-    Abs, Clamp, Exp, Expand, Pow, Sqrt, Squeeze, Transpose, Unsqueeze, Where,
+    Abs,
+    // Phase 1 (Week 3) - 7 ops
+    Argmax,
+    Cast,
+    Clamp,
     // Phase 3 - 15 ops
-    Cumsum, GELU, LayerNorm, LogSoftmax, Max, Mean, Min, Norm, Prod, ReLU, Sigmoid, Softmax,
-    Std, Sum, Var,
+    Cumsum,
+    Exp,
+    Expand,
+    LayerNorm,
+    LogSoftmax,
+    Max,
+    Mean,
+    Min,
+    Norm,
+    Pad,
+    PadMode,
+    Pow,
+    Prod,
+    ReLU,
+    Reshape,
+    Sigmoid,
+    Slice,
+    Softmax,
+    Sqrt,
+    Squeeze,
+    Std,
+    Sum,
+    TopK,
+    Transpose,
+    Unsqueeze,
+    Var,
+    Where,
+    GELU,
 };

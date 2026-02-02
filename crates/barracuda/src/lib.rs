@@ -66,45 +66,47 @@
 
 pub mod device;
 pub mod error;
-pub mod ops;
-pub mod tensor;
 pub mod esn; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
-pub mod snn; // High-level Spiking Neural Network API
 pub mod nn; // High-level Neural Network Training API
-pub mod vision; // High-level Computer Vision API
+pub mod npu;
+pub mod ops;
+pub mod snn; // High-level Spiking Neural Network API
+pub mod tensor;
 pub mod timeseries; // High-level Time Series API
-pub mod workload; // NEW v2.0: Workload analysis & device selection
-pub mod npu;      // NEW v2.0: NPU backend for event-driven ML
+pub mod vision; // High-level Computer Vision API
+pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
 // Re-export commonly used operations
-pub use ops::spike_encode::spike_encode;
-pub use ops::spike_decode::spike_decode;
-pub use ops::lif_neuron::lif_neuron;
-pub use ops::temporal_pool::temporal_pool;
-pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
-pub use ops::pattern_match::pattern_match;
-pub use ops::gc_content::gc_content;
 pub use ops::complexity_filter::complexity_filter;
+pub use ops::gc_content::gc_content;
+pub use ops::lif_neuron::lif_neuron;
+pub use ops::pattern_match::pattern_match;
 pub use ops::reservoir_init::reservoir_init;
 pub use ops::reservoir_update::reservoir_update;
-pub use ops::spectral_radius::spectral_radius;
 pub use ops::ridge_regression::ridge_regression;
+pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
+pub use ops::spectral_radius::spectral_radius;
+pub use ops::spike_decode::spike_decode;
+pub use ops::spike_encode::spike_encode;
+pub use ops::temporal_pool::temporal_pool;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
     pub use crate::device::{Auto, WgpuDevice};
     pub use crate::error::{BarracudaError, Result};
-    pub use crate::tensor::Tensor;
-    pub use crate::esn::{ESN, ESNConfig};
-    pub use crate::genomics::{SequenceAnalyzer, SequenceConfig, CompositionReport, MotifMatch, QualityReport};
-    pub use crate::snn::{SpikingNetwork, SNNConfig, SNNLayer};
-    pub use crate::nn::{NeuralNetwork, Layer, Optimizer, LossFunction};
-    
-    // NEW v2.0: Workload analysis & NPU backend
-    pub use crate::workload::{
-        WorkloadType, ComputeDevice, Priority, DeviceHint,
-        SparsityAnalyzer, WorkloadClassifier, DeviceSelector,
+    pub use crate::esn::{ESNConfig, ESN};
+    pub use crate::genomics::{
+        CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
-    pub use crate::npu::{NpuMlBackend, EventCodec};
+    pub use crate::nn::{Layer, LossFunction, NeuralNetwork, Optimizer};
+    pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
+    pub use crate::tensor::Tensor;
+
+    // NEW v2.0: Workload analysis & NPU backend
+    pub use crate::npu::{EventCodec, NpuMlBackend};
+    pub use crate::workload::{
+        ComputeDevice, DeviceHint, DeviceSelector, Priority, SparsityAnalyzer, WorkloadClassifier,
+        WorkloadType,
+    };
 }

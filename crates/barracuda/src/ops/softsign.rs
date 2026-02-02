@@ -22,11 +22,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_softsign_basic() {
         let dev = get_test_device().await;
@@ -64,7 +64,7 @@ mod tests {
         // Test bounds: softsign(x) = x / (1 + |x|) ∈ (-1, 1)
         let input = vec![-10.0, -1.0, 0.0, 1.0, 10.0];
         let output = softsign(&dev.device, &dev.queue, &input).await.unwrap();
-        
+
         for &val in &output {
             assert!(val > -1.0 && val < 1.0);
         }

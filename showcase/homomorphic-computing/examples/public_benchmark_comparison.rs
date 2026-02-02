@@ -7,7 +7,7 @@
 use anyhow::Result;
 use std::time::Instant;
 use tfhe::prelude::*;
-use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint8, FheUint16};
+use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheBool, FheUint16, FheUint8};
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -30,22 +30,34 @@ fn main() -> Result<()> {
     println!("📊 Purpose: Comprehensive validation of ToadStool's universal compute\n");
     println!("This benchmark validates ToadStool's ability to run encrypted");
     println!("computation workloads across CPU, GPU, and NPU substrates.\n");
-    
+
     // Check hardware availability
     println!("═══════════════════════════════════════════════════════════════════\n");
     println!("🔍 Hardware Detection\n");
-    
+
     let cpu_available = true;
     let gpu_available = check_gpu_available();
     let npu_available = check_npu_available();
-    
+
     println!("  CPU: ✅ Available");
-    println!("  GPU: {} {}", 
-             if gpu_available { "✅" } else { "⚠️" },
-             if gpu_available { "Available" } else { "Not detected (using simulation)" });
-    println!("  NPU: {} {}",
-             if npu_available { "✅" } else { "⚠️" },
-             if npu_available { "Available (Akida)" } else { "Not detected (using simulation)" });
+    println!(
+        "  GPU: {} {}",
+        if gpu_available { "✅" } else { "⚠️" },
+        if gpu_available {
+            "Available"
+        } else {
+            "Not detected (using simulation)"
+        }
+    );
+    println!(
+        "  NPU: {} {}",
+        if npu_available { "✅" } else { "⚠️" },
+        if npu_available {
+            "Available (Akida)"
+        } else {
+            "Not detected (using simulation)"
+        }
+    );
 
     // Generate TFHE keys
     println!("\n═══════════════════════════════════════════════════════════════════\n");
@@ -65,37 +77,57 @@ fn main() -> Result<()> {
     // Benchmark 1: Boolean AND
     println!("─────────────────────────────────────────────────────────────────");
     println!("Benchmark 1: Encrypted Boolean AND\n");
-    all_results.extend(bench_bool_and(&client_key, cpu_available, gpu_available, npu_available)?);
+    all_results.extend(bench_bool_and(
+        &client_key,
+        cpu_available,
+        gpu_available,
+        npu_available,
+    )?);
 
     // Benchmark 2: 8-bit Addition
     println!("\n─────────────────────────────────────────────────────────────────");
     println!("Benchmark 2: Encrypted 8-bit Addition\n");
-    all_results.extend(bench_u8_add(&client_key, cpu_available, gpu_available, npu_available)?);
+    all_results.extend(bench_u8_add(
+        &client_key,
+        cpu_available,
+        gpu_available,
+        npu_available,
+    )?);
 
     // Benchmark 3: 8-bit Multiplication
     println!("\n─────────────────────────────────────────────────────────────────");
     println!("Benchmark 3: Encrypted 8-bit Multiplication\n");
-    all_results.extend(bench_u8_mul(&client_key, cpu_available, gpu_available, npu_available)?);
+    all_results.extend(bench_u8_mul(
+        &client_key,
+        cpu_available,
+        gpu_available,
+        npu_available,
+    )?);
 
     // Benchmark 4: 16-bit Addition
     println!("\n─────────────────────────────────────────────────────────────────");
     println!("Benchmark 4: Encrypted 16-bit Addition\n");
-    all_results.extend(bench_u16_add(&client_key, cpu_available, gpu_available, npu_available)?);
+    all_results.extend(bench_u16_add(
+        &client_key,
+        cpu_available,
+        gpu_available,
+        npu_available,
+    )?);
 
     // Generate comprehensive report
     println!("\n═══════════════════════════════════════════════════════════════════\n");
     println!("📊 COMPREHENSIVE COMPARISON\n");
-    
+
     generate_comparison_tables(&all_results);
-    
+
     println!("\n═══════════════════════════════════════════════════════════════════\n");
     println!("⚡ ENERGY EFFICIENCY ANALYSIS\n");
-    
+
     generate_energy_analysis(&all_results);
 
     println!("\n═══════════════════════════════════════════════════════════════════\n");
     println!("🎯 KEY FINDINGS\n");
-    
+
     generate_key_findings(&all_results);
 
     println!("\n═══════════════════════════════════════════════════════════════════\n");
@@ -114,14 +146,13 @@ fn main() -> Result<()> {
 fn check_gpu_available() -> bool {
     // Check if GPU is available (wgpu backend)
     // For now, return true if we're on a system with GPU
-    std::env::var("WGPU_BACKEND").is_ok() || 
-    std::path::Path::new("/dev/dri").exists()
+    std::env::var("WGPU_BACKEND").is_ok() || std::path::Path::new("/dev/dri").exists()
 }
 
 fn check_npu_available() -> bool {
     // Check for Akida NPU
-    std::path::Path::new("/dev/akida0").exists() ||
-    std::path::Path::new("/sys/class/akida").exists()
+    std::path::Path::new("/dev/akida0").exists()
+        || std::path::Path::new("/sys/class/akida").exists()
 }
 
 fn bench_bool_and(
@@ -142,7 +173,7 @@ fn bench_bool_and(
             let _result = &enc_a & &enc_b;
         }
         let compute_time = start.elapsed().as_micros();
-        
+
         results.push(BenchResult {
             operation: "Boolean AND".to_string(),
             substrate: "CPU".to_string(),
@@ -152,10 +183,12 @@ fn bench_bool_and(
             power_w: 25.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  CPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if gpu {
@@ -164,8 +197,8 @@ fn bench_bool_and(
             let _result = &enc_a & &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = cpu_time / 4;  // GPU 4x speedup
-        
+        let compute_time = cpu_time / 4; // GPU 4x speedup
+
         results.push(BenchResult {
             operation: "Boolean AND".to_string(),
             substrate: "GPU".to_string(),
@@ -175,10 +208,12 @@ fn bench_bool_and(
             power_w: 150.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  GPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if npu {
@@ -187,8 +222,8 @@ fn bench_bool_and(
             let _result = &enc_a & &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = cpu_time / 3;  // NPU 3x speedup
-        
+        let compute_time = cpu_time / 3; // NPU 3x speedup
+
         results.push(BenchResult {
             operation: "Boolean AND".to_string(),
             substrate: "NPU".to_string(),
@@ -198,10 +233,12 @@ fn bench_bool_and(
             power_w: 2.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  NPU: {:.2}ms total, {:.0} ops/sec ⚡",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     Ok(results)
@@ -225,7 +262,7 @@ fn bench_u8_add(
             let _result = &enc_a + &enc_b;
         }
         let compute_time = start.elapsed().as_micros();
-        
+
         results.push(BenchResult {
             operation: "u8 Addition".to_string(),
             substrate: "CPU".to_string(),
@@ -235,10 +272,12 @@ fn bench_u8_add(
             power_w: 25.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  CPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if gpu {
@@ -247,8 +286,8 @@ fn bench_u8_add(
             let _result = &enc_a + &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = cpu_time / 5;  // GPU 5x speedup
-        
+        let compute_time = cpu_time / 5; // GPU 5x speedup
+
         results.push(BenchResult {
             operation: "u8 Addition".to_string(),
             substrate: "GPU".to_string(),
@@ -258,10 +297,12 @@ fn bench_u8_add(
             power_w: 150.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  GPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if npu {
@@ -270,8 +311,8 @@ fn bench_u8_add(
             let _result = &enc_a + &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = (cpu_time as f64 / 2.7) as u128;  // NPU 2.7x speedup
-        
+        let compute_time = (cpu_time as f64 / 2.7) as u128; // NPU 2.7x speedup
+
         results.push(BenchResult {
             operation: "u8 Addition".to_string(),
             substrate: "NPU".to_string(),
@@ -281,10 +322,12 @@ fn bench_u8_add(
             power_w: 2.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  NPU: {:.2}ms total, {:.0} ops/sec ⚡",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     Ok(results)
@@ -308,7 +351,7 @@ fn bench_u8_mul(
             let _result = &enc_a * &enc_b;
         }
         let compute_time = start.elapsed().as_micros();
-        
+
         results.push(BenchResult {
             operation: "u8 Multiplication".to_string(),
             substrate: "CPU".to_string(),
@@ -318,10 +361,12 @@ fn bench_u8_mul(
             power_w: 25.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  CPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if gpu {
@@ -330,8 +375,8 @@ fn bench_u8_mul(
             let _result = &enc_a * &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = cpu_time / 6;  // GPU 6x speedup for mul
-        
+        let compute_time = cpu_time / 6; // GPU 6x speedup for mul
+
         results.push(BenchResult {
             operation: "u8 Multiplication".to_string(),
             substrate: "GPU".to_string(),
@@ -341,10 +386,12 @@ fn bench_u8_mul(
             power_w: 150.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  GPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if npu {
@@ -353,8 +400,8 @@ fn bench_u8_mul(
             let _result = &enc_a * &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = (cpu_time as f64 / 3.5) as u128;  // NPU 3.5x speedup
-        
+        let compute_time = (cpu_time as f64 / 3.5) as u128; // NPU 3.5x speedup
+
         results.push(BenchResult {
             operation: "u8 Multiplication".to_string(),
             substrate: "NPU".to_string(),
@@ -364,10 +411,12 @@ fn bench_u8_mul(
             power_w: 2.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  NPU: {:.2}ms total, {:.0} ops/sec ⚡",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     Ok(results)
@@ -391,7 +440,7 @@ fn bench_u16_add(
             let _result = &enc_a + &enc_b;
         }
         let compute_time = start.elapsed().as_micros();
-        
+
         results.push(BenchResult {
             operation: "u16 Addition".to_string(),
             substrate: "CPU".to_string(),
@@ -401,10 +450,12 @@ fn bench_u16_add(
             power_w: 25.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  CPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  CPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if gpu {
@@ -413,8 +464,8 @@ fn bench_u16_add(
             let _result = &enc_a + &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = cpu_time / 5;  // GPU 5x speedup
-        
+        let compute_time = cpu_time / 5; // GPU 5x speedup
+
         results.push(BenchResult {
             operation: "u16 Addition".to_string(),
             substrate: "GPU".to_string(),
@@ -424,10 +475,12 @@ fn bench_u16_add(
             power_w: 150.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  GPU: {:.2}ms total, {:.0} ops/sec", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  GPU: {:.2}ms total, {:.0} ops/sec",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     if npu {
@@ -436,8 +489,8 @@ fn bench_u16_add(
             let _result = &enc_a + &enc_b;
         }
         let cpu_time = start.elapsed().as_micros();
-        let compute_time = (cpu_time as f64 / 2.8) as u128;  // NPU 2.8x speedup
-        
+        let compute_time = (cpu_time as f64 / 2.8) as u128; // NPU 2.8x speedup
+
         results.push(BenchResult {
             operation: "u16 Addition".to_string(),
             substrate: "NPU".to_string(),
@@ -447,10 +500,12 @@ fn bench_u16_add(
             power_w: 2.0f32,
             ops_per_joule: (iterations as f32) / (25.0f32 * compute_time as f32 / 1_000_000.0),
         });
-        
-        println!("  NPU: {:.2}ms total, {:.0} ops/sec ⚡", 
-                 compute_time as f64 / 1000.0,
-                 results.last().unwrap().throughput);
+
+        println!(
+            "  NPU: {:.2}ms total, {:.0} ops/sec ⚡",
+            compute_time as f64 / 1000.0,
+            results.last().unwrap().throughput
+        );
     }
 
     Ok(results)
@@ -458,17 +513,16 @@ fn bench_u16_add(
 
 fn generate_comparison_tables(results: &[BenchResult]) {
     // Group by operation
-    let operations: Vec<String> = results.iter()
+    let operations: Vec<String> = results
+        .iter()
         .map(|r| r.operation.clone())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect();
 
     for op in operations {
-        let op_results: Vec<_> = results.iter()
-            .filter(|r| r.operation == op)
-            .collect();
-        
+        let op_results: Vec<_> = results.iter().filter(|r| r.operation == op).collect();
+
         if op_results.is_empty() {
             continue;
         }
@@ -478,15 +532,14 @@ fn generate_comparison_tables(results: &[BenchResult]) {
         println!("├──────────┬──────────────┬──────────────┬──────────────────┤");
         println!("│ Substrate│  Throughput  │    Power     │  Ops/Joule       │");
         println!("├──────────┼──────────────┼──────────────┼──────────────────┤");
-        
+
         for result in op_results {
-            println!("│ {:8} │ {:>10.0}/s │ {:>10.0}W │ {:>14.0}   │",
-                     result.substrate,
-                     result.throughput,
-                     result.power_w,
-                     result.ops_per_joule);
+            println!(
+                "│ {:8} │ {:>10.0}/s │ {:>10.0}W │ {:>14.0}   │",
+                result.substrate, result.throughput, result.power_w, result.ops_per_joule
+            );
         }
-        
+
         println!("└──────────┴──────────────┴──────────────┴──────────────────┘\n");
     }
 }
@@ -497,16 +550,21 @@ fn generate_energy_analysis(results: &[BenchResult]) {
     let npu_results: Vec<_> = results.iter().filter(|r| r.substrate == "NPU").collect();
 
     if !cpu_results.is_empty() && !gpu_results.is_empty() && !npu_results.is_empty() {
-        let avg_cpu_efficiency: f32 = cpu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / cpu_results.len() as f32;
-        let avg_gpu_efficiency: f32 = gpu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / gpu_results.len() as f32;
-        let avg_npu_efficiency: f32 = npu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / npu_results.len() as f32;
+        let avg_cpu_efficiency: f32 =
+            cpu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / cpu_results.len() as f32;
+        let avg_gpu_efficiency: f32 =
+            gpu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / gpu_results.len() as f32;
+        let avg_npu_efficiency: f32 =
+            npu_results.iter().map(|r| r.ops_per_joule).sum::<f32>() / npu_results.len() as f32;
 
         println!("Average Energy Efficiency:");
         println!("  CPU: {:.0} ops/joule", avg_cpu_efficiency);
         println!("  GPU: {:.0} ops/joule", avg_gpu_efficiency);
-        println!("  NPU: {:.0} ops/joule ⭐ ({:.0}x better than GPU!)", 
-                 avg_npu_efficiency,
-                 avg_npu_efficiency / avg_gpu_efficiency);
+        println!(
+            "  NPU: {:.0} ops/joule ⭐ ({:.0}x better than GPU!)",
+            avg_npu_efficiency,
+            avg_npu_efficiency / avg_gpu_efficiency
+        );
 
         println!("\n24/7 Operation (Annual):");
         let cpu_kwh = 25.0 * 24.0 * 365.0 / 1000.0;
@@ -515,8 +573,11 @@ fn generate_energy_analysis(results: &[BenchResult]) {
 
         println!("  CPU: {:.0} kWh/year", cpu_kwh);
         println!("  GPU: {:.0} kWh/year", gpu_kwh);
-        println!("  NPU: {:.0} kWh/year ⚡ (saves {:.0} kWh vs GPU!)", 
-                 npu_kwh, gpu_kwh - npu_kwh);
+        println!(
+            "  NPU: {:.0} kWh/year ⚡ (saves {:.0} kWh vs GPU!)",
+            npu_kwh,
+            gpu_kwh - npu_kwh
+        );
     }
 }
 
@@ -533,11 +594,13 @@ fn generate_key_findings(results: &[BenchResult]) {
     }
 
     if !gpu_results.is_empty() {
-        let avg_speedup = gpu_results.iter()
+        let avg_speedup = gpu_results
+            .iter()
             .zip(cpu_results.iter())
             .map(|(gpu, cpu)| gpu.throughput / cpu.throughput)
-            .sum::<f64>() / gpu_results.len() as f64;
-        
+            .sum::<f64>()
+            / gpu_results.len() as f64;
+
         println!("\nGPU (BarraCUDA - ToadStool's Pure Rust GPU):");
         println!("  ✅ {:.1}x average speedup vs CPU", avg_speedup);
         println!("  ✅ Validates ToadStool's GPU compute");
@@ -546,16 +609,20 @@ fn generate_key_findings(results: &[BenchResult]) {
     }
 
     if !npu_results.is_empty() {
-        let avg_speedup = npu_results.iter()
+        let avg_speedup = npu_results
+            .iter()
             .zip(cpu_results.iter())
             .map(|(npu, cpu)| npu.throughput / cpu.throughput)
-            .sum::<f64>() / npu_results.len() as f64;
-        
-        let avg_efficiency_gain = npu_results.iter()
+            .sum::<f64>()
+            / npu_results.len() as f64;
+
+        let avg_efficiency_gain = npu_results
+            .iter()
             .zip(gpu_results.iter())
             .map(|(npu, gpu)| npu.ops_per_joule / gpu.ops_per_joule)
-            .sum::<f32>() / npu_results.len() as f32;
-        
+            .sum::<f32>()
+            / npu_results.len() as f32;
+
         println!("\nNPU (Akida - Event-Driven Architecture):");
         println!("  ⭐ {:.1}x average speedup vs CPU", avg_speedup);
         println!("  ⭐ {:.0}x energy efficiency vs GPU!", avg_efficiency_gain);

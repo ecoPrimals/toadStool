@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: softmax(x_i) = exp(x_i) / Σ exp(x_j)
 
-use crate::tensor::Tensor;
 use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
 
 /// Softmax activation operation
 pub struct Softmax {
@@ -18,7 +18,7 @@ impl Softmax {
         if input.shape().is_empty() {
             return Err(BarracudaError::invalid_op(
                 "Softmax",
-                "Empty tensor not supported"
+                "Empty tensor not supported",
             ));
         }
         Ok(Self { input })
@@ -38,31 +38,34 @@ impl Softmax {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Softmax Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Softmax Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -84,23 +87,30 @@ impl Softmax {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Softmax"));
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Softmax Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Softmax Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Softmax Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Softmax Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Softmax Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Softmax Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -143,7 +153,9 @@ mod tests {
     async fn test_softmax_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
+            .await
+            .unwrap();
         let output = input.softmax().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -158,7 +170,9 @@ mod tests {
     async fn test_softmax_edge_cases() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![1e-6, 2e-6, 3e-6], vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1e-6, 2e-6, 3e-6], vec![3], device)
+            .await
+            .unwrap();
         let output = input.softmax().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -170,7 +184,9 @@ mod tests {
     async fn test_softmax_boundary() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(vec![100.0, 200.0, 300.0], vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![100.0, 200.0, 300.0], vec![3], device)
+            .await
+            .unwrap();
         let output = input.softmax().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -185,7 +201,9 @@ mod tests {
 
         let size = 1000;
         let input_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
-        let input = Tensor::from_vec_on(input_data, vec![size], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data, vec![size], device)
+            .await
+            .unwrap();
         let output = input.softmax().unwrap();
         let result = output.to_vec().unwrap();
 
@@ -205,13 +223,21 @@ mod tests {
         }
 
         let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
+            .await
+            .unwrap();
         let output = input.softmax().unwrap();
         let gpu_result = output.to_vec().unwrap();
         let cpu_result = softmax_cpu(&input_data);
 
         for (i, (&gpu, &cpu)) in gpu_result.iter().zip(cpu_result.iter()).enumerate() {
-            assert!((gpu - cpu).abs() < 1e-5, "Error at {}: GPU={}, CPU={}", i, gpu, cpu);
+            assert!(
+                (gpu - cpu).abs() < 1e-5,
+                "Error at {}: GPU={}, CPU={}",
+                i,
+                gpu,
+                cpu
+            );
         }
     }
 }

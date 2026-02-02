@@ -1,9 +1,9 @@
 //! Fill operation - Fill tensor with constant value
 //! Pure WGSL implementation
 
-use crate::tensor::Tensor;
-use crate::error::Result;
 use crate::device::WgpuDevice;
+use crate::error::Result;
+use crate::tensor::Tensor;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
@@ -22,7 +22,11 @@ pub struct Fill {
 
 impl Fill {
     pub fn new(shape: Vec<usize>, value: f32, device: Arc<WgpuDevice>) -> Self {
-        Self { shape, value, device }
+        Self {
+            shape,
+            value,
+            device,
+        }
     }
 
     fn wgsl_shader() -> &'static str {
@@ -40,47 +44,62 @@ impl Fill {
             value: self.value,
             _padding: [0.0; 7],
         };
-        let params_buffer = self.device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Fill Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer =
+            self.device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Fill Params"),
+                    contents: bytemuck::bytes_of(&params),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         // Create shader module
-        let shader = self.device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Fill Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = self
+            .device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Fill Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = self.device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Fill Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline =
+            self.device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Fill Pipeline"),
+                    layout: None,
+                    module: &shader,
+                    entry_point: "main",
+                });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
-        let bind_group = self.device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Fill Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: output_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self
+            .device
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Fill Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
 
         // Execute
-        let mut encoder = self.device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Fill Encoder"),
-        });
+        let mut encoder =
+            self.device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Fill Encoder"),
+                });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Fill Pass"),
@@ -110,7 +129,7 @@ impl Tensor {
     pub fn fill(shape: Vec<usize>, value: f32, device: Arc<WgpuDevice>) -> Result<Self> {
         Fill::new(shape, value, device).execute()
     }
-    
+
     /// Fill this tensor with a constant value (in-place operation concept)
     pub fn fill_with(self, value: f32) -> Result<Self> {
         Fill::new(self.shape().to_vec(), value, self.device().clone()).execute()
@@ -128,11 +147,11 @@ mod tests {
     #[tokio::test]
     async fn test_fill_basic() {
         let device = get_test_device().await;
-        
+
         // Fill [3, 4] tensor with 7.5
         let result = Tensor::fill(vec![3, 4], 7.5, device).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // All 12 elements should be 7.5
         assert_eq!(output.len(), 12);
         for val in output.iter() {

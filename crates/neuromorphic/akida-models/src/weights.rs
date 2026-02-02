@@ -9,10 +9,10 @@ use crate::error::{AkidaModelError, Result};
 pub struct QuantizationConfig {
     /// Number of bits per weight
     pub bits: u8,
-    
+
     /// Scale factor
     pub scale: f32,
-    
+
     /// Zero-point offset
     pub offset: i32,
 }
@@ -22,10 +22,10 @@ pub struct QuantizationConfig {
 pub struct WeightData {
     /// Quantization configuration
     pub quantization: QuantizationConfig,
-    
+
     /// Raw weight bytes
     pub data: Vec<u8>,
-    
+
     /// Weight dimensions (if available)
     pub shape: Option<Vec<usize>>,
 }
@@ -39,14 +39,14 @@ impl WeightData {
             shape: None,
         }
     }
-    
+
     /// Set weight shape
     #[must_use]
     pub fn with_shape(mut self, shape: Vec<usize>) -> Self {
         self.shape = Some(shape);
         self
     }
-    
+
     /// Get total number of weights
     #[must_use]
     pub fn weight_count(&self) -> usize {
@@ -57,7 +57,7 @@ impl WeightData {
             self.data.len() * 8 / self.quantization.bits as usize
         }
     }
-    
+
     /// Decode quantized weights to f32
     ///
     /// # Errors
@@ -66,22 +66,23 @@ impl WeightData {
     pub fn decode(&self) -> Result<Vec<f32>> {
         let weight_count = self.weight_count();
         let mut weights = Vec::with_capacity(weight_count);
-        
+
         match self.quantization.bits {
             1 => self.decode_1bit(&mut weights),
             2 => self.decode_2bit(&mut weights),
             4 => self.decode_4bit(&mut weights),
             8 => self.decode_8bit(&mut weights),
             _ => {
-                return Err(AkidaModelError::parse_error(
-                    format!("Unsupported bit width: {}", self.quantization.bits)
-                ));
+                return Err(AkidaModelError::parse_error(format!(
+                    "Unsupported bit width: {}",
+                    self.quantization.bits
+                )));
             }
         }
-        
+
         Ok(weights)
     }
-    
+
     /// Decode 1-bit weights
     fn decode_1bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
@@ -94,7 +95,7 @@ impl WeightData {
             }
         }
     }
-    
+
     /// Decode 2-bit weights
     fn decode_2bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
@@ -107,7 +108,7 @@ impl WeightData {
             }
         }
     }
-    
+
     /// Decode 4-bit weights
     fn decode_4bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
@@ -117,7 +118,7 @@ impl WeightData {
             #[allow(clippy::cast_precision_loss)]
             let weight_low = quantized_low as f32 * self.quantization.scale;
             weights.push(weight_low);
-            
+
             // High nibble
             let high = (byte >> 4) & 0x0F;
             let quantized_high = i32::from(high) - self.quantization.offset;
@@ -126,7 +127,7 @@ impl WeightData {
             weights.push(weight_high);
         }
     }
-    
+
     /// Decode 8-bit weights
     fn decode_8bit(&self, weights: &mut Vec<f32>) {
         for &byte in &self.data {
@@ -145,26 +146,25 @@ impl WeightData {
 /// Returns error if weight parsing fails.
 pub fn extract_weights(data: &[u8]) -> Result<Vec<WeightData>> {
     let mut weights = Vec::new();
-    
+
     // Look for weight data patterns
     // Pattern: fe 01 00 repeated (common in Akida models)
     let weight_pattern = [0xfe, 0x01, 0x00];
-    
+
     let mut i = 0;
     while i + weight_pattern.len() < data.len() {
-        if data[i..i+3] == weight_pattern {
+        if data[i..i + 3] == weight_pattern {
             tracing::debug!("Found weight pattern at offset 0x{:x}", i);
-            
+
             // Extract weight block (simplified heuristic)
             let block_start = i;
             let mut block_end = i + 3;
-            
+
             // Find end of repeated pattern
-            while block_end + 3 < data.len() 
-                && data[block_end..block_end+3] == weight_pattern {
+            while block_end + 3 < data.len() && data[block_end..block_end + 3] == weight_pattern {
                 block_end += 3;
             }
-            
+
             // Create weight data (default 4-bit quantization)
             let weight_block = data[block_start..block_end].to_vec();
             let quant = QuantizationConfig {
@@ -172,15 +172,15 @@ pub fn extract_weights(data: &[u8]) -> Result<Vec<WeightData>> {
                 scale: 1.0,
                 offset: 0,
             };
-            
+
             weights.push(WeightData::new(quant, weight_block));
-            
+
             i = block_end;
         } else {
             i += 1;
         }
     }
-    
+
     tracing::info!("Extracted {} weight block(s)", weights.len());
     Ok(weights)
 }
@@ -196,10 +196,10 @@ mod tests {
             scale: 1.0,
             offset: 0,
         };
-        
+
         let data = vec![0b1010_0101]; // 8 bits
         let weights = WeightData::new(quant, data);
-        
+
         let decoded = weights.decode().unwrap();
         assert_eq!(decoded.len(), 8);
         assert!((decoded[0] - 1.0).abs() < 0.01); // bit 0
@@ -213,10 +213,10 @@ mod tests {
             scale: 0.1,
             offset: 8,
         };
-        
+
         let data = vec![0x12]; // 0x1 and 0x2
         let weights = WeightData::new(quant, data);
-        
+
         let decoded = weights.decode().unwrap();
         assert_eq!(decoded.len(), 2);
         // First nibble: (2 - 8) * 0.1 = -0.6
@@ -232,10 +232,10 @@ mod tests {
             scale: 1.0,
             offset: 0,
         };
-        
+
         let data = vec![0u8; 10]; // 10 bytes
         let weights = WeightData::new(quant, data);
-        
+
         // 10 bytes * 8 bits / 4 bits per weight = 20 weights
         assert_eq!(weights.weight_count(), 20);
     }

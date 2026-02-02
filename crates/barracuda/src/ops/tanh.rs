@@ -3,8 +3,8 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Formula: tanh(x) = (e^x - e^(-x)) / (e^x + e^(-x))
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 /// Tanh activation operation
 pub struct Tanh {
@@ -31,31 +31,34 @@ impl Tanh {
         let output_buffer = device.create_buffer_f32(size)?;
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Tanh Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Tanh Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -77,23 +80,30 @@ impl Tanh {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Tanh"));
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Tanh Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Tanh Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Tanh Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Tanh Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Tanh Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Tanh Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -131,8 +141,8 @@ impl Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use crate::device::WgpuDevice;
+    use std::sync::Arc;
 
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
@@ -145,7 +155,9 @@ mod tests {
     #[tokio::test]
     async fn test_tanh_basic() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![1.0; 5], vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 5], vec![5], device)
+            .await
+            .unwrap();
         // Shader incomplete - just verify we can create the operation
         assert_eq!(input.len(), 5);
     }
@@ -153,28 +165,36 @@ mod tests {
     #[tokio::test]
     async fn test_tanh_edge_cases() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![0.0], vec![1], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![0.0], vec![1], device)
+            .await
+            .unwrap();
         assert_eq!(input.len(), 1);
     }
 
     #[tokio::test]
     async fn test_tanh_boundary() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device)
+            .await
+            .unwrap();
         assert_eq!(input.len(), 3);
     }
 
     #[tokio::test]
     async fn test_tanh_large_batch() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device)
+            .await
+            .unwrap();
         assert_eq!(input.len(), 1000);
     }
 
     #[tokio::test]
     async fn test_tanh_precision() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
+            .await
+            .unwrap();
         let data = input.to_vec().unwrap();
         assert!(data.iter().all(|&x| x.is_finite()));
     }

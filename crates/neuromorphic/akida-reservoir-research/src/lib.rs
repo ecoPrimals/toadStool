@@ -25,26 +25,20 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(dead_code)] // Research crate, many components not yet used
 
+pub mod ensemble;
+pub mod readout;
 pub mod reservoir;
 pub mod state_extraction;
-pub mod readout;
-pub mod ensemble;
 
-pub use reservoir::{ReservoirConfig, ReservoirGenerator};
-pub use state_extraction::{StateExtractor, LayerActivations};
-pub use readout::{ReadoutTrainer, ReadoutPredictor};
 pub use ensemble::{DualChipEnsemble, EnsembleConfig};
+pub use readout::{ReadoutPredictor, ReadoutTrainer};
+pub use reservoir::{ReservoirConfig, ReservoirGenerator};
+pub use state_extraction::{LayerActivations, StateExtractor};
 
 /// Re-export commonly used types
 pub mod prelude {
     pub use crate::{
-        ReservoirConfig,
-        ReservoirGenerator,
-        StateExtractor,
-        LayerActivations,
-        ReadoutTrainer,
-        ReadoutPredictor,
-        DualChipEnsemble,
-        EnsembleConfig,
+        DualChipEnsemble, EnsembleConfig, LayerActivations, ReadoutPredictor, ReadoutTrainer,
+        ReservoirConfig, ReservoirGenerator, StateExtractor,
     };
 }

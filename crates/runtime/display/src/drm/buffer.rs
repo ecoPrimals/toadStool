@@ -134,7 +134,9 @@ impl DumbBuffer {
         // This is a REAL DRM ioctl, not a placeholder!
         let inner = device
             .create_dumb_buffer((width, height), fourcc, bpp)
-            .map_err(|e| DisplayError::IoctlFailed(format!("Failed to create dumb buffer: {}", e)))?;
+            .map_err(|e| {
+                DisplayError::IoctlFailed(format!("Failed to create dumb buffer: {}", e))
+            })?;
 
         tracing::info!(
             "✅ Created dumb buffer: {}x{} ({:?}) pitch={} handle={:?}",
@@ -184,11 +186,13 @@ impl DumbBuffer {
     pub fn map(self) -> Result<MappedBuffer> {
         tracing::trace!("Mapping buffer {}x{}", self.width, self.height);
 
-        tracing::debug!("✅ Buffer ready for mapping: {}x{}", self.width, self.height);
+        tracing::debug!(
+            "✅ Buffer ready for mapping: {}x{}",
+            self.width,
+            self.height
+        );
 
-        Ok(MappedBuffer {
-            buffer: self,
-        })
+        Ok(MappedBuffer { buffer: self })
     }
 
     /// Get buffer dimensions
@@ -280,7 +284,9 @@ impl MappedBuffer {
     /// **NOTE**: Currently not implemented - requires Device reference for mapping.
     /// This will be completed in Phase 3 when we build the complete window manager.
     pub fn copy_from_slice(&mut self, _pixels: &[u8]) {
-        tracing::warn!("copy_from_slice not yet implemented - waiting for window manager integration");
+        tracing::warn!(
+            "copy_from_slice not yet implemented - waiting for window manager integration"
+        );
     }
 
     /// Get buffer handle for framebuffer operations

@@ -93,7 +93,7 @@ impl InputManager {
                     // Spawn async task to read events from this device
                     let tx = event_tx.clone();
                     let device_path = info.path.clone();
-                    
+
                     tokio::spawn(async move {
                         if let Err(e) = Self::read_device_events(device, tx).await {
                             tracing::warn!("Device {} stopped: {}", device_path.display(), e);
@@ -128,13 +128,10 @@ impl InputManager {
     ///
     /// Note: Currently uses blocking fetch_events() in tokio::spawn_blocking.
     /// Future evolution: Use EventStream for true async.
-    async fn read_device_events(
-        mut device: Device,
-        tx: mpsc::Sender<InputEvent>,
-    ) -> Result<()> {
+    async fn read_device_events(mut device: Device, tx: mpsc::Sender<InputEvent>) -> Result<()> {
         // Create parser for this device
         let mut parser = EventParser::new();
-        
+
         // TODO: Get focused window somehow (need to share state)
         // For now, events won't be routed until we implement focus management
 
@@ -142,16 +139,18 @@ impl InputManager {
         loop {
             // Use spawn_blocking for synchronous evdev calls
             let events_result = tokio::task::spawn_blocking(move || {
-                let events: std::io::Result<Vec<_>> = device.evdev_device_mut()
+                let events: std::io::Result<Vec<_>> = device
+                    .evdev_device_mut()
                     .fetch_events()
                     .map(|iter| iter.collect())
                     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
                 (device, events)
-            }).await;
+            })
+            .await;
 
             let (dev, events_result) = events_result
                 .map_err(|e| DisplayError::InputError(format!("Task join error: {}", e)))?;
-            
+
             device = dev;
 
             match events_result {

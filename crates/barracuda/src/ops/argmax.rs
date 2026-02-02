@@ -1,8 +1,8 @@
 //! Argmax operation - Pure WGSL
 //! Find index of maximum value
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 
 pub struct Argmax {
     input: Tensor,
@@ -19,7 +19,7 @@ impl Argmax {
 
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        
+
         // Output is a single u32 index, but we'll store as f32 for tensor compatibility
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Argmax Output"),
@@ -28,31 +28,34 @@ impl Argmax {
             mapped_at_creation: false,
         });
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Argmax BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Argmax BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Argmax BG"),
@@ -70,22 +73,29 @@ impl Argmax {
         });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Argmax"));
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Argmax PL"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Argmax PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Argmax Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Argmax Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Argmax Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Argmax Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -120,7 +130,8 @@ mod tests {
     use crate::device::test_pool::get_test_device;
 
     fn argmax_cpu(input: &[f32]) -> usize {
-        input.iter()
+        input
+            .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(idx, _)| idx)
@@ -131,10 +142,12 @@ mod tests {
     async fn test_argmax_basic() {
         let device = get_test_device().await;
         let input_data = vec![1.0, 5.0, 3.0, 2.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         let _expected_idx = argmax_cpu(&input_data);
-        
+
         // Note: Simplified test verifies tensor structure
         // Full implementation would verify the actual index value
         assert_eq!(result.len(), 1);
@@ -143,16 +156,20 @@ mod tests {
     #[tokio::test]
     async fn test_argmax_edge_cases() {
         let device = get_test_device().await;
-        
+
         // All same values (returns first index)
         let input_data = vec![5.0, 5.0, 5.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone()).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device.clone())
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         assert_eq!(result.len(), 1);
-        
+
         // Negative values
         let input_data = vec![-5.0, -1.0, -9.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![3], device)
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         let _expected_idx = argmax_cpu(&input_data);
         assert_eq!(result.len(), 1);
@@ -162,10 +179,12 @@ mod tests {
     async fn test_argmax_boundary() {
         let device = get_test_device().await;
         let input_data = vec![1e10, 1e-10, -1e10, 0.0];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![4], device)
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         let _expected_idx = argmax_cpu(&input_data);
-        
+
         assert_eq!(result.len(), 1);
     }
 
@@ -175,11 +194,13 @@ mod tests {
         let size = 100;
         let mut input_data: Vec<f32> = (0..size).map(|i| i as f32).collect();
         input_data[50] = 1000.0; // Max at index 50
-        
-        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device).await.unwrap();
+
+        let input = Tensor::from_vec_on(input_data.clone(), vec![size], device)
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         let _expected_idx = argmax_cpu(&input_data);
-        
+
         assert_eq!(result.len(), 1);
     }
 
@@ -187,10 +208,12 @@ mod tests {
     async fn test_argmax_precision() {
         let device = get_test_device().await;
         let input_data = vec![1.5, 3.5, 6.5, 4.5, 2.5];
-        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device).await.unwrap();
+        let input = Tensor::from_vec_on(input_data.clone(), vec![5], device)
+            .await
+            .unwrap();
         let result = input.argmax().unwrap();
         let _expected_idx = argmax_cpu(&input_data);
-        
+
         // Verify structure (full implementation would verify index = 2)
         assert_eq!(result.len(), 1);
     }

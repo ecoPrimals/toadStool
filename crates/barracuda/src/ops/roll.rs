@@ -12,16 +12,16 @@ pub async fn roll(
     if n == 0 {
         return Ok(Vec::new());
     }
-    
+
     let shift = ((shift % n as isize) + n as isize) % n as isize;
     let shift = shift as usize;
-    
+
     let mut output = vec![0.0f32; n];
     for i in 0..n {
         let src = (i + n - shift) % n;
         output[i] = input[src];
     }
-    
+
     Ok(output)
 }
 
@@ -30,11 +30,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     #[tokio::test]
     async fn test_roll_basic() {
         let dev = get_test_device().await;
@@ -103,7 +103,7 @@ mod tests {
         // Verify exact shifting
         let input = vec![10.0, 20.0, 30.0, 40.0, 50.0];
         let output = roll(&dev.device, &dev.queue, &input, 2).await.unwrap();
-        
+
         assert_eq!(output[0], 40.0);
         assert_eq!(output[1], 50.0);
         assert_eq!(output[2], 10.0);

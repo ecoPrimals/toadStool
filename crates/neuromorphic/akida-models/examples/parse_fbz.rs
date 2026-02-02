@@ -28,32 +28,40 @@ fn main() -> Result<()> {
     println!("📊 Model Information:");
     println!("   Version:      {}", model.version());
     println!("   Layers:       {}", model.layer_count());
-    println!("   Program size: {} bytes ({:.2} KB)\n", 
-             model.program_size(), 
-             model.program_size() as f32 / 1024.0);
+    println!(
+        "   Program size: {} bytes ({:.2} KB)\n",
+        model.program_size(),
+        model.program_size() as f32 / 1024.0
+    );
 
     // Display layers
     println!("🏗️  Model Architecture:");
     println!("┌────────────────────────────────────────────────┐");
-    
+
     for (i, layer) in model.layers().iter().enumerate() {
-        println!("│  Layer {}: {:20} {:15} │", 
-                 i, 
-                 layer.name,
-                 format!("({})", layer.layer_type));
+        println!(
+            "│  Layer {}: {:20} {:15} │",
+            i,
+            layer.name,
+            format!("({})", layer.layer_type)
+        );
     }
-    
+
     println!("└────────────────────────────────────────────────┘\n");
-    
+
     // Display weight information
     println!("⚖️  Weight Data:");
     println!("   Weight blocks:  {}", model.weights().len());
     println!("   Total weights:  ~{}\n", model.total_weight_count());
-    
+
     if !model.weights().is_empty() {
         for (i, weight) in model.weights().iter().enumerate() {
-            println!("   Block {}: {} bytes ({}-bit quantization)",
-                     i, weight.data.len(), weight.quantization.bits);
+            println!(
+                "   Block {}: {} bytes ({}-bit quantization)",
+                i,
+                weight.data.len(),
+                weight.quantization.bits
+            );
         }
         println!();
     }

@@ -9,7 +9,7 @@
 //! - **Safe Transfers**: All DMA operations validated
 //! - **Observable**: Comprehensive tracing for debugging
 
-use crate::{AkidaDevice, Capabilities, Result, AkidaError};
+use crate::{AkidaDevice, AkidaError, Capabilities, Result};
 use tracing::{debug, info, warn};
 
 /// Model loading configuration
@@ -19,13 +19,13 @@ use tracing::{debug, info, warn};
 pub struct LoadConfig {
     /// Target device index
     pub device_index: usize,
-    
+
     /// Chunk size for DMA transfers (derived from device capabilities)
     pub chunk_size: usize,
-    
+
     /// Timeout per transfer (ms)
     pub timeout_ms: u64,
-    
+
     /// Enable validation after load
     pub validate: bool,
 }
@@ -39,21 +39,24 @@ impl LoadConfig {
         // Calculate optimal chunk size based on device memory
         // Smaller memory = smaller chunks for safety
         let chunk_size = match caps.memory_mb {
-            0..=10 => 4096,      // Small devices: 4KB chunks
-            11..=50 => 16384,    // Medium: 16KB chunks
-            _ => 65536,          // Large: 64KB chunks
+            0..=10 => 4096,   // Small devices: 4KB chunks
+            11..=50 => 16384, // Medium: 16KB chunks
+            _ => 65536,       // Large: 64KB chunks
         };
-        
-        debug!("Calculated chunk size: {} bytes for {} MB device", chunk_size, caps.memory_mb);
-        
+
+        debug!(
+            "Calculated chunk size: {} bytes for {} MB device",
+            chunk_size, caps.memory_mb
+        );
+
         Self {
             device_index,
             chunk_size,
-            timeout_ms: 5000,  // 5s per chunk (generous for slow PCIe)
+            timeout_ms: 5000, // 5s per chunk (generous for slow PCIe)
             validate: true,
         }
     }
-    
+
     /// Create minimal configuration for testing
     #[cfg(test)]
     pub fn minimal(device_index: usize) -> Self {
@@ -77,16 +80,16 @@ impl LoadConfig {
 pub struct ModelProgram {
     /// Raw program binary
     pub data: Vec<u8>,
-    
+
     /// Expected memory usage (bytes)
     pub memory_bytes: usize,
-    
+
     /// Number of NPUs required (from metadata or estimated)
     pub npus_required: u32,
-    
+
     /// Metadata for validation
     pub checksum: u32,
-    
+
     /// NPU configuration (optional, from model metadata)
     pub npu_config: Option<NpuConfig>,
 }
@@ -99,10 +102,10 @@ pub struct ModelProgram {
 pub struct NpuConfig {
     /// Required NPU count (from layer analysis)
     pub required_npus: u32,
-    
+
     /// Concurrent execution groups
     pub execution_groups: u32,
-    
+
     /// Memory per NPU (bytes)
     pub memory_per_npu: usize,
 }
@@ -114,17 +117,20 @@ impl ModelProgram {
     /// Program knows its own requirements, no external config.
     pub fn new(data: Vec<u8>) -> Self {
         let memory_bytes = data.len();
-        
+
         // Calculate simple checksum for validation
-        let checksum = data.iter()
+        let checksum = data
+            .iter()
             .fold(0u32, |acc, &byte| acc.wrapping_add(u32::from(byte)));
-        
+
         // Estimate NPU count from program size (heuristic fallback)
         let npus_required = estimate_npu_requirement(memory_bytes);
-        
-        debug!("Program: {} bytes, checksum: 0x{:08x}, NPUs: {} (estimated)",
-               memory_bytes, checksum, npus_required);
-        
+
+        debug!(
+            "Program: {} bytes, checksum: 0x{:08x}, NPUs: {} (estimated)",
+            memory_bytes, checksum, npus_required
+        );
+
         Self {
             data,
             memory_bytes,
@@ -133,20 +139,22 @@ impl ModelProgram {
             npu_config: None, // Can be set via with_npu_config()
         }
     }
-    
+
     /// Set NPU configuration from model metadata
     ///
     /// **Deep Debt**: Capability-based override!
     /// Use actual model requirements instead of estimation.
     #[must_use]
     pub fn with_npu_config(mut self, config: NpuConfig) -> Self {
-        debug!("Setting NPU config: {} NPUs, {} groups",
-               config.required_npus, config.execution_groups);
+        debug!(
+            "Setting NPU config: {} NPUs, {} groups",
+            config.required_npus, config.execution_groups
+        );
         self.npus_required = config.required_npus;
         self.npu_config = Some(config);
         self
     }
-    
+
     /// Validate program against device capabilities
     ///
     /// **Deep Debt**: Capability-based validation!
@@ -164,18 +172,23 @@ impl ModelProgram {
                 self.memory_bytes, device_memory_bytes
             )));
         }
-        
+
         // Check NPU availability
         if self.npus_required > caps.npu_count {
-            warn!("Program wants {} NPUs but device has only {}",
-                  self.npus_required, caps.npu_count);
+            warn!(
+                "Program wants {} NPUs but device has only {}",
+                self.npus_required, caps.npu_count
+            );
             // Not fatal - device can still try with fewer NPUs
         }
-        
-        debug!("✅ Program validated for device ({}MB available)", caps.memory_mb);
+
+        debug!(
+            "✅ Program validated for device ({}MB available)",
+            caps.memory_mb
+        );
         Ok(())
     }
-    
+
     /// Split program into chunks for DMA transfer
     ///
     /// **Deep Debt**: Smart refactoring!
@@ -198,7 +211,7 @@ impl ModelLoader {
         info!("Creating model loader for device {}", config.device_index);
         Self { config }
     }
-    
+
     /// Load program to device
     ///
     /// **Deep Debt**: Complete implementation, no mocks!
@@ -212,62 +225,73 @@ impl ModelLoader {
     /// - Transfer fails
     /// - Validation fails
     pub fn load(&self, program: &ModelProgram, device: &mut AkidaDevice) -> Result<LoadMetrics> {
-        info!("Loading {} byte program to device {}", 
-              program.memory_bytes, self.config.device_index);
-        
+        info!(
+            "Loading {} byte program to device {}",
+            program.memory_bytes, self.config.device_index
+        );
+
         // Validate first (capability-based)
         let caps = device.info().capabilities();
         program.validate_for_device(caps)?;
-        
+
         // Start loading
         let start = std::time::Instant::now();
         let mut metrics = LoadMetrics::new();
-        
+
         // Transfer in chunks (smart refactoring based on capabilities)
         let chunks = program.chunk(self.config.chunk_size);
         debug!("Transferring {} chunks", chunks.len());
-        
+
         for (i, chunk) in chunks.iter().enumerate() {
             let chunk_start = std::time::Instant::now();
-            
+
             // Perform DMA transfer (fast AND safe!)
             let bytes_written = device.write(chunk)?;
-            
+
             if bytes_written != chunk.len() {
                 return Err(AkidaError::transfer_failed(format!(
                     "Chunk {} write incomplete: {} of {} bytes",
-                    i, bytes_written, chunk.len()
+                    i,
+                    bytes_written,
+                    chunk.len()
                 )));
             }
-            
+
             let chunk_elapsed = chunk_start.elapsed();
-            debug!("Chunk {}: {} bytes in {:?}", i, bytes_written, chunk_elapsed);
-            
+            debug!(
+                "Chunk {}: {} bytes in {:?}",
+                i, bytes_written, chunk_elapsed
+            );
+
             metrics.chunks_transferred += 1;
             metrics.bytes_transferred += bytes_written;
         }
-        
+
         metrics.duration = start.elapsed();
-        metrics.throughput_mbps = calculate_throughput(
-            metrics.bytes_transferred,
-            metrics.duration.as_secs_f64()
+        metrics.throughput_mbps =
+            calculate_throughput(metrics.bytes_transferred, metrics.duration.as_secs_f64());
+
+        info!(
+            "✅ Program loaded: {} bytes in {:?} ({:.2} MB/s)",
+            metrics.bytes_transferred, metrics.duration, metrics.throughput_mbps
         );
-        
-        info!("✅ Program loaded: {} bytes in {:?} ({:.2} MB/s)",
-              metrics.bytes_transferred, metrics.duration, metrics.throughput_mbps);
-        
+
         // Validate if enabled
         if self.config.validate {
             Self::validate_load(program, device, &metrics)?;
         }
-        
+
         Ok(metrics)
     }
-    
+
     /// Validate successful load
-    fn validate_load(program: &ModelProgram, _device: &mut AkidaDevice, metrics: &LoadMetrics) -> Result<()> {
+    fn validate_load(
+        program: &ModelProgram,
+        _device: &mut AkidaDevice,
+        metrics: &LoadMetrics,
+    ) -> Result<()> {
         debug!("Validating load...");
-        
+
         // Verify bytes transferred match program size
         if metrics.bytes_transferred != program.memory_bytes {
             return Err(AkidaError::transfer_failed(format!(
@@ -275,10 +299,10 @@ impl ModelLoader {
                 metrics.bytes_transferred, program.memory_bytes
             )));
         }
-        
+
         // Could add readback verification here if needed (would use _device)
         // For now, size check is sufficient
-        
+
         debug!("✅ Load validated");
         Ok(())
     }
@@ -289,13 +313,13 @@ impl ModelLoader {
 pub struct LoadMetrics {
     /// Total bytes transferred
     pub bytes_transferred: usize,
-    
+
     /// Number of chunks transferred
     pub chunks_transferred: usize,
-    
+
     /// Total duration
     pub duration: std::time::Duration,
-    
+
     /// Throughput (MB/s)
     pub throughput_mbps: f64,
 }
@@ -316,7 +340,7 @@ fn calculate_throughput(bytes: usize, seconds: f64) -> f64 {
     if seconds == 0.0 {
         return 0.0;
     }
-    
+
     #[allow(clippy::cast_precision_loss)]
     let megabytes = bytes as f64 / 1_048_576.0;
     megabytes / seconds
@@ -340,7 +364,7 @@ fn estimate_npu_requirement(memory_bytes: usize) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_load_config_from_capabilities() {
         let caps = Capabilities {
@@ -356,31 +380,31 @@ mod tests {
             power_mw: None,
             temperature_c: None,
         };
-        
+
         let config = LoadConfig::from_capabilities(&caps, 0);
         assert_eq!(config.chunk_size, 4096); // 10MB device -> 4KB chunks
     }
-    
+
     #[test]
     fn test_model_program_creation() {
         let data = vec![0x42; 1000];
         let program = ModelProgram::new(data);
-        
+
         assert_eq!(program.memory_bytes, 1000);
         assert_eq!(program.npus_required, 1); // Small program -> 1 NPU
         assert_ne!(program.checksum, 0);
     }
-    
+
     #[test]
     fn test_program_chunking() {
         let data = vec![0x42; 1000];
         let program = ModelProgram::new(data);
-        
+
         let chunks = program.chunk(100);
         assert_eq!(chunks.len(), 10);
         assert_eq!(chunks[0].len(), 100);
     }
-    
+
     #[test]
     fn test_throughput_calculation() {
         let throughput = calculate_throughput(1_048_576, 1.0);

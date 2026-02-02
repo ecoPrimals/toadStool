@@ -20,7 +20,7 @@
 //! let device = WgpuDevice::new().await?;
 //!
 //! let mut analyzer = TimeSeriesAnalyzer::new(&device)
-//!     .add_model(TimeSeriesModel::ESN { 
+//!     .add_model(TimeSeriesModel::ESN {
 //!         reservoir_size: 100,
 //!         spectral_radius: 0.95,
 //!     })
@@ -39,7 +39,7 @@
 
 use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result as BarracudaResult};
-use crate::esn::{ESN, ESNConfig};
+use crate::esn::{ESNConfig, ESN};
 
 /// Time series model types (capability-based, runtime-configured)
 #[derive(Debug, Clone)]
@@ -49,21 +49,15 @@ pub enum TimeSeriesModel {
         reservoir_size: usize,
         spectral_radius: f32,
     },
-    
+
     /// Simple Moving Average (good for smoothing)
-    MovingAverage {
-        window: usize,
-    },
-    
+    MovingAverage { window: usize },
+
     /// Exponential Smoothing (good for trending data)
-    ExponentialSmoothing {
-        alpha: f32,
-    },
-    
+    ExponentialSmoothing { alpha: f32 },
+
     /// Weighted Moving Average (custom weights)
-    WeightedMovingAverage {
-        weights: Vec<f32>,
-    },
+    WeightedMovingAverage { weights: Vec<f32> },
 }
 
 /// Forecast configuration
@@ -71,10 +65,10 @@ pub enum TimeSeriesModel {
 pub struct ForecastConfig {
     /// Number of steps to forecast
     pub horizon: usize,
-    
+
     /// Confidence level (e.g., 0.95 for 95%)
     pub confidence_level: f32,
-    
+
     /// Whether to include confidence intervals
     pub include_intervals: bool,
 }
@@ -94,13 +88,13 @@ impl Default for ForecastConfig {
 pub struct Forecast {
     /// Predicted values
     pub values: Vec<f32>,
-    
+
     /// Lower confidence bound (if enabled)
     pub lower_bound: Option<Vec<f32>>,
-    
+
     /// Upper confidence bound (if enabled)
     pub upper_bound: Option<Vec<f32>>,
-    
+
     /// Forecast horizon
     pub horizon: usize,
 }
@@ -110,13 +104,13 @@ pub struct Forecast {
 pub struct Anomaly {
     /// Time index
     pub index: usize,
-    
+
     /// Actual value
     pub value: f32,
-    
+
     /// Expected value
     pub expected: f32,
-    
+
     /// Anomaly score (distance from expected)
     pub score: f32,
 }
@@ -126,10 +120,10 @@ pub struct Anomaly {
 pub struct Decomposition {
     /// Trend component
     pub trend: Vec<f32>,
-    
+
     /// Seasonal component
     pub seasonal: Vec<f32>,
-    
+
     /// Residual component
     pub residual: Vec<f32>,
 }
@@ -159,18 +153,22 @@ impl TimeSeriesAnalyzer {
             built: false,
         }
     }
-    
+
     /// Add model to analyzer
     pub fn add_model(mut self, model: TimeSeriesModel) -> Self {
         self.models.push(model);
         self
     }
-    
+
     /// Build analyzer (initializes models)
     pub async fn build(mut self) -> BarracudaResult<Self> {
         // Initialize ESN if requested
         for model in &self.models {
-            if let TimeSeriesModel::ESN { reservoir_size, spectral_radius } = model {
+            if let TimeSeriesModel::ESN {
+                reservoir_size,
+                spectral_radius,
+            } = model
+            {
                 let config = ESNConfig {
                     input_size: 1, // Single value input
                     reservoir_size: *reservoir_size,
@@ -181,16 +179,16 @@ impl TimeSeriesAnalyzer {
                     regularization: 1e-6,
                     seed: 42,
                 };
-                
+
                 self.esn_instance = Some(ESN::new(&self.device, config).await?);
                 break; // Only create one ESN instance
             }
         }
-        
+
         self.built = true;
         Ok(self)
     }
-    
+
     /// Forecast future values
     ///
     /// # Arguments
@@ -205,24 +203,22 @@ impl TimeSeriesAnalyzer {
                 message: "Analyzer not built. Call .build() first.".to_string(),
             });
         }
-        
+
         if history.is_empty() {
             return Err(BarracudaError::InvalidInput {
                 message: "History cannot be empty".to_string(),
             });
         }
-        
+
         // Use first available model
         if self.models.is_empty() {
             return Err(BarracudaError::InvalidInput {
                 message: "No models added. Use .add_model() before building.".to_string(),
             });
         }
-        
+
         match &self.models[0] {
-            TimeSeriesModel::ESN { .. } => {
-                self.forecast_esn(history, horizon).await
-            }
+            TimeSeriesModel::ESN { .. } => self.forecast_esn(history, horizon).await,
             TimeSeriesModel::MovingAverage { window } => {
                 self.forecast_moving_average(history, horizon, *window)
             }
@@ -234,7 +230,7 @@ impl TimeSeriesAnalyzer {
             }
         }
     }
-    
+
     /// Detect anomalies in time series
     ///
     /// # Arguments
@@ -250,27 +246,30 @@ impl TimeSeriesAnalyzer {
     ) -> BarracudaResult<Vec<Anomaly>> {
         if series.len() < 10 {
             return Err(BarracudaError::InvalidInput {
-                message: "Series too short for anomaly detection (need at least 10 points)".to_string(),
+                message: "Series too short for anomaly detection (need at least 10 points)"
+                    .to_string(),
             });
         }
-        
+
         // Use moving average as baseline
         let window = (series.len() / 10).max(3);
         let mut anomalies = Vec::new();
-        
+
         for i in window..series.len() {
             let window_data = &series[i.saturating_sub(window)..i];
             let expected = window_data.iter().sum::<f32>() / window_data.len() as f32;
             let actual = series[i];
-            
+
             // Calculate standard deviation
-            let variance = window_data.iter()
+            let variance = window_data
+                .iter()
                 .map(|v| (v - expected).powi(2))
-                .sum::<f32>() / window_data.len() as f32;
+                .sum::<f32>()
+                / window_data.len() as f32;
             let std_dev = variance.sqrt();
-            
+
             let score = (actual - expected).abs() / std_dev.max(0.01);
-            
+
             if score > threshold {
                 anomalies.push(Anomaly {
                     index: i,
@@ -280,10 +279,10 @@ impl TimeSeriesAnalyzer {
                 });
             }
         }
-        
+
         Ok(anomalies)
     }
-    
+
     /// Decompose time series into trend, seasonal, and residual components
     ///
     /// # Arguments
@@ -292,40 +291,41 @@ impl TimeSeriesAnalyzer {
     ///
     /// # Returns
     /// Decomposition with trend, seasonal, and residual components
-    pub async fn decompose(
-        &self,
-        series: &[f32],
-        period: usize,
-    ) -> BarracudaResult<Decomposition> {
+    pub async fn decompose(&self, series: &[f32], period: usize) -> BarracudaResult<Decomposition> {
         if series.len() < period * 2 {
             return Err(BarracudaError::InvalidInput {
-                message: format!("Series too short for period {} (need at least {})", period, period * 2),
+                message: format!(
+                    "Series too short for period {} (need at least {})",
+                    period,
+                    period * 2
+                ),
             });
         }
-        
+
         // Simple moving average for trend
         let mut trend = vec![0.0f32; series.len()];
         let window = period;
-        
-        for i in window/2..series.len() - window/2 {
-            let sum: f32 = series[i - window/2..i + window/2].iter().sum();
+
+        for i in window / 2..series.len() - window / 2 {
+            let sum: f32 = series[i - window / 2..i + window / 2].iter().sum();
             trend[i] = sum / window as f32;
         }
-        
+
         // Fill edges with extrapolation
-        for i in 0..window/2 {
-            trend[i] = trend[window/2];
+        for i in 0..window / 2 {
+            trend[i] = trend[window / 2];
         }
-        for i in series.len() - window/2..series.len() {
-            trend[i] = trend[series.len() - window/2 - 1];
+        for i in series.len() - window / 2..series.len() {
+            trend[i] = trend[series.len() - window / 2 - 1];
         }
-        
+
         // Detrended series
-        let detrended: Vec<f32> = series.iter()
+        let detrended: Vec<f32> = series
+            .iter()
             .zip(trend.iter())
             .map(|(s, t)| s - t)
             .collect();
-        
+
         // Seasonal component (average by period)
         let mut seasonal = vec![0.0f32; series.len()];
         for i in 0..period {
@@ -340,49 +340,48 @@ impl TimeSeriesAnalyzer {
                 seasonal[j] = avg;
             }
         }
-        
+
         // Residual
-        let residual: Vec<f32> = detrended.iter()
+        let residual: Vec<f32> = detrended
+            .iter()
             .zip(seasonal.iter())
             .map(|(d, s)| d - s)
             .collect();
-        
+
         Ok(Decomposition {
             trend,
             seasonal,
             residual,
         })
     }
-    
+
     /// Forecast using ESN
     async fn forecast_esn(&mut self, history: &[f32], horizon: usize) -> BarracudaResult<Forecast> {
-        let esn = self.esn_instance.as_mut()
+        let esn = self
+            .esn_instance
+            .as_mut()
             .ok_or_else(|| BarracudaError::InvalidInput {
                 message: "ESN not initialized".to_string(),
             })?;
-        
+
         // Prepare training data (sliding window)
-        let sequence: Vec<Vec<f32>> = history.windows(2)
-            .map(|w| vec![w[0]])
-            .collect();
-        let targets: Vec<Vec<f32>> = history.windows(2)
-            .map(|w| vec![w[1]])
-            .collect();
-        
+        let sequence: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[0]]).collect();
+        let targets: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[1]]).collect();
+
         // Train ESN on historical data
         esn.train(&sequence, &targets).await?;
-        
+
         // Generate forecast by feeding predictions back
         let mut forecast_values = Vec::with_capacity(horizon);
         let mut current_input = vec![history[history.len() - 1]];
-        
+
         for _ in 0..horizon {
             let prediction = esn.predict(&[current_input.clone()]).await?;
             let next_value = prediction[0][0];
             forecast_values.push(next_value);
             current_input = vec![next_value];
         }
-        
+
         Ok(Forecast {
             values: forecast_values,
             lower_bound: None,
@@ -390,7 +389,7 @@ impl TimeSeriesAnalyzer {
             horizon,
         })
     }
-    
+
     /// Forecast using moving average
     fn forecast_moving_average(
         &self,
@@ -401,10 +400,10 @@ impl TimeSeriesAnalyzer {
         let window = window.min(history.len());
         let last_window = &history[history.len() - window..];
         let avg = last_window.iter().sum::<f32>() / window as f32;
-        
+
         // Simple persistence forecast
         let values = vec![avg; horizon];
-        
+
         Ok(Forecast {
             values,
             lower_bound: None,
@@ -412,7 +411,7 @@ impl TimeSeriesAnalyzer {
             horizon,
         })
     }
-    
+
     /// Forecast using exponential smoothing
     fn forecast_exponential_smoothing(
         &self,
@@ -425,10 +424,10 @@ impl TimeSeriesAnalyzer {
         for &value in &history[1..] {
             smoothed = alpha * value + (1.0 - alpha) * smoothed;
         }
-        
+
         // Simple level forecast
         let values = vec![smoothed; horizon];
-        
+
         Ok(Forecast {
             values,
             lower_bound: None,
@@ -436,7 +435,7 @@ impl TimeSeriesAnalyzer {
             horizon,
         })
     }
-    
+
     /// Forecast using weighted moving average
     fn forecast_weighted_moving_average(
         &self,
@@ -449,19 +448,20 @@ impl TimeSeriesAnalyzer {
                 message: "Weights cannot be empty".to_string(),
             });
         }
-        
+
         let window = weights.len().min(history.len());
         let last_window = &history[history.len() - window..];
-        
-        let weighted_sum: f32 = last_window.iter()
+
+        let weighted_sum: f32 = last_window
+            .iter()
             .zip(weights.iter())
             .map(|(v, w)| v * w)
             .sum();
         let weight_sum: f32 = weights.iter().sum();
         let forecast_value = weighted_sum / weight_sum;
-        
+
         let values = vec![forecast_value; horizon];
-        
+
         Ok(Forecast {
             values,
             lower_bound: None,
@@ -474,7 +474,7 @@ impl TimeSeriesAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_analyzer_creation() {
         let device = WgpuDevice::new().await.unwrap();
@@ -482,13 +482,13 @@ mod tests {
             .add_model(TimeSeriesModel::MovingAverage { window: 3 })
             .build()
             .await;
-        
+
         assert!(analyzer.is_ok());
         let analyzer = analyzer.unwrap();
         assert_eq!(analyzer.models.len(), 1);
         assert!(analyzer.built);
     }
-    
+
     #[tokio::test]
     async fn test_moving_average_forecast() {
         let device = WgpuDevice::new().await.unwrap();
@@ -497,19 +497,19 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         let history = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let forecast = analyzer.forecast(&history, 5).await;
-        
+
         assert!(forecast.is_ok());
         let forecast = forecast.unwrap();
         assert_eq!(forecast.values.len(), 5);
         assert_eq!(forecast.horizon, 5);
-        
+
         // Should be close to average of last 3 values (3,4,5) = 4.0
         assert!((forecast.values[0] - 4.0).abs() < 0.1);
     }
-    
+
     #[tokio::test]
     async fn test_exponential_smoothing_forecast() {
         let device = WgpuDevice::new().await.unwrap();
@@ -518,15 +518,15 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         let history = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let forecast = analyzer.forecast(&history, 3).await;
-        
+
         assert!(forecast.is_ok());
         let forecast = forecast.unwrap();
         assert_eq!(forecast.values.len(), 3);
     }
-    
+
     #[tokio::test]
     async fn test_anomaly_detection() {
         let device = WgpuDevice::new().await.unwrap();
@@ -535,21 +535,21 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         // Series with obvious anomaly
         let mut series = vec![1.0; 20];
         series[10] = 10.0; // Anomaly!
-        
+
         let anomalies = analyzer.detect_anomalies(&series, 2.0).await;
-        
+
         assert!(anomalies.is_ok());
         let anomalies = anomalies.unwrap();
         assert!(!anomalies.is_empty());
-        
+
         // Should detect the anomaly at index 10
         assert!(anomalies.iter().any(|a| a.index == 10));
     }
-    
+
     #[tokio::test]
     async fn test_decomposition() {
         let device = WgpuDevice::new().await.unwrap();
@@ -558,19 +558,19 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         // Simple series with trend
         let series: Vec<f32> = (0..100).map(|i| i as f32).collect();
-        
+
         let decomp = analyzer.decompose(&series, 10).await;
-        
+
         assert!(decomp.is_ok());
         let decomp = decomp.unwrap();
         assert_eq!(decomp.trend.len(), 100);
         assert_eq!(decomp.seasonal.len(), 100);
         assert_eq!(decomp.residual.len(), 100);
     }
-    
+
     #[tokio::test]
     async fn test_esn_forecast() {
         let device = WgpuDevice::new().await.unwrap();
@@ -582,20 +582,20 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         // Simple increasing series
         let history: Vec<f32> = (0..20).map(|i| i as f32).collect();
-        
+
         let forecast = analyzer.forecast(&history, 5).await;
-        
+
         assert!(forecast.is_ok());
         let forecast = forecast.unwrap();
         assert_eq!(forecast.values.len(), 5);
-        
+
         // ESN should learn the increasing pattern
         println!("ESN forecast: {:?}", forecast.values);
     }
-    
+
     #[tokio::test]
     async fn test_weighted_moving_average() {
         let device = WgpuDevice::new().await.unwrap();
@@ -606,10 +606,10 @@ mod tests {
             .build()
             .await
             .unwrap();
-        
+
         let history = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let forecast = analyzer.forecast(&history, 3).await;
-        
+
         assert!(forecast.is_ok());
         let forecast = forecast.unwrap();
         assert_eq!(forecast.values.len(), 3);

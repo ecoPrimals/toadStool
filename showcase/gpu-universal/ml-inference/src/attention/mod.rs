@@ -26,18 +26,18 @@
 //! - Vision Transformers (ViT)
 //! - Multimodal models (CLIP, Flamingo)
 
-mod scaled_dot_product;
-mod multi_head;
-mod masks;
 mod bias;
 mod flash;
+mod masks;
+mod multi_head;
+mod scaled_dot_product;
 
 // Re-export all public types for backward compatibility
-pub use scaled_dot_product::ScaledDotProductAttention;
-pub use multi_head::MultiHeadAttention;
-pub use masks::CausalMask;
 pub use bias::AttentionBias;
 pub use flash::FlashAttention;
+pub use masks::CausalMask;
+pub use multi_head::MultiHeadAttention;
+pub use scaled_dot_product::ScaledDotProductAttention;
 
 // Glob re-exports for test compatibility
 // Modules not yet exporting public items

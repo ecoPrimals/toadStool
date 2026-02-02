@@ -129,18 +129,16 @@ impl Device {
         tracing::debug!("📂 Opening input device: {}", path.display());
 
         // REAL IMPLEMENTATION: Open actual evdev device! (Pure Rust, no FFI!)
-        let evdev_device = evdev::Device::open(&path)
-            .map_err(|e| DisplayError::InputError(format!("Failed to open {}: {}", path.display(), e)))?;
+        let evdev_device = evdev::Device::open(&path).map_err(|e| {
+            DisplayError::InputError(format!("Failed to open {}: {}", path.display(), e))
+        })?;
 
         // Get device name from hardware
-        let name = evdev_device
-            .name()
-            .unwrap_or("Unknown Device")
-            .to_string();
+        let name = evdev_device.name().unwrap_or("Unknown Device").to_string();
 
         // Detect device type from capabilities (runtime self-knowledge!)
         let device_type = Self::detect_type(&evdev_device);
-        
+
         // Query device capabilities
         let capabilities = Self::detect_capabilities(&evdev_device);
 
@@ -176,39 +174,45 @@ impl Device {
     /// - ✅ Agnostic heuristics (works with any device)
     fn detect_type(device: &evdev::Device) -> DeviceType {
         // Query actual hardware capabilities
-        let has_keys = device.supported_keys()
+        let has_keys = device
+            .supported_keys()
             .map(|keys| keys.iter().count() > 0)
             .unwrap_or(false);
-        
-        let has_rel_axes = device.supported_relative_axes()
+
+        let has_rel_axes = device
+            .supported_relative_axes()
             .map(|axes| axes.iter().count() > 0)
             .unwrap_or(false);
-        
-        let has_abs_axes = device.supported_absolute_axes()
+
+        let has_abs_axes = device
+            .supported_absolute_axes()
             .map(|axes| axes.iter().count() > 0)
             .unwrap_or(false);
-        
+
         // Check for mouse buttons (BTN_LEFT, BTN_RIGHT, BTN_MIDDLE)
-        let has_mouse_buttons = device.supported_keys()
+        let has_mouse_buttons = device
+            .supported_keys()
             .map(|keys| {
-                keys.contains(evdev::KeyCode::BTN_LEFT) ||
-                keys.contains(evdev::KeyCode::BTN_RIGHT) ||
-                keys.contains(evdev::KeyCode::BTN_MIDDLE)
+                keys.contains(evdev::KeyCode::BTN_LEFT)
+                    || keys.contains(evdev::KeyCode::BTN_RIGHT)
+                    || keys.contains(evdev::KeyCode::BTN_MIDDLE)
             })
             .unwrap_or(false);
-        
+
         // Check for multi-touch (ABS_MT_SLOT, ABS_MT_POSITION_X, ABS_MT_POSITION_Y)
-        let has_multitouch = device.supported_absolute_axes()
+        let has_multitouch = device
+            .supported_absolute_axes()
             .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT) ||
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X) ||
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y)
+                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
+                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
+                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_Y)
             })
             .unwrap_or(false);
-        
+
         // Check for gamepad buttons (BTN_GAMEPAD, BTN_SOUTH, BTN_A, etc.)
         // Note: Some button constants may not exist in evdev 0.13
-        let has_gamepad_buttons = device.supported_keys()
+        let has_gamepad_buttons = device
+            .supported_keys()
             .map(|keys| {
                 // Check for any gamepad-like buttons
                 keys.iter().any(|key| {
@@ -218,7 +222,7 @@ impl Device {
                 })
             })
             .unwrap_or(false);
-        
+
         // Detection heuristics (ordered by specificity)
         if has_multitouch && has_abs_axes {
             DeviceType::Touchscreen
@@ -235,7 +239,7 @@ impl Device {
             DeviceType::Other
         }
     }
-    
+
     /// Detect device capabilities
     ///
     /// **Deep Debt Compliance:**
@@ -244,61 +248,73 @@ impl Device {
     /// - ✅ Self-knowledge from actual device
     fn detect_capabilities(device: &evdev::Device) -> Vec<DeviceCapability> {
         let mut caps = Vec::new();
-        
+
         // Check for keys
-        if device.supported_keys().map(|k| k.iter().count() > 0).unwrap_or(false) {
+        if device
+            .supported_keys()
+            .map(|k| k.iter().count() > 0)
+            .unwrap_or(false)
+        {
             caps.push(DeviceCapability::Keys);
         }
-        
+
         // Check for relative pointer (REL_X, REL_Y - mouse movement)
-        if device.supported_relative_axes()
+        if device
+            .supported_relative_axes()
             .map(|axes| {
-                axes.contains(evdev::RelativeAxisCode::REL_X) ||
-                axes.contains(evdev::RelativeAxisCode::REL_Y)
+                axes.contains(evdev::RelativeAxisCode::REL_X)
+                    || axes.contains(evdev::RelativeAxisCode::REL_Y)
             })
             .unwrap_or(false)
         {
             caps.push(DeviceCapability::RelativePointer);
         }
-        
+
         // Check for absolute pointer (ABS_X, ABS_Y)
-        if device.supported_absolute_axes()
+        if device
+            .supported_absolute_axes()
             .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_X) ||
-                axes.contains(evdev::AbsoluteAxisCode::ABS_Y)
+                axes.contains(evdev::AbsoluteAxisCode::ABS_X)
+                    || axes.contains(evdev::AbsoluteAxisCode::ABS_Y)
             })
             .unwrap_or(false)
         {
             caps.push(DeviceCapability::AbsolutePointer);
         }
-        
+
         // Check for multi-touch (ABS_MT_SLOT, ABS_MT_POSITION_X)
-        if device.supported_absolute_axes()
+        if device
+            .supported_absolute_axes()
             .map(|axes| {
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT) ||
-                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
+                axes.contains(evdev::AbsoluteAxisCode::ABS_MT_SLOT)
+                    || axes.contains(evdev::AbsoluteAxisCode::ABS_MT_POSITION_X)
             })
             .unwrap_or(false)
         {
             caps.push(DeviceCapability::MultiTouch);
         }
-        
+
         // Check for scroll wheel (REL_WHEEL, REL_HWHEEL)
-        if device.supported_relative_axes()
+        if device
+            .supported_relative_axes()
             .map(|axes| {
-                axes.contains(evdev::RelativeAxisCode::REL_WHEEL) ||
-                axes.contains(evdev::RelativeAxisCode::REL_HWHEEL)
+                axes.contains(evdev::RelativeAxisCode::REL_WHEEL)
+                    || axes.contains(evdev::RelativeAxisCode::REL_HWHEEL)
             })
             .unwrap_or(false)
         {
             caps.push(DeviceCapability::Scroll);
         }
-        
+
         // Check for force feedback
-        if device.supported_ff().map(|ff| ff.iter().count() > 0).unwrap_or(false) {
+        if device
+            .supported_ff()
+            .map(|ff| ff.iter().count() > 0)
+            .unwrap_or(false)
+        {
             caps.push(DeviceCapability::ForceFeedback);
         }
-        
+
         caps
     }
 
@@ -394,14 +410,14 @@ impl Device {
             capabilities: self.capabilities.clone(),
         }
     }
-    
+
     /// Get underlying evdev device (mutable)
     ///
     /// Provides mutable access to raw evdev device for event streaming.
     pub fn evdev_device_mut(&mut self) -> &mut evdev::Device {
         &mut self.evdev_device
     }
-    
+
     /// Get device vendor and product IDs
     ///
     /// Useful for device-specific handling if needed.

@@ -7,8 +7,8 @@
 //! Used in: MobileNet, EfficientNet, lightweight CNNs
 //! Benefits: Dramatically reduces parameters and computation vs standard Conv2D
 
-use crate::tensor::Tensor;
 use crate::error::Result;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -96,25 +96,31 @@ impl DepthwiseConv2D {
             out_height: out_height as u32,
             out_width: out_width as u32,
         };
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("DepthwiseConv2D Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("DepthwiseConv2D Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create shader module
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("DepthwiseConv2D Shader"),
-            source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("DepthwiseConv2D Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
 
         // Create compute pipeline
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("DepthwiseConv2D Pipeline"),
-            layout: None,
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("DepthwiseConv2D Pipeline"),
+                layout: None,
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group
         let bind_group_layout = pipeline.get_bind_group_layout(0);
@@ -146,9 +152,11 @@ impl DepthwiseConv2D {
         });
 
         // Execute with 2D workgroup (16x16)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("DepthwiseConv2D Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("DepthwiseConv2D Encoder"),
+            });
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("DepthwiseConv2D Pass"),
@@ -156,7 +164,7 @@ impl DepthwiseConv2D {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             let workgroups_x = ((out_width + 15) / 16) as u32;
             let workgroups_y = ((out_height + 15) / 16) as u32;
             let workgroups_z = (batch * channels) as u32;
@@ -205,15 +213,15 @@ mod tests {
 
         // Create input [1, 2, 3, 3] - 1 batch, 2 channels, 3x3 spatial
         let input_data = vec![
-            1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,  // Channel 0
-            9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0,      // Channel 1
+            1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, // Channel 0
+            9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0, // Channel 1
         ];
         let input = Tensor::from_data(&input_data, vec![1, 2, 3, 3], device.clone()).unwrap();
 
         // Create depthwise weight [2, 1, 2, 2] - 2 channels, kernel 2x2
         let weight_data = vec![
-            1.0f32, 0.0, 0.0, 1.0,  // Channel 0 kernel
-            1.0, 1.0, 1.0, 1.0,      // Channel 1 kernel
+            1.0f32, 0.0, 0.0, 1.0, // Channel 0 kernel
+            1.0, 1.0, 1.0, 1.0, // Channel 1 kernel
         ];
         let weight = Tensor::from_data(&weight_data, vec![2, 1, 2, 2], device.clone()).unwrap();
 
@@ -222,7 +230,9 @@ mod tests {
         let bias = Tensor::from_data(&bias_data, vec![2], device.clone()).unwrap();
 
         // Apply DepthwiseConv2D
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (0, 0))
+            .unwrap();
 
         // Output shape should be [1, 2, 2, 2]
         assert_eq!(result.shape(), &[1, 2, 2, 2]);
@@ -239,7 +249,9 @@ mod tests {
         let weight = Tensor::from_data(&weight_data, vec![1, 1, 1, 1], device.clone()).unwrap();
         let bias_data = vec![0.0];
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (0, 0))
+            .unwrap();
         assert_eq!(result.shape(), &[1, 1, 2, 2]);
 
         // All zeros input
@@ -249,7 +261,9 @@ mod tests {
         let weight = Tensor::from_data(&weight_data, vec![2, 1, 2, 2], device.clone()).unwrap();
         let bias_data = vec![0.0, 0.0];
         let bias = Tensor::from_data(&bias_data, vec![2], device.clone()).unwrap();
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (0, 0))
+            .unwrap();
         let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.abs() < 1e-5));
     }
@@ -265,7 +279,9 @@ mod tests {
         let weight = Tensor::from_data(&weight_data, vec![1, 1, 2, 2], device.clone()).unwrap();
         let bias_data = vec![0.0];
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (1, 1)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (1, 1))
+            .unwrap();
         assert_eq!(result.shape(), &[1, 1, 3, 3]); // Output larger with padding
 
         // Stride > 1 (downsampling)
@@ -275,7 +291,9 @@ mod tests {
         let weight = Tensor::from_data(&weight_data, vec![2, 1, 2, 2], device.clone()).unwrap();
         let bias_data = vec![0.0, 0.0];
         let bias = Tensor::from_data(&bias_data, vec![2], device.clone()).unwrap();
-        let result = input.depthwise_conv2d(weight, bias, (2, 2), (0, 0)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (2, 2), (0, 0))
+            .unwrap();
         assert_eq!(result.shape(), &[1, 2, 2, 2]); // Downsampled by stride=2
     }
 
@@ -289,16 +307,28 @@ mod tests {
         let height = 8;
         let width = 8;
         let input_data = vec![1.0; batch_size * channels * height * width];
-        let input = Tensor::from_data(&input_data, vec![batch_size, channels, height, width], device.clone()).unwrap();
+        let input = Tensor::from_data(
+            &input_data,
+            vec![batch_size, channels, height, width],
+            device.clone(),
+        )
+        .unwrap();
 
         // Depthwise 3x3 kernel
         let kernel_size = 3;
         let weight_data = vec![1.0; channels * 1 * kernel_size * kernel_size];
-        let weight = Tensor::from_data(&weight_data, vec![channels, 1, kernel_size, kernel_size], device.clone()).unwrap();
+        let weight = Tensor::from_data(
+            &weight_data,
+            vec![channels, 1, kernel_size, kernel_size],
+            device.clone(),
+        )
+        .unwrap();
         let bias_data = vec![0.0; channels];
         let bias = Tensor::from_data(&bias_data, vec![channels], device.clone()).unwrap();
 
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (1, 1)).unwrap();
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (1, 1))
+            .unwrap();
         // With padding=1, output size preserved
         assert_eq!(result.shape(), &[batch_size, channels, height, width]);
     }
@@ -308,11 +338,7 @@ mod tests {
         let device = get_test_device().await;
 
         // Precision test: Verify depthwise computation produces reasonable outputs
-        let input_data = vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        ]; // [1, 1, 3, 3]
+        let input_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]; // [1, 1, 3, 3]
         let input = Tensor::from_data(&input_data, vec![1, 1, 3, 3], device.clone()).unwrap();
 
         // Simple kernel (all ones)
@@ -321,20 +347,22 @@ mod tests {
         let bias_data = vec![0.0];
         let bias = Tensor::from_data(&bias_data, vec![1], device.clone()).unwrap();
 
-        let result = input.depthwise_conv2d(weight, bias, (1, 1), (0, 0)).unwrap();
-        
+        let result = input
+            .depthwise_conv2d(weight, bias, (1, 1), (0, 0))
+            .unwrap();
+
         // 3x3 input with 2x2 kernel and stride 1 produces 2x2 output
         assert_eq!(result.shape(), &[1, 1, 2, 2]);
-        
+
         let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
-        
+
         // All outputs should be positive and finite (kernel sums positive inputs)
         for val in output.iter() {
             assert!(val.is_finite());
             assert!(*val > 0.0);
         }
-        
+
         // Outputs should be monotonically increasing (sliding window on increasing input)
         assert!(output[3] > output[0]); // Bottom-right > top-left
     }

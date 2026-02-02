@@ -2332,10 +2332,7 @@ async fn test_conv3d_fp32_precision() {
 
     let result = executor
         .execute_conv3d(
-            &input,
-            &kernel,
-            &bias,
-            1, // batch
+            &input, &kernel, &bias, 1, // batch
             1, // in_channels
             1, // out_channels
             4, // depth
@@ -2402,10 +2399,7 @@ async fn test_transposed_conv2d_fp32_precision() {
 
     let result = executor
         .execute_transposed_conv2d(
-            &input,
-            &kernel,
-            &bias,
-            1, // batch
+            &input, &kernel, &bias, 1, // batch
             1, // in_channels
             1, // out_channels
             2, // input_height

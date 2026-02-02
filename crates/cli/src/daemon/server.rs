@@ -77,9 +77,12 @@ impl DaemonServer {
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
         // Determine socket path (prefer Unix socket for primal communication)
-        let socket_path = self.config.socket_path.clone()
+        let socket_path = self
+            .config
+            .socket_path
+            .clone()
             .unwrap_or_else(|| std::path::PathBuf::from("/primal/toadstool"));
-        
+
         info!("🚀 ToadStool daemon running");
         info!("🍄 JSON-RPC socket: {}", socket_path.display());
         info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
@@ -108,9 +111,15 @@ impl DaemonServer {
                     warn!("⚠️  HTTP server stopped: {e}");
                 }
             });
-            
-            info!("📊 HTTP API (DEPRECATED): http://localhost:{}/api/v1", self.config.port);
-            info!("💚 HTTP Health (DEPRECATED): http://localhost:{}/health", self.config.port);
+
+            info!(
+                "📊 HTTP API (DEPRECATED): http://localhost:{}/api/v1",
+                self.config.port
+            );
+            info!(
+                "💚 HTTP Health (DEPRECATED): http://localhost:{}/health",
+                self.config.port
+            );
         } else {
             info!("✨ Pure Unix socket mode - HTTP disabled (set TOADSTOOL_HTTP_COMPAT=1 for old clients)");
         }

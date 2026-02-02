@@ -19,7 +19,7 @@ impl WorkloadScheduler {
             strategy: SchedulingStrategy::default(),
         }
     }
-    
+
     /// Get scheduling strategy
     pub fn strategy(&self) -> &SchedulingStrategy {
         &self.strategy
@@ -37,13 +37,13 @@ impl Default for WorkloadScheduler {
 pub enum SchedulingStrategy {
     /// Single substrate (no parallelism)
     Single,
-    
+
     /// Data parallelism (split data across substrates)
     DataParallel,
-    
+
     /// Pipeline parallelism (stages on different substrates)
     Pipeline,
-    
+
     /// Hybrid (mix of data and pipeline)
     Hybrid,
 }
@@ -59,7 +59,7 @@ impl Default for SchedulingStrategy {
 pub struct ExecutionSchedule {
     /// Tasks to execute
     pub tasks: Vec<ScheduledTask>,
-    
+
     /// Expected total duration
     pub estimated_duration: Duration,
 }
@@ -69,13 +69,13 @@ pub struct ExecutionSchedule {
 pub struct ScheduledTask {
     /// Task ID
     pub id: usize,
-    
+
     /// Substrate to execute on
     pub substrate_id: usize,
-    
+
     /// Start time offset
     pub start_offset: Duration,
-    
+
     /// Estimated duration
     pub duration: Duration,
 }
@@ -83,7 +83,7 @@ pub struct ScheduledTask {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_scheduler_creation() {
         let scheduler = WorkloadScheduler::new();

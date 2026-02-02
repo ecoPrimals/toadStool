@@ -50,7 +50,7 @@ pub struct LSTMWeights {
     pub w_io: Vec<f32>,
     /// Output gate hidden weights: W_ho [hidden_size, hidden_size]
     pub w_ho: Vec<f32>,
-    
+
     /// Biases (can be zero)
     pub b_ii: Vec<f32>,
     pub b_hi: Vec<f32>,
@@ -115,9 +115,9 @@ pub struct LSTMWeights {
 pub async fn lstm_cell(
     _device: &wgpu::Device,
     _queue: &wgpu::Queue,
-    input: &[f32],              // [batch, input_size]
-    prev_hidden: &[f32],        // [batch, hidden_size]
-    prev_cell: &[f32],          // [batch, hidden_size]
+    input: &[f32],       // [batch, input_size]
+    prev_hidden: &[f32], // [batch, hidden_size]
+    prev_cell: &[f32],   // [batch, hidden_size]
     weights: &LSTMWeights,
     batch_size: usize,
     input_size: usize,
@@ -125,24 +125,28 @@ pub async fn lstm_cell(
 ) -> Result<LSTMState, Box<dyn std::error::Error>> {
     // Validate dimensions
     if input.len() != batch_size * input_size {
-        return Err(format!("Input size mismatch: expected {}, got {}", 
-            batch_size * input_size, input.len()).into());
+        return Err(format!(
+            "Input size mismatch: expected {}, got {}",
+            batch_size * input_size,
+            input.len()
+        )
+        .into());
     }
-    
+
     if prev_hidden.len() != batch_size * hidden_size {
         return Err("Hidden state size mismatch".into());
     }
-    
+
     // Helper: sigmoid activation
     fn sigmoid(x: f32) -> f32 {
         1.0 / (1.0 + (-x).exp())
     }
-    
+
     // Helper: tanh activation
     fn tanh(x: f32) -> f32 {
         x.tanh()
     }
-    
+
     // Helper: matrix-vector product + bias
     fn matmul_add_bias(
         input: &[f32],
@@ -163,58 +167,122 @@ pub async fn lstm_cell(
             }
         }
     }
-    
+
     // Allocate gate activations
     let mut i_gate = vec![0.0f32; batch_size * hidden_size];
     let mut f_gate = vec![0.0f32; batch_size * hidden_size];
     let mut g_gate = vec![0.0f32; batch_size * hidden_size];
     let mut o_gate = vec![0.0f32; batch_size * hidden_size];
-    
+
     // Compute gate pre-activations
     let mut i_input = vec![0.0f32; batch_size * hidden_size];
     let mut i_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_ii, &weights.b_ii, &mut i_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hi, &weights.b_hi, &mut i_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_ii,
+        &weights.b_ii,
+        &mut i_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hi,
+        &weights.b_hi,
+        &mut i_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     for i in 0..i_gate.len() {
         i_gate[i] = sigmoid(i_input[i] + i_hidden[i]);
     }
-    
+
     let mut f_input = vec![0.0f32; batch_size * hidden_size];
     let mut f_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_if, &weights.b_if, &mut f_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hf, &weights.b_hf, &mut f_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_if,
+        &weights.b_if,
+        &mut f_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hf,
+        &weights.b_hf,
+        &mut f_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     for i in 0..f_gate.len() {
         f_gate[i] = sigmoid(f_input[i] + f_hidden[i]);
     }
-    
+
     let mut g_input = vec![0.0f32; batch_size * hidden_size];
     let mut g_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_ig, &weights.b_ig, &mut g_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_hg, &weights.b_hg, &mut g_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_ig,
+        &weights.b_ig,
+        &mut g_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_hg,
+        &weights.b_hg,
+        &mut g_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     for i in 0..g_gate.len() {
         g_gate[i] = tanh(g_input[i] + g_hidden[i]);
     }
-    
+
     let mut o_input = vec![0.0f32; batch_size * hidden_size];
     let mut o_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(input, &weights.w_io, &weights.b_io, &mut o_input, batch_size, input_size, hidden_size);
-    matmul_add_bias(prev_hidden, &weights.w_ho, &weights.b_ho, &mut o_hidden, batch_size, hidden_size, hidden_size);
+    matmul_add_bias(
+        input,
+        &weights.w_io,
+        &weights.b_io,
+        &mut o_input,
+        batch_size,
+        input_size,
+        hidden_size,
+    );
+    matmul_add_bias(
+        prev_hidden,
+        &weights.w_ho,
+        &weights.b_ho,
+        &mut o_hidden,
+        batch_size,
+        hidden_size,
+        hidden_size,
+    );
     for i in 0..o_gate.len() {
         o_gate[i] = sigmoid(o_input[i] + o_hidden[i]);
     }
-    
+
     // Update cell state: c_t = f_t ⊙ c_{t-1} + i_t ⊙ g_t
     let mut cell = vec![0.0f32; batch_size * hidden_size];
     for i in 0..cell.len() {
         cell[i] = f_gate[i] * prev_cell[i] + i_gate[i] * g_gate[i];
     }
-    
+
     // Update hidden state: h_t = o_t ⊙ tanh(c_t)
     let mut hidden = vec![0.0f32; batch_size * hidden_size];
     for i in 0..hidden.len() {
         hidden[i] = o_gate[i] * tanh(cell[i]);
     }
-    
+
     Ok(LSTMState { hidden, cell })
 }
 
@@ -223,11 +291,11 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     async fn get_test_device() -> Arc<WgpuDevice> {
         Arc::new(WgpuDevice::new().await.unwrap())
     }
-    
+
     fn create_lstm_weights(input_size: usize, hidden_size: usize) -> LSTMWeights {
         LSTMWeights {
             w_ii: vec![0.01; hidden_size * input_size],
@@ -248,30 +316,37 @@ mod tests {
             b_ho: vec![0.0; hidden_size],
         }
     }
-    
+
     #[tokio::test]
     async fn test_lstm_cell_basic() {
         let dev = get_test_device().await;
         let device = &dev.device;
         let queue = &dev.queue;
-        
+
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;
-        
+
         let input = vec![0.5; batch_size * input_size];
         let prev_hidden = vec![0.0; batch_size * hidden_size];
         let prev_cell = vec![0.0; batch_size * hidden_size];
-        
+
         let weights = create_lstm_weights(input_size, hidden_size);
-        
+
         let state = lstm_cell(
-            &device, &queue,
-            &input, &prev_hidden, &prev_cell,
+            &device,
+            &queue,
+            &input,
+            &prev_hidden,
+            &prev_cell,
             &weights,
-            batch_size, input_size, hidden_size
-        ).await.unwrap();
-        
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(state.hidden.len(), batch_size * hidden_size);
         assert_eq!(state.cell.len(), batch_size * hidden_size);
     }
@@ -284,13 +359,25 @@ mod tests {
         let batch_size = 1;
         let input_size = 2;
         let hidden_size = 2;
-        
+
         let input = vec![1.0; batch_size * input_size];
         let prev_hidden = vec![0.0; batch_size * hidden_size];
         let prev_cell = vec![0.0; batch_size * hidden_size];
         let weights = create_lstm_weights(input_size, hidden_size);
-        
-        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+
+        let state = lstm_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &prev_cell,
+            &weights,
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
         assert_eq!(state.hidden.len(), 2);
         assert_eq!(state.cell.len(), 2);
     }
@@ -303,13 +390,25 @@ mod tests {
         let batch_size = 1;
         let input_size = 16;
         let hidden_size = 64;
-        
+
         let input = vec![0.5; batch_size * input_size];
         let prev_hidden = vec![0.0; batch_size * hidden_size];
         let prev_cell = vec![0.0; batch_size * hidden_size];
         let weights = create_lstm_weights(input_size, hidden_size);
-        
-        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+
+        let state = lstm_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &prev_cell,
+            &weights,
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
         assert_eq!(state.hidden.len(), 64);
         assert!(state.hidden.iter().all(|&x| x.is_finite()));
     }
@@ -322,13 +421,25 @@ mod tests {
         let batch_size = 32;
         let input_size = 8;
         let hidden_size = 16;
-        
+
         let input = vec![0.5; batch_size * input_size];
         let prev_hidden = vec![0.0; batch_size * hidden_size];
         let prev_cell = vec![0.0; batch_size * hidden_size];
         let weights = create_lstm_weights(input_size, hidden_size);
-        
-        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
+
+        let state = lstm_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &prev_cell,
+            &weights,
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
         assert_eq!(state.hidden.len(), batch_size * hidden_size);
     }
 
@@ -340,14 +451,26 @@ mod tests {
         let batch_size = 1;
         let input_size = 4;
         let hidden_size = 8;
-        
+
         let input = vec![1.0; batch_size * input_size];
         let prev_hidden = vec![0.5; batch_size * hidden_size];
         let prev_cell = vec![0.3; batch_size * hidden_size];
         let weights = create_lstm_weights(input_size, hidden_size);
-        
-        let state = lstm_cell(&dev.device, &dev.queue, &input, &prev_hidden, &prev_cell, &weights, batch_size, input_size, hidden_size).await.unwrap();
-        
+
+        let state = lstm_cell(
+            &dev.device,
+            &dev.queue,
+            &input,
+            &prev_hidden,
+            &prev_cell,
+            &weights,
+            batch_size,
+            input_size,
+            hidden_size,
+        )
+        .await
+        .unwrap();
+
         assert_eq!(state.hidden.len(), 8);
         assert_eq!(state.cell.len(), 8);
         // Cell state should be influenced by previous state

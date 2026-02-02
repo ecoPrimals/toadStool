@@ -259,27 +259,38 @@ impl SimpleNetwork {
         let parse_dims = |line: String, context: &str| -> Result<Vec<usize>> {
             line.split_whitespace()
                 .map(|s| {
-                    s.parse::<usize>()
-                        .with_context(|| format!("Failed to parse '{}' as dimension in {}", s, context))
+                    s.parse::<usize>().with_context(|| {
+                        format!("Failed to parse '{}' as dimension in {}", s, context)
+                    })
                 })
                 .collect()
         };
 
         // Read dimensions
         let dims1 = parse_dims(
-            lines.next()
+            lines
+                .next()
                 .ok_or_else(|| anyhow::anyhow!("Missing w1 dimensions"))??,
-            "w1 dimensions"
+            "w1 dimensions",
         )?;
         let dims2 = parse_dims(
-            lines.next()
+            lines
+                .next()
                 .ok_or_else(|| anyhow::anyhow!("Missing w2 dimensions"))??,
-            "w2 dimensions"
+            "w2 dimensions",
         )?;
 
         // Validate dimensions
-        anyhow::ensure!(dims1.len() == 2, "w1 dimensions must have 2 values, got {}", dims1.len());
-        anyhow::ensure!(dims2.len() == 2, "w2 dimensions must have 2 values, got {}", dims2.len());
+        anyhow::ensure!(
+            dims1.len() == 2,
+            "w1 dimensions must have 2 values, got {}",
+            dims1.len()
+        );
+        anyhow::ensure!(
+            dims2.len() == 2,
+            "w2 dimensions must have 2 values, got {}",
+            dims2.len()
+        );
 
         // Read w1
         let mut w1_data = Vec::new();

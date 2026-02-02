@@ -12,12 +12,12 @@ pub async fn trace(
     if rows != cols {
         return Err("Trace requires square matrix".into());
     }
-    
+
     let mut sum = 0.0;
     for i in 0..rows {
         sum += matrix[i * cols + i];
     }
-    
+
     Ok(sum)
 }
 
@@ -26,7 +26,7 @@ mod tests {
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
-    
+
     #[tokio::test]
     async fn test_trace() {
         let dev = Arc::new(WgpuDevice::new().await.unwrap());

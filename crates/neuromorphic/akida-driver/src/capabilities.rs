@@ -10,19 +10,19 @@ use crate::error::{AkidaError, Result};
 pub struct Capabilities {
     /// Chip version (AKD1000, AKD1500, etc.)
     pub chip_version: ChipVersion,
-    
+
     /// Number of Neural Processing Units
     pub npu_count: u32,
-    
+
     /// On-chip SRAM in megabytes
     pub memory_mb: u32,
-    
+
     /// PCIe configuration
     pub pcie: PcieConfig,
-    
+
     /// Current power consumption in milliwatts
     pub power_mw: Option<u32>,
-    
+
     /// Die temperature in celsius
     pub temperature_c: Option<f32>,
 }
@@ -32,10 +32,10 @@ pub struct Capabilities {
 pub enum ChipVersion {
     /// AKD1000 (80 NPUs, 10MB SRAM)
     Akd1000,
-    
+
     /// AKD1500 (with external memory support)
     Akd1500,
-    
+
     /// Unknown/future version
     Unknown(u16),
 }
@@ -74,13 +74,13 @@ impl ChipVersion {
 pub struct PcieConfig {
     /// PCIe generation (1, 2, 3, 4, 5)
     pub generation: u8,
-    
+
     /// Number of PCIe lanes (1, 4, 8, 16)
     pub lanes: u8,
-    
+
     /// Link speed in GT/s
     pub speed_gts: f32,
-    
+
     /// Theoretical bandwidth in GB/s
     pub bandwidth_gbps: f32,
 }
@@ -90,7 +90,7 @@ impl PcieConfig {
     pub fn new(generation: u8, lanes: u8) -> Self {
         let speed_gts = Self::generation_to_speed(generation);
         let bandwidth_gbps = Self::calculate_bandwidth(generation, lanes);
-        
+
         Self {
             generation,
             lanes,
@@ -106,10 +106,10 @@ impl PcieConfig {
     /// Returns error if PCIe configuration cannot be read from sysfs.
     pub fn from_sysfs(pcie_address: &str) -> Result<Self> {
         let base_path = format!("/sys/bus/pci/devices/{pcie_address}");
-        
+
         let generation = Self::read_pcie_generation(&base_path)?;
         let lanes = Self::read_pcie_lanes(&base_path)?;
-        
+
         Ok(Self::new(generation, lanes))
     }
 
@@ -126,14 +126,14 @@ impl PcieConfig {
 
     fn calculate_bandwidth(generation: u8, lanes: u8) -> f32 {
         let per_lane_gbps = match generation {
-            1 => 0.25,  // 250 MB/s
-            2 => 0.5,   // 500 MB/s
-            3 => 1.0,   // ~1 GB/s
-            4 => 2.0,   // ~2 GB/s
-            5 => 4.0,   // 4 GB/s for Gen5
-            _ => 4.0,   // default for unknown generations
+            1 => 0.25, // 250 MB/s
+            2 => 0.5,  // 500 MB/s
+            3 => 1.0,  // ~1 GB/s
+            4 => 2.0,  // ~2 GB/s
+            5 => 4.0,  // 4 GB/s for Gen5
+            _ => 4.0,  // default for unknown generations
         };
-        
+
         per_lane_gbps * f32::from(lanes)
     }
 
@@ -144,7 +144,7 @@ impl PcieConfig {
     /// Returns error if sysfs file cannot be read or parsed.
     fn read_pcie_generation(base_path: &str) -> Result<u8> {
         let speed_path = format!("{base_path}/current_link_speed");
-        
+
         std::fs::read_to_string(&speed_path)
             .ok()
             .and_then(|s| {
@@ -173,7 +173,7 @@ impl PcieConfig {
     /// Returns error if sysfs file cannot be read or parsed.
     fn read_pcie_lanes(base_path: &str) -> Result<u8> {
         let width_path = format!("{base_path}/current_link_width");
-        
+
         std::fs::read_to_string(&width_path)
             .ok()
             .and_then(|s| s.trim().parse().ok())
@@ -191,25 +191,25 @@ impl Capabilities {
     /// Returns error if sysfs files cannot be read or parsed.
     pub fn query(device_index: usize, pcie_address: &str) -> Result<Self> {
         tracing::debug!("Querying capabilities for device {device_index} at {pcie_address}");
-        
+
         // Read device ID from sysfs to determine chip version
         let chip_version = Self::read_chip_version(pcie_address)?;
-        
+
         // Query PCIe configuration
         let pcie = PcieConfig::from_sysfs(pcie_address)?;
-        
+
         // Query actual NPU count from device (with fallback to typical values)
         let npu_count = Self::query_npu_count(pcie_address, &chip_version)?;
-        
+
         // Memory size from chip specs (would query from device if protocol known)
         let memory_mb = chip_version.typical_memory_mb();
-        
+
         // Query power consumption from hwmon/sysfs
         let power_mw = Self::query_power_consumption(pcie_address);
-        
+
         // Query temperature from hwmon/sysfs
         let temperature_c = Self::query_temperature(pcie_address);
-        
+
         Ok(Self {
             chip_version,
             npu_count,
@@ -219,7 +219,7 @@ impl Capabilities {
             temperature_c,
         })
     }
-    
+
     /// Query NPU count from device
     ///
     /// **Deep Debt**: Complete implementation with fallback!
@@ -233,20 +233,24 @@ impl Capabilities {
     fn query_npu_count(pcie_address: &str, chip_version: &ChipVersion) -> Result<u32> {
         // Try to read from device-specific sysfs attribute
         let npu_count_path = format!("/sys/bus/pci/devices/{pcie_address}/akida_npu_count");
-        
+
         if let Ok(count_str) = std::fs::read_to_string(&npu_count_path) {
             if let Ok(count) = count_str.trim().parse::<u32>() {
                 tracing::debug!("Queried NPU count from device: {}", count);
                 return Ok(count);
             }
         }
-        
+
         // Fallback to typical values for chip version
         let typical = chip_version.typical_npu_count();
-        tracing::debug!("Using typical NPU count for {:?}: {}", chip_version, typical);
+        tracing::debug!(
+            "Using typical NPU count for {:?}: {}",
+            chip_version,
+            typical
+        );
         Ok(typical)
     }
-    
+
     /// Query power consumption from hwmon
     ///
     /// **Deep Debt**: Complete implementation with Linux hwmon!
@@ -256,12 +260,12 @@ impl Capabilities {
     fn query_power_consumption(pcie_address: &str) -> Option<u32> {
         // Try to find hwmon instance for this device
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
-        
+
         let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
             Ok(dir) => dir,
             Err(_) => return None,
         };
-        
+
         // Find first hwmon device (usually hwmon0, hwmon1, etc.)
         for entry in hwmon_dir.flatten() {
             let hwmon_name = entry.file_name();
@@ -269,7 +273,7 @@ impl Capabilities {
                 "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/power1_input",
                 hwmon_name.to_string_lossy()
             );
-            
+
             // power1_input is in microwatts, convert to milliwatts
             if let Ok(power_str) = std::fs::read_to_string(&power_input_path) {
                 if let Ok(power_uw) = power_str.trim().parse::<u32>() {
@@ -279,11 +283,11 @@ impl Capabilities {
                 }
             }
         }
-        
+
         tracing::debug!("Power monitoring not available for device");
         None
     }
-    
+
     /// Query temperature from hwmon
     ///
     /// **Deep Debt**: Complete implementation with Linux hwmon!
@@ -293,12 +297,12 @@ impl Capabilities {
     fn query_temperature(pcie_address: &str) -> Option<f32> {
         // Try to find hwmon instance for this device
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
-        
+
         let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
             Ok(dir) => dir,
             Err(_) => return None,
         };
-        
+
         // Find first hwmon device
         for entry in hwmon_dir.flatten() {
             let hwmon_name = entry.file_name();
@@ -306,7 +310,7 @@ impl Capabilities {
                 "/sys/bus/pci/devices/{pcie_address}/hwmon/{}/temp1_input",
                 hwmon_name.to_string_lossy()
             );
-            
+
             // temp1_input is in millidegrees Celsius, convert to degrees
             if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path) {
                 if let Ok(temp_millic) = temp_str.trim().parse::<i32>() {
@@ -316,7 +320,7 @@ impl Capabilities {
                 }
             }
         }
-        
+
         tracing::debug!("Temperature monitoring not available for device");
         None
     }
@@ -328,15 +332,16 @@ impl Capabilities {
     /// Returns error if device ID cannot be read or parsed.
     fn read_chip_version(pcie_address: &str) -> Result<ChipVersion> {
         let device_id_path = format!("/sys/bus/pci/devices/{pcie_address}/device");
-        
-        let device_id_str = std::fs::read_to_string(&device_id_path)
-            .map_err(|e| AkidaError::capability_query_failed(format!("Failed to read device ID: {e}")))?;
-        
-        let device_id = u16::from_str_radix(
-            device_id_str.trim().trim_start_matches("0x"),
-            16
-        ).map_err(|e| AkidaError::capability_query_failed(format!("Invalid device ID format: {e}")))?;
-        
+
+        let device_id_str = std::fs::read_to_string(&device_id_path).map_err(|e| {
+            AkidaError::capability_query_failed(format!("Failed to read device ID: {e}"))
+        })?;
+
+        let device_id = u16::from_str_radix(device_id_str.trim().trim_start_matches("0x"), 16)
+            .map_err(|e| {
+                AkidaError::capability_query_failed(format!("Invalid device ID format: {e}"))
+            })?;
+
         Ok(ChipVersion::from_device_id(device_id))
     }
 }
@@ -349,17 +354,20 @@ mod tests {
     fn test_chip_version_from_device_id() {
         assert_eq!(ChipVersion::from_device_id(0xBCA1), ChipVersion::Akd1000);
         assert_eq!(ChipVersion::from_device_id(0xBCA2), ChipVersion::Akd1500);
-        assert!(matches!(ChipVersion::from_device_id(0xFFFF), ChipVersion::Unknown(0xFFFF)));
+        assert!(matches!(
+            ChipVersion::from_device_id(0xFFFF),
+            ChipVersion::Unknown(0xFFFF)
+        ));
     }
 
     #[test]
     fn test_pcie_bandwidth_calculation() {
         let gen2_x4 = PcieConfig::new(2, 4);
         assert!((gen2_x4.bandwidth_gbps - 2.0).abs() < f32::EPSILON);
-        
+
         let gen3_x8 = PcieConfig::new(3, 8);
         assert!((gen3_x8.bandwidth_gbps - 8.0).abs() < f32::EPSILON);
-        
+
         let gen4_x16 = PcieConfig::new(4, 16);
         assert!((gen4_x16.bandwidth_gbps - 32.0).abs() < f32::EPSILON);
     }
