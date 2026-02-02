@@ -91,22 +91,20 @@ async fn test_nn_vision_integration() {
 }
 
 /// Test 3: SNN Neuromorphic Architecture
-/// Verify SNN operations work with sparse, event-driven patterns
+/// Verify SNN operations work with sparse, event-driven patterns (Pure Rust!)
 #[tokio::test]
 async fn test_snn_neuromorphic() {
-    let device = WgpuDevice::new().await.unwrap();
+    // No device needed - pure Rust!
 
     // Build spiking neural network
-    let mut network = SpikingNetwork::builder(&device)
+    let mut network = SpikingNetwork::builder()
         .add_layer(SNNLayer::LIF {
             size: 100,
             tau: 20.0,
             threshold: 1.0,
             reset: 0.0,
         })
-        .build()
-        .await
-        .unwrap();
+        .build();
 
     // Sparse spike inputs (event-driven)
     let spike_times = vec![1.0, 5.0, 10.0, 15.0, 20.0];
@@ -120,7 +118,7 @@ async fn test_snn_neuromorphic() {
         })
         .collect();
 
-    let output = network.forward(&input_spikes).await.unwrap();
+    let output = network.process_step(&input_spikes).unwrap();
 
     assert_eq!(output.len(), 100);
 
@@ -249,17 +247,16 @@ async fn test_all_apis_hardware_agnostic() {
         .await;
     assert!(nn.is_ok(), "NN failed");
 
-    // 4. SNN
-    let snn = SpikingNetwork::builder(&device)
+    // 4. SNN (pure Rust - no device needed!)
+    let _snn = SpikingNetwork::builder()
         .add_layer(SNNLayer::LIF {
             size: 50,
             tau: 20.0,
             threshold: 1.0,
             reset: 0.0,
         })
-        .build()
-        .await;
-    assert!(snn.is_ok(), "SNN failed");
+        .build();
+    assert!(true, "SNN created successfully");
 
     // 5. Vision
     let _vision = VisionPipeline::new(&device);

@@ -78,11 +78,7 @@ pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
 // Re-export commonly used operations
-pub use ops::lif_neuron::lif_neuron;
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
-pub use ops::spike_decode::spike_decode;
-pub use ops::spike_encode::spike_encode;
-pub use ops::temporal_pool::temporal_pool;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {

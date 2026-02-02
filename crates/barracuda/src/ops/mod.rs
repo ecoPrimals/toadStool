@@ -7,11 +7,7 @@
 //! - Zero duplication
 
 // Neuromorphic operations (NPU/GPU/CPU universal)
-pub mod lif_neuron;
 pub mod sparse_matmul_quantized;
-pub mod spike_decode;
-pub mod spike_encode;
-pub mod temporal_pool;
 
 
 // Homomorphic encryption operations (FHE - GPU accelerated)
