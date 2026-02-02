@@ -66,7 +66,8 @@
 
 pub mod device;
 pub mod error;
-pub mod esn; // High-level Echo State Network API
+pub mod esn;
+pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
 pub mod nn; // High-level Neural Network Training API
 pub mod npu;
