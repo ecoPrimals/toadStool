@@ -13,10 +13,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("🧠 Echo State Network - Time Series Prediction Demo\n");
     println!("═══════════════════════════════════════════════════\n");
 
-    // Initialize GPU device
-    println!("🔧 Initializing GPU device...");
-    let device = WgpuDevice::new().await?;
-    println!("✅ Device ready\n");
+    // No GPU needed - pure Rust!
+    println!("✅ Running on CPU (pure Rust!)\n");
 
     // Configure ESN
     println!("⚙️  Configuring ESN...");
@@ -35,10 +33,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("   Spectral radius: {:.2}", config.spectral_radius);
     println!();
 
-    // Create ESN
+    // Create ESN (pure Rust - no device needed!)
     println!("🧠 Creating ESN...");
-    let mut esn = ESN::new(&device, config).await?;
-    println!("✅ ESN initialized\n");
+    let mut esn = ESN::new(config)?;
+    println!("✅ ESN initialized (pure Rust!)\n");
 
     // Generate training data
     println!("📊 Generating training data (sine wave)...");
@@ -54,9 +52,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("   {} training samples\n", num_train);
 
-    // Train
+    // Train (pure Rust - no GPU!)
     println!("🎓 Training ESN...");
-    let mse = esn.train(&train_inputs, &train_targets).await?;
+    let mse = esn.train(&train_inputs, &train_targets)?;
     println!("✅ Training MSE: {:.6}\n", mse);
 
     // Test
@@ -66,9 +64,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .map(|i| vec![((num_train + i) as f32 * 0.1).sin()])
         .collect();
 
-    let predictions = esn.predict(&test_inputs).await?;
+    let predictions = esn.predict(&test_inputs)?;
 
-    println!("✅ {} predictions generated\n", predictions.len());
+    println!("✅ {} predictions generated (pure Rust!)\n", predictions.len());
 
     println!("🎊 Demo Complete!");
     println!("\n💡 Key Achievement:");

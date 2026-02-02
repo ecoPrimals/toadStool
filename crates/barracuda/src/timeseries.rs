@@ -136,6 +136,7 @@ pub struct Decomposition {
 /// - Hardware-agnostic (GPU/CPU/NPU)
 /// - Production-complete (no mocks)
 /// - Capability-based (discovers hardware)
+#[allow(dead_code)] // device used by NN training (not ESN)
 pub struct TimeSeriesAnalyzer {
     device: WgpuDevice,
     models: Vec<TimeSeriesModel>,
@@ -180,7 +181,7 @@ impl TimeSeriesAnalyzer {
                     seed: 42,
                 };
 
-                self.esn_instance = Some(ESN::new(&self.device, config).await?);
+                self.esn_instance = Some(ESN::new(config)?);
                 break; // Only create one ESN instance
             }
         }
@@ -368,15 +369,15 @@ impl TimeSeriesAnalyzer {
         let sequence: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[0]]).collect();
         let targets: Vec<Vec<f32>> = history.windows(2).map(|w| vec![w[1]]).collect();
 
-        // Train ESN on historical data
-        esn.train(&sequence, &targets).await?;
+        // Train ESN on historical data (pure Rust - no await!)
+        esn.train(&sequence, &targets)?;
 
         // Generate forecast by feeding predictions back
         let mut forecast_values = Vec::with_capacity(horizon);
         let mut current_input = vec![history[history.len() - 1]];
 
         for _ in 0..horizon {
-            let prediction = esn.predict(&[current_input.clone()]).await?;
+            let prediction = esn.predict(&[current_input.clone()])?;
             let next_value = prediction[0][0];
             forecast_values.push(next_value);
             current_input = vec![next_value];

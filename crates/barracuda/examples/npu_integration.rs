@@ -14,6 +14,23 @@ use barracuda::npu::{EventCodec, NpuMlBackend};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+// Main function for example
+fn main() -> Result<()> {
+    println!("🧠 BarraCUDA NPU Integration Examples\n");
+    println!("═══════════════════════════════════════\n");
+    
+    println!("📋 Available Examples:");
+    println!("  1. MLP Inference");
+    println!("  2. Transformer Block");
+    println!("  3. Classification Network");
+    println!("\n💡 Running example 1: MLP Inference\n");
+    
+    // Run example 1 by default
+    example_mlp_inference()?;
+    
+    Ok(())
+}
+
 /// Example 1: Simple MLP Inference on NPU
 ///
 /// **Architecture**: Input → Dense → ReLU → Dense → Softmax

@@ -79,11 +79,7 @@ pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0:
 
 // Re-export commonly used operations
 pub use ops::lif_neuron::lif_neuron;
-pub use ops::reservoir_init::reservoir_init;
-pub use ops::reservoir_update::reservoir_update;
-pub use ops::ridge_regression::ridge_regression;
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
-pub use ops::spectral_radius::spectral_radius;
 pub use ops::spike_decode::spike_decode;
 pub use ops::spike_encode::spike_encode;
 pub use ops::temporal_pool::temporal_pool;

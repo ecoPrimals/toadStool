@@ -216,21 +216,17 @@ async fn test_multi_api_workflow() {
 async fn test_all_apis_hardware_agnostic() {
     let device = WgpuDevice::new().await.unwrap();
 
-    // 1. ESN
-    let esn = ESN::new(
-        &device,
-        ESNConfig {
-            input_size: 1,
-            reservoir_size: 50,
-            output_size: 1,
-            spectral_radius: 0.9,
-            connectivity: 0.1,
-            leak_rate: 0.3,
-            regularization: 1e-6,
-            seed: 42,
-        },
-    )
-    .await;
+    // 1. ESN (pure Rust - no device needed!)
+    let esn = ESN::new(ESNConfig {
+        input_size: 1,
+        reservoir_size: 50,
+        output_size: 1,
+        spectral_radius: 0.9,
+        connectivity: 0.1,
+        leak_rate: 0.3,
+        regularization: 1e-6,
+        seed: 42,
+    });
     assert!(esn.is_ok(), "ESN failed");
 
     // 2. Genomics (pure Rust - no device needed!)
@@ -318,21 +314,17 @@ async fn test_error_handling() {
 async fn test_concurrent_apis() {
     let device = WgpuDevice::new().await.unwrap();
 
-    // Create multiple APIs
-    let mut esn = ESN::new(
-        &device,
-        ESNConfig {
-            input_size: 1,
-            reservoir_size: 50,
-            output_size: 1,
-            spectral_radius: 0.9,
-            connectivity: 0.1,
-            leak_rate: 0.3,
-            regularization: 1e-6,
-            seed: 42,
-        },
-    )
-    .await
+    // Create multiple APIs (ESN is pure Rust - no device!)
+    let mut esn = ESN::new(ESNConfig {
+        input_size: 1,
+        reservoir_size: 50,
+        output_size: 1,
+        spectral_radius: 0.9,
+        connectivity: 0.1,
+        leak_rate: 0.3,
+        regularization: 1e-6,
+        seed: 42,
+    })
     .unwrap();
 
     let mut nn = NeuralNetwork::builder(&device)
@@ -352,7 +344,7 @@ async fn test_concurrent_apis() {
     let nn_input = vec![vec![0.5; 10]];
     let nn_target = vec![vec![1.0; 5]];
 
-    let esn_result = esn.train(&esn_input, &esn_target).await;
+    let esn_result = esn.train(&esn_input, &esn_target); // Pure Rust - no await!
     let nn_result = nn.train_step(&nn_input, &nn_target).await;
 
     assert!(esn_result.is_ok(), "ESN training failed");

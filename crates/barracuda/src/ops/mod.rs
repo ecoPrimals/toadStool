@@ -13,11 +13,6 @@ pub mod spike_decode;
 pub mod spike_encode;
 pub mod temporal_pool;
 
-// Reservoir computing operations (Echo State Networks)
-pub mod reservoir_init;
-pub mod reservoir_update;
-pub mod ridge_regression;
-pub mod spectral_radius;
 
 // Homomorphic encryption operations (FHE - GPU accelerated)
 pub mod fhe_and;
