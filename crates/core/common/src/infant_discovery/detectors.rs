@@ -380,4 +380,240 @@ mod tests {
         assert_eq!(detectors[0].name(), "kubernetes");
         assert_eq!(detectors[4].name(), "bare_metal");
     }
+
+    #[test]
+    fn test_kubernetes_detector_new() {
+        let detector = KubernetesDetector::new();
+        assert_eq!(detector.name(), "kubernetes");
+    }
+
+    #[test]
+    fn test_kubernetes_detector_default() {
+        let detector = KubernetesDetector::default();
+        assert_eq!(detector.name(), "kubernetes");
+    }
+
+    #[tokio::test]
+    async fn test_kubernetes_detector_no_k8s() {
+        // Clear K8s env vars
+        std::env::remove_var("KUBERNETES_SERVICE_HOST");
+        std::env::remove_var("KUBERNETES_NAMESPACE");
+
+        let detector = KubernetesDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        // Should be None if not in K8s
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_docker_detector_new() {
+        let detector = DockerDetector::new();
+        assert_eq!(detector.name(), "docker");
+    }
+
+    #[test]
+    fn test_docker_detector_default() {
+        let detector = DockerDetector::default();
+        assert_eq!(detector.name(), "docker");
+    }
+
+    #[tokio::test]
+    async fn test_docker_detector_no_docker() {
+        // Test when not in Docker (most likely)
+        let detector = DockerDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        // May or may not be in Docker depending on test environment
+        // Just verify it doesn't panic
+        assert!(result.is_none() || result.is_some());
+    }
+
+    #[test]
+    fn test_consul_detector_new() {
+        let detector = ConsulDetector::new();
+        assert_eq!(detector.name(), "consul");
+    }
+
+    #[test]
+    fn test_consul_detector_default() {
+        let detector = ConsulDetector::default();
+        assert_eq!(detector.name(), "consul");
+    }
+
+    #[tokio::test]
+    async fn test_consul_detector_returns_none() {
+        // Consul detection disabled in pure Rust mode
+        let detector = ConsulDetector::new();
+        let result = detector.detect().await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_cloud_detector_new() {
+        let detector = CloudDetector::new();
+        assert_eq!(detector.name(), "cloud");
+    }
+
+    #[test]
+    fn test_cloud_detector_default() {
+        let detector = CloudDetector::default();
+        assert_eq!(detector.name(), "cloud");
+    }
+
+    #[tokio::test]
+    async fn test_cloud_detector_no_cloud() {
+        // Clear cloud env vars
+        std::env::remove_var("AWS_REGION");
+        std::env::remove_var("AWS_DEFAULT_REGION");
+        std::env::remove_var("GCP_PROJECT");
+        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+
+        let detector = CloudDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        // Should be None if not in cloud
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_bare_metal_detector_new() {
+        let detector = BareMetalDetector::new();
+        assert_eq!(detector.name(), "bare_metal");
+    }
+
+    #[test]
+    fn test_bare_metal_detector_default() {
+        let detector = BareMetalDetector::default();
+        assert_eq!(detector.name(), "bare_metal");
+    }
+
+    #[tokio::test]
+    async fn test_bare_metal_detector_capabilities() {
+        let detector = BareMetalDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        assert!(result.is_some());
+        let substrate = result.unwrap();
+        assert_eq!(substrate.substrate_type, SubstrateType::Bare);
+        assert!(!substrate.capabilities.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_bare_metal_detector_metadata() {
+        let detector = BareMetalDetector::new();
+        let result = detector.detect().await.unwrap();
+
+        assert!(result.is_some());
+        let substrate = result.unwrap();
+        assert!(!substrate.metadata.is_empty());
+        assert!(substrate.metadata.contains_key("deployment"));
+        assert_eq!(substrate.metadata.get("deployment"), Some(&"bare_metal".to_string()));
+    }
+
+    #[test]
+    fn test_standard_detectors_order() {
+        let detectors = standard_detectors();
+
+        // Verify correct priority order
+        assert_eq!(detectors[0].name(), "kubernetes");
+        assert_eq!(detectors[1].name(), "docker");
+        assert_eq!(detectors[2].name(), "consul");
+        assert_eq!(detectors[3].name(), "cloud");
+        assert_eq!(detectors[4].name(), "bare_metal");
+    }
+
+    #[test]
+    fn test_standard_detectors_count() {
+        let detectors = standard_detectors();
+        assert_eq!(detectors.len(), 5);
+    }
+
+    #[test]
+    fn test_detector_names_unique() {
+        let detectors = standard_detectors();
+        let names: Vec<&str> = detectors.iter().map(|d| d.name()).collect();
+
+        // Check all names are unique
+        let mut sorted = names.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(names.len(), sorted.len());
+    }
+
+    #[tokio::test]
+    async fn test_all_detectors_dont_panic() {
+        let detectors = standard_detectors();
+
+        for detector in detectors {
+            // Just verify none panic
+            let result = detector.detect().await;
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_cloud_detect_aws_from_env() {
+        // Set AWS env var
+        std::env::set_var("AWS_REGION", "us-east-1");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, Some("aws".to_string()));
+
+        std::env::remove_var("AWS_REGION");
+    }
+
+    #[test]
+    fn test_cloud_detect_aws_default_region() {
+        std::env::set_var("AWS_DEFAULT_REGION", "us-west-2");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, Some("aws".to_string()));
+
+        std::env::remove_var("AWS_DEFAULT_REGION");
+    }
+
+    #[test]
+    fn test_cloud_detect_gcp() {
+        std::env::set_var("GCP_PROJECT", "my-project");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, Some("gcp".to_string()));
+
+        std::env::remove_var("GCP_PROJECT");
+    }
+
+    #[test]
+    fn test_cloud_detect_gcp_google_cloud() {
+        std::env::set_var("GOOGLE_CLOUD_PROJECT", "another-project");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, Some("gcp".to_string()));
+
+        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+    }
+
+    #[test]
+    fn test_cloud_detect_azure() {
+        std::env::set_var("AZURE_SUBSCRIPTION_ID", "12345");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, Some("azure".to_string()));
+
+        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+    }
+
+    #[test]
+    fn test_cloud_detect_none() {
+        // Clear all cloud vars
+        std::env::remove_var("AWS_REGION");
+        std::env::remove_var("AWS_DEFAULT_REGION");
+        std::env::remove_var("GCP_PROJECT");
+        std::env::remove_var("GOOGLE_CLOUD_PROJECT");
+        std::env::remove_var("AZURE_SUBSCRIPTION_ID");
+
+        let provider = CloudDetector::detect_cloud_provider();
+        assert_eq!(provider, None);
+    }
 }
