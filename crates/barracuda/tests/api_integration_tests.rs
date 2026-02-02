@@ -130,30 +130,29 @@ async fn test_snn_neuromorphic() {
 }
 
 /// Test 4: Genomics Workflow
-/// End-to-end DNA sequence analysis
+/// End-to-end DNA sequence analysis (Pure Rust - no device!)
 #[tokio::test]
 async fn test_genomics_workflow() {
-    let device = WgpuDevice::new().await.unwrap();
-
+    // Pure Rust - no device needed!
     let config = SequenceConfig {
         complexity_window: 20, // Reduced to match sequence length
         min_unique_bases: 2,
         parallel_batch: true,
     };
 
-    let analyzer = SequenceAnalyzer::new(&device, config).await.unwrap();
+    let analyzer = SequenceAnalyzer::new(config);
 
     // DNA sequence
     let sequence = b"ATGCGATCGATCGATCGTAGCTAGCTAGCTAG";
 
     // Find patterns
     let patterns = vec![b"ATCG".as_ref(), b"TAGC".as_ref()];
-    let matches = analyzer.find_motifs(sequence, &patterns).await.unwrap();
+    let matches = analyzer.find_motifs(sequence, &patterns).unwrap();
 
     assert!(!matches.is_empty(), "Should find pattern matches");
 
     // Analyze composition
-    let composition = analyzer.analyze_composition(sequence).await.unwrap();
+    let composition = analyzer.analyze_composition(sequence).unwrap();
 
     assert!(composition.gc_content >= 0.0 && composition.gc_content <= 1.0);
     assert_eq!(composition.length, sequence.len());
@@ -234,17 +233,14 @@ async fn test_all_apis_hardware_agnostic() {
     .await;
     assert!(esn.is_ok(), "ESN failed");
 
-    // 2. Genomics
-    let genomics = SequenceAnalyzer::new(
-        &device,
-        SequenceConfig {
-            complexity_window: 100,
-            min_unique_bases: 3,
-            parallel_batch: true,
-        },
-    )
-    .await;
-    assert!(genomics.is_ok(), "Genomics failed");
+    // 2. Genomics (pure Rust - no device needed!)
+    let _genomics = SequenceAnalyzer::new(SequenceConfig {
+        complexity_window: 100,
+        min_unique_bases: 3,
+        parallel_batch: true,
+    });
+    // No async, no device - just works!
+    assert!(true, "Genomics created successfully");
 
     // 3. NN Training
     let nn = NeuralNetwork::builder(&device)
