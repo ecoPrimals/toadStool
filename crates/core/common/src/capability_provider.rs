@@ -289,4 +289,177 @@ mod tests {
         let cap2 = string_to_capability("crypto");
         assert_eq!(capability_to_string(&cap2), "crypto");
     }
+
+    #[test]
+    fn test_capability_serialization_all_variants() {
+        use crate::primal_identity::*;
+
+        // Test all capability type conversions
+        let compute = Capability::Compute(ComputeCapability::NativeExecution);
+        assert_eq!(capability_to_string(&compute), "compute");
+
+        let storage = Capability::Storage(StorageCapability::ObjectStorage);
+        assert_eq!(capability_to_string(&storage), "storage");
+
+        let crypto = Capability::Crypto(CryptoCapability::Encryption);
+        assert_eq!(capability_to_string(&crypto), "crypto");
+
+        let auth = Capability::Authentication(AuthCapability::TokenManagement);
+        assert_eq!(capability_to_string(&auth), "authentication");
+
+        let coord = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
+        assert_eq!(capability_to_string(&coord), "coordination");
+
+        let disc = Capability::Discovery(DiscoveryCapability::RegistryDiscovery);
+        assert_eq!(capability_to_string(&disc), "discovery");
+
+        let custom = Capability::Custom {
+            name: "custom_cap".to_string(),
+            version: "1.0".to_string(),
+        };
+        assert_eq!(capability_to_string(&custom), "custom_cap");
+    }
+
+    #[test]
+    fn test_string_to_capability_all_variants() {
+        // Test string parsing for all types
+        let compute = string_to_capability("compute");
+        assert_eq!(capability_to_string(&compute), "compute");
+
+        let storage = string_to_capability("storage");
+        assert_eq!(capability_to_string(&storage), "storage");
+
+        let crypto = string_to_capability("crypto");
+        assert_eq!(capability_to_string(&crypto), "crypto");
+
+        let auth1 = string_to_capability("authentication");
+        assert_eq!(capability_to_string(&auth1), "authentication");
+
+        let auth2 = string_to_capability("security");
+        assert_eq!(capability_to_string(&auth2), "authentication");
+
+        let coord = string_to_capability("coordination");
+        assert_eq!(capability_to_string(&coord), "coordination");
+
+        let disc = string_to_capability("discovery");
+        assert_eq!(capability_to_string(&disc), "discovery");
+
+        let custom = string_to_capability("unknown_capability");
+        assert_eq!(capability_to_string(&custom), "unknown_capability");
+    }
+
+    #[test]
+    fn test_capability_error_variants() {
+        use crate::primal_identity::CryptoCapability;
+
+        let err1 = CapabilityError::NoProviderFound(Capability::Crypto(
+            CryptoCapability::Encryption,
+        ));
+        assert!(err1.to_string().contains("No provider found"));
+
+        let err2 = CapabilityError::ProviderUnreachable("test-service".to_string());
+        assert!(err2.to_string().contains("test-service"));
+
+        let err3 = CapabilityError::RpcFailed("connection timeout".to_string());
+        assert!(err3.to_string().contains("connection timeout"));
+
+        let err4 = CapabilityError::DiscoveryUnavailable;
+        assert!(err4.to_string().contains("unavailable"));
+
+        let err5 = CapabilityError::InvalidResponse("malformed json".to_string());
+        assert!(err5.to_string().contains("malformed json"));
+    }
+
+    #[tokio::test]
+    async fn test_has_capability() {
+        use crate::primal_identity::*;
+
+        let provider = CapabilityProvider {
+            service_name: "test-provider".to_string(),
+            socket_path: PathBuf::from("/tmp/test.sock"),
+            capabilities: vec![
+                Capability::Crypto(CryptoCapability::Encryption),
+                Capability::Crypto(CryptoCapability::KeyManagement),
+            ],
+            client: Arc::new(RwLock::new(None)),
+        };
+
+        // Test capability checks
+        assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
+        assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::KeyManagement)));
+        assert!(!provider.has_capability(&Capability::Storage(StorageCapability::ObjectStorage)));
+    }
+
+    #[tokio::test]
+    async fn test_capabilities_getter() {
+        use crate::primal_identity::*;
+
+        let caps = vec![
+            Capability::Crypto(CryptoCapability::Encryption),
+            Capability::Storage(StorageCapability::ObjectStorage),
+        ];
+
+        let provider = CapabilityProvider {
+            service_name: "multi-provider".to_string(),
+            socket_path: PathBuf::from("/tmp/multi.sock"),
+            capabilities: caps.clone(),
+            client: Arc::new(RwLock::new(None)),
+        };
+
+        let retrieved_caps = provider.capabilities();
+        assert_eq!(retrieved_caps.len(), 2);
+        assert_eq!(retrieved_caps, &caps[..]);
+    }
+
+    #[tokio::test]
+    async fn test_service_name_getter() {
+        let provider = CapabilityProvider {
+            service_name: "my-service".to_string(),
+            socket_path: PathBuf::from("/tmp/service.sock"),
+            capabilities: vec![],
+            client: Arc::new(RwLock::new(None)),
+        };
+
+        assert_eq!(provider.service_name(), "my-service");
+    }
+
+    #[test]
+    fn test_custom_capability_roundtrip() {
+        let custom = Capability::Custom {
+            name: "my_custom_cap".to_string(),
+            version: "2.0".to_string(),
+        };
+
+        let serialized = capability_to_string(&custom);
+        assert_eq!(serialized, "my_custom_cap");
+
+        let deserialized = string_to_capability(&serialized);
+        match deserialized {
+            Capability::Custom { name, .. } => assert_eq!(name, "my_custom_cap"),
+            _ => panic!("Expected Custom capability"),
+        }
+    }
+
+    #[test]
+    fn test_capability_error_debug() {
+        let err = CapabilityError::DiscoveryUnavailable;
+        let debug_str = format!("{:?}", err);
+        assert!(debug_str.contains("DiscoveryUnavailable"));
+    }
+
+    #[tokio::test]
+    async fn test_provider_clone() {
+        use crate::primal_identity::CryptoCapability;
+
+        let provider1 = CapabilityProvider {
+            service_name: "original".to_string(),
+            socket_path: PathBuf::from("/tmp/orig.sock"),
+            capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
+            client: Arc::new(RwLock::new(None)),
+        };
+
+        let provider2 = provider1.clone();
+        assert_eq!(provider1.service_name(), provider2.service_name());
+        assert_eq!(provider1.capabilities(), provider2.capabilities());
+    }
 }

@@ -320,4 +320,84 @@ mod tests {
         assert!(matches!(method1, DiscoveryMethod::Auto));
         assert!(matches!(method2, DiscoveryMethod::Auto));
     }
+
+    #[test]
+    fn test_discovery_method_variants() {
+        // Test all variants
+        let auto = DiscoveryMethod::Auto;
+        let k8s = DiscoveryMethod::Kubernetes;
+        let mdns = DiscoveryMethod::Mdns;
+        let consul = DiscoveryMethod::Consul;
+        let env = DiscoveryMethod::Environment;
+
+        assert!(matches!(auto, DiscoveryMethod::Auto));
+        assert!(matches!(k8s, DiscoveryMethod::Kubernetes));
+        assert!(matches!(mdns, DiscoveryMethod::Mdns));
+        assert!(matches!(consul, DiscoveryMethod::Consul));
+        assert!(matches!(env, DiscoveryMethod::Environment));
+    }
+
+    #[test]
+    fn test_discovery_error_timeout() {
+        let err = DiscoveryError::Timeout;
+        assert_eq!(err.to_string(), "Discovery timeout");
+    }
+
+    #[test]
+    fn test_discovery_error_no_services() {
+        let err = DiscoveryError::NoServicesFound("test_capability".to_string());
+        assert!(err.to_string().contains("test_capability"));
+    }
+
+    #[test]
+    fn test_discovery_error_failed() {
+        let err = DiscoveryError::DiscoveryFailed("network error".to_string());
+        assert!(err.to_string().contains("network error"));
+    }
+
+    #[test]
+    fn test_discovery_error_invalid_config() {
+        let err = DiscoveryError::InvalidConfig("bad config".to_string());
+        assert!(err.to_string().contains("bad config"));
+    }
+
+    #[test]
+    fn test_discovery_config_production_env() {
+        // Test production environment disables fallback
+        std::env::set_var("TOADSTOOL_ENV", "production");
+        let config = DiscoveryConfig::default();
+        assert!(!config.enable_localhost_fallback);
+        std::env::remove_var("TOADSTOOL_ENV");
+    }
+
+    #[test]
+    fn test_discovery_config_development_env() {
+        // Test development environment enables fallback
+        std::env::remove_var("TOADSTOOL_ENV");
+        let config = DiscoveryConfig::default();
+        assert!(config.enable_localhost_fallback);
+    }
+
+    #[test]
+    fn test_discovery_config_builder_pattern() {
+        let config = DiscoveryConfig {
+            timeout: Duration::from_millis(100),
+            enable_localhost_fallback: true,
+            methods: vec![DiscoveryMethod::Mdns, DiscoveryMethod::Environment],
+        };
+        assert_eq!(config.timeout, Duration::from_millis(100));
+        assert!(config.enable_localhost_fallback);
+        assert_eq!(config.methods.len(), 2);
+    }
+
+    #[test]
+    fn test_discovery_config_clone() {
+        let config1 = DiscoveryConfig::default();
+        let config2 = config1.clone();
+        assert_eq!(config1.timeout, config2.timeout);
+        assert_eq!(
+            config1.enable_localhost_fallback,
+            config2.enable_localhost_fallback
+        );
+    }
 }
