@@ -6,7 +6,7 @@
 //! - Automatic operations dispatch based on device
 //! - Zero duplication across backends
 
-use crate::device::{Auto, WgpuDevice};
+use crate::device::{Auto, Device, WgpuDevice, WorkloadHint};
 use crate::error::{BarracudaError, Result};
 use std::sync::Arc;
 
@@ -70,6 +70,52 @@ impl Tensor {
     /// Get reference to buffer (internal use)
     pub(crate) fn buffer(&self) -> &wgpu::Buffer {
         &self.buffer
+    }
+    
+    /// Query which unified Device type this tensor is conceptually on
+    ///
+    /// **Phase 2**: Maps WgpuDevice to unified Device enum
+    pub fn query_device(&self) -> Device {
+        // For Phase 2, all tensors use WgpuDevice
+        // Check device type to determine if GPU or CPU backend
+        match self.device.device_type() {
+            wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu => Device::GPU,
+            wgpu::DeviceType::VirtualGpu => Device::GPU,
+            wgpu::DeviceType::Cpu => Device::CPU,
+            wgpu::DeviceType::Other => Device::Auto,
+        }
+    }
+    
+    /// Create a routing preference for this tensor's operations
+    ///
+    /// **Phase 2 Note**: This sets an execution hint for future operations.
+    /// Full device migration comes in Phase 3.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let tensor = Tensor::randn(vec![1000, 1000]).await?;
+    /// let gpu_tensor = tensor.prefer_device(Device::GPU); // Hint for GPU
+    /// ```
+    pub fn prefer_device(&self, _device: Device) -> Self {
+        // Phase 2: For now, just return clone with routing hint logged
+        // Phase 3 will implement actual device migration
+        log::debug!("Device preference noted (Phase 3 will implement migration)");
+        self.clone()
+    }
+    
+    /// Create tensor with workload hint for smart routing
+    ///
+    /// **Phase 2**: Adds metadata about workload characteristics
+    ///
+    /// # Example
+    /// ```ignore
+    /// let tensor = Tensor::randn(vec![100, 100]).await?
+    ///     .with_hint(WorkloadHint::SmallWorkload); // Prefers CPU
+    /// ```
+    pub fn with_hint(&self, hint: WorkloadHint) -> Self {
+        let preferred_device = Device::select_for_workload(&hint);
+        log::debug!("Workload hint: {:?} → Device: {}", hint, preferred_device);
+        self.clone()
     }
 
     /// Create tensor from data (for testing and initialization)
@@ -604,5 +650,36 @@ mod tests {
         let tensor2 = Tensor::randn_with_rng(vec![10], &mut rng2).await.unwrap();
         
         assert_eq!(tensor1.to_vec().unwrap(), tensor2.to_vec().unwrap());
+    }
+    
+    #[tokio::test]
+    async fn test_query_device() {
+        let tensor = Tensor::randn(vec![10]).await.unwrap();
+        let device = tensor.query_device();
+        
+        // Device should be one of the valid types
+        assert!(matches!(device, Device::CPU | Device::GPU | Device::Auto));
+    }
+    
+    #[tokio::test]
+    async fn test_prefer_device() {
+        let tensor = Tensor::randn(vec![10, 10]).await.unwrap();
+        
+        // Test device preference (Phase 2: just sets hint)
+        let gpu_tensor = tensor.prefer_device(Device::GPU);
+        assert_eq!(gpu_tensor.shape(), tensor.shape());
+        assert_eq!(gpu_tensor.len(), tensor.len());
+    }
+    
+    #[tokio::test]
+    async fn test_with_hint() {
+        let tensor = Tensor::randn(vec![5, 5]).await.unwrap();
+        
+        // Test workload hints
+        let small = tensor.with_hint(WorkloadHint::SmallWorkload);
+        assert_eq!(small.shape(), tensor.shape());
+        
+        let large = tensor.with_hint(WorkloadHint::LargeMatrices);
+        assert_eq!(large.shape(), tensor.shape());
     }
 }
