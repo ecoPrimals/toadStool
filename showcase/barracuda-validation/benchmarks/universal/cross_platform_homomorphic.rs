@@ -307,10 +307,13 @@ async fn run_cpu(workload: &EncryptedWorkload, iterations: usize) -> Result<Vec<
     Ok(results)
 }
 
-/// GPU Implementation - BarraCUDA WGSL FHE polynomial operations
+/// GPU Implementation - BarraCUDA WGSL FHE operations (polynomials + Boolean gates)
 async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec<UniversalHEResult>> {
     use barracuda::ops::fhe_poly_add::FhePolyAdd;
     use barracuda::ops::fhe_poly_mul::FhePolyMul;
+    use barracuda::ops::fhe_and::FheAnd;
+    use barracuda::ops::fhe_or::FheOr;
+    use barracuda::ops::fhe_xor::FheXor;
     
     // Check for GPU availability
     let device = match WgpuDevice::new().await {
@@ -406,6 +409,127 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     }
     
     println!("   ✅ GPU FHE polynomial operations complete!\n");
+    
+    // Test 3-5: Boolean Gates (simplified for binary values 0/1)
+    println!("   Running GPU FHE Boolean gates...\n");
+    
+    // For Boolean gates, use binary values (0 or 1)
+    // We'll test with 1 and 1 to demonstrate the gates
+    let binary_a = vec![1u64; degree];  // Represents encrypted bit "1"
+    let binary_b = vec![1u64; degree];  // Represents encrypted bit "1"
+    
+    // Test 3: AND Gate
+    {
+        println!("   Running GPU AND gate (degree={})...", degree);
+        let op = FheAnd::new(&device, degree as u32, modulus)?;
+        let start = Instant::now();
+        let result = op.execute(&binary_a, &binary_b).await?;
+        let elapsed = start.elapsed();
+        
+        // Expected: 1 AND 1 = 1
+        let expected = 1u8;
+        let actual = result[0] as u8;
+        let correct = actual == expected;
+        
+        let energy_joules = 250.0 * elapsed.as_secs_f32();  // ~250W GPU power
+        
+        results.push(UniversalHEResult {
+            platform: "GPU".to_string(),
+            backend: "BarraCUDA WGSL".to_string(),
+            operation: "AND".to_string(),
+            num_operations: degree,
+            iterations: 1,
+            input_a_encrypted: 1,
+            input_b_encrypted: 1,
+            expected_result: expected,
+            actual_result: actual,
+            numerically_correct: correct,
+            total_time_ms: elapsed.as_secs_f64() * 1000.0,
+            avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
+            throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
+            power_watts: 250.0,
+            energy_joules,
+            ops_per_joule: degree as f32 / energy_joules,
+            available: true,
+            error_message: None,
+        });
+    }
+    
+    // Test 4: OR Gate
+    {
+        println!("   Running GPU OR gate (degree={})...", degree);
+        let op = FheOr::new(&device, degree as u32, modulus)?;
+        let start = Instant::now();
+        let result = op.execute(&binary_a, &binary_b).await?;
+        let elapsed = start.elapsed();
+        
+        // Expected: 1 OR 1 = 1
+        let expected = 1u8;
+        let actual = result[0] as u8;
+        let correct = actual == expected;
+        
+        let energy_joules = 250.0 * elapsed.as_secs_f32();
+        
+        results.push(UniversalHEResult {
+            platform: "GPU".to_string(),
+            backend: "BarraCUDA WGSL".to_string(),
+            operation: "OR".to_string(),
+            num_operations: degree,
+            iterations: 1,
+            input_a_encrypted: 1,
+            input_b_encrypted: 1,
+            expected_result: expected,
+            actual_result: actual,
+            numerically_correct: correct,
+            total_time_ms: elapsed.as_secs_f64() * 1000.0,
+            avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
+            throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
+            power_watts: 250.0,
+            energy_joules,
+            ops_per_joule: degree as f32 / energy_joules,
+            available: true,
+            error_message: None,
+        });
+    }
+    
+    // Test 5: XOR Gate
+    {
+        println!("   Running GPU XOR gate (degree={})...", degree);
+        let op = FheXor::new(&device, degree as u32, modulus)?;
+        let start = Instant::now();
+        let result = op.execute(&binary_a, &binary_b).await?;
+        let elapsed = start.elapsed();
+        
+        // Expected: 1 XOR 1 = 0
+        let expected = 0u8;
+        let actual = result[0] as u8;
+        let correct = actual == expected;
+        
+        let energy_joules = 250.0 * elapsed.as_secs_f32();
+        
+        results.push(UniversalHEResult {
+            platform: "GPU".to_string(),
+            backend: "BarraCUDA WGSL".to_string(),
+            operation: "XOR".to_string(),
+            num_operations: degree,
+            iterations: 1,
+            input_a_encrypted: 1,
+            input_b_encrypted: 1,
+            expected_result: expected,
+            actual_result: actual,
+            numerically_correct: correct,
+            total_time_ms: elapsed.as_secs_f64() * 1000.0,
+            avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
+            throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
+            power_watts: 250.0,
+            energy_joules,
+            ops_per_joule: degree as f32 / energy_joules,
+            available: true,
+            error_message: None,
+        });
+    }
+    
+    println!("   ✅ GPU FHE Boolean gates complete!\n");
     
     Ok(results)
 }

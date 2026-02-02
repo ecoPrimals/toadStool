@@ -28,6 +28,9 @@ pub mod ridge_regression;
 pub mod fhe_poly_add;
 pub mod fhe_poly_sub;
 pub mod fhe_poly_mul;
+pub mod fhe_and;
+pub mod fhe_or;
+pub mod fhe_xor;
 
 // Activation operations
 pub mod relu;
