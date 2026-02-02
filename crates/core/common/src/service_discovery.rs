@@ -629,4 +629,334 @@ mod tests {
         let caps = discovery.parse_capabilities("coordination,storage,compute");
         assert_eq!(caps.len(), 3);
     }
+
+    #[test]
+    fn test_discovery_error_no_service() {
+        use crate::primal_identity::ComputeCapability;
+        let err = DiscoveryError::NoServiceFound {
+            capability: Capability::Compute(ComputeCapability::NativeExecution),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("No services found"));
+    }
+
+    #[test]
+    fn test_discovery_error_timeout() {
+        let err = DiscoveryError::Timeout {
+            duration: Duration::from_secs(5),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("timeout"));
+    }
+
+    #[test]
+    fn test_discovery_error_method_unavailable() {
+        let err = DiscoveryError::MethodUnavailable {
+            method: "consul".to_string(),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("unavailable"));
+    }
+
+    #[test]
+    fn test_discovery_error_invalid_response() {
+        let err = DiscoveryError::InvalidResponse {
+            reason: "malformed JSON".to_string(),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("Invalid"));
+    }
+
+    #[test]
+    fn test_discovery_error_config_error() {
+        let err = DiscoveryError::ConfigError {
+            reason: "missing field".to_string(),
+        };
+        let msg = format!("{}", err);
+        assert!(msg.contains("Configuration"));
+    }
+
+    #[test]
+    fn test_discovery_method_auto() {
+        let method = DiscoveryMethod::Auto;
+        assert_eq!(method, DiscoveryMethod::Auto);
+    }
+
+    #[test]
+    fn test_discovery_method_mdns() {
+        let method = DiscoveryMethod::Mdns;
+        assert_eq!(method, DiscoveryMethod::Mdns);
+    }
+
+    #[test]
+    fn test_discovery_method_environment() {
+        let method = DiscoveryMethod::Environment;
+        assert_eq!(method, DiscoveryMethod::Environment);
+    }
+
+    #[test]
+    fn test_discovery_method_config_file() {
+        let method = DiscoveryMethod::ConfigFile {
+            path: "/etc/toadstool.conf".to_string(),
+        };
+        if let DiscoveryMethod::ConfigFile { path } = method {
+            assert_eq!(path, "/etc/toadstool.conf");
+        } else {
+            panic!("Expected ConfigFile variant");
+        }
+    }
+
+    #[test]
+    fn test_discovery_method_registry() {
+        let method = DiscoveryMethod::Registry {
+            endpoint: "http://consul:8500".to_string(),
+        };
+        if let DiscoveryMethod::Registry { endpoint } = method {
+            assert!(endpoint.contains("consul"));
+        } else {
+            panic!("Expected Registry variant");
+        }
+    }
+
+    #[test]
+    fn test_discovery_method_multi() {
+        let method = DiscoveryMethod::Multi(vec![
+            DiscoveryMethod::Environment,
+            DiscoveryMethod::Mdns,
+            DiscoveryMethod::Auto,
+        ]);
+        if let DiscoveryMethod::Multi(methods) = method {
+            assert_eq!(methods.len(), 3);
+        } else {
+            panic!("Expected Multi variant");
+        }
+    }
+
+    #[test]
+    fn test_discovery_method_debug() {
+        let method = DiscoveryMethod::Auto;
+        let debug = format!("{:?}", method);
+        assert!(debug.contains("Auto"));
+    }
+
+    #[test]
+    fn test_discovery_method_clone() {
+        let method = DiscoveryMethod::Mdns;
+        let cloned = method.clone();
+        assert_eq!(method, cloned);
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_primary_endpoint() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![
+                ServiceEndpoint::http("localhost", 8080),
+                ServiceEndpoint::http("localhost", 8081),
+            ],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        let primary = service.primary_endpoint();
+        assert!(primary.is_some());
+        assert_eq!(primary.unwrap().port, 8080);
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_no_endpoints() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        let primary = service.primary_endpoint();
+        assert!(primary.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_healthy_endpoints() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![
+                ServiceEndpoint::http("host1", 8080),
+                ServiceEndpoint::http("host2", 8081),
+                ServiceEndpoint::http("host3", 8082),
+            ],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        let healthy = service.healthy_endpoints();
+        assert_eq!(healthy.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_not_fresh() {
+        let old_time = SystemTime::now()
+            .checked_sub(Duration::from_secs(7200))
+            .unwrap();
+
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: old_time,
+            last_seen: old_time,
+            healthy: true,
+        };
+
+        // Should not be fresh with 1 hour TTL
+        assert!(!service.is_fresh(Duration::from_secs(3600)));
+    }
+
+    #[tokio::test]
+    async fn test_service_discovery_mdns() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Mdns).await;
+        // Should succeed even if no services found
+        assert!(discovery.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_service_discovery_config_file() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::ConfigFile {
+            path: "/nonexistent/config.toml".to_string(),
+        })
+        .await;
+        // Should succeed (graceful degradation)
+        assert!(discovery.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_service_discovery_multi() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Multi(vec![
+            DiscoveryMethod::Environment,
+            DiscoveryMethod::Mdns,
+        ]))
+        .await;
+        assert!(discovery.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_service_discovery_with_config() {
+        let config = DiscoveryConfig::default();
+        let discovery = ServiceDiscovery::with_config(DiscoveryMethod::Auto, config).await;
+        assert!(discovery.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_http() {
+        let endpoint = ServiceEndpoint::http("example.com", 80);
+        assert_eq!(endpoint.protocol, "http");
+        assert_eq!(endpoint.address, "example.com");
+        assert_eq!(endpoint.port, 80);
+        assert_eq!(endpoint.url(), "http://example.com:80");
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_https() {
+        let endpoint = ServiceEndpoint::https("secure.com", 443);
+        assert_eq!(endpoint.protocol, "https");
+        assert_eq!(endpoint.port, 443);
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_grpc() {
+        let endpoint = ServiceEndpoint::grpc("grpc.server", 9000);
+        assert_eq!(endpoint.protocol, "grpc");
+        assert_eq!(endpoint.port, 9000);
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_websocket() {
+        let endpoint = ServiceEndpoint::websocket("ws.server", 8080);
+        assert_eq!(endpoint.protocol, "ws");
+        assert_eq!(endpoint.port, 8080);
+    }
+
+    #[tokio::test]
+    async fn test_service_endpoint_unix() {
+        let endpoint = ServiceEndpoint::from_url_string("unix:///tmp/test.sock").unwrap();
+        assert_eq!(endpoint.protocol, "unix");
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_clone() {
+        let service = DiscoveredService {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        let cloned = service.clone();
+        assert_eq!(service.id, cloned.id);
+        assert_eq!(service.name, cloned.name);
+    }
+
+    #[tokio::test]
+    async fn test_discovered_service_serialization() {
+        let service = DiscoveredService {
+            id: "test-123".to_string(),
+            name: "test-service".to_string(),
+            version: "2.0".to_string(),
+            capabilities: vec![],
+            endpoints: vec![],
+            metadata: HashMap::new(),
+            discovered_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            healthy: true,
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&service).unwrap();
+        assert!(json.contains("test-123"));
+        assert!(json.contains("test-service"));
+
+        // Deserialize back
+        let deserialized: DiscoveredService = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.id, service.id);
+        assert_eq!(deserialized.version, "2.0");
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities_empty() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto).await.unwrap();
+
+        let caps = discovery.parse_capabilities("");
+        assert_eq!(caps.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_parse_capabilities_whitespace() {
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto).await.unwrap();
+
+        let caps = discovery.parse_capabilities("  coordination  ,  storage  ");
+        assert_eq!(caps.len(), 2);
+    }
 }
