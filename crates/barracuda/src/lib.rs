@@ -78,10 +78,7 @@ pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
 // Re-export commonly used operations
-pub use ops::complexity_filter::complexity_filter;
-pub use ops::gc_content::gc_content;
 pub use ops::lif_neuron::lif_neuron;
-pub use ops::pattern_match::pattern_match;
 pub use ops::reservoir_init::reservoir_init;
 pub use ops::reservoir_update::reservoir_update;
 pub use ops::ridge_regression::ridge_regression;

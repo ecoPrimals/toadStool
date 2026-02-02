@@ -13,11 +13,6 @@ pub mod spike_decode;
 pub mod spike_encode;
 pub mod temporal_pool;
 
-// Pattern matching operations (Bioinformatics)
-pub mod complexity_filter;
-pub mod gc_content;
-pub mod pattern_match;
-
 // Reservoir computing operations (Echo State Networks)
 pub mod reservoir_init;
 pub mod reservoir_update;
