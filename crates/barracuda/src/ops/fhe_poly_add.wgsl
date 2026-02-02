@@ -62,48 +62,51 @@ fn u64_gte(a: vec2<u32>, b: vec2<u32>) -> bool {
     return a.x >= b.x;
 }
 
-/// Multiply two 64-bit values (returns lower 64 bits of 128-bit result)
-fn u64_mul_lo(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
-    // Full 64×64 multiplication gives 128-bit result
-    // We only need lower 64 bits for Barrett reduction
-    
-    let a_lo = a.x;
-    let a_hi = a.y;
-    let b_lo = b.x;
-    let b_hi = b.y;
+/// Multiply two 32-bit values to get 64-bit result
+fn u32_mul_to_u64(a: u32, b: u32) -> vec2<u32> {
+    // Split into 16-bit parts to avoid overflow
+    let a_lo = a & 0xFFFFu;
+    let a_hi = a >> 16u;
+    let b_lo = b & 0xFFFFu;
+    let b_hi = b >> 16u;
     
     // Partial products
-    let p0 = a_lo * b_lo;           // Lower 32×32
-    let p1 = a_lo * b_hi;           // Cross term 1
-    let p2 = a_hi * b_lo;           // Cross term 2
-    // p3 = a_hi * b_hi (upper 64 bits, not needed for lo result)
+    let p_ll = a_lo * b_lo;
+    let p_lh = a_lo * b_hi;
+    let p_hl = a_hi * b_lo;
+    let p_hh = a_hi * b_hi;
     
-    // Combine for lower 64 bits
-    let mid = p1 + p2;
-    let mid_carry = select(0u, 1u, mid < p1);
-    
-    let lo = p0;
-    let hi = (p1 >> 32u) + (p2 >> 32u) + (p0 >> 32u) + (mid << 32u >> 32u);
+    // Combine
+    let mid = p_lh + p_hl + (p_ll >> 16u);
+    let lo = (mid << 16u) | (p_ll & 0xFFFFu);
+    let hi = p_hh + (mid >> 16u);
     
     return vec2<u32>(lo, hi);
 }
 
-/// Barrett modular reduction: a mod q
-fn barrett_reduce(a: vec2<u32>, q: vec2<u32>, mu: vec2<u32>) -> vec2<u32> {
-    // Approximate quotient: ⌊(a * μ) / 2^64⌋
-    // For 64-bit arithmetic, this is approximately a * mu >> 64
-    // We simplify by using the high part of multiplication
+/// Multiply two 64-bit values (returns lower 64 bits)
+fn u64_mul_lo(a: vec2<u32>, b: vec2<u32>) -> vec2<u32> {
+    // (a.y * 2^32 + a.x) * (b.y * 2^32 + b.x)
+    // = a.x*b.x + 2^32*(a.x*b.y + a.y*b.x) + 2^64*a.y*b.y
+    // Lower 64 bits = a.x*b.x + 2^32*(a.x*b.y + a.y*b.x)[lower]
     
-    // Compute q_approx (simplified for WGSL constraints)
-    // This is an approximation; exact Barrett requires 128-bit arithmetic
-    let q_approx_lo = (a.y * mu.x) + ((a.x * mu.y) >> 32u);
-    let q_approx = vec2<u32>(0u, q_approx_lo);  // Approximate
+    let p0 = u32_mul_to_u64(a.x, b.x);  // bits [0:63]
+    let p1 = u32_mul_to_u64(a.x, b.y);  // bits [32:95]
+    let p2 = u32_mul_to_u64(a.y, b.x);  // bits [32:95]
     
-    // Compute remainder: r = a - q_approx * q
-    let q_times_approx = u64_mul_lo(q_approx, q);
-    var r = u64_sub(a, q_times_approx);
+    // Combine: result_lo = p0.x, result_hi = p0.y + p1.x + p2.x
+    let hi_sum = p0.y + p1.x + p2.x;
     
-    // Correction: at most 2 iterations needed
+    return vec2<u32>(p0.x, hi_sum);
+}
+
+/// Modular reduction: a mod q (simple iterative version)
+fn mod_reduce(a: vec2<u32>, q: vec2<u32>) -> vec2<u32> {
+    // Simple modular reduction: repeatedly subtract q while a >= q
+    // This works for values close to q (typical in FHE after addition)
+    var r = a;
+    
+    // At most 2 subtractions needed for addition (a + b < 2q)
     if (u64_gte(r, q)) {
         r = u64_sub(r, q);
     }
@@ -140,12 +143,11 @@ fn fhe_poly_add(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Add coefficients
     let sum = u64_add(a, b);
     
-    // Load modulus and Barrett constant
+    // Load modulus
     let q = u64_from_parts(params.modulus_lo, params.modulus_hi);
-    let mu = u64_from_parts(params.mu_lo, params.mu_hi);
     
     // Modular reduction
-    let reduced = barrett_reduce(sum, q, mu);
+    let reduced = mod_reduce(sum, q);
     
     // Store result
     result[idx_lo] = reduced.x;
