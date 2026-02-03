@@ -74,9 +74,9 @@ cargo build --release --bin toadstool
 
 ### 🦈 **BarraCUDA: Universal Compute Tensor Library**
 
-**Status**: 🏆 **41.8% Universal (110/263 ops)** • ✅ **A++ Gold Standard** • 🎊 **PHASE 5: 30%!**
+**Status**: 🏆 **42.6% Universal (112/263 ops)** • ✅ **A++ Gold Standard** • 🎊 **PHASE 5: 40%!**
 
-- 🏆 **41.8% Universal Coverage** - 110 operations with WGSL shaders (CPU/GPU/NPU/TPU)
+- 🏆 **42.6% Universal Coverage** - 112 operations with WGSL shaders (CPU/GPU/NPU/TPU)
 - ✅ **Phase 1 Complete** - Core NPU operations (5 ops: matmul, relu, softmax, gelu, layer_norm)
 - ✅ **Phase 2 Complete** - CNN operations (8 ops: conv2d, batch_norm, pooling, elementwise)
 - ✅ **Phase 3 Complete** - Additional ops (84 operations: loss, optimizers, FHE, neuromorphic)
@@ -87,7 +87,7 @@ cargo build --release --bin toadstool
 - ✅ **Hardware-Agnostic** - Runtime capability discovery
 - ✅ **Production-Ready** - Complete implementations, comprehensive tests
 
-**Universal Operations** (105 total): Core ops, activations, normalization, CNN, loss functions (including Dice!), math, tensor manipulation, optimizers, **ALL attention mechanisms**, and more!
+**Universal Operations** (112 total): Core ops, activations, normalization, CNN, loss functions (Dice, Focal, Tversky, Triplet, Contrastive!), math, tensor manipulation, optimizers (including AdamW!), **ALL attention mechanisms**, and more!
 
 **PHASE 4 - ALL 7 OPERATIONS COMPLETE** ✅:
 1. ✅ Scaled Dot-Product Attention (foundation)
@@ -97,6 +97,16 @@ cargo build --release --bin toadstool
 5. ✅ Rotary Embedding (Llama, PaLM)
 6. ✅ Cross Attention (T5, BART, Whisper)
 7. ✅ ALiBi Position (BLOOM, MPT)
+
+**PHASE 5 - 8 OPERATIONS COMPLETE** (40%):
+1. ✅ Dice Loss (medical imaging)
+2. ✅ NAdam Optimizer (Nesterov-accelerated)
+3. ✅ TopK Operation (top-K selection)
+4. ✅ AdamW Optimizer (CRITICAL - decoupled weight decay)
+5. ✅ Tversky Loss (generalized Dice)
+6. ✅ Triplet Loss (metric learning)
+7. ✅ Focal Loss (object detection - RetinaNet)
+8. ✅ Contrastive Loss (SimCLR/MoCo self-supervised)
 
 **Supports**: GPT, Llama, BLOOM, T5, BART, Whisper, and all modern transformers!
 
