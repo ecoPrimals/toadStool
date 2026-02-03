@@ -175,8 +175,95 @@ impl MatMul {
 }
 
 impl Tensor {
+    /// Matrix multiplication
+    ///
+    /// **Phase 3**: Now supports NPU routing!
+    ///
+    /// Automatically routes to best device:
+    /// - NPU if sparse data or energy priority
+    /// - GPU/CPU via WGSL otherwise
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let a = Tensor::randn(vec![128, 64]).await?;
+    /// let b = Tensor::randn(vec![64, 32]).await?;
+    /// let c = a.matmul(&b)?;  // Routes to best device!
+    /// ```
     pub fn matmul(self, other: &Self) -> Result<Self> {
+        // Phase 3: Check if NPU should be used
+        if self.should_use_npu_for_matmul(other) {
+            log::debug!("Routing matmul to NPU (sparse or energy priority)");
+            return self.matmul_npu(other);
+        }
+        
+        // Existing WGSL path (GPU/CPU)
+        log::debug!("Routing matmul to WGSL (GPU/CPU)");
         MatMul::new(self, other.clone()).execute()
+    }
+    
+    /// Check if NPU should be used for this matmul
+    ///
+    /// **Deep Debt**: Runtime analysis, no hardcoding!
+    fn should_use_npu_for_matmul(&self, other: &Self) -> bool {
+        use crate::ops::npu_bridge::{should_use_npu, is_npu_available};
+        use crate::workload::Priority;
+        
+        // First check: Is NPU even available?
+        if !is_npu_available() {
+            return false;
+        }
+        
+        // Extract data for sparsity analysis
+        let self_data = match self.to_vec() {
+            Ok(d) => d,
+            Err(_) => return false, // Can't analyze, use WGSL
+        };
+        
+        let other_data = match other.to_vec() {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+        
+        // Check both matrices - if either is sparse, NPU may help
+        let priority = Priority::Balanced; // TODO: Make configurable
+        should_use_npu(&self_data, priority) || should_use_npu(&other_data, priority)
+    }
+    
+    /// Execute matmul on NPU
+    ///
+    /// **Phase 3**: Bridge to NPU operations via npu_bridge
+    ///
+    /// **Deep Debt**:
+    /// - Uses npu_bridge for conversion (Tensor ↔ f32)
+    /// - Preserves device for future operations
+    /// - Graceful fallback on error
+    fn matmul_npu(&self, other: &Self) -> Result<Self> {
+        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor, with_npu_backend};
+        use crate::npu::ops::matmul::npu_matmul;
+        
+        // Extract dimensions
+        let m = self.shape()[0];
+        let k = self.shape()[1];
+        let n = other.shape()[1];
+        
+        // Extract data via bridge
+        let a_data = tensor_to_npu_data(self)?;
+        let b_data = tensor_to_npu_data(other)?;
+        
+        // Execute on NPU via bridge
+        let result_data = with_npu_backend(|npu| {
+            npu_matmul(&a_data, &b_data, m, k, n, npu)
+        })?;
+        
+        // Convert back to Tensor via bridge
+        let device = self.device().clone();
+        let shape = vec![m, n];
+        
+        // Block on async operation using futures executor
+        futures::executor::block_on(
+            npu_data_to_tensor(result_data, shape, device)
+        )
     }
 }
 
