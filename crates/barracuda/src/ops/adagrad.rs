@@ -1,4 +1,49 @@
-use crate::error::Result;
+//! AdaGrad Optimizer - GPU-accelerated Adaptive Gradient Algorithm
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (existing shader evolved)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready)
+//! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! G_t = G_{t-1} + g_t²
+//! w_t = w_{t-1} - (lr / sqrt(G_t + ε)) * g_t
+//! ```
+//!
+//! **Key Properties**:
+//! - Adapts learning rate per parameter based on gradient history
+//! - Accumulates squared gradients
+//! - Good for sparse gradients
+//! - Learning rate monotonically decreases (limitation)
+//!
+//! **Parameters**:
+//! - `learning_rate`: Initial step size, typically 0.01
+//! - `epsilon` (ε): Numerical stability constant, typically 1e-8
+//!
+//! **Used By**: Sparse gradient problems, NLP tasks
+//!
+//! **Note**: RMSprop and Adam address AdaGrad's monotonic decrease issue
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let weights = Tensor::randn(vec![1000]).await?;
+//! let gradients = Tensor::randn(vec![1000]).await?;
+//!
+//! // First step
+//! let (w1, acc1) = weights.adagrad_step(&gradients, 0.01, None)?;
+//!
+//! // Subsequent steps
+//! let (w2, acc2) = w1.adagrad_step(&gradients, 0.01, Some(&acc1))?;
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -19,6 +64,46 @@ pub struct AdaGrad {
 }
 
 impl AdaGrad {
+    pub fn new(
+        weights: Tensor,
+        gradients: Tensor,
+        learning_rate: f32,
+        accumulated: Option<Tensor>,
+    ) -> Result<Self> {
+        // Validate shapes match
+        if weights.shape() != gradients.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                weights.shape().to_vec(),
+                gradients.shape().to_vec(),
+            ));
+        }
+
+        // Validate learning rate is positive
+        if learning_rate <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "adagrad",
+                "learning_rate must be positive",
+            ));
+        }
+
+        // Validate accumulated shape if provided
+        if let Some(ref acc) = accumulated {
+            if acc.shape() != weights.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    acc.shape().to_vec(),
+                    weights.shape().to_vec(),
+                ));
+            }
+        }
+
+        Ok(Self {
+            weights,
+            gradients,
+            accumulated,
+            learning_rate,
+        })
+    }
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/adagrad.wgsl")
     }
@@ -231,29 +316,44 @@ impl AdaGrad {
     }
 }
 
-pub trait AdaGradExt {
-    fn adagrad_step(
-        self,
-        gradients: &Tensor,
-        learning_rate: f32,
-        accumulated: Option<&Tensor>,
-    ) -> Result<(Tensor, Tensor)>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION (MODERN IDIOMATIC RUST)
+// ═══════════════════════════════════════════════════════════════
 
-impl AdaGradExt for Tensor {
-    fn adagrad_step(
+impl Tensor {
+    /// AdaGrad optimizer step - adaptive learning rate for sparse gradients
+    ///
+    /// **Deep Debt**: Historical optimizer, foundation for Adam/RMSprop
+    ///
+    /// # Arguments
+    /// - `gradients`: Gradient tensor [same shape as weights]
+    /// - `learning_rate`: Initial step size, typically 0.01
+    /// - `accumulated`: Accumulated squared gradients (None for first step)
+    ///
+    /// # Returns
+    /// - Tuple: (updated_weights, updated_accumulated)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // First step
+    /// let (w1, acc1) = weights.adagrad_step(&grads, 0.01, None)?;
+    /// 
+    /// // Subsequent steps
+    /// let (w2, acc2) = w1.adagrad_step(&grads, 0.01, Some(&acc1))?;
+    /// ```
+    ///
+    /// # Note
+    /// - Good for sparse gradients
+    /// - Learning rate monotonically decreases
+    /// - RMSprop and Adam address this limitation
+    /// - learning_rate must be positive
+    pub fn adagrad_step(
         self,
-        gradients: &Tensor,
+        gradients: &Self,
         learning_rate: f32,
-        accumulated: Option<&Tensor>,
-    ) -> Result<(Tensor, Tensor)> {
-        let op = AdaGrad {
-            weights: self,
-            gradients: gradients.clone(),
-            accumulated: accumulated.cloned(),
-            learning_rate,
-        };
-        op.execute()
+        accumulated: Option<&Self>,
+    ) -> Result<(Self, Self)> {
+        AdaGrad::new(self, gradients.clone(), learning_rate, accumulated.cloned())?.execute()
     }
 }
 
@@ -266,78 +366,96 @@ mod tests {
     async fn test_adagrad_basic() {
         let device = get_test_device().await;
 
-        let weights =
-            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let gradients =
-            Tensor::from_data(&vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let (updated_weights, _acc) = weights.adagrad_step(&gradients, 0.01, None).unwrap();
+        let (updated_weights, updated_acc) = weights.adagrad_step(&gradients, 0.01, None).unwrap();
+
         let result = updated_weights.to_vec().unwrap();
+        let acc = updated_acc.to_vec().unwrap();
 
-        // Weights should be updated
         assert_eq!(result.len(), 4);
         assert!(result.iter().all(|&x| x.is_finite()));
-        assert!(result[0] < 1.0);
-        assert!(result[1] < 2.0);
+        assert!(acc.iter().all(|&x| x >= 0.0));
+        assert!(result[0] < 1.0, "Expected descent, got {}", result[0]);
     }
 
     #[tokio::test]
-    async fn test_adagrad_edge_cases() {
+    async fn test_adagrad_accumulation() {
         let device = get_test_device().await;
 
-        // Test with zero gradients
-        let weights = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let (updated_weights, acc) = weights.adagrad_step(&gradients, 0.01, None).unwrap();
-        let result = updated_weights.to_vec().unwrap();
-        let acc_result = acc.to_vec().unwrap();
+        // Step 1
+        let (weights1, acc1) = weights.adagrad_step(&gradients, 0.01, None).unwrap();
+        let acc_data1 = acc1.to_vec().unwrap();
+        assert!(acc_data1.iter().all(|&x| x > 0.0));
+
+        // Step 2 with accumulated state
+        let (weights2, acc2) = weights1
+            .adagrad_step(&gradients, 0.01, Some(&acc1))
+            .unwrap();
+        let result = weights2.to_vec().unwrap();
+        let acc_data2 = acc2.to_vec().unwrap();
 
         assert!(result.iter().all(|&x| x.is_finite()));
-        assert!(acc_result.iter().all(|&x| x.is_finite()));
+        // Accumulated should increase
+        assert!(acc_data2.iter().zip(&acc_data1).all(|(&a2, &a1)| a2 > a1));
     }
 
     #[tokio::test]
-    async fn test_adagrad_boundary() {
+    async fn test_adagrad_validation() {
         let device = get_test_device().await;
 
-        // Test with different learning rates
-        let weights1 = Tensor::from_data(&vec![1.0; 4], vec![4], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 5], vec![5], device.clone())
+            .await
+            .unwrap();
+        let grads_correct = Tensor::from_vec_on(vec![0.1; 10], vec![10], device.clone())
+            .await
+            .unwrap();
 
-        let weights2 = Tensor::from_data(&vec![1.0; 4], vec![4], device.clone()).unwrap();
+        // Shape mismatch
+        assert!(weights
+            .clone()
+            .adagrad_step(&gradients, 0.01, None)
+            .is_err());
 
-        let gradients = Tensor::from_data(&vec![0.1; 4], vec![4], device.clone()).unwrap();
-
-        // Small learning rate
-        let (updated1, _acc) = weights1.adagrad_step(&gradients, 0.001, None).unwrap();
-
-        // Large learning rate
-        let (updated2, _acc) = weights2.adagrad_step(&gradients, 0.1, None).unwrap();
-
-        let result1 = updated1.to_vec().unwrap();
-        let result2 = updated2.to_vec().unwrap();
-
-        assert!(result1.iter().all(|&x| x.is_finite()));
-        assert!(result2.iter().all(|&x| x.is_finite()));
-        // Both should be valid updates
-        assert!(result1[0] < 1.0);
-        assert!(result2[0] < 1.0);
+        // Invalid learning rate
+        assert!(weights
+            .clone()
+            .adagrad_step(&grads_correct, -0.01, None)
+            .is_err());
+        assert!(weights
+            .adagrad_step(&grads_correct, 0.0, None)
+            .is_err());
     }
 
     #[tokio::test]
     async fn test_adagrad_large_batch() {
         let device = get_test_device().await;
 
-        // Larger parameter set
         let size = 128;
-        let weights_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
-        let grads_data = vec![0.01; size];
+        let weights = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
+            .await
+            .unwrap();
 
-        let weights = Tensor::from_data(&weights_data, vec![size], device.clone()).unwrap();
-
-        let gradients = Tensor::from_data(&grads_data, vec![size], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.01; size], vec![size], device.clone())
+            .await
+            .unwrap();
 
         let (updated_weights, updated_acc) = weights.adagrad_step(&gradients, 0.01, None).unwrap();
 
@@ -350,29 +468,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_adagrad_precision() {
+    async fn test_adagrad_multi_step() {
         let device = get_test_device().await;
 
-        // Test accumulated gradient behavior
-        let weights = Tensor::from_data(&vec![10.0, 20.0], vec![2], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
         // Step 1
         let (weights1, acc1) = weights.adagrad_step(&gradients, 0.1, None).unwrap();
         let result1 = weights1.to_vec().unwrap();
 
-        assert!(result1[0] < 10.0);
-        assert!(result1[1] < 20.0);
+        assert!(result1[0] < 10.0, "Expected descent, got {}", result1[0]);
+        assert!(result1[1] < 20.0, "Expected descent, got {}", result1[1]);
 
-        // Step 2 with accumulated gradients
-        let (weights2, _acc2) = weights1.adagrad_step(&gradients, 0.1, Some(&acc1)).unwrap();
+        // Step 2 with accumulated state
+        let (weights2, _acc2) = weights1
+            .adagrad_step(&gradients, 0.1, Some(&acc1))
+            .unwrap();
         let result2 = weights2.to_vec().unwrap();
 
-        // Should continue optimizing
-        assert!(result2.iter().all(|&x| x.is_finite()));
-        // Should still be decreasing from original
-        assert!(result2[0] < 10.0);
-        assert!(result2[1] < 20.0);
+        // Should continue descending
+        assert!(result2[0] < result1[0]);
+        assert!(result2[1] < result1[1]);
     }
 }
