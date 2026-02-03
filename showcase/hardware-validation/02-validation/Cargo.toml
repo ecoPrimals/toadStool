@@ -6,6 +6,14 @@ edition = "2021"
 # Standalone showcase
 [workspace]
 
+[[bin]]
+name = "cross-substrate-validation"
+path = "src/main.rs"
+
+[[bin]]
+name = "mha-validation"
+path = "src/mha_validation.rs"
+
 [dependencies]
 # BarraCUDA with substrate selection
 barracuda = { path = "../../../crates/barracuda" }
