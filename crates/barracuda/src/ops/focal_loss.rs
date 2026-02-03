@@ -1,4 +1,43 @@
-use crate::error::Result;
+//! Focal Loss - GPU-accelerated loss for imbalanced classification
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (uses existing shader!)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready for object detection)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! For binary classification:
+//! p_t = p if target=1, else (1-p)
+//! FL = -alpha * (1 - p_t)^gamma * log(p_t)
+//! ```
+//!
+//! **Parameters**:
+//! - `alpha`: Balancing factor (typically 0.25)
+//! - `gamma`: Focusing parameter (typically 2.0)
+//!
+//! **Key Properties**:
+//! - Down-weights easy examples
+//! - Focuses training on hard negatives
+//! - Handles severe class imbalance
+//! - Standard in object detection (RetinaNet)
+//!
+//! **Used By**: RetinaNet, object detection, imbalanced classification
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let predictions = Tensor::randn(vec![1000]).await?;  // Probabilities
+//! let targets = Tensor::randn(vec![1000]).await?;      // Binary labels
+//!
+//! let loss = predictions.focal_loss(&targets, 0.25, 2.0)?;
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -186,12 +225,59 @@ impl FocalLoss {
     }
 }
 
-pub trait FocalLossExt {
-    fn focal_loss(self, targets: &Tensor, alpha: f32, gamma: f32) -> Result<Tensor>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION
+// ═══════════════════════════════════════════════════════════════
 
-impl FocalLossExt for Tensor {
-    fn focal_loss(self, targets: &Tensor, alpha: f32, gamma: f32) -> Result<Tensor> {
+impl Tensor {
+    /// Focal loss for imbalanced classification
+    ///
+    /// **Deep Debt**: Essential for object detection and severe class imbalance
+    ///
+    /// # Arguments
+    /// - `targets`: Ground truth binary labels [same shape as predictions]
+    /// - `alpha`: Balancing factor (typically 0.25)
+    /// - `gamma`: Focusing parameter (typically 2.0, higher = more focus on hard examples)
+    ///
+    /// # Returns
+    /// - Loss tensor [same shape as input]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // RetinaNet-style focal loss
+    /// let loss = predictions.focal_loss(&targets, 0.25, 2.0)?;
+    /// 
+    /// // Higher gamma for very imbalanced datasets
+    /// let loss = predictions.focal_loss(&targets, 0.25, 5.0)?;
+    /// ```
+    ///
+    /// # Note
+    /// - `gamma=0`: Equivalent to binary cross-entropy
+    /// - `gamma=2`: Standard for object detection (RetinaNet)
+    /// - Higher `gamma`: More aggressive down-weighting of easy examples
+    pub fn focal_loss(self, targets: &Self, alpha: f32, gamma: f32) -> Result<Self> {
+        // Validate shapes match
+        if self.shape() != targets.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                self.shape().to_vec(),
+                targets.shape().to_vec(),
+            ));
+        }
+
+        // Validate parameters
+        if !(0.0..=1.0).contains(&alpha) {
+            return Err(BarracudaError::invalid_op(
+                "FocalLoss",
+                format!("alpha must be in [0, 1], got {}", alpha),
+            ));
+        }
+        if gamma < 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "FocalLoss",
+                format!("gamma must be non-negative, got {}", gamma),
+            ));
+        }
+
         let op = FocalLoss {
             predictions: self,
             targets: targets.clone(),
