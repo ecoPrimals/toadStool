@@ -28,6 +28,13 @@
 //! **Phase 3 (Future)**: Multi-transport server orchestration
 
 pub mod platform;
+pub mod client;
+pub mod server;
+
+// Re-export key types
+pub use client::{IpcClient, IpcStream};
+pub use server::IpcServer;
+pub use platform::Endpoint;
 
 // Re-export legacy helpers for backward compatibility
 // These will gradually migrate to use the new platform layer

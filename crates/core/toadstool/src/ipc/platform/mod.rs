@@ -24,11 +24,15 @@ pub mod unix;
 #[cfg(target_os = "linux")]
 pub mod abstract_socket;
 
+pub mod tcp;
+
 // Re-exports for convenience
 pub use unix::{bind as bind_unix, connect as connect_unix};
 
 #[cfg(target_os = "linux")]
 pub use abstract_socket::{bind as bind_abstract, connect as connect_abstract};
+
+pub use tcp::{bind as bind_tcp, connect as connect_tcp};
 
 /// Platform-agnostic socket endpoint
 ///
@@ -50,8 +54,7 @@ pub enum Endpoint {
         name: String,
     },
     
-    /// TCP socket (universal fallback - future)
-    #[allow(dead_code)]
+    /// TCP socket (universal fallback)
     Tcp {
         host: String,
         port: u16,
@@ -93,9 +96,20 @@ impl Endpoint {
     }
     
     /// Check if endpoint is TCP
-    #[allow(dead_code)]
     pub fn is_tcp(&self) -> bool {
         matches!(self, Self::Tcp { .. })
+    }
+    
+    /// Get display string for endpoint
+    ///
+    /// **Deep Debt**: Human-readable, safe for logging
+    pub fn display(&self) -> String {
+        match self {
+            Self::Unix { path } => format!("unix:{}", path.display()),
+            #[cfg(target_os = "linux")]
+            Self::Abstract { name } => format!("abstract:{}", name),
+            Self::Tcp { host, port } => format!("tcp://{}:{}", host, port),
+        }
     }
     
     /// Get transport tier for fallback logic
