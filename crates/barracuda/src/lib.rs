@@ -66,7 +66,7 @@
 
 pub mod device;
 pub mod error;
-pub mod esn;
+// pub mod esn;  // DEPRECATED: Superseded by esn_v2 (hardware-agnostic)
 pub mod esn_v2; // High-level Echo State Network API
 pub mod genomics; // High-level Bioinformatics/Genomics API
 pub mod nn; // High-level Neural Network Training API
@@ -87,7 +87,8 @@ pub mod prelude {
         Auto, Capability, Device, DeviceContext, DeviceInfo, WgpuDevice, WorkloadHint,
     };
     pub use crate::error::{BarracudaError, Result};
-    pub use crate::esn::{ESNConfig, ESN};
+    // pub use crate::esn::{ESNConfig, ESN};  // DEPRECATED: Use esn_v2
+    pub use crate::esn_v2::{ESNConfig, ESN};
     pub use crate::genomics::{
         CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
