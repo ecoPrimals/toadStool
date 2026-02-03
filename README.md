@@ -162,9 +162,9 @@ ToadStool Universal Compute
 
 ### **🌟 Start Here**:
 
-1. **[DEEP_DEBT_HANDOFF_GUIDE.md](DEEP_DEBT_HANDOFF_GUIDE.md)** ⭐ - **Navigation + handoff** ⭐
-2. **[README_DEEP_DEBT_COMPLETE.md](README_DEEP_DEBT_COMPLETE.md)** - Quick reference
-3. **[FINAL_SESSION_SUMMARY_FEB03_2026.md](FINAL_SESSION_SUMMARY_FEB03_2026.md)** - Complete session overview
+1. **[UNIVERSAL_COMPUTE_TRACKER.md](UNIVERSAL_COMPUTE_TRACKER.md)** ⭐ - **Progress tracker (4.6% complete!)** ⭐
+2. **[DEEP_DEBT_HANDOFF_GUIDE.md](DEEP_DEBT_HANDOFF_GUIDE.md)** - Navigation + handoff
+3. **[README_DEEP_DEBT_COMPLETE.md](README_DEEP_DEBT_COMPLETE.md)** - Quick reference
 4. **[START_HERE.md](START_HERE.md)** - Quick start guide
 
 ### **Comprehensive Reports**:
@@ -181,6 +181,7 @@ ToadStool Universal Compute
 
 ### **Technical Specs**:
 
+- **[specs/BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md](specs/BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md)** - Evolution spec
 - **[PRIMAL_INTEGRATION_GUIDE.md](PRIMAL_INTEGRATION_GUIDE.md)** - Inter-primal integration
 - **[DOCUMENTATION.md](DOCUMENTATION.md)** - Complete doc overview
 - **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** - Documentation index

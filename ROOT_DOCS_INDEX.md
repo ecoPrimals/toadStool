@@ -11,9 +11,9 @@
 
 ### **New to ToadStool?**
 
-1. **[DEEP_DEBT_HANDOFF_GUIDE.md](DEEP_DEBT_HANDOFF_GUIDE.md)** ⭐ - **Main navigation + handoff** ⭐
-2. **[README.md](README.md)** - Project introduction
-3. **[README_DEEP_DEBT_COMPLETE.md](README_DEEP_DEBT_COMPLETE.md)** - Quick reference
+1. **[UNIVERSAL_COMPUTE_TRACKER.md](UNIVERSAL_COMPUTE_TRACKER.md)** ⭐ - **Progress tracker (4.6%)** ⭐
+2. **[DEEP_DEBT_HANDOFF_GUIDE.md](DEEP_DEBT_HANDOFF_GUIDE.md)** - Main navigation + handoff
+3. **[README.md](README.md)** - Project introduction
 4. **[START_HERE.md](START_HERE.md)** - Quick start guide
 
 ### **Latest Achievement: Deep Debt Execution Complete!** (Feb 3, 2026)
@@ -72,6 +72,7 @@
 
 | Document | Purpose |
 |----------|---------|
+| [specs/BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md](specs/BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md) | Evolution roadmap |
 | [PRIMAL_INTEGRATION_GUIDE.md](PRIMAL_INTEGRATION_GUIDE.md) | Inter-primal integration |
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Complete doc overview |
 | [TESTING.md](TESTING.md) | Testing strategy |
