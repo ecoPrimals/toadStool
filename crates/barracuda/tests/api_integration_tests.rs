@@ -214,7 +214,7 @@ async fn test_multi_api_workflow() {
 async fn test_all_apis_hardware_agnostic() {
     let device = WgpuDevice::new().await.unwrap();
 
-    // 1. ESN (pure Rust - no device needed!)
+    // 1. ESN (hardware-agnostic - async initialization!)
     let esn = ESN::new(ESNConfig {
         input_size: 1,
         reservoir_size: 50,
@@ -224,7 +224,8 @@ async fn test_all_apis_hardware_agnostic() {
         leak_rate: 0.3,
         regularization: 1e-6,
         seed: 42,
-    });
+    })
+    .await;
     assert!(esn.is_ok(), "ESN failed");
 
     // 2. Genomics (pure Rust - no device needed!)
@@ -311,7 +312,7 @@ async fn test_error_handling() {
 async fn test_concurrent_apis() {
     let device = WgpuDevice::new().await.unwrap();
 
-    // Create multiple APIs (ESN is pure Rust - no device!)
+    // Create multiple APIs (ESN is hardware-agnostic!)
     let mut esn = ESN::new(ESNConfig {
         input_size: 1,
         reservoir_size: 50,
@@ -322,6 +323,7 @@ async fn test_concurrent_apis() {
         regularization: 1e-6,
         seed: 42,
     })
+    .await
     .unwrap();
 
     let mut nn = NeuralNetwork::builder(&device)
@@ -341,7 +343,7 @@ async fn test_concurrent_apis() {
     let nn_input = vec![vec![0.5; 10]];
     let nn_target = vec![vec![1.0; 5]];
 
-    let esn_result = esn.train(&esn_input, &esn_target); // Pure Rust - no await!
+    let esn_result = esn.train(&esn_input, &esn_target).await; // Hardware-agnostic - async!
     let nn_result = nn.train_step(&nn_input, &nn_target).await;
 
     assert!(esn_result.is_ok(), "ESN training failed");
