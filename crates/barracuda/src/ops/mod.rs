@@ -196,9 +196,8 @@ pub mod replication_pad2d;
 pub mod separable_conv2d;
 
 // Advanced loss functions
-pub mod contrastive_loss;
 pub mod bce_loss;
-pub mod hinge_loss;
+pub mod contrastive_loss;
 pub mod cosine_embedding_loss;
 pub mod hinge_loss;
 pub mod kl_divergence;
