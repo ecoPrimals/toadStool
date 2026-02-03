@@ -19,6 +19,7 @@ pub mod causal_attn;
 pub mod rope;
 pub mod cross_attn;
 pub mod alibi;
+pub mod dice;
 pub mod sparse_attn;
 
 
