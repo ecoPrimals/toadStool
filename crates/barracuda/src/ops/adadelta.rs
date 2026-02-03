@@ -1,4 +1,58 @@
-use crate::error::Result;
+//! AdaDelta Optimizer - GPU-accelerated adaptive learning rate optimizer
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (existing shader evolved)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready)
+//! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! E[g²] = ρ * E[g²] + (1 - ρ) * g²
+//! RMS[g] = sqrt(E[g²] + ε)
+//! RMS[Δ] = sqrt(E[Δ²] + ε)
+//! Δw = -(RMS[Δ] / RMS[g]) * g
+//! w = w + Δw
+//! E[Δ²] = ρ * E[Δ²] + (1 - ρ) * Δw²
+//! ```
+//!
+//! **Key Properties**:
+//! - No learning rate hyperparameter needed!
+//! - Adapts learning rate per parameter
+//! - More stable than AdaGrad (doesn't monotonically decrease)
+//! - Uses moving average of gradients and updates
+//!
+//! **Parameters**:
+//! - `rho` (ρ): Decay rate for moving averages, typically 0.95
+//! - `epsilon` (ε): Numerical stability constant, typically 1e-6
+//!
+//! **Used By**: When you want to avoid tuning learning rates
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let weights = Tensor::randn(vec![1000]).await?;
+//! let gradients = Tensor::randn(vec![1000]).await?;
+//!
+//! // First step (no accumulated state)
+//! let (updated_weights, acc_grad, acc_delta) =
+//!     weights.adadelta_step(&gradients, 0.95, None, None)?;
+//!
+//! // Subsequent steps (with accumulated state)
+//! let (updated_weights2, acc_grad2, acc_delta2) =
+//!     updated_weights.adadelta_step(
+//!         &gradients,
+//!         0.95,
+//!         Some(&acc_grad),
+//!         Some(&acc_delta),
+//!     )?;
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -20,6 +74,57 @@ pub struct AdaDelta {
 }
 
 impl AdaDelta {
+    pub fn new(
+        weights: Tensor,
+        gradients: Tensor,
+        rho: f32,
+        acc_grad: Option<Tensor>,
+        acc_delta: Option<Tensor>,
+    ) -> Result<Self> {
+        // Validate shapes match
+        if weights.shape() != gradients.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                weights.shape().to_vec(),
+                gradients.shape().to_vec(),
+            ));
+        }
+
+        // Validate rho in valid range
+        if !(0.0..=1.0).contains(&rho) {
+            return Err(BarracudaError::invalid_op(
+                "adadelta",
+                "rho must be in range [0.0, 1.0]",
+            ));
+        }
+
+        // Validate accumulator shapes if provided
+        if let Some(ref ag) = acc_grad {
+            if ag.shape() != weights.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    ag.shape().to_vec(),
+                    weights.shape().to_vec(),
+                ));
+            }
+        }
+
+        if let Some(ref ad) = acc_delta {
+            if ad.shape() != weights.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    ad.shape().to_vec(),
+                    weights.shape().to_vec(),
+                ));
+            }
+        }
+
+        Ok(Self {
+            weights,
+            gradients,
+            acc_grad,
+            acc_delta,
+            rho,
+        })
+    }
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/adadelta.wgsl")
     }
@@ -285,32 +390,52 @@ impl AdaDelta {
     }
 }
 
-pub trait AdaDeltaExt {
-    fn adadelta_step(
-        self,
-        gradients: &Tensor,
-        rho: f32,
-        acc_grad: Option<&Tensor>,
-        acc_delta: Option<&Tensor>,
-    ) -> Result<(Tensor, Tensor, Tensor)>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION (MODERN IDIOMATIC RUST)
+// ═══════════════════════════════════════════════════════════════
 
-impl AdaDeltaExt for Tensor {
-    fn adadelta_step(
+impl Tensor {
+    /// AdaDelta optimizer step - adaptive learning rate without lr hyperparameter
+    ///
+    /// **Deep Debt**: Essential for training without tuning learning rates
+    ///
+    /// # Arguments
+    /// - `gradients`: Gradient tensor [same shape as weights]
+    /// - `rho`: Decay rate for moving averages, typically 0.95
+    /// - `acc_grad`: Accumulated squared gradients (None for first step)
+    /// - `acc_delta`: Accumulated squared deltas (None for first step)
+    ///
+    /// # Returns
+    /// - Tuple: (updated_weights, updated_acc_grad, updated_acc_delta)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // First step
+    /// let (w1, ag1, ad1) = weights.adadelta_step(&grads, 0.95, None, None)?;
+    /// 
+    /// // Subsequent steps
+    /// let (w2, ag2, ad2) = w1.adadelta_step(&grads, 0.95, Some(&ag1), Some(&ad1))?;
+    /// ```
+    ///
+    /// # Note
+    /// - No learning rate hyperparameter needed!
+    /// - More stable than AdaGrad
+    /// - rho should be in [0.0, 1.0], typically 0.95
+    pub fn adadelta_step(
         self,
-        gradients: &Tensor,
+        gradients: &Self,
         rho: f32,
-        acc_grad: Option<&Tensor>,
-        acc_delta: Option<&Tensor>,
-    ) -> Result<(Tensor, Tensor, Tensor)> {
-        let op = AdaDelta {
-            weights: self,
-            gradients: gradients.clone(),
-            acc_grad: acc_grad.cloned(),
-            acc_delta: acc_delta.cloned(),
+        acc_grad: Option<&Self>,
+        acc_delta: Option<&Self>,
+    ) -> Result<(Self, Self, Self)> {
+        AdaDelta::new(
+            self,
+            gradients.clone(),
             rho,
-        };
-        op.execute()
+            acc_grad.cloned(),
+            acc_delta.cloned(),
+        )?
+        .execute()
     }
 }
 
@@ -323,11 +448,13 @@ mod tests {
     async fn test_adadelta_basic() {
         let device = get_test_device().await;
 
-        let weights =
-            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let gradients =
-            Tensor::from_data(&vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone())
+            .await
+            .unwrap();
 
         let (updated_weights, _acc_grad, _acc_delta) =
             weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
@@ -336,17 +463,21 @@ mod tests {
         // Weights should be updated
         assert_eq!(result.len(), 4);
         assert!(result.iter().all(|&x| x.is_finite()));
-        assert!(result[0] < 1.0);
+        // AdaDelta should decrease weights (gradient descent)
+        assert!(result[0] < 1.0, "Expected result[0] < 1.0, got {}", result[0]);
     }
 
     #[tokio::test]
-    async fn test_adadelta_edge_cases() {
+    async fn test_adadelta_zero_gradients() {
         let device = get_test_device().await;
 
-        // Test with zero gradients
-        let weights = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.0, 0.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
         let (updated_weights, acc_grad, acc_delta) =
             weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
@@ -360,15 +491,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_adadelta_boundary() {
+    async fn test_adadelta_different_rho() {
         let device = get_test_device().await;
 
-        // Test with different rho values
-        let weights1 = Tensor::from_data(&vec![1.0; 4], vec![4], device.clone()).unwrap();
+        let weights1 = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let weights2 = Tensor::from_data(&vec![1.0; 4], vec![4], device.clone()).unwrap();
+        let weights2 = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&vec![0.1; 4], vec![4], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
         // Low rho (less momentum)
         let (updated1, _ag, _ad) = weights1.adadelta_step(&gradients, 0.5, None, None).unwrap();
@@ -386,17 +522,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_adadelta_validation() {
+        let device = get_test_device().await;
+
+        let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 5], vec![5], device.clone())
+            .await
+            .unwrap();
+
+        // Shape mismatch
+        assert!(weights
+            .clone()
+            .adadelta_step(&gradients, 0.95, None, None)
+            .is_err());
+
+        // Invalid rho
+        let gradients_correct = Tensor::from_vec_on(vec![0.1; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+        assert!(weights
+            .clone()
+            .adadelta_step(&gradients_correct, -0.1, None, None)
+            .is_err());
+        assert!(weights
+            .clone()
+            .adadelta_step(&gradients_correct, 1.5, None, None)
+            .is_err());
+    }
+
+    #[tokio::test]
     async fn test_adadelta_large_batch() {
         let device = get_test_device().await;
 
-        // Larger parameter set
         let size = 128;
         let weights_data: Vec<f32> = (0..size).map(|i| (i as f32) / 10.0).collect();
         let grads_data = vec![0.01; size];
 
-        let weights = Tensor::from_data(&weights_data, vec![size], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(weights_data, vec![size], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&grads_data, vec![size], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(grads_data, vec![size], device.clone())
+            .await
+            .unwrap();
 
         let (updated_weights, updated_ag, updated_ad) =
             weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
@@ -412,20 +582,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_adadelta_precision() {
+    async fn test_adadelta_multi_step() {
         let device = get_test_device().await;
 
-        // Test multiple steps with accumulation
-        let weights = Tensor::from_data(&vec![10.0, 20.0], vec![2], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
-        let gradients = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
         // Step 1
         let (weights1, ag1, ad1) = weights.adadelta_step(&gradients, 0.95, None, None).unwrap();
         let result1 = weights1.to_vec().unwrap();
 
-        assert!(result1[0] < 10.0);
-        assert!(result1[1] < 20.0);
+        assert!(result1[0] < 10.0, "Expected descent, got {}", result1[0]);
+        assert!(result1[1] < 20.0, "Expected descent, got {}", result1[1]);
 
         // Step 2 with accumulated state
         let (weights2, _ag2, _ad2) = weights1
