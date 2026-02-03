@@ -53,27 +53,32 @@ use std::sync::{Arc, Mutex};
 /// NPU is initialized only when first needed (lazy).
 static NPU_BACKEND: Lazy<Mutex<Option<NpuMlBackend>>> = Lazy::new(|| Mutex::new(None));
 
-/// Get or initialize NPU backend
+/// Execute with NPU backend (internal helper)
 ///
 /// **Deep Debt**:
 /// - Runtime capability discovery (no assumptions!)
 /// - Graceful failure if NPU unavailable
 /// - Thread-safe initialization
 ///
+/// # Arguments
+///
+/// * `f` - Closure that uses NPU backend
+///
 /// # Returns
 ///
-/// - `Ok(backend)` if NPU available
-/// - `Err` if NPU not available (graceful)
+/// Result of closure execution
 ///
 /// # Example
 ///
 /// ```ignore
-/// match get_npu_backend() {
-///     Ok(npu) => { /* Use NPU */ }
-///     Err(_) => { /* Fallback to GPU/CPU */ }
-/// }
+/// with_npu_backend(|npu| {
+///     npu_matmul(&a, &b, m, k, n, npu)
+/// })
 /// ```
-pub fn get_npu_backend() -> BarracudaResult<Arc<Mutex<NpuMlBackend>>> {
+pub fn with_npu_backend<F, T>(f: F) -> BarracudaResult<T>
+where
+    F: FnOnce(&mut NpuMlBackend) -> BarracudaResult<T>,
+{
     let mut backend_guard = NPU_BACKEND
         .lock()
         .map_err(|_| BarracudaError::DeviceNotAvailable {
@@ -100,22 +105,22 @@ pub fn get_npu_backend() -> BarracudaResult<Arc<Mutex<NpuMlBackend>>> {
         }
     }
 
-    // Return Arc<Mutex<>> wrapper for safe concurrent access
-    // Clone the backend from Option
+    // Execute closure with NPU backend
     let backend = backend_guard
-        .as_ref()
+        .as_mut()
         .ok_or_else(|| BarracudaError::DeviceNotAvailable {
             device: "NPU".to_string(),
             reason: "NPU backend not initialized".to_string(),
         })?;
 
-    // We need to return a way to access the backend
-    // Since we can't clone NpuMlBackend, we'll use a different approach
-    // For now, return an error indicating we need a different architecture
-    Err(BarracudaError::NotImplemented {
-        operation: "NPU backend sharing".to_string(),
-        reason: "Need to refactor backend access pattern".to_string(),
-    })
+    f(backend)
+}
+
+/// Check if NPU backend is available
+///
+/// **Deep Debt**: Runtime discovery, no hardcoding!
+pub fn is_npu_available() -> bool {
+    with_npu_backend(|_| Ok(())).is_ok()
 }
 
 /// Convert Tensor to NPU-compatible f32 data
@@ -219,7 +224,7 @@ pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool
     use crate::workload::Priority;
 
     // Check NPU availability first
-    if get_npu_backend().is_err() {
+    if !is_npu_available() {
         return false;
     }
 
@@ -249,7 +254,7 @@ mod tests {
 
         // Should prefer NPU for sparse data (if available)
         // If NPU not available, returns false (graceful)
-        assert!(result || get_npu_backend().is_err());
+        assert!(result || !is_npu_available());
     }
 
     #[test]
@@ -261,7 +266,7 @@ mod tests {
         let result = should_use_npu(&dense, Priority::Throughput);
 
         // Should not prefer NPU for dense data (unless energy priority)
-        assert!(!result || get_npu_backend().is_err());
+        assert!(!result || !is_npu_available());
     }
 
     #[test]
@@ -273,7 +278,7 @@ mod tests {
         let result = should_use_npu(&dense, Priority::Energy);
 
         // Energy priority always prefers NPU (if available)
-        assert!(result || get_npu_backend().is_err());
+        assert!(result || !is_npu_available());
     }
 
     #[tokio::test]
