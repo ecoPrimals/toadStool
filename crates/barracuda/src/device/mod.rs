@@ -20,11 +20,13 @@ pub mod akida;
 pub mod akida_executor;
 pub mod unified;
 pub mod wgpu_device;
+pub mod substrate;
 
 pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth};
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
 pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
+pub use substrate::{Substrate, SubstrateType};
 
 #[cfg(test)]
 pub mod test_pool;
