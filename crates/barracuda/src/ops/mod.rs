@@ -12,6 +12,9 @@ pub mod npu_bridge;
 // Neuromorphic operations (NPU/GPU/CPU universal)
 pub mod sparse_matmul_quantized;
 
+// Attention mechanisms (Phase 4 - Universal Compute)
+pub mod attention;
+
 
 // Homomorphic encryption operations (FHE - GPU accelerated)
 pub mod fhe_and;
