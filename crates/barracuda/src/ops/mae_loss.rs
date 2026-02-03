@@ -1,4 +1,38 @@
-use crate::error::Result;
+//! MAE Loss - GPU-accelerated Mean Absolute Error Loss
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (existing shader evolved)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready)
+//! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! MAE = (1/n) * Σ |y_pred - y_true|
+//! ```
+//!
+//! **Key Properties**:
+//! - Less sensitive to outliers than MSE
+//! - Linear penalty for errors
+//! - Robust loss function
+//! - Used in regression tasks
+//!
+//! **Used By**: Robust regression, forecasting, time series
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let predictions = Tensor::randn(vec![1000]).await?;
+//! let targets = Tensor::randn(vec![1000]).await?;
+//!
+//! let loss = predictions.mae_loss(&targets)?;
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -16,6 +50,21 @@ pub struct MAELoss {
 }
 
 impl MAELoss {
+    pub fn new(predictions: Tensor, targets: Tensor) -> Result<Self> {
+        // Validate shapes match
+        if predictions.shape() != targets.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                predictions.shape().to_vec(),
+                targets.shape().to_vec(),
+            ));
+        }
+
+        Ok(Self {
+            predictions,
+            targets,
+        })
+    }
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/mae_loss.wgsl")
     }
@@ -170,121 +219,114 @@ impl MAELoss {
     }
 }
 
-pub trait MAELossExt {
-    fn mae_loss(self, targets: &Tensor) -> Result<Tensor>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION (MODERN IDIOMATIC RUST)
+// ═══════════════════════════════════════════════════════════════
 
-impl MAELossExt for Tensor {
-    fn mae_loss(self, targets: &Tensor) -> Result<Tensor> {
-        let op = MAELoss {
-            predictions: self,
-            targets: targets.clone(),
-        };
-        op.execute()
+impl Tensor {
+    /// MAE Loss (Mean Absolute Error) - robust regression loss
+    ///
+    /// **Deep Debt**: Essential for robust regression tasks
+    ///
+    /// # Arguments
+    /// - `targets`: Target tensor [same shape as predictions]
+    ///
+    /// # Returns
+    /// - Loss tensor [same shape as input]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // Regression
+    /// let loss = predictions.mae_loss(&targets)?;
+    /// ```
+    ///
+    /// # Note
+    /// - Less sensitive to outliers than MSE
+    /// - Linear penalty for errors
+    /// - Used in robust regression
+    pub fn mae_loss(self, targets: &Self) -> Result<Self> {
+        MAELoss::new(self, targets.clone())?.execute()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_mae_loss_basic() {
         let device = get_test_device().await;
 
-        let predictions =
-            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let predictions = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let targets =
-            Tensor::from_data(&vec![1.5, 2.5, 2.5, 3.5], vec![4], device.clone()).unwrap();
+        let targets = Tensor::from_vec_on(vec![1.5, 2.5, 3.5, 4.5], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
+        let loss = predictions.mae_loss(&targets).unwrap();
+        let data = loss.to_vec().unwrap();
 
-        assert_eq!(loss.len(), 4);
-        // All losses should be finite and non-negative
-        assert!(loss.iter().all(|&x| x.is_finite() && x >= 0.0));
+        assert_eq!(data.len(), 4);
+        assert!(data.iter().all(|&x| x.is_finite()));
+        assert!(data.iter().all(|&x| x >= 0.0)); // MAE is always non-negative
     }
 
     #[tokio::test]
-    async fn test_mae_loss_edge_cases() {
+    async fn test_mae_loss_perfect() {
         let device = get_test_device().await;
 
-        // Perfect predictions (loss = 0)
-        let predictions = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
-        let targets = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
-        assert!(loss.iter().all(|&x| x.abs() < 0.1));
+        // Perfect predictions should have zero loss
+        let predictions = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
+            .await
+            .unwrap();
 
-        // Single element
-        let predictions = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
-        let targets = Tensor::from_data(&vec![3.0], vec![1], device).unwrap();
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
-        assert!(loss[0] >= 0.0);
+        let targets = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
+            .await
+            .unwrap();
+
+        let loss = predictions.mae_loss(&targets).unwrap();
+        let data = loss.to_vec().unwrap();
+
+        assert!(data.iter().all(|&x| x.abs() < 1e-5));
     }
 
     #[tokio::test]
-    async fn test_mae_loss_boundary() {
+    async fn test_mae_loss_validation() {
         let device = get_test_device().await;
 
-        // Large errors
-        let predictions = Tensor::from_data(&vec![10.0, 20.0], vec![2], device.clone()).unwrap();
-        let targets = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
-        assert!(loss.iter().all(|&x| x.is_finite()));
-        // At least some losses should be positive
-        assert!(loss.iter().any(|&x| x > 0.0));
+        // Shape mismatch
+        let predictions = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+        let targets = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
+            .await
+            .unwrap();
 
-        // Negative values
-        let predictions = Tensor::from_data(&vec![-1.0, -2.0], vec![2], device.clone()).unwrap();
-        let targets = Tensor::from_data(&vec![-1.5, -1.5], vec![2], device).unwrap();
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
-        assert!(loss.iter().all(|&x| x.is_finite()));
+        assert!(predictions.mae_loss(&targets).is_err());
     }
 
     #[tokio::test]
     async fn test_mae_loss_large_batch() {
         let device = get_test_device().await;
 
-        // 100 elements
-        let preds: Vec<f32> = (0..100).map(|i| i as f32).collect();
-        let tgts: Vec<f32> = (0..100).map(|i| (i + 1) as f32).collect();
+        let size = 1000;
+        let predictions = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
+            .await
+            .unwrap();
 
-        let predictions = Tensor::from_data(&preds, vec![100], device.clone()).unwrap();
-        let targets = Tensor::from_data(&tgts, vec![100], device).unwrap();
+        let targets = Tensor::from_vec_on(vec![2.0; size], vec![size], device.clone())
+            .await
+            .unwrap();
 
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
+        let loss = predictions.mae_loss(&targets).unwrap();
+        let data = loss.to_vec().unwrap();
 
-        assert_eq!(loss.len(), 100);
-        assert!(loss.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_mae_loss_precision() {
-        let device = get_test_device().await;
-
-        // Known MAE calculations
-        let predictions = Tensor::from_data(&vec![2.0, 4.0], vec![2], device.clone()).unwrap();
-        let targets = Tensor::from_data(&vec![1.0, 5.0], vec![2], device).unwrap();
-
-        let result = predictions.mae_loss(&targets).unwrap();
-        let loss = result.to_vec().unwrap();
-
-        // MAE: |2-1| = 1.0, |4-5| = 1.0
-        assert_eq!(loss.len(), 2);
-        assert!(loss.iter().all(|&x| x.is_finite()));
-        // Verify operation completed successfully
-        assert!(loss.len() > 0);
+        assert_eq!(data.len(), size);
+        assert!(data.iter().all(|&x| x.is_finite()));
+        // Should be close to 1.0 (absolute difference)
+        assert!((data[0] - 1.0).abs() < 0.1);
     }
 }
