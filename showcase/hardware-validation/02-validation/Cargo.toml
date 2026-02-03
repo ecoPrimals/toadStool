@@ -23,6 +23,10 @@ name = "rope-validation"
 path = "src/rope_validation.rs"
 
 [[bin]]
+name = "cross-validation"
+path = "src/cross_validation.rs"
+
+[[bin]]
 name = "sparse-validation"
 path = "src/sparse_validation.rs"
 
