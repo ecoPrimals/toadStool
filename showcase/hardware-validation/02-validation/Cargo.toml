@@ -42,6 +42,10 @@ path = "src/nadam_validation.rs"
 name = "topk-validation"
 path = "src/topk_validation.rs"
 
+[[bin]]
+name = "adamw-validation"
+path = "src/adamw_validation.rs"
+
 [dependencies]
 # BarraCUDA with substrate selection
 barracuda = { path = "../../../crates/barracuda" }
