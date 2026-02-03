@@ -1,3 +1,29 @@
+//! Filter Operation - Element-wise filtering with predicates
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Agnostic design (operation enum, not hardcoded)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `FilterExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//! use barracuda::ops::filter::FilterOperation;
+//!
+//! let input = Tensor::from_data(&vec![1.0, 5.0, 3.0, 7.0], vec![4], device)?;
+//! let filtered = input.filter(FilterOperation::GreaterThan, 4.0)?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -221,12 +247,31 @@ impl Filter {
     }
 }
 
-pub trait FilterExt {
-    fn filter(self, operation: FilterOperation, threshold: f32) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl FilterExt for Tensor {
-    fn filter(self, operation: FilterOperation, threshold: f32) -> Result<Tensor> {
+impl Tensor {
+    /// Apply filter predicate to tensor elements
+    ///
+    /// Returns a mask tensor where 1.0 = predicate passed, 0.0 = failed
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `operation` - Filter operation (GreaterThan, LessThan, Equal, NotEqual)
+    /// * `threshold` - Comparison threshold value
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use barracuda::ops::filter::FilterOperation;
+    /// # let input = todo!();
+    /// // Keep values > 4.0
+    /// let mask = input.filter(FilterOperation::GreaterThan, 4.0)?;
+    /// ```
+    pub fn filter(self, operation: FilterOperation, threshold: f32) -> Result<Self> {
         let op = Filter {
             input: self,
             operation,

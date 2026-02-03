@@ -1,3 +1,28 @@
+//! Scan Operation - Prefix sum (cumulative operations)
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Agnostic design (inclusive/exclusive parameter)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `ScanExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//!
+//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device)?;
+//! let cumsum = input.scan(false)?;  // Inclusive scan
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -157,12 +182,31 @@ impl Scan {
     }
 }
 
-pub trait ScanExt {
-    fn scan(self, exclusive: bool) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl ScanExt for Tensor {
-    fn scan(self, exclusive: bool) -> Result<Tensor> {
+impl Tensor {
+    /// Compute prefix sum (cumulative sum) of tensor elements
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `exclusive` - If true, exclusive scan (shift right by 1, start with 0)
+    ///                If false, inclusive scan (standard cumulative sum)
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # let input = todo!();
+    /// // Inclusive scan: [1, 2, 3, 4] → [1, 3, 6, 10]
+    /// let cumsum = input.scan(false)?;
+    ///
+    /// // Exclusive scan: [1, 2, 3, 4] → [0, 1, 3, 6]
+    /// let exclusive = input.scan(true)?;
+    /// ```
+    pub fn scan(self, exclusive: bool) -> Result<Self> {
         let op = Scan {
             input: self,
             exclusive,

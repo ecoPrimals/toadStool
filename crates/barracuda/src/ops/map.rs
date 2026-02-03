@@ -1,3 +1,29 @@
+//! Map Operation - Element-wise transformations
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Agnostic design (operation enum, not hardcoded)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `MapExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//! use barracuda::ops::map::MapOperation;
+//!
+//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device)?;
+//! let squared = input.map(MapOperation::Square)?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -175,12 +201,31 @@ impl Map {
     }
 }
 
-pub trait MapExt {
-    fn map(self, operation: MapOperation) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl MapExt for Tensor {
-    fn map(self, operation: MapOperation) -> Result<Tensor> {
+impl Tensor {
+    /// Apply element-wise transformation to tensor
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `operation` - Map operation (Square, Sqrt, Abs, Negate, Reciprocal)
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use barracuda::ops::map::MapOperation;
+    /// # let input = todo!();
+    /// // Square all elements
+    /// let squared = input.map(MapOperation::Square)?;
+    ///
+    /// // Take square root
+    /// let sqrt = input.map(MapOperation::Sqrt)?;
+    /// ```
+    pub fn map(self, operation: MapOperation) -> Result<Self> {
         let op = Map {
             input: self,
             operation,

@@ -1,3 +1,29 @@
+//! Dot Product Operation - Vector inner product
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Efficient (GPU-accelerated with partial reductions)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `DotProductExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//!
+//! let a = Tensor::from_data(&vec![1.0, 2.0, 3.0], vec![3], device)?;
+//! let b = Tensor::from_data(&vec![4.0, 5.0, 6.0], vec![3], device)?;
+//! let partial_sums = a.dotproduct(&b)?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -167,12 +193,31 @@ impl DotProduct {
     }
 }
 
-pub trait DotProductExt {
-    fn dotproduct(self, b: &Tensor) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl DotProductExt for Tensor {
-    fn dotproduct(self, b: &Tensor) -> Result<Tensor> {
+impl Tensor {
+    /// Compute dot product (inner product) with another tensor
+    ///
+    /// Returns partial sums (caller can sum to get final result)
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `b` - Second tensor (must have same shape as self)
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # let a = todo!();
+    /// # let b = todo!();
+    /// // Compute a · b
+    /// let partial_sums = a.dotproduct(&b)?;
+    /// let result: f32 = partial_sums.to_vec()?.iter().sum();
+    /// ```
+    pub fn dotproduct(self, b: &Self) -> Result<Self> {
         let op = DotProduct {
             a: self,
             b: b.clone(),

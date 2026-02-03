@@ -1,3 +1,29 @@
+//! Reduce Operation - Aggregation across tensor elements
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Agnostic design (operation enum, not hardcoded)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `ReduceExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//! use barracuda::ops::reduce::ReduceOperation;
+//!
+//! let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device)?;
+//! let sum_tensor = input.reduce(ReduceOperation::Sum)?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -175,12 +201,35 @@ impl Reduce {
     }
 }
 
-pub trait ReduceExt {
-    fn reduce(self, operation: ReduceOperation) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl ReduceExt for Tensor {
-    fn reduce(self, operation: ReduceOperation) -> Result<Tensor> {
+impl Tensor {
+    /// Reduce tensor elements using aggregation operation
+    ///
+    /// Returns partial reduction results (caller can reduce further if needed)
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `operation` - Reduce operation (Sum, Max, Min, Mean)
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use barracuda::ops::reduce::ReduceOperation;
+    /// # let input = todo!();
+    /// // Sum all elements
+    /// let partial_sums = input.reduce(ReduceOperation::Sum)?;
+    /// let total: f32 = partial_sums.to_vec()?.iter().sum();
+    ///
+    /// // Find maximum
+    /// let partial_maxes = input.reduce(ReduceOperation::Max)?;
+    /// let max = partial_maxes.to_vec()?.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    /// ```
+    pub fn reduce(self, operation: ReduceOperation) -> Result<Self> {
         let op = Reduce {
             input: self,
             operation,

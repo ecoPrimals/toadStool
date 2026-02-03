@@ -1,3 +1,29 @@
+//! Tiled Matrix Multiplication - High-performance matmul with shared memory
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ High performance (tile-based blocking for cache efficiency)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `MatmulTiledExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//!
+//! let a = Tensor::from_data(&data_a, vec![128, 256], device)?;
+//! let b = Tensor::from_data(&data_b, vec![256, 512], device)?;
+//! let c = a.matmul_tiled(&b)?;  // Result: [128, 512]
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -197,12 +223,36 @@ impl MatmulTiled {
     }
 }
 
-pub trait MatmulTiledExt {
-    fn matmul_tiled(self, b: &Tensor) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl MatmulTiledExt for Tensor {
-    fn matmul_tiled(self, b: &Tensor) -> Result<Tensor> {
+impl Tensor {
+    /// High-performance tiled matrix multiplication
+    ///
+    /// Uses tile-based blocking for improved cache locality and performance
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `b` - Second matrix (columns must match self's rows)
+    ///
+    /// ## Matrix Dimensions
+    ///
+    /// - `self`: [M, K]
+    /// - `b`: [K, N]
+    /// - Result: [M, N]
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # let a = todo!();
+    /// # let b = todo!();
+    /// // C = A × B (optimized with tiling)
+    /// let c = a.matmul_tiled(&b)?;
+    /// ```
+    pub fn matmul_tiled(self, b: &Self) -> Result<Self> {
         let op = MatmulTiled {
             a: self,
             b: b.clone(),

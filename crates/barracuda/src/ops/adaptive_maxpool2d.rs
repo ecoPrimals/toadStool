@@ -1,3 +1,29 @@
+//! Adaptive Max Pooling 2D - Output-size-driven max pooling
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ Flexible (specify output size, not kernel size)
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `AdaptiveMaxPool2DExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//!
+//! // Input: [batch, channels, 14, 14]
+//! // Output: [batch, channels, 7, 7] (adaptive to target size)
+//! let pooled = input.adaptive_maxpool2d((7, 7))?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -179,12 +205,34 @@ impl AdaptiveMaxPool2D {
     }
 }
 
-pub trait AdaptiveMaxPool2DExt {
-    fn adaptive_maxpool2d(self, output_size: (usize, usize)) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl AdaptiveMaxPool2DExt for Tensor {
-    fn adaptive_maxpool2d(self, output_size: (usize, usize)) -> Result<Tensor> {
+impl Tensor {
+    /// Apply adaptive max pooling with target output size
+    ///
+    /// Automatically calculates kernel/stride to achieve desired output dimensions
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Arguments
+    ///
+    /// * `output_size` - Target (height, width) for output
+    ///
+    /// ## Input/Output Shapes
+    ///
+    /// - Input: `[batch, channels, height_in, width_in]`
+    /// - Output: `[batch, channels, height_out, width_out]`
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # let input = todo!();
+    /// // Adaptive max pool to 7x7 (regardless of input size)
+    /// let pooled = input.adaptive_maxpool2d((7, 7))?;
+    /// ```
+    pub fn adaptive_maxpool2d(self, output_size: (usize, usize)) -> Result<Self> {
         let op = AdaptiveMaxPool2D {
             input: self,
             output_size,

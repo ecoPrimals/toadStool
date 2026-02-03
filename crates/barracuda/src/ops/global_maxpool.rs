@@ -1,3 +1,30 @@
+//! Global Max Pooling Operation - Spatial reduction to single value
+//!
+//! **Deep Debt Evolution**: Modernized from trait-based to direct `impl Tensor`
+//!
+//! ## Deep Debt Principles
+//!
+//! - ✅ Modern idiomatic Rust (direct `impl Tensor`, not trait extension)
+//! - ✅ Universal compute (WGSL shader for all substrates)
+//! - ✅ Safe Rust (no unsafe blocks)
+//! - ✅ CNN-friendly (4D input [batch, channels, height, width])
+//!
+//! ## Evolution History
+//!
+//! **Before** (Phase 3): `GlobalMaxPoolExt` trait extension  
+//! **After** (Phase 6): Direct `impl Tensor` method
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! use barracuda::tensor::Tensor;
+//!
+//! // Input: [batch=2, channels=64, height=7, width=7]
+//! let input = Tensor::from_data(&data, vec![2, 64, 7, 7], device)?;
+//! // Output: [batch=2, channels=64, height=1, width=1]
+//! let pooled = input.global_maxpool()?;
+//! ```
+
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -172,12 +199,33 @@ impl GlobalMaxPool {
     }
 }
 
-pub trait GlobalMaxPoolExt {
-    fn global_maxpool(self) -> Result<Tensor>;
-}
+// ============================================================================
+// Modern API: Direct impl Tensor (Phase 6 Evolution)
+// ============================================================================
 
-impl GlobalMaxPoolExt for Tensor {
-    fn global_maxpool(self) -> Result<Tensor> {
+impl Tensor {
+    /// Apply global max pooling across spatial dimensions
+    ///
+    /// Reduces [batch, channels, height, width] → [batch, channels, 1, 1]
+    ///
+    /// **Deep Debt**: Modern direct method, no trait extension needed
+    ///
+    /// ## Input Shape
+    ///
+    /// Must be 4D: `[batch, channels, height, width]`
+    ///
+    /// ## Output Shape
+    ///
+    /// `[batch, channels, 1, 1]` (max value per channel)
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # let input = todo!();
+    /// // Pool spatial dimensions (7x7 → 1x1)
+    /// let pooled = input.global_maxpool()?;
+    /// ```
+    pub fn global_maxpool(self) -> Result<Self> {
         let op = GlobalMaxPool { input: self };
         op.execute()
     }
