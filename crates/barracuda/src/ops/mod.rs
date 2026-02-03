@@ -458,3 +458,4 @@ pub use matmul_tiled::MatmulTiled;
 pub use reduce::{Reduce, ReduceOperation};
 pub use scan::Scan;
 // Note: Reshape is already defined in tensor.rs
+pub mod lovasz_loss;
