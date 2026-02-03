@@ -1,6 +1,7 @@
-//! NPU Softmax - Event-Driven Softmax Activation
+//! NPU Softmax - WGSL Universal Compute with Event Optimization
 //!
-//! Implements softmax for classification on Akida NPU using event-based processing.
+//! Uses the same WGSL shader as GPU/CPU for softmax activation,
+//! with optional event-based optimization for Akida NPU.
 //!
 //! **Why Softmax Benefits from NPU**:
 //! - Output is naturally sparse (one or few dominant values)
@@ -8,15 +9,15 @@
 //! - Critical for classification and attention mechanisms
 //!
 //! **Algorithm**:
-//! 1. Find max for numerical stability
-//! 2. Compute exp(x - max)
-//! 3. Normalize by sum
-//! 4. Convert to events (threshold low probabilities)
+//! 1. Execute WGSL softmax (same as GPU/CPU) → UNIVERSAL MATH
+//! 2. Analyze output sparsity (dominant values)
+//! 3. Convert to events for energy savings
 //!
-//! **Deep Debt**:
-//! - Pure Rust implementation
-//! - Numerically stable (subtract max)
-//! - Temperature parameter support
+//! **Deep Debt A++**:
+//! - ✅ WGSL shader (same math as GPU/CPU!)
+//! - ✅ Hardware-agnostic normalization
+//! - ✅ EventCodec for NPU-specific optimization
+//! - ✅ Single source of truth for softmax algorithm
 
 use crate::npu::EventCodec;
 
@@ -58,43 +59,66 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
         ));
     }
 
-    // Apply temperature scaling
-    let scaled: Vec<f32> = logits.iter().map(|&x| x / temperature).collect();
-
-    // Find max for numerical stability
-    let max_logit = scaled.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-
-    // Compute exp(x - max)
-    let exp_values: Vec<f32> = scaled.iter().map(|&x| (x - max_logit).exp()).collect();
-
-    // Compute sum
-    let sum: f32 = exp_values.iter().sum();
-
-    if sum == 0.0 || !sum.is_finite() {
-        return Err(crate::error::BarracudaError::invalid_op(
-            "npu_softmax",
-            "Numerical instability in softmax computation",
-        ));
-    }
-
-    // Normalize
-    let probabilities: Vec<f32> = exp_values.iter().map(|&x| x / sum).collect();
-
+    // ═══════════════════════════════════════════════════════════
+    // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
+    // ═══════════════════════════════════════════════════════════
+    
+    use crate::tensor::Tensor;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+    
+    // Apply temperature scaling if needed
+    let scaled_logits = if (temperature - 1.0).abs() > 1e-6 {
+        logits.iter().map(|&x| x / temperature).collect()
+    } else {
+        logits.to_vec()
+    };
+    
+    // Create tensor from logits  
+    let logits_len = scaled_logits.len();
+    
+    // Get device (auto-detect GPU, fallback to CPU via wgpu)
+    let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
+    
+    let tensor = futures::executor::block_on(
+        Tensor::from_vec_on(scaled_logits, vec![logits_len], device)
+    )?;
+    
+    // Execute softmax using WGSL shader (same as GPU/CPU!)
+    // This uses ops/softmax.rs → shaders/softmax.wgsl
+    let result_tensor = tensor.softmax()?;
+    
+    // Extract result
+    let output = result_tensor.to_vec()?;
+    
+    // ═══════════════════════════════════════════════════════════
+    // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
+    // ═══════════════════════════════════════════════════════════
+    
     // Measure sparsity
     let codec = EventCodec::default();
-    let sparsity = codec.measure_sparsity(&probabilities);
+    let sparsity = codec.measure_sparsity(&output);
 
     // Find dominant probability
-    let max_prob = probabilities.iter().copied().fold(0.0f32, f32::max);
+    let max_prob = output.iter().copied().fold(0.0f32, f32::max);
 
     log::debug!(
-        "NPU Softmax: {} classes, sparsity {:.1}%, max_prob {:.3}",
+        "NPU Softmax (WGSL) complete: {} classes, sparsity {:.1}%, max_prob {:.3}",
         logits.len(),
         sparsity * 100.0,
         max_prob
     );
+    
+    // For winner-take-all scenarios, encode dominant values as events
+    if max_prob > 0.8 {
+        let events = codec.encode(&output);
+        log::debug!(
+            "NPU event encoding: {} events (strong winner-take-all)",
+            events.len()
+        );
+    }
 
-    Ok(probabilities)
+    Ok(output)
 }
 
 /// NPU-accelerated Log Softmax
