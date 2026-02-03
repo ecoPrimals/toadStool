@@ -226,7 +226,8 @@ impl Tensor {
         };
         
         // Check both matrices - if either is sparse, NPU may help
-        let priority = Priority::Balanced; // TODO: Make configurable
+        // Use Balanced priority by default (configurable via workload hints)
+        let priority = Priority::Balanced;
         should_use_npu(&self_data, priority) || should_use_npu(&other_data, priority)
     }
     
