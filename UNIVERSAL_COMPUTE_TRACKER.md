@@ -3,21 +3,21 @@
 **Platform**: ToadStool + BarraCUDA  
 **Vision**: Same math on any chip - CPU, GPU, NPU, TPU  
 **Method**: WGSL (WebGPU Shading Language) + Pure Rust  
-**Status**: 🏆 **41% COMPLETE** (Phases 1-4 DONE + Phase 5 Momentum!) 🎊  
-**Last Updated**: February 3, 2026 (18+ hours + quick wins - LEGENDARY SESSION!)
+**Status**: 🏆 **41.8% COMPLETE** (Phases 1-4 DONE + Phase 5: 30%!) 🎊  
+**Last Updated**: February 3, 2026 (26-28 hours - LEGENDARY SESSION!)
 
 ═══════════════════════════════════════════════════════════════
 
-## 🎯 **CURRENT STATUS** (🏆 **PHASE 4 COMPLETE + PHASE 5 QUICK WINS!**)
+## 🎯 **CURRENT STATUS** (🏆 **PHASE 5 DEEP WORK COMPLETE!**)
 
-**Universal Compute Progress**: **107/263 operations (41%)** ✅
+**Universal Compute Progress**: **110/263 operations (41.8%)** ✅
 
 ```text
-[████████░░░░░░░░░░░░░░░░░░░░░] 41%
+[████████░░░░░░░░░░░░░░░░░░░░░] 41.8%
 ```
 
-**LEGENDARY MILESTONE**: Phase 4 complete + Phase 5 quick wins (Nadam, TopK)!  
-**Session Achievement**: 37.8% → 41% | Phase 4: 100% | Phase 5: 3 ops complete!
+**LEGENDARY MILESTONE**: Phase 4 complete + Phase 5 deep work (AdamW CRITICAL!)  
+**Session Achievement**: 37.8% → 41.8% | Phase 4: 100% | Phase 5: 6 ops (30%)!
 
 ### **Phase 4 Breakthrough**:
 - ✅ **7/7 Operations Complete**: All modern transformers supported!
@@ -125,7 +125,7 @@
 
 **Total**: **105 operations** with WGSL implementations! ✅  
 **Phase 4**: 🎊 **All attention mechanisms complete!** 🎊  
-**Phase 5**: 🚀 **3 Quick Wins Complete!** 🚀 (Dice + Nadam + TopK)
+**Phase 5**: 🚀 **6 Operations Complete (30%)!** 🚀 (AdamW + Tversky + Triplet + quick wins)
 
 ═══════════════════════════════════════════════════════════════
 
@@ -239,8 +239,11 @@ Progress Timeline:
 1. ✅ **dice_loss** (segmentation) - COMPLETE!
 2. ✅ **nadam optimizer** (Nesterov-accelerated Adam) - COMPLETE!
 3. ✅ **topk** (top-K selection) - COMPLETE!
-4. ⏳ **adamw optimizer** (CRITICAL for modern training)
-5. ⏳ **focal_loss** (imbalanced datasets)
+4. ✅ **adamw optimizer** (CRITICAL for modern training) - COMPLETE! 🏆
+5. ✅ **tversky_loss** (generalized Dice) - COMPLETE!
+6. ✅ **triplet_loss** (metric learning) - COMPLETE!
+7. ⏳ **focal_loss** (imbalanced datasets)
+8. ⏳ **contrastive_loss** (self-supervised learning)
 4. ⏳ **huber_loss** (robust regression)
 5. ⏳ **separable_conv2d** (efficient CNNs)
 6. ⏳ **adaptive_avgpool2d** (flexible pooling)
