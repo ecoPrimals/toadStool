@@ -132,9 +132,54 @@ impl ReLU {
 
 // Convenience method on Tensor
 impl Tensor {
-    /// Apply ReLU activation
+    /// Apply ReLU activation: max(0, x)
+    ///
+    /// **Phase 3**: Now supports NPU routing!
     pub fn relu(self) -> Result<Self> {
+        // Phase 3: Check if NPU should be used
+        if self.should_use_npu_for_activation() {
+            log::debug!("Routing relu to NPU");
+            return self.relu_npu();
+        }
+        
+        // Existing WGSL path
+        log::debug!("Routing relu to WGSL");
         ReLU::new(self).execute()
+    }
+    
+    /// Check if NPU should be used for activation
+    fn should_use_npu_for_activation(&self) -> bool {
+        use crate::ops::npu_bridge::{should_use_npu, is_npu_available};
+        use crate::workload::Priority;
+        
+        if !is_npu_available() {
+            return false;
+        }
+        
+        let data = match self.to_vec() {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+        
+        should_use_npu(&data, Priority::Balanced)
+    }
+    
+    /// Execute ReLU on NPU
+    fn relu_npu(&self) -> Result<Self> {
+        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
+        use crate::npu::ops::relu::npu_relu;
+        
+        let data = tensor_to_npu_data(self)?;
+        
+        // ReLU doesn't need NPU backend, it's pure computation
+        let result_data = npu_relu(&data)?;
+        
+        let device = self.device().clone();
+        let shape = self.shape().to_vec();
+        
+        futures::executor::block_on(
+            npu_data_to_tensor(result_data, shape, device)
+        )
     }
 }
 
