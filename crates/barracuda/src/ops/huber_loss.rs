@@ -1,4 +1,41 @@
-use crate::error::Result;
+//! Huber Loss - GPU-accelerated robust regression loss
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (uses existing shader!)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready for robust regression)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! Huber(x, y, δ) = 0.5 * (x - y)²             if |x - y| ≤ δ
+//!                = δ * (|x - y| - 0.5 * δ)    otherwise
+//! ```
+//!
+//! **Parameters**:
+//! - `delta`: Threshold for switching from quadratic (MSE) to linear (MAE)
+//!
+//! **Key Properties**:
+//! - Robust to outliers (less sensitive than MSE)
+//! - Smooth at zero (differentiable everywhere)
+//! - Quadratic for small errors, linear for large errors
+//! - Standard in reinforcement learning (DQN)
+//!
+//! **Used By**: DQN, robust regression, outlier-resistant training
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let predictions = Tensor::randn(vec![1000]).await?;
+//! let targets = Tensor::randn(vec![1000]).await?;
+//!
+//! let loss = predictions.huber_loss(&targets, 1.0)?;  // delta=1.0
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -173,12 +210,53 @@ impl HuberLoss {
     }
 }
 
-pub trait HuberLossExt {
-    fn huber_loss(self, targets: &Tensor, delta: f32) -> Result<Tensor>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION
+// ═══════════════════════════════════════════════════════════════
 
-impl HuberLossExt for Tensor {
-    fn huber_loss(self, targets: &Tensor, delta: f32) -> Result<Tensor> {
+impl Tensor {
+    /// Huber loss for robust regression (less sensitive to outliers than MSE)
+    ///
+    /// **Deep Debt**: Essential for robust regression and reinforcement learning
+    ///
+    /// # Arguments
+    /// - `targets`: Ground truth values [same shape as predictions]
+    /// - `delta`: Threshold for switching from quadratic to linear (typically 1.0)
+    ///
+    /// # Returns
+    /// - Loss tensor [same shape as input]
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // DQN-style Huber loss
+    /// let loss = predictions.huber_loss(&targets, 1.0)?;
+    /// 
+    /// // More sensitive to outliers (larger delta)
+    /// let loss = predictions.huber_loss(&targets, 2.0)?;
+    /// ```
+    ///
+    /// # Note
+    /// - `delta=1.0`: Standard for DQN (Deep Q-Network)
+    /// - Small delta: More robust (less outlier influence)
+    /// - Large delta: Closer to MSE behavior
+    /// - Combines MSE (small errors) + MAE (large errors)
+    pub fn huber_loss(self, targets: &Self, delta: f32) -> Result<Self> {
+        // Validate shapes match
+        if self.shape() != targets.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                self.shape().to_vec(),
+                targets.shape().to_vec(),
+            ));
+        }
+
+        // Validate delta is positive
+        if delta <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "HuberLoss",
+                format!("delta must be positive, got {}", delta),
+            ));
+        }
+
         let op = HuberLoss {
             predictions: self,
             targets: targets.clone(),
@@ -191,19 +269,20 @@ impl HuberLossExt for Tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_huber_loss_small_errors() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
         // Small errors (< delta): should use quadratic (MSE-like)
-        let predictions =
-            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let predictions = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let targets =
-            Tensor::from_data(&vec![1.1, 2.1, 2.9, 3.9], vec![4], device.clone()).unwrap();
+        let targets = Tensor::from_vec_on(vec![1.1, 2.1, 2.9, 3.9], vec![4], device.clone())
+            .await
+            .unwrap();
 
         let result = predictions.huber_loss(&targets, 1.0).unwrap();
         let loss = result.to_vec().unwrap();
@@ -212,26 +291,30 @@ mod tests {
         // All errors = 0.1, which is < delta=1.0
         // Loss should be 0.5 * 0.1^2 = 0.005
         for &l in &loss {
-            assert!((l - 0.005).abs() < 1e-5);
+            assert!((l - 0.005).abs() < 1e-5, "Expected 0.005, got {}", l);
         }
     }
 
     #[tokio::test]
     async fn test_huber_loss_large_errors() {
-        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let device = get_test_device().await;
 
         // Large errors (> delta): should use linear (MAE-like)
-        let predictions = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
+        let predictions = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
-        let targets = Tensor::from_data(&vec![3.0, 5.0], vec![2], device.clone()).unwrap();
+        let targets = Tensor::from_vec_on(vec![3.0, 5.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
         let result = predictions.huber_loss(&targets, 1.0).unwrap();
         let loss = result.to_vec().unwrap();
 
         assert_eq!(loss.len(), 2);
         // Error 1: |1-3| = 2 > delta=1, loss = 1*(2 - 0.5*1) = 1.5
-        assert!((loss[0] - 1.5).abs() < 1e-5);
+        assert!((loss[0] - 1.5).abs() < 1e-5, "Expected 1.5, got {}", loss[0]);
         // Error 2: |2-5| = 3 > delta=1, loss = 1*(3 - 0.5*1) = 2.5
-        assert!((loss[1] - 2.5).abs() < 1e-5);
+        assert!((loss[1] - 2.5).abs() < 1e-5, "Expected 2.5, got {}", loss[1]);
     }
 }
