@@ -291,10 +291,12 @@ Week 3: element-wise ops      [░░░░░░░░░░░░░░░░�
 
 ### **Week of Feb 3, 2026**
 - [x] ✅ Phase 1 complete (5 core ops)
+- [x] ✅ Phase 2 complete (8 CNN ops)
+- [x] ✅ Discovered 97 total wired operations!
 - [x] ✅ Documentation created (this file!)
 - [x] ✅ Specs updated
-- [ ] ⏳ Phase 2 planning complete
-- [ ] ⏳ conv2d design started
+- [x] ✅ Status corrected (4.6% → 37.4%!)
+- [ ] ⏳ Phase 4: Attention mechanisms planning
 
 ### **Week of Feb 10, 2026** (Planned)
 - [ ] ⏳ conv2d WGSL shader complete
