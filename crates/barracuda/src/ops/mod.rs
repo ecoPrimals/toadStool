@@ -6,6 +6,9 @@
 //! - Single implementation per operation
 //! - Zero duplication
 
+// NPU Bridge - Phase 3 unified API (Tensor ↔ NPU conversion)
+pub mod npu_bridge;
+
 // Neuromorphic operations (NPU/GPU/CPU universal)
 pub mod sparse_matmul_quantized;
 
