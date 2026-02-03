@@ -134,8 +134,34 @@ impl GELU {
 // Convenience method on Tensor
 impl Tensor {
     /// Apply GELU activation
+    ///
+    /// **Phase 3**: Now supports NPU routing!
     pub fn gelu(self) -> Result<Self> {
+        // Phase 3: Check if NPU should be used
+        if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
+            log::debug!("Routing gelu to NPU");
+            return self.gelu_npu();
+        }
+        
+        // Existing WGSL path
+        log::debug!("Routing gelu to WGSL");
         GELU::new(self).execute()
+    }
+    
+    /// Execute GELU on NPU
+    fn gelu_npu(&self) -> Result<Self> {
+        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
+        use crate::npu::ops::gelu::npu_gelu;
+        
+        let data = tensor_to_npu_data(self)?;
+        let result_data = npu_gelu(&data)?;
+        
+        let device = self.device().clone();
+        let shape = self.shape().to_vec();
+        
+        futures::executor::block_on(
+            npu_data_to_tensor(result_data, shape, device)
+        )
     }
 }
 

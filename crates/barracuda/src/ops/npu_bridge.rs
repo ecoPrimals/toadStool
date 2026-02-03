@@ -219,6 +219,25 @@ pub async fn npu_data_to_tensor(
 /// let should_use = should_use_npu(&data, Priority::Energy);
 /// assert!(should_use);  // NPU preferred for energy + sparse
 /// ```
+pub fn should_route_to_npu(
+    tensor: &crate::tensor::Tensor,
+    priority: Option<crate::workload::Priority>,
+) -> bool {
+    use crate::workload::Priority;
+
+    if !is_npu_available() {
+        return false;
+    }
+
+    let data = match tensor.to_vec() {
+        Ok(d) => d,
+        Err(_) => return false,
+    };
+
+    let priority = priority.unwrap_or(Priority::Balanced);
+    should_use_npu(&data, priority)
+}
+
 pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool {
     use crate::npu::EventCodec;
     use crate::workload::Priority;

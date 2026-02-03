@@ -137,7 +137,7 @@ impl Tensor {
     /// **Phase 3**: Now supports NPU routing!
     pub fn relu(self) -> Result<Self> {
         // Phase 3: Check if NPU should be used
-        if self.should_use_npu_for_activation() {
+        if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
             log::debug!("Routing relu to NPU");
             return self.relu_npu();
         }
@@ -145,23 +145,6 @@ impl Tensor {
         // Existing WGSL path
         log::debug!("Routing relu to WGSL");
         ReLU::new(self).execute()
-    }
-    
-    /// Check if NPU should be used for activation
-    fn should_use_npu_for_activation(&self) -> bool {
-        use crate::ops::npu_bridge::{should_use_npu, is_npu_available};
-        use crate::workload::Priority;
-        
-        if !is_npu_available() {
-            return false;
-        }
-        
-        let data = match self.to_vec() {
-            Ok(d) => d,
-            Err(_) => return false,
-        };
-        
-        should_use_npu(&data, Priority::Balanced)
     }
     
     /// Execute ReLU on NPU

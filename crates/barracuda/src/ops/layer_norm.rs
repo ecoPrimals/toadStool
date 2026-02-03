@@ -150,8 +150,41 @@ impl LayerNorm {
 }
 
 impl Tensor {
+    /// Apply Layer Normalization
+    ///
+    /// **Phase 3**: Now supports NPU routing!
     pub fn layer_norm(self, epsilon: f32) -> Result<Self> {
+        // Phase 3: Check if NPU should be used
+        if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
+            log::debug!("Routing layer_norm to NPU");
+            return self.layer_norm_npu(epsilon);
+        }
+        
+        // Existing WGSL path
+        log::debug!("Routing layer_norm to WGSL");
         LayerNorm::new(self, epsilon).execute()
+    }
+    
+    /// Execute Layer Normalization on NPU
+    fn layer_norm_npu(&self, epsilon: f32) -> Result<Self> {
+        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
+        use crate::npu::ops::layer_norm::npu_layer_norm;
+        
+        let data = tensor_to_npu_data(self)?;
+        
+        // Create default gamma (scale) and beta (shift) parameters
+        // gamma = all 1.0 (no scaling), beta = all 0.0 (no shift)
+        let gamma = vec![1.0; data.len()];
+        let beta = vec![0.0; data.len()];
+        
+        let result_data = npu_layer_norm(&data, &gamma, &beta, epsilon)?;
+        
+        let device = self.device().clone();
+        let shape = self.shape().to_vec();
+        
+        futures::executor::block_on(
+            npu_data_to_tensor(result_data, shape, device)
+        )
     }
 }
 

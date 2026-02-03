@@ -139,8 +139,36 @@ impl Softmax {
 // Convenience method on Tensor
 impl Tensor {
     /// Apply Softmax activation
+    ///
+    /// **Phase 3**: Now supports NPU routing!
     pub fn softmax(self) -> Result<Self> {
+        // Phase 3: Check if NPU should be used
+        if crate::ops::npu_bridge::should_route_to_npu(&self, None) {
+            log::debug!("Routing softmax to NPU");
+            return self.softmax_npu();
+        }
+        
+        // Existing WGSL path
+        log::debug!("Routing softmax to WGSL");
         Softmax::new(self)?.execute()
+    }
+    
+    /// Execute Softmax on NPU
+    fn softmax_npu(&self) -> Result<Self> {
+        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
+        use crate::npu::ops::softmax::npu_softmax;
+        
+        let data = tensor_to_npu_data(self)?;
+        
+        // Use default temperature of 1.0
+        let result_data = npu_softmax(&data, 1.0)?;
+        
+        let device = self.device().clone();
+        let shape = self.shape().to_vec();
+        
+        futures::executor::block_on(
+            npu_data_to_tensor(result_data, shape, device)
+        )
     }
 }
 
