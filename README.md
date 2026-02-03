@@ -98,7 +98,7 @@ cargo build --release --bin toadstool
 6. ✅ Cross Attention (T5, BART, Whisper)
 7. ✅ ALiBi Position (BLOOM, MPT)
 
-**PHASE 5 - 8 OPERATIONS COMPLETE** (40%):
+**PHASE 5 - 10 OPERATIONS COMPLETE** (50% 🎉):
 1. ✅ Dice Loss (medical imaging)
 2. ✅ NAdam Optimizer (Nesterov-accelerated)
 3. ✅ TopK Operation (top-K selection)
@@ -107,6 +107,8 @@ cargo build --release --bin toadstool
 6. ✅ Triplet Loss (metric learning)
 7. ✅ Focal Loss (object detection - RetinaNet)
 8. ✅ Contrastive Loss (SimCLR/MoCo self-supervised)
+9. ✅ Huber Loss (DQN & robust regression)
+10. ✅ BCE Loss (binary classification & GANs)
 
 **Supports**: GPT, Llama, BLOOM, T5, BART, Whisper, and all modern transformers!
 
