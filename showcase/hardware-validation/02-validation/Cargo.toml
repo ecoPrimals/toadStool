@@ -34,6 +34,14 @@ path = "src/alibi_validation.rs"
 name = "sparse-validation"
 path = "src/sparse_validation.rs"
 
+[[bin]]
+name = "nadam-validation"
+path = "src/nadam_validation.rs"
+
+[[bin]]
+name = "topk-validation"
+path = "src/topk_validation.rs"
+
 [dependencies]
 # BarraCUDA with substrate selection
 barracuda = { path = "../../../crates/barracuda" }
