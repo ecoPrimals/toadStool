@@ -75,9 +75,9 @@ cargo build --release --bin toadstool
 
 ### 🦈 **BarraCUDA: Universal Compute Tensor Library**
 
-**Status**: 🏆 **42.6% Universal (112/263 ops)** • ✅ **A++ Gold Standard** • 🎊 **PHASE 5: 40%!**
+**Status**: 🏆 **44.1% Universal (116/263 ops)** • ✅ **A++ Gold Standard** • 🎊 **PHASE 5: 60%!**
 
-- 🏆 **42.6% Universal Coverage** - 112 operations with WGSL shaders (CPU/GPU/NPU/TPU)
+- 🏆 **44.1% Universal Coverage** - 116 operations with WGSL shaders (CPU/GPU/NPU/TPU)
 - ✅ **Phase 1 Complete** - Core NPU operations (5 ops: matmul, relu, softmax, gelu, layer_norm)
 - ✅ **Phase 2 Complete** - CNN operations (8 ops: conv2d, batch_norm, pooling, elementwise)
 - ✅ **Phase 3 Complete** - Additional ops (84 operations: loss, optimizers, FHE, neuromorphic)
