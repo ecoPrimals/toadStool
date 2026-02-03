@@ -4,7 +4,7 @@
 //! Deep debt compliant - zero unsafe, production-ready.
 
 use barracuda::device::WgpuDevice;
-use barracuda::esn::{ESNConfig, ESN};
+use barracuda::esn_v2::{ESNConfig, ESN};
 use barracuda::genomics::{SequenceAnalyzer, SequenceConfig};
 use barracuda::nn::{Layer, LossFunction, NeuralNetwork};
 use barracuda::snn::{SNNLayer, SpikingNetwork};
