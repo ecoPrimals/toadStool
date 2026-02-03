@@ -19,6 +19,10 @@ name = "causal-validation"
 path = "src/causal_validation.rs"
 
 [[bin]]
+name = "rope-validation"
+path = "src/rope_validation.rs"
+
+[[bin]]
 name = "sparse-validation"
 path = "src/sparse_validation.rs"
 

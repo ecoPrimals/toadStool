@@ -16,6 +16,7 @@ pub mod sparse_matmul_quantized;
 pub mod attention;
 pub mod mha;
 pub mod causal_attn;
+pub mod rope;
 pub mod sparse_attn;
 
 
