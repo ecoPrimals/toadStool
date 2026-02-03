@@ -137,27 +137,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_encode_decode_simple() {
+    fn test_encode_decode_full() {
         let codec = EventCodec::new(0.1);
 
-        // Test data
+        // Test data with sparsity
         let input = vec![0.0, 0.5, 0.0, 1.0, 0.05, 0.8];
 
-        // Encode
-        let events = codec.encode_simple(&input);
-        assert_eq!(events.len(), 3); // Only 3 values > 0.1
+        // Encode with full format (index + value)
+        let events = codec.encode(&input);
 
         // Decode
-        let output = codec.decode_simple(&events, input.len());
+        let output = codec.decode(&events, input.len());
 
         // Check non-zero values preserved (with quantization)
-        assert!((output[1] - 0.5).abs() < 0.01);
-        assert!((output[3] - 1.0).abs() < 0.01);
-        assert!((output[5] - 0.8).abs() < 0.01);
+        assert!((output[1] - 0.5).abs() < 0.01, "output[1] = {}", output[1]);
+        assert!((output[3] - 1.0).abs() < 0.01, "output[3] = {}", output[3]);
+        assert!((output[5] - 0.8).abs() < 0.01, "output[5] = {}", output[5]);
 
         // Check zeros preserved
         assert_eq!(output[0], 0.0);
         assert_eq!(output[2], 0.0);
+        assert_eq!(output[4], 0.0);
     }
 
     #[test]
