@@ -15,6 +15,7 @@ pub mod sparse_matmul_quantized;
 // Attention mechanisms (Phase 4 - Universal Compute)
 pub mod attention;
 pub mod mha;
+pub mod causal_attn;
 
 
 // Homomorphic encryption operations (FHE - GPU accelerated)

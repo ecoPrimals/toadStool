@@ -14,6 +14,10 @@ path = "src/main.rs"
 name = "mha-validation"
 path = "src/mha_validation.rs"
 
+[[bin]]
+name = "causal-validation"
+path = "src/causal_validation.rs"
+
 [dependencies]
 # BarraCUDA with substrate selection
 barracuda = { path = "../../../crates/barracuda" }
