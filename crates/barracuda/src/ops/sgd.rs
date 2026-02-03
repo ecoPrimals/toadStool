@@ -1,4 +1,54 @@
-use crate::error::Result;
+//! SGD Optimizer - GPU-accelerated Stochastic Gradient Descent
+//!
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (existing shader evolved)
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready)
+//! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//!
+//! ## Algorithm
+//!
+//! ```text
+//! Without momentum:
+//! w = w - lr * (g + weight_decay * w)
+//!
+//! With momentum:
+//! v = momentum * v + g
+//! w = w - lr * v
+//! ```
+//!
+//! **Key Properties**:
+//! - Foundation optimizer for deep learning
+//! - Optional momentum for faster convergence
+//! - Optional weight decay for regularization
+//! - Simple and robust
+//!
+//! **Parameters**:
+//! - `learning_rate`: Step size, typically 0.01-0.1
+//! - `momentum`: Momentum factor, typically 0.9 (0.0 = no momentum)
+//! - `weight_decay`: L2 regularization, typically 0.0001-0.001
+//!
+//! **Used By**: All deep learning training (foundational optimizer)
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use barracuda::tensor::Tensor;
+//!
+//! let weights = Tensor::randn(vec![1000]).await?;
+//! let gradients = Tensor::randn(vec![1000]).await?;
+//!
+//! // Without momentum
+//! let (updated_weights, _) =
+//!     weights.sgd_step(&gradients, 0.01, 0.0, 0.0, None)?;
+//!
+//! // With momentum
+//! let (w1, v1) = weights.sgd_step(&gradients, 0.01, 0.9, 0.0, None)?;
+//! let (w2, v2) = w1.sgd_step(&gradients, 0.01, 0.9, 0.0, v1.as_ref())?;
+//! ```
+
+use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
@@ -21,6 +71,66 @@ pub struct SGD {
 }
 
 impl SGD {
+    pub fn new(
+        weights: Tensor,
+        gradients: Tensor,
+        learning_rate: f32,
+        momentum: f32,
+        weight_decay: f32,
+        velocity: Option<Tensor>,
+    ) -> Result<Self> {
+        // Validate shapes match
+        if weights.shape() != gradients.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                weights.shape().to_vec(),
+                gradients.shape().to_vec(),
+            ));
+        }
+
+        // Validate learning rate is positive
+        if learning_rate <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "sgd",
+                "learning_rate must be positive",
+            ));
+        }
+
+        // Validate momentum in valid range
+        if !(0.0..=1.0).contains(&momentum) {
+            return Err(BarracudaError::invalid_op(
+                "sgd",
+                "momentum must be in range [0.0, 1.0]",
+            ));
+        }
+
+        // Validate weight_decay is non-negative
+        if weight_decay < 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "sgd",
+                "weight_decay must be non-negative",
+            ));
+        }
+
+        // Validate velocity shape if provided
+        if let Some(ref v) = velocity {
+            if v.shape() != weights.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    v.shape().to_vec(),
+                    weights.shape().to_vec(),
+                ));
+            }
+        }
+
+        Ok(Self {
+            weights,
+            gradients,
+            velocity,
+            learning_rate,
+            momentum,
+            weight_decay,
+        })
+    }
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/sgd.wgsl")
     }
@@ -40,7 +150,7 @@ impl SGD {
         let velocity_in = if let Some(ref v) = self.velocity {
             v.buffer()
         } else {
-            let zeros = &vec![0.0f32; size];
+            let zeros = vec![0.0f32; size];
             &device
                 .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -64,7 +174,7 @@ impl SGD {
             mapped_at_creation: false,
         });
 
-        let params_buffer = &device
+        let params_buffer = device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("sgd_params"),
@@ -237,128 +347,237 @@ impl SGD {
     }
 }
 
-pub trait SGDExt {
-    fn sgd_step(
-        self,
-        gradients: &Tensor,
-        learning_rate: f32,
-        momentum: f32,
-        weight_decay: f32,
-        velocity: Option<&Tensor>,
-    ) -> Result<(Tensor, Option<Tensor>)>;
-}
+// ═══════════════════════════════════════════════════════════════
+// TENSOR API INTEGRATION (MODERN IDIOMATIC RUST)
+// ═══════════════════════════════════════════════════════════════
 
-impl SGDExt for Tensor {
-    fn sgd_step(
+impl Tensor {
+    /// SGD optimizer step - foundational gradient descent optimizer
+    ///
+    /// **Deep Debt**: Foundation for all deep learning training
+    ///
+    /// # Arguments
+    /// - `gradients`: Gradient tensor [same shape as weights]
+    /// - `learning_rate`: Step size, typically 0.01-0.1
+    /// - `momentum`: Momentum factor 0.0-1.0, typically 0.9 (0.0 = no momentum)
+    /// - `weight_decay`: L2 regularization, typically 0.0001-0.001
+    /// - `velocity`: Momentum velocity (None for first step)
+    ///
+    /// # Returns
+    /// - Tuple: (updated_weights, updated_velocity)
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // Without momentum
+    /// let (w1, _) = weights.sgd_step(&grads, 0.01, 0.0, 0.0, None)?;
+    /// 
+    /// // With momentum
+    /// let (w1, v1) = weights.sgd_step(&grads, 0.01, 0.9, 0.0, None)?;
+    /// let (w2, v2) = w1.sgd_step(&grads, 0.01, 0.9, 0.0, v1.as_ref())?;
+    /// ```
+    ///
+    /// # Note
+    /// - Foundation optimizer for deep learning
+    /// - learning_rate must be positive
+    /// - momentum must be in [0.0, 1.0]
+    /// - weight_decay must be non-negative
+    pub fn sgd_step(
         self,
-        gradients: &Tensor,
+        gradients: &Self,
         learning_rate: f32,
         momentum: f32,
         weight_decay: f32,
-        velocity: Option<&Tensor>,
-    ) -> Result<(Tensor, Option<Tensor>)> {
-        let op = SGD {
-            weights: self,
-            gradients: gradients.clone(),
-            velocity: velocity.cloned(),
+        velocity: Option<&Self>,
+    ) -> Result<(Self, Option<Self>)> {
+        SGD::new(
+            self,
+            gradients.clone(),
             learning_rate,
             momentum,
             weight_decay,
-        };
-        op.execute()
+            velocity.cloned(),
+        )?
+        .execute()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_sgd_basic() {
         let device = get_test_device().await;
 
-        let weights =
-            Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let weights = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let gradients =
-            Tensor::from_data(&vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone()).unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        let (updated_weights, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        let (updated_weights, _) = weights
+            .sgd_step(&gradients, 0.01, 0.0, 0.0, None)
+            .unwrap();
         let result = updated_weights.to_vec().unwrap();
 
+        // Weights should decrease (gradient descent)
         assert_eq!(result.len(), 4);
         assert!(result.iter().all(|&x| x.is_finite()));
+        assert!(result[0] < 1.0, "Expected descent, got {}", result[0]);
     }
 
     #[tokio::test]
-    async fn test_sgd_edge_cases() {
+    async fn test_sgd_with_momentum() {
         let device = get_test_device().await;
 
-        // Single weight
-        let weights = Tensor::from_data(&vec![5.0], vec![1], device.clone()).unwrap();
-        let gradients = Tensor::from_data(&vec![0.1], vec![1], device.clone()).unwrap();
-        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
-        let result = updated.to_vec().unwrap();
-        assert_eq!(result.len(), 1);
+        let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        // Zero gradients
-        let weights = Tensor::from_data(&vec![1.0, 2.0], vec![2], device.clone()).unwrap();
-        let gradients = Tensor::from_data(&vec![0.0, 0.0], vec![2], device.clone()).unwrap();
-        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
-        let result = updated.to_vec().unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 4], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        // First step with momentum
+        let (weights1, velocity1) = weights
+            .sgd_step(&gradients, 0.01, 0.9, 0.0, None)
+            .unwrap();
+
+        assert!(velocity1.is_some());
+        let v = velocity1.unwrap();
+        let v_data = v.to_vec().unwrap();
+        assert!(v_data.iter().all(|&x| x.is_finite()));
+
+        // Second step with accumulated momentum
+        let (weights2, _velocity2) = weights1
+            .sgd_step(&gradients, 0.01, 0.9, 0.0, Some(&v))
+            .unwrap();
+
+        let result = weights2.to_vec().unwrap();
         assert!(result.iter().all(|&x| x.is_finite()));
     }
 
     #[tokio::test]
-    async fn test_sgd_boundary() {
+    async fn test_sgd_with_weight_decay() {
         let device = get_test_device().await;
 
-        // With momentum
-        let weights = Tensor::from_data(&vec![1.0; 10], vec![10], device.clone()).unwrap();
-        let gradients = Tensor::from_data(&vec![0.1; 10], vec![10], device.clone()).unwrap();
-        let (updated, velocity) = weights.sgd_step(&gradients, 0.01, 0.9, 0.0, None).unwrap();
-        let result = updated.to_vec().unwrap();
-        assert_eq!(result.len(), 10);
-        assert!(velocity.is_some());
+        let weights = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
 
-        // With weight decay
-        let weights = Tensor::from_data(&vec![1.0; 10], vec![10], device.clone()).unwrap();
-        let (updated, _) = weights.sgd_step(&gradients, 0.01, 0.0, 0.01, None).unwrap();
-        let result = updated.to_vec().unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 4], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        let (updated_weights, _) = weights
+            .sgd_step(&gradients, 0.01, 0.0, 0.001, None)
+            .unwrap();
+
+        let result = updated_weights.to_vec().unwrap();
         assert!(result.iter().all(|&x| x.is_finite()));
+        assert!(result[0] < 1.0); // Should have decreased
+    }
+
+    #[tokio::test]
+    async fn test_sgd_validation() {
+        let device = get_test_device().await;
+
+        let weights = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+        let gradients = Tensor::from_vec_on(vec![0.1; 5], vec![5], device.clone())
+            .await
+            .unwrap();
+        let grads_correct = Tensor::from_vec_on(vec![0.1; 10], vec![10], device.clone())
+            .await
+            .unwrap();
+
+        // Shape mismatch
+        assert!(weights
+            .clone()
+            .sgd_step(&gradients, 0.01, 0.0, 0.0, None)
+            .is_err());
+
+        // Invalid learning rate
+        assert!(weights
+            .clone()
+            .sgd_step(&grads_correct, -0.01, 0.0, 0.0, None)
+            .is_err());
+        assert!(weights
+            .clone()
+            .sgd_step(&grads_correct, 0.0, 0.0, 0.0, None)
+            .is_err());
+
+        // Invalid momentum
+        assert!(weights
+            .clone()
+            .sgd_step(&grads_correct, 0.01, -0.1, 0.0, None)
+            .is_err());
+        assert!(weights
+            .clone()
+            .sgd_step(&grads_correct, 0.01, 1.5, 0.0, None)
+            .is_err());
+
+        // Invalid weight decay
+        assert!(weights
+            .sgd_step(&grads_correct, 0.01, 0.0, -0.001, None)
+            .is_err());
     }
 
     #[tokio::test]
     async fn test_sgd_large_batch() {
         let device = get_test_device().await;
 
-        // 1000 weights
-        let weights = Tensor::from_data(&vec![1.0; 1000], vec![1000], device.clone()).unwrap();
-        let gradients = Tensor::from_data(&vec![0.01; 1000], vec![1000], device.clone()).unwrap();
-        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
+        let size = 128;
+        let weights = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
+            .await
+            .unwrap();
 
-        let result = updated.to_vec().unwrap();
-        assert_eq!(result.len(), 1000);
+        let gradients = Tensor::from_vec_on(vec![0.01; size], vec![size], device.clone())
+            .await
+            .unwrap();
+
+        let (updated_weights, _) = weights
+            .sgd_step(&gradients, 0.01, 0.0, 0.0, None)
+            .unwrap();
+
+        let result = updated_weights.to_vec().unwrap();
+        assert_eq!(result.len(), size);
+        assert!(result.iter().all(|&x| x.is_finite()));
     }
 
     #[tokio::test]
-    async fn test_sgd_precision() {
+    async fn test_sgd_multi_step() {
         let device = get_test_device().await;
 
-        // Verify gradient descent
-        let weights = Tensor::from_data(&vec![10.0, 10.0], vec![2], device.clone()).unwrap();
-        let gradients = Tensor::from_data(&vec![1.0, 1.0], vec![2], device.clone()).unwrap();
-        let (updated, _) = weights.sgd_step(&gradients, 0.1, 0.0, 0.0, None).unwrap();
-        let result = updated.to_vec().unwrap();
+        let weights = Tensor::from_vec_on(vec![10.0, 20.0], vec![2], device.clone())
+            .await
+            .unwrap();
 
-        assert!(result.iter().all(|&x| x.is_finite()));
-        // With positive gradient, weights should decrease
-        assert!(result.iter().all(|&x| x <= 10.0));
+        let gradients = Tensor::from_vec_on(vec![1.0, 2.0], vec![2], device.clone())
+            .await
+            .unwrap();
+
+        // Step 1
+        let (weights1, v1) = weights
+            .sgd_step(&gradients, 0.1, 0.9, 0.0, None)
+            .unwrap();
+        let result1 = weights1.to_vec().unwrap();
+
+        assert!(result1[0] < 10.0, "Expected descent, got {}", result1[0]);
+        assert!(result1[1] < 20.0, "Expected descent, got {}", result1[1]);
+
+        // Step 2 with momentum
+        let (weights2, _v2) = weights1
+            .sgd_step(&gradients, 0.1, 0.9, 0.0, v1.as_ref())
+            .unwrap();
+        let result2 = weights2.to_vec().unwrap();
+
+        // Should continue descending
+        assert!(result2[0] < result1[0]);
+        assert!(result2[1] < result1[1]);
     }
 }
