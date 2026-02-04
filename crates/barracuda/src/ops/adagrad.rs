@@ -337,7 +337,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // First step
     /// let (w1, acc1) = weights.adagrad_step(&grads, 0.01, None)?;
-    /// 
+    ///
     /// // Subsequent steps
     /// let (w2, acc2) = w1.adagrad_step(&grads, 0.01, Some(&acc1))?;
     /// ```
@@ -439,9 +439,7 @@ mod tests {
             .clone()
             .adagrad_step(&grads_correct, -0.01, None)
             .is_err());
-        assert!(weights
-            .adagrad_step(&grads_correct, 0.0, None)
-            .is_err());
+        assert!(weights.adagrad_step(&grads_correct, 0.0, None).is_err());
     }
 
     #[tokio::test]
@@ -487,9 +485,7 @@ mod tests {
         assert!(result1[1] < 20.0, "Expected descent, got {}", result1[1]);
 
         // Step 2 with accumulated state
-        let (weights2, _acc2) = weights1
-            .adagrad_step(&gradients, 0.1, Some(&acc1))
-            .unwrap();
+        let (weights2, _acc2) = weights1.adagrad_step(&gradients, 0.1, Some(&acc1)).unwrap();
         let result2 = weights2.to_vec().unwrap();
 
         // Should continue descending

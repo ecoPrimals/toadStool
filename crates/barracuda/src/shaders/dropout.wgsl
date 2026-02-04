@@ -1,44 +1,49 @@
-// Dropout - Regularization (neuromorphic essential)
-// During training: randomly zero elements with probability p
-// During inference: identity (scale handled in training)
-// Simplified: deterministic pattern for testing
+// Dropout - Random dropout for regularization
+//
+// Deep Debt Principles:
+// - Pure WGSL implementation (universal compute)
+// - Zero unsafe code (memory safe)
+// - Hardware-agnostic (works on any GPU/CPU via WebGPU)
+// - Self-contained logic (no external dependencies)
+//
+// Note: Uses simple LCG for randomness (deterministic seed)
 
-struct DropoutParams {
-    rate: f32,
+struct Params {
+    size: u32,
+    probability: f32,
+    scale: f32,
     seed: u32,
-    _padding: vec2<f32>,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
-@group(0) @binding(2) var<uniform> params: DropoutParams;
+@group(0) @binding(2) var<uniform> params: Params;
 
-// Simple hash function for pseudo-random
-fn hash(x: u32) -> u32 {
-    var h = x ^ params.seed;
-    h = h * 0x85ebca6bu;
-    h = h ^ (h >> 13u);
-    h = h * 0xc2b2ae35u;
-    h = h ^ (h >> 16u);
-    return h;
+// Linear Congruential Generator for pseudo-random numbers
+fn lcg(seed: u32) -> u32 {
+    return (1103515245u * seed + 12345u) & 0x7fffffffu;
+}
+
+fn random_f32(seed: u32) -> f32 {
+    return f32(lcg(seed)) / f32(0x7fffffffu);
 }
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
     
-    if (idx >= arrayLength(&input)) {
+    if (idx >= params.size) {
         return;
     }
     
-    // Generate pseudo-random value
-    let random = f32(hash(idx)) / f32(0xffffffffu);
+    // Generate random number for this element
+    let seed = params.seed + idx;
+    let rand = random_f32(seed);
     
-    // Apply dropout
-    if (random < params.rate) {
+    // Apply dropout: zero out with probability p, scale by 1/(1-p) otherwise
+    if (rand < params.probability) {
         output[idx] = 0.0;
     } else {
-        // Scale to maintain expected value
-        output[idx] = input[idx] / (1.0 - params.rate);
+        output[idx] = input[idx] * params.scale;
     }
 }

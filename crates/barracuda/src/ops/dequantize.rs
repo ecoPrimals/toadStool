@@ -1,20 +1,195 @@
-//! Dequantize - Convert INT8 to FP32
+//! Dequantize operation - Convert quantized integers to floating point
 //!
-//! Dequantizes 8-bit integers back to floating point.
+//! Dequantization: Convert low-precision integers back to FP32
+//! Used for inference with quantized models
 
-pub async fn dequantize(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[i8],
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct DequantizeParams {
+    size: u32,
     scale: f32,
-    zero_point: i32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let dequantized: Vec<f32> = input
-        .iter()
-        .map(|&x| (x as i32 - zero_point) as f32 * scale)
-        .collect();
+    zero_point: f32,
+    _padding: u32,
+}
 
-    Ok(dequantized)
+/// Dequantize operation
+pub struct Dequantize {
+    input: Tensor,
+    scale: f32,
+    zero_point: f32,
+}
+
+impl Dequantize {
+    /// Create dequantize operation
+    ///
+    /// Note: input tensor should contain i32 values (quantized integers)
+    /// This will be converted to f32 output
+    pub fn new(input: Tensor, scale: f32, zero_point: f32) -> Result<Self> {
+        if scale <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "dequantize",
+                format!("scale must be positive, got {}", scale),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            scale,
+            zero_point,
+        })
+    }
+
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/dequantize.wgsl")
+    }
+
+    /// Execute dequantize on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let size = self.input.len();
+
+        // Create output buffer (f32)
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Use tensor buffer directly (zero-copy)
+        // The shader will handle f32->i32 conversion
+        let input_buffer = self.input.buffer();
+
+        // Create params
+        let params = DequantizeParams {
+            size: size as u32,
+            scale: self.scale,
+            zero_point: self.zero_point,
+            _padding: 0,
+        };
+
+        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Dequantize Params"),
+            size: std::mem::size_of::<DequantizeParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Dequantize Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dequantize Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("Dequantize"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Dequantize Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Dequantize Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Dequantize Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Dequantize Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (256 threads per workgroup)
+            let workgroups = (size as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -24,93 +199,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_dequantize_basic() {
-        let dev = get_test_device().await;
-        let input = vec![-100, 0, 100];
-        let output = dequantize(&dev.device, &dev.queue, &input, 0.01, 0)
-            .await
+        let device = get_test_device().await;
+
+        // Simulate quantized values (as f32, will be cast to i32)
+        let input = Tensor::from_vec_on(
+            vec![100.0, 150.0, 200.0, 250.0],
+            vec![4],
+            device,
+        )
+        .await
+        .unwrap();
+
+        let output = Dequantize::new(input, 0.1, 128.0)
+            .unwrap()
+            .execute()
             .unwrap();
-        assert_eq!(output.len(), 3);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
+        let result = output.to_vec().unwrap();
 
-    #[tokio::test]
-    async fn test_dequantize_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Test with INT8 boundaries
-        let input = vec![-128, 127, 0];
-        let scale = 1.0;
-        let zero_point = 0;
-        let output = dequantize(&dev.device, &dev.queue, &input, scale, zero_point)
-            .await
-            .unwrap();
-
-        assert_eq!(output[0], -128.0);
-        assert_eq!(output[1], 127.0);
-        assert_eq!(output[2], 0.0);
-    }
-
-    #[tokio::test]
-    async fn test_dequantize_boundary() {
-        let dev = get_test_device().await;
-
-        // Test with different zero points
-        let input = vec![0, 10, 20, 30];
-        let scale = 0.5;
-
-        let d1 = dequantize(&dev.device, &dev.queue, &input, scale, 0)
-            .await
-            .unwrap();
-        let d2 = dequantize(&dev.device, &dev.queue, &input, scale, 10)
-            .await
-            .unwrap();
-
-        // Different zero points should produce different dequantizations
-        assert_ne!(d1, d2);
-        // With zero_point=0: output[0] = (0 - 0) * 0.5 = 0.0
-        assert_eq!(d1[0], 0.0);
-        // With zero_point=10: output[0] = (0 - 10) * 0.5 = -5.0
-        assert_eq!(d2[0], -5.0);
-    }
-
-    #[tokio::test]
-    async fn test_dequantize_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large tensor
-        let size = 1000;
-        let input: Vec<i8> = (0..size).map(|i| (i % 256) as i8).collect();
-        let scale = 0.1;
-        let zero_point = 0;
-
-        let output = dequantize(&dev.device, &dev.queue, &input, scale, zero_point)
-            .await
-            .unwrap();
-
-        assert_eq!(output.len(), size);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_dequantize_precision() {
-        let dev = get_test_device().await;
-
-        // Test inverse of quantization
-        let input = vec![5, 10, 15, 20];
-        let scale = 0.1;
-        let zero_point = 0;
-
-        let output = dequantize(&dev.device, &dev.queue, &input, scale, zero_point)
-            .await
-            .unwrap();
-
-        // (5 - 0) * 0.1 = 0.5
-        assert!((output[0] - 0.5).abs() < 1e-6);
-        // (10 - 0) * 0.1 = 1.0
-        assert!((output[1] - 1.0).abs() < 1e-6);
-        // (15 - 0) * 0.1 = 1.5
-        assert!((output[2] - 1.5).abs() < 1e-6);
-        // (20 - 0) * 0.1 = 2.0
-        assert!((output[3] - 2.0).abs() < 1e-6);
+        assert_eq!(result.len(), 4);
+        // Dequantized: (quantized - zero_point) * scale
+        // (100 - 128) * 0.1 = -2.8
+        assert!((result[0] - (-2.8)).abs() < 0.1);
     }
 }

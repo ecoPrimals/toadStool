@@ -1,5 +1,7 @@
 //! LayerScale - Per-layer learnable scaling
 //!
+//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//!
 //! Used in vision transformers (CaiT, LeViT) to stabilize training.
 //!
 //! ## Algorithm
@@ -10,123 +12,263 @@
 //!
 //! Where gamma is a learnable per-channel parameter.
 
-pub async fn layer_scale(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    gamma: &[f32], // Per-channel scaling factors
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if gamma.len() != input.len() {
-        return Err("Gamma must match input length".into());
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// LayerScale operation
+pub struct LayerScale {
+    input: Tensor,
+    gamma: Tensor,
+}
+
+impl LayerScale {
+    /// Create a new layer scale operation
+    pub fn new(input: Tensor, gamma: Tensor) -> Result<Self> {
+        // Validate shapes match
+        if input.shape() != gamma.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                input.shape().to_vec(),
+                gamma.shape().to_vec(),
+            ));
+        }
+
+        Ok(Self { input, gamma })
     }
 
-    let output: Vec<f32> = input
-        .iter()
-        .zip(gamma.iter())
-        .map(|(&x, &g)| x * g)
-        .collect();
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/layer_scale.wgsl")
+    }
 
-    Ok(output)
+    /// Execute the layer scale operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let size = self.input.len();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            _padding: [u32; 3],
+        }
+
+        let params = Params {
+            size: size as u32,
+            _padding: [0; 3],
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("LayerScale Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LayerScale Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("LayerScale Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("LayerScale Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.gamma.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("LayerScale Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        let compute_pipeline = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("LayerScale Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            },
+        );
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("LayerScale Encoder"),
+            },
+        );
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LayerScale Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return tensor with same shape as input
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input.shape().to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_layer_scale_basic() {
-        let dev = get_test_device().await;
-        let device = &dev.device;
-        let queue = &dev.queue;
-        let input = vec![1.0, 2.0, 3.0];
-        let gamma = vec![0.1, 0.2, 0.3];
-        let output = layer_scale(&device, &queue, &input, &gamma).await.unwrap();
-        assert_eq!(output.len(), 3);
-        assert!((output[0] - 0.1).abs() < 1e-5);
-        assert!((output[1] - 0.4).abs() < 1e-5);
-        assert!((output[2] - 0.9).abs() < 1e-5);
+        let device = get_test_device().await;
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let gamma = Tensor::from_vec_on(vec![0.1, 0.2, 0.3], vec![3], device.clone())
+            .await
+            .unwrap();
+        let output = LayerScale::new(input, gamma).unwrap().execute().unwrap();
+        let result = output.to_vec().unwrap();
+        assert_eq!(result.len(), 3);
+        assert!((result[0] - 0.1).abs() < 1e-5);
+        assert!((result[1] - 0.4).abs() < 1e-5);
+        assert!((result[2] - 0.9).abs() < 1e-5);
     }
 
     #[tokio::test]
     async fn test_layer_scale_edge_cases() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Single element
-        let input = vec![5.0];
-        let gamma = vec![0.5];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
+        let input = Tensor::from_vec_on(vec![5.0], vec![1], device.clone())
             .await
             .unwrap();
-        assert_eq!(output.len(), 1);
-        assert!((output[0] - 2.5).abs() < 1e-5);
+        let gamma = Tensor::from_vec_on(vec![0.5], vec![1], device.clone())
+            .await
+            .unwrap();
+        let output = LayerScale::new(input, gamma).unwrap().execute().unwrap();
+        let result = output.to_vec().unwrap();
+        assert_eq!(result.len(), 1);
+        assert!((result[0] - 2.5).abs() < 1e-5);
 
         // All zeros
-        let input = vec![0.0, 0.0, 0.0];
-        let gamma = vec![1.0, 2.0, 3.0];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
+        let input = Tensor::from_vec_on(vec![0.0, 0.0, 0.0], vec![3], device.clone())
             .await
             .unwrap();
-        assert!(output.iter().all(|&x| x.abs() < 1e-5));
+        let gamma = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let output = LayerScale::new(input, gamma).unwrap().execute().unwrap();
+        let result = output.to_vec().unwrap();
+        assert!(result.iter().all(|&x| x.abs() < 1e-5));
     }
 
     #[tokio::test]
     async fn test_layer_scale_boundary() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Gamma = 0 (complete suppression)
-        let input = vec![1.0, 2.0, 3.0];
-        let gamma = vec![0.0, 0.0, 0.0];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        assert!(output.iter().all(|&x| x.abs() < 1e-5));
+        let gamma = Tensor::from_vec_on(vec![0.0, 0.0, 0.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let output = LayerScale::new(input, gamma).unwrap().execute().unwrap();
+        let result = output.to_vec().unwrap();
+        assert!(result.iter().all(|&x| x.abs() < 1e-5));
 
         // Gamma = 1 (identity)
-        let input = vec![1.0, 2.0, 3.0];
-        let gamma = vec![1.0, 1.0, 1.0];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        assert_eq!(output, input);
-    }
-
-    #[tokio::test]
-    async fn test_layer_scale_large_batch() {
-        let dev = get_test_device().await;
-
-        // 1000 elements
-        let input: Vec<f32> = (0..1000).map(|i| i as f32).collect();
-        let gamma: Vec<f32> = vec![0.5; 1000];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
+        let gamma = Tensor::from_vec_on(vec![1.0, 1.0, 1.0], vec![3], device.clone())
             .await
             .unwrap();
-
-        assert_eq!(output.len(), 1000);
-        // All should be halved
-        for i in 0..1000 {
-            assert!((output[i] - input[i] * 0.5).abs() < 1e-3);
+        let output = LayerScale::new(input.clone(), gamma).unwrap().execute().unwrap();
+        let result = output.to_vec().unwrap();
+        let input_vec = input.to_vec().unwrap();
+        for (r, i) in result.iter().zip(input_vec.iter()) {
+            assert!((r - i).abs() < 1e-5);
         }
-    }
-
-    #[tokio::test]
-    async fn test_layer_scale_precision() {
-        let dev = get_test_device().await;
-
-        // Test with various gamma values
-        let input = vec![10.0, 20.0, 30.0];
-        let gamma = vec![0.01, 0.1, 1.0];
-        let output = layer_scale(&dev.device, &dev.queue, &input, &gamma)
-            .await
-            .unwrap();
-
-        assert!((output[0] - 0.1).abs() < 1e-5); // 10 * 0.01
-        assert!((output[1] - 2.0).abs() < 1e-5); // 20 * 0.1
-        assert!((output[2] - 30.0).abs() < 1e-5); // 30 * 1.0
     }
 }

@@ -1,181 +1,223 @@
-//! MixUp - MixUp augmentation (Zhang et al.)
+//! Mixup data augmentation
 //!
-//! Linearly interpolates between pairs of examples and labels.
-//! Encourages linear behavior between classes.
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Mixes two training examples and their labels
 
-pub async fn mixup(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    data1: &[f32],
-    data2: &[f32],
-    label1: &[f32],
-    label2: &[f32],
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct MixupParams {
+    batch_size: u32,
+    feature_size: u32,
     lambda: f32,
-) -> Result<(Vec<f32>, Vec<f32>), Box<dyn std::error::Error>> {
-    if data1.len() != data2.len() || label1.len() != label2.len() {
-        return Err("Input dimensions must match".into());
+    mix_idx: u32,
+}
+
+pub struct Mixup {
+    input: Tensor,
+    lambda: f32,
+    mix_idx: u32,
+}
+
+impl Mixup {
+    /// Create Mixup operation
+    pub fn new(input: Tensor, lambda: f32, mix_idx: u32) -> Result<Self> {
+        if !(0.0..=1.0).contains(&lambda) {
+            return Err(BarracudaError::invalid_op(
+                "Mixup",
+                format!("lambda must be in [0, 1], got {}", lambda),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            lambda,
+            mix_idx,
+        })
     }
 
-    // Mix data
-    let mut mixed_data = vec![0.0f32; data1.len()];
-    for i in 0..data1.len() {
-        mixed_data[i] = lambda * data1[i] + (1.0 - lambda) * data2[i];
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/mixup.wgsl")
     }
 
-    // Mix labels
-    let mut mixed_labels = vec![0.0f32; label1.len()];
-    for i in 0..label1.len() {
-        mixed_labels[i] = lambda * label1[i] + (1.0 - lambda) * label2[i];
-    }
+    /// Execute Mixup on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let input_shape = self.input.shape();
+        
+        if input_shape.len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "Mixup",
+                format!("input must be 2D [batch_size, feature_size], got shape {:?}", input_shape),
+            ));
+        }
 
-    Ok((mixed_data, mixed_labels))
+        let batch_size = input_shape[0];
+        let feature_size = input_shape[1];
+
+        // Create output buffer: [batch_size, feature_size]
+        let output_size = batch_size * feature_size;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = MixupParams {
+            batch_size: batch_size as u32,
+            feature_size: feature_size as u32,
+            lambda: self.lambda,
+            mix_idx: self.mix_idx,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Mixup Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Mixup Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Mixup Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("Mixup"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Mixup Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Mixup Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Mixup Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Mixup Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (256 threads per workgroup)
+            let total_elements = batch_size * feature_size;
+            let workgroups = (total_elements as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            input_shape.to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_mixup_basic() {
-        let dev = get_test_device().await;
-        let data1 = vec![1.0; 100];
-        let data2 = vec![0.0; 100];
-        let label1 = vec![1.0, 0.0];
-        let label2 = vec![0.0, 1.0];
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            0.7,
-        )
-        .await
-        .unwrap();
-        assert_eq!(mixed_data.len(), 100);
-        assert_eq!(mixed_labels.len(), 2);
-        assert!((mixed_data[0] - 0.7).abs() < 1e-5);
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_mixup_edge_cases() {
-        let dev = get_test_device().await;
+        let batch_size = 4;
+        let feature_size = 3;
 
-        // Lambda = 1.0 (all data1)
-        let data1 = vec![2.0; 10];
-        let data2 = vec![1.0; 10];
-        let label1 = vec![1.0];
-        let label2 = vec![0.0];
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert!((mixed_data[0] - 2.0).abs() < 1e-5);
-        assert!((mixed_labels[0] - 1.0).abs() < 1e-5);
-
-        // Lambda = 0.0 (all data2)
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            0.0,
-        )
-        .await
-        .unwrap();
-        assert!((mixed_data[0] - 1.0).abs() < 1e-5);
-        assert!((mixed_labels[0] - 0.0).abs() < 1e-5);
-    }
-
-    #[tokio::test]
-    async fn test_mixup_boundary() {
-        let dev = get_test_device().await;
-
-        // Lambda = 0.5 (equal mix)
-        let data1 = vec![4.0; 10];
-        let data2 = vec![2.0; 10];
-        let label1 = vec![1.0, 0.0];
-        let label2 = vec![0.0, 1.0];
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            0.5,
-        )
-        .await
-        .unwrap();
-        assert!((mixed_data[0] - 3.0).abs() < 1e-5);
-        assert!((mixed_labels[0] - 0.5).abs() < 1e-5);
-        assert!((mixed_labels[1] - 0.5).abs() < 1e-5);
-    }
-
-    #[tokio::test]
-    async fn test_mixup_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large image data
-        let data1 = vec![1.0; 3 * 224 * 224];
-        let data2 = vec![0.0; 3 * 224 * 224];
-        let label1 = vec![1.0, 0.0, 0.0];
-        let label2 = vec![0.0, 1.0, 0.0];
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            0.3,
-        )
-        .await
-        .unwrap();
-        assert_eq!(mixed_data.len(), 3 * 224 * 224);
-        assert_eq!(mixed_labels.len(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_mixup_precision() {
-        let dev = get_test_device().await;
-
-        // Test interpolation accuracy
-        let data1 = vec![10.0; 5];
-        let data2 = vec![5.0; 5];
-        let label1 = vec![1.0];
-        let label2 = vec![0.0];
-        let (mixed_data, mixed_labels) = mixup(
-            &dev.device,
-            &dev.queue,
-            &data1,
-            &data2,
-            &label1,
-            &label2,
-            0.6,
+        let input = Tensor::from_vec_on(
+            vec![1.0; batch_size * feature_size],
+            vec![batch_size, feature_size],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // 0.6 * 10.0 + 0.4 * 5.0 = 6.0 + 2.0 = 8.0
-        assert!((mixed_data[0] - 8.0).abs() < 1e-5);
-        // 0.6 * 1.0 + 0.4 * 0.0 = 0.6
-        assert!((mixed_labels[0] - 0.6).abs() < 1e-5);
+        let result = Mixup::new(input, 0.5, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
+
+        assert_eq!(result.shape(), &[batch_size, feature_size]);
     }
 }

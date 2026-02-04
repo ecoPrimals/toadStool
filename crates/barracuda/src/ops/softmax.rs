@@ -147,28 +147,26 @@ impl Tensor {
             log::debug!("Routing softmax to NPU");
             return self.softmax_npu();
         }
-        
+
         // Existing WGSL path
         log::debug!("Routing softmax to WGSL");
         Softmax::new(self)?.execute()
     }
-    
+
     /// Execute Softmax on NPU
     fn softmax_npu(&self) -> Result<Self> {
-        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
         use crate::npu::ops::softmax::npu_softmax;
-        
+        use crate::ops::npu_bridge::{npu_data_to_tensor, tensor_to_npu_data};
+
         let data = tensor_to_npu_data(self)?;
-        
+
         // Use default temperature of 1.0
         let result_data = npu_softmax(&data, 1.0)?;
-        
+
         let device = self.device().clone();
         let shape = self.shape().to_vec();
-        
-        futures::executor::block_on(
-            npu_data_to_tensor(result_data, shape, device)
-        )
+
+        futures::executor::block_on(npu_data_to_tensor(result_data, shape, device))
     }
 }
 

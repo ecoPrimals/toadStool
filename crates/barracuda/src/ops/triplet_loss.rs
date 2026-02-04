@@ -10,10 +10,10 @@
 //!
 //! ```text
 //! For each triplet (anchor, positive, negative):
-//! 
+//!
 //! d_pos = distance(anchor, positive)   // Should be small
 //! d_neg = distance(anchor, negative)   // Should be large
-//! 
+//!
 //! loss = max(0, d_pos - d_neg + margin)
 //! ```
 //!
@@ -103,7 +103,10 @@ impl TripletLoss {
         if anchors.shape().len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "TripletLoss",
-                format!("Expected 2D tensors [batch, embedding_dim], got shape {:?}", anchors.shape()),
+                format!(
+                    "Expected 2D tensors [batch, embedding_dim], got shape {:?}",
+                    anchors.shape()
+                ),
             ));
         }
 
@@ -134,7 +137,7 @@ impl TripletLoss {
     /// **Deep Debt**: Efficient single-pass distance computation
     pub fn execute(self) -> Result<Tensor> {
         let device = self.anchors.device();
-        
+
         let batch_size = self.anchors.shape()[0];
         let embedding_dim = self.anchors.shape()[1];
 
@@ -155,7 +158,9 @@ impl TripletLoss {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Output buffer (one loss value per sample)
         let output_buffer = device.create_buffer_f32(batch_size)?;
@@ -164,66 +169,68 @@ impl TripletLoss {
         let shader = device.compile_shader(Self::shader(), Some("Triplet Loss"));
 
         // Create bind group layout
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Triplet Loss BGL"),
-            entries: &[
-                // Anchors
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Triplet Loss BGL"),
+                entries: &[
+                    // Anchors
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Positives
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Positives
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Negatives
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Negatives
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -254,23 +261,30 @@ impl TripletLoss {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Triplet Loss Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Triplet Loss Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Triplet Loss Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Triplet Loss Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Triplet Loss Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Triplet Loss Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -280,7 +294,7 @@ impl TripletLoss {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // One workgroup dispatch
             let workgroups = (batch_size as u32 + 255) / 256;
             pass.dispatch_workgroups(workgroups, 1, 1);
@@ -319,7 +333,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // L2 distance (default)
     /// let loss = anchors.triplet_loss(&positives, &negatives, 0.2)?;
-    /// 
+    ///
     /// // Cosine distance
     /// let loss = anchors.triplet_loss_cosine(&positives, &negatives, 0.1)?;
     /// ```
@@ -329,14 +343,33 @@ impl Tensor {
     /// - Margin controls how far negatives should be from positives
     /// - Larger margin = stricter separation requirement
     pub fn triplet_loss(self, positives: &Self, negatives: &Self, margin: f32) -> Result<Self> {
-        TripletLoss::new(self, positives.clone(), negatives.clone(), margin, DistanceMetric::L2)?.execute()
+        TripletLoss::new(
+            self,
+            positives.clone(),
+            negatives.clone(),
+            margin,
+            DistanceMetric::L2,
+        )?
+        .execute()
     }
 
     /// Triplet loss with cosine distance metric
     ///
     /// **Deep Debt**: Useful when embeddings are normalized
-    pub fn triplet_loss_cosine(self, positives: &Self, negatives: &Self, margin: f32) -> Result<Self> {
-        TripletLoss::new(self, positives.clone(), negatives.clone(), margin, DistanceMetric::Cosine)?.execute()
+    pub fn triplet_loss_cosine(
+        self,
+        positives: &Self,
+        negatives: &Self,
+        margin: f32,
+    ) -> Result<Self> {
+        TripletLoss::new(
+            self,
+            positives.clone(),
+            negatives.clone(),
+            margin,
+            DistanceMetric::Cosine,
+        )?
+        .execute()
     }
 }
 
@@ -366,7 +399,7 @@ mod tests {
         .unwrap();
 
         let positives = Tensor::from_vec_on(
-            vec![1.1; batch * embedding_dim],  // Close to anchors
+            vec![1.1; batch * embedding_dim], // Close to anchors
             vec![batch, embedding_dim],
             device.clone(),
         )
@@ -374,7 +407,7 @@ mod tests {
         .unwrap();
 
         let negatives = Tensor::from_vec_on(
-            vec![5.0; batch * embedding_dim],  // Far from anchors
+            vec![5.0; batch * embedding_dim], // Far from anchors
             vec![batch, embedding_dim],
             device,
         )
@@ -385,7 +418,7 @@ mod tests {
 
         assert_eq!(loss.shape(), &[batch]);
         let data = loss.to_vec().unwrap();
-        
+
         // Loss should be low (negatives are far enough)
         assert!(data.iter().all(|&x| x >= 0.0 && x.is_finite()));
     }
@@ -407,7 +440,7 @@ mod tests {
         .unwrap();
 
         let positives = Tensor::from_vec_on(
-            vec![1.02; batch * embedding_dim],  // Very close
+            vec![1.02; batch * embedding_dim], // Very close
             vec![batch, embedding_dim],
             device.clone(),
         )
@@ -415,7 +448,7 @@ mod tests {
         .unwrap();
 
         let negatives = Tensor::from_vec_on(
-            vec![1.03; batch * embedding_dim],  // Also very close (hard negative!)
+            vec![1.03; batch * embedding_dim], // Also very close (hard negative!)
             vec![batch, embedding_dim],
             device,
         )
@@ -424,7 +457,7 @@ mod tests {
 
         let loss = anchors.triplet_loss(&positives, &negatives, 0.2).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Loss should be positive (negatives not far enough from positives)
         assert!(data.iter().all(|&x| x > 0.0));
     }
@@ -453,7 +486,7 @@ mod tests {
         .unwrap();
 
         let negatives = Tensor::from_vec_on(
-            vec![10.0; batch * embedding_dim],  // Very far (easy negative)
+            vec![10.0; batch * embedding_dim], // Very far (easy negative)
             vec![batch, embedding_dim],
             device,
         )
@@ -462,7 +495,7 @@ mod tests {
 
         let loss = anchors.triplet_loss(&positives, &negatives, 0.2).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Loss should be zero or near-zero (negatives far enough)
         assert!(data.iter().all(|&x| x < 0.1));
     }
@@ -491,15 +524,17 @@ mod tests {
         .unwrap();
 
         let negatives = Tensor::from_vec_on(
-            vec![-1.0; batch * embedding_dim],  // Opposite direction
+            vec![-1.0; batch * embedding_dim], // Opposite direction
             vec![batch, embedding_dim],
             device,
         )
         .await
         .unwrap();
 
-        let loss = anchors.triplet_loss_cosine(&positives, &negatives, 0.1).unwrap();
-        
+        let loss = anchors
+            .triplet_loss_cosine(&positives, &negatives, 0.1)
+            .unwrap();
+
         assert_eq!(loss.shape(), &[batch]);
         let data = loss.to_vec().unwrap();
         assert!(data.iter().all(|&x| x.is_finite()));
@@ -537,8 +572,11 @@ mod tests {
         .unwrap();
 
         // Small margin
-        let loss_small = anchors.clone().triplet_loss(&positives, &negatives, 0.1).unwrap();
-        
+        let loss_small = anchors
+            .clone()
+            .triplet_loss(&positives, &negatives, 0.1)
+            .unwrap();
+
         // Large margin
         let loss_large = anchors.triplet_loss(&positives, &negatives, 1.0).unwrap();
 

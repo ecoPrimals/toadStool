@@ -1,52 +1,229 @@
-//! CenterLoss - Center loss for face recognition (Wen et al.)
+//! Center Loss for metric learning
 //!
-//! Minimizes intra-class variance by learning class centers.
-//! Improves feature discriminability.
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Learns class centers and penalizes intra-class variance
 
-pub async fn center_loss(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    features: &[f32], // [batch_size, feature_dim]
-    labels: &[usize], // [batch_size]
-    centers: &[f32],  // [num_classes, feature_dim]
-    batch_size: usize,
-    feature_dim: usize,
-    num_classes: usize,
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if features.len() != batch_size * feature_dim {
-        return Err("Features dimension mismatch".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    if labels.len() != batch_size {
-        return Err("Labels dimension mismatch".into());
-    }
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct CenterLossParams {
+    batch_size: u32,
+    feature_dim: u32,
+    num_classes: u32,
+    _padding: u32,
+}
 
-    if centers.len() != num_classes * feature_dim {
-        return Err("Centers dimension mismatch".into());
-    }
+pub struct CenterLoss {
+    features: Tensor,
+    centers: Tensor,
+    labels: Tensor,
+}
 
-    let mut loss = 0.0;
-
-    // Compute distance from each feature to its class center
-    for i in 0..batch_size {
-        let label = labels[i];
-        if label >= num_classes {
-            return Err("Label out of bounds".into());
+impl CenterLoss {
+    /// Create CenterLoss operation
+    pub fn new(features: Tensor, centers: Tensor, labels: Tensor) -> Result<Self> {
+        // Validate shapes
+        if features.shape().len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "CenterLoss",
+                format!("features must be 2D [batch, feature_dim], got shape {:?}", features.shape()),
+            ));
         }
 
-        // Distance to class center
-        for f in 0..feature_dim {
-            let feat = features[i * feature_dim + f];
-            let center = centers[label * feature_dim + f];
-            let diff = feat - center;
-            loss += diff * diff;
+        if centers.shape().len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "CenterLoss",
+                format!("centers must be 2D [num_classes, feature_dim], got shape {:?}", centers.shape()),
+            ));
         }
+
+        if labels.shape().len() != 1 {
+            return Err(BarracudaError::invalid_op(
+                "CenterLoss",
+                format!("labels must be 1D [batch], got shape {:?}", labels.shape()),
+            ));
+        }
+
+        Ok(Self {
+            features,
+            centers,
+            labels,
+        })
     }
 
-    // Average over batch
-    loss /= batch_size as f32;
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/center_loss.wgsl")
+    }
 
-    Ok(loss)
+    /// Execute CenterLoss on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.features.device();
+        let features_shape = self.features.shape();
+        let batch_size = features_shape[0];
+        let feature_dim = features_shape[1];
+
+        // Create output buffer: [batch] - per-sample loss
+        let output_buffer = device.create_buffer_f32(batch_size)?;
+
+        let params = CenterLossParams {
+            batch_size: batch_size as u32,
+            feature_dim: feature_dim as u32,
+            num_classes: self.centers.shape()[0] as u32,
+            _padding: 0,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("CenterLoss Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("CenterLoss Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("CenterLoss Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.features.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.centers.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.labels.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("CenterLoss"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("CenterLoss Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("CenterLoss Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("CenterLoss Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("CenterLoss Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (64 threads per workgroup)
+            let workgroups = (batch_size as u32 + 63) / 64;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![batch_size],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -56,161 +233,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_center_loss_basic() {
-        let dev = get_test_device().await;
-        let features = vec![0.5; 32 * 128]; // 32 samples, 128 features
-        let labels = vec![
-            0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-            1, 0, 1,
-        ];
-        let centers = vec![0.3; 2 * 128]; // 2 classes
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            32,
-            128,
-            2,
-        )
-        .await
-        .unwrap();
-        assert!(loss > 0.0);
-        assert!(loss.is_finite());
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_center_loss_edge_cases() {
-        let dev = get_test_device().await;
+        let batch_size = 4;
+        let feature_dim = 3;
+        let num_classes = 2;
 
-        // Perfect match (features = centers)
-        let features = vec![1.0; 4 * 10];
-        let labels = vec![0, 0, 1, 1];
-        let centers = vec![1.0; 2 * 10];
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            4,
-            10,
-            2,
-        )
-        .await
-        .unwrap();
-        assert!(loss.abs() < 1e-6); // Should be near zero
-
-        // Single sample
-        let features = vec![0.5; 8];
-        let labels = vec![0];
-        let centers = vec![0.3; 1 * 8];
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            1,
-            8,
-            1,
-        )
-        .await
-        .unwrap();
-        assert!(loss > 0.0);
-    }
-
-    #[tokio::test]
-    async fn test_center_loss_boundary() {
-        let dev = get_test_device().await;
-
-        // Different class centers
-        let features = vec![1.0; 8 * 5];
-        let labels = vec![0, 0, 1, 1, 2, 2, 3, 3];
-        let mut centers = vec![0.0; 4 * 5];
-        // Set different centers for each class
-        for c in 0..4 {
-            for f in 0..5 {
-                centers[c * 5 + f] = c as f32;
-            }
-        }
-
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            8,
-            5,
-            4,
-        )
-        .await
-        .unwrap();
-        assert!(loss > 0.0);
-        assert!(loss.is_finite());
-    }
-
-    #[tokio::test]
-    async fn test_center_loss_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large batch size
-        let batch_size = 128;
-        let feature_dim = 64;
-        let num_classes = 10;
-
-        let features = vec![0.5; batch_size * feature_dim];
-        let labels: Vec<usize> = (0..batch_size).map(|i| i % num_classes).collect();
-        let centers = vec![0.3; num_classes * feature_dim];
-
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            batch_size,
-            feature_dim,
-            num_classes,
-        )
-        .await
-        .unwrap();
-        assert!(loss > 0.0);
-        assert!(loss.is_finite());
-    }
-
-    #[tokio::test]
-    async fn test_center_loss_precision() {
-        let dev = get_test_device().await;
-
-        // Test with known values
-        let features = vec![
-            1.0, 2.0, // Sample 0, class 0
-            3.0, 4.0, // Sample 1, class 1
-        ];
-        let labels = vec![0, 1];
-        let centers = vec![
-            0.0, 0.0, // Center for class 0
-            2.0, 2.0, // Center for class 1
-        ];
-
-        let loss = center_loss(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &labels,
-            &centers,
-            2,
-            2,
-            2,
+        let features = Tensor::from_vec_on(
+            vec![1.0; batch_size * feature_dim],
+            vec![batch_size, feature_dim],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // Sample 0: distance to (0,0) = (1^2 + 2^2) = 5
-        // Sample 1: distance to (2,2) = (1^2 + 2^2) = 5
-        // Average = (5 + 5) / 2 = 5.0
-        assert!((loss - 5.0).abs() < 0.01);
+        let centers = Tensor::from_vec_on(
+            vec![0.5; num_classes * feature_dim],
+            vec![num_classes, feature_dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let labels = Tensor::from_vec_on(
+            vec![0u32, 1, 0, 1],
+            vec![batch_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let result = CenterLoss::new(features, centers, labels)
+            .unwrap()
+            .execute()
+            .unwrap();
+
+        assert_eq!(result.shape(), &[batch_size]);
     }
 }

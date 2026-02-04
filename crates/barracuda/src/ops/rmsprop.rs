@@ -348,7 +348,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // First step
     /// let (w1, sq1) = weights.rmsprop_step(&grads, 0.001, 0.99, None)?;
-    /// 
+    ///
     /// // Subsequent steps
     /// let (w2, sq2) = w1.rmsprop_step(&grads, 0.001, 0.99, Some(&sq1))?;
     /// ```
@@ -393,9 +393,8 @@ mod tests {
             .await
             .unwrap();
 
-        let (updated_weights, updated_sq_avg) = weights
-            .rmsprop_step(&gradients, 0.001, 0.99, None)
-            .unwrap();
+        let (updated_weights, updated_sq_avg) =
+            weights.rmsprop_step(&gradients, 0.001, 0.99, None).unwrap();
 
         let result = updated_weights.to_vec().unwrap();
         let sq_avg = updated_sq_avg.to_vec().unwrap();
@@ -419,9 +418,7 @@ mod tests {
             .unwrap();
 
         // First step
-        let (weights1, sq_avg1) = weights
-            .rmsprop_step(&gradients, 0.001, 0.99, None)
-            .unwrap();
+        let (weights1, sq_avg1) = weights.rmsprop_step(&gradients, 0.001, 0.99, None).unwrap();
 
         let sq1 = sq_avg1.to_vec().unwrap();
         assert!(sq1.iter().all(|&x| x >= 0.0));
@@ -455,9 +452,7 @@ mod tests {
             .unwrap();
 
         // Low alpha (less history)
-        let (updated1, _) = weights1
-            .rmsprop_step(&gradients, 0.001, 0.5, None)
-            .unwrap();
+        let (updated1, _) = weights1.rmsprop_step(&gradients, 0.001, 0.5, None).unwrap();
 
         // High alpha (more history)
         let (updated2, _) = weights2
@@ -525,9 +520,8 @@ mod tests {
             .await
             .unwrap();
 
-        let (updated_weights, updated_sq_avg) = weights
-            .rmsprop_step(&gradients, 0.001, 0.99, None)
-            .unwrap();
+        let (updated_weights, updated_sq_avg) =
+            weights.rmsprop_step(&gradients, 0.001, 0.99, None).unwrap();
 
         let result = updated_weights.to_vec().unwrap();
         let sq_avg = updated_sq_avg.to_vec().unwrap();
@@ -550,9 +544,7 @@ mod tests {
             .unwrap();
 
         // Step 1
-        let (weights1, sq1) = weights
-            .rmsprop_step(&gradients, 0.01, 0.99, None)
-            .unwrap();
+        let (weights1, sq1) = weights.rmsprop_step(&gradients, 0.01, 0.99, None).unwrap();
         let result1 = weights1.to_vec().unwrap();
 
         assert!(result1[0] < 10.0, "Expected descent, got {}", result1[0]);

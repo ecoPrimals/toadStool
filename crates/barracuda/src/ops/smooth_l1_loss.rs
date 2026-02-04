@@ -362,10 +362,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(predictions
-            .clone()
-            .smooth_l1_loss(&targets, 1.0)
-            .is_err());
+        assert!(predictions.clone().smooth_l1_loss(&targets, 1.0).is_err());
 
         // Invalid beta
         let targets_correct = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())

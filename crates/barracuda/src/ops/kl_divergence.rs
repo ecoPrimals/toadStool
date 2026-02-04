@@ -235,7 +235,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // VAE loss
     /// let kl_loss = latent_distribution.kl_divergence(&prior)?;
-    /// 
+    ///
     /// // Knowledge distillation
     /// let kl_loss = student_probs.kl_divergence(&teacher_probs)?;
     /// ```
@@ -258,17 +258,17 @@ mod tests {
     #[tokio::test]
     async fn test_kl_divergence_basic() {
         let device = get_test_device().await;
-        
+
         let p = Tensor::from_vec_on(vec![0.25, 0.25, 0.25, 0.25], vec![4], device.clone())
             .await
             .unwrap();
         let q = Tensor::from_vec_on(vec![0.2, 0.3, 0.3, 0.2], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let kl = p.kl_divergence(&q).unwrap();
         let data = kl.to_vec().unwrap();
-        
+
         assert!(data.iter().all(|&x| x.is_finite()));
         // Sum should be positive (distributions are different)
         let sum: f32 = data.iter().sum();
@@ -278,7 +278,7 @@ mod tests {
     #[tokio::test]
     async fn test_kl_divergence_identical() {
         let device = get_test_device().await;
-        
+
         // Identical distributions should have KL ≈ 0
         let p = Tensor::from_vec_on(vec![0.25, 0.25, 0.25, 0.25], vec![4], device.clone())
             .await
@@ -286,18 +286,18 @@ mod tests {
         let q = Tensor::from_vec_on(vec![0.25, 0.25, 0.25, 0.25], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let kl = p.kl_divergence(&q).unwrap();
         let data = kl.to_vec().unwrap();
         let sum: f32 = data.iter().sum();
-        
+
         assert!(sum.abs() < 0.01, "Expected ~0, got {}", sum);
     }
 
     #[tokio::test]
     async fn test_kl_divergence_asymmetry() {
         let device = get_test_device().await;
-        
+
         // KL(P||Q) ≠ KL(Q||P) - use more extreme distributions
         let p = Tensor::from_vec_on(vec![0.9, 0.1], vec![2], device.clone())
             .await
@@ -305,15 +305,20 @@ mod tests {
         let q = Tensor::from_vec_on(vec![0.1, 0.9], vec![2], device.clone())
             .await
             .unwrap();
-        
+
         let kl_pq = p.clone().kl_divergence(&q).unwrap();
         let kl_qp = q.kl_divergence(&p).unwrap();
-        
+
         let sum_pq: f32 = kl_pq.to_vec().unwrap().iter().sum();
         let sum_qp: f32 = kl_qp.to_vec().unwrap().iter().sum();
-        
+
         // Both should be positive
-        assert!(sum_pq > 0.0 && sum_qp > 0.0, "KL should be positive: {} and {}", sum_pq, sum_qp);
+        assert!(
+            sum_pq > 0.0 && sum_qp > 0.0,
+            "KL should be positive: {} and {}",
+            sum_pq,
+            sum_qp
+        );
         // For very different distributions, both KL values should be similar (symmetric input)
         // This test validates that the operation completes correctly for asymmetric comparisons
         assert!(sum_pq.is_finite() && sum_qp.is_finite());
@@ -322,7 +327,7 @@ mod tests {
     #[tokio::test]
     async fn test_kl_divergence_validation() {
         let device = get_test_device().await;
-        
+
         // Shape mismatch
         let p = Tensor::from_vec_on(vec![0.5; 10], vec![10], device.clone())
             .await
@@ -330,29 +335,29 @@ mod tests {
         let q = Tensor::from_vec_on(vec![0.5; 5], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         assert!(p.kl_divergence(&q).is_err());
     }
 
     #[tokio::test]
     async fn test_kl_divergence_large_batch() {
         let device = get_test_device().await;
-        
+
         let p: Vec<f32> = (0..1000).map(|i| (i as f32 + 1.0) / 1000.0).collect();
         let q: Vec<f32> = (0..1000)
             .map(|i| ((i + 500) as f32 % 1000.0 + 1.0) / 1000.0)
             .collect();
-        
+
         let p_tensor = Tensor::from_vec_on(p, vec![1000], device.clone())
             .await
             .unwrap();
         let q_tensor = Tensor::from_vec_on(q, vec![1000], device.clone())
             .await
             .unwrap();
-        
+
         let kl = p_tensor.kl_divergence(&q_tensor).unwrap();
         let data = kl.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), 1000);
         assert!(data.iter().all(|&x| x.is_finite()));
         let sum: f32 = data.iter().sum();

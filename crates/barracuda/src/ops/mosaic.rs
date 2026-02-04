@@ -2,77 +2,250 @@
 //!
 //! Combines 4 images into one mosaic.
 //! Used in object detection for multi-scale training.
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn mosaic(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    images: &[Vec<f32>], // 4 images [C, H, W]
-    channels: usize,
-    height: usize,
-    width: usize,
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Mosaic operation
+pub struct Mosaic {
+    images: [Tensor; 4],
     seed: u64,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if images.len() != 4 {
-        return Err("Mosaic requires exactly 4 images".into());
-    }
+}
 
-    for img in images {
-        if img.len() != channels * height * width {
-            return Err("All images must have same dimensions".into());
-        }
-    }
-
-    let mut output = vec![0.0f32; channels * height * width];
-
-    // Random split point
-    let split_x = ((seed * 1103515245) % width as u64) as usize;
-    let split_y = ((seed * 22695477) % height as u64) as usize;
-
-    // Top-left: image 0
-    for c in 0..channels {
-        for i in 0..split_y {
-            for j in 0..split_x {
-                let src_idx = c * height * width + i * width + j;
-                let dst_idx = c * height * width + i * width + j;
-                output[dst_idx] = images[0][src_idx];
+impl Mosaic {
+    /// Create a new mosaic operation
+    pub fn new(images: [Tensor; 4], seed: u64) -> Result<Self> {
+        // Validate all images have same shape
+        let shape = images[0].shape();
+        for (i, img) in images.iter().enumerate() {
+            if img.shape() != shape {
+                return Err(crate::error::BarracudaError::invalid_op(
+                    "Mosaic",
+                    format!("All images must have same shape, image {} differs", i),
+                ));
             }
         }
-    }
-
-    // Top-right: image 1
-    for c in 0..channels {
-        for i in 0..split_y {
-            for j in split_x..width {
-                let src_idx = c * height * width + i * width + j;
-                let dst_idx = c * height * width + i * width + j;
-                output[dst_idx] = images[1][src_idx];
-            }
+        
+        if shape.len() != 3 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "Mosaic",
+                format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
+            ));
         }
+        
+        Ok(Self { images, seed })
     }
 
-    // Bottom-left: image 2
-    for c in 0..channels {
-        for i in split_y..height {
-            for j in 0..split_x {
-                let src_idx = c * height * width + i * width + j;
-                let dst_idx = c * height * width + i * width + j;
-                output[dst_idx] = images[2][src_idx];
-            }
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/mosaic.wgsl")
+    }
+
+    /// Execute the mosaic operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.images[0].device();
+        let shape = self.images[0].shape();
+        
+        let channels = shape[0];
+        let height = shape[1];
+        let width = shape[2];
+        
+        // Compute random split point from seed
+        let split_x = ((self.seed * 1103515245) % width as u64) as usize;
+        let split_y = ((self.seed * 22695477) % height as u64) as usize;
+        
+        let output_size = channels * height * width;
+
+        // Create buffers
+        let image0_buffer = self.images[0].buffer();
+        let image1_buffer = self.images[1].buffer();
+        let image2_buffer = self.images[2].buffer();
+        let image3_buffer = self.images[3].buffer();
+
+        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Mosaic Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            channels: u32,
+            height: u32,
+            width: u32,
+            split_x: u32,
+            split_y: u32,
         }
-    }
 
-    // Bottom-right: image 3
-    for c in 0..channels {
-        for i in split_y..height {
-            for j in split_x..width {
-                let src_idx = c * height * width + i * width + j;
-                let dst_idx = c * height * width + i * width + j;
-                output[dst_idx] = images[3][src_idx];
-            }
+        let params = Params {
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            split_x: split_x as u32,
+            split_y: split_y as u32,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Mosaic Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Mosaic Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Mosaic Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: image0_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: image1_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: image2_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: image3_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Mosaic Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Mosaic Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Mosaic Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Mosaic Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Mosaic Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups_x = (width as u32 + 15) / 16;
+            let workgroups_y = (height as u32 + 15) / 16;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
-    }
 
-    Ok(output)
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+
+        Ok(Tensor::new(
+            output_data,
+            vec![channels, height, width],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]

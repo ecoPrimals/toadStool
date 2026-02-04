@@ -190,7 +190,9 @@ impl Nadam {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Output buffers
         let weights_out_buffer = device.create_buffer_f32(size)?;
@@ -201,99 +203,101 @@ impl Nadam {
         let shader = device.compile_shader(Self::shader(), Some("NAdam"));
 
         // Create bind group layout (7 bindings)
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("NAdam BGL"),
-            entries: &[
-                // weights (read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("NAdam BGL"),
+                entries: &[
+                    // weights (read)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // gradients (read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // gradients (read)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // m_in (read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // m_in (read)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // v_in (read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // v_in (read)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // weights_out (write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // weights_out (write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // m_out (write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // m_out (write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // v_out (write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // v_out (write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // params (uniform)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 7,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // params (uniform)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 7,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -336,23 +340,30 @@ impl Nadam {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("NAdam Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("NAdam Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("NAdam Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("NAdam Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("NAdam Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NAdam Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -362,7 +373,7 @@ impl Nadam {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Workgroups: size=256 per shader
             let workgroups = (size as u32 + 255) / 256;
             pass.dispatch_workgroups(workgroups, 1, 1);
@@ -373,7 +384,11 @@ impl Nadam {
 
         // Return all three outputs
         Ok((
-            Tensor::from_buffer(weights_out_buffer, self.weights.shape().to_vec(), device.clone()),
+            Tensor::from_buffer(
+                weights_out_buffer,
+                self.weights.shape().to_vec(),
+                device.clone(),
+            ),
             Tensor::from_buffer(m_out_buffer, self.m.shape().to_vec(), device.clone()),
             Tensor::from_buffer(v_out_buffer, self.v.shape().to_vec(), device.clone()),
         ))
@@ -466,8 +481,9 @@ mod tests {
             .await
             .unwrap();
 
-        let (new_weights, new_m, new_v) =
-            weights.nadam(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.0, 1).unwrap();
+        let (new_weights, new_m, new_v) = weights
+            .nadam(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.0, 1)
+            .unwrap();
 
         assert_eq!(new_weights.shape(), &[size]);
         assert_eq!(new_m.shape(), &[size]);
@@ -509,8 +525,9 @@ mod tests {
 
         // Run 10 steps
         for step in 1..=10 {
-            let (w, m_new, v_new) =
-                weights.nadam(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.0, step).unwrap();
+            let (w, m_new, v_new) = weights
+                .nadam(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.0, step)
+                .unwrap();
             weights = w;
             m = m_new;
             v = v_new;
@@ -543,8 +560,9 @@ mod tests {
             .unwrap();
 
         // With weight decay, weights should shrink even with zero gradient
-        let (new_weights, _, _) =
-            weights.nadam(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.01, 1).unwrap();
+        let (new_weights, _, _) = weights
+            .nadam(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.01, 1)
+            .unwrap();
 
         let w_data = new_weights.to_vec().unwrap();
         // Weight decay should reduce weights
@@ -597,8 +615,9 @@ mod tests {
             .await
             .unwrap();
 
-        let (new_weights, new_m, new_v) =
-            weights.nadam(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.0, 1).unwrap();
+        let (new_weights, new_m, new_v) = weights
+            .nadam(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.0, 1)
+            .unwrap();
 
         assert_eq!(new_weights.shape(), &[10, 10]);
         assert_eq!(new_m.shape(), &[10, 10]);

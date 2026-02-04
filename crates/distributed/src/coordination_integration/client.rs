@@ -133,7 +133,7 @@ pub struct CoordinationClient {
 
 impl CoordinationClient {
     /// Create client for a discovered service
-    pub fn new(service: &DiscoveredService) -> ToadStoolResult<Self> {
+    pub async fn new(service: &DiscoveredService) -> ToadStoolResult<Self> {
         let endpoint = service.endpoints.first().ok_or_else(|| {
             ToadStoolError::Network(NetworkError::ConnectionFailed {
                 endpoint: service.name.clone(),
@@ -141,8 +141,12 @@ impl CoordinationClient {
             })
         })?;
 
-        // Use unix socket path discovery for coordination service
-        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path(); // Coordination via Songbird
+        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
+        let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+            });
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
@@ -153,8 +157,11 @@ impl CoordinationClient {
     }
 
     /// Create client with custom timeout
-    pub fn with_timeout(service: &DiscoveredService, timeout: Duration) -> ToadStoolResult<Self> {
-        let mut client = Self::new(service)?;
+    pub async fn with_timeout(
+        service: &DiscoveredService,
+        timeout: Duration,
+    ) -> ToadStoolResult<Self> {
+        let mut client = Self::new(service).await?;
         client.timeout = timeout;
         Ok(client)
     }

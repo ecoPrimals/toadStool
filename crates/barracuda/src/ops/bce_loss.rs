@@ -39,8 +39,8 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct BCELossParams {
-    epsilon: f32,         // Numerical stability
-    reduction_mode: u32,  // 0=mean, 1=sum, 2=none
+    epsilon: f32,        // Numerical stability
+    reduction_mode: u32, // 0=mean, 1=sum, 2=none
     size: u32,
     _padding: u32,
 }
@@ -240,7 +240,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // Standard binary classification
     /// let loss = predictions.bce_loss(&targets)?;
-    /// 
+    ///
     /// // With sigmoid activation
     /// let probs = logits.sigmoid()?;
     /// let loss = probs.bce_loss(&targets)?;
@@ -264,7 +264,7 @@ mod tests {
     #[tokio::test]
     async fn test_bce_loss_basic() {
         let device = get_test_device().await;
-        
+
         // Perfect predictions (p=1 for t=1, p=0 for t=0)
         let predictions = Tensor::from_vec_on(vec![0.9, 0.1, 0.9, 0.1], vec![4], device.clone())
             .await
@@ -272,10 +272,10 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, 0.0, 1.0, 0.0], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.bce_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Loss should be small for good predictions
         assert!(data.iter().all(|&x| x >= 0.0 && x.is_finite()));
         assert!(data.iter().all(|&x| x < 1.0)); // All losses should be < 1.0
@@ -284,7 +284,7 @@ mod tests {
     #[tokio::test]
     async fn test_bce_loss_validation() {
         let device = get_test_device().await;
-        
+
         // Shape mismatch should fail
         let predictions = Tensor::from_vec_on(vec![0.5; 10], vec![10], device.clone())
             .await
@@ -292,14 +292,14 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         assert!(predictions.bce_loss(&targets).is_err());
     }
 
     #[tokio::test]
     async fn test_bce_loss_perfect_prediction() {
         let device = get_test_device().await;
-        
+
         // Nearly perfect predictions
         let predictions = Tensor::from_vec_on(vec![0.99, 0.01], vec![2], device.clone())
             .await
@@ -307,10 +307,10 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, 0.0], vec![2], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.bce_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Very small loss for near-perfect predictions
         assert!(data.iter().all(|&x| x < 0.1));
     }
@@ -318,7 +318,7 @@ mod tests {
     #[tokio::test]
     async fn test_bce_loss_worst_prediction() {
         let device = get_test_device().await;
-        
+
         // Worst predictions (completely wrong)
         let predictions = Tensor::from_vec_on(vec![0.01, 0.99], vec![2], device.clone())
             .await
@@ -326,10 +326,10 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, 0.0], vec![2], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.bce_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Large loss for bad predictions
         assert!(data.iter().all(|&x| x > 1.0));
     }
@@ -337,21 +337,25 @@ mod tests {
     #[tokio::test]
     async fn test_bce_loss_large_batch() {
         let device = get_test_device().await;
-        
+
         // Large batch
-        let predictions: Vec<f32> = (0..1000).map(|i| if i % 2 == 0 { 0.8 } else { 0.2 }).collect();
-        let targets: Vec<f32> = (0..1000).map(|i| if i % 2 == 0 { 1.0 } else { 0.0 }).collect();
-        
+        let predictions: Vec<f32> = (0..1000)
+            .map(|i| if i % 2 == 0 { 0.8 } else { 0.2 })
+            .collect();
+        let targets: Vec<f32> = (0..1000)
+            .map(|i| if i % 2 == 0 { 1.0 } else { 0.0 })
+            .collect();
+
         let pred_tensor = Tensor::from_vec_on(predictions, vec![1000], device.clone())
             .await
             .unwrap();
         let target_tensor = Tensor::from_vec_on(targets, vec![1000], device.clone())
             .await
             .unwrap();
-        
+
         let loss = pred_tensor.bce_loss(&target_tensor).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), 1000);
         assert!(data.iter().all(|&x| x.is_finite() && x >= 0.0));
     }

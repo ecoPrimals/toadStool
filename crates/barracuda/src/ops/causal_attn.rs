@@ -96,7 +96,7 @@ impl CausalAttention {
     /// **Deep Debt**: Reuses 2/3 shaders from validated attention!
     pub fn execute(self) -> Result<Tensor> {
         let device = self.query.device();
-        
+
         // Extract dimensions
         let shape = self.query.shape();
         let batch_size = shape[0];
@@ -118,13 +118,15 @@ impl CausalAttention {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Intermediate buffers
         let scores_size = batch_size * num_heads * seq_len * seq_len;
         let scores_buffer = device.create_buffer_f32(scores_size)?;
         let weights_buffer = device.create_buffer_f32(scores_size)?;
-        
+
         // Output buffer
         let output_size = batch_size * num_heads * seq_len * head_dim;
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -132,58 +134,61 @@ impl CausalAttention {
         // ═══════════════════════════════════════════════════════════
         // PASS 1: Compute QK^T scores (REUSED from attention ✅)
         // ═══════════════════════════════════════════════════════════
-        
-        let shader_matmul = device.compile_shader(Self::shader_matmul(), Some("CausalAttentionMatmul"));
-        
-        let bgl_matmul = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Causal Attention Matmul BGL"),
-            entries: &[
-                // Query
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+
+        let shader_matmul =
+            device.compile_shader(Self::shader_matmul(), Some("CausalAttentionMatmul"));
+
+        let bgl_matmul = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Causal Attention Matmul BGL"),
+                entries: &[
+                    // Query
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Key
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Key
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Scores (output)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Scores (output)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         let bg_matmul = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Causal Attention Matmul BG"),
@@ -208,63 +213,75 @@ impl CausalAttention {
             ],
         });
 
-        let pipeline_layout_matmul = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Causal Attention Matmul Pipeline Layout"),
-            bind_group_layouts: &[&bgl_matmul],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_matmul =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Causal Attention Matmul Pipeline Layout"),
+                    bind_group_layouts: &[&bgl_matmul],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_matmul = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Causal Attention Matmul Pipeline"),
-            layout: Some(&pipeline_layout_matmul),
-            module: &shader_matmul,
-            entry_point: "main",
-        });
+        let pipeline_matmul =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Causal Attention Matmul Pipeline"),
+                    layout: Some(&pipeline_layout_matmul),
+                    module: &shader_matmul,
+                    entry_point: "main",
+                });
 
         // ═══════════════════════════════════════════════════════════
         // PASS 2: Apply softmax with causal mask (NEW shader!)
         // ═══════════════════════════════════════════════════════════
 
-        let shader_softmax = device.compile_shader(Self::shader_causal_softmax(), Some("CausalAttentionSoftmax"));
+        let shader_softmax = device.compile_shader(
+            Self::shader_causal_softmax(),
+            Some("CausalAttentionSoftmax"),
+        );
 
-        let bgl_softmax = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Causal Attention Softmax BGL"),
-            entries: &[
-                // Scores (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Weights (output)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bgl_softmax =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Causal Attention Softmax BGL"),
+                    entries: &[
+                        // Scores (input)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Weights (output)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Params
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bg_softmax = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Causal Attention Softmax BG"),
@@ -285,74 +302,83 @@ impl CausalAttention {
             ],
         });
 
-        let pipeline_layout_softmax = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Causal Attention Softmax Pipeline Layout"),
-            bind_group_layouts: &[&bgl_softmax],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_softmax =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Causal Attention Softmax Pipeline Layout"),
+                    bind_group_layouts: &[&bgl_softmax],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_softmax = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Causal Attention Softmax Pipeline"),
-            layout: Some(&pipeline_layout_softmax),
-            module: &shader_softmax,
-            entry_point: "main",
-        });
+        let pipeline_softmax =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Causal Attention Softmax Pipeline"),
+                    layout: Some(&pipeline_layout_softmax),
+                    module: &shader_softmax,
+                    entry_point: "main",
+                });
 
         // ═══════════════════════════════════════════════════════════
         // PASS 3: Apply weights to values (REUSED from attention ✅)
         // ═══════════════════════════════════════════════════════════
 
-        let shader_apply = device.compile_shader(Self::shader_apply(), Some("CausalAttentionApply"));
+        let shader_apply =
+            device.compile_shader(Self::shader_apply(), Some("CausalAttentionApply"));
 
-        let bgl_apply = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Causal Attention Apply BGL"),
-            entries: &[
-                // Weights (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl_apply = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Causal Attention Apply BGL"),
+                entries: &[
+                    // Weights (input)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Value (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Value (input)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         let bg_apply = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Causal Attention Apply BG"),
@@ -377,26 +403,34 @@ impl CausalAttention {
             ],
         });
 
-        let pipeline_layout_apply = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Causal Attention Apply Pipeline Layout"),
-            bind_group_layouts: &[&bgl_apply],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_apply =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Causal Attention Apply Pipeline Layout"),
+                    bind_group_layouts: &[&bgl_apply],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_apply = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Causal Attention Apply Pipeline"),
-            layout: Some(&pipeline_layout_apply),
-            module: &shader_apply,
-            entry_point: "main",
-        });
+        let pipeline_apply =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Causal Attention Apply Pipeline"),
+                    layout: Some(&pipeline_layout_apply),
+                    module: &shader_apply,
+                    entry_point: "main",
+                });
 
         // ═══════════════════════════════════════════════════════════
         // EXECUTE ALL 3 PASSES
         // ═══════════════════════════════════════════════════════════
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Causal Attention Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Causal Attention Encoder"),
+            });
 
         // Pass 1: Matmul
         {
@@ -494,9 +528,27 @@ mod tests {
         let dim = 16;
 
         // Create inputs
-        let q = Tensor::from_vec_on(vec![0.5; batch * heads * seq * dim], vec![batch, heads, seq, dim], device.clone()).await.unwrap();
-        let k = Tensor::from_vec_on(vec![0.5; batch * heads * seq * dim], vec![batch, heads, seq, dim], device.clone()).await.unwrap();
-        let v = Tensor::from_vec_on(vec![1.0; batch * heads * seq * dim], vec![batch, heads, seq, dim], device).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * heads * seq * dim],
+            vec![batch, heads, seq, dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let k = Tensor::from_vec_on(
+            vec![0.5; batch * heads * seq * dim],
+            vec![batch, heads, seq, dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let v = Tensor::from_vec_on(
+            vec![1.0; batch * heads * seq * dim],
+            vec![batch, heads, seq, dim],
+            device,
+        )
+        .await
+        .unwrap();
 
         // Execute
         let output = q.causal_attention(&k, &v).unwrap();
@@ -518,7 +570,13 @@ mod tests {
         let seq = 1; // Single token - no masking needed
         let dim = 4;
 
-        let q = Tensor::from_vec_on(vec![0.5; batch * heads * seq * dim], vec![batch, heads, seq, dim], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * heads * seq * dim],
+            vec![batch, heads, seq, dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let k = q.clone();
         let v = q.clone();
 
@@ -539,7 +597,13 @@ mod tests {
         let seq = 16;
         let dim = 16;
 
-        let q = Tensor::from_vec_on(vec![0.5; batch * heads * seq * dim], vec![batch, heads, seq, dim], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * heads * seq * dim],
+            vec![batch, heads, seq, dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let k = q.clone();
         let v = q.clone();
 

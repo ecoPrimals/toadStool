@@ -95,7 +95,7 @@ impl Attention {
     /// Execute attention operation (3 GPU passes)
     pub fn execute(self) -> Result<Tensor> {
         let device = self.query.device();
-        
+
         // Extract dimensions
         let shape = self.query.shape();
         let batch_size = shape[0];
@@ -117,13 +117,15 @@ impl Attention {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Intermediate buffers
         let scores_size = batch_size * num_heads * seq_len * seq_len;
         let scores_buffer = device.create_buffer_f32(scores_size)?;
         let weights_buffer = device.create_buffer_f32(scores_size)?;
-        
+
         // Output buffer
         let output_size = batch_size * num_heads * seq_len * head_dim;
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -131,58 +133,60 @@ impl Attention {
         // ═══════════════════════════════════════════════════════════
         // PASS 1: Compute QK^T scores
         // ═══════════════════════════════════════════════════════════
-        
+
         let shader_matmul = device.compile_shader(Self::shader_matmul(), Some("AttentionMatmul"));
-        
-        let bgl_matmul = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Attention Matmul BGL"),
-            entries: &[
-                // Query
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+
+        let bgl_matmul = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Attention Matmul BGL"),
+                entries: &[
+                    // Query
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Key
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Key
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Scores (output)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Scores (output)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         let bg_matmul = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Attention Matmul BG"),
@@ -207,22 +211,30 @@ impl Attention {
             ],
         });
 
-        let pipeline_layout_matmul = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Attention Matmul PL"),
-            bind_group_layouts: &[&bgl_matmul],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_matmul =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Attention Matmul PL"),
+                    bind_group_layouts: &[&bgl_matmul],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_matmul = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Attention Matmul Pipeline"),
-            layout: Some(&pipeline_layout_matmul),
-            module: &shader_matmul,
-            entry_point: "main",
-        });
+        let pipeline_matmul =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Attention Matmul Pipeline"),
+                    layout: Some(&pipeline_layout_matmul),
+                    module: &shader_matmul,
+                    entry_point: "main",
+                });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Attention Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Attention Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -231,7 +243,7 @@ impl Attention {
             });
             pass.set_pipeline(&pipeline_matmul);
             pass.set_bind_group(0, &bg_matmul, &[]);
-            
+
             // Workgroups: [seq_len/16, seq_len/16, batch*heads]
             let workgroups_x = (seq_len as u32 + 15) / 16;
             let workgroups_y = (seq_len as u32 + 15) / 16;
@@ -242,47 +254,51 @@ impl Attention {
         // ═══════════════════════════════════════════════════════════
         // PASS 2: Apply softmax
         // ═══════════════════════════════════════════════════════════
-        
-        let shader_softmax = device.compile_shader(Self::shader_softmax(), Some("AttentionSoftmax"));
-        
-        let bgl_softmax = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Attention Softmax BGL"),
-            entries: &[
-                // Scores (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Weights (output)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+
+        let shader_softmax =
+            device.compile_shader(Self::shader_softmax(), Some("AttentionSoftmax"));
+
+        let bgl_softmax =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Attention Softmax BGL"),
+                    entries: &[
+                        // Scores (input)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Weights (output)
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        // Params
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let bg_softmax = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Attention Softmax BG"),
@@ -303,18 +319,24 @@ impl Attention {
             ],
         });
 
-        let pipeline_layout_softmax = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Attention Softmax PL"),
-            bind_group_layouts: &[&bgl_softmax],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_softmax =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Attention Softmax PL"),
+                    bind_group_layouts: &[&bgl_softmax],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_softmax = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Attention Softmax Pipeline"),
-            layout: Some(&pipeline_layout_softmax),
-            module: &shader_softmax,
-            entry_point: "main",
-        });
+        let pipeline_softmax =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Attention Softmax Pipeline"),
+                    layout: Some(&pipeline_layout_softmax),
+                    module: &shader_softmax,
+                    entry_point: "main",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -323,7 +345,7 @@ impl Attention {
             });
             pass.set_pipeline(&pipeline_softmax);
             pass.set_bind_group(0, &bg_softmax, &[]);
-            
+
             // Workgroups: one per [batch, head, query_pos]
             let workgroups = ((batch_size * num_heads * seq_len) as u32 + 255) / 256;
             pass.dispatch_workgroups(workgroups, 1, 1);
@@ -332,58 +354,60 @@ impl Attention {
         // ═══════════════════════════════════════════════════════════
         // PASS 3: Apply weights to values
         // ═══════════════════════════════════════════════════════════
-        
+
         let shader_apply = device.compile_shader(Self::shader_apply(), Some("AttentionApply"));
-        
-        let bgl_apply = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Attention Apply BGL"),
-            entries: &[
-                // Weights (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+
+        let bgl_apply = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Attention Apply BGL"),
+                entries: &[
+                    // Weights (input)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Value (input)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Value (input)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         let bg_apply = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Attention Apply BG"),
@@ -408,18 +432,24 @@ impl Attention {
             ],
         });
 
-        let pipeline_layout_apply = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Attention Apply PL"),
-            bind_group_layouts: &[&bgl_apply],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout_apply =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Attention Apply PL"),
+                    bind_group_layouts: &[&bgl_apply],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline_apply = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Attention Apply Pipeline"),
-            layout: Some(&pipeline_layout_apply),
-            module: &shader_apply,
-            entry_point: "main",
-        });
+        let pipeline_apply =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Attention Apply Pipeline"),
+                    layout: Some(&pipeline_layout_apply),
+                    module: &shader_apply,
+                    entry_point: "main",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -428,7 +458,7 @@ impl Attention {
             });
             pass.set_pipeline(&pipeline_apply);
             pass.set_bind_group(0, &bg_apply, &[]);
-            
+
             // Workgroups: [head_dim/16, seq_len/16, batch*heads]
             let workgroups_x = (head_dim as u32 + 15) / 16;
             let workgroups_y = (seq_len as u32 + 15) / 16;
@@ -492,10 +522,10 @@ mod tests {
             .unwrap();
 
         let output = query.attention(&key, &value).unwrap();
-        
+
         assert_eq!(output.shape(), &[1, 1, 4, 8]);
         let result = output.to_vec().unwrap();
-        
+
         // With uniform Q,K, attention weights should be uniform (1/seq_len)
         // So output should be close to value (since all weighted equally)
         assert!(result.iter().all(|&x| (x - 2.0).abs() < 0.1));
@@ -534,7 +564,7 @@ mod tests {
             .unwrap();
 
         let output = query.attention(&key, &value).unwrap();
-        
+
         assert_eq!(output.shape(), &[2, 4, 8, 16]);
         let result = output.to_vec().unwrap();
         assert_eq!(result.len(), size);

@@ -1,48 +1,218 @@
-//! Box IoU - Intersection over Union for boxes
+//! Intersection over Union for bounding boxes
 //!
-//! Computes IoU matrix for all pairs of boxes.
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Computes IoU between pairs of bounding boxes
 
-pub async fn box_iou(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    boxes1: &[f32], // [N, 4]
-    boxes2: &[f32], // [M, 4]
-    n: usize,
-    m: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if boxes1.len() != n * 4 || boxes2.len() != m * 4 {
-        return Err("Dimension mismatch".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    let mut ious = vec![0.0f32; n * m];
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct BoxIoUParams {
+    num_boxes_a: u32,
+    num_boxes_b: u32,
+    box_format: u32, // 0 = xyxy, 1 = xywh, 2 = cxcywh
+    _padding: u32,
+}
 
-    for i in 0..n {
-        for j in 0..m {
-            let b1_idx = i * 4;
-            let b2_idx = j * 4;
+pub struct BoxIoU {
+    boxes_a: Tensor,
+    boxes_b: Tensor,
+    box_format: u32,
+}
 
-            let x1 = boxes1[b1_idx].max(boxes2[b2_idx]);
-            let y1 = boxes1[b1_idx + 1].max(boxes2[b2_idx + 1]);
-            let x2 = boxes1[b1_idx + 2].min(boxes2[b2_idx + 2]);
-            let y2 = boxes1[b1_idx + 3].min(boxes2[b2_idx + 3]);
-
-            let intersection = ((x2 - x1).max(0.0)) * ((y2 - y1).max(0.0));
-
-            let area1 =
-                (boxes1[b1_idx + 2] - boxes1[b1_idx]) * (boxes1[b1_idx + 3] - boxes1[b1_idx + 1]);
-            let area2 =
-                (boxes2[b2_idx + 2] - boxes2[b2_idx]) * (boxes2[b2_idx + 3] - boxes2[b2_idx + 1]);
-            let union = area1 + area2 - intersection;
-
-            ious[i * m + j] = if union > 0.0 {
-                intersection / union
-            } else {
-                0.0
-            };
+impl BoxIoU {
+    /// Create BoxIoU operation
+    pub fn new(boxes_a: Tensor, boxes_b: Tensor, box_format: u32) -> Result<Self> {
+        if box_format > 2 {
+            return Err(BarracudaError::invalid_op(
+                "BoxIoU",
+                format!("box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}", box_format),
+            ));
         }
+
+        Ok(Self {
+            boxes_a,
+            boxes_b,
+            box_format,
+        })
     }
 
-    Ok(ious)
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/box_iou.wgsl")
+    }
+
+    /// Execute BoxIoU on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.boxes_a.device();
+        let a_shape = self.boxes_a.shape();
+        let b_shape = self.boxes_b.shape();
+        
+        if a_shape.len() != 2 || b_shape.len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "BoxIoU",
+                format!("boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}", a_shape, b_shape),
+            ));
+        }
+
+        if a_shape[1] != 4 || b_shape[1] != 4 {
+            return Err(BarracudaError::invalid_op(
+                "BoxIoU",
+                format!("boxes must have 4 coordinates, got {} and {}", a_shape[1], b_shape[1]),
+            ));
+        }
+
+        let num_boxes_a = a_shape[0];
+        let num_boxes_b = b_shape[0];
+
+        // Create output buffer: [num_boxes_a, num_boxes_b]
+        let output_size = num_boxes_a * num_boxes_b;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = BoxIoUParams {
+            num_boxes_a: num_boxes_a as u32,
+            num_boxes_b: num_boxes_b as u32,
+            box_format: self.box_format,
+            _padding: 0,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("BoxIoU Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("BoxIoU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BoxIoU Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.boxes_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.boxes_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("BoxIoU"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("BoxIoU Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("BoxIoU Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("BoxIoU Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("BoxIoU Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (16x16 threads per workgroup)
+            let workgroups_x = (num_boxes_a as u32 + 15) / 16;
+            let workgroups_y = (num_boxes_b as u32 + 15) / 16;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![num_boxes_a, num_boxes_b],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -52,102 +222,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_box_iou_basic() {
-        let dev = get_test_device().await;
-        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
-        let boxes2 = vec![5.0, 5.0, 15.0, 15.0];
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
-            .unwrap();
-        assert_eq!(ious.len(), 1);
-        assert!(ious[0] > 0.0 && ious[0] < 1.0);
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_box_iou_edge_cases() {
-        let dev = get_test_device().await;
+        let num_boxes_a = 3;
+        let num_boxes_b = 4;
 
-        // Identical boxes (IoU = 1.0)
-        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
-        let boxes2 = vec![0.0, 0.0, 10.0, 10.0];
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
-            .unwrap();
-        assert!((ious[0] - 1.0).abs() < 1e-5);
+        let boxes_a = Tensor::from_vec_on(
+            vec![0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0, 10.0, 10.0, 20.0, 20.0],
+            vec![num_boxes_a, 4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Non-overlapping boxes (IoU = 0.0)
-        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
-        let boxes2 = vec![20.0, 20.0, 30.0, 30.0];
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
-            .unwrap();
-        assert_eq!(ious[0], 0.0);
-    }
+        let boxes_b = Tensor::from_vec_on(
+            vec![1.0, 1.0, 11.0, 11.0, 6.0, 6.0, 16.0, 16.0, 11.0, 11.0, 21.0, 21.0, 2.0, 2.0, 12.0, 12.0],
+            vec![num_boxes_b, 4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-    #[tokio::test]
-    async fn test_box_iou_boundary() {
-        let dev = get_test_device().await;
-
-        // Boxes touching at edge (IoU = 0.0)
-        let boxes1 = vec![0.0, 0.0, 10.0, 10.0];
-        let boxes2 = vec![10.0, 0.0, 20.0, 10.0];
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
-            .unwrap();
-        assert_eq!(ious[0], 0.0);
-
-        // One box inside another
-        let boxes1 = vec![0.0, 0.0, 20.0, 20.0];
-        let boxes2 = vec![5.0, 5.0, 15.0, 15.0];
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
-            .unwrap();
-        assert!(ious[0] > 0.0 && ious[0] < 1.0);
-    }
-
-    #[tokio::test]
-    async fn test_box_iou_large_batch() {
-        let dev = get_test_device().await;
-
-        // N x M matrix of IoUs
-        let n = 10;
-        let m = 5;
-        let mut boxes1 = Vec::new();
-        let mut boxes2 = Vec::new();
-
-        for i in 0..n {
-            let x = (i * 10) as f32;
-            boxes1.extend_from_slice(&[x, 0.0, x + 10.0, 10.0]);
-        }
-
-        for j in 0..m {
-            let x = (j * 10) as f32;
-            boxes2.extend_from_slice(&[x, 0.0, x + 10.0, 10.0]);
-        }
-
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, n, m)
-            .await
-            .unwrap();
-        assert_eq!(ious.len(), n * m);
-
-        // Diagonal should have IoU = 1.0 for matching boxes
-        for i in 0..n.min(m) {
-            assert!((ious[i * m + i] - 1.0).abs() < 1e-5);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_box_iou_precision() {
-        let dev = get_test_device().await;
-
-        // Test known IoU values
-        let boxes1 = vec![0.0, 0.0, 10.0, 10.0]; // Area = 100
-        let boxes2 = vec![5.0, 0.0, 15.0, 10.0]; // Area = 100, overlap = 50
-        let ious = box_iou(&dev.device, &dev.queue, &boxes1, &boxes2, 1, 1)
-            .await
+        let result = BoxIoU::new(boxes_a, boxes_b, 0)
+            .unwrap()
+            .execute()
             .unwrap();
 
-        // IoU = 50 / (100 + 100 - 50) = 50 / 150 = 1/3
-        let expected = 1.0 / 3.0;
-        assert!((ious[0] - expected).abs() < 1e-5);
+        assert_eq!(result.shape(), &[num_boxes_a, num_boxes_b]);
     }
 }

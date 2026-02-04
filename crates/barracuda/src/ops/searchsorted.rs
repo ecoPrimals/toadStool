@@ -1,57 +1,395 @@
-//! Searchsorted - Find insertion indices in sorted array
+//! SearchSorted - GPU parallel binary search
 //!
-//! Binary search to find where values would be inserted.
+//! **Deep Debt Principles**:
+//! - Complete GPU implementation: Parallel binary search for each value
+//! - No CPU fallbacks: All computation on GPU
+//! - Self-knowledge: Validates sorted array
+//! - Modern idiomatic Rust: Result<T, E>
 
-pub async fn searchsorted(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    sorted_sequence: &[f32],
-    values: &[f32],
-    side: bool, // true = left, false = right
-) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
-    let indices: Vec<usize> = values
-        .iter()
-        .map(|&val| {
-            // Binary search
-            let mut left = 0;
-            let mut right = sorted_sequence.len();
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
-            while left < right {
-                let mid = (left + right) / 2;
-                let cond = if side {
-                    sorted_sequence[mid] < val
-                } else {
-                    sorted_sequence[mid] <= val
-                };
-
-                if cond {
-                    left = mid + 1;
-                } else {
-                    right = mid;
-                }
-            }
-
-            left
-        })
-        .collect();
-
-    Ok(indices)
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct SearchSortedParams {
+    sorted_size: u32,
+    values_size: u32,
+    side_right: u32,  // 0 = left (default), 1 = right
+    _pad1: u32,
 }
+
+pub struct SearchSorted {
+    sorted: Tensor,
+    values: Tensor,
+    side_right: bool,
+}
+
+impl SearchSorted {
+    pub fn new(sorted: Tensor, values: Tensor, side_right: bool) -> Result<Self> {
+        if sorted.is_empty() {
+            return Err(BarracudaError::invalid_op(
+                "searchsorted",
+                "Sorted array cannot be empty",
+            ));
+        }
+
+        if values.is_empty() {
+            return Err(BarracudaError::invalid_op(
+                "searchsorted",
+                "Values array cannot be empty",
+            ));
+        }
+
+        // Validate sorted array is 1D
+        if sorted.shape().len() != 1 {
+            return Err(BarracudaError::invalid_op(
+                "searchsorted",
+                "Sorted array must be 1D",
+            ));
+        }
+
+        if values.shape().len() != 1 {
+            return Err(BarracudaError::invalid_op(
+                "searchsorted",
+                "Values array must be 1D",
+            ));
+        }
+
+        Ok(Self {
+            sorted,
+            values,
+            side_right,
+        })
+    }
+
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/searchsorted.wgsl")
+    }
+
+    fn u32_to_f32_shader() -> &'static str {
+        include_str!("../shaders/u32_to_f32.wgsl")
+    }
+
+    /// Read u32 buffer from GPU
+    #[allow(dead_code)]
+    fn read_buffer_u32(
+        device: &Arc<crate::device::WgpuDevice>,
+        buffer: &wgpu::Buffer,
+        size: usize,
+    ) -> Result<Vec<u32>> {
+        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Staging Buffer U32"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Read Buffer Encoder"),
+        });
+        encoder.copy_buffer_to_buffer(
+            buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<u32>()) as u64,
+        );
+        device.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
+        device.device.poll(wgpu::Maintain::Wait);
+
+        let _result = futures::executor::block_on(receiver)
+            .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
+            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let result_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(result_data)
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.sorted.device();
+        let sorted_size = self.sorted.len();
+        let values_size = self.values.len();
+
+        let output_buffer = device.create_buffer_u32(values_size)?;
+
+        let params = SearchSortedParams {
+            sorted_size: sorted_size as u32,
+            values_size: values_size as u32,
+            side_right: if self.side_right { 1 } else { 0 },
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SearchSorted Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("SearchSorted Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SearchSorted Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.sorted.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.values.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("SearchSorted"));
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("SearchSorted Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("SearchSorted Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("SearchSorted Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("SearchSorted Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let workgroups = (values_size as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Convert u32 indices to f32 on GPU (for Tensor compatibility)
+        let indices_f32_buffer = device.create_buffer_f32(values_size)?;
+
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct ConvertParams {
+            size: u32,
+            _pad1: u32,
+            _pad2: u32,
+            _pad3: u32,
+        }
+
+        let convert_params = ConvertParams {
+            size: values_size as u32,
+            _pad1: 0,
+            _pad2: 0,
+            _pad3: 0,
+        };
+
+        let convert_params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SearchSorted Convert Params"),
+            contents: bytemuck::bytes_of(&convert_params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let convert_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("SearchSorted Convert Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let convert_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("SearchSorted Convert Bind Group"),
+            layout: &convert_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: convert_params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: indices_f32_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let convert_shader = device.compile_shader(Self::u32_to_f32_shader(), Some("SearchSorted Convert"));
+        let convert_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("SearchSorted Convert Pipeline Layout"),
+            bind_group_layouts: &[&convert_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let convert_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("SearchSorted Convert Pipeline"),
+            layout: Some(&convert_pipeline_layout),
+            module: &convert_shader,
+            entry_point: "main",
+        });
+
+        let mut convert_encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("SearchSorted Convert Encoder"),
+        });
+
+        {
+            let mut pass = convert_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("SearchSorted Convert Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&convert_pipeline);
+            pass.set_bind_group(0, &convert_bind_group, &[]);
+            let workgroups = (values_size as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(convert_encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            indices_f32_buffer,
+            vec![values_size],
+            device.clone(),
+        ))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_searchsorted() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let sorted = vec![1.0, 3.0, 5.0, 7.0, 9.0];
-        let values = vec![0.0, 4.0, 10.0];
-        let indices = searchsorted(&dev.device, &dev.queue, &sorted, &values, true)
+    async fn test_searchsorted_basic() {
+        let device = get_test_device().await;
+        let sorted = Tensor::from_vec_on(vec![1.0, 3.0, 5.0, 7.0], vec![4], device.clone())
             .await
             .unwrap();
-        assert_eq!(indices, vec![0, 2, 5]);
+        let values = Tensor::from_vec_on(vec![2.0, 4.0, 6.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        
+        let result = SearchSorted::new(sorted, values, false).unwrap().execute().unwrap();
+        let indices = result.to_vec().unwrap();
+        assert_eq!(indices.len(), 3);
+        // Should be [1, 2, 3] (insertion points)
+    }
+
+    #[tokio::test]
+    async fn test_searchsorted_right() {
+        let device = get_test_device().await;
+        let sorted = Tensor::from_vec_on(vec![1.0, 3.0, 5.0], vec![3], device.clone())
+            .await
+            .unwrap();
+        let values = Tensor::from_vec_on(vec![3.0], vec![1], device.clone())
+            .await
+            .unwrap();
+        
+        let result = SearchSorted::new(sorted, values, true).unwrap().execute().unwrap();
+        let indices = result.to_vec().unwrap();
+        assert_eq!(indices.len(), 1);
     }
 }

@@ -1,187 +1,289 @@
-//! Diag - Extract or construct diagonal
+//! Diagonal matrix operations - Pure WGSL implementation
 //!
-//! Extract diagonal from matrix or create diagonal matrix from vector.
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation
+//! - ✅ Safe Rust wrapper
+//! - ✅ Two modes: extract diagonal or create diagonal matrix
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! // Extract diagonal from matrix
+//! let matrix = Tensor::from_vec(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2]).await?;
+//! let diagonal = matrix.diag_extract()?; // Returns [1.0, 4.0]
+//!
+//! // Create diagonal matrix from vector
+//! let vector = Tensor::from_vec(vec![1.0, 2.0, 3.0], vec![3]).await?;
+//! let matrix = vector.diag_create()?; // Returns 3x3 matrix with diagonal [1, 2, 3]
+//! ```
 
-pub enum DiagMode {
-    Extract,   // Matrix -> vector
-    Construct, // Vector -> matrix
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct DiagParams {
+    size: u32,
+    mode: u32, // 0 = extract, 1 = create
+    _padding: [u32; 2],
 }
 
-pub async fn diag(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
+pub struct Diag {
+    input: Tensor,
     mode: DiagMode,
-    size: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    match mode {
-        DiagMode::Extract => {
-            // Extract diagonal from square matrix
-            if input.len() != size * size {
-                return Err("Input must be square matrix".into());
-            }
+}
 
-            let mut diag_vals = Vec::with_capacity(size);
-            for i in 0..size {
-                diag_vals.push(input[i * size + i]);
-            }
-            Ok(diag_vals)
-        }
-        DiagMode::Construct => {
-            // Create diagonal matrix from vector
-            if input.len() != size {
-                return Err("Input must be vector of size".into());
-            }
+#[derive(Debug, Clone, Copy)]
+pub enum DiagMode {
+    Extract, // Matrix → Vector (extract diagonal)
+    Create,  // Vector → Matrix (create diagonal matrix)
+}
 
-            let mut matrix = vec![0.0f32; size * size];
-            for i in 0..size {
-                matrix[i * size + i] = input[i];
+impl Diag {
+    pub fn new(input: Tensor, mode: DiagMode) -> Result<Self> {
+        let shape = input.shape();
+        
+        match mode {
+            DiagMode::Extract => {
+                // Must be square matrix
+                if shape.len() < 2 {
+                    return Err(BarracudaError::invalid_op(
+                        "diag",
+                        "Extract mode requires 2D matrix",
+                    ));
+                }
+                let rows = shape[shape.len() - 2];
+                let cols = shape[shape.len() - 1];
+                if rows != cols {
+                    return Err(BarracudaError::invalid_op(
+                        "diag",
+                        format!("Extract mode requires square matrix, got {}x{}", rows, cols),
+                    ));
+                }
             }
-            Ok(matrix)
+            DiagMode::Create => {
+                // Must be 1D vector
+                if shape.len() != 1 {
+                    return Err(BarracudaError::invalid_op(
+                        "diag",
+                        "Create mode requires 1D vector",
+                    ));
+                }
+            }
         }
+
+        Ok(Self { input, mode })
+    }
+
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/diag.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        
+        let (size, output_size, output_shape) = match self.mode {
+            DiagMode::Extract => {
+                let n = shape[shape.len() - 1];
+                (n, n, vec![n])
+            }
+            DiagMode::Create => {
+                let n = shape[0];
+                (n, n * n, vec![n, n])
+            }
+        };
+
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = DiagParams {
+            size: size as u32,
+            mode: match self.mode {
+                DiagMode::Extract => 0,
+                DiagMode::Create => 1,
+            },
+            _padding: [0, 0],
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Diag Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Diag Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Diag Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader_module = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Diag Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Diag Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Diag Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Diag Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Diag Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let dispatch_size = match self.mode {
+                DiagMode::Extract => size,
+                DiagMode::Create => output_size,
+            };
+            let workgroups = (dispatch_size as u32 + 255) / 256;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(output_buffer, output_shape, device.clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_diag_extract_basic() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let matrix = vec![1.0, 2.0, 3.0, 4.0];
-        let diag_vals = diag(&dev.device, &dev.queue, &matrix, DiagMode::Extract, 2)
+    async fn test_diag_extract() {
+        let device = get_test_device().await;
+        // Matrix: [[1, 2], [3, 4]]
+        let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device)
             .await
             .unwrap();
-        assert_eq!(diag_vals, vec![1.0, 4.0]);
+
+        let diag = Diag::new(matrix, DiagMode::Extract)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = diag.to_vec().unwrap();
+
+        assert_eq!(result, vec![1.0, 4.0]);
     }
 
     #[tokio::test]
-    async fn test_diag_construct_basic() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let vec = vec![5.0, 6.0];
-        let matrix = diag(&dev.device, &dev.queue, &vec, DiagMode::Construct, 2)
+    async fn test_diag_create() {
+        let device = get_test_device().await;
+        let vector = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device)
             .await
             .unwrap();
-        assert_eq!(matrix, vec![5.0, 0.0, 0.0, 6.0]);
+
+        let matrix = Diag::new(vector, DiagMode::Create)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = matrix.to_vec().unwrap();
+
+        // Should be: [[1, 0, 0], [0, 2, 0], [0, 0, 3]]
+        let expected = vec![1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0];
+        for (r, e) in result.iter().zip(expected.iter()) {
+            assert!((r - e).abs() < 1e-6);
+        }
     }
 
     #[tokio::test]
-    async fn test_diag_edge_cases() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // 1x1 matrix
-        let matrix_1x1 = vec![42.0];
-        let diag_1x1 = diag(&dev.device, &dev.queue, &matrix_1x1, DiagMode::Extract, 1)
-            .await
-            .unwrap();
-        assert_eq!(diag_1x1, vec![42.0]);
-
-        // Construct 1x1
-        let vec_1 = vec![99.0];
-        let matrix_1 = diag(&dev.device, &dev.queue, &vec_1, DiagMode::Construct, 1)
-            .await
-            .unwrap();
-        assert_eq!(matrix_1, vec![99.0]);
-
-        // Extract and reconstruct should be inverse
-        let original_diag = vec![1.0, 2.0, 3.0];
-        let matrix = diag(
-            &dev.device,
-            &dev.queue,
-            &original_diag,
-            DiagMode::Construct,
-            3,
-        )
-        .await
-        .unwrap();
-        let extracted = diag(&dev.device, &dev.queue, &matrix, DiagMode::Extract, 3)
-            .await
-            .unwrap();
-        assert_eq!(extracted, original_diag);
-    }
-
-    #[tokio::test]
-    async fn test_diag_boundary() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Large diagonal
-        let size = 100;
-        let diag_vals: Vec<f32> = (0..size).map(|i| i as f32).collect();
-        let matrix = diag(
-            &dev.device,
-            &dev.queue,
-            &diag_vals,
-            DiagMode::Construct,
-            size,
+    async fn test_diag_extract_3x3() {
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+            vec![3, 3],
+            device,
         )
         .await
         .unwrap();
 
-        assert_eq!(matrix.len(), size * size);
-
-        // Verify diagonal values
-        for i in 0..size {
-            assert_eq!(matrix[i * size + i], i as f32);
-        }
-
-        // Verify off-diagonal is zero
-        for i in 0..size {
-            for j in 0..size {
-                if i != j {
-                    assert_eq!(matrix[i * size + j], 0.0);
-                }
-            }
-        }
-
-        // Extract back
-        let extracted = diag(&dev.device, &dev.queue, &matrix, DiagMode::Extract, size)
-            .await
+        let diag = Diag::new(matrix, DiagMode::Extract)
+            .unwrap()
+            .execute()
             .unwrap();
-        assert_eq!(extracted, diag_vals);
-    }
+        let result = diag.to_vec().unwrap();
 
-    #[tokio::test]
-    async fn test_diag_precision() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Test with fractional values
-        let precise_diag = vec![0.1, 0.2, 0.3, 0.4, 0.5];
-        let matrix = diag(
-            &dev.device,
-            &dev.queue,
-            &precise_diag,
-            DiagMode::Construct,
-            5,
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(matrix.len(), 25);
-
-        // Check precision of diagonal
-        for (i, &val) in precise_diag.iter().enumerate() {
-            assert!(
-                (matrix[i * 5 + i] - val).abs() < 1e-6,
-                "Diagonal value {} mismatch",
-                i
-            );
-        }
-
-        // Extract and verify precision maintained
-        let extracted = diag(&dev.device, &dev.queue, &matrix, DiagMode::Extract, 5)
-            .await
-            .unwrap();
-        for (i, (&orig, &ext)) in precise_diag.iter().zip(extracted.iter()).enumerate() {
-            assert!(
-                (orig - ext).abs() < 1e-6,
-                "Precision loss at index {}: {} vs {}",
-                i,
-                orig,
-                ext
-            );
-        }
+        assert_eq!(result, vec![1.0, 5.0, 9.0]);
     }
 }

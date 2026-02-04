@@ -83,7 +83,7 @@ impl DiceLoss {
     /// **Deep Debt**: Efficient workgroup reduction for large segmentations
     pub fn execute(self) -> Result<Tensor> {
         let device = self.predictions.device();
-        
+
         // Determine batch and elements
         let total_size = self.predictions.len();
         let batch_size = if self.predictions.shape().len() > 0 {
@@ -107,7 +107,9 @@ impl DiceLoss {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Output buffer (one loss value per batch)
         let output_buffer = device.create_buffer_f32(batch_size)?;
@@ -116,55 +118,57 @@ impl DiceLoss {
         let shader = device.compile_shader(Self::shader(), Some("Dice Loss"));
 
         // Create bind group layout
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Dice Loss BGL"),
-            entries: &[
-                // Predictions
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Dice Loss BGL"),
+                entries: &[
+                    // Predictions
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Targets
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Targets
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -191,23 +195,30 @@ impl DiceLoss {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Dice Loss Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Dice Loss Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Dice Loss Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Dice Loss Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Dice Loss Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Dice Loss Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -217,7 +228,7 @@ impl DiceLoss {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // One workgroup per batch sample
             pass.dispatch_workgroups(batch_size as u32, 1, 1);
         }
@@ -279,21 +290,14 @@ mod tests {
         let w = 16;
 
         // Perfect predictions
-        let preds = Tensor::from_vec_on(
-            vec![1.0; batch * h * w],
-            vec![batch, h, w],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let preds =
+            Tensor::from_vec_on(vec![1.0; batch * h * w], vec![batch, h, w], device.clone())
+                .await
+                .unwrap();
 
-        let targets = Tensor::from_vec_on(
-            vec![1.0; batch * h * w],
-            vec![batch, h, w],
-            device,
-        )
-        .await
-        .unwrap();
+        let targets = Tensor::from_vec_on(vec![1.0; batch * h * w], vec![batch, h, w], device)
+            .await
+            .unwrap();
 
         let loss = preds.dice_loss(&targets, 1.0).unwrap();
 
@@ -321,7 +325,7 @@ mod tests {
 
         let loss = preds.dice_loss(&targets, 1.0).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // High loss for mismatch
         assert!(data[0] > 0.5);
     }
@@ -335,24 +339,17 @@ mod tests {
         let h = 128;
         let w = 128;
 
-        let preds = Tensor::from_vec_on(
-            vec![0.8; batch * h * w],
-            vec![batch, h, w],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let preds =
+            Tensor::from_vec_on(vec![0.8; batch * h * w], vec![batch, h, w], device.clone())
+                .await
+                .unwrap();
 
-        let targets = Tensor::from_vec_on(
-            vec![1.0; batch * h * w],
-            vec![batch, h, w],
-            device,
-        )
-        .await
-        .unwrap();
+        let targets = Tensor::from_vec_on(vec![1.0; batch * h * w], vec![batch, h, w], device)
+            .await
+            .unwrap();
 
         let loss = preds.dice_loss(&targets, 1.0).unwrap();
-        
+
         assert_eq!(loss.shape(), &[batch]);
         let data = loss.to_vec().unwrap();
         assert!(data.iter().all(|&x| x.is_finite() && x >= 0.0 && x <= 1.0));

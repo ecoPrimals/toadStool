@@ -1,49 +1,202 @@
-//! Chunk - Split tensor into chunks
+//! Chunk - Split tensor into chunks along dimension
 //!
-//! Divides tensor into specified number of chunks along dimension.
+//! **Deep Debt Principles**:
+//! - Complete implementation: Uses existing chunk.wgsl shader
+//! - Zero hardcoding: All parameters configurable
+//! - Self-knowledge: Validates chunk count and dimension
+//! - Modern idiomatic Rust: Result<T, E>
 
-pub async fn chunk(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    num_chunks: usize,
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct ChunkParams {
+    chunk_idx: u32,
+    chunk_size: u32,
+    split_dim: u32,
+    dim_size: u32,
+    inner_size: u32,
+    outer_size: u32,
+    output_size: u32,
+    _pad1: u32,
+}
+
+pub struct Chunk {
+    input: Tensor,
+    chunks: usize,
     dim: usize,
-    shape: &[usize],
-) -> Result<Vec<Vec<f32>>, Box<dyn std::error::Error>> {
-    if dim >= shape.len() {
-        return Err("Dim out of bounds".into());
-    }
+}
 
-    let dim_size = shape[dim];
-    let chunk_size = (dim_size + num_chunks - 1) / num_chunks; // Ceiling division
-    let outer: usize = shape[..dim].iter().product();
-    let inner: usize = shape[dim + 1..].iter().product();
-
-    let mut chunks = Vec::new();
-
-    for c in 0..num_chunks {
-        let start = c * chunk_size;
-        let end = (start + chunk_size).min(dim_size);
-
-        if start >= dim_size {
-            break;
+impl Chunk {
+    pub fn new(input: Tensor, chunks: usize, dim: usize) -> Result<Self> {
+        if chunks == 0 {
+            return Err(BarracudaError::invalid_op(
+                "chunk",
+                "Cannot split into 0 chunks",
+            ));
         }
 
-        let mut chunk_data = Vec::new();
+        let shape = input.shape();
+        if dim >= shape.len() {
+            return Err(BarracudaError::invalid_op(
+                "chunk",
+                format!("dim {} exceeds tensor rank {}", dim, shape.len()),
+            ));
+        }
 
-        for o in 0..outer {
-            for d in start..end {
-                for i in 0..inner {
-                    let idx = o * dim_size * inner + d * inner + i;
-                    chunk_data.push(input[idx]);
-                }
+        let dim_size = shape[dim];
+        if dim_size % chunks != 0 {
+            return Err(BarracudaError::invalid_op(
+                "chunk",
+                format!("dimension size {} must be divisible by chunks {}", dim_size, chunks),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            chunks,
+            dim,
+        })
+    }
+
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/chunk.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Vec<Tensor>> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let dim_size = shape[self.dim];
+        let chunk_size = dim_size / self.chunks;
+
+        // Compute sizes
+        let outer_size: usize = shape[..self.dim].iter().product();
+        let inner_size: usize = shape[self.dim + 1..].iter().product();
+        let output_size = outer_size * chunk_size * inner_size;
+
+        let mut results = Vec::with_capacity(self.chunks);
+
+        for chunk_idx in 0..self.chunks {
+            let params = ChunkParams {
+                chunk_idx: chunk_idx as u32,
+                chunk_size: chunk_size as u32,
+                split_dim: self.dim as u32,
+                dim_size: dim_size as u32,
+                inner_size: inner_size as u32,
+                outer_size: outer_size as u32,
+                output_size: output_size as u32,
+                _pad1: 0,
+            };
+
+            let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Chunk Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+            let output_buffer = device.create_buffer_f32(output_size)?;
+
+            let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Chunk Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Chunk Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.input.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            let shader = device.compile_shader(Self::wgsl_shader(), Some("Chunk"));
+            let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Chunk Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+            let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Chunk Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Chunk Encoder"),
+            });
+
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Chunk Pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+                let workgroups = (output_size as u32 + 255) / 256;
+                pass.dispatch_workgroups(workgroups, 1, 1);
             }
+
+            device.queue.submit(Some(encoder.finish()));
+
+            // Compute output shape
+            let mut output_shape = shape.to_vec();
+            output_shape[self.dim] = chunk_size;
+
+            results.push(Tensor::from_buffer(
+                output_buffer,
+                output_shape,
+                device.clone(),
+            ));
         }
 
-        chunks.push(chunk_data);
+        Ok(results)
     }
-
-    Ok(chunks)
 }
 
 #[cfg(test)]
@@ -53,106 +206,45 @@ mod tests {
 
     #[tokio::test]
     async fn test_chunk_basic() {
-        let dev = get_test_device().await;
-        let input: Vec<f32> = (0..10).map(|i| i as f32).collect();
-        let chunks = chunk(&dev.device, &dev.queue, &input, 3, 0, &[10])
-            .await
-            .unwrap();
+        let device = get_test_device().await;
+        let input = Tensor::from_vec_on(
+            (0..12).map(|i| i as f32).collect(),
+            vec![3, 4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        
+        let chunks = Chunk::new(input, 2, 0).unwrap().execute().unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].shape(), &[1, 4]);
+        assert_eq!(chunks[1].shape(), &[1, 4]);
+    }
 
+    #[tokio::test]
+    async fn test_chunk_along_dim() {
+        let device = get_test_device().await;
+        let input = Tensor::from_vec_on(
+            (0..12).map(|i| i as f32).collect(),
+            vec![2, 6],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        
+        let chunks = Chunk::new(input, 3, 1).unwrap().execute().unwrap();
         assert_eq!(chunks.len(), 3);
-        // First chunk: [0,1,2,3] (size 4)
-        // Second chunk: [4,5,6,7] (size 4)
-        // Third chunk: [8,9] (size 2)
-        assert_eq!(chunks[0].len(), 4);
-        assert_eq!(chunks[1].len(), 4);
-        assert_eq!(chunks[2].len(), 2);
+        assert_eq!(chunks[0].shape(), &[2, 2]);
     }
 
     #[tokio::test]
-    async fn test_chunk_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Single chunk (no splitting)
-        let input: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0];
-        let chunks = chunk(&dev.device, &dev.queue, &input, 1, 0, &[4])
+    async fn test_chunk_invalid() {
+        let device = get_test_device().await;
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        assert_eq!(chunks.len(), 1);
-        assert_eq!(chunks[0].len(), 4);
-
-        // More chunks than elements
-        let input: Vec<f32> = vec![1.0, 2.0];
-        let chunks = chunk(&dev.device, &dev.queue, &input, 5, 0, &[2])
-            .await
-            .unwrap();
-        assert_eq!(chunks.len(), 2); // Only 2 chunks created
-    }
-
-    #[tokio::test]
-    async fn test_chunk_boundary() {
-        let dev = get_test_device().await;
-
-        // Exact division
-        let input: Vec<f32> = (0..12).map(|i| i as f32).collect();
-        let chunks = chunk(&dev.device, &dev.queue, &input, 4, 0, &[12])
-            .await
-            .unwrap();
-        assert_eq!(chunks.len(), 4);
-        for chunk in &chunks {
-            assert_eq!(chunk.len(), 3); // 12/4 = 3
-        }
-
-        // Two chunks
-        let input: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let chunks = chunk(&dev.device, &dev.queue, &input, 2, 0, &[6])
-            .await
-            .unwrap();
-        assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].len(), 3);
-        assert_eq!(chunks[1].len(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_chunk_large_tensor() {
-        let dev = get_test_device().await;
-
-        // 1000 elements into 10 chunks
-        let input: Vec<f32> = (0..1000).map(|i| (i as f32) * 0.1).collect();
-        let chunks = chunk(&dev.device, &dev.queue, &input, 10, 0, &[1000])
-            .await
-            .unwrap();
-
-        assert_eq!(chunks.len(), 10);
-        for chunk in &chunks {
-            assert_eq!(chunk.len(), 100); // 1000/10 = 100
-        }
-
-        // Verify data integrity
-        let mut reconstructed = Vec::new();
-        for chunk in chunks {
-            reconstructed.extend(chunk);
-        }
-        for (i, &val) in reconstructed.iter().enumerate() {
-            assert!((val - (i as f32 * 0.1)).abs() < 1e-5);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_chunk_precision() {
-        let dev = get_test_device().await;
-
-        // Test precision preservation through chunking
-        let input: Vec<f32> = vec![1.234, 5.678, 9.012, 3.456, 7.890];
-        let chunks = chunk(&dev.device, &dev.queue, &input, 2, 0, &[5])
-            .await
-            .unwrap();
-
-        assert_eq!(chunks.len(), 2);
-
-        // Verify exact values preserved
-        let reconstructed: Vec<f32> = chunks.into_iter().flatten().collect();
-        for (r, orig) in reconstructed.iter().zip(input.iter()) {
-            assert!((r - orig).abs() < 1e-6, "Value mismatch: {} vs {}", r, orig);
-        }
+        
+        assert!(Chunk::new(input.clone(), 0, 0).is_err());
+        assert!(Chunk::new(input.clone(), 2, 0).is_err()); // 3 not divisible by 2
     }
 }

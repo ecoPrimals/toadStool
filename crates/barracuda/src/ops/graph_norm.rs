@@ -1,97 +1,268 @@
-//! GraphNorm - Graph normalization (Cai et al.)
+//! GraphNorm - Pure WGSL
 //!
-//! Normalizes node features per graph in a batch.
-//! Addresses over-smoothing in deep GNNs.
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-pub async fn graph_norm(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    node_features: &[f32],
-    batch_assignment: &[usize],
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Graph Normalization operation
+pub struct GraphNorm {
+    input: Tensor,
+    gamma: Tensor,
+    beta: Tensor,
     num_nodes: usize,
     num_features: usize,
-    num_graphs: usize,
     epsilon: f32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Compute mean and variance per graph
-    let mut graph_mean = vec![0.0f32; num_graphs * num_features];
-    let mut graph_var = vec![0.0f32; num_graphs * num_features];
-    let mut counts = vec![0; num_graphs];
+}
 
-    // Mean
-    for node in 0..num_nodes {
-        let graph_id = batch_assignment[node];
-        counts[graph_id] += 1;
-        for f in 0..num_features {
-            graph_mean[graph_id * num_features + f] += node_features[node * num_features + f];
+impl GraphNorm {
+    /// Create a new graph normalization operation
+    pub fn new(input: Tensor, gamma: Tensor, beta: Tensor, epsilon: Option<f32>) -> Result<Self> {
+        let input_shape = input.shape();
+        let num_nodes = input_shape[0];
+        let num_features = input_shape[1..].iter().product::<usize>();
+
+        let gamma_size = gamma.shape().iter().product::<usize>();
+        if gamma_size != num_features {
+            return Err(BarracudaError::invalid_op(
+                "graph_norm",
+                "gamma must have num_features elements",
+            ));
         }
+
+        let beta_size = beta.shape().iter().product::<usize>();
+        if beta_size != num_features {
+            return Err(BarracudaError::invalid_op(
+                "graph_norm",
+                "beta must have num_features elements",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            gamma,
+            beta,
+            num_nodes,
+            num_features,
+            epsilon: epsilon.unwrap_or(1e-5),
+        })
     }
 
-    for graph in 0..num_graphs {
-        if counts[graph] > 0 {
-            let count = counts[graph] as f32;
-            for f in 0..num_features {
-                graph_mean[graph * num_features + f] /= count;
-            }
-        }
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/graph_norm.wgsl")
     }
 
-    // Variance
-    for node in 0..num_nodes {
-        let graph_id = batch_assignment[node];
-        for f in 0..num_features {
-            let diff =
-                node_features[node * num_features + f] - graph_mean[graph_id * num_features + f];
-            graph_var[graph_id * num_features + f] += diff * diff;
-        }
-    }
+    /// Execute the graph normalization operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
 
-    for graph in 0..num_graphs {
-        if counts[graph] > 0 {
-            let count = counts[graph] as f32;
-            for f in 0..num_features {
-                graph_var[graph * num_features + f] /= count;
-            }
-        }
-    }
+        // Create output buffer
+        let output_size = self.num_nodes * self.num_features;
+        let output_buffer = device.create_buffer_f32(output_size)?;
 
-    // Normalize
-    let mut output = vec![0.0f32; num_nodes * num_features];
-    for node in 0..num_nodes {
-        let graph_id = batch_assignment[node];
-        for f in 0..num_features {
-            let mean = graph_mean[graph_id * num_features + f];
-            let std = (graph_var[graph_id * num_features + f] + epsilon).sqrt();
-            output[node * num_features + f] = (node_features[node * num_features + f] - mean) / std;
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            num_nodes: u32,
+            num_features: u32,
+            epsilon: f32,
+            _padding: u32,
         }
-    }
 
-    Ok(output)
+        let params = Params {
+            num_nodes: self.num_nodes as u32,
+            num_features: self.num_features as u32,
+            epsilon: self.epsilon,
+            _padding: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("GraphNorm Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GraphNorm Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("GraphNorm Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GraphNorm Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.gamma.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.beta.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("GraphNorm Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("GraphNorm Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Encode and execute
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("GraphNorm Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GraphNorm Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (256 threads per workgroup)
+            let workgroups = (self.num_features as u32 + 255) / 256;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![self.num_nodes, self.num_features],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_graph_norm() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let node_features = vec![1.0; 8 * 8];
-        let batch = vec![0, 0, 0, 0, 1, 1, 1, 1];
-        let output = graph_norm(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &batch,
-            8,
-            8,
-            2,
-            1e-5,
+    async fn test_graph_norm_basic() {
+        let device = get_test_device().await;
+
+        let num_nodes = 3;
+        let num_features = 4;
+
+        let input = Tensor::from_vec_on(
+            vec![1.0; num_nodes * num_features],
+            vec![num_nodes, num_features],
+            device.clone(),
         )
         .await
         .unwrap();
-        assert_eq!(output.len(), 8 * 8);
+
+        let gamma = Tensor::from_vec_on(
+            vec![1.0; num_features],
+            vec![num_features],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let beta = Tensor::from_vec_on(
+            vec![0.0; num_features],
+            vec![num_features],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let output = GraphNorm::new(input, gamma, beta, None)
+            .unwrap()
+            .execute()
+            .unwrap();
+
+        assert_eq!(output.shape(), &[num_nodes, num_features]);
     }
 }

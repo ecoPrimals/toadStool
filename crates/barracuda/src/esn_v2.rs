@@ -110,12 +110,12 @@ pub struct ESN {
     config: ESNConfig,
 
     // Network weights (BarraCUDA Tensors - hardware agnostic!)
-    w_in: Tensor,           // Input weights (reservoir_size × input_size)
-    w_res: Tensor,          // Reservoir weights (reservoir_size × reservoir_size)
-    w_out: Option<Tensor>,  // Readout weights (output_size × reservoir_size)
+    w_in: Tensor,          // Input weights (reservoir_size × input_size)
+    w_res: Tensor,         // Reservoir weights (reservoir_size × reservoir_size)
+    w_out: Option<Tensor>, // Readout weights (output_size × reservoir_size)
 
     // Current state (BarraCUDA Tensor!)
-    state: Tensor,  // Reservoir state (reservoir_size × 1)
+    state: Tensor, // Reservoir state (reservoir_size × 1)
 
     // Device
     device: Arc<WgpuDevice>,
@@ -178,10 +178,7 @@ impl ESN {
         let w_in = Self::init_input_weights(&config, &device).await?;
 
         // Initialize state to zero (on device!)
-        let state = Tensor::zeros_on(
-            vec![config.reservoir_size, 1],
-            device.clone(),
-        ).await?;
+        let state = Tensor::zeros_on(vec![config.reservoir_size, 1], device.clone()).await?;
 
         Ok(Self {
             config,
@@ -203,11 +200,11 @@ impl ESN {
         device: &Arc<WgpuDevice>,
     ) -> BarracudaResult<Tensor> {
         let size = config.reservoir_size;
-        
+
         // Generate sparse random matrix on CPU first
         let mut rng = rand::rngs::StdRng::seed_from_u64(config.seed);
         let mut matrix = vec![0.0; size * size];
-        
+
         for i in 0..size {
             for j in 0..size {
                 if rng.gen::<f32>() < config.connectivity {
@@ -244,7 +241,8 @@ impl ESN {
             weights,
             vec![config.reservoir_size, config.input_size],
             device.clone(),
-        ).await
+        )
+        .await
     }
 
     /// Set device preference
@@ -280,10 +278,8 @@ impl ESN {
 
     /// Reset reservoir state to zero
     pub async fn reset_state(&mut self) -> BarracudaResult<()> {
-        self.state = Tensor::zeros_on(
-            vec![self.config.reservoir_size, 1],
-            self.device.clone(),
-        ).await?;
+        self.state =
+            Tensor::zeros_on(vec![self.config.reservoir_size, 1], self.device.clone()).await?;
         Ok(())
     }
 
@@ -405,7 +401,8 @@ impl ESN {
                 input_seq.clone(),
                 vec![self.config.input_size, 1],
                 self.device.clone(),
-            ).await?;
+            )
+            .await?;
 
             // Update state with this input
             let state = self.update(&input_tensor).await?;
@@ -423,24 +420,17 @@ impl ESN {
         let states_flat: Vec<f32> = all_states.into_iter().flatten().collect();
 
         // Convert to Tensors
-        let states_tensor = Tensor::from_vec_on(
-            states_flat,
-            vec![n_samples, n],
-            self.device.clone(),
-        ).await?;
+        let states_tensor =
+            Tensor::from_vec_on(states_flat, vec![n_samples, n], self.device.clone()).await?;
 
-        let targets_tensor = Tensor::from_vec_on(
-            all_targets,
-            vec![n_samples, m],
-            self.device.clone(),
-        ).await?;
+        let targets_tensor =
+            Tensor::from_vec_on(all_targets, vec![n_samples, m], self.device.clone()).await?;
 
         // Ridge regression: W_out = (S^T S + λI)^(-1) S^T Y
         // For now, use simplified gradient descent solver
-        let w_out = self.ridge_regression_solve(
-            &states_tensor,
-            &targets_tensor,
-        ).await?;
+        let w_out = self
+            .ridge_regression_solve(&states_tensor, &targets_tensor)
+            .await?;
 
         // Calculate training error
         let predictions = states_tensor.clone().matmul(&w_out)?;
@@ -465,11 +455,8 @@ impl ESN {
         // Initialize W_out to zeros
         let n = self.config.reservoir_size;
         let m = self.config.output_size;
-        
-        let mut w_out = Tensor::zeros_on(
-            vec![n, m],
-            self.device.clone(),
-        ).await?;
+
+        let mut w_out = Tensor::zeros_on(vec![n, m], self.device.clone()).await?;
 
         // Gradient descent parameters
         let learning_rate = 0.01;
@@ -530,7 +517,8 @@ impl ESN {
             input.to_vec(),
             vec![self.config.input_size, 1],
             self.device.clone(),
-        ).await?;
+        )
+        .await?;
 
         // Update state
         let state = self.update(&input_tensor).await?;

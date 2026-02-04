@@ -27,8 +27,8 @@ async fn main() -> anyhow::Result<()> {
         println!("  NPUs: {} neural processing units", board.npu_count);
         println!("  Neurons/NPU: ~1,024");
         println!("  Synapses/NPU: ~10,000");
-        println!("  Total neurons: ~{:,}", board.npu_count * 1024);
-        println!("  Total synapses: ~{:,}", board.npu_count * 10_000);
+        println!("  Total neurons: ~{}", board.npu_count * 1024);
+        println!("  Total synapses: ~{}", board.npu_count * 10_000);
 
         println!("\nMemory:");
         println!("  On-chip SRAM: {} MB", board.memory_bytes / 1_048_576);

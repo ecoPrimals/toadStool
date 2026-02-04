@@ -10,7 +10,7 @@ members = [
     
     # API and interfaces
     "crates/cli",
-    # "crates/client",  # DISABLED: HTTP client (reqwest) - evolved to Unix sockets ✅
+    # "crates/client",  # PARTIAL EVOLUTION: tarpc_client.rs evolved to Unix sockets ✅, but HTTP client code needs full refactor
     "crates/server",
     "crates/integration/beardog",     # NEW: bearDog entropy integration (Jan 15, 2026)
     "crates/integration/nestgate",

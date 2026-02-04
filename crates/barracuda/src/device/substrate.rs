@@ -50,12 +50,7 @@ pub struct Substrate {
 
 impl Substrate {
     /// Create substrate descriptor
-    pub fn new(
-        substrate_type: SubstrateType,
-        name: String,
-        backend: String,
-        index: usize,
-    ) -> Self {
+    pub fn new(substrate_type: SubstrateType, name: String, backend: String, index: usize) -> Self {
         Self {
             substrate_type,
             name,
@@ -211,7 +206,10 @@ mod tests {
         for substrate in &substrates {
             println!("  - {}", substrate);
         }
-        assert!(!substrates.is_empty(), "Should discover at least one substrate");
+        assert!(
+            !substrates.is_empty(),
+            "Should discover at least one substrate"
+        );
     }
 
     #[tokio::test]

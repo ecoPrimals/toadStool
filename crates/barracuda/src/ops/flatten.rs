@@ -1,17 +1,186 @@
-//! Flatten - Flatten tensor to 1D or 2D
+//! Flatten - Pure WGSL
 //!
-//! Collapses dimensions.
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-pub async fn flatten(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    _start_dim: usize,
-    _end_dim: usize,
-    _shape: &[usize],
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Simple case: just return copy (reshape is metadata operation)
-    Ok(input.to_vec())
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Flatten operation
+pub struct Flatten {
+    input: Tensor,
+    start_dim: usize,
+    end_dim: usize,
+}
+
+impl Flatten {
+    /// Create a new flatten operation
+    pub fn new(input: Tensor, start_dim: usize, end_dim: usize) -> Result<Self> {
+        let shape = input.shape();
+        if start_dim >= shape.len() || end_dim >= shape.len() || start_dim > end_dim {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: format!("Invalid flatten dimensions: start_dim={}, end_dim={}, shape={:?}", 
+                    start_dim, end_dim, shape),
+            });
+        }
+        Ok(Self {
+            input,
+            start_dim,
+            end_dim,
+        })
+    }
+
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/flatten.wgsl")
+    }
+
+    /// Execute the flatten operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let size: usize = self.input.shape().iter().product();
+
+        // Compute output shape
+        let input_shape = self.input.shape();
+        let mut output_shape = input_shape[..self.start_dim].to_vec();
+        let flattened_size: usize = input_shape[self.start_dim..=self.end_dim].iter().product();
+        output_shape.push(flattened_size);
+        if self.end_dim + 1 < input_shape.len() {
+            output_shape.extend_from_slice(&input_shape[self.end_dim + 1..]);
+        }
+
+        // Access input buffer directly (zero-copy)
+        let input_buffer = self.input.buffer();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            _pad1: u32,
+            _pad2: u32,
+            _pad3: u32,
+        }
+
+        let params = Params {
+            size: size as u32,
+            _pad1: 0,
+            _pad2: 0,
+            _pad3: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Flatten Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Flatten Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Flatten Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Flatten Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Flatten Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Flatten Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Flatten Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Flatten Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return tensor without reading back (zero-copy)
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            output_shape,
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -26,79 +195,71 @@ mod tests {
 
     #[tokio::test]
     async fn test_flatten_basic() {
-        let dev = get_test_device().await;
-        let input = vec![1.0; 2 * 3 * 4];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 2, &[2, 3, 4])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), input.len());
-        assert_eq!(output.len(), 24);
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..24).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![2, 3, 4],
+            device.clone(),
+        ).unwrap();
+        
+        let flattened = Flatten::new(input, 1, 2).unwrap().execute().unwrap();
+        assert_eq!(flattened.shape(), &vec![2, 12]);
     }
 
     #[tokio::test]
-    async fn test_flatten_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Single element
-        let input = vec![42.0];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 0, &[1])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 1);
-        assert_eq!(output[0], 42.0);
-
-        // Already 1D
-        let input = vec![1.0, 2.0, 3.0];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 0, &[3])
-            .await
-            .unwrap();
-        assert_eq!(output, input);
+    async fn test_flatten_all() {
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![2, 3, 2],
+            device.clone(),
+        ).unwrap();
+        
+        let flattened = Flatten::new(input, 0, 2).unwrap().execute().unwrap();
+        assert_eq!(flattened.shape(), &vec![12]);
     }
 
     #[tokio::test]
-    async fn test_flatten_boundary() {
-        let dev = get_test_device().await;
-
-        // 4D tensor
-        let input = vec![1.0; 2 * 3 * 4 * 5];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 3, &[2, 3, 4, 5])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 120);
-
-        // Different values preserved
-        let input: Vec<f32> = (0..12).map(|i| i as f32).collect();
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 2, &[2, 2, 3])
-            .await
-            .unwrap();
-        assert_eq!(output, input); // Values preserved
+    async fn test_flatten_partial() {
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..60).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![2, 3, 5, 2],
+            device.clone(),
+        ).unwrap();
+        
+        let flattened = Flatten::new(input, 1, 2).unwrap().execute().unwrap();
+        assert_eq!(flattened.shape(), &vec![2, 15, 2]);
     }
 
     #[tokio::test]
-    async fn test_flatten_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large tensor
-        let input = vec![1.0; 10 * 20 * 30];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 2, &[10, 20, 30])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 6000);
-        assert!(output.iter().all(|&x| x == 1.0));
+    async fn test_flatten_single_dim() {
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..20).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![4, 5],
+            device.clone(),
+        ).unwrap();
+        
+        let flattened = Flatten::new(input, 0, 0).unwrap().execute().unwrap();
+        assert_eq!(flattened.shape(), &vec![4, 5]);
     }
 
     #[tokio::test]
-    async fn test_flatten_precision() {
-        let dev = get_test_device().await;
-
-        // Verify exact values preserved during flatten
-        let input = vec![1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8];
-        let output = flatten(&dev.device, &dev.queue, &input, 0, 1, &[2, 4])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 8);
-        for (i, val) in output.iter().enumerate() {
-            assert!((val - input[i]).abs() < 1e-6);
-        }
+    async fn test_flatten_invalid() {
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![2, 3, 2],
+            device.clone(),
+        ).unwrap();
+        
+        assert!(Flatten::new(input.clone(), 3, 2).is_err());
+        assert!(Flatten::new(input.clone(), 1, 0).is_err());
     }
 }

@@ -1,45 +1,51 @@
-// LayerNorm - Layer normalization (transformer essential)
-// output = (input - mean) / sqrt(variance + epsilon) * gamma + beta
-// Simplified version: per-tensor normalization
+// Layer Normalization - Normalize along feature dimension
+//
+// Deep Debt Principles:
+// - Pure WGSL implementation (universal compute)
+// - Zero unsafe code (memory safe)
+// - Hardware-agnostic (works on any GPU/CPU via WebGPU)
+// - Self-contained logic (no external dependencies)
 
-struct LayerNormParams {
+struct Params {
+    size: u32,
+    feature_size: u32,
     epsilon: f32,
-    _padding: vec3<f32>,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
-@group(0) @binding(2) var<uniform> params: LayerNormParams;
+@group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let idx = global_id.x;
-    let size = arrayLength(&input);
+    let batch_idx = global_id.x;
+    let num_batches = params.size / params.feature_size;
     
-    if (idx >= size) {
+    if (batch_idx >= num_batches) {
         return;
     }
     
-    // Compute mean (simplified: single pass for small tensors)
-    if (idx == 0u) {
-        var sum = 0.0;
-        for (var i = 0u; i < size; i = i + 1u) {
-            sum = sum + input[i];
-        }
-        let mean = sum / f32(size);
-        
-        // Compute variance
-        var variance = 0.0;
-        for (var i = 0u; i < size; i = i + 1u) {
-            let diff = input[i] - mean;
-            variance = variance + diff * diff;
-        }
-        variance = variance / f32(size);
-        
-        // Normalize all elements
-        let std_dev = sqrt(variance + params.epsilon);
-        for (var i = 0u; i < size; i = i + 1u) {
-            output[i] = (input[i] - mean) / std_dev;
-        }
+    let base_idx = batch_idx * params.feature_size;
+    
+    // Compute mean
+    var sum = 0.0;
+    for (var i = 0u; i < params.feature_size; i = i + 1u) {
+        sum = sum + input[base_idx + i];
+    }
+    let mean = sum / f32(params.feature_size);
+    
+    // Compute variance
+    var var_sum = 0.0;
+    for (var i = 0u; i < params.feature_size; i = i + 1u) {
+        let diff = input[base_idx + i] - mean;
+        var_sum = var_sum + diff * diff;
+    }
+    let variance = var_sum / f32(params.feature_size);
+    
+    // Normalize
+    let std_dev = sqrt(variance + params.epsilon);
+    for (var i = 0u; i < params.feature_size; i = i + 1u) {
+        let idx = base_idx + i;
+        output[idx] = (input[idx] - mean) / std_dev;
     }
 }

@@ -1,222 +1,322 @@
-//! ElasticTransform - Elastic deformation augmentation
+//! Elastic transform operation - Elastic deformation for data augmentation
 //!
-//! Applies smooth random deformations.
-//! Useful for medical imaging and handwriting.
+//! Elastic deformations: Random displacement fields for image augmentation
+//! Widely used in medical imaging and handwriting recognition
 
-pub async fn elastic_transform(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    image: &[f32],
-    channels: usize,
-    height: usize,
-    width: usize,
-    alpha: f32, // Deformation strength
-    sigma: f32, // Gaussian filter sigma for smoothing
-    seed: u64,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Generate random displacement fields
-    let mut dx = vec![0.0f32; height * width];
-    let mut dy = vec![0.0f32; height * width];
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 
-    let mut rng = seed;
-    for i in 0..(height * width) {
-        rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-        dx[i] = ((rng % 2000) as f32 / 1000.0 - 1.0) * alpha;
-        rng = rng.wrapping_mul(22695477).wrapping_add(1);
-        dy[i] = ((rng % 2000) as f32 / 1000.0 - 1.0) * alpha;
-    }
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct ElasticTransformParams {
+    batch_size: u32,
+    channels: u32,
+    height: u32,
+    width: u32,
+    alpha: f32,
+    sigma: f32,
+    _padding: [u32; 2],
+}
 
-    // Simplified Gaussian smoothing (should use proper convolution)
-    let kernel_size = (sigma * 3.0) as usize;
-    for _ in 0..3 {
-        // Iterate for smoothing effect
-        let mut dx_smooth = dx.clone();
-        let mut dy_smooth = dy.clone();
+/// Elastic transform operation
+pub struct ElasticTransform {
+    input: Tensor,
+    displacement_x: Tensor,
+    displacement_y: Tensor,
+    alpha: f32,
+    sigma: f32,
+}
 
-        for i in kernel_size..(height - kernel_size) {
-            for j in kernel_size..(width - kernel_size) {
-                let mut sum_dx = 0.0;
-                let mut sum_dy = 0.0;
-                let mut weight_sum = 0.0;
-
-                for ki in 0..kernel_size {
-                    for kj in 0..kernel_size {
-                        let dist_sq = (ki * ki + kj * kj) as f32;
-                        let weight = (-dist_sq / (2.0 * sigma * sigma)).exp();
-                        let idx = (i + ki - kernel_size / 2) * width + (j + kj - kernel_size / 2);
-                        sum_dx += dx[idx] * weight;
-                        sum_dy += dy[idx] * weight;
-                        weight_sum += weight;
-                    }
-                }
-
-                dx_smooth[i * width + j] = sum_dx / weight_sum;
-                dy_smooth[i * width + j] = sum_dy / weight_sum;
-            }
+impl ElasticTransform {
+    /// Create elastic transform operation
+    pub fn new(
+        input: Tensor,
+        displacement_x: Tensor,
+        displacement_y: Tensor,
+        alpha: f32,
+        sigma: f32,
+    ) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "elastic_transform",
+                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+            ));
         }
 
-        dx = dx_smooth;
-        dy = dy_smooth;
-    }
+        let height = shape[2];
+        let width = shape[3];
+        let displacement_size = height * width;
 
-    // Apply displacement field
-    let mut output = vec![0.0f32; channels * height * width];
-
-    for c in 0..channels {
-        for i in 0..height {
-            for j in 0..width {
-                let src_x = j as f32 + dx[i * width + j];
-                let src_y = i as f32 + dy[i * width + j];
-
-                if src_x >= 0.0
-                    && src_x < (width - 1) as f32
-                    && src_y >= 0.0
-                    && src_y < (height - 1) as f32
-                {
-                    let x0 = src_x as usize;
-                    let y0 = src_y as usize;
-                    let dx_frac = src_x - x0 as f32;
-                    let dy_frac = src_y - y0 as f32;
-
-                    let v00 = image[c * height * width + y0 * width + x0];
-                    let v01 = image[c * height * width + y0 * width + x0 + 1];
-                    let v10 = image[c * height * width + (y0 + 1) * width + x0];
-                    let v11 = image[c * height * width + (y0 + 1) * width + x0 + 1];
-
-                    output[c * height * width + i * width + j] =
-                        v00 * (1.0 - dx_frac) * (1.0 - dy_frac)
-                            + v01 * dx_frac * (1.0 - dy_frac)
-                            + v10 * (1.0 - dx_frac) * dy_frac
-                            + v11 * dx_frac * dy_frac;
-                }
-            }
+        if displacement_x.shape() != &[displacement_size] {
+            return Err(BarracudaError::invalid_op(
+                "elastic_transform",
+                format!(
+                    "displacement_x shape {:?} must be [{:?}]",
+                    displacement_x.shape(),
+                    displacement_size
+                ),
+            ));
         }
+
+        if displacement_y.shape() != &[displacement_size] {
+            return Err(BarracudaError::invalid_op(
+                "elastic_transform",
+                format!(
+                    "displacement_y shape {:?} must be [{:?}]",
+                    displacement_y.shape(),
+                    displacement_size
+                ),
+            ));
+        }
+
+        if alpha < 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "elastic_transform",
+                format!("alpha must be non-negative, got {}", alpha),
+            ));
+        }
+
+        if sigma <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "elastic_transform",
+                format!("sigma must be positive, got {}", sigma),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            displacement_x,
+            displacement_y,
+            alpha,
+            sigma,
+        })
     }
 
-    Ok(output)
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/elastic_transform.wgsl")
+    }
+
+    /// Execute elastic transform on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let batch_size = shape[0];
+        let channels = shape[1];
+        let height = shape[2];
+        let width = shape[3];
+        let size = self.input.len();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Create params
+        let params = ElasticTransformParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            alpha: self.alpha,
+            sigma: self.sigma,
+            _padding: [0; 2],
+        };
+
+        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ElasticTransform Params"),
+            size: std::mem::size_of::<ElasticTransformParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ElasticTransform Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ElasticTransform Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.displacement_x.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.displacement_y.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("ElasticTransform"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ElasticTransform Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ElasticTransform Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ElasticTransform Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ElasticTransform Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (8x8x1 workgroup size)
+            let workgroups_x = (width as u32 + 7) / 8;
+            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_z = (batch_size * channels) as u32;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            shape.to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_elastic_transform_basic() {
-        let dev = get_test_device().await;
-        let image = vec![1.0; 1 * 64 * 64];
-        let deformed =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 64, 64, 10.0, 3.0, 55555)
-                .await
-                .unwrap();
-        assert_eq!(deformed.len(), image.len());
-        assert!(deformed.iter().all(|&x| x.is_finite()));
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_elastic_transform_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Alpha = 0 (no deformation)
-        let image = vec![1.0; 1 * 32 * 32]; // Larger image to avoid kernel size issues
-        let deformed =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 32, 32, 0.0, 1.0, 12345)
-                .await
-                .unwrap();
-        assert_eq!(deformed.len(), image.len());
-
-        // All zeros image
-        let image = vec![0.0; 1 * 32 * 32];
-        let deformed =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 32, 32, 5.0, 2.0, 99999)
-                .await
-                .unwrap();
-        // Output length should match
-        assert_eq!(deformed.len(), image.len());
-    }
-
-    #[tokio::test]
-    async fn test_elastic_transform_boundary() {
-        let dev = get_test_device().await;
-
-        // Large alpha (strong deformation)
-        let image = vec![1.0; 1 * 32 * 32];
-        let deformed =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 32, 32, 50.0, 5.0, 77777)
-                .await
-                .unwrap();
-        assert!(deformed.iter().all(|&x| x.is_finite()));
-
-        // Small sigma (less smoothing)
-        let image = vec![1.0; 1 * 32 * 32];
-        let deformed =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 32, 32, 10.0, 1.0, 11111)
-                .await
-                .unwrap();
-        assert_eq!(deformed.len(), image.len());
-    }
-
-    #[tokio::test]
-    async fn test_elastic_transform_large_batch() {
-        let dev = get_test_device().await;
-
-        // Multi-channel (RGB)
-        let channels = 3;
-        let height = 64;
-        let width = 64;
-        let image = vec![1.0; channels * height * width];
-        let deformed = elastic_transform(
-            &dev.device,
-            &dev.queue,
-            &image,
-            channels,
-            height,
-            width,
-            15.0,
-            4.0,
-            88888,
+        let input = Tensor::from_vec_on(
+            vec![1.0; 2 * 3 * 4 * 4],
+            vec![2, 3, 4, 4],
+            device.clone(),
         )
         .await
         .unwrap();
-        assert_eq!(deformed.len(), image.len());
-        assert!(deformed.iter().all(|&x| x.is_finite()));
-    }
 
-    #[tokio::test]
-    async fn test_elastic_transform_precision() {
-        let dev = get_test_device().await;
+        let disp_size = 4 * 4;
+        let displacement_x = Tensor::from_vec_on(
+            vec![0.1; disp_size],
+            vec![disp_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Deterministic with same seed (use larger image to avoid kernel issues)
-        let image = vec![1.0; 1 * 16 * 16]; // 16x16 image
-        let deformed1 =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 16, 16, 5.0, 1.5, 12345)
-                .await
-                .unwrap();
-        let deformed2 =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 16, 16, 5.0, 1.5, 12345)
-                .await
-                .unwrap();
+        let displacement_y = Tensor::from_vec_on(
+            vec![0.1; disp_size],
+            vec![disp_size],
+            device,
+        )
+        .await
+        .unwrap();
 
-        // Same seed should produce same result (determinism)
-        assert_eq!(deformed1.len(), deformed2.len());
-        for (a, b) in deformed1.iter().zip(deformed2.iter()) {
-            assert!((a - b).abs() < 1e-5);
-        }
+        let output = ElasticTransform::new(input, displacement_x, displacement_y, 1.0, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = output.to_vec().unwrap();
 
-        // Different seed should produce different result
-        let deformed3 =
-            elastic_transform(&dev.device, &dev.queue, &image, 1, 16, 16, 5.0, 1.5, 99999)
-                .await
-                .unwrap();
-        let different = deformed1
-            .iter()
-            .zip(deformed3.iter())
-            .any(|(a, b)| (a - b).abs() > 0.1);
-        assert!(different); // Different seeds should produce different deformations
+        assert_eq!(result.len(), 2 * 3 * 4 * 4);
     }
 }

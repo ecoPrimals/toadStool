@@ -1,26 +1,29 @@
-// Swish / SiLU (Sigmoid Linear Unit) Activation
-// Used in EfficientNet, MobileNetV3, and modern architectures
+// Swish (SiLU) - Self-gated activation function
 //
-// Formula: Swish(x) = x * sigmoid(x) = x / (1 + exp(-x))
-//
-// Properties:
-// - Non-monotonic (unlike ReLU)
-// - Smooth and differentiable everywhere
-// - Self-gated activation
+// Deep Debt Principles:
+// - Pure WGSL implementation (universal compute)
+// - Zero unsafe code (memory safe)
+// - Hardware-agnostic (works on any GPU/CPU via WebGPU)
+// - Self-contained logic (no external dependencies)
+
+struct Params {
+    size: u32,
+}
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
-    if idx >= arrayLength(&input) {
+    
+    if (idx >= params.size) {
         return;
     }
     
     let x = input[idx];
     
-    // Swish(x) = x * sigmoid(x)
-    let sigmoid_x = 1.0 / (1.0 + exp(-x));
-    output[idx] = x * sigmoid_x;
+    // Swish/SiLU: f(x) = x * sigmoid(x) = x / (1 + exp(-x))
+    output[idx] = x / (1.0 + exp(-x));
 }

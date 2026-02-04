@@ -201,10 +201,8 @@ impl SequenceAnalyzer {
             let window = &sequence[i..i + self.config.complexity_window];
 
             // Count unique bases in window
-            let unique_bases: HashSet<u8> = window
-                .iter()
-                .map(|&b| b.to_ascii_uppercase())
-                .collect();
+            let unique_bases: HashSet<u8> =
+                window.iter().map(|&b| b.to_ascii_uppercase()).collect();
 
             let is_low_complexity = unique_bases.len() < self.config.min_unique_bases;
 
@@ -338,7 +336,11 @@ impl SequenceAnalyzer {
     /// # Returns
     ///
     /// List of motif matches with positions
-    pub fn find_motifs(&self, sequence: &[u8], patterns: &[&[u8]]) -> BarracudaResult<Vec<MotifMatch>> {
+    pub fn find_motifs(
+        &self,
+        sequence: &[u8],
+        patterns: &[&[u8]],
+    ) -> BarracudaResult<Vec<MotifMatch>> {
         if sequence.is_empty() {
             return Err(BarracudaError::InvalidInput {
                 message: "Sequence cannot be empty".to_string(),
@@ -462,7 +464,10 @@ impl SequenceAnalyzer {
 
         // Too many N bases
         if composition.nucleotide_counts.n > sequence.len() / 10 {
-            issues.push(format!("Too many N bases: {}", composition.nucleotide_counts.n));
+            issues.push(format!(
+                "Too many N bases: {}",
+                composition.nucleotide_counts.n
+            ));
             passes = false;
         }
 
@@ -516,7 +521,10 @@ impl SequenceAnalyzer {
         if self.config.parallel_batch {
             // Parallel processing with Rayon
             use rayon::prelude::*;
-            sequences.par_iter().map(|seq| self.gc_content(seq)).collect()
+            sequences
+                .par_iter()
+                .map(|seq| self.gc_content(seq))
+                .collect()
         } else {
             // Sequential processing
             sequences.iter().map(|seq| self.gc_content(seq)).collect()
@@ -581,10 +589,16 @@ mod tests {
 
         // Should find at least one low-complexity region
         assert!(!regions.is_empty(), "Should find low-complexity region");
-        
+
         // Region should include the repetitive A's
-        assert!(regions[0].start <= 4, "Region should start near or before the A's");
-        assert!(regions[0].end >= 5, "Region should cover at least part of the A's");
+        assert!(
+            regions[0].start <= 4,
+            "Region should start near or before the A's"
+        );
+        assert!(
+            regions[0].end >= 5,
+            "Region should cover at least part of the A's"
+        );
     }
 
     #[test]

@@ -2,89 +2,268 @@
 //!
 //! Applies random rotation, translation, scale, and shear.
 //! Comprehensive geometric augmentation.
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn random_affine(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    image: &[f32],
-    channels: usize,
-    height: usize,
-    width: usize,
-    degrees: f32,          // Max rotation in degrees
-    translate: (f32, f32), // Max translation fraction
-    scale: (f32, f32),     // Scale range
-    shear: f32,            // Max shear in degrees
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// RandomAffine operation
+pub struct RandomAffine {
+    input: Tensor,
+    degrees: f32,
+    translate: (f32, f32),
+    scale: (f32, f32),
+    shear: f32,
     seed: u64,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Generate random parameters
-    let angle = degrees * (((seed * 1103515245) % 2000) as f32 / 1000.0 - 1.0);
-    let tx = translate.0 * width as f32 * (((seed * 22695477) % 2000) as f32 / 1000.0 - 1.0);
-    let ty = translate.1 * height as f32 * (((seed * 1664525) % 2000) as f32 / 1000.0 - 1.0);
-    let sc = scale.0 + (scale.1 - scale.0) * ((seed * 48271) % 1000) as f32 / 1000.0;
-    let sh = shear * (((seed * 69621) % 2000) as f32 / 1000.0 - 1.0);
+}
 
-    // Build affine matrix
-    let angle_rad = angle * std::f32::consts::PI / 180.0;
-    let shear_rad = sh * std::f32::consts::PI / 180.0;
-
-    let cos_a = angle_rad.cos();
-    let sin_a = angle_rad.sin();
-    let tan_sh = shear_rad.tan();
-
-    let a = sc * cos_a;
-    let b = sc * (-sin_a + cos_a * tan_sh);
-    let c = tx;
-    let d = sc * sin_a;
-    let e = sc * (cos_a + sin_a * tan_sh);
-    let f = ty;
-
-    let mut output = vec![0.0f32; channels * height * width];
-
-    // Apply transformation (inverse mapping)
-    let cx = width as f32 / 2.0;
-    let cy = height as f32 / 2.0;
-
-    for c_idx in 0..channels {
-        for i in 0..height {
-            for j in 0..width {
-                let x = j as f32 - cx;
-                let y = i as f32 - cy;
-
-                // Inverse transform
-                let det = a * e - b * d;
-                if det.abs() > 1e-8 {
-                    let src_x = (e * (x - c) - b * (y - f)) / det + cx;
-                    let src_y = (-d * (x - c) + a * (y - f)) / det + cy;
-
-                    // Bilinear interpolation
-                    if src_x >= 0.0
-                        && src_x < width as f32 - 1.0
-                        && src_y >= 0.0
-                        && src_y < height as f32 - 1.0
-                    {
-                        let x0 = src_x as usize;
-                        let y0 = src_y as usize;
-                        let dx = src_x - x0 as f32;
-                        let dy = src_y - y0 as f32;
-
-                        let v00 = image[c_idx * height * width + y0 * width + x0];
-                        let v01 = image[c_idx * height * width + y0 * width + x0 + 1];
-                        let v10 = image[c_idx * height * width + (y0 + 1) * width + x0];
-                        let v11 = image[c_idx * height * width + (y0 + 1) * width + x0 + 1];
-
-                        let val = v00 * (1.0 - dx) * (1.0 - dy)
-                            + v01 * dx * (1.0 - dy)
-                            + v10 * (1.0 - dx) * dy
-                            + v11 * dx * dy;
-
-                        output[c_idx * height * width + i * width + j] = val;
-                    }
-                }
-            }
+impl RandomAffine {
+    /// Create a new random affine operation
+    pub fn new(
+        input: Tensor,
+        degrees: f32,
+        translate: (f32, f32),
+        scale: (f32, f32),
+        shear: f32,
+        seed: u64,
+    ) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() != 3 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "RandomAffine",
+                format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
+            ));
         }
+        
+        Ok(Self {
+            input,
+            degrees,
+            translate,
+            scale,
+            shear,
+            seed,
+        })
     }
 
-    Ok(output)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/random_affine.wgsl")
+    }
+
+    /// Execute the random affine operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        
+        let channels = shape[0];
+        let height = shape[1];
+        let width = shape[2];
+        
+        // Generate random parameters from seed (CPU-side, deterministic)
+        let angle = self.degrees * (((self.seed * 1103515245) % 2000) as f32 / 1000.0 - 1.0);
+        let tx = self.translate.0 * width as f32 * (((self.seed * 22695477) % 2000) as f32 / 1000.0 - 1.0);
+        let ty = self.translate.1 * height as f32 * (((self.seed * 1664525) % 2000) as f32 / 1000.0 - 1.0);
+        let sc = self.scale.0 + (self.scale.1 - self.scale.0) * ((self.seed * 48271) % 1000) as f32 / 1000.0;
+        let sh = self.shear * (((self.seed * 69621) % 2000) as f32 / 1000.0 - 1.0);
+
+        // Build affine matrix
+        let angle_rad = angle * std::f32::consts::PI / 180.0;
+        let shear_rad = sh * std::f32::consts::PI / 180.0;
+
+        let cos_a = angle_rad.cos();
+        let sin_a = angle_rad.sin();
+        let tan_sh = shear_rad.tan();
+
+        let a = sc * cos_a;
+        let b = sc * (-sin_a + cos_a * tan_sh);
+        let c = tx;
+        let d = sc * sin_a;
+        let e = sc * (cos_a + sin_a * tan_sh);
+        let f = ty;
+        
+        let cx = width as f32 / 2.0;
+        let cy = height as f32 / 2.0;
+        
+        let output_size = channels * height * width;
+
+        // Create buffers
+        let input_buffer = self.input.buffer();
+
+        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("RandomAffine Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            channels: u32,
+            height: u32,
+            width: u32,
+            a: f32,
+            b: f32,
+            c: f32,
+            d: f32,
+            e: f32,
+            f: f32,
+            cx: f32,
+            cy: f32,
+        }
+
+        let params = Params {
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+            cx,
+            cy,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("RandomAffine Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("RandomAffine Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RandomAffine Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RandomAffine Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("RandomAffine Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("RandomAffine Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("RandomAffine Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("RandomAffine Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups_x = (width as u32 + 15) / 16;
+            let workgroups_y = (height as u32 + 15) / 16;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+
+        Ok(Tensor::new(
+            output_data,
+            vec![channels, height, width],
+            device.clone(),
+        ))
+    }
+}
+
+impl Tensor {
+    /// Apply random affine transformation
+    ///
+    /// # Arguments
+    ///
+    /// * `degrees` - Max rotation in degrees
+    /// * `translate` - Max translation fraction (x, y)
+    /// * `scale` - Scale range (min, max)
+    /// * `shear` - Max shear in degrees
+    /// * `seed` - Random seed for deterministic transformation
+    pub fn random_affine(
+        self,
+        degrees: f32,
+        translate: (f32, f32),
+        scale: (f32, f32),
+        shear: f32,
+        seed: u64,
+    ) -> Result<Self> {
+        RandomAffine::new(self, degrees, translate, scale, shear, seed)?.execute()
+    }
 }
 
 #[cfg(test)]

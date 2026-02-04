@@ -66,7 +66,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let predictions = esn.predict(&test_inputs)?;
 
-    println!("✅ {} predictions generated (pure Rust!)\n", predictions.len());
+    println!(
+        "✅ {} predictions generated (pure Rust!)\n",
+        predictions.len()
+    );
 
     println!("🎊 Demo Complete!");
     println!("\n💡 Key Achievement:");

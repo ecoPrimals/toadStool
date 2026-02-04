@@ -259,10 +259,10 @@ impl Tensor {
     /// ```rust,ignore
     /// // 8 positive pairs, 128-dimensional embeddings
     /// let embeddings = Tensor::randn(vec![16, 128]).await?;
-    /// 
+    ///
     /// // SimCLR-style: temperature=0.5
     /// let loss = embeddings.contrastive_loss(0.5)?;
-    /// 
+    ///
     /// // MoCo-style: temperature=0.07
     /// let loss = embeddings.contrastive_loss(0.07)?;
     /// ```
@@ -285,19 +285,17 @@ mod tests {
     #[tokio::test]
     async fn test_contrastive_loss_basic() {
         let device = get_test_device().await;
-        
+
         // 4 positive pairs (8 samples), 16-dim embeddings
-        let data: Vec<f32> = (0..8 * 16)
-            .map(|i| ((i % 100) as f32) / 100.0)
-            .collect();
+        let data: Vec<f32> = (0..8 * 16).map(|i| ((i % 100) as f32) / 100.0).collect();
         let embeddings = Tensor::from_vec_on(data, vec![8, 16], device.clone())
             .await
             .unwrap();
-        
+
         let loss = embeddings.contrastive_loss(0.5).unwrap();
-        
+
         assert_eq!(loss.shape(), &[4]); // batch_size=4
-        
+
         let data = loss.to_vec().unwrap();
         assert!(data.iter().all(|&x: &f32| x.is_finite()));
         assert!(data.iter().all(|&x: &f32| x >= 0.0)); // Loss should be non-negative
@@ -306,7 +304,7 @@ mod tests {
     #[tokio::test]
     async fn test_contrastive_loss_similar_pairs() {
         let device = get_test_device().await;
-        
+
         // Create similar positive pairs (should have relatively low loss)
         let data: Vec<f32> = (0..8 * 16)
             .map(|i| {
@@ -316,13 +314,13 @@ mod tests {
                 ((row % 4) * 16 + col) as f32 / 64.0
             })
             .collect();
-        
+
         let embeddings = Tensor::from_vec_on(data, vec![8, 16], device.clone())
             .await
             .unwrap();
-        
+
         let loss = embeddings.contrastive_loss(0.5).unwrap();
-        
+
         let data = loss.to_vec().unwrap();
         assert!(data.iter().all(|&x: &f32| x.is_finite()));
     }
@@ -330,21 +328,19 @@ mod tests {
     #[tokio::test]
     async fn test_contrastive_loss_temperature_effect() {
         let device = get_test_device().await;
-        
-        let data: Vec<f32> = (0..6 * 32)
-            .map(|i| ((i % 100) as f32) / 100.0)
-            .collect();
+
+        let data: Vec<f32> = (0..6 * 32).map(|i| ((i % 100) as f32) / 100.0).collect();
         let embeddings = Tensor::from_vec_on(data, vec![6, 32], device.clone())
             .await
             .unwrap();
-        
+
         // Lower temperature should sharpen distribution
         let loss_low_temp = embeddings.clone().contrastive_loss(0.1).unwrap();
         let loss_high_temp = embeddings.contrastive_loss(1.0).unwrap();
-        
+
         let data_low = loss_low_temp.to_vec().unwrap();
         let data_high = loss_high_temp.to_vec().unwrap();
-        
+
         assert!(data_low.iter().all(|&x: &f32| x.is_finite()));
         assert!(data_high.iter().all(|&x: &f32| x.is_finite()));
     }
@@ -352,22 +348,22 @@ mod tests {
     #[tokio::test]
     async fn test_contrastive_loss_validation() {
         let device = get_test_device().await;
-        
+
         // Test odd batch size (should fail)
         let embeddings = Tensor::from_vec_on(vec![0.5; 7 * 16], vec![7, 16], device.clone())
             .await
             .unwrap();
         assert!(embeddings.contrastive_loss(0.5).is_err());
-        
+
         // Test negative temperature (should fail)
         let embeddings = Tensor::from_vec_on(vec![0.5; 8 * 16], vec![8, 16], device.clone())
             .await
             .unwrap();
         assert!(embeddings.clone().contrastive_loss(-0.5).is_err());
-        
+
         // Test zero temperature (should fail)
         assert!(embeddings.contrastive_loss(0.0).is_err());
-        
+
         // Test 1D input (should fail)
         let embeddings = Tensor::from_vec_on(vec![0.5; 16], vec![16], device.clone())
             .await
@@ -378,19 +374,17 @@ mod tests {
     #[tokio::test]
     async fn test_contrastive_loss_large_batch() {
         let device = get_test_device().await;
-        
+
         // Large batch: 32 pairs (64 samples), 128-dim
-        let data: Vec<f32> = (0..64 * 128)
-            .map(|i| ((i % 100) as f32) / 100.0)
-            .collect();
+        let data: Vec<f32> = (0..64 * 128).map(|i| ((i % 100) as f32) / 100.0).collect();
         let embeddings = Tensor::from_vec_on(data, vec![64, 128], device.clone())
             .await
             .unwrap();
-        
+
         let loss = embeddings.contrastive_loss(0.07).unwrap(); // MoCo-style temperature
-        
+
         assert_eq!(loss.shape(), &[32]);
-        
+
         let data = loss.to_vec().unwrap();
         assert!(data.iter().all(|&x: &f32| x.is_finite()));
         assert!(data.iter().all(|&x: &f32| x >= 0.0));

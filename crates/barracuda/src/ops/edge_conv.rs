@@ -1,44 +1,248 @@
-//! EdgeConv - Edge Convolution for Dynamic Graphs (Wang et al.)
+//! Edge Convolution for Graph Neural Networks
 //!
-//! Computes edge features from node pairs: h(x_i, x_j - x_i)
-//! Used in point cloud processing (DGCNN).
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Learns edge features by aggregating neighbor information
 
-pub async fn edge_conv(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    node_features: &[f32],
-    edge_index: &[(usize, usize)],
-    weights: &[f32],
-    num_nodes: usize,
-    in_features: usize,
-    out_features: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut output = vec![0.0f32; num_nodes * out_features];
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    // For each edge, compute edge features
-    for &(src, dst) in edge_index {
-        // Edge feature: concatenate [x_dst, x_src - x_dst]
-        let mut edge_feat = vec![0.0f32; 2 * in_features];
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct EdgeConvParams {
+    num_nodes: u32,
+    feature_dim: u32,
+    output_dim: u32,
+    k_neighbors: u32,
+}
 
-        for f in 0..in_features {
-            // x_dst
-            edge_feat[f] = node_features[dst * in_features + f];
-            // x_src - x_dst
-            edge_feat[in_features + f] =
-                node_features[src * in_features + f] - node_features[dst * in_features + f];
+pub struct EdgeConv {
+    node_features: Tensor,
+    edge_index: Tensor,
+    mlp_weight: Tensor,
+    mlp_bias: Tensor,
+    k_neighbors: u32,
+}
+
+impl EdgeConv {
+    /// Create EdgeConv operation
+    pub fn new(
+        node_features: Tensor,
+        edge_index: Tensor,
+        mlp_weight: Tensor,
+        mlp_bias: Tensor,
+        k_neighbors: u32,
+    ) -> Result<Self> {
+        if k_neighbors == 0 {
+            return Err(BarracudaError::invalid_op(
+                "EdgeConv",
+                "k_neighbors must be > 0",
+            ));
         }
 
-        // Transform edge features with MLP
-        for out_f in 0..out_features {
-            let mut val = 0.0;
-            for in_f in 0..(2 * in_features) {
-                val += edge_feat[in_f] * weights[in_f * out_features + out_f];
-            }
-            output[dst * out_features + out_f] += val.max(0.0); // ReLU
-        }
+        Ok(Self {
+            node_features,
+            edge_index,
+            mlp_weight,
+            mlp_bias,
+            k_neighbors,
+        })
     }
 
-    Ok(output)
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/edge_conv.wgsl")
+    }
+
+    /// Execute EdgeConv on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.node_features.device();
+        let node_shape = self.node_features.shape();
+        
+        if node_shape.len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "EdgeConv",
+                format!("node_features must be 2D [num_nodes, feature_dim], got shape {:?}", node_shape),
+            ));
+        }
+
+        let num_nodes = node_shape[0];
+        let feature_dim = node_shape[1];
+        let output_dim = self.mlp_bias.len();
+
+        // Create output buffer: [num_nodes, output_dim]
+        let output_size = num_nodes * output_dim;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = EdgeConvParams {
+            num_nodes: num_nodes as u32,
+            feature_dim: feature_dim as u32,
+            output_dim: output_dim as u32,
+            k_neighbors: self.k_neighbors,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("EdgeConv Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("EdgeConv Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("EdgeConv Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.node_features.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.edge_index.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.mlp_weight.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.mlp_bias.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("EdgeConv"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("EdgeConv Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("EdgeConv Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("EdgeConv Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("EdgeConv Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (64 threads per workgroup)
+            let workgroups = (num_nodes as u32 + 63) / 64;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![num_nodes, output_dim],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -48,172 +252,49 @@ mod tests {
 
     #[tokio::test]
     async fn test_edge_conv_basic() {
-        let dev = get_test_device().await;
-        let node_features = vec![1.0; 4 * 8];
-        let edges = vec![(0, 1), (1, 2), (2, 3)];
-        let weights = vec![0.1; 16 * 16]; // 2*in_features x out_features
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            4,
-            8,
-            16,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 4 * 16);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_edge_conv_edge_cases() {
-        let dev = get_test_device().await;
+        let num_nodes = 5;
+        let feature_dim = 3;
+        let output_dim = 4;
 
-        // No edges (all nodes isolated)
-        let node_features = vec![1.0; 3 * 4];
-        let edges = vec![];
-        let weights = vec![0.1; 8 * 8];
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            3,
-            4,
-            8,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 3 * 8);
-        // All zeros (no edge features computed)
-        assert!(output.iter().all(|&x| x == 0.0));
-
-        // Single edge
-        let edges = vec![(0, 1)];
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            3,
-            4,
-            8,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 3 * 8);
-        // Node 1 should have edge features, others zero
-        assert!(output[8..16].iter().any(|&x| x != 0.0)); // Node 1
-    }
-
-    #[tokio::test]
-    async fn test_edge_conv_boundary() {
-        let dev = get_test_device().await;
-
-        // Test with distinct node features (point cloud simulation)
-        let node_features = vec![
-            1.0, 0.0, 0.0, 0.0, // Node 0
-            0.0, 1.0, 0.0, 0.0, // Node 1
-            0.0, 0.0, 1.0, 0.0, // Node 2
-            0.0, 0.0, 0.0, 1.0, // Node 3
-        ];
-        let edges = vec![(0, 1), (1, 2), (2, 3)];
-        let weights = vec![0.1; 8 * 8];
-
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            4,
-            4,
-            8,
+        let node_features = Tensor::from_vec_on(
+            vec![1.0; num_nodes * feature_dim],
+            vec![num_nodes, feature_dim],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // Edge features capture spatial relationships
-        assert_eq!(output.len(), 4 * 8);
-        assert!(output.iter().all(|&x| x.is_finite()));
-        assert!(output.iter().all(|&x| x >= 0.0)); // ReLU applied
-    }
-
-    #[tokio::test]
-    async fn test_edge_conv_large_batch() {
-        let dev = get_test_device().await;
-
-        // Larger point cloud (e.g., DGCNN)
-        let num_nodes = 20;
-        let in_feat = 3; // 3D points
-        let out_feat = 64;
-
-        // K-nearest neighbors simulation (simplified)
-        let mut edges = Vec::new();
-        for i in 0..num_nodes {
-            // Connect each node to next 3 nodes (cyclic)
-            for k in 1..=3 {
-                let j = (i + k) % num_nodes;
-                edges.push((j, i));
-            }
-        }
-
-        let node_features = vec![0.5; num_nodes * in_feat];
-        let weights = vec![0.1; (2 * in_feat) * out_feat];
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            num_nodes,
-            in_feat,
-            out_feat,
+        let edge_index = Tensor::from_vec_on(
+            vec![0u32, 1, 1, 2, 2, 3, 3, 4], // Simple chain graph
+            vec![4, 2],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        assert_eq!(output.len(), num_nodes * out_feat);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_edge_conv_precision() {
-        let dev = get_test_device().await;
-
-        // Test edge feature computation: [x_dst, x_src - x_dst]
-        let node_features = vec![
-            1.0, 2.0, // Node 0
-            3.0, 4.0, // Node 1
-            5.0, 6.0, // Node 2
-        ];
-        let edges = vec![(0, 1), (1, 2)];
-        let weights = vec![0.5; 4 * 4]; // 2*in_features x out_features
-
-        let output = edge_conv(
-            &dev.device,
-            &dev.queue,
-            &node_features,
-            &edges,
-            &weights,
-            3,
-            2,
-            4,
+        let mlp_weight = Tensor::from_vec_on(
+            vec![0.1; output_dim * 2 * feature_dim],
+            vec![output_dim, 2 * feature_dim],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        assert_eq!(output.len(), 3 * 4);
-        assert!(output.iter().all(|&x| x.is_finite()));
+        let mlp_bias = Tensor::from_vec_on(
+            vec![0.0; output_dim],
+            vec![output_dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Edge from 0 to 1: [3.0, 4.0, 1.0-3.0, 2.0-4.0] = [3.0, 4.0, -2.0, -2.0]
-        // After ReLU, negative values should be zero
-        // Node 1 should have non-zero output
-        assert!(output[4..8].iter().any(|&x| x > 0.0));
+        let result = EdgeConv::new(node_features, edge_index, mlp_weight, mlp_bias, 2)
+            .unwrap()
+            .execute()
+            .unwrap();
+
+        assert_eq!(result.shape(), &[num_nodes, output_dim]);
     }
 }

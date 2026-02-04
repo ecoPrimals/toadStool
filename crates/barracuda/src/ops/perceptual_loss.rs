@@ -1,65 +1,299 @@
 //! PerceptualLoss - Feature-based perceptual loss
 //!
+//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//!
 //! Compares high-level features instead of pixels.
 //! Used in style transfer and super-resolution.
 
-pub async fn perceptual_loss(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    features1: &[f32], // Features from layer [N, C, H, W] flattened
-    features2: &[f32],
-    weights: Option<&[f32]>, // Optional per-layer weights
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if features1.len() != features2.len() {
-        return Err("Feature dimensions must match".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    let mut loss = 0.0;
+/// Perceptual Loss operation
+pub struct PerceptualLoss {
+    features1: Tensor,
+    features2: Tensor,
+    weights: Option<Tensor>,
+}
 
-    if let Some(w) = weights {
-        // Weighted feature comparison
-        if w.len() * features1.len() / w.len() != features1.len() {
-            return Err("Weights dimension mismatch".into());
+impl PerceptualLoss {
+    /// Create a new perceptual loss operation
+    pub fn new(features1: Tensor, features2: Tensor, weights: Option<Tensor>) -> Result<Self> {
+        // Validate feature dimensions match
+        if features1.shape() != features2.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                features1.shape().to_vec(),
+                features2.shape().to_vec(),
+            ));
         }
 
-        let features_per_weight = features1.len() / w.len();
-
-        for i in 0..w.len() {
-            let start = i * features_per_weight;
-            let end = start + features_per_weight;
-
-            for j in start..end {
-                let diff = features1[j] - features2[j];
-                loss += w[i] * diff * diff;
+        // Validate weights if provided
+        if let Some(ref w) = weights {
+            let features_size: usize = features1.shape().iter().product();
+            let weights_size: usize = w.shape().iter().product();
+            if features_size % weights_size != 0 {
+                return Err(BarracudaError::InvalidInput {
+                    message: format!(
+                        "Weights dimension mismatch: features size {} must be divisible by weights size {}",
+                        features_size, weights_size
+                    ),
+                });
             }
         }
-    } else {
-        // Unweighted MSE on features
-        for i in 0..features1.len() {
-            let diff = features1[i] - features2[i];
-            loss += diff * diff;
-        }
+
+        Ok(Self {
+            features1,
+            features2,
+            weights,
+        })
     }
 
-    loss /= features1.len() as f32;
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/perceptual_loss.wgsl")
+    }
 
-    Ok(loss)
+    /// Execute the perceptual loss operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.features1.device();
+        let size = self.features1.len();
+
+        // Create reduction buffer and output buffer
+        let loss_buffer = device.create_buffer_f32(1)?;
+        let output_buffer = device.create_buffer_f32(1)?;
+
+        // Determine if weights are provided and number of weight groups
+        let has_weights = self.weights.is_some() as u32;
+        let num_weights = self
+            .weights
+            .as_ref()
+            .map(|w| w.shape().iter().product::<usize>())
+            .unwrap_or(0) as u32;
+
+        // Create weights buffer (or dummy buffer if None)
+        let weights_buffer = if let Some(ref w) = self.weights {
+            w.buffer()
+        } else {
+            // Create dummy buffer (won't be used) - store in a variable that lives long enough
+            // We'll create a minimal buffer that won't be accessed
+            let dummy = device.create_buffer_f32(1)?;
+            // Store in a way that keeps it alive - we'll use a Box to extend lifetime
+            // Actually, we can just use the buffer directly since it's only used in bind group
+            &*Box::leak(Box::new(dummy))
+        };
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            has_weights: u32,
+            num_weights: u32,
+            _pad1: u32,
+        }
+
+        let params = Params {
+            size: size as u32,
+            has_weights,
+            num_weights,
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("PerceptualLoss Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module =
+            device.compile_shader(Self::wgsl_shader(), Some("PerceptualLoss Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("PerceptualLoss Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("PerceptualLoss Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.features1.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.features2.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: weights_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: loss_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipelines
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("PerceptualLoss Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        let compute_pipeline_pass1 = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("PerceptualLoss Pipeline Pass1"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            },
+        );
+
+        let compute_pipeline_pass2 = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("PerceptualLoss Pipeline Pass2"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "compute_mean_loss",
+            },
+        );
+
+        // Execute compute shader (two passes)
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("PerceptualLoss Encoder"),
+            },
+        );
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("PerceptualLoss Pass"),
+                timestamp_writes: None,
+            });
+
+            // Pass 1: Compute weighted squared differences
+            compute_pass.set_pipeline(&compute_pipeline_pass1);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+
+            // Pass 2: Compute mean loss
+            compute_pass.set_pipeline(&compute_pipeline_pass2);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(1, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Output shape: scalar [1]
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![1],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_perceptual_loss() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let features1 = vec![0.5; 1000];
-        let features2 = vec![0.6; 1000];
-        let loss = perceptual_loss(&dev.device, &dev.queue, &features1, &features2, None)
+        let device = get_test_device().await;
+        let features1 = Tensor::from_vec_on(vec![0.5; 1000], vec![1000], device.clone())
             .await
             .unwrap();
-        assert!(loss > 0.0);
+        let features2 = Tensor::from_vec_on(vec![0.6; 1000], vec![1000], device.clone())
+            .await
+            .unwrap();
+        let loss = PerceptualLoss::new(features1, features2, None)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = loss.to_vec().unwrap();
+        assert_eq!(result.len(), 1);
+        assert!(result[0] > 0.0);
     }
 }

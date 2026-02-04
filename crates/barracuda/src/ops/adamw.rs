@@ -191,7 +191,9 @@ impl AdamW {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Output buffers
         let params_out_buffer = device.create_buffer_f32(size)?;
@@ -199,9 +201,11 @@ impl AdamW {
         let v_out_buffer = device.create_buffer_f32(size)?;
 
         // Copy initial params, m, v to output buffers (will be updated in-place)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("AdamW Copy Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("AdamW Copy Encoder"),
+            });
         encoder.copy_buffer_to_buffer(
             self.params.buffer(),
             0,
@@ -230,66 +234,68 @@ impl AdamW {
         let shader = device.compile_shader(Self::shader(), Some("AdamW"));
 
         // Create bind group layout (5 bindings)
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("AdamW BGL"),
-            entries: &[
-                // gradients (read)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("AdamW BGL"),
+                entries: &[
+                    // gradients (read)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // params (read_write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // params (read_write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // m (read_write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // m (read_write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // v (read_write)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // v (read_write)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // params (uniform)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // params (uniform)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -320,23 +326,30 @@ impl AdamW {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("AdamW Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("AdamW Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("AdamW Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("AdamW Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("AdamW Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("AdamW Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -346,7 +359,7 @@ impl AdamW {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Workgroups: size=256 per shader
             let workgroups = (size as u32 + 255) / 256;
             pass.dispatch_workgroups(workgroups, 1, 1);
@@ -357,7 +370,11 @@ impl AdamW {
 
         // Return all three outputs
         Ok((
-            Tensor::from_buffer(params_out_buffer, self.params.shape().to_vec(), device.clone()),
+            Tensor::from_buffer(
+                params_out_buffer,
+                self.params.shape().to_vec(),
+                device.clone(),
+            ),
             Tensor::from_buffer(m_out_buffer, self.m.shape().to_vec(), device.clone()),
             Tensor::from_buffer(v_out_buffer, self.v.shape().to_vec(), device.clone()),
         ))
@@ -453,8 +470,9 @@ mod tests {
             .await
             .unwrap();
 
-        let (new_params, new_m, new_v) =
-            params.adamw(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.01, 1).unwrap();
+        let (new_params, new_m, new_v) = params
+            .adamw(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.01, 1)
+            .unwrap();
 
         assert_eq!(new_params.shape(), &[size]);
         assert_eq!(new_m.shape(), &[size]);
@@ -496,8 +514,9 @@ mod tests {
 
         // Run 10 steps
         for step in 1..=10 {
-            let (p, m_new, v_new) =
-                params.adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.01, step).unwrap();
+            let (p, m_new, v_new) = params
+                .adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.01, step)
+                .unwrap();
             params = p;
             m = m_new;
             v = v_new;
@@ -530,11 +549,14 @@ mod tests {
             .unwrap();
 
         // With weight decay, params should shrink even with zero gradient
-        let (new_params_wd, _, _) =
-            params.clone().adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.1, 1).unwrap();
+        let (new_params_wd, _, _) = params
+            .clone()
+            .adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.1, 1)
+            .unwrap();
 
-        let (new_params_no_wd, _, _) =
-            params.adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.0, 1).unwrap();
+        let (new_params_no_wd, _, _) = params
+            .adamw(&gradients, &m, &v, 0.1, 0.9, 0.999, 1e-8, 0.0, 1)
+            .unwrap();
 
         let wd_data = new_params_wd.to_vec().unwrap();
         let no_wd_data = new_params_no_wd.to_vec().unwrap();
@@ -590,8 +612,9 @@ mod tests {
             .await
             .unwrap();
 
-        let (new_params, new_m, new_v) =
-            params.adamw(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.01, 1).unwrap();
+        let (new_params, new_m, new_v) = params
+            .adamw(&gradients, &m, &v, 0.001, 0.9, 0.999, 1e-8, 0.01, 1)
+            .unwrap();
 
         assert_eq!(new_params.shape(), &[10, 10]);
         assert_eq!(new_m.shape(), &[10, 10]);
@@ -631,7 +654,7 @@ mod tests {
         // AdamW should apply decoupled weight decay
         // Result should be different from params without update
         assert!(adamw_data.iter().all(|&x| x < 10.0));
-        
+
         // Verify all values are finite
         assert!(adamw_data.iter().all(|&x| x.is_finite()));
     }

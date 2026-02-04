@@ -283,21 +283,27 @@ impl Clone for SongbirdNetworkDiscovery {
 // Move DiscoveryClient full implementation here from types.rs
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
+        // Clone uses fallback path since Clone trait is sync
+        // In async contexts, use the async new() constructor instead
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock");
+
         Self {
             connection: Arc::clone(&self.connection),
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_songbird_socket_path(),
-            ),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         }
     }
 }
 
 impl DiscoveryClient {
     pub async fn new(connection: Arc<SongbirdConnection>) -> ToadStoolResult<Self> {
-        // Use unix socket instead of HTTP client (pure Rust!)
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_songbird_socket_path(),
-        );
+        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
+        let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+            });
+
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
             connection,

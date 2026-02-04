@@ -95,27 +95,43 @@ impl FallbackSource {
             .unwrap_or_else(|_| crate::constants::LOCALHOST_IPV4.to_string());
 
         // Helper to get service endpoints from environment or defaults
+        // NOTE: HTTP fallbacks are DEPRECATED - Unix sockets are preferred
+        // These exist only for backward compatibility and testing
+
         let songbird_endpoint = std::env::var("SONGBIRD_URL")
             .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
-            .unwrap_or_else(|_| format!("http://{bind_host}:8081"));
+            .unwrap_or_else(|_| {
+                tracing::warn!("Using deprecated HTTP fallback for songbird. Set SONGBIRD_URL or use Unix sockets.");
+                format!("http://{bind_host}:8081")
+            });
 
         let beardog_endpoint = std::env::var("BEARDOG_URL")
             .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
-            .unwrap_or_else(|_| format!("http://{bind_host}:8082"));
+            .unwrap_or_else(|_| {
+                tracing::warn!("Using deprecated HTTP fallback for beardog. Set BEARDOG_URL or use Unix sockets.");
+                format!("http://{bind_host}:8082")
+            });
 
         // Default development fallbacks (respecting environment variables)
+        // DEEP DEBT NOTE: These HTTP fallbacks with hardcoded ports are deprecated.
+        // Production deployments should use Unix socket discovery or set environment variables.
         fallbacks.insert("ai_processing".to_string(), songbird_endpoint);
+
+        // Check for environment override before using hardcoded port
         fallbacks.insert(
             "authentication".to_string(),
-            format!("http://{bind_host}:9090"),
+            std::env::var("AUTHENTICATION_URL")
+                .unwrap_or_else(|_| format!("http://{bind_host}:9090")),
         );
         fallbacks.insert(
             "persistent_storage".to_string(),
-            format!("http://{bind_host}:5432"),
+            std::env::var("STORAGE_URL")
+                .or_else(|_| std::env::var("NESTGATE_URL"))
+                .unwrap_or_else(|_| format!("http://{bind_host}:5432")),
         );
         fallbacks.insert(
             "natural_language_processing".to_string(),
-            format!("http://{bind_host}:7777"),
+            std::env::var("NLP_URL").unwrap_or_else(|_| format!("http://{bind_host}:7777")),
         );
         fallbacks.insert("service_orchestration".to_string(), beardog_endpoint);
 
@@ -195,24 +211,22 @@ impl EndpointSource for MDNSSource {
             // mDNS discovery would require platform-specific libraries (Avahi on Linux, Bonjour on macOS)
             // For now, check common local service patterns that don't require external libraries
 
-            let common_mdns_ports: &[(&str, u16)] = &[
-                ("songbird", 9090),
-                ("nestgate", 8080),
-                ("squirrel", 7070),
-                ("beardog", 6060),
-            ];
+            // DEEP DEBT EVOLUTION: Ports are no longer used, converted to Unix sockets below
+            // These are kept for service name matching only
+            let common_mdns_services: &[&str] = &["songbird", "nestgate", "squirrel", "beardog"];
 
             // Check if service matches common patterns
-            for (svc, _port) in common_mdns_ports {
+            for svc in common_mdns_services {
                 if service.contains(svc) {
-                    // PURE RUST: Use unix socket paths instead of HTTP
+                    // DEEP DEBT COMPLIANT: Use Unix socket paths instead of HTTP with ports
+                    // No hardcoded ports - filesystem-based discovery
                     let socket_path = crate::primal_sockets::get_socket_path_for_service(svc);
                     let endpoint = format!("unix://{}", socket_path.display());
 
                     tracing::debug!(
                         service,
                         endpoint,
-                        "Found local service via socket discovery (pure Rust!)"
+                        "Found local service via Unix socket discovery (zero hardcoded ports!)"
                     );
                     return Ok(Some(endpoint));
                 }
@@ -744,7 +758,11 @@ mod tests {
     #[test]
     fn test_config_file_source_default_path() {
         let source = ConfigFileSource::default_path();
-        assert!(source.config_path.to_str().unwrap().contains("toadstool.toml"));
+        assert!(source
+            .config_path
+            .to_str()
+            .unwrap()
+            .contains("toadstool.toml"));
     }
 
     #[tokio::test]

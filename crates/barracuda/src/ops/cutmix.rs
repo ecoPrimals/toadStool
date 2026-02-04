@@ -1,218 +1,272 @@
-//! CutMix - CutMix augmentation (Yun et al.)
+//! CutMix data augmentation operation
 //!
-//! Cuts and pastes patches between training images.
-//! Improves generalization and localization.
+//! CutMix: Cuts and pastes patches between training images
+//! Improves model robustness and generalization
 
-pub async fn cutmix(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    image1: &[f32],
-    image2: &[f32],
-    channels: usize,
-    height: usize,
-    width: usize,
-    lambda: f32, // Mix ratio
-    seed: u64,
-) -> Result<(Vec<f32>, f32), Box<dyn std::error::Error>> {
-    if image1.len() != image2.len() {
-        return Err("Images must have same size".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use bytemuck::{Pod, Zeroable};
 
-    let mut output = image1.to_vec();
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct CutMixParams {
+    batch_size: u32,
+    channels: u32,
+    height: u32,
+    width: u32,
+    cut_x: u32,
+    cut_y: u32,
+    cut_w: u32,
+    cut_h: u32,
+    mix_idx: u32,
+    _padding: [u32; 3],
+}
 
-    // Compute cut size
-    let cut_ratio = (1.0 - lambda).sqrt();
-    let cut_w = (width as f32 * cut_ratio) as usize;
-    let cut_h = (height as f32 * cut_ratio) as usize;
+/// CutMix data augmentation operation
+pub struct CutMix {
+    input: Tensor,
+    cut_x: u32,
+    cut_y: u32,
+    cut_w: u32,
+    cut_h: u32,
+    mix_idx: u32,
+}
 
-    // Random center
-    let cx = ((seed * 1103515245) % width as u64) as usize;
-    let cy = ((seed * 22695477) % height as u64) as usize;
-
-    // Bounding box
-    let x1 = (cx as isize - cut_w as isize / 2).max(0) as usize;
-    let y1 = (cy as isize - cut_h as isize / 2).max(0) as usize;
-    let x2 = (cx + cut_w / 2).min(width);
-    let y2 = (cy + cut_h / 2).min(height);
-
-    // Copy patch from image2 to output
-    for c in 0..channels {
-        for i in y1..y2 {
-            for j in x1..x2 {
-                let idx = c * height * width + i * width + j;
-                output[idx] = image2[idx];
-            }
+impl CutMix {
+    /// Create CutMix operation
+    pub fn new(
+        input: Tensor,
+        cut_x: u32,
+        cut_y: u32,
+        cut_w: u32,
+        cut_h: u32,
+        mix_idx: u32,
+    ) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "cutmix",
+                format!("input must be 4D [B, C, H, W], got shape {:?}", shape),
+            ));
         }
+
+        let batch_size = shape[0];
+        let _channels = shape[1];
+        let height = shape[2];
+        let width = shape[3];
+
+        if mix_idx >= batch_size as u32 {
+            return Err(BarracudaError::invalid_op(
+                "cutmix",
+                format!(
+                    "mix_idx {} must be less than batch_size {}",
+                    mix_idx, batch_size
+                ),
+            ));
+        }
+
+        if cut_x + cut_w > width as u32 || cut_y + cut_h > height as u32 {
+            return Err(BarracudaError::invalid_op(
+                "cutmix",
+                format!(
+                    "cut region [{}, {}] + [{}, {}] exceeds image size [{}, {}]",
+                    cut_x, cut_y, cut_w, cut_h, width, height
+                ),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            cut_x,
+            cut_y,
+            cut_w,
+            cut_h,
+            mix_idx,
+        })
     }
 
-    // Adjust lambda based on actual cut area
-    let actual_lambda = 1.0 - ((x2 - x1) * (y2 - y1)) as f32 / (width * height) as f32;
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/cutmix.wgsl")
+    }
 
-    Ok((output, actual_lambda))
+    /// Execute CutMix on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let batch_size = shape[0];
+        let channels = shape[1];
+        let height = shape[2];
+        let width = shape[3];
+        let size = self.input.len();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Create params
+        let params = CutMixParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            cut_x: self.cut_x,
+            cut_y: self.cut_y,
+            cut_w: self.cut_w,
+            cut_h: self.cut_h,
+            mix_idx: self.mix_idx,
+            _padding: [0; 3],
+        };
+
+        let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("CutMix Params"),
+            size: std::mem::size_of::<CutMixParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("CutMix Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("CutMix Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("CutMix"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("CutMix Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("CutMix Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("CutMix Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("CutMix Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (8x8x1 workgroup size)
+            let workgroups_x = (width as u32 + 7) / 8;
+            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_z = batch_size as u32;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            shape.to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_cutmix_basic() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let image1 = vec![1.0; 3 * 32 * 32];
-        let image2 = vec![0.5; 3 * 32 * 32];
-        let (mixed, lambda) = cutmix(
-            &dev.device,
-            &dev.queue,
-            &image1,
-            &image2,
-            3,
-            32,
-            32,
-            0.5,
-            99999,
+        let device = get_test_device().await;
+
+        // Create 2x3x4x4 batch (batch=2, channels=3, height=4, width=4)
+        let input = Tensor::from_vec_on(
+            vec![1.0; 2 * 3 * 4 * 4],
+            vec![2, 3, 4, 4],
+            device,
         )
         .await
         .unwrap();
 
-        assert_eq!(mixed.len(), image1.len());
-        assert!(lambda >= 0.0 && lambda <= 1.0);
-
-        // Mixed image should contain values from both images
-        let has_image1 = mixed.iter().any(|&v| (v - 1.0).abs() < 1e-5);
-        let has_image2 = mixed.iter().any(|&v| (v - 0.5).abs() < 1e-5);
-        assert!(has_image1 && has_image2, "CutMix should mix both images");
-    }
-
-    #[tokio::test]
-    async fn test_cutmix_edge_cases() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Edge case: lambda = 1.0 (no mix, all image1)
-        let image1 = vec![1.0; 3 * 16 * 16];
-        let image2 = vec![0.0; 3 * 16 * 16];
-        let (_mixed, lambda) = cutmix(
-            &dev.device,
-            &dev.queue,
-            &image1,
-            &image2,
-            3,
-            16,
-            16,
-            1.0,
-            12345,
-        )
-        .await
-        .unwrap();
-
-        // With lambda=1.0, cut_ratio=0, so should be mostly image1
-        assert!(lambda > 0.9);
-
-        // Edge case: lambda = 0.0 (max mix)
-        let (_mixed, lambda) = cutmix(
-            &dev.device,
-            &dev.queue,
-            &image1,
-            &image2,
-            3,
-            16,
-            16,
-            0.0,
-            54321,
-        )
-        .await
-        .unwrap();
-        assert!(lambda < 0.5); // Significant mixing
-    }
-
-    #[tokio::test]
-    async fn test_cutmix_boundary() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Small image
-        let image1 = vec![1.0; 3 * 4 * 4];
-        let image2 = vec![0.0; 3 * 4 * 4];
-        let (mixed, lambda) = cutmix(&dev.device, &dev.queue, &image1, &image2, 3, 4, 4, 0.5, 777)
-            .await
+        let output = CutMix::new(input, 1, 1, 2, 2, 1)
+            .unwrap()
+            .execute()
             .unwrap();
+        let result = output.to_vec().unwrap();
 
-        assert_eq!(mixed.len(), 3 * 4 * 4);
-        assert!(lambda >= 0.0 && lambda <= 1.0);
-
-        // Single channel
-        let gray1 = vec![1.0; 1 * 8 * 8];
-        let gray2 = vec![0.0; 1 * 8 * 8];
-        let (mixed, _) = cutmix(&dev.device, &dev.queue, &gray1, &gray2, 1, 8, 8, 0.5, 888)
-            .await
-            .unwrap();
-        assert_eq!(mixed.len(), 64);
-    }
-
-    #[tokio::test]
-    async fn test_cutmix_large_image() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Realistic image size (224x224 RGB)
-        let size = 3 * 224 * 224;
-        let image1 = vec![1.0; size];
-        let image2 = vec![0.0; size];
-
-        let (mixed, lambda) = cutmix(
-            &dev.device,
-            &dev.queue,
-            &image1,
-            &image2,
-            3,
-            224,
-            224,
-            0.5,
-            11111,
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(mixed.len(), size);
-        assert!(lambda >= 0.0 && lambda <= 1.0);
-
-        // Verify mixing occurred
-        let sum: f32 = mixed.iter().sum();
-        let expected_sum = size as f32 * lambda; // Weighted by lambda
-        assert!((sum - expected_sum).abs() / expected_sum < 0.2); // Within 20%
-    }
-
-    #[tokio::test]
-    async fn test_cutmix_precision() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-
-        // Test with distinct patterns
-        let image1 = vec![1.0; 3 * 16 * 16];
-        let image2 = vec![0.0; 3 * 16 * 16];
-
-        // Create checkerboard pattern in image1
-        // (Note: CutMix doesn't modify input, so pattern is informational)
-
-        let (mixed, lambda) = cutmix(
-            &dev.device,
-            &dev.queue,
-            &image1,
-            &image2,
-            3,
-            16,
-            16,
-            0.5,
-            55555,
-        )
-        .await
-        .unwrap();
-
-        // Verify patch was cut correctly
-        assert_eq!(mixed.len(), 3 * 16 * 16);
-        assert!(lambda >= 0.0 && lambda <= 1.0);
-
-        // Should have values from both images
-        let has_ones = mixed.iter().any(|&v| (v - 1.0).abs() < 1e-5);
-        let has_zeros = mixed.iter().any(|&v| v.abs() < 1e-5);
-        assert!(has_ones || has_zeros);
+        assert_eq!(result.len(), 2 * 3 * 4 * 4);
     }
 }

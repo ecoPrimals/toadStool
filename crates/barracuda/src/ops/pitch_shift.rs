@@ -2,50 +2,201 @@
 //!
 //! Changes pitch by resampling in frequency domain.
 //! Combines time stretching with resampling.
+//!
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-pub async fn pitch_shift(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    signal: &[f32],
-    n_steps: f32, // Semitones to shift (positive = up, negative = down)
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// PitchShift operation
+pub struct PitchShift {
+    signal: Tensor,
+    n_steps: f32,        // Semitones to shift (positive = up, negative = down)
     bins_per_octave: f32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Compute shift ratio: 2^(n_steps / bins_per_octave)
-    let rate = 2.0_f32.powf(n_steps / bins_per_octave);
+}
 
-    // Simple resampling approach
-    let output_length = (signal.len() as f32 / rate) as usize;
-    let mut output = vec![0.0f32; output_length];
-
-    for i in 0..output_length {
-        let src_pos = i as f32 * rate;
-        let idx = src_pos as usize;
-        let frac = src_pos - idx as f32;
-
-        if idx < signal.len() - 1 {
-            // Linear interpolation
-            output[i] = signal[idx] * (1.0 - frac) + signal[idx + 1] * frac;
-        } else if idx < signal.len() {
-            output[i] = signal[idx];
+impl PitchShift {
+    /// Create a new pitch shift operation
+    pub fn new(signal: Tensor, n_steps: f32, bins_per_octave: f32) -> Result<Self> {
+        if bins_per_octave <= 0.0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "bins_per_octave must be positive".to_string(),
+            });
         }
+
+        Ok(Self {
+            signal,
+            n_steps,
+            bins_per_octave,
+        })
     }
 
-    Ok(output)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/pitch_shift.wgsl")
+    }
+
+    /// Execute the pitch shift operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.signal.device();
+        let input_length: usize = self.signal.shape().iter().product();
+        
+        // Compute shift ratio: 2^(n_steps / bins_per_octave)
+        let rate = 2.0_f32.powf(self.n_steps / self.bins_per_octave);
+        let output_length = (input_length as f32 / rate) as usize;
+
+        // Access input buffer directly (zero-copy)
+        let input_buffer = self.signal.buffer();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(output_length)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            input_length: u32,
+            output_length: u32,
+            rate: f32,
+        }
+
+        let params = Params {
+            input_length: input_length as u32,
+            output_length: output_length as u32,
+            rate,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PitchShift Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("PitchShift Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("PitchShift Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("PitchShift Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("PitchShift Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PitchShift Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("PitchShift Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("PitchShift Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((output_length as u32 + 255) / 256, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Output shape: [output_length]
+        let output_shape = vec![output_length];
+
+        // Return tensor without reading back (zero-copy)
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            output_shape,
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_pitch_shift() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let signal = vec![0.5; 10000];
-        let shifted = pitch_shift(&dev.device, &dev.queue, &signal, 2.0, 12.0)
+    async fn test_pitch_shift_basic() {
+        let device = get_test_device().await;
+        let signal = Tensor::from_vec_on(vec![0.5; 10000], vec![10000], device.clone())
             .await
             .unwrap();
-        assert!(shifted.len() > 0);
+        
+        let shifted = PitchShift::new(signal, 2.0, 12.0)
+            .unwrap()
+            .execute()
+            .unwrap();
+        assert!(shifted.shape()[0] > 0);
     }
 }

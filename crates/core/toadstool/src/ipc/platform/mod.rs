@@ -16,8 +16,8 @@
 //! | Windows | TCP | ⏳ Future |
 //! | Cross-device | TCP | ⏳ Future |
 
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use serde::{Serialize, Deserialize};
 
 pub mod unix;
 
@@ -41,24 +41,17 @@ pub use tcp::{bind as bind_tcp, connect as connect_tcp};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Endpoint {
     /// Filesystem Unix socket (Linux, macOS)
-    Unix {
-        path: PathBuf,
-    },
-    
+    Unix { path: PathBuf },
+
     /// Abstract Unix socket (Linux, Android)
-    /// 
+    ///
     /// Uses Linux-specific abstract namespace (name starts with null byte).
     /// Doesn't create filesystem entry, better for Android (SELinux-friendly).
     #[cfg(target_os = "linux")]
-    Abstract {
-        name: String,
-    },
-    
+    Abstract { name: String },
+
     /// TCP socket (universal fallback)
-    Tcp {
-        host: String,
-        port: u16,
-    },
+    Tcp { host: String, port: u16 },
 }
 
 impl Endpoint {
@@ -76,30 +69,30 @@ impl Endpoint {
                 };
             }
         }
-        
+
         // Default: Unix socket (Linux desktop, macOS)
         let runtime_dir = get_runtime_dir();
         Self::Unix {
             path: PathBuf::from(format!("{}/biomeos/toadstool.sock", runtime_dir)),
         }
     }
-    
+
     /// Check if endpoint is Unix socket
     pub fn is_unix(&self) -> bool {
         matches!(self, Self::Unix { .. })
     }
-    
+
     /// Check if endpoint is Abstract socket
     #[cfg(target_os = "linux")]
     pub fn is_abstract(&self) -> bool {
         matches!(self, Self::Abstract { .. })
     }
-    
+
     /// Check if endpoint is TCP
     pub fn is_tcp(&self) -> bool {
         matches!(self, Self::Tcp { .. })
     }
-    
+
     /// Get display string for endpoint
     ///
     /// **Deep Debt**: Human-readable, safe for logging
@@ -111,7 +104,7 @@ impl Endpoint {
             Self::Tcp { host, port } => format!("tcp://{}:{}", host, port),
         }
     }
-    
+
     /// Get transport tier for fallback logic
     ///
     /// Tier 1: Preferred (Unix, Abstract)  
@@ -150,17 +143,17 @@ fn is_android() -> bool {
     if std::path::Path::new("/system/bin/app_process").exists() {
         return true;
     }
-    
+
     // Check for Termux (common on Android)
     if std::path::Path::new("/data/data/com.termux").exists() {
         return true;
     }
-    
+
     // Check ANDROID_ROOT environment variable
     if std::env::var("ANDROID_ROOT").is_ok() {
         return true;
     }
-    
+
     false
 }
 
@@ -195,7 +188,7 @@ mod tests {
         assert!(endpoint.is_unix());
         assert_eq!(endpoint.tier(), TransportTier::Tier1);
     }
-    
+
     #[test]
     #[cfg(target_os = "linux")]
     fn test_abstract_endpoint() {
@@ -205,7 +198,7 @@ mod tests {
         assert!(endpoint.is_abstract());
         assert_eq!(endpoint.tier(), TransportTier::Tier1);
     }
-    
+
     #[test]
     fn test_tcp_endpoint() {
         let endpoint = Endpoint::Tcp {
@@ -215,38 +208,38 @@ mod tests {
         assert!(endpoint.is_tcp());
         assert_eq!(endpoint.tier(), TransportTier::Tier2);
     }
-    
+
     #[test]
     fn test_tier_ordering() {
         assert!(TransportTier::Tier1 < TransportTier::Tier2);
     }
-    
+
     #[test]
     fn test_default_endpoint() {
         let endpoint = Endpoint::for_toadstool();
-        
+
         // Should create appropriate endpoint for platform
         #[cfg(target_os = "linux")]
         {
             // Could be Unix or Abstract depending on Android detection
             assert!(endpoint.is_unix() || endpoint.is_abstract());
         }
-        
+
         #[cfg(not(target_os = "linux"))]
         {
             assert!(endpoint.is_unix());
         }
     }
-    
+
     #[test]
     fn test_endpoint_serialization() {
         let endpoint = Endpoint::Unix {
             path: PathBuf::from("/tmp/test.sock"),
         };
-        
+
         let json = serde_json::to_string(&endpoint).unwrap();
         let deserialized: Endpoint = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(endpoint, deserialized);
     }
 }

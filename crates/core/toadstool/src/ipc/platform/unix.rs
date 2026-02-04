@@ -11,9 +11,9 @@
 //! - **macOS**: Full support
 //! - **Windows**: Not applicable (use TCP)
 
+use crate::{ToadStoolError, ToadStoolResult};
 use std::path::{Path, PathBuf};
 use tokio::net::{UnixListener, UnixStream};
-use crate::{ToadStoolError, ToadStoolResult};
 
 /// Bind Unix socket listener
 ///
@@ -32,7 +32,7 @@ use crate::{ToadStoolError, ToadStoolResult};
 /// ```
 pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     let path = path.as_ref();
-    
+
     // Create parent directory if needed
     if let Some(parent) = path.parent() {
         if !parent.exists() {
@@ -45,7 +45,7 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
             })?;
         }
     }
-    
+
     // Remove stale socket if exists
     if path.exists() {
         std::fs::remove_file(path).map_err(|e| {
@@ -56,7 +56,7 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
             ))
         })?;
     }
-    
+
     // Bind socket
     UnixListener::bind(path).map_err(|e| {
         ToadStoolError::integration(format!(
@@ -72,7 +72,7 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
 /// **Deep Debt**: Async, timeout-aware
 pub async fn connect<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixStream> {
     let path = path.as_ref();
-    
+
     UnixStream::connect(path).await.map_err(|e| {
         ToadStoolError::integration(format!(
             "Failed to connect to Unix socket {}: {}",
@@ -94,7 +94,7 @@ pub fn default_path() -> PathBuf {
             "/tmp/biomeos-runtime".to_string()
         }
     });
-    
+
     PathBuf::from(format!("{}/biomeos/toadstool.sock", runtime_dir))
 }
 
@@ -106,60 +106,60 @@ mod tests {
     fn test_default_path() {
         let path = default_path();
         let path_str = path.to_string_lossy();
-        
+
         // Should contain biomeos and toadstool.sock
         assert!(path_str.contains("biomeos"));
         assert!(path_str.contains("toadstool.sock"));
     }
-    
+
     #[tokio::test]
     async fn test_bind_and_connect() {
         let test_socket = "/tmp/toadstool_test_unix.sock";
-        
+
         // Clean up any stale socket
         let _ = std::fs::remove_file(test_socket);
-        
+
         // Bind
         let listener = bind(test_socket).await.unwrap();
-        
+
         // Connect
         let stream = connect(test_socket).await.unwrap();
-        
+
         // Cleanup
         drop(listener);
         drop(stream);
         let _ = std::fs::remove_file(test_socket);
     }
-    
+
     #[tokio::test]
     async fn test_bind_creates_directory() {
         let test_socket = "/tmp/toadstool_test_dir/subdir/test.sock";
-        
+
         // Ensure directory doesn't exist
         let _ = std::fs::remove_dir_all("/tmp/toadstool_test_dir");
-        
+
         // Bind should create directory
         let listener = bind(test_socket).await.unwrap();
-        
+
         // Directory should exist
         assert!(std::path::Path::new("/tmp/toadstool_test_dir/subdir").exists());
-        
+
         // Cleanup
         drop(listener);
         let _ = std::fs::remove_dir_all("/tmp/toadstool_test_dir");
     }
-    
+
     #[tokio::test]
     async fn test_bind_removes_stale_socket() {
         let test_socket = "/tmp/toadstool_test_stale.sock";
-        
+
         // Create stale socket
         let _ = std::fs::File::create(test_socket);
         assert!(std::path::Path::new(test_socket).exists());
-        
+
         // Bind should remove stale and create new
         let listener = bind(test_socket).await.unwrap();
-        
+
         // Cleanup
         drop(listener);
         let _ = std::fs::remove_file(test_socket);

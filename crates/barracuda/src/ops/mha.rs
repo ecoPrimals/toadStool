@@ -102,7 +102,7 @@ impl MultiHeadAttention {
                 key.shape().to_vec(),
             ));
         }
-        
+
         if query.shape()[2] != key.shape()[2] || query.shape()[2] != value.shape()[2] {
             return Err(BarracudaError::shape_mismatch(
                 query.shape().to_vec(),
@@ -168,7 +168,7 @@ impl MultiHeadAttention {
     /// **Deep Debt**: Custom WGSL for projections + validated attention core
     pub fn execute(self) -> Result<Tensor> {
         let _device = self.query.device(); // Keep for future use
-        
+
         let batch_size = self.query.shape()[0];
         let seq_len = self.query.shape()[1];
         let d_model = self.query.shape()[2];
@@ -217,9 +217,10 @@ impl MultiHeadAttention {
         params: &MhaParams,
     ) -> Result<Tensor> {
         let device = input.device();
-        
+
         // Output size: [B, H, S, D/H]
-        let output_size = (params.batch_size * params.num_heads * params.seq_len * params.head_dim) as usize;
+        let output_size =
+            (params.batch_size * params.num_heads * params.seq_len * params.head_dim) as usize;
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         // Create params buffer
@@ -229,61 +230,65 @@ impl MultiHeadAttention {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
 
         // Compile shader
         let shader = device.compile_shader(Self::shader_projection(), Some("MHA Projection"));
 
         // Create bind group layout
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("MHA Projection BGL"),
-            entries: &[
-                // Input
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("MHA Projection BGL"),
+                entries: &[
+                    // Input
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Weight
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Weight
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -310,23 +315,30 @@ impl MultiHeadAttention {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("MHA Projection Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("MHA Projection Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("MHA Projection Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("MHA Projection Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and dispatch
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MHA Projection Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MHA Projection Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -336,7 +348,7 @@ impl MultiHeadAttention {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch: one thread per (batch, head, seq) - each processes head_dim
             let workgroups_x = (params.batch_size + 15) / 16;
             let workgroups_y = (params.num_heads + 15) / 16;
@@ -369,7 +381,7 @@ impl MultiHeadAttention {
         params: &MhaParams,
     ) -> Result<Tensor> {
         let device = attention_out.device();
-        
+
         // Output size: [B, S, D]
         let output_size = (params.batch_size * params.seq_len * params.d_model) as usize;
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -381,61 +393,65 @@ impl MultiHeadAttention {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(params));
 
         // Compile shader
         let shader = device.compile_shader(Self::shader_output(), Some("MHA Output"));
 
         // Create bind group layout
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("MHA Output BGL"),
-            entries: &[
-                // Attention output (heads)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("MHA Output BGL"),
+                entries: &[
+                    // Attention output (heads)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output weight
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output weight
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -462,23 +478,30 @@ impl MultiHeadAttention {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("MHA Output Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("MHA Output Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("MHA Output Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("MHA Output Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Encode and dispatch
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MHA Output Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MHA Output Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -488,7 +511,7 @@ impl MultiHeadAttention {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch: one thread per (batch, seq, output_dim)
             let workgroups_x = (params.batch_size + 15) / 16;
             let workgroups_y = (params.seq_len + 15) / 16;
@@ -535,7 +558,7 @@ impl Tensor {
     /// let q = Tensor::randn(vec![2, 128, 512]).await?;
     /// let k = Tensor::randn(vec![2, 128, 512]).await?;
     /// let v = Tensor::randn(vec![2, 128, 512]).await?;
-    /// 
+    ///
     /// let w_q = Tensor::randn(vec![512, 512]).await?;
     /// let w_k = Tensor::randn(vec![512, 512]).await?;
     /// let w_v = Tensor::randn(vec![512, 512]).await?;
@@ -586,18 +609,62 @@ mod tests {
         let num_heads = 8;
 
         // Create inputs
-        let q = Tensor::from_vec_on(vec![0.5; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
-        let k = Tensor::from_vec_on(vec![0.5; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
-        let v = Tensor::from_vec_on(vec![1.0; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let k = Tensor::from_vec_on(
+            vec![0.5; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let v = Tensor::from_vec_on(
+            vec![1.0; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
         // Create projection weights
-        let w_q = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
-        let w_k = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
-        let w_v = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
-        let w_o = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device).await.unwrap();
+        let w_q = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let w_k = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let w_v = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let w_o = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device,
+        )
+        .await
+        .unwrap();
 
         // Execute
-        let output = q.multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads).unwrap();
+        let output = q
+            .multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads)
+            .unwrap();
 
         // Validate shape
         assert_eq!(output.shape(), &[batch, seq_len, d_model]);
@@ -616,16 +683,30 @@ mod tests {
         let d_model = 8;
         let num_heads = 1;
 
-        let q = Tensor::from_vec_on(vec![0.5; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let k = q.clone();
         let v = q.clone();
 
-        let w_q = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
+        let w_q = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let w_k = w_q.clone();
         let w_v = w_q.clone();
         let w_o = w_q.clone();
 
-        let output = q.multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads).unwrap();
+        let output = q
+            .multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads)
+            .unwrap();
 
         assert_eq!(output.shape(), &[batch, seq_len, d_model]);
         let data = output.to_vec().unwrap();
@@ -641,16 +722,30 @@ mod tests {
         let d_model = 128;
         let num_heads = 16;
 
-        let q = Tensor::from_vec_on(vec![0.5; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let k = q.clone();
         let v = q.clone();
 
-        let w_q = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
+        let w_q = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let w_k = w_q.clone();
         let w_v = w_q.clone();
         let w_o = w_q.clone();
 
-        let output = q.multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads).unwrap();
+        let output = q
+            .multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads)
+            .unwrap();
 
         assert_eq!(output.shape(), &[batch, seq_len, d_model]);
     }
@@ -664,17 +759,32 @@ mod tests {
         let d_model = 64;
         let num_heads = 8;
 
-        let q = Tensor::from_vec_on(vec![0.5; batch * seq_len * d_model], vec![batch, seq_len, d_model], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * seq_len * d_model],
+            vec![batch, seq_len, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let k = q.clone();
         let v = q.clone();
 
-        let w_q = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
+        let w_q = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let w_k = w_q.clone();
         let w_v = w_q.clone();
         let w_o = w_q.clone();
 
         // Valid: d_model divisible by num_heads
-        assert!(q.clone().multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads).is_ok());
+        assert!(q
+            .clone()
+            .multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads)
+            .is_ok());
 
         // Invalid: d_model not divisible by num_heads
         let result = q.multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, 7);
@@ -692,16 +802,42 @@ mod tests {
         let num_heads = 8;
 
         // Query has different seq_len than Key/Value (cross-attention)
-        let q = Tensor::from_vec_on(vec![0.5; batch * q_seq * d_model], vec![batch, q_seq, d_model], device.clone()).await.unwrap();
-        let k = Tensor::from_vec_on(vec![0.5; batch * kv_seq * d_model], vec![batch, kv_seq, d_model], device.clone()).await.unwrap();
-        let v = Tensor::from_vec_on(vec![1.0; batch * kv_seq * d_model], vec![batch, kv_seq, d_model], device.clone()).await.unwrap();
+        let q = Tensor::from_vec_on(
+            vec![0.5; batch * q_seq * d_model],
+            vec![batch, q_seq, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let k = Tensor::from_vec_on(
+            vec![0.5; batch * kv_seq * d_model],
+            vec![batch, kv_seq, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+        let v = Tensor::from_vec_on(
+            vec![1.0; batch * kv_seq * d_model],
+            vec![batch, kv_seq, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        let w_q = Tensor::from_vec_on(vec![0.01; d_model * d_model], vec![d_model, d_model], device.clone()).await.unwrap();
+        let w_q = Tensor::from_vec_on(
+            vec![0.01; d_model * d_model],
+            vec![d_model, d_model],
+            device.clone(),
+        )
+        .await
+        .unwrap();
         let w_k = w_q.clone();
         let w_v = w_q.clone();
         let w_o = w_q.clone();
 
-        let output = q.multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads).unwrap();
+        let output = q
+            .multi_head_attention(&k, &v, &w_q, &w_k, &w_v, &w_o, num_heads)
+            .unwrap();
 
         // Output shape matches query sequence length
         assert_eq!(output.shape(), &[batch, q_seq, d_model]);

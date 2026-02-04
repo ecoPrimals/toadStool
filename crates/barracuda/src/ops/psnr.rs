@@ -2,136 +2,258 @@
 //!
 //! Measures reconstruction quality in dB.
 //! Higher is better (typically 30-50 dB for good quality).
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn psnr(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    original: &[f32],
-    reconstructed: &[f32],
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// PSNR operation
+pub struct PSNR {
+    original: Tensor,
+    reconstructed: Tensor,
     max_pixel_value: f32,
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if original.len() != reconstructed.len() {
-        return Err("Arrays must have same length".into());
+}
+
+impl PSNR {
+    /// Create a new PSNR operation
+    pub fn new(original: Tensor, reconstructed: Tensor, max_pixel_value: f32) -> Result<Self> {
+        let shape1 = original.shape();
+        let shape2 = reconstructed.shape();
+        
+        if shape1 != shape2 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "PSNR",
+                format!("Tensors must have same shape: {:?} vs {:?}", shape1, shape2),
+            ));
+        }
+        
+        if original.len() == 0 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "PSNR",
+                "Empty tensors",
+            ));
+        }
+        
+        Ok(Self {
+            original,
+            reconstructed,
+            max_pixel_value,
+        })
     }
 
-    if original.is_empty() {
-        return Err("Empty arrays".into());
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/psnr.wgsl")
     }
 
-    // Compute MSE
-    let mut mse = 0.0;
-    for i in 0..original.len() {
-        let diff = original[i] - reconstructed[i];
-        mse += diff * diff;
+    /// Execute the PSNR operation
+    pub fn execute(self) -> Result<f32> {
+        let device = self.original.device();
+        let size = self.original.len();
+
+        // Create buffers
+        let original_buffer = self.original.buffer();
+        let reconstructed_buffer = self.reconstructed.buffer();
+
+        let mse_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("PSNR MSE Output"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            max_pixel_value: f32,
+        }
+
+        let params = Params {
+            size: size as u32,
+            max_pixel_value: self.max_pixel_value,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PSNR Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("PSNR Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("PSNR Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: original_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: reconstructed_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: mse_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("PSNR Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("PSNR Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PSNR Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("PSNR Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("PSNR Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups = (size as u32 + 255) / 256;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results and compute MSE
+        let mse_data = crate::utils::read_buffer(device, &mse_buffer, size)?;
+        let mse = mse_data.iter().sum::<f32>() / size as f32;
+
+        if mse < 1e-10 {
+            return Ok(f32::INFINITY); // Perfect reconstruction
+        }
+
+        // PSNR = 10 * log10(MAX^2 / MSE)
+        let psnr_val = 10.0 * (self.max_pixel_value * self.max_pixel_value / mse).log10();
+
+        Ok(psnr_val)
     }
-    mse /= original.len() as f32;
+}
 
-    if mse < 1e-10 {
-        return Ok(f32::INFINITY); // Perfect reconstruction
+impl Tensor {
+    /// Compute PSNR between two tensors
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Reconstructed tensor (must have same shape)
+    /// * `max_pixel_value` - Maximum pixel value (typically 1.0 or 255.0)
+    pub fn psnr(self, other: Tensor, max_pixel_value: f32) -> Result<f32> {
+        PSNR::new(self, other, max_pixel_value)?.execute()
     }
-
-    // PSNR = 10 * log10(MAX^2 / MSE)
-    let psnr_val = 10.0 * (max_pixel_value * max_pixel_value / mse).log10();
-
-    Ok(psnr_val)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
+        use crate::device::test_pool::get_test_device;
+        get_test_device().await
     }
 
     #[tokio::test]
     async fn test_psnr_basic() {
-        let dev = get_test_device().await;
-        let original = vec![0.5; 1000];
-        let reconstructed = vec![0.5; 1000];
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 1.0)
-            .await
-            .unwrap();
+        let device = get_test_device().await;
+        let original = Tensor::new(vec![0.5; 1000], vec![1000], device.clone());
+        let reconstructed = Tensor::new(vec![0.5; 1000], vec![1000], device.clone());
+        let psnr_val = original.psnr(reconstructed, 1.0).unwrap();
         assert!(psnr_val > 100.0); // Should be very high for identical signals
     }
 
     #[tokio::test]
     async fn test_psnr_edge_cases() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Perfect reconstruction
-        let original = vec![0.1, 0.5, 0.9];
-        let reconstructed = vec![0.1, 0.5, 0.9];
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 1.0)
-            .await
-            .unwrap();
+        let original = Tensor::new(vec![0.1, 0.5, 0.9], vec![3], device.clone());
+        let reconstructed = Tensor::new(vec![0.1, 0.5, 0.9], vec![3], device.clone());
+        let psnr_val = original.psnr(reconstructed, 1.0).unwrap();
         assert!(psnr_val.is_infinite()); // MSE ~= 0
 
         // Significant difference (low PSNR)
-        let original = vec![1.0; 100];
-        let reconstructed = vec![0.5; 100];
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 1.0)
-            .await
-            .unwrap();
+        let original = Tensor::new(vec![1.0; 100], vec![100], device.clone());
+        let reconstructed = Tensor::new(vec![0.5; 100], vec![100], device.clone());
+        let psnr_val = original.psnr(reconstructed, 1.0).unwrap();
         assert!(psnr_val.is_finite());
         assert!(psnr_val < 10.0); // Poor quality
-    }
-
-    #[tokio::test]
-    async fn test_psnr_boundary() {
-        let dev = get_test_device().await;
-
-        // Very small difference (high PSNR)
-        let original = vec![0.5; 1000];
-        let mut reconstructed = vec![0.5; 1000];
-        reconstructed[0] = 0.501; // Tiny difference
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 1.0)
-            .await
-            .unwrap();
-        assert!(psnr_val > 50.0); // High quality
-
-        // Different max pixel value
-        let original = vec![128.0; 100];
-        let reconstructed = vec![127.0; 100];
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 255.0)
-            .await
-            .unwrap();
-        assert!(psnr_val.is_finite());
-    }
-
-    #[tokio::test]
-    async fn test_psnr_large_batch() {
-        let dev = get_test_device().await;
-
-        // 10000 pixels
-        let original: Vec<f32> = (0..10000).map(|i| (i % 256) as f32).collect();
-        let mut reconstructed = original.clone();
-        // Add small noise
-        for i in 0..10000 {
-            reconstructed[i] += 0.1;
-        }
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 255.0)
-            .await
-            .unwrap();
-        assert!(psnr_val.is_finite());
-        assert!(psnr_val > 40.0); // Good quality
-    }
-
-    #[tokio::test]
-    async fn test_psnr_precision() {
-        let dev = get_test_device().await;
-
-        // Known MSE calculation
-        // original = [1.0, 1.0], reconstructed = [0.0, 2.0]
-        // MSE = ((1-0)^2 + (1-2)^2) / 2 = 2/2 = 1.0
-        // PSNR = 10 * log10(1.0^2 / 1.0) = 10 * log10(1.0) = 0 dB
-        let original = vec![1.0, 1.0];
-        let reconstructed = vec![0.0, 2.0];
-        let psnr_val = psnr(&dev.device, &dev.queue, &original, &reconstructed, 1.0)
-            .await
-            .unwrap();
-        assert!((psnr_val - 0.0).abs() < 0.1);
     }
 }

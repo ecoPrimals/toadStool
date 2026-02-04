@@ -27,14 +27,14 @@
 //! **Phase 2 (Future)**: Add TCP fallback for cross-device  
 //! **Phase 3 (Future)**: Multi-transport server orchestration
 
-pub mod platform;
 pub mod client;
+pub mod platform;
 pub mod server;
 
 // Re-export key types
 pub use client::{IpcClient, IpcStream};
-pub use server::IpcServer;
 pub use platform::Endpoint;
+pub use server::IpcServer;
 
 // Re-export legacy helpers for backward compatibility
 // These will gradually migrate to use the new platform layer

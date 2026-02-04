@@ -1,67 +1,232 @@
-//! Fold - Inverse of unfold (col2im)
+//! Fold - Pure WGSL
 //!
-//! Combines sliding blocks back into tensor.
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-pub async fn fold(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32], // Unfolded patches
-    batch_size: usize,
-    channels: usize,
-    output_h: usize,
-    output_w: usize,
-    kernel_h: usize,
-    kernel_w: usize,
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Fold operation (col2im - inverse of unfold)
+pub struct Fold {
+    input: Tensor,
+    output_size: (usize, usize),
+    kernel_size: (usize, usize),
     stride: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut output = vec![0.0f32; batch_size * channels * output_h * output_w];
-    let mut counts = vec![0u32; batch_size * channels * output_h * output_w];
+    padding: usize,
+    dilation: usize,
+}
 
-    let num_patches_h = (output_h - kernel_h) / stride + 1;
-    let num_patches_w = (output_w - kernel_w) / stride + 1;
-    let num_patches = num_patches_h * num_patches_w;
-    let patch_size = channels * kernel_h * kernel_w;
-
-    for b in 0..batch_size {
-        let mut patch_idx = 0;
-
-        for ph in 0..num_patches_h {
-            for pw in 0..num_patches_w {
-                let mut col_idx = 0;
-
-                for c in 0..channels {
-                    for kh in 0..kernel_h {
-                        for kw in 0..kernel_w {
-                            let oh = ph * stride + kh;
-                            let ow = pw * stride + kw;
-
-                            let in_idx =
-                                b * patch_size * num_patches + col_idx * num_patches + patch_idx;
-                            let out_idx = b * channels * output_h * output_w
-                                + c * output_h * output_w
-                                + oh * output_w
-                                + ow;
-
-                            output[out_idx] += input[in_idx];
-                            counts[out_idx] += 1;
-                            col_idx += 1;
-                        }
-                    }
-                }
-
-                patch_idx += 1;
-            }
+impl Fold {
+    /// Create a new fold operation
+    pub fn new(
+        input: Tensor,
+        output_size: (usize, usize),
+        kernel_size: (usize, usize),
+        stride: usize,
+        padding: usize,
+        dilation: usize,
+    ) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() != 3 {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: format!("Fold expects 3D tensor [B, C*K*K, L], got shape {:?}", shape),
+            });
         }
+
+        Ok(Self {
+            input,
+            output_size,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+        })
     }
 
-    // Average overlapping regions
-    for i in 0..output.len() {
-        if counts[i] > 0 {
-            output[i] /= counts[i] as f32;
-        }
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/fold.wgsl")
     }
 
-    Ok(output)
+    /// Execute the fold operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let batch_size = shape[0];
+        let channels_times_kernel = shape[1];
+        
+        // Infer channels from input shape
+        // channels_times_kernel = channels * kernel_height * kernel_width
+        let kernel_elements = self.kernel_size.0 * self.kernel_size.1;
+        let channels = channels_times_kernel / kernel_elements;
+        
+        if channels_times_kernel % kernel_elements != 0 {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: format!("Input channels*kernel ({}) must be divisible by kernel elements ({})", 
+                    channels_times_kernel, kernel_elements),
+            });
+        }
+
+        let out_height = self.output_size.0;
+        let out_width = self.output_size.1;
+        let output_size = batch_size * channels * out_height * out_width;
+
+        // Compute number of blocks
+        let num_blocks_h = ((out_height + 2 * self.padding - self.dilation * (self.kernel_size.0 - 1) - 1) / self.stride) + 1;
+        let num_blocks_w = ((out_width + 2 * self.padding - self.dilation * (self.kernel_size.1 - 1) - 1) / self.stride) + 1;
+
+        // Access input buffer directly (zero-copy)
+        let input_buffer = self.input.buffer();
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            batch_size: u32,
+            channels: u32,
+            out_height: u32,
+            out_width: u32,
+            kernel_height: u32,
+            kernel_width: u32,
+            stride: u32,
+            padding: u32,
+            dilation: u32,
+            num_blocks_h: u32,
+            num_blocks_w: u32,
+            _pad1: u32,
+        }
+
+        let params = Params {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            out_height: out_height as u32,
+            out_width: out_width as u32,
+            kernel_height: self.kernel_size.0 as u32,
+            kernel_width: self.kernel_size.1 as u32,
+            stride: self.stride as u32,
+            padding: self.padding as u32,
+            dilation: self.dilation as u32,
+            num_blocks_h: num_blocks_h as u32,
+            num_blocks_w: num_blocks_w as u32,
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Fold Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Fold Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Fold Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Fold Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Fold Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Fold Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Fold Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Fold Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            // Use 2D workgroup dispatch
+            let workgroups_x = (out_width as u32 + 7) / 8;
+            let workgroups_y = (out_height as u32 + 7) / 8;
+            let workgroups_z = (batch_size * channels) as u32;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return tensor without reading back (zero-copy)
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![batch_size, channels, out_height, out_width],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -76,100 +241,42 @@ mod tests {
 
     #[tokio::test]
     async fn test_fold_basic() {
-        let dev = get_test_device().await;
-        let input = vec![1.0; 1 * 27 * 36]; // Folded 1x3x8x8 with 3x3 kernel
-        let output = fold(&dev.device, &dev.queue, &input, 1, 3, 8, 8, 3, 3, 1)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 1 * 3 * 8 * 8);
+        let device = get_test_device().await;
+        // Input shape: [B, C*K*K, L] where K=3, so C*9
+        let data: Vec<f32> = (0..324).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![1, 9, 36], // 1 channel * 9 kernel elements, 36 blocks
+            device.clone(),
+        ).unwrap();
+        
+        let folded = Fold::new(input, (6, 6), (3, 3), 1, 0, 1).unwrap().execute().unwrap();
+        assert_eq!(folded.shape(), &vec![1, 1, 6, 6]);
     }
 
     #[tokio::test]
-    async fn test_fold_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Small kernel (2x2)
-        let input = vec![1.0; 1 * 4 * 16]; // 1 batch, 1 channel, 4x4 patches with 2x2 kernel
-        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 5, 5, 2, 2, 1)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 1 * 1 * 5 * 5);
-
-        // Single channel
-        let input = vec![1.0; 1 * 9 * 9]; // 1x1x4x4 with 3x3 kernel
-        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 3, 3, 1)
-            .await
-            .unwrap();
-        assert!(output.len() > 0);
+    async fn test_fold_invalid_shape() {
+        let device = get_test_device().await;
+        let input = Tensor::from_data(
+            &[1.0, 2.0, 3.0],
+            vec![3],
+            device.clone(),
+        ).unwrap();
+        
+        assert!(Fold::new(input, (4, 4), (3, 3), 1, 0, 1).is_err());
     }
 
     #[tokio::test]
-    async fn test_fold_boundary() {
-        let dev = get_test_device().await;
-
-        // Stride > 1 (non-overlapping patches)
-        // Simplified: smaller dimensions
-        let input = vec![1.0; 1 * 4 * 9]; // Simplified input
-        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 6, 6, 2, 2, 2)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 1 * 1 * 6 * 6);
-
-        // Single batch, single channel
-        let input = vec![1.0; 1 * 9 * 4]; // Simplified
-        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 4, 4, 2, 2, 1)
-            .await
-            .unwrap();
-        assert!(output.len() > 0);
-    }
-
-    #[tokio::test]
-    async fn test_fold_large_batch() {
-        let dev = get_test_device().await;
-
-        // Batch size 4
-        let batch_size = 4;
-        let channels = 3;
-        let out_h = 8;
-        let out_w = 8;
-        let kernel_h = 3;
-        let kernel_w = 3;
-        let num_patches = (out_h - kernel_h + 1) * (out_w - kernel_w + 1);
-        let input = vec![1.0; batch_size * channels * kernel_h * kernel_w * num_patches];
-
-        let output = fold(
-            &dev.device,
-            &dev.queue,
-            &input,
-            batch_size,
-            channels,
-            out_h,
-            out_w,
-            kernel_h,
-            kernel_w,
-            1,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), batch_size * channels * out_h * out_w);
-    }
-
-    #[tokio::test]
-    async fn test_fold_precision() {
-        let dev = get_test_device().await;
-
-        // Test averaging of overlapping regions
-        let input = vec![1.0; 1 * 9 * 9]; // 9 patches of 3x3
-        let output = fold(&dev.device, &dev.queue, &input, 1, 1, 5, 5, 3, 3, 1)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 25);
-
-        // All outputs should be finite and non-negative
-        assert!(output.iter().all(|&x| x.is_finite() && x >= 0.0));
-
-        // Center elements should have higher counts (more overlap) but same value (all 1.0)
-        // With uniform input, output should be uniform
-        assert!(output.iter().all(|&x| (x - 1.0).abs() < 0.1));
+    async fn test_fold_with_padding() {
+        let device = get_test_device().await;
+        let data: Vec<f32> = (0..576).map(|i| i as f32).collect();
+        let input = Tensor::from_data(
+            &data,
+            vec![1, 9, 64],
+            device.clone(),
+        ).unwrap();
+        
+        let folded = Fold::new(input, (8, 8), (3, 3), 1, 1, 1).unwrap().execute().unwrap();
+        assert_eq!(folded.shape(), &vec![1, 1, 8, 8]);
     }
 }

@@ -1,93 +1,478 @@
-//! LAMB - Layer-wise Adaptive Moments optimizer for Batch training
+//! LAMB - Layer-wise Adaptive Moments optimizer for Batch training (Pure WGSL)
 //!
-//! Enables large batch training (BERT with 64K batch size).
-//! Combines layer-wise adaptation with Adam.
+//! Enables large batch training (e.g., BERT with 64K batch size)
+//! Combines Adam with layer-wise adaptation (trust ratio)
+//!
+//! **Deep Debt Principles**:
+//! - Pure WGSL implementation (no CPU code)
+//! - Safe Rust wrapper (no unsafe code)
+//! - Hardware-agnostic via WebGPU
+//! - Complete implementation (production-ready)
 
-pub struct LambState {
-    pub m: Vec<f32>,
-    pub v: Vec<f32>,
-    pub step: usize,
-}
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-pub async fn lamb_step(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    params: &[f32],
-    grads: &[f32],
-    state: &mut LambState,
-    lr: f32,
+/// Layer-wise Adaptive Moments optimizer
+pub struct Lamb {
+    parameters: Tensor,
+    gradients: Tensor,
+    momentum: Option<Tensor>,
+    variance: Option<Tensor>,
+    learning_rate: f32,
     beta1: f32,
     beta2: f32,
-    epsilon: f32,
+    step: usize,
     weight_decay: f32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let size = params.len();
-    state.step += 1;
+}
 
-    // Update moments
-    for i in 0..size {
-        state.m[i] = beta1 * state.m[i] + (1.0 - beta1) * grads[i];
-        state.v[i] = beta2 * state.v[i] + (1.0 - beta2) * grads[i] * grads[i];
+impl Lamb {
+    pub fn new(
+        parameters: Tensor,
+        gradients: Tensor,
+        learning_rate: f32,
+        beta1: f32,
+        beta2: f32,
+        step: usize,
+        weight_decay: f32,
+        momentum: Option<Tensor>,
+        variance: Option<Tensor>,
+    ) -> Result<Self> {
+        // Validate shapes match
+        if parameters.shape() != gradients.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                parameters.shape().to_vec(),
+                gradients.shape().to_vec(),
+            ));
+        }
+
+        // Validate learning rate is positive
+        if learning_rate <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "lamb",
+                "learning_rate must be positive",
+            ));
+        }
+
+        // Validate betas in valid range
+        if !(0.0..1.0).contains(&beta1) {
+            return Err(BarracudaError::invalid_op(
+                "lamb",
+                "beta1 must be in range [0.0, 1.0)",
+            ));
+        }
+
+        if !(0.0..1.0).contains(&beta2) {
+            return Err(BarracudaError::invalid_op(
+                "lamb",
+                "beta2 must be in range [0.0, 1.0)",
+            ));
+        }
+
+        // Validate step is positive
+        if step == 0 {
+            return Err(BarracudaError::invalid_op(
+                "lamb",
+                "step must be >= 1 (starts at 1, not 0)",
+            ));
+        }
+
+        // Validate momentum and variance shapes if provided
+        if let Some(ref m_tensor) = momentum {
+            if m_tensor.shape() != parameters.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    m_tensor.shape().to_vec(),
+                    parameters.shape().to_vec(),
+                ));
+            }
+        }
+
+        if let Some(ref v_tensor) = variance {
+            if v_tensor.shape() != parameters.shape() {
+                return Err(BarracudaError::shape_mismatch(
+                    v_tensor.shape().to_vec(),
+                    parameters.shape().to_vec(),
+                ));
+            }
+        }
+
+        Ok(Self {
+            parameters,
+            gradients,
+            momentum,
+            variance,
+            learning_rate,
+            beta1,
+            beta2,
+            step,
+            weight_decay,
+        })
     }
 
-    // Compute bias-corrected moments and update direction
-    let mut update = vec![0.0f32; size];
-    for i in 0..size {
-        let m_hat = state.m[i] / (1.0 - beta1.powi(state.step as i32));
-        let v_hat = state.v[i] / (1.0 - beta2.powi(state.step as i32));
-        update[i] = m_hat / (v_hat.sqrt() + epsilon) + weight_decay * params[i];
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/lamb.wgsl")
     }
 
-    // Compute norms for layer-wise adaptation
-    let param_norm: f32 = params.iter().map(|&x| x * x).sum::<f32>().sqrt();
-    let update_norm: f32 = update.iter().map(|&x| x * x).sum::<f32>().sqrt();
+    pub fn execute(self) -> Result<(Tensor, Tensor, Tensor)> {
+        let device = self.parameters.device();
+        let size = self.parameters.shape().iter().product::<usize>();
+        let byte_size = (size * std::mem::size_of::<f32>()) as u64;
 
-    // Compute trust ratio
-    let trust_ratio = if param_norm > 0.0 && update_norm > 0.0 {
-        param_norm / update_norm
-    } else {
-        1.0
-    };
+        // Create writable buffers using GPU copy operations (zero CPU fallbacks)
+        let parameters_buffer = device.create_buffer_f32(size)?;
+        
+        // Copy parameters buffer using GPU copy
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("LAMB Buffer Copy Encoder"),
+            },
+        );
+        encoder.copy_buffer_to_buffer(
+            self.parameters.buffer(),
+            0,
+            &parameters_buffer,
+            0,
+            byte_size,
+        );
 
-    // Apply update with trust ratio
-    let mut new_params = vec![0.0f32; size];
-    for i in 0..size {
-        new_params[i] = params[i] - lr * trust_ratio * update[i];
+        // Create momentum buffer (GPU copy or zero initialization)
+        let m_buffer = if let Some(ref m_tensor) = self.momentum {
+            let m_buf = device.create_buffer_f32(size)?;
+            encoder.copy_buffer_to_buffer(
+                m_tensor.buffer(),
+                0,
+                &m_buf,
+                0,
+                byte_size,
+            );
+            m_buf
+        } else {
+            device.create_buffer_f32(size)?
+        };
+
+        // Create variance buffer (GPU copy or zero initialization)
+        let v_buffer = if let Some(ref v_tensor) = self.variance {
+            let v_buf = device.create_buffer_f32(size)?;
+            encoder.copy_buffer_to_buffer(
+                v_tensor.buffer(),
+                0,
+                &v_buf,
+                0,
+                byte_size,
+            );
+            v_buf
+        } else {
+            device.create_buffer_f32(size)?
+        };
+
+        // Submit buffer copies
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create intermediate adam_step buffer
+        let adam_step_buffer = device.create_buffer_f32(size)?;
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(size)?;
+
+        // Create uniform buffer
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            step: u32,
+            learning_rate: f32,
+            beta1: f32,
+            beta2: f32,
+            epsilon: f32,
+            weight_decay: f32,
+            _pad1: u32,
+        }
+
+        let params = Params {
+            size: size as u32,
+            step: self.step as u32,
+            learning_rate: self.learning_rate,
+            beta1: self.beta1,
+            beta2: self.beta2,
+            epsilon: 1e-8,
+            weight_decay: self.weight_decay,
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("LAMB Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LAMB Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("LAMB Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("LAMB Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: parameters_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.gradients.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: m_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: v_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: adam_step_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline layout
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("LAMB Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        // Create encoder
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("LAMB Encoder"),
+            },
+        );
+
+        // Step 1: Compute Adam step
+        let adam_pipeline = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("LAMB Adam Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "compute_adam_step",
+            },
+        );
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LAMB Adam Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&adam_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let workgroups = ((size + 255) / 256) as u32;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        // Step 2: Apply trust ratio
+        let trust_pipeline = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("LAMB Trust Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "apply_trust_ratio",
+            },
+        );
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LAMB Trust Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&trust_pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(1, 1, 1); // Single workgroup for reduction
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        let updated_params = Tensor::from_buffer(
+            output_buffer,
+            self.parameters.shape().to_vec(),
+            device.clone(),
+        );
+
+        let updated_m = Tensor::from_buffer(m_buffer, self.parameters.shape().to_vec(), device.clone());
+        let updated_v = Tensor::from_buffer(v_buffer, self.parameters.shape().to_vec(), device.clone());
+
+        Ok((updated_params, updated_m, updated_v))
     }
-
-    Ok(new_params)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_lamb() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let params = vec![1.0; 100];
-        let grads = vec![0.01; 100];
-        let mut state = LambState {
-            m: vec![0.0; 100],
-            v: vec![0.0; 100],
-            step: 0,
-        };
-        let new_params = lamb_step(
-            &dev.device,
-            &dev.queue,
-            &params,
-            &grads,
-            &mut state,
+    async fn test_lamb_basic() {
+        let device = get_test_device().await;
+
+        let params = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        let gradients = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.4], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        let lamb = Lamb::new(params, gradients, 0.001, 0.9, 0.999, 1, 0.0, None, None).unwrap();
+        let (updated_params, _m, _v) = lamb.execute().unwrap();
+
+        assert_eq!(updated_params.shape(), &[4]);
+    }
+
+    #[tokio::test]
+    async fn test_lamb_with_state() {
+        let device = get_test_device().await;
+
+        let params = Tensor::from_vec_on(vec![1.0; 4], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        let gradients = Tensor::from_vec_on(vec![0.1; 4], vec![4], device.clone())
+            .await
+            .unwrap();
+
+        // Step 1
+        let lamb1 = Lamb::new(
+            params.clone(),
+            gradients.clone(),
             0.001,
             0.9,
             0.999,
-            1e-6,
-            0.01,
+            1,
+            0.0,
+            None,
+            None,
         )
-        .await
         .unwrap();
-        assert_eq!(new_params.len(), 100);
+        let (params1, m1, v1) = lamb1.execute().unwrap();
+
+        // Step 2 with accumulated state
+        let lamb2 = Lamb::new(params1, gradients, 0.001, 0.9, 0.999, 2, 0.0, Some(m1), Some(v1))
+            .unwrap();
+        let (params2, _m2, _v2) = lamb2.execute().unwrap();
+
+        assert_eq!(params2.shape(), &[4]);
+    }
+
+    #[tokio::test]
+    async fn test_lamb_large_batch() {
+        let device = get_test_device().await;
+
+        let size = 128;
+        let params = Tensor::from_vec_on(vec![1.0; size], vec![size], device.clone())
+            .await
+            .unwrap();
+
+        let gradients = Tensor::from_vec_on(vec![0.01; size], vec![size], device.clone())
+            .await
+            .unwrap();
+
+        let lamb = Lamb::new(params, gradients, 0.001, 0.9, 0.999, 1, 0.0, None, None).unwrap();
+        let (updated_params, updated_m, updated_v) = lamb.execute().unwrap();
+
+        assert_eq!(updated_params.shape(), &[size]);
+        assert_eq!(updated_m.shape(), &[size]);
+        assert_eq!(updated_v.shape(), &[size]);
     }
 }

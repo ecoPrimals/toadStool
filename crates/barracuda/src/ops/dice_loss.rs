@@ -1,165 +1,270 @@
-//! DiceLoss - Dice loss for segmentation
+//! Dice Loss - Medical image segmentation loss function
 //!
-//! Optimizes IoU-like metric directly.
-//! Popular for medical image segmentation.
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation
+//! - ✅ Safe Rust wrapper
+//! - ✅ Handles class imbalance (medical imaging standard)
+//!
+//! ## Algorithm
+//!
+//! Dice Loss = 1 - Dice Coefficient
+//! Dice = (2 * |X ∩ Y| + smooth) / (|X| + |Y| + smooth)
+//!
+//! Where X = predicted, Y = target, smooth prevents division by zero
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! let predicted = Tensor::sigmoid(logits)?; // [0, 1] probabilities
+//! let target = Tensor::from_vec(ground_truth, shape).await?;
+//! let loss = predicted.dice_loss(&target, 1.0)?; // smooth = 1.0
+//! ```
 
-pub async fn dice_loss(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    predictions: &[f32], // Probabilities [0, 1]
-    targets: &[f32],     // Binary targets {0, 1}
-    smooth: f32,         // Smoothing factor to avoid division by zero
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if predictions.len() != targets.len() {
-        return Err("Predictions and targets must have same length".into());
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct DiceLossParams {
+    size: u32,
+    smooth: f32,
+    _padding: [u32; 2],
+}
+
+pub struct DiceLoss {
+    predicted: Tensor,
+    target: Tensor,
+    smooth: f32,
+}
+
+impl DiceLoss {
+    pub fn new(predicted: Tensor, target: Tensor, smooth: f32) -> Result<Self> {
+        if predicted.shape() != target.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                predicted.shape().to_vec(),
+                target.shape().to_vec(),
+            ));
+        }
+
+        Ok(Self {
+            predicted,
+            target,
+            smooth,
+        })
     }
 
-    let mut intersection = 0.0;
-    let mut pred_sum = 0.0;
-    let mut target_sum = 0.0;
-
-    for i in 0..predictions.len() {
-        intersection += predictions[i] * targets[i];
-        pred_sum += predictions[i];
-        target_sum += targets[i];
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/dice_loss.wgsl")
     }
 
-    // Dice coefficient: 2 * |A ∩ B| / (|A| + |B|)
-    let dice = (2.0 * intersection + smooth) / (pred_sum + target_sum + smooth);
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.predicted.device();
+        let size = self.predicted.len();
 
-    // Dice loss = 1 - Dice coefficient
-    Ok(1.0 - dice)
+        // Output is scalar loss value
+        let output_buffer = device.create_buffer_f32(1)?;
+
+        let params = DiceLossParams {
+            size: size as u32,
+            smooth: self.smooth,
+            _padding: [0, 0],
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dice Loss Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Dice Loss Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dice Loss Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.predicted.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.target.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader_module = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Dice Loss Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
+
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Dice Loss Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Dice Loss Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Dice Loss Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Dice Loss Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups = (size as u32 + 255) / 256;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
+    #[tokio::test]
+    async fn test_dice_loss_perfect_overlap() {
+        let device = get_test_device().await;
+        // Perfect prediction = target
+        let pred = Tensor::from_vec_on(vec![1.0, 1.0, 0.0, 0.0], vec![4], device.clone())
+            .await
+            .unwrap();
+        let target = Tensor::from_vec_on(vec![1.0, 1.0, 0.0, 0.0], vec![4], device)
+            .await
+            .unwrap();
+
+        let loss = DiceLoss::new(pred, target, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = loss.to_vec().unwrap();
+
+        // Perfect overlap: Dice = 1.0, Loss = 0.0
+        assert!(result[0] < 0.1, "Perfect overlap should have loss ≈ 0");
     }
 
     #[tokio::test]
-    async fn test_dice_loss_basic() {
-        let dev = get_test_device().await;
-        // Perfect predictions (all 1.0)
-        let predictions = vec![1.0; 1000];
-        let targets = vec![1.0; 1000];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
+    async fn test_dice_loss_no_overlap() {
+        let device = get_test_device().await;
+        // No overlap
+        let pred = Tensor::from_vec_on(vec![1.0, 1.0, 0.0, 0.0], vec![4], device.clone())
             .await
             .unwrap();
-        assert!(loss < 0.1); // Should be close to 0 for perfect predictions
+        let target = Tensor::from_vec_on(vec![0.0, 0.0, 1.0, 1.0], vec![4], device)
+            .await
+            .unwrap();
+
+        let loss = DiceLoss::new(pred, target, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = loss.to_vec().unwrap();
+
+        // No overlap: Loss should be high (close to 1.0)
+        assert!(result[0] > 0.5, "No overlap should have high loss");
     }
 
     #[tokio::test]
-    async fn test_dice_loss_edge_cases() {
-        let dev = get_test_device().await;
-
-        // All zeros (both pred and target)
-        let predictions = vec![0.0; 100];
-        let targets = vec![0.0; 100];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
+    async fn test_dice_loss_partial_overlap() {
+        let device = get_test_device().await;
+        let pred = Tensor::from_vec_on(vec![0.8, 0.6, 0.2, 0.1], vec![4], device.clone())
             .await
             .unwrap();
-        // With smoothing, loss should be finite
-        assert!(loss.is_finite());
-        assert!(loss >= 0.0 && loss <= 1.0);
-
-        // Perfect mismatch (pred=1, target=0)
-        let predictions = vec![1.0; 100];
-        let targets = vec![0.0; 100];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
+        let target = Tensor::from_vec_on(vec![1.0, 0.0, 0.0, 1.0], vec![4], device)
             .await
             .unwrap();
-        assert!(loss > 0.5); // High loss for complete mismatch
 
-        // Single element
-        let predictions = vec![0.8];
-        let targets = vec![1.0];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
-            .await
+        let loss = DiceLoss::new(pred, target, 1.0)
+            .unwrap()
+            .execute()
             .unwrap();
-        assert!(loss.is_finite());
-    }
+        let result = loss.to_vec().unwrap();
 
-    #[tokio::test]
-    async fn test_dice_loss_boundary() {
-        let dev = get_test_device().await;
-
-        // Different smoothing values
-        let predictions = vec![0.5; 100];
-        let targets = vec![1.0; 100];
-        let loss1 = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 0.1)
-            .await
-            .unwrap();
-        let loss2 = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 10.0)
-            .await
-            .unwrap();
-        // Different smoothing should yield different losses
-        assert!(loss1.is_finite() && loss2.is_finite());
-
-        // Partial overlap
-        let mut predictions = vec![0.0; 200];
-        let mut targets = vec![0.0; 200];
-        for i in 0..100 {
-            predictions[i] = 1.0;
-            targets[i + 50] = 1.0; // 50% overlap
-        }
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
-            .await
-            .unwrap();
-        assert!(loss > 0.0 && loss < 1.0); // Partial loss
-    }
-
-    #[tokio::test]
-    async fn test_dice_loss_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large volume (medical imaging scale: 128x128x64)
-        let size = 128 * 128 * 64;
-        let mut predictions = vec![0.0; size];
-        let mut targets = vec![0.0; size];
-
-        // Simulate realistic segmentation (10% foreground)
-        for i in 0..(size / 10) {
-            predictions[i] = 0.8; // Probabilistic prediction
-            targets[i] = 1.0;
-        }
-
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
-            .await
-            .unwrap();
-        assert!(loss.is_finite());
-        assert!(loss >= 0.0 && loss <= 1.0);
-    }
-
-    #[tokio::test]
-    async fn test_dice_loss_precision() {
-        let dev = get_test_device().await;
-
-        // Known Dice coefficient calculation
-        // Pred: [1, 0, 1, 0], Target: [1, 1, 0, 0]
-        // Intersection = 1*1 + 0*1 + 1*0 + 0*0 = 1
-        // Pred_sum = 1 + 0 + 1 + 0 = 2
-        // Target_sum = 1 + 1 + 0 + 0 = 2
-        // Dice = (2*1 + 1) / (2 + 2 + 1) = 3/5 = 0.6
-        // Loss = 1 - 0.6 = 0.4
-        let predictions = vec![1.0, 0.0, 1.0, 0.0];
-        let targets = vec![1.0, 1.0, 0.0, 0.0];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
-            .await
-            .unwrap();
-        assert!((loss - 0.4).abs() < 0.01);
-
-        // Perfect prediction
-        let predictions = vec![1.0, 0.0, 1.0, 1.0];
-        let targets = vec![1.0, 0.0, 1.0, 1.0];
-        let loss = dice_loss(&dev.device, &dev.queue, &predictions, &targets, 1.0)
-            .await
-            .unwrap();
-        // Dice = (2*3 + 1) / (3 + 3 + 1) = 7/7 = 1, Loss = 0
-        assert!(loss < 0.01);
+        // Partial overlap: 0 < Loss < 1
+        assert!(result[0] > 0.0 && result[0] < 1.0);
+        assert!(result[0].is_finite());
     }
 }

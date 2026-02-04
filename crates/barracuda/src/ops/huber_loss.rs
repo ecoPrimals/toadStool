@@ -230,7 +230,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // DQN-style Huber loss
     /// let loss = predictions.huber_loss(&targets, 1.0)?;
-    /// 
+    ///
     /// // More sensitive to outliers (larger delta)
     /// let loss = predictions.huber_loss(&targets, 2.0)?;
     /// ```
@@ -313,8 +313,16 @@ mod tests {
 
         assert_eq!(loss.len(), 2);
         // Error 1: |1-3| = 2 > delta=1, loss = 1*(2 - 0.5*1) = 1.5
-        assert!((loss[0] - 1.5).abs() < 1e-5, "Expected 1.5, got {}", loss[0]);
+        assert!(
+            (loss[0] - 1.5).abs() < 1e-5,
+            "Expected 1.5, got {}",
+            loss[0]
+        );
         // Error 2: |2-5| = 3 > delta=1, loss = 1*(3 - 0.5*1) = 2.5
-        assert!((loss[1] - 2.5).abs() < 1e-5, "Expected 2.5, got {}", loss[1]);
+        assert!(
+            (loss[1] - 2.5).abs() < 1e-5,
+            "Expected 2.5, got {}",
+            loss[1]
+        );
     }
 }

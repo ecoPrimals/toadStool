@@ -412,7 +412,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // First step
     /// let (w1, ag1, ad1) = weights.adadelta_step(&grads, 0.95, None, None)?;
-    /// 
+    ///
     /// // Subsequent steps
     /// let (w2, ag2, ad2) = w1.adadelta_step(&grads, 0.95, Some(&ag1), Some(&ad1))?;
     /// ```
@@ -464,7 +464,11 @@ mod tests {
         assert_eq!(result.len(), 4);
         assert!(result.iter().all(|&x| x.is_finite()));
         // AdaDelta should decrease weights (gradient descent)
-        assert!(result[0] < 1.0, "Expected result[0] < 1.0, got {}", result[0]);
+        assert!(
+            result[0] < 1.0,
+            "Expected result[0] < 1.0, got {}",
+            result[0]
+        );
     }
 
     #[tokio::test]

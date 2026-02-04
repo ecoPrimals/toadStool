@@ -1,27 +1,216 @@
-//! Put - Scatter operation with indexing
+//! Put - Pure WGSL
 //!
-//! Places values into output tensor at specified indices.
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
+//!
+//! NOTE: Uses atomic operations when accumulate=true
 
-pub async fn put(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    size: usize,
-    indices: &[usize],
-    values: &[f32],
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if indices.len() != values.len() {
-        return Err("Indices and values must have same length".into());
-    }
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    let mut output = vec![0.0f32; size];
+/// Put operation (scatter with indexing)
+pub struct Put {
+    output: Tensor,
+    indices: Vec<u32>,
+    values: Tensor,
+    accumulate: bool,
+}
 
-    for (idx, value) in indices.iter().zip(values.iter()) {
-        if *idx < size {
-            output[*idx] = *value;
+impl Put {
+    /// Create a new put operation
+    pub fn new(
+        output: Tensor,
+        indices: Vec<u32>,
+        values: Tensor,
+        accumulate: bool,
+    ) -> Result<Self> {
+        let output_size = output.shape().iter().product::<usize>();
+        let values_size = values.shape().iter().product::<usize>();
+
+        if indices.len() != values_size {
+            return Err(crate::error::BarracudaError::InvalidInput {
+                message: format!("Indices length {} doesn't match values size {}", 
+                    indices.len(), values_size),
+            });
         }
+
+        // Validate indices are in bounds
+        for &idx in &indices {
+            if idx as usize >= output_size {
+                return Err(crate::error::BarracudaError::InvalidInput {
+                    message: format!("Index {} out of bounds for output size {}", idx, output_size),
+                });
+            }
+        }
+
+        Ok(Self {
+            output,
+            indices,
+            values,
+            accumulate,
+        })
     }
 
-    Ok(output)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/put.wgsl")
+    }
+
+    /// Execute the put operation
+    /// Note: This modifies the output tensor in-place
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.output.device();
+        let output_size: usize = self.output.shape().iter().product();
+        let num_values = self.values.shape().iter().product::<usize>();
+
+        // Access buffers directly (zero-copy)
+        let values_buffer = self.values.buffer();
+        let output_buffer = self.output.buffer();
+
+        // Create indices buffer
+        let indices_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Put Indices"),
+            contents: bytemuck::cast_slice(&self.indices),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            output_size: u32,
+            num_values: u32,
+            accumulate: u32,
+            _pad1: u32,
+        }
+
+        let params = Params {
+            output_size: output_size as u32,
+            num_values: num_values as u32,
+            accumulate: if self.accumulate { 1 } else { 0 },
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Put Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Put Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Put Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Put Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: values_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: indices_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Put Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Put Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Put Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Put Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((num_values as u32 + 255) / 256, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return the output tensor (put modifies it in-place)
+        // The GPU has modified the buffer, so we return the original tensor
+        Ok(self.output)
+    }
 }
 
 #[cfg(test)]
@@ -36,91 +225,100 @@ mod tests {
 
     #[tokio::test]
     async fn test_put_basic() {
-        let dev = get_test_device().await;
-        let indices = vec![0, 2, 4];
-        let values = vec![10.0, 30.0, 50.0];
-        let output = put(&dev.device, &dev.queue, 5, &indices, &values)
-            .await
-            .unwrap();
-        assert_eq!(output, vec![10.0, 0.0, 30.0, 0.0, 50.0]);
+        let device = get_test_device().await;
+        let output = Tensor::from_data(
+            &[0.0, 0.0, 0.0, 0.0],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        let values = Tensor::from_data(
+            &[10.0, 30.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let result = Put::new(output, vec![0, 2], values, false).unwrap().execute().unwrap();
+        let output_data = result.to_vec().await.unwrap();
+        
+        assert_eq!(output_data[0], 10.0);
+        assert_eq!(output_data[2], 30.0);
+        assert_eq!(output_data[1], 0.0);
+        assert_eq!(output_data[3], 0.0);
     }
 
     #[tokio::test]
-    async fn test_put_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Single index
-        let indices = vec![3];
-        let values = vec![99.0];
-        let output = put(&dev.device, &dev.queue, 5, &indices, &values)
-            .await
-            .unwrap();
-        assert_eq!(output[3], 99.0);
-        assert_eq!(output.iter().filter(|&&x| x == 0.0).count(), 4);
-
-        // Empty indices
-        let indices: Vec<usize> = vec![];
-        let values: Vec<f32> = vec![];
-        let output = put(&dev.device, &dev.queue, 5, &indices, &values)
-            .await
-            .unwrap();
-        assert_eq!(output, vec![0.0; 5]);
+    async fn test_put_accumulate() {
+        let device = get_test_device().await;
+        let output = Tensor::from_data(
+            &[1.0, 2.0, 3.0, 4.0],
+            vec![4],
+            device.clone(),
+        ).unwrap();
+        let values = Tensor::from_data(
+            &[10.0, 20.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        let result = Put::new(output, vec![0, 1], values, true).unwrap().execute().unwrap();
+        let output_data = result.to_vec().await.unwrap();
+        
+        // With accumulate, values are added
+        assert_eq!(output_data[0], 11.0);
+        assert_eq!(output_data[1], 22.0);
     }
 
     #[tokio::test]
-    async fn test_put_boundary() {
-        let dev = get_test_device().await;
-
-        // All indices filled
-        let indices = vec![0, 1, 2];
-        let values = vec![1.0, 2.0, 3.0];
-        let output = put(&dev.device, &dev.queue, 3, &indices, &values)
-            .await
-            .unwrap();
-        assert_eq!(output, vec![1.0, 2.0, 3.0]);
-
-        // Out of bounds indices (should be ignored)
-        let indices = vec![0, 10, 2]; // 10 is out of bounds
-        let values = vec![1.0, 999.0, 3.0];
-        let output = put(&dev.device, &dev.queue, 5, &indices, &values)
-            .await
-            .unwrap();
-        assert_eq!(output[0], 1.0);
-        assert_eq!(output[2], 3.0);
+    async fn test_put_invalid_index() {
+        let device = get_test_device().await;
+        let output = Tensor::from_data(
+            &[0.0, 0.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        let values = Tensor::from_data(
+            &[1.0],
+            vec![1],
+            device.clone(),
+        ).unwrap();
+        
+        assert!(Put::new(output, vec![5], values, false).is_err());
     }
 
     #[tokio::test]
-    async fn test_put_large_batch() {
-        let dev = get_test_device().await;
-
-        // 500 indices into 1000-element tensor
-        let indices: Vec<usize> = (0..500).map(|i| i * 2).collect();
-        let values: Vec<f32> = (0..500).map(|i| i as f32).collect();
-        let output = put(&dev.device, &dev.queue, 1000, &indices, &values)
-            .await
-            .unwrap();
-
-        assert_eq!(output.len(), 1000);
-        assert_eq!(output[0], 0.0);
-        assert_eq!(output[2], 1.0);
-        assert_eq!(output[998], 499.0);
+    async fn test_put_length_mismatch() {
+        let device = get_test_device().await;
+        let output = Tensor::from_data(
+            &[0.0, 0.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        let values = Tensor::from_data(
+            &[1.0, 2.0, 3.0],
+            vec![3],
+            device.clone(),
+        ).unwrap();
+        
+        assert!(Put::new(output, vec![0], values, false).is_err());
     }
 
     #[tokio::test]
-    async fn test_put_precision() {
-        let dev = get_test_device().await;
-
-        // Verify exact value placement
-        let indices = vec![1, 3, 5];
-        let values = vec![1.5, 2.5, 3.5];
-        let output = put(&dev.device, &dev.queue, 7, &indices, &values)
-            .await
-            .unwrap();
-
-        assert!((output[1] - 1.5).abs() < 1e-5);
-        assert!((output[3] - 2.5).abs() < 1e-5);
-        assert!((output[5] - 3.5).abs() < 1e-5);
-        assert_eq!(output[0], 0.0);
-        assert_eq!(output[2], 0.0);
+    async fn test_put_repeated_indices() {
+        let device = get_test_device().await;
+        let output = Tensor::from_data(
+            &[0.0, 0.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        let values = Tensor::from_data(
+            &[1.0, 2.0],
+            vec![2],
+            device.clone(),
+        ).unwrap();
+        
+        // Same index twice - last write wins if not accumulating
+        let result = Put::new(output, vec![0, 0], values, false).unwrap().execute().unwrap();
+        let output_data = result.to_vec().await.unwrap();
+        assert_eq!(output_data[0], 2.0); // Last write wins
     }
 }

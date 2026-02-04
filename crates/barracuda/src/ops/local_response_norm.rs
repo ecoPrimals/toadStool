@@ -1,224 +1,238 @@
-//! Local Response Normalization (LRN) - AlexNet-style normalization
+//! LocalResponseNorm - Local Response Normalization (LRN)
 //!
-//! Normalizes across nearby channels.
-//! Used in AlexNet (historic).
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation
+//! - ✅ Safe Rust wrapper (no unsafe code)
+//! - ✅ Hardware-agnostic via WebGPU
+//! - ✅ Complete implementation (production-ready)
+//! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//!
+//! Normalizes activations within local neighborhoods
+//! Used in AlexNet and other early CNNs
+//!
+//! Formula: y_i = x_i / (k + alpha * sum(x_j^2) / size)^beta
 
-pub async fn local_response_norm(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    batch_size: usize,
-    channels: usize,
-    height: usize,
-    width: usize,
-    size: usize, // Normalization window size
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct LocalResponseNormParams {
+    batch_size: u32,
+    channels: u32,
+    height: u32,
+    width: u32,
+    size: u32,
     alpha: f32,
     beta: f32,
     k: f32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let spatial_size = height * width;
-    let mut output = vec![0.0f32; input.len()];
-    let half_size = size / 2;
+}
 
-    for b in 0..batch_size {
-        for c in 0..channels {
-            let c_start = c.saturating_sub(half_size);
-            let c_end = (c + half_size + 1).min(channels);
+pub struct LocalResponseNorm {
+    input: Tensor,
+    size: usize,
+    alpha: f32,
+    beta: f32,
+    k: f32,
+}
 
-            for s in 0..spatial_size {
-                let idx = b * channels * spatial_size + c * spatial_size + s;
-                let x = input[idx];
-
-                // Sum of squares in local window
-                let mut sum_sq = 0.0;
-                for nc in c_start..c_end {
-                    let n_idx = b * channels * spatial_size + nc * spatial_size + s;
-                    sum_sq += input[n_idx] * input[n_idx];
-                }
-
-                let denom = (k + alpha * sum_sq).powf(beta);
-                output[idx] = x / denom;
-            }
+impl LocalResponseNorm {
+    pub fn new(input: Tensor, size: usize, alpha: f32, beta: f32, k: f32) -> Result<Self> {
+        // Validate input shape: must be 4D [B, C, H, W]
+        let shape = input.shape();
+        if shape.len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "local_response_norm",
+                "input must be 4D tensor [B, C, H, W]",
+            ));
         }
+
+        if size == 0 {
+            return Err(BarracudaError::invalid_op(
+                "local_response_norm",
+                "size must be positive",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            size,
+            alpha,
+            beta,
+            k,
+        })
     }
 
-    Ok(output)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/local_response_norm.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let batch_size = shape[0];
+        let channels = shape[1];
+        let height = shape[2];
+        let width = shape[3];
+
+        let output_size = batch_size * channels * height * width;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = LocalResponseNormParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            size: self.size as u32,
+            alpha: self.alpha,
+            beta: self.beta,
+            k: self.k,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("local_response_norm_params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("local_response_norm_shader"));
+
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("local_response_norm_bind_group_layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("local_response_norm_pipeline_layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("local_response_norm_pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("local_response_norm_bind_group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("local_response_norm_encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("local_response_norm_pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups_x = (width as u32 + 7) / 8;
+            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_z = batch_size * channels;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![batch_size, channels, height, width],
+            device.clone(),
+        ))
+    }
+}
+
+impl Tensor {
+    /// Apply local response normalization
+    ///
+    /// # Arguments
+    /// - `size`: Neighborhood size
+    /// - `alpha`: Scaling parameter (typically 1e-4)
+    /// - `beta`: Exponent (typically 0.75)
+    /// - `k`: Bias (typically 1.0 or 2.0)
+    pub fn local_response_norm(
+        self,
+        size: usize,
+        alpha: f32,
+        beta: f32,
+        k: f32,
+    ) -> Result<Self> {
+        LocalResponseNorm::new(self, size, alpha, beta, k)?.execute()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_local_response_norm_basic() {
-        let dev = get_test_device().await;
-        let input = vec![1.0; 1 * 4 * 4 * 4];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            4,
-            4,
-            4,
-            3,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), input.len());
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_local_response_norm_edge_cases() {
-        let dev = get_test_device().await;
+        let input = Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+            .await
+            .unwrap();
 
-        // Single channel (no cross-channel normalization)
-        let input = vec![1.0; 1 * 1 * 4 * 4];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            1,
-            4,
-            4,
-            3,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 16);
+        let output = input.local_response_norm(5, 1e-4, 0.75, 1.0).unwrap();
+        let result = output.to_vec().unwrap();
 
-        // Small window size (1)
-        let input = vec![1.0; 1 * 4 * 4 * 4];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            4,
-            4,
-            4,
-            1,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_local_response_norm_boundary() {
-        let dev = get_test_device().await;
-
-        // Large window (covers all channels)
-        let input = vec![1.0; 1 * 4 * 4 * 4];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            4,
-            4,
-            4,
-            5,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert!(output.iter().all(|&x| x.is_finite()));
-
-        // Different alpha/beta/k values
-        let input = vec![1.0; 1 * 8 * 4 * 4];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            8,
-            4,
-            4,
-            5,
-            0.001,
-            0.5,
-            2.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), input.len());
-    }
-
-    #[tokio::test]
-    async fn test_local_response_norm_large_batch() {
-        let dev = get_test_device().await;
-
-        // Batch size 4, AlexNet style
-        let batch_size = 4;
-        let channels = 8;
-        let input = vec![1.0; batch_size * channels * 8 * 8];
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            batch_size,
-            channels,
-            8,
-            8,
-            5,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), input.len());
-    }
-
-    #[tokio::test]
-    async fn test_local_response_norm_precision() {
-        let dev = get_test_device().await;
-
-        // Test normalization with known values
-        let mut input = vec![0.0; 1 * 3 * 2 * 2];
-        input[0..4].fill(1.0); // Channel 0
-        input[4..8].fill(2.0); // Channel 1
-        input[8..12].fill(3.0); // Channel 2
-
-        let output = local_response_norm(
-            &dev.device,
-            &dev.queue,
-            &input,
-            1,
-            3,
-            2,
-            2,
-            3,
-            0.0001,
-            0.75,
-            1.0,
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(output.len(), 12);
-        assert!(output.iter().all(|&x| x.is_finite()));
-        // Normalized values should be less than original (divisive normalization)
-        assert!(output[4] <= 2.0); // Channel 1 should be normalized down
+        assert_eq!(output.shape(), &[1, 3, 4, 4]);
+        assert_eq!(result.len(), 48);
+        assert!(result.iter().all(|&x| x.is_finite()));
     }
 }

@@ -20,9 +20,9 @@
 //! 3. **Tier 3** (Remote):
 //!    - TCP (network) - requires explicit host
 
-use tokio::io::{AsyncRead, AsyncWrite};
-use crate::{ToadStoolError, ToadStoolResult};
 use super::platform::{self, Endpoint};
+use crate::{ToadStoolError, ToadStoolResult};
+use tokio::io::{AsyncRead, AsyncWrite};
 
 /// Universal IPC stream
 ///
@@ -115,7 +115,7 @@ impl IpcClient {
     /// **Deep Debt**: Runtime detection, platform-aware
     pub fn for_toadstool() -> Self {
         let mut endpoints = Vec::new();
-        
+
         // Tier 1: Platform-specific preferred transport
         #[cfg(target_os = "linux")]
         {
@@ -124,25 +124,25 @@ impl IpcClient {
                 name: "@biomeos_toadstool".to_string(),
             });
         }
-        
+
         // Unix socket (Linux desktop, macOS)
         endpoints.push(Endpoint::for_toadstool());
-        
+
         // Tier 2: TCP fallback (universal)
         endpoints.push(Endpoint::Tcp {
             host: "127.0.0.1".to_string(),
             port: platform::tcp::DEFAULT_PORT,
         });
-        
+
         Self { endpoints }
     }
-    
+
     /// Create client for specific primal
     ///
     /// **Deep Debt**: Runtime discovery, no hardcoding
     pub fn for_primal(primal_name: &str) -> Self {
         let mut endpoints = Vec::new();
-        
+
         // Tier 1: Platform-specific
         #[cfg(target_os = "linux")]
         {
@@ -150,7 +150,7 @@ impl IpcClient {
                 name: format!("@biomeos_{}", primal_name.to_lowercase()),
             });
         }
-        
+
         // Unix socket with primal name
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
             if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
@@ -159,11 +159,16 @@ impl IpcClient {
                 "/tmp/biomeos-runtime".to_string()
             }
         });
-        
+
         endpoints.push(Endpoint::Unix {
-            path: format!("{}/biomeos/{}.sock", runtime_dir, primal_name.to_lowercase()).into(),
+            path: format!(
+                "{}/biomeos/{}.sock",
+                runtime_dir,
+                primal_name.to_lowercase()
+            )
+            .into(),
         });
-        
+
         // Tier 2: TCP with port offset
         let port = match primal_name.to_lowercase().as_str() {
             "toadstool" => 8370,
@@ -171,30 +176,30 @@ impl IpcClient {
             "beardog" => 8372,
             "squirrel" => 8373,
             "nestgate" => 8374,
-            _ => 8375,  // Generic fallback
+            _ => 8375, // Generic fallback
         };
-        
+
         endpoints.push(Endpoint::Tcp {
             host: "127.0.0.1".to_string(),
             port,
         });
-        
+
         Self { endpoints }
     }
-    
+
     /// Create client with custom endpoints
     ///
     /// **Deep Debt**: Flexible, allows override
     pub fn with_endpoints(endpoints: Vec<Endpoint>) -> Self {
         Self { endpoints }
     }
-    
+
     /// Connect with smart fallback
     ///
     /// **Deep Debt**: Tries all transports in order, returns first success
     pub async fn connect(&self) -> ToadStoolResult<IpcStream> {
         let mut last_error = None;
-        
+
         for endpoint in &self.endpoints {
             match self.try_connect(endpoint).await {
                 Ok(stream) => {
@@ -207,12 +212,11 @@ impl IpcClient {
                 }
             }
         }
-        
-        Err(last_error.unwrap_or_else(|| {
-            ToadStoolError::integration("No endpoints configured".to_string())
-        }))
+
+        Err(last_error
+            .unwrap_or_else(|| ToadStoolError::integration("No endpoints configured".to_string())))
     }
-    
+
     /// Try to connect to specific endpoint
     async fn try_connect(&self, endpoint: &Endpoint) -> ToadStoolResult<IpcStream> {
         match endpoint {
@@ -220,20 +224,20 @@ impl IpcClient {
                 let stream = platform::unix::connect(path).await?;
                 Ok(IpcStream::Unix(stream))
             }
-            
+
             #[cfg(target_os = "linux")]
             Endpoint::Abstract { name } => {
                 let stream = platform::abstract_socket::connect(name).await?;
                 Ok(IpcStream::Abstract(stream))
             }
-            
+
             Endpoint::Tcp { host, port } => {
                 let stream = platform::tcp::connect(host, *port).await?;
                 Ok(IpcStream::Tcp(stream))
             }
         }
     }
-    
+
     /// Get list of endpoints this client will try
     pub fn endpoints(&self) -> &[Endpoint] {
         &self.endpoints
@@ -248,64 +252,62 @@ mod tests {
     fn test_client_for_toadstool() {
         let client = IpcClient::for_toadstool();
         let endpoints = client.endpoints();
-        
+
         // Should have multiple endpoints
         assert!(!endpoints.is_empty());
-        
+
         // Should include TCP fallback
         assert!(endpoints.iter().any(|e| e.is_tcp()));
-        
+
         #[cfg(target_os = "linux")]
         {
             // On Linux, should have abstract socket
             assert!(endpoints.iter().any(|e| e.is_abstract()));
         }
     }
-    
+
     #[test]
     fn test_client_for_primal() {
         let client = IpcClient::for_primal("Songbird");
         let endpoints = client.endpoints();
-        
+
         // Should have multiple endpoints
         assert!(!endpoints.is_empty());
-        
+
         // Should have TCP with Songbird port
-        assert!(endpoints.iter().any(|e| {
-            matches!(e, Endpoint::Tcp { port, .. } if *port == 8371)
-        }));
+        assert!(endpoints
+            .iter()
+            .any(|e| { matches!(e, Endpoint::Tcp { port, .. } if *port == 8371) }));
     }
-    
+
     #[test]
     fn test_client_with_custom_endpoints() {
-        let custom = vec![
-            Endpoint::Tcp {
-                host: "192.168.1.100".to_string(),
-                port: 9000,
-            },
-        ];
-        
+        let custom = vec![Endpoint::Tcp {
+            host: "192.168.1.100".to_string(),
+            port: 9000,
+        }];
+
         let client = IpcClient::with_endpoints(custom.clone());
         assert_eq!(client.endpoints().len(), 1);
         assert_eq!(client.endpoints()[0], custom[0]);
     }
-    
+
     #[test]
     fn test_endpoint_display() {
         let endpoint = Endpoint::Tcp {
             host: "127.0.0.1".to_string(),
             port: 8370,
         };
-        
+
         assert_eq!(endpoint.display(), "tcp://127.0.0.1:8370");
     }
-    
+
     #[tokio::test]
     async fn test_connect_no_server() {
         // Try to connect with no server running
         let client = IpcClient::for_toadstool();
         let result = client.connect().await;
-        
+
         // Should fail (no server listening)
         assert!(result.is_err());
     }

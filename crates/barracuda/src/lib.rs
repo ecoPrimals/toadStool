@@ -75,6 +75,7 @@ pub mod ops;
 pub mod snn; // High-level Spiking Neural Network API
 pub mod tensor;
 pub mod timeseries; // High-level Time Series API
+pub mod utils; // Utility functions for operations
 pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
@@ -92,7 +93,7 @@ pub mod prelude {
     pub use crate::genomics::{
         CompositionReport, MotifMatch, QualityReport, SequenceAnalyzer, SequenceConfig,
     };
-    pub use crate::nn::{Layer, LossFunction, NeuralNetwork, Optimizer};
+    pub use crate::nn::{Layer, LossFunction, Optimizer}; // NeuralNetwork removed - use direct ops
     pub use crate::snn::{SNNConfig, SNNLayer, SpikingNetwork};
     pub use crate::tensor::Tensor;
 

@@ -78,7 +78,7 @@ impl DistributedCoordinator {
                 Ok(services) if !services.is_empty() => {
                     let service = &services[0];
                     info!("Discovered coordination service: {}", service.name);
-                    let client = CoordinationClient::new(service)?;
+                    let client = CoordinationClient::new(service).await?;
                     Some(Arc::new(client))
                 }
                 Ok(_) => {

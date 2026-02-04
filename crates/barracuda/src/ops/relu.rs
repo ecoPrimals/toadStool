@@ -141,28 +141,26 @@ impl Tensor {
             log::debug!("Routing relu to NPU");
             return self.relu_npu();
         }
-        
+
         // Existing WGSL path
         log::debug!("Routing relu to WGSL");
         ReLU::new(self).execute()
     }
-    
+
     /// Execute ReLU on NPU
     fn relu_npu(&self) -> Result<Self> {
-        use crate::ops::npu_bridge::{tensor_to_npu_data, npu_data_to_tensor};
         use crate::npu::ops::relu::npu_relu;
-        
+        use crate::ops::npu_bridge::{npu_data_to_tensor, tensor_to_npu_data};
+
         let data = tensor_to_npu_data(self)?;
-        
+
         // ReLU doesn't need NPU backend, it's pure computation
         let result_data = npu_relu(&data)?;
-        
+
         let device = self.device().clone();
         let shape = self.shape().to_vec();
-        
-        futures::executor::block_on(
-            npu_data_to_tensor(result_data, shape, device)
-        )
+
+        futures::executor::block_on(npu_data_to_tensor(result_data, shape, device))
     }
 }
 

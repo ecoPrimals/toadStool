@@ -509,7 +509,10 @@ mod tests {
         let substrate = result.unwrap();
         assert!(!substrate.metadata.is_empty());
         assert!(substrate.metadata.contains_key("deployment"));
-        assert_eq!(substrate.metadata.get("deployment"), Some(&"bare_metal".to_string()));
+        assert_eq!(
+            substrate.metadata.get("deployment"),
+            Some(&"bare_metal".to_string())
+        );
     }
 
     #[test]

@@ -1,256 +1,363 @@
-//! GRU Cell - Gated Recurrent Unit
+//! GRU Cell - Pure WGSL
 //!
-//! ## Deep Debt Principles
-//!
-//! - **Simpler than LSTM**: Fewer gates, faster computation
-//! - **Production-ready**: Complete implementation with all gates
-//! - **Modern Rust**: Clean API, proper error handling
-//!
-//! ## Algorithm
-//!
-//! ```text
-//! r_t = sigmoid(W_ir * x_t + b_ir + W_hr * h_{t-1} + b_hr)  // Reset gate
-//! z_t = sigmoid(W_iz * x_t + b_iz + W_hz * h_{t-1} + b_hz)  // Update gate
-//! n_t = tanh(W_in * x_t + b_in + r_t ⊙ (W_hn * h_{t-1} + b_hn))  // New gate
-//! h_t = (1 - z_t) ⊙ n_t + z_t ⊙ h_{t-1}                    // Hidden state
-//! ```
-//!
-//! Reference: Cho et al. (2014)
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-/// GRU cell weights
-#[derive(Clone)]
-pub struct GRUWeights {
-    pub w_ir: Vec<f32>, // Reset gate input weights
-    pub w_hr: Vec<f32>, // Reset gate hidden weights
-    pub w_iz: Vec<f32>, // Update gate input weights
-    pub w_hz: Vec<f32>, // Update gate hidden weights
-    pub w_in: Vec<f32>, // New gate input weights
-    pub w_hn: Vec<f32>, // New gate hidden weights
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    pub b_ir: Vec<f32>,
-    pub b_hr: Vec<f32>,
-    pub b_iz: Vec<f32>,
-    pub b_hz: Vec<f32>,
-    pub b_in: Vec<f32>,
-    pub b_hn: Vec<f32>,
-}
-
-/// GRU cell forward pass
-///
-/// ## Usage
-///
-/// ```no_run
-/// use barracuda::ops::gru_cell::*;
-///
-/// # async fn example(device: &wgpu::Device, queue: &wgpu::Queue) {
-/// let batch_size = 2;
-/// let input_size = 128;
-/// let hidden_size = 256;
-///
-/// let input = vec![0.5; batch_size * input_size];
-/// let prev_hidden = vec![0.0; batch_size * hidden_size];
-///
-/// let weights = GRUWeights {
-///     w_ir: vec![0.01; hidden_size * input_size],
-///     // ... other weights ...
-/// #     w_hr: vec![0.01; hidden_size * hidden_size],
-/// #     w_iz: vec![0.01; hidden_size * input_size],
-/// #     w_hz: vec![0.01; hidden_size * hidden_size],
-/// #     w_in: vec![0.01; hidden_size * input_size],
-/// #     w_hn: vec![0.01; hidden_size * hidden_size],
-/// #     b_ir: vec![0.0; hidden_size],
-/// #     b_hr: vec![0.0; hidden_size],
-/// #     b_iz: vec![0.0; hidden_size],
-/// #     b_hz: vec![0.0; hidden_size],
-/// #     b_in: vec![0.0; hidden_size],
-/// #     b_hn: vec![0.0; hidden_size],
-/// };
-///
-/// let hidden = gru_cell(
-///     device, queue,
-///     &input, &prev_hidden,
-///     &weights,
-///     batch_size, input_size, hidden_size
-/// ).await.unwrap();
-/// # }
-/// ```
-///
-/// ## Deep Debt Note
-///
-/// Current: CPU implementation
-/// Evolution: GPU kernel for performance
-pub async fn gru_cell(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    prev_hidden: &[f32],
-    weights: &GRUWeights,
+/// GRU Cell operation
+pub struct GRUCell {
+    input: Tensor,
+    weight_ih: Tensor,
+    weight_hh: Tensor,
+    bias_ih: Tensor,
+    bias_hh: Tensor,
+    h_prev: Tensor,
     batch_size: usize,
     input_size: usize,
     hidden_size: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    fn sigmoid(x: f32) -> f32 {
-        1.0 / (1.0 + (-x).exp())
-    }
+}
 
-    fn tanh(x: f32) -> f32 {
-        x.tanh()
-    }
+impl GRUCell {
+    /// Create a new GRU cell operation
+    pub fn new(
+        input: Tensor,
+        weight_ih: Tensor,
+        weight_hh: Tensor,
+        bias_ih: Tensor,
+        bias_hh: Tensor,
+        h_prev: Tensor,
+    ) -> Result<Self> {
+        let input_shape = input.shape();
+        let batch_size = input_shape[0];
+        let input_size = input_shape[1..].iter().product::<usize>();
 
-    fn matmul_add_bias(
-        input: &[f32],
-        weights: &[f32],
-        bias: &[f32],
-        output: &mut [f32],
-        batch_size: usize,
-        in_size: usize,
-        out_size: usize,
-    ) {
-        for b in 0..batch_size {
-            for i in 0..out_size {
-                let mut sum = bias[i];
-                for j in 0..in_size {
-                    sum += input[b * in_size + j] * weights[i * in_size + j];
-                }
-                output[b * out_size + i] = sum;
-            }
+        let hidden_size = h_prev.shape()[1..].iter().product::<usize>();
+
+        // Validate dimensions
+        if weight_ih.shape().iter().product::<usize>() != 3 * hidden_size * input_size {
+            return Err(BarracudaError::invalid_op(
+                "gru_cell",
+                "weight_ih must be [3*hidden_size, input_size]",
+            ));
         }
+
+        if weight_hh.shape().iter().product::<usize>() != 3 * hidden_size * hidden_size {
+            return Err(BarracudaError::invalid_op(
+                "gru_cell",
+                "weight_hh must be [3*hidden_size, hidden_size]",
+            ));
+        }
+
+        if h_prev.shape()[0] != batch_size || h_prev.shape()[1..].iter().product::<usize>() != hidden_size {
+            return Err(BarracudaError::invalid_op(
+                "gru_cell",
+                "h_prev shape mismatch",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            weight_ih,
+            weight_hh,
+            bias_ih,
+            bias_hh,
+            h_prev,
+            batch_size,
+            input_size,
+            hidden_size,
+        })
     }
 
-    // Compute reset gate: r_t = sigmoid(W_ir * x + W_hr * h + b)
-    let mut r_input = vec![0.0f32; batch_size * hidden_size];
-    let mut r_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_ir,
-        &weights.b_ir,
-        &mut r_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hr,
-        &weights.b_hr,
-        &mut r_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    let mut r_gate = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..r_gate.len() {
-        r_gate[i] = sigmoid(r_input[i] + r_hidden[i]);
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/gru_cell.wgsl")
     }
 
-    // Compute update gate: z_t = sigmoid(W_iz * x + W_hz * h + b)
-    let mut z_input = vec![0.0f32; batch_size * hidden_size];
-    let mut z_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_iz,
-        &weights.b_iz,
-        &mut z_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hz,
-        &weights.b_hz,
-        &mut z_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    let mut z_gate = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..z_gate.len() {
-        z_gate[i] = sigmoid(z_input[i] + z_hidden[i]);
-    }
+    /// Execute the GRU cell operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
 
-    // Compute new gate: n_t = tanh(W_in * x + r_t ⊙ (W_hn * h + b))
-    let mut n_input = vec![0.0f32; batch_size * hidden_size];
-    let mut n_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_in,
-        &weights.b_in,
-        &mut n_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hn,
-        &weights.b_hn,
-        &mut n_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    let mut n_gate = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..n_gate.len() {
-        n_gate[i] = tanh(n_input[i] + r_gate[i] * n_hidden[i]);
-    }
+        // Create output buffer for h_next
+        let h_next_size = self.batch_size * self.hidden_size;
+        let h_next_buffer = device.create_buffer_f32(h_next_size)?;
 
-    // Compute hidden state: h_t = (1 - z_t) ⊙ n_t + z_t ⊙ h_{t-1}
-    let mut hidden = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..hidden.len() {
-        hidden[i] = (1.0 - z_gate[i]) * n_gate[i] + z_gate[i] * prev_hidden[i];
-    }
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            batch_size: u32,
+            input_size: u32,
+            hidden_size: u32,
+            _padding: u32,
+        }
 
-    Ok(hidden)
+        let params = Params {
+            batch_size: self.batch_size as u32,
+            input_size: self.input_size as u32,
+            hidden_size: self.hidden_size as u32,
+            _padding: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("GRUCell Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GRUCell Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("GRUCell Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("GRUCell Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.weight_ih.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.weight_hh.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bias_ih.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.bias_hh.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.h_prev.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: h_next_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("GRUCell Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("GRUCell Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Encode and execute
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("GRUCell Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GRUCell Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (64 threads per workgroup)
+            let workgroups = (self.batch_size as u32 + 63) / 64;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            h_next_buffer,
+            vec![self.batch_size, self.hidden_size],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
-    async fn test_gru_cell_dimensions() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let device = &dev.device;
-        let queue = &dev.queue;
+    async fn test_gru_cell_basic() {
+        let device = get_test_device().await;
 
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;
 
-        let input = vec![0.5; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-
-        let weights = GRUWeights {
-            w_ir: vec![0.01; hidden_size * input_size],
-            w_hr: vec![0.01; hidden_size * hidden_size],
-            w_iz: vec![0.01; hidden_size * input_size],
-            w_hz: vec![0.01; hidden_size * hidden_size],
-            w_in: vec![0.01; hidden_size * input_size],
-            w_hn: vec![0.01; hidden_size * hidden_size],
-            b_ir: vec![0.0; hidden_size],
-            b_hr: vec![0.0; hidden_size],
-            b_iz: vec![0.0; hidden_size],
-            b_hz: vec![0.0; hidden_size],
-            b_in: vec![0.0; hidden_size],
-            b_hn: vec![0.0; hidden_size],
-        };
-
-        let hidden = gru_cell(
-            &device,
-            &queue,
-            &input,
-            &prev_hidden,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
+        let input = Tensor::from_vec_on(
+            vec![0.5; batch_size * input_size],
+            vec![batch_size, input_size],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        assert_eq!(hidden.len(), batch_size * hidden_size);
+        let weight_ih = Tensor::from_vec_on(
+            vec![0.01; 3 * hidden_size * input_size],
+            vec![3 * hidden_size, input_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let weight_hh = Tensor::from_vec_on(
+            vec![0.01; 3 * hidden_size * hidden_size],
+            vec![3 * hidden_size, hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let bias_ih = Tensor::from_vec_on(
+            vec![0.0; 3 * hidden_size],
+            vec![3 * hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let bias_hh = Tensor::from_vec_on(
+            vec![0.0; 3 * hidden_size],
+            vec![3 * hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let h_prev = Tensor::from_vec_on(
+            vec![0.0; batch_size * hidden_size],
+            vec![batch_size, hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let h_next = GRUCell::new(
+            input,
+            weight_ih,
+            weight_hh,
+            bias_ih,
+            bias_hh,
+            h_prev,
+        )
+        .unwrap()
+        .execute()
+        .unwrap();
+
+        assert_eq!(h_next.shape(), &[batch_size, hidden_size]);
     }
 }

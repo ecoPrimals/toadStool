@@ -193,6 +193,31 @@ impl WgpuDevice {
         }))
     }
 
+    /// Allocate buffer for u32 data
+    pub fn create_buffer_u32(&self, size: usize) -> Result<wgpu::Buffer> {
+        Ok(self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("barraCUDA U32 Buffer"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        }))
+    }
+
+    /// Allocate zero-initialized buffer for u32 data
+    pub fn create_buffer_u32_zeros(&self, size: usize) -> Result<wgpu::Buffer> {
+        use wgpu::util::DeviceExt;
+        let zeros = vec![0u32; size];
+        Ok(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("barraCUDA U32 Zeros Buffer"),
+            contents: bytemuck::cast_slice(&zeros),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+        }))
+    }
+
     /// Compile WGSL shader
     pub fn compile_shader(&self, source: &str, label: Option<&str>) -> wgpu::ShaderModule {
         self.device

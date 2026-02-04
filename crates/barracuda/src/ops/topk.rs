@@ -57,10 +57,7 @@ impl TopK {
         // Validate K
         let size = input.len();
         if k == 0 {
-            return Err(BarracudaError::invalid_op(
-                "TopK",
-                "k must be positive",
-            ));
+            return Err(BarracudaError::invalid_op("TopK", "k must be positive"));
         }
         if k > size {
             return Err(BarracudaError::invalid_op(
@@ -68,7 +65,7 @@ impl TopK {
                 format!("k ({}) exceeds tensor size ({})", k, size),
             ));
         }
-        
+
         // TopK currently only works on 1D tensors (flatten for higher dims)
         if input.shape().len() != 1 {
             return Err(BarracudaError::invalid_op(
@@ -94,9 +91,7 @@ impl TopK {
         let device = self.input.device();
 
         // Create parameters
-        let params = TopKParams {
-            k: self.k as u32,
-        };
+        let params = TopKParams { k: self.k as u32 };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("TopK Params"),
@@ -104,13 +99,17 @@ impl TopK {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        device.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        device
+            .queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         // Output buffer (u32 indices)
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("TopK Output"),
             size: (self.k * std::mem::size_of::<u32>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -118,44 +117,46 @@ impl TopK {
         let shader = device.compile_shader(Self::shader(), Some("TopK"));
 
         // Create bind group layout
-        let bgl = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("TopK BGL"),
-            entries: &[
-                // Input
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bgl = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("TopK BGL"),
+                entries: &[
+                    // Input
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Output
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                // Params
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    // Params
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -178,23 +179,30 @@ impl TopK {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("TopK Pipeline Layout"),
-            bind_group_layouts: &[&bgl],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("TopK Pipeline Layout"),
+                    bind_group_layouts: &[&bgl],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("TopK Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("TopK Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("TopK Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("TopK Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -204,7 +212,7 @@ impl TopK {
 
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Single workgroup (shader uses workgroup_size(1))
             pass.dispatch_workgroups(1, 1, 1);
         }
@@ -220,9 +228,11 @@ impl TopK {
             mapped_at_creation: false,
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("TopK Copy Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("TopK Copy Encoder"),
+            });
         encoder.copy_buffer_to_buffer(
             &output_buffer,
             0,
@@ -250,9 +260,11 @@ impl TopK {
         let indices_f32: Vec<f32> = indices_u32.iter().map(|&x| x as f32).collect();
 
         // Create output tensor [k] as f32
-        let output_tensor = futures::executor::block_on(
-            Tensor::from_vec_on(indices_f32, vec![self.k], device.clone())
-        )?;
+        let output_tensor = futures::executor::block_on(Tensor::from_vec_on(
+            indices_f32,
+            vec![self.k],
+            device.clone(),
+        ))?;
 
         Ok(output_tensor)
     }
@@ -299,19 +311,15 @@ mod tests {
     async fn test_topk_gpu_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![5.0, 1.0, 9.0, 3.0, 7.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![5.0, 1.0, 9.0, 3.0, 7.0], vec![5], device)
+            .await
+            .unwrap();
 
         let top3 = input.topk(3).unwrap();
 
         assert_eq!(top3.shape(), &[3]);
         let indices = top3.to_vec().unwrap();
-        
+
         // Should return indices of [9.0, 7.0, 5.0] = [2, 4, 0]
         assert_eq!(indices[0] as u32, 2); // 9.0
         assert_eq!(indices[1] as u32, 4); // 7.0
@@ -322,17 +330,13 @@ mod tests {
     async fn test_topk_gpu_single() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![1.0, 2.0, 3.0, 4.0],
-            vec![4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![4], device)
+            .await
+            .unwrap();
 
         let top1 = input.topk(1).unwrap();
         let indices = top1.to_vec().unwrap();
-        
+
         // Largest value is 4.0 at index 3
         assert_eq!(indices[0] as u32, 3);
     }
@@ -341,17 +345,13 @@ mod tests {
     async fn test_topk_gpu_all() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![3.0, 1.0, 4.0, 1.0, 5.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![3.0, 1.0, 4.0, 1.0, 5.0], vec![5], device)
+            .await
+            .unwrap();
 
         let top5 = input.topk(5).unwrap();
         let indices = top5.to_vec().unwrap();
-        
+
         // All indices, sorted by value: [5.0, 4.0, 3.0, 1.0, 1.0] = [4, 2, 0, 1, 3]
         assert_eq!(indices[0] as u32, 4); // 5.0
         assert_eq!(indices[1] as u32, 2); // 4.0
@@ -362,17 +362,13 @@ mod tests {
     async fn test_topk_gpu_negative() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![-5.0, -1.0, -9.0, -3.0],
-            vec![4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-5.0, -1.0, -9.0, -3.0], vec![4], device)
+            .await
+            .unwrap();
 
         let top2 = input.topk(2).unwrap();
         let indices = top2.to_vec().unwrap();
-        
+
         // Largest (least negative): [-1.0, -3.0] at indices [1, 3]
         assert_eq!(indices[0] as u32, 1); // -1.0
         assert_eq!(indices[1] as u32, 3); // -3.0
@@ -397,17 +393,13 @@ mod tests {
     async fn test_topk_gpu_duplicates() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![2.0, 5.0, 5.0, 1.0],
-            vec![4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![2.0, 5.0, 5.0, 1.0], vec![4], device)
+            .await
+            .unwrap();
 
         let top2 = input.topk(2).unwrap();
         let indices = top2.to_vec().unwrap();
-        
+
         // Two 5.0 values at indices 1 and 2
         // Should return both (order may vary, but both should be 1 or 2)
         let idx0 = indices[0] as u32;
@@ -431,7 +423,7 @@ mod tests {
 
         let top10 = input.topk(10).unwrap();
         let indices = top10.to_vec().unwrap();
-        
+
         // Should be indices 99, 98, 97, ..., 90 (highest values)
         assert_eq!(indices[0] as u32, 99);
         assert_eq!(indices[1] as u32, 98);

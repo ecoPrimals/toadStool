@@ -246,7 +246,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // RetinaNet-style focal loss
     /// let loss = predictions.focal_loss(&targets, 0.25, 2.0)?;
-    /// 
+    ///
     /// // Higher gamma for very imbalanced datasets
     /// let loss = predictions.focal_loss(&targets, 0.25, 5.0)?;
     /// ```

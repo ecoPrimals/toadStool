@@ -10,7 +10,7 @@
 //!
 //! ```text
 //! Lovasz Loss = Lovasz_extension(IoU_loss)
-//! 
+//!
 //! Steps:
 //! 1. Compute errors: e = max(0, 1 - p_true)
 //! 2. Sort errors in descending order
@@ -246,7 +246,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // Semantic segmentation
     /// let loss = predictions.lovasz_loss(&targets)?;
-    /// 
+    ///
     /// // Medical imaging
     /// let seg_loss = model_output.lovasz_loss(&ground_truth)?;
     /// ```
@@ -269,17 +269,17 @@ mod tests {
     #[tokio::test]
     async fn test_lovasz_loss_basic() {
         let device = get_test_device().await;
-        
+
         let predictions = Tensor::from_vec_on(vec![0.9, 0.8, 0.7, 0.6], vec![4], device.clone())
             .await
             .unwrap();
         let targets = Tensor::from_vec_on(vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.lovasz_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), 4);
         assert!(data.iter().all(|&x| x.is_finite()));
         assert!(data.iter().all(|&x| x >= 0.0)); // Loss should be non-negative
@@ -288,7 +288,7 @@ mod tests {
     #[tokio::test]
     async fn test_lovasz_loss_perfect_prediction() {
         let device = get_test_device().await;
-        
+
         // Perfect prediction should have very low loss
         let predictions = Tensor::from_vec_on(vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone())
             .await
@@ -296,18 +296,22 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.lovasz_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
         let mean: f32 = data.iter().sum::<f32>() / data.len() as f32;
-        
-        assert!(mean < 0.1, "Expected low loss for perfect prediction, got {}", mean);
+
+        assert!(
+            mean < 0.1,
+            "Expected low loss for perfect prediction, got {}",
+            mean
+        );
     }
 
     #[tokio::test]
     async fn test_lovasz_loss_poor_prediction() {
         let device = get_test_device().await;
-        
+
         // Poor prediction should have higher loss
         let predictions = Tensor::from_vec_on(vec![0.1, 0.2, 0.3, 0.1], vec![4], device.clone())
             .await
@@ -315,17 +319,17 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, 1.0, 1.0, 1.0], vec![4], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.lovasz_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         assert!(data.iter().all(|&x| x > 0.5)); // Should have high error
     }
 
     #[tokio::test]
     async fn test_lovasz_loss_validation() {
         let device = get_test_device().await;
-        
+
         // Shape mismatch
         let predictions = Tensor::from_vec_on(vec![0.5; 10], vec![10], device.clone())
             .await
@@ -333,28 +337,28 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         assert!(predictions.lovasz_loss(&targets).is_err());
     }
 
     #[tokio::test]
     async fn test_lovasz_loss_large_batch() {
         let device = get_test_device().await;
-        
+
         let size = 1000;
         let pred_data: Vec<f32> = (0..size).map(|i| (i as f32) / size as f32).collect();
         let target_data = vec![1.0; size];
-        
+
         let predictions = Tensor::from_vec_on(pred_data, vec![size], device.clone())
             .await
             .unwrap();
         let targets = Tensor::from_vec_on(target_data, vec![size], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.lovasz_loss(&targets).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), size);
         assert!(data.iter().all(|&x| x.is_finite()));
         assert!(data.iter().all(|&x| x >= 0.0));

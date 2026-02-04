@@ -1,27 +1,31 @@
 // L1 Loss - Mean Absolute Error
 // loss = mean(|predictions - targets|)
 
+struct Params {
+    size: u32,
+    reduction: u32,  // 0=none, 1=mean, 2=sum
+}
+
 @group(0) @binding(0) var<storage, read> predictions: array<f32>;
 @group(0) @binding(1) var<storage, read> targets: array<f32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
-
-var<workgroup> shared_loss: f32;
+@group(0) @binding(3) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invocation_id) local_id: vec3<u32>) {
-    let size = arrayLength(&predictions);
-    let tid = local_id.x;
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
     
-    if (tid == 0u) {
-        var sum = 0.0;
-        for (var i = 0u; i < size; i = i + 1u) {
-            sum = sum + abs(predictions[i] - targets[i]);
-        }
-        shared_loss = sum / f32(size);
+    if (idx >= params.size) {
+        return;
     }
-    workgroupBarrier();
     
-    if (tid == 0u) {
-        output[0] = shared_loss;
-    }
+    let pred = predictions[idx];
+    let target = targets[idx];
+    let abs_diff = abs(pred - target);
+    
+    // Store individual losses
+    output[idx] = abs_diff;
 }
+
+// Note: Reduction (mean/sum) would require a second pass or atomic operations
+// For now, we compute element-wise losses and let the CPU handle reduction

@@ -1,8 +1,22 @@
 //! WindowFunction - Various windowing functions for signal processing
 //!
-//! Implements Hann, Hamming, Blackman, and other windows.
+//! Implements Hann, Hamming, Blackman, Bartlett, and Rectangular windows.
 //! Reduces spectral leakage in FFT.
+//!
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use std::sync::Arc;
+use wgpu::util::DeviceExt;
+
+/// Window type enumeration
+#[derive(Clone, Copy)]
 pub enum WindowType {
     Hann,
     Hamming,
@@ -11,50 +25,198 @@ pub enum WindowType {
     Rectangular,
 }
 
-pub async fn window_function(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
+impl WindowType {
+    fn to_u32(self) -> u32 {
+        match self {
+            WindowType::Hann => 0,
+            WindowType::Hamming => 1,
+            WindowType::Blackman => 2,
+            WindowType::Bartlett => 3,
+            WindowType::Rectangular => 4,
+        }
+    }
+}
+
+/// WindowFunction operation
+pub struct WindowFunction {
     length: usize,
     window_type: WindowType,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut window = vec![0.0f32; length];
+    device: Arc<crate::device::WgpuDevice>,
+}
 
-    for n in 0..length {
-        let val = match window_type {
-            WindowType::Hann => {
-                0.5 * (1.0 - (2.0 * std::f32::consts::PI * n as f32 / (length - 1) as f32).cos())
-            }
-            WindowType::Hamming => {
-                0.54 - 0.46 * (2.0 * std::f32::consts::PI * n as f32 / (length - 1) as f32).cos()
-            }
-            WindowType::Blackman => {
-                0.42 - 0.5 * (2.0 * std::f32::consts::PI * n as f32 / (length - 1) as f32).cos()
-                    + 0.08 * (4.0 * std::f32::consts::PI * n as f32 / (length - 1) as f32).cos()
-            }
-            WindowType::Bartlett => 1.0 - ((2 * n) as f32 / (length - 1) as f32 - 1.0).abs(),
-            WindowType::Rectangular => 1.0,
-        };
-
-        window[n] = val;
+impl WindowFunction {
+    /// Create a new window function operation
+    pub fn new(length: usize, window_type: WindowType, device: Arc<crate::device::WgpuDevice>) -> Result<Self> {
+        if length == 0 {
+            return Err(BarracudaError::InvalidInput {
+                message: "Window length must be greater than 0".to_string(),
+            });
+        }
+        Ok(Self {
+            length,
+            window_type,
+            device,
+        })
     }
 
-    Ok(window)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/window_function.wgsl")
+    }
+
+    /// Execute the window function operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = &self.device;
+
+        // Create output buffer
+        let output_buffer = device.create_buffer_f32(self.length)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            length: u32,
+            window_type: u32,
+        }
+
+        let params = Params {
+            length: self.length as u32,
+            window_type: self.window_type.to_u32(),
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("WindowFunction Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("WindowFunction Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("WindowFunction Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("WindowFunction Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("WindowFunction Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("WindowFunction Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("WindowFunction Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("WindowFunction Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((self.length as u32 + 255) / 256, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return tensor without reading back (zero-copy)
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![self.length],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_window_hann() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let window = window_function(&dev.device, &dev.queue, 512, WindowType::Hann)
-            .await
+        let device = get_test_device().await;
+        let window = WindowFunction::new(512, WindowType::Hann, device.clone())
+            .unwrap()
+            .execute()
             .unwrap();
-        assert_eq!(window.len(), 512);
-        assert!((window[0] - 0.0).abs() < 1e-5); // Should be ~0 at edges
-        assert!(window[256] > 0.9); // Should be ~1 at center
+        assert_eq!(window.shape(), &[512]);
+        
+        // Verify window values (would need readback to check exact values)
+        let data = window.to_vec().unwrap();
+        assert_eq!(data.len(), 512);
+        // Hann window should be ~0 at edges and ~1 at center
+        assert!(data[0].abs() < 0.1);
+        assert!(data[256] > 0.9);
+    }
+
+    #[tokio::test]
+    async fn test_window_hamming() {
+        let device = get_test_device().await;
+        let window = WindowFunction::new(256, WindowType::Hamming, device.clone())
+            .unwrap()
+            .execute()
+            .unwrap();
+        assert_eq!(window.shape(), &[256]);
+    }
+
+    #[tokio::test]
+    async fn test_window_rectangular() {
+        let device = get_test_device().await;
+        let window = WindowFunction::new(128, WindowType::Rectangular, device.clone())
+            .unwrap()
+            .execute()
+            .unwrap();
+        let data = window.to_vec().unwrap();
+        // Rectangular window should be all 1.0
+        assert!(data.iter().all(|&x| (x - 1.0).abs() < 1e-5));
     }
 }

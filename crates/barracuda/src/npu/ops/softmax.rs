@@ -62,39 +62,38 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
     // ═══════════════════════════════════════════════════════════
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
-    
-    use crate::tensor::Tensor;
+
     use crate::device::WgpuDevice;
+    use crate::tensor::Tensor;
     use std::sync::Arc;
-    
+
     // Apply temperature scaling if needed
     let scaled_logits = if (temperature - 1.0).abs() > 1e-6 {
         logits.iter().map(|&x| x / temperature).collect()
     } else {
         logits.to_vec()
     };
-    
-    // Create tensor from logits  
+
+    // Create tensor from logits
     let logits_len = scaled_logits.len();
-    
+
     // Get device (auto-detect GPU, fallback to CPU via wgpu)
     let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
-    
-    let tensor = futures::executor::block_on(
-        Tensor::from_vec_on(scaled_logits, vec![logits_len], device)
-    )?;
-    
+
+    let tensor =
+        futures::executor::block_on(Tensor::from_vec_on(scaled_logits, vec![logits_len], device))?;
+
     // Execute softmax using WGSL shader (same as GPU/CPU!)
     // This uses ops/softmax.rs → shaders/softmax.wgsl
     let result_tensor = tensor.softmax()?;
-    
+
     // Extract result
     let output = result_tensor.to_vec()?;
-    
+
     // ═══════════════════════════════════════════════════════════
     // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
     // ═══════════════════════════════════════════════════════════
-    
+
     // Measure sparsity
     let codec = EventCodec::default();
     let sparsity = codec.measure_sparsity(&output);
@@ -108,7 +107,7 @@ pub fn npu_softmax(logits: &[f32], temperature: f32) -> Result<Vec<f32>> {
         sparsity * 100.0,
         max_prob
     );
-    
+
     // For winner-take-all scenarios, encode dominant values as events
     if max_prob > 0.8 {
         let events = codec.encode(&output);

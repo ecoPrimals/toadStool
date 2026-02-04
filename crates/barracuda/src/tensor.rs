@@ -71,7 +71,7 @@ impl Tensor {
     pub(crate) fn buffer(&self) -> &wgpu::Buffer {
         &self.buffer
     }
-    
+
     /// Query which unified Device type this tensor is conceptually on
     ///
     /// **Phase 2**: Maps WgpuDevice to unified Device enum
@@ -85,7 +85,7 @@ impl Tensor {
             wgpu::DeviceType::Other => Device::Auto,
         }
     }
-    
+
     /// Create a routing preference for this tensor's operations
     ///
     /// **Phase 2 Note**: This sets an execution hint for future operations.
@@ -102,7 +102,7 @@ impl Tensor {
         log::debug!("Device preference noted (Phase 3 will implement migration)");
         self.clone()
     }
-    
+
     /// Create tensor with workload hint for smart routing
     ///
     /// **Phase 2**: Adds metadata about workload characteristics
@@ -142,6 +142,30 @@ impl Tensor {
             device,
             name: None,
         })
+    }
+
+    /// Create tensor from Vec<f32> data (convenience method for operations)
+    ///
+    /// This is used by WGSL operations to return computed results.
+    pub fn new(data: Vec<f32>, shape: Vec<usize>, device: Arc<WgpuDevice>) -> Self {
+        use wgpu::util::DeviceExt;
+
+        let buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tensor"),
+                contents: bytemuck::cast_slice(&data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
+
+        Self {
+            buffer: Arc::new(buffer),
+            shape,
+            device,
+            name: None,
+        }
     }
 }
 
@@ -309,10 +333,12 @@ impl Tensor {
     pub fn mul_scalar(&self, scalar: f32) -> Result<Tensor> {
         // Create broadcasted scalar tensor with same shape
         let data = vec![scalar; self.len()];
-        let scalar_tensor = futures::executor::block_on(
-            Tensor::from_vec_on(data, self.shape.clone(), self.device.clone())
-        )?;
-        
+        let scalar_tensor = futures::executor::block_on(Tensor::from_vec_on(
+            data,
+            self.shape.clone(),
+            self.device.clone(),
+        ))?;
+
         // Use existing element-wise multiplication
         self.mul(&scalar_tensor)
     }
@@ -330,10 +356,12 @@ impl Tensor {
     pub fn add_scalar(&self, scalar: f32) -> Result<Tensor> {
         // Create broadcasted scalar tensor with same shape
         let data = vec![scalar; self.len()];
-        let scalar_tensor = futures::executor::block_on(
-            Tensor::from_vec_on(data, self.shape.clone(), self.device.clone())
-        )?;
-        
+        let scalar_tensor = futures::executor::block_on(Tensor::from_vec_on(
+            data,
+            self.shape.clone(),
+            self.device.clone(),
+        ))?;
+
         // Use existing element-wise addition
         self.add(&scalar_tensor)
     }
@@ -381,30 +409,30 @@ impl Tensor {
     /// ```
     pub async fn randn_with_rng<R: rand::Rng>(shape: Vec<usize>, rng: &mut R) -> Result<Self> {
         let size: usize = shape.iter().product();
-        
+
         // Box-Muller transform for normal distribution
         let mut data = Vec::with_capacity(size);
         for _ in 0..(size / 2) {
             let u1: f32 = rng.gen();
             let u2: f32 = rng.gen();
-            
+
             // Guard against log(0)
             let u1 = u1.max(1e-10);
-            
+
             let r = (-2.0 * u1.ln()).sqrt();
             let theta = 2.0 * std::f32::consts::PI * u2;
-            
+
             data.push(r * theta.cos());
             data.push(r * theta.sin());
         }
-        
+
         // Handle odd size
         if size % 2 == 1 {
             let u1: f32 = rng.gen::<f32>().max(1e-10);
             let u2: f32 = rng.gen();
             data.push((-2.0 * u1.ln()).sqrt() * (2.0 * std::f32::consts::PI * u2).cos());
         }
-        
+
         data.truncate(size);
         Self::from_vec(data, shape).await
     }
@@ -569,7 +597,7 @@ mod tests {
             .unwrap();
         let result = tensor.mul_scalar(2.0).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         assert_eq!(data, vec![2.0, 4.0, 6.0, 8.0]);
     }
 
@@ -580,7 +608,7 @@ mod tests {
             .unwrap();
         let result = tensor.add_scalar(10.0).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         assert_eq!(data, vec![11.0, 12.0, 13.0, 14.0]);
     }
 
@@ -591,7 +619,7 @@ mod tests {
             .unwrap();
         let result = tensor.div_scalar(2.0).unwrap();
         let data = result.to_vec().unwrap();
-        
+
         assert_eq!(data, vec![5.0, 10.0, 15.0, 20.0]);
     }
 
@@ -600,15 +628,20 @@ mod tests {
         let tensor = Tensor::randn(vec![10, 20]).await.unwrap();
         assert_eq!(tensor.shape(), &[10, 20]);
         assert_eq!(tensor.len(), 200);
-        
+
         // Check values are reasonable for N(0,1)
         let data = tensor.to_vec().unwrap();
         let mean: f32 = data.iter().sum::<f32>() / data.len() as f32;
-        let variance: f32 = data.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / data.len() as f32;
-        
+        let variance: f32 =
+            data.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / data.len() as f32;
+
         // Mean should be close to 0, std close to 1
         assert!(mean.abs() < 0.3, "Mean {} too far from 0", mean);
-        assert!((variance.sqrt() - 1.0).abs() < 0.3, "Std {} too far from 1", variance.sqrt());
+        assert!(
+            (variance.sqrt() - 1.0).abs() < 0.3,
+            "Std {} too far from 1",
+            variance.sqrt()
+        );
     }
 
     #[tokio::test]
@@ -616,7 +649,7 @@ mod tests {
         let tensor = Tensor::rand(vec![10, 20]).await.unwrap();
         assert_eq!(tensor.shape(), &[10, 20]);
         assert_eq!(tensor.len(), 200);
-        
+
         // Check values are in [0, 1)
         let data = tensor.to_vec().unwrap();
         for &val in &data {
@@ -628,12 +661,12 @@ mod tests {
     async fn test_rand_range() {
         let tensor = Tensor::rand_range(vec![100], -5.0, 5.0).await.unwrap();
         let data = tensor.to_vec().unwrap();
-        
+
         // Check all values in range
         for &val in &data {
             assert!(val >= -5.0 && val < 5.0, "Value {} out of range", val);
         }
-        
+
         // Mean should be near 0
         let mean: f32 = data.iter().sum::<f32>() / data.len() as f32;
         assert!(mean.abs() < 1.0, "Mean {} too far from 0", mean);
@@ -642,43 +675,43 @@ mod tests {
     #[tokio::test]
     async fn test_randn_reproducible() {
         use rand::SeedableRng;
-        
+
         let mut rng1 = rand::rngs::StdRng::seed_from_u64(42);
         let tensor1 = Tensor::randn_with_rng(vec![10], &mut rng1).await.unwrap();
-        
+
         let mut rng2 = rand::rngs::StdRng::seed_from_u64(42);
         let tensor2 = Tensor::randn_with_rng(vec![10], &mut rng2).await.unwrap();
-        
+
         assert_eq!(tensor1.to_vec().unwrap(), tensor2.to_vec().unwrap());
     }
-    
+
     #[tokio::test]
     async fn test_query_device() {
         let tensor = Tensor::randn(vec![10]).await.unwrap();
         let device = tensor.query_device();
-        
+
         // Device should be one of the valid types
         assert!(matches!(device, Device::CPU | Device::GPU | Device::Auto));
     }
-    
+
     #[tokio::test]
     async fn test_prefer_device() {
         let tensor = Tensor::randn(vec![10, 10]).await.unwrap();
-        
+
         // Test device preference (Phase 2: just sets hint)
         let gpu_tensor = tensor.prefer_device(Device::GPU);
         assert_eq!(gpu_tensor.shape(), tensor.shape());
         assert_eq!(gpu_tensor.len(), tensor.len());
     }
-    
+
     #[tokio::test]
     async fn test_with_hint() {
         let tensor = Tensor::randn(vec![5, 5]).await.unwrap();
-        
+
         // Test workload hints
         let small = tensor.with_hint(WorkloadHint::SmallWorkload);
         assert_eq!(small.shape(), tensor.shape());
-        
+
         let large = tensor.with_hint(WorkloadHint::LargeMatrices);
         assert_eq!(large.shape(), tensor.shape());
     }

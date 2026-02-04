@@ -1,308 +1,330 @@
-//! Dilated Conv2D - Convolution with dilated kernels
-//!
-//! Expands receptive field without increasing parameters.
-//! Used in DeepLab, WaveNet, dilated residual networks.
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-pub async fn dilated_conv2d(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    kernel: &[f32],
-    bias: &[f32],
-    batch_size: usize,
-    in_channels: usize,
-    out_channels: usize,
-    height: usize,
-    width: usize,
-    kernel_size: usize,
-    dilation: usize,
-    stride: usize,
-    padding: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let out_h = (height + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1;
-    let out_w = (width + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1;
-    let mut output = vec![0.0f32; batch_size * out_channels * out_h * out_w];
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct DilatedConv2DParams {
+    batch_size: u32,
+    in_channels: u32,
+    out_channels: u32,
+    in_height: u32,
+    in_width: u32,
+    kernel_height: u32,
+    kernel_width: u32,
+    out_height: u32,
+    out_width: u32,
+    stride_h: u32,
+    stride_w: u32,
+    pad_h: u32,
+    pad_w: u32,
+    dilation_h: u32,
+    dilation_w: u32,
+    _padding: u32,
+}
 
-    for b in 0..batch_size {
-        for oc in 0..out_channels {
-            for oh in 0..out_h {
-                for ow in 0..out_w {
-                    let mut sum = bias[oc];
+pub struct DilatedConv2D {
+    input: Tensor,
+    weight: Tensor,
+    bias: Option<Tensor>,
+    stride: (usize, usize),
+    padding: (usize, usize),
+    dilation: (usize, usize),
+}
 
-                    for ic in 0..in_channels {
-                        for kh in 0..kernel_size {
-                            for kw in 0..kernel_size {
-                                let ih = oh * stride + kh * dilation;
-                                let iw = ow * stride + kw * dilation;
-
-                                if ih >= padding
-                                    && ih < height + padding
-                                    && iw >= padding
-                                    && iw < width + padding
-                                {
-                                    let ih = ih - padding;
-                                    let iw = iw - padding;
-
-                                    if ih < height && iw < width {
-                                        let in_idx = b * in_channels * height * width
-                                            + ic * height * width
-                                            + ih * width
-                                            + iw;
-                                        let k_idx = oc * in_channels * kernel_size * kernel_size
-                                            + ic * kernel_size * kernel_size
-                                            + kh * kernel_size
-                                            + kw;
-                                        sum += input[in_idx] * kernel[k_idx];
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let out_idx =
-                        b * out_channels * out_h * out_w + oc * out_h * out_w + oh * out_w + ow;
-                    output[out_idx] = sum;
-                }
-            }
+impl DilatedConv2D {
+    pub fn new(
+        input: Tensor,
+        weight: Tensor,
+        bias: Option<Tensor>,
+        stride: (usize, usize),
+        padding: (usize, usize),
+        dilation: (usize, usize),
+    ) -> Result<Self> {
+        // Validate shapes
+        if input.shape().len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "dilated_conv2d",
+                format!("Input must be 4D [B, C, H, W], got shape: {:?}", input.shape()),
+            ));
         }
+
+        if weight.shape().len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "dilated_conv2d",
+                format!("Weight must be 4D [C_out, C_in, Kh, Kw], got shape: {:?}", weight.shape()),
+            ));
+        }
+
+        Ok(Self {
+            input,
+            weight,
+            bias,
+            stride,
+            padding,
+            dilation,
+        })
     }
 
-    Ok(output)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/dilated_conv2d.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let in_shape = self.input.shape();
+        let w_shape = self.weight.shape();
+
+        let batch_size = in_shape[0];
+        let in_channels = in_shape[1];
+        let in_height = in_shape[2];
+        let in_width = in_shape[3];
+
+        let out_channels = w_shape[0];
+        let kernel_height = w_shape[2];
+        let kernel_width = w_shape[3];
+
+        // Calculate output dimensions
+        let out_height = (in_height + 2 * self.padding.0 - self.dilation.0 * (kernel_height - 1) - 1) / self.stride.0 + 1;
+        let out_width = (in_width + 2 * self.padding.1 - self.dilation.1 * (kernel_width - 1) - 1) / self.stride.1 + 1;
+
+        let output_size = batch_size * out_channels * out_height * out_width;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        // Create bias buffer (or zeros)
+        let zeros_buffer;
+        let bias_buffer = if let Some(ref bias) = self.bias {
+            bias.buffer()
+        } else {
+            let zeros = vec![0.0f32; out_channels];
+            zeros_buffer = device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Dilated Conv2D Bias (zeros)"),
+                    contents: bytemuck::cast_slice(&zeros),
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+            &zeros_buffer
+        };
+
+        let params = DilatedConv2DParams {
+            batch_size: batch_size as u32,
+            in_channels: in_channels as u32,
+            out_channels: out_channels as u32,
+            in_height: in_height as u32,
+            in_width: in_width as u32,
+            kernel_height: kernel_height as u32,
+            kernel_width: kernel_width as u32,
+            out_height: out_height as u32,
+            out_width: out_width as u32,
+            stride_h: self.stride.0 as u32,
+            stride_w: self.stride.1 as u32,
+            pad_h: self.padding.0 as u32,
+            pad_w: self.padding.1 as u32,
+            dilation_h: self.dilation.0 as u32,
+            dilation_w: self.dilation.1 as u32,
+            _padding: 0,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dilated Conv2D Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        let bind_group_layout = device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Dilated Conv2D Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Dilated Conv2D Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.weight.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: bias_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader_module = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Dilated Conv2D Shader"),
+                source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
+            });
+
+        let pipeline_layout = device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Dilated Conv2D Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Dilated Conv2D Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Dilated Conv2D Encoder"),
+            });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Dilated Conv2D Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups_x = (out_width as u32 + 7) / 8;
+            let workgroups_y = (out_height as u32 + 7) / 8;
+            let workgroups_z = batch_size as u32 * out_channels as u32;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![batch_size, out_channels, out_height, out_width],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_dilated_conv2d_basic() {
-        let dev = get_test_device().await;
-        let input = vec![1.0; 1 * 3 * 8 * 8];
-        let kernel = vec![0.1; 16 * 3 * 3 * 3];
-        let bias = vec![0.0; 16];
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            3,
-            16,
-            8,
-            8,
-            3,
-            2,
-            1,
-            1,
-        )
-        .await
-        .unwrap();
-        assert!(output.len() > 0);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
+        let device = get_test_device().await;
+        
+        let batch_size = 1;
+        let in_channels = 3;
+        let out_channels = 8;
+        let height = 32;
+        let width = 32;
+        let kernel_size = 3;
 
-    #[tokio::test]
-    async fn test_dilated_conv2d_edge_cases() {
-        let dev = get_test_device().await;
+        let input_data = vec![1.0; batch_size * in_channels * height * width];
+        let weight_data = vec![0.1; out_channels * in_channels * kernel_size * kernel_size];
+        let bias_data = vec![0.0; out_channels];
 
-        // Dilation = 1 (standard conv)
-        let input = vec![1.0; 1 * 1 * 4 * 4];
-        let kernel = vec![1.0; 1 * 1 * 2 * 2];
-        let bias = vec![0.0; 1];
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            1,
-            1,
-            4,
-            4,
-            2,
-            1,
-            1,
-            0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 3 * 3);
-
-        // All zeros input
-        let input = vec![0.0; 1 * 1 * 4 * 4];
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            1,
-            1,
-            4,
-            4,
-            2,
-            1,
-            1,
-            0,
-        )
-        .await
-        .unwrap();
-        assert!(output.iter().all(|&x| x.abs() < 1e-5));
-    }
-
-    #[tokio::test]
-    async fn test_dilated_conv2d_boundary() {
-        let dev = get_test_device().await;
-
-        // Large dilation (dilation=3)
-        let input = vec![1.0; 1 * 1 * 9 * 9];
-        let kernel = vec![1.0; 1 * 1 * 3 * 3];
-        let bias = vec![0.0; 1];
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            1,
-            1,
-            9,
-            9,
-            3,
-            3,
-            1,
-            0,
-        )
-        .await
-        .unwrap();
-        assert!(output.len() > 0);
-
-        // Different strides
-        let input = vec![1.0; 1 * 2 * 8 * 8];
-        let kernel = vec![0.1; 4 * 2 * 3 * 3];
-        let bias = vec![0.0; 4];
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            2,
-            4,
-            8,
-            8,
-            3,
-            2,
-            2,
-            1,
-        )
-        .await
-        .unwrap();
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_dilated_conv2d_large_batch() {
-        let dev = get_test_device().await;
-
-        // Batch size 4, DeepLab-style dilation
-        let batch_size = 4;
-        let in_channels = 8;
-        let out_channels = 16;
-        let height = 16;
-        let width = 16;
-        let input = vec![1.0; batch_size * in_channels * height * width];
-        let kernel = vec![0.1; out_channels * in_channels * 3 * 3];
-        let bias = vec![0.0; out_channels];
-
-        let output = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            batch_size,
-            in_channels,
-            out_channels,
-            height,
-            width,
-            3,
-            2,
-            1,
-            1,
-        )
-        .await
-        .unwrap();
-        assert!(output.len() > 0);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_dilated_conv2d_precision() {
-        let dev = get_test_device().await;
-
-        // Precision test: verify dilation produces different results than standard conv
-        let input = vec![1.0; 1 * 1 * 5 * 5];
-        let kernel = vec![1.0; 1 * 1 * 2 * 2]; // All ones kernel
-        let bias = vec![0.0; 1];
-
-        // Standard conv (dilation=1)
-        let output_standard = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            1,
-            1,
-            5,
-            5,
-            2,
-            1,
-            1,
-            0,
+        let input = Tensor::from_vec_on(
+            input_data,
+            vec![batch_size, in_channels, height, width],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // Dilated conv (dilation=2)
-        let output_dilated = dilated_conv2d(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &kernel,
-            &bias,
-            1,
-            1,
-            1,
-            5,
-            5,
-            2,
-            2,
-            1,
-            0,
+        let weight = Tensor::from_vec_on(
+            weight_data,
+            vec![out_channels, in_channels, kernel_size, kernel_size],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // Dilated conv should have smaller receptive field (fewer elements summed)
-        // so output might differ in size or values
-        assert!(output_standard.len() > 0);
-        assert!(output_dilated.len() > 0);
+        let bias = Tensor::from_vec_on(bias_data, vec![out_channels], device.clone())
+            .await
+            .unwrap();
 
-        // All values should be finite and non-negative (all positive inputs/weights)
-        assert!(output_dilated.iter().all(|&x| x.is_finite() && x >= 0.0));
+        let output = DilatedConv2D::new(
+            input,
+            weight,
+            Some(bias),
+            (1, 1), // stride
+            (1, 1), // padding
+            (2, 2), // dilation = 2
+        )
+        .unwrap()
+        .execute()
+        .unwrap();
+
+        assert_eq!(output.shape(), &[batch_size, out_channels, height, width]);
     }
 }

@@ -17,6 +17,12 @@ pub enum BarracudaError {
         actual: Vec<usize>,
     },
 
+    #[error("Invalid shape: expected {expected:?}, got {actual:?}")]
+    InvalidShape {
+        expected: Vec<usize>,
+        actual: Vec<usize>,
+    },
+
     #[error("Invalid operation: {op} - {reason}")]
     InvalidOperation { op: String, reason: String },
 
@@ -88,5 +94,9 @@ impl BarracudaError {
             op: op.into(),
             device: device.into(),
         }
+    }
+
+    pub fn invalid_shape(expected: Vec<usize>, actual: Vec<usize>) -> Self {
+        Self::InvalidShape { expected, actual }
     }
 }

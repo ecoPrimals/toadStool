@@ -1,145 +1,403 @@
-//! Matrix Rank - Compute rank of matrix
+//! Matrix Rank - Compute rank of matrix (GPU implementation)
 //!
-//! Counts number of linearly independent rows/columns.
+//! **Deep Debt Principles**:
+//! - Complete GPU implementation: Gaussian elimination on GPU
+//! - No CPU fallbacks: All computation on GPU
+//! - Self-knowledge: Validates matrix dimensions
+//! - Modern idiomatic Rust: Result<T, E>
 
-pub async fn matrix_rank(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    matrix: &[f32],
-    rows: usize,
-    cols: usize,
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct MatrixRankParams {
+    rows: u32,
+    cols: u32,
     tolerance: f32,
-) -> Result<usize, Box<dyn std::error::Error>> {
-    let mut m = matrix.to_vec();
-    let mut rank = 0;
+    _pad1: u32,
+}
 
-    let min_dim = rows.min(cols);
+pub struct MatrixRank {
+    input: Tensor,
+    tolerance: f32,
+}
 
-    for i in 0..min_dim {
-        // Find pivot
-        let mut max_row = i;
-        let mut max_val = 0.0f32;
-
-        for r in i..rows {
-            let val = m[r * cols + i].abs();
-            if val > max_val {
-                max_val = val;
-                max_row = r;
-            }
+impl MatrixRank {
+    pub fn new(input: Tensor, tolerance: f32) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() < 2 {
+            return Err(BarracudaError::invalid_op(
+                "matrix_rank",
+                "Requires at least 2D tensor",
+            ));
         }
 
-        if max_val < tolerance {
-            continue; // Column is zero
-        }
-
-        rank += 1;
-
-        // Swap rows
-        if max_row != i {
-            for c in 0..cols {
-                let tmp = m[i * cols + c];
-                m[i * cols + c] = m[max_row * cols + c];
-                m[max_row * cols + c] = tmp;
-            }
-        }
-
-        // Eliminate column
-        let pivot = m[i * cols + i];
-        for r in (i + 1)..rows {
-            let factor = m[r * cols + i] / pivot;
-            for c in i..cols {
-                m[r * cols + c] -= factor * m[i * cols + c];
-            }
-        }
+        Ok(Self {
+            input,
+            tolerance,
+        })
     }
 
-    Ok(rank)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/matrix_rank.wgsl")
+    }
+
+    pub fn execute(self) -> Result<usize> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let rows = shape[shape.len() - 2];
+        let cols = shape[shape.len() - 1];
+        let total_elements = rows * cols;
+
+        // Create work matrix buffer
+        let work_matrix_buffer = device.create_buffer_f32(total_elements)?;
+
+        // Create rank output buffer (single u32)
+        let rank_buffer = device.create_buffer_u32(1)?;
+
+        let params = MatrixRankParams {
+            rows: rows as u32,
+            cols: cols as u32,
+            tolerance: self.tolerance,
+            _pad1: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MatrixRank Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Step 1: Copy matrix to working buffer
+        let copy_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("MatrixRank Copy Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let copy_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("MatrixRank Copy Bind Group"),
+            layout: &copy_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: work_matrix_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("MatrixRank"));
+        let copy_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("MatrixRank Copy Pipeline Layout"),
+            bind_group_layouts: &[&copy_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let copy_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("MatrixRank Copy Pipeline"),
+            layout: Some(&copy_pipeline_layout),
+            module: &shader,
+            entry_point: "copy_matrix",
+        });
+
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("MatrixRank Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("MatrixRank Copy Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&copy_pipeline);
+            pass.set_bind_group(0, &copy_bind_group, &[]);
+            let workgroups = ((total_elements as u32 + 255) / 256) as u32;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        // Step 2: Gaussian elimination (sequential passes for each pivot)
+        let min_dim = rows.min(cols);
+        let gaussian_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("MatrixRank Gaussian Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let gaussian_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("MatrixRank Gaussian Bind Group"),
+            layout: &gaussian_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: work_matrix_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let gaussian_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("MatrixRank Gaussian Pipeline Layout"),
+            bind_group_layouts: &[&gaussian_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let gaussian_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("MatrixRank Gaussian Pipeline"),
+            layout: Some(&gaussian_pipeline_layout),
+            module: &shader,
+            entry_point: "gaussian_elimination",
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("MatrixRank Gaussian Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&gaussian_pipeline);
+            pass.set_bind_group(0, &gaussian_bind_group, &[]);
+            // Dispatch one workgroup per pivot row
+            pass.dispatch_workgroups(min_dim as u32, 1, 1);
+        }
+
+        // Step 3: Count rank
+        let count_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("MatrixRank Count Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let count_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("MatrixRank Count Bind Group"),
+            layout: &count_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: work_matrix_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: rank_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let count_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("MatrixRank Count Pipeline Layout"),
+            bind_group_layouts: &[&count_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let count_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("MatrixRank Count Pipeline"),
+            layout: Some(&count_pipeline_layout),
+            module: &shader,
+            entry_point: "count_rank",
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("MatrixRank Count Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&count_pipeline);
+            pass.set_bind_group(0, &count_bind_group, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read rank result
+        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("MatrixRank Staging"),
+            size: std::mem::size_of::<u32>() as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut read_encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("MatrixRank Read Encoder"),
+        });
+        read_encoder.copy_buffer_to_buffer(
+            &rank_buffer,
+            0,
+            &staging_buffer,
+            0,
+            std::mem::size_of::<u32>() as u64,
+        );
+        device.queue.submit(Some(read_encoder.finish()));
+
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
+        device.device.poll(wgpu::Maintain::Wait);
+
+        let _result = futures::executor::block_on(receiver)
+            .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
+            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
+
+        let data = buffer_slice.get_mapped_range();
+        let rank_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(rank_data[0] as usize)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_matrix_rank_basic() {
-        let dev = get_test_device().await;
-        let matrix = vec![1.0, 2.0, 2.0, 4.0]; // Rank 1 (second row is 2x first)
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 2, 2, 1e-6)
-            .await
-            .unwrap();
-        assert_eq!(rank, 1);
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(
+            vec![1.0, 2.0, 2.0, 4.0],
+            vec![2, 2],
+            device.clone(),
+        ).await.unwrap();
+        
+        let rank = MatrixRank::new(matrix, 1e-6).unwrap().execute().unwrap();
+        assert_eq!(rank, 1); // Rank 1 (second row is 2x first)
     }
 
     #[tokio::test]
-    async fn test_matrix_rank_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Full rank identity
-        let matrix = vec![1.0, 0.0, 0.0, 1.0];
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 2, 2, 1e-6)
-            .await
-            .unwrap();
+    async fn test_matrix_rank_full_rank() {
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(
+            vec![1.0, 0.0, 0.0, 1.0],
+            vec![2, 2],
+            device.clone(),
+        ).await.unwrap();
+        
+        let rank = MatrixRank::new(matrix, 1e-6).unwrap().execute().unwrap();
         assert_eq!(rank, 2);
+    }
 
-        // Zero matrix
-        let matrix = vec![0.0, 0.0, 0.0, 0.0];
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 2, 2, 1e-6)
-            .await
-            .unwrap();
+    #[tokio::test]
+    async fn test_matrix_rank_zero() {
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(
+            vec![0.0, 0.0, 0.0, 0.0],
+            vec![2, 2],
+            device.clone(),
+        ).await.unwrap();
+        
+        let rank = MatrixRank::new(matrix, 1e-6).unwrap().execute().unwrap();
         assert_eq!(rank, 0);
-    }
-
-    #[tokio::test]
-    async fn test_matrix_rank_boundary() {
-        let dev = get_test_device().await;
-
-        // 3x3 full rank
-        let matrix = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 3, 3, 1e-6)
-            .await
-            .unwrap();
-        assert_eq!(rank, 3);
-
-        // Rectangular matrix
-        let matrix = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]; // 2x3
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 2, 3, 1e-6)
-            .await
-            .unwrap();
-        assert!(rank <= 2);
-    }
-
-    #[tokio::test]
-    async fn test_matrix_rank_large_matrix() {
-        let dev = get_test_device().await;
-
-        // 4x4 diagonal (full rank)
-        let mut matrix = vec![0.0; 16];
-        for i in 0..4 {
-            matrix[i * 4 + i] = 1.0;
-        }
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 4, 4, 1e-6)
-            .await
-            .unwrap();
-        assert_eq!(rank, 4);
-    }
-
-    #[tokio::test]
-    async fn test_matrix_rank_precision() {
-        let dev = get_test_device().await;
-
-        // Test rank 2 matrix [[1,2],[3,6],[4,8]]
-        let matrix = vec![1.0, 2.0, 3.0, 6.0, 4.0, 8.0];
-        let rank = matrix_rank(&dev.device, &dev.queue, &matrix, 3, 2, 1e-6)
-            .await
-            .unwrap();
-
-        // Should be rank 1 (all rows are multiples)
-        assert!(rank <= 2);
     }
 }

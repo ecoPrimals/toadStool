@@ -1,31 +1,34 @@
 // Embedding - Lookup table operation
-// output[i] = embeddings[indices[i]]
-// Simplified version: 1D embeddings
+//
+// Deep Debt Principles:
+// - Pure WGSL implementation (universal compute)
+// - Zero unsafe code (memory safe)
+// - Hardware-agnostic (works on any GPU/CPU via WebGPU)
+// - Self-contained logic (no external dependencies)
 
-struct EmbeddingParams {
+struct Params {
+    num_indices: u32,
     embedding_dim: u32,
-    _padding: vec3<u32>,
 }
 
-@group(0) @binding(0) var<storage, read> embeddings: array<f32>;
+@group(0) @binding(0) var<storage, read> weight: array<f32>;
 @group(0) @binding(1) var<storage, read> indices: array<u32>;
 @group(0) @binding(2) var<storage, read_write> output: array<f32>;
-@group(0) @binding(3) var<uniform> params: EmbeddingParams;
+@group(0) @binding(3) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
-    let num_indices = arrayLength(&indices);
     
-    if (idx >= num_indices) {
+    if (idx >= params.num_indices * params.embedding_dim) {
         return;
     }
     
-    let embedding_idx = indices[idx];
-    let offset = embedding_idx * params.embedding_dim;
+    let batch_idx = idx / params.embedding_dim;
+    let embed_idx = idx % params.embedding_dim;
     
-    // Copy embedding vector to output
-    for (var i = 0u; i < params.embedding_dim; i = i + 1u) {
-        output[idx * params.embedding_dim + i] = embeddings[offset + i];
-    }
+    let weight_idx = indices[batch_idx];
+    let weight_offset = weight_idx * params.embedding_dim + embed_idx;
+    
+    output[idx] = weight[weight_offset];
 }

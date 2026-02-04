@@ -370,7 +370,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // Without momentum
     /// let (w1, _) = weights.sgd_step(&grads, 0.01, 0.0, 0.0, None)?;
-    /// 
+    ///
     /// // With momentum
     /// let (w1, v1) = weights.sgd_step(&grads, 0.01, 0.9, 0.0, None)?;
     /// let (w2, v2) = w1.sgd_step(&grads, 0.01, 0.9, 0.0, v1.as_ref())?;
@@ -418,9 +418,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (updated_weights, _) = weights
-            .sgd_step(&gradients, 0.01, 0.0, 0.0, None)
-            .unwrap();
+        let (updated_weights, _) = weights.sgd_step(&gradients, 0.01, 0.0, 0.0, None).unwrap();
         let result = updated_weights.to_vec().unwrap();
 
         // Weights should decrease (gradient descent)
@@ -442,9 +440,7 @@ mod tests {
             .unwrap();
 
         // First step with momentum
-        let (weights1, velocity1) = weights
-            .sgd_step(&gradients, 0.01, 0.9, 0.0, None)
-            .unwrap();
+        let (weights1, velocity1) = weights.sgd_step(&gradients, 0.01, 0.9, 0.0, None).unwrap();
 
         assert!(velocity1.is_some());
         let v = velocity1.unwrap();
@@ -540,9 +536,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (updated_weights, _) = weights
-            .sgd_step(&gradients, 0.01, 0.0, 0.0, None)
-            .unwrap();
+        let (updated_weights, _) = weights.sgd_step(&gradients, 0.01, 0.0, 0.0, None).unwrap();
 
         let result = updated_weights.to_vec().unwrap();
         assert_eq!(result.len(), size);
@@ -562,9 +556,7 @@ mod tests {
             .unwrap();
 
         // Step 1
-        let (weights1, v1) = weights
-            .sgd_step(&gradients, 0.1, 0.9, 0.0, None)
-            .unwrap();
+        let (weights1, v1) = weights.sgd_step(&gradients, 0.1, 0.9, 0.0, None).unwrap();
         let result1 = weights1.to_vec().unwrap();
 
         assert!(result1[0] < 10.0, "Expected descent, got {}", result1[0]);

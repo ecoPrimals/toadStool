@@ -1,23 +1,23 @@
-// Natural logarithm - element-wise
-// log(x)
+// Element-wise natural logarithm operation (ln(x))
+// Universal compute via WGSL - works on any hardware
+
+struct Params {
+    size: u32,
+}
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+@group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
     
-    if (idx >= arrayLength(&input)) {
+    if (idx >= params.size) {
         return;
     }
     
-    let x = input[idx];
-    
-    // Handle edge cases
-    if (x <= 0.0) {
-        output[idx] = -3.402823466e+38; // -FLT_MAX (effectively -inf)
-    } else {
-        output[idx] = log(x);
-    }
+    // Compute natural logarithm
+    // For x <= 0, log returns -inf or NaN (handled by GPU)
+    output[idx] = log(input[idx]);
 }

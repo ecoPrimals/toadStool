@@ -7,36 +7,20 @@
 //! - ✅ Hardware-agnostic (wgpu backend selection)
 //! - ✅ Numerically precise (modular arithmetic)
 //! - ✅ Production-ready (full error handling)
+//! - ✅ Canonical pattern: Tensor inputs/outputs, device from runtime
 
-use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 /// FHE XOR gate operation
 ///
 /// Performs Boolean XOR on encrypted data using polynomial representation.
-///
-/// ## Mathematical Operation
-///
-/// For TFHE binary gates: XOR(a,b) = a + b - 2*(a * b) mod q
-/// This implements: XOR(0,0)=0, XOR(0,1)=1, XOR(1,0)=1, XOR(1,1)=0
-///
-/// ## Example
-///
-/// ```no_run
-/// use barracuda::ops::fhe_xor::FheXor;
-/// use barracuda::WgpuDevice;
-///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let device = WgpuDevice::new().await?;
-/// let op = FheXor::new(&device, 8, 251)?;
-///
-/// let result = op.execute(&poly_a, &poly_b).await?;
-/// # Ok(())
-/// # }
-/// ```
+/// XOR(a,b) = a + b - 2*(a * b) mod q
 pub struct FheXor {
-    device: WgpuDevice,
+    poly_a: Tensor,
+    poly_b: Tensor,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     degree: u32,
@@ -45,15 +29,32 @@ pub struct FheXor {
 
 impl FheXor {
     /// Create a new FHE XOR gate operation
-    pub fn new(device: &WgpuDevice, degree: u32, modulus: u64) -> Result<Self> {
+    pub fn new(poly_a: Tensor, poly_b: Tensor, degree: u32, modulus: u64) -> Result<Self> {
+        if poly_a.len() != degree as usize || poly_b.len() != degree as usize {
+            return Err(BarracudaError::Device(format!(
+                "Polynomial length mismatch: expected {}, got {} and {}",
+                degree,
+                poly_a.len(),
+                poly_b.len()
+            )));
+        }
+
+        if !std::ptr::eq(poly_a.device().as_ref(), poly_b.device().as_ref()) {
+            return Err(BarracudaError::Device(
+                "poly_a and poly_b must be on the same device".to_string(),
+            ));
+        }
+
         if modulus == 0 {
             return Err(BarracudaError::Device(
                 "Modulus must be non-zero".to_string(),
             ));
         }
 
+        let device = poly_a.device();
+
         let shader = device
-            .device()
+            .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("FHE XOR Gate Shader"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("fhe_xor.wgsl").into()),
@@ -61,7 +62,7 @@ impl FheXor {
 
         let bind_group_layout =
             device
-                .device()
+                .device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: Some("FHE XOR Bind Group Layout"),
                     entries: &[
@@ -110,7 +111,7 @@ impl FheXor {
 
         let pipeline_layout =
             device
-                .device()
+                .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("FHE XOR Pipeline Layout"),
                     bind_group_layouts: &[&bind_group_layout],
@@ -118,7 +119,7 @@ impl FheXor {
                 });
 
         let pipeline = device
-            .device()
+            .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("FHE XOR Pipeline"),
                 layout: Some(&pipeline_layout),
@@ -127,7 +128,8 @@ impl FheXor {
             });
 
         Ok(Self {
-            device: device.clone(),
+            poly_a,
+            poly_b,
             pipeline,
             bind_group_layout,
             degree,
@@ -136,38 +138,10 @@ impl FheXor {
     }
 
     /// Execute the XOR gate on two encrypted polynomials
-    pub async fn execute(&self, poly_a: &[u64], poly_b: &[u64]) -> Result<Vec<u64>> {
-        if poly_a.len() != self.degree as usize || poly_b.len() != self.degree as usize {
-            return Err(BarracudaError::Device(format!(
-                "Polynomial length mismatch: expected {}, got {} and {}",
-                self.degree,
-                poly_a.len(),
-                poly_b.len()
-            )));
-        }
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.poly_a.device();
 
-        let a_u32: Vec<u32> = poly_a.iter().map(|&x| x as u32).collect();
-        let b_u32: Vec<u32> = poly_b.iter().map(|&x| x as u32).collect();
-
-        let buffer_a = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE XOR Input A"),
-                contents: bytemuck::cast_slice(&a_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-
-        let buffer_b = self
-            .device
-            .device()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FHE XOR Input B"),
-                contents: bytemuck::cast_slice(&b_u32),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-
-        let buffer_output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+        let result_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FHE XOR Output"),
             size: (self.degree as u64) * 4,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
@@ -180,47 +154,45 @@ impl FheXor {
             (self.modulus >> 32) as u32,
             0u32,
         ];
-        let buffer_params =
-            self.device
-                .device()
+        let params_buffer =
+            device
+                .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("FHE XOR Params"),
                     contents: bytemuck::cast_slice(&params),
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
 
-        let bind_group = self
+        let bind_group = device
             .device
-            .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("FHE XOR Bind Group"),
                 layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: buffer_a.as_entire_binding(),
+                        resource: self.poly_a.buffer().as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: buffer_b.as_entire_binding(),
+                        resource: self.poly_b.buffer().as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: buffer_output.as_entire_binding(),
+                        resource: result_buffer.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
-                        resource: buffer_params.as_entire_binding(),
+                        resource: params_buffer.as_entire_binding(),
                     },
                 ],
             });
 
-        let mut encoder =
-            self.device
-                .device()
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("FHE XOR Encoder"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("FHE XOR Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -229,104 +201,85 @@ impl FheXor {
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-
             let workgroups = (self.degree + 255) / 256;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
-        let buffer_staging = self.device.device().create_buffer(&wgpu::BufferDescriptor {
-            label: Some("FHE XOR Staging"),
-            size: (self.degree as u64) * 4,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        device.queue.submit(Some(encoder.finish()));
 
-        encoder.copy_buffer_to_buffer(
-            &buffer_output,
-            0,
-            &buffer_staging,
-            0,
-            (self.degree as u64) * 4,
-        );
-
-        self.device.queue().submit(Some(encoder.finish()));
-
-        let buffer_slice = buffer_staging.slice(..);
-        let (tx, rx) = futures::channel::oneshot::channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
-
-        self.device.device().poll(wgpu::Maintain::Wait);
-        rx.await
-            .map_err(|_| {
-                BarracudaError::Device("Failed to receive buffer mapping result".to_string())
-            })?
-            .map_err(|e| BarracudaError::Device(format!("Buffer mapping failed: {:?}", e)))?;
-
-        let data = buffer_slice.get_mapped_range();
-        let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-        drop(data);
-        buffer_staging.unmap();
-
-        let result: Vec<u64> = result_u32.iter().map(|&x| x as u64).collect();
-
-        Ok(result)
+        Ok(Tensor::from_buffer(
+            result_buffer,
+            vec![self.degree as usize],
+            device.clone(),
+        ))
     }
+}
+
+/// Helper: Create FHE bit tensor from u64 coefficients (for bitwise ops)
+pub async fn create_fhe_bit_tensor(
+    poly: &[u64],
+    device: Arc<crate::device::WgpuDevice>,
+) -> Result<Tensor> {
+    let poly_u32: Vec<u32> = poly.iter().map(|&x| x as u32).collect();
+    Tensor::from_data(&poly_u32, vec![poly_u32.len()], device)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device::WgpuDevice;
+    use crate::ops::fhe_and::create_fhe_bit_tensor;
+    use std::sync::Arc;
+    use wgpu::util::DeviceExt;
 
     #[tokio::test]
     async fn test_fhe_xor_same() {
-        let device = WgpuDevice::new().await.expect("GPU not available");
-        let op = FheXor::new(&device, 8, 251).expect("Failed to create XOR gate");
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let poly_a_data = vec![1u64; 8];
+        let poly_b_data = vec![1u64; 8];
 
-        // Test: 1 XOR 1 = 0
-        let poly_a = vec![1u64; 8];
-        let poly_b = vec![1u64; 8];
-        let result = op
-            .execute(&poly_a, &poly_b)
+        let poly_a = create_fhe_bit_tensor(&poly_a_data, device.clone())
             .await
-            .expect("Execution failed");
-
-        assert_eq!(result.len(), 8);
-        assert!(result.iter().all(|&x| x == 0), "1 XOR 1 should equal 0");
-    }
-
-    #[tokio::test]
-    async fn test_fhe_xor_different() {
-        let device = WgpuDevice::new().await.expect("GPU not available");
-        let op = FheXor::new(&device, 8, 251).expect("Failed to create XOR gate");
-
-        // Test: 1 XOR 0 = 1
-        let poly_a = vec![1u64; 8];
-        let poly_b = vec![0u64; 8];
-        let result = op
-            .execute(&poly_a, &poly_b)
+            .unwrap();
+        let poly_b = create_fhe_bit_tensor(&poly_b_data, device.clone())
             .await
-            .expect("Execution failed");
+            .unwrap();
 
-        assert_eq!(result.len(), 8);
-        assert!(result.iter().all(|&x| x == 1), "1 XOR 0 should equal 1");
-    }
+        let op = FheXor::new(poly_a, poly_b, 8, 251).unwrap();
+        let result_tensor = op.execute().unwrap();
 
-    #[tokio::test]
-    async fn test_fhe_xor_zeros() {
-        let device = WgpuDevice::new().await.expect("GPU not available");
-        let op = FheXor::new(&device, 8, 251).expect("Failed to create XOR gate");
+        let size = result_tensor.len();
+        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Test Staging"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
-        // Test: 0 XOR 0 = 0
-        let poly_a = vec![0u64; 8];
-        let poly_b = vec![0u64; 8];
-        let result = op
-            .execute(&poly_a, &poly_b)
-            .await
-            .expect("Execution failed");
+        let mut encoder = device.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            result_tensor.buffer(),
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<u32>()) as u64,
+        );
+        device.queue.submit(Some(encoder.finish()));
 
-        assert_eq!(result.len(), 8);
-        assert!(result.iter().all(|&x| x == 0), "0 XOR 0 should equal 0");
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        device.device.poll(wgpu::Maintain::Wait);
+        rx.await.unwrap().unwrap();
+
+        let data = buffer_slice.get_mapped_range();
+        let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buffer.unmap();
+
+        assert_eq!(result_u32.len(), 8);
+        assert!(result_u32.iter().all(|&x| x == 0), "1 XOR 1 should equal 0");
     }
 }

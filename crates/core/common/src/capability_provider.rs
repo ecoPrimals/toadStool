@@ -352,9 +352,8 @@ mod tests {
     fn test_capability_error_variants() {
         use crate::primal_identity::CryptoCapability;
 
-        let err1 = CapabilityError::NoProviderFound(Capability::Crypto(
-            CryptoCapability::Encryption,
-        ));
+        let err1 =
+            CapabilityError::NoProviderFound(Capability::Crypto(CryptoCapability::Encryption));
         assert!(err1.to_string().contains("No provider found"));
 
         let err2 = CapabilityError::ProviderUnreachable("test-service".to_string());

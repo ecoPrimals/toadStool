@@ -91,64 +91,136 @@ pub fn get_family_id() -> String {
 
 /// Get BearDog unix socket path (biomeOS standard)
 ///
-/// **Migration Path**: This function is deprecated for direct use, but still used internally
-/// by `get_socket_path_for_service("beardog")` for backward compatibility.
+/// **DEPRECATED**: Use `discover_crypto_socket()` for capability-based discovery.
 ///
-/// New code should use capability-based discovery instead of hardcoding service names.
+/// This function violates Deep Debt principles by hardcoding the "beardog" primal name.
+/// New code should discover crypto services by capability, not by hardcoded name.
+///
+/// # Migration Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_crypto_socket;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // OLD (hardcoded)
+/// // let socket = get_beardog_socket_path();
+///
+/// // NEW (capability-based)
+/// let socket = discover_crypto_socket().await?;
+/// # Ok(())
+/// # }
+/// ```
 ///
 /// Priority:
 /// 1. BEARDOG_SOCKET environment variable (absolute path)
 /// 2. biomeOS standard: `{runtime_dir}/biomeos/beardog.sock`
-///
-/// **biomeOS Socket Standard**: Uses biomeos subdirectory for all primal sockets
-#[allow(deprecated)]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use discover_crypto_socket() for capability-based discovery. See docs for migration."
+)]
 pub fn get_beardog_socket_path() -> PathBuf {
-    // Priority 1: Direct socket path (explicit override)
+    // Try new capability discovery in sync context
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        if let Ok(path) = handle.block_on(discover_crypto_socket()) {
+            return path;
+        }
+    }
+
+    // Fallback to old behavior for backward compatibility
     if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
         return PathBuf::from(socket);
     }
 
-    // Priority 2: biomeOS standard path
     get_biomeos_dir().join("beardog.sock")
 }
 
 /// Get Songbird unix socket path (biomeOS standard)
 ///
+/// **DEPRECATED**: Use `discover_coordination_socket()` for capability-based discovery.
+///
+/// This function violates Deep Debt principles by hardcoding the "songbird" primal name.
+/// New code should discover coordination services by capability, not by hardcoded name.
+///
+/// # Migration Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_coordination_socket;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // OLD (hardcoded)
+/// // let socket = get_songbird_socket_path();
+///
+/// // NEW (capability-based)
+/// let socket = discover_coordination_socket().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
 /// Priority:
 /// 1. SONGBIRD_SOCKET environment variable (absolute path)
 /// 2. biomeOS standard: `{runtime_dir}/biomeos/songbird.sock`
-///
-/// **biomeOS Socket Standard**: Validated with Tower Atomic (BearDog + Songbird)
+#[deprecated(
+    since = "0.2.0",
+    note = "Use discover_coordination_socket() for capability-based discovery. See docs for migration."
+)]
 pub fn get_songbird_socket_path() -> PathBuf {
-    // Priority 1: Direct socket path (explicit override)
+    // Try new capability discovery in sync context
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        if let Ok(path) = handle.block_on(discover_coordination_socket()) {
+            return path;
+        }
+    }
+
+    // Fallback to old behavior for backward compatibility
     if let Ok(socket) = std::env::var("SONGBIRD_SOCKET") {
         return PathBuf::from(socket);
     }
 
-    // Priority 2: biomeOS standard path
     get_biomeos_dir().join("songbird.sock")
 }
 
 /// Get NestGate unix socket path (biomeOS standard)
 ///
-/// **Migration Path**: This function is deprecated for direct use, but still used internally
-/// by `get_socket_path_for_service("nestgate")` for backward compatibility.
+/// **DEPRECATED**: Use `discover_storage_socket()` for capability-based discovery.
 ///
-/// This function violates TRUE PRIMAL self-knowledge principle by hardcoding "nestgate".
+/// This function violates Deep Debt principles by hardcoding the "nestgate" primal name.
+/// New code should discover storage services by capability, not by hardcoded name.
+///
+/// # Migration Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_storage_socket;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // OLD (hardcoded)
+/// // let socket = get_nestgate_socket_path();
+///
+/// // NEW (capability-based)
+/// let socket = discover_storage_socket().await?;
+/// # Ok(())
+/// # }
+/// ```
 ///
 /// Priority:
 /// 1. NESTGATE_SOCKET environment variable (absolute path)
 /// 2. biomeOS standard: `{runtime_dir}/biomeos/nestgate.sock`
-///
-/// **biomeOS Socket Standard**: NestGate implemented (A++ 99.7/100)
-#[allow(deprecated)]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use discover_storage_socket() for capability-based discovery. See docs for migration."
+)]
 pub fn get_nestgate_socket_path() -> PathBuf {
-    // Priority 1: Direct socket path (explicit override)
+    // Try new capability discovery in sync context
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        if let Ok(path) = handle.block_on(discover_storage_socket()) {
+            return path;
+        }
+    }
+
+    // Fallback to old behavior for backward compatibility
     if let Ok(socket) = std::env::var("NESTGATE_SOCKET") {
         return PathBuf::from(socket);
     }
 
-    // Priority 2: biomeOS standard path
     get_biomeos_dir().join("nestgate.sock")
 }
 
@@ -256,6 +328,199 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
             get_biomeos_dir().join(format!("{}.sock", service_name.to_lowercase()))
         }
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEEP DEBT EVOLUTION: Capability-Based Discovery (Feb 2026)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// NEW: Discover services by capability, not by hardcoded name.
+// This eliminates the Deep Debt violation where primals have knowledge of
+// other specific primals.
+//
+// Principle: Self-knowledge only. Discover others at runtime via capabilities.
+
+/// Error type for socket discovery operations
+#[derive(Debug, thiserror::Error)]
+pub enum SocketDiscoveryError {
+    #[error("Discovery service failed: {0}")]
+    DiscoveryFailed(String),
+
+    #[error("No Unix socket found for capability: {0:?}")]
+    NoSocketFound(String),
+
+    #[error("Invalid socket endpoint: {0}")]
+    InvalidEndpoint(String),
+}
+
+/// Discover Unix socket path for a service providing the requested capability
+///
+/// **Deep Debt Compliant**: Discovers by capability, not by name.
+/// Works with ANY service providing the requested capability.
+///
+/// This function queries the capability discovery system and returns the Unix
+/// socket path for the first service that provides the requested capability.
+///
+/// # Arguments
+///
+/// * `capability` - The capability to search for (e.g., `Capability::Crypto(CryptoCapability::Encryption)`)
+///
+/// # Returns
+///
+/// * `Ok(PathBuf)` - Path to the Unix socket for a service providing this capability
+/// * `Err(SocketDiscoveryError)` - If no service found or discovery fails
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_socket_for_capability;
+/// use toadstool_common::primal_identity::{Capability, CryptoCapability};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Discover ANY crypto service (beardog, HSM, cloud KMS, etc.)
+/// let socket = discover_socket_for_capability(
+///     Capability::Crypto(CryptoCapability::Encryption)
+/// ).await?;
+/// println!("Found crypto service at: {}", socket.display());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Deep Debt Principles
+///
+/// - **Self-knowledge only**: No hardcoded primal names
+/// - **Runtime discovery**: Services discovered at runtime
+/// - **Capability-based**: Match by what they do, not who they are
+/// - **Vendor agnostic**: Swap implementations without code changes
+pub async fn discover_socket_for_capability(
+    capability: crate::primal_identity::Capability,
+) -> Result<PathBuf, SocketDiscoveryError> {
+    use crate::capability_discovery::CapabilityDiscovery;
+
+    // Try capability-based discovery first
+    let discovery = CapabilityDiscovery::new()
+        .map_err(|e| SocketDiscoveryError::DiscoveryFailed(e.to_string()))?;
+
+    let services = discovery
+        .find_by_capability(capability.clone())
+        .await
+        .map_err(|e| SocketDiscoveryError::DiscoveryFailed(e.to_string()))?;
+
+    // Find first service with Unix socket endpoint
+    for service in services {
+        for endpoint in &service.endpoints {
+            // Check for Unix socket protocol
+            if endpoint.protocol == "unix" {
+                // Extract path from endpoint metadata
+                if let Some(path_str) = endpoint.metadata.get("path") {
+                    return Ok(PathBuf::from(path_str));
+                }
+                // Or construct from address if it's a path
+                if endpoint.address.starts_with('/') {
+                    return Ok(PathBuf::from(&endpoint.address));
+                }
+            }
+        }
+    }
+
+    // Fallback: Try biomeOS standard path based on capability
+    // This maintains backward compatibility during transition
+    let fallback_path = capability_to_biomeos_fallback(&capability)?;
+    if fallback_path.exists() {
+        tracing::debug!(
+            "Using fallback path for capability {:?}: {}",
+            capability,
+            fallback_path.display()
+        );
+        return Ok(fallback_path);
+    }
+
+    Err(SocketDiscoveryError::NoSocketFound(format!(
+        "{capability:?}"
+    )))
+}
+
+/// Convenience: Discover crypto service socket
+///
+/// Discovers ANY service providing encryption capability (beardog, HSM, KMS, etc.)
+///
+/// **Replaces**: `get_beardog_socket_path()` (Deep Debt violation)
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_crypto_socket;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let socket = discover_crypto_socket().await?;
+/// // Use socket for crypto operations
+/// # Ok(())
+/// # }
+/// ```
+pub async fn discover_crypto_socket() -> Result<PathBuf, SocketDiscoveryError> {
+    use crate::primal_identity::{Capability, CryptoCapability};
+    discover_socket_for_capability(Capability::Crypto(CryptoCapability::Encryption)).await
+}
+
+/// Convenience: Discover storage service socket
+///
+/// Discovers ANY service providing object storage capability (nestgate, S3, etc.)
+///
+/// **Replaces**: `get_nestgate_socket_path()` (Deep Debt violation)
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use toadstool_common::primal_sockets::discover_storage_socket;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let socket = discover_storage_socket().await?;
+/// // Use socket for storage operations
+/// # Ok(())
+/// # }
+/// ```
+pub async fn discover_storage_socket() -> Result<PathBuf, SocketDiscoveryError> {
+    use crate::primal_identity::{Capability, StorageCapability};
+    discover_socket_for_capability(Capability::Storage(StorageCapability::ObjectStorage)).await
+}
+
+/// Convenience: Discover coordination service socket
+///
+/// Discovers ANY service providing coordination capability (songbird, k8s, consul, etc.)
+///
+/// **Replaces**: `get_songbird_socket_path()` (Deep Debt violation)
+pub async fn discover_coordination_socket() -> Result<PathBuf, SocketDiscoveryError> {
+    use crate::primal_identity::{Capability, CoordinationCapability};
+    discover_socket_for_capability(Capability::Coordination(
+        CoordinationCapability::ServiceDiscovery,
+    ))
+    .await
+}
+
+/// Helper: Map capability to biomeOS standard path (fallback during transition)
+///
+/// This is a transition helper that will be removed once all services
+/// properly register their capabilities with the discovery system.
+fn capability_to_biomeos_fallback(
+    capability: &crate::primal_identity::Capability,
+) -> Result<PathBuf, SocketDiscoveryError> {
+    use crate::primal_identity::Capability;
+
+    // Map capabilities to service names for biomeOS standard paths
+    // This is ONLY a fallback - eventually all services will register properly
+    let service_name = match capability {
+        Capability::Crypto(_) => "beardog",
+        Capability::Storage(_) => "nestgate",
+        Capability::Coordination(_) => "songbird",
+        Capability::Compute(_) => "toadstool",
+        _ => {
+            return Err(SocketDiscoveryError::NoSocketFound(format!(
+                "No fallback path for capability: {capability:?}"
+            )))
+        }
+    };
+
+    Ok(get_socket_path_for_service(service_name))
 }
 
 #[cfg(test)]

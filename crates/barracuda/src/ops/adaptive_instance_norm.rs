@@ -2,51 +2,255 @@
 //!
 //! Transfers style from one image to another.
 //! Used in neural style transfer, GANs.
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn adaptive_instance_norm(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    content: &[f32],
-    style_mean: &[f32], // [channels]
-    style_std: &[f32],  // [channels]
-    batch_size: usize,
-    channels: usize,
-    height: usize,
-    width: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let spatial_size = height * width;
-    let mut output = vec![0.0f32; content.len()];
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    for b in 0..batch_size {
-        for c in 0..channels {
-            // Compute content statistics
-            let mut content_mean = 0.0;
-            let mut content_var = 0.0;
+/// AdaptiveInstanceNorm operation
+pub struct AdaptiveInstanceNorm {
+    content: Tensor,
+    style_mean: Tensor,
+    style_std: Tensor,
+}
 
-            for s in 0..spatial_size {
-                let idx = b * channels * spatial_size + c * spatial_size + s;
-                content_mean += content[idx];
-            }
-            content_mean /= spatial_size as f32;
-
-            for s in 0..spatial_size {
-                let idx = b * channels * spatial_size + c * spatial_size + s;
-                let diff = content[idx] - content_mean;
-                content_var += diff * diff;
-            }
-            content_var /= spatial_size as f32;
-            let content_std = content_var.sqrt();
-
-            // Apply AdaIN: normalize content, then scale/shift to style
-            for s in 0..spatial_size {
-                let idx = b * channels * spatial_size + c * spatial_size + s;
-                let normalized = (content[idx] - content_mean) / (content_std + 1e-5);
-                output[idx] = normalized * style_std[c] + style_mean[c];
-            }
+impl AdaptiveInstanceNorm {
+    /// Create a new adaptive instance norm operation
+    pub fn new(content: Tensor, style_mean: Tensor, style_std: Tensor) -> Result<Self> {
+        let content_shape = content.shape();
+        let style_mean_shape = style_mean.shape();
+        let style_std_shape = style_std.shape();
+        
+        if content_shape.len() != 4 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "AdaptiveInstanceNorm",
+                format!("Content must be 4D (NCHW), got {}D", content_shape.len()),
+            ));
         }
+        
+        if style_mean_shape.len() != 1 || style_std_shape.len() != 1 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "AdaptiveInstanceNorm",
+                "Style mean and std must be 1D tensors",
+            ));
+        }
+        
+        if style_mean_shape[0] != content_shape[1] || style_std_shape[0] != content_shape[1] {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "AdaptiveInstanceNorm",
+                "Style statistics must match number of channels",
+            ));
+        }
+        
+        Ok(Self {
+            content,
+            style_mean,
+            style_std,
+        })
     }
 
-    Ok(output)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/adaptive_instance_norm.wgsl")
+    }
+
+    /// Execute the adaptive instance norm operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.content.device();
+        let shape = self.content.shape();
+        
+        let batch = shape[0];
+        let channels = shape[1];
+        let height = shape[2];
+        let width = shape[3];
+        let spatial_size = height * width;
+        let output_size = batch * channels * spatial_size;
+
+        // Create buffers
+        let content_buffer = self.content.buffer();
+        let style_mean_buffer = self.style_mean.buffer();
+        let style_std_buffer = self.style_std.buffer();
+
+        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("AdaptiveInstanceNorm Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            batch: u32,
+            channels: u32,
+            height: u32,
+            width: u32,
+            spatial_size: u32,
+        }
+
+        let params = Params {
+            batch: batch as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            spatial_size: spatial_size as u32,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("AdaptiveInstanceNorm Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("AdaptiveInstanceNorm Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("AdaptiveInstanceNorm Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: content_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: style_mean_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: style_std_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("AdaptiveInstanceNorm Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("AdaptiveInstanceNorm Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("AdaptiveInstanceNorm Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("AdaptiveInstanceNorm Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("AdaptiveInstanceNorm Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups = (output_size as u32 + 255) / 256;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+
+        Ok(Tensor::new(
+            output_data,
+            vec![batch, channels, height, width],
+            device.clone(),
+        ))
+    }
+}
+
+impl Tensor {
+    /// Apply adaptive instance normalization (AdaIN) for style transfer
+    ///
+    /// # Arguments
+    ///
+    /// * `style_mean` - Style mean tensor [C]
+    /// * `style_std` - Style std tensor [C]
+    pub fn adaptive_instance_norm(self, style_mean: Tensor, style_std: Tensor) -> Result<Self> {
+        AdaptiveInstanceNorm::new(self, style_mean, style_std)?.execute()
+    }
 }
 
 #[cfg(test)]

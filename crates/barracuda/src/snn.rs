@@ -293,7 +293,11 @@ impl SpikingNetwork {
             } => {
                 if input.len() != *size {
                     return Err(BarracudaError::InvalidInput {
-                        message: format!("LIF input size mismatch: expected {}, got {}", size, input.len()),
+                        message: format!(
+                            "LIF input size mismatch: expected {}, got {}",
+                            size,
+                            input.len()
+                        ),
                     });
                 }
 
@@ -565,11 +569,7 @@ mod tests {
             .build();
 
         // Process sequence
-        let sequence = vec![
-            vec![1.5; 10],
-            vec![1.5; 10],
-            vec![0.0; 10],
-        ];
+        let sequence = vec![vec![1.5; 10], vec![1.5; 10], vec![0.0; 10]];
 
         let outputs = network.process_sequence(&sequence).unwrap();
         assert_eq!(outputs.len(), 3);

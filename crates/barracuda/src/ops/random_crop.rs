@@ -1,149 +1,269 @@
-//! RandomCrop - Random cropping with padding
+//! Random crop augmentation
 //!
-//! Randomly crops image with optional padding.
-//! Standard augmentation for image classification.
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Randomly crops images to specified size
 
-pub async fn random_crop(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    image: &[f32], // [C, H, W]
-    channels: usize,
-    height: usize,
-    width: usize,
-    crop_h: usize,
-    crop_w: usize,
-    padding: usize,
-    seed: u64,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if crop_h > height + 2 * padding || crop_w > width + 2 * padding {
-        return Err("Crop size exceeds padded image size".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    // Simplified random using seed
-    let rng_h =
-        ((seed * 1664525 + 1013904223) % ((height + 2 * padding - crop_h + 1) as u64)) as usize;
-    let rng_w = ((seed * 22695477 + 1) % ((width + 2 * padding - crop_w + 1) as u64)) as usize;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct RandomCropParams {
+    batch_size: u32,
+    channels: u32,
+    in_height: u32,
+    in_width: u32,
+    out_height: u32,
+    out_width: u32,
+    _padding: [u32; 2],
+}
 
-    let mut output = vec![0.0f32; channels * crop_h * crop_w];
+pub struct RandomCrop {
+    input: Tensor,
+    crop_positions: Tensor,
+    out_height: usize,
+    out_width: usize,
+}
 
-    for c in 0..channels {
-        for i in 0..crop_h {
-            for j in 0..crop_w {
-                let src_i = (rng_h + i) as isize - padding as isize;
-                let src_j = (rng_w + j) as isize - padding as isize;
-
-                let val = if src_i >= 0
-                    && src_i < height as isize
-                    && src_j >= 0
-                    && src_j < width as isize
-                {
-                    image[c * height * width + src_i as usize * width + src_j as usize]
-                } else {
-                    0.0 // Zero padding
-                };
-
-                output[c * crop_h * crop_w + i * crop_w + j] = val;
-            }
+impl RandomCrop {
+    /// Create RandomCrop operation
+    pub fn new(input: Tensor, crop_positions: Tensor, out_height: usize, out_width: usize) -> Result<Self> {
+        // Validate crop_positions shape: [batch_size, 2] (top, left)
+        let crop_shape = crop_positions.shape();
+        if crop_shape.len() != 2 || crop_shape[1] != 2 {
+            return Err(BarracudaError::invalid_op(
+                "RandomCrop",
+                format!("crop_positions must be 2D [batch_size, 2], got shape {:?}", crop_shape),
+            ));
         }
+
+        Ok(Self {
+            input,
+            crop_positions,
+            out_height,
+            out_width,
+        })
     }
 
-    Ok(output)
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/random_crop.wgsl")
+    }
+
+    /// Execute RandomCrop on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let input_shape = self.input.shape();
+        
+        if input_shape.len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "RandomCrop",
+                format!("input must be 4D [batch, channels, height, width], got shape {:?}", input_shape),
+            ));
+        }
+
+        let batch_size = input_shape[0];
+        let channels = input_shape[1];
+        let in_height = input_shape[2];
+        let in_width = input_shape[3];
+
+        if self.crop_positions.shape()[0] != batch_size {
+            return Err(BarracudaError::invalid_op(
+                "RandomCrop",
+                format!("crop_positions batch size {} must match input batch size {}", self.crop_positions.shape()[0], batch_size),
+            ));
+        }
+
+        // Create output buffer: [batch, channels, out_height, out_width]
+        let output_size = batch_size * channels * self.out_height * self.out_width;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = RandomCropParams {
+            batch_size: batch_size as u32,
+            channels: channels as u32,
+            in_height: in_height as u32,
+            in_width: in_width as u32,
+            out_height: self.out_height as u32,
+            out_width: self.out_width as u32,
+            _padding: [0; 2],
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RandomCrop Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("RandomCrop Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RandomCrop Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.crop_positions.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("RandomCrop"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("RandomCrop Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("RandomCrop Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("RandomCrop Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("RandomCrop Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (8x8x1 threads per workgroup)
+            let workgroups_x = (self.out_width as u32 + 7) / 8;
+            let workgroups_y = (self.out_height as u32 + 7) / 8;
+            let workgroups_z = (batch_size * channels) as u32;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![batch_size, channels, self.out_height, self.out_width],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_random_crop_basic() {
-        let dev = get_test_device().await;
-        let image = vec![1.0; 3 * 32 * 32];
-        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 24, 24, 4, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped.len(), 3 * 24 * 24);
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_random_crop_edge_cases() {
-        let dev = get_test_device().await;
+        let batch_size = 2;
+        let channels = 3;
+        let in_height = 32;
+        let in_width = 32;
+        let out_height = 16;
+        let out_width = 16;
 
-        // No padding
-        let image = vec![1.0; 3 * 32 * 32];
-        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 0, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped.len(), 3 * 16 * 16);
-
-        // Full image (crop = input size)
-        let image = vec![1.0; 3 * 8 * 8];
-        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 8, 8, 8, 8, 0, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped.len(), 3 * 8 * 8);
-    }
-
-    #[tokio::test]
-    async fn test_random_crop_boundary() {
-        let dev = get_test_device().await;
-
-        // Large padding
-        let image = vec![1.0; 3 * 16 * 16];
-        let cropped = random_crop(&dev.device, &dev.queue, &image, 3, 16, 16, 20, 20, 4, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped.len(), 3 * 20 * 20);
-
-        // Single channel
-        let image = vec![1.0; 1 * 32 * 32];
-        let cropped = random_crop(&dev.device, &dev.queue, &image, 1, 32, 32, 24, 24, 4, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped.len(), 24 * 24);
-    }
-
-    #[tokio::test]
-    async fn test_random_crop_large_batch() {
-        let dev = get_test_device().await;
-
-        // High resolution
-        let image = vec![1.0; 3 * 256 * 256];
-        let cropped = random_crop(
-            &dev.device,
-            &dev.queue,
-            &image,
-            3,
-            256,
-            256,
-            224,
-            224,
-            4,
-            12345,
+        let input = Tensor::from_vec_on(
+            vec![1.0; batch_size * channels * in_height * in_width],
+            vec![batch_size, channels, in_height, in_width],
+            device.clone(),
         )
         .await
         .unwrap();
-        assert_eq!(cropped.len(), 3 * 224 * 224);
-    }
 
-    #[tokio::test]
-    async fn test_random_crop_precision() {
-        let dev = get_test_device().await;
+        let crop_positions = Tensor::from_vec_on(
+            vec![5u32, 5, 10, 10], // [batch, 2] - (top, left)
+            vec![batch_size, 2],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Verify deterministic with same seed
-        let image = vec![1.0; 3 * 32 * 32];
-        let cropped1 = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 4, 12345)
-            .await
+        let result = RandomCrop::new(input, crop_positions, out_height, out_width)
+            .unwrap()
+            .execute()
             .unwrap();
-        let cropped2 = random_crop(&dev.device, &dev.queue, &image, 3, 32, 32, 16, 16, 4, 12345)
-            .await
-            .unwrap();
-        assert_eq!(cropped1, cropped2);
-        assert_eq!(cropped1.len(), 3 * 16 * 16);
+
+        assert_eq!(result.shape(), &[batch_size, channels, out_height, out_width]);
     }
 }

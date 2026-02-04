@@ -1,48 +1,265 @@
 //! IoULoss - Intersection over Union loss
 //!
+//! **Canonical BarraCUDA Pattern**: Struct with new/execute
+//!
 //! Direct optimization of IoU metric.
 //! Used in segmentation and object detection.
 
-pub async fn iou_loss(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    predictions: &[f32],
-    targets: &[f32],
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// IoU Loss operation
+pub struct IoULoss {
+    predictions: Tensor,
+    targets: Tensor,
     smooth: f32,
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if predictions.len() != targets.len() {
-        return Err("Predictions and targets must have same length".into());
+}
+
+impl IoULoss {
+    /// Create a new IoU loss operation
+    pub fn new(predictions: Tensor, targets: Tensor, smooth: f32) -> Result<Self> {
+        // Validate shapes match
+        if predictions.shape() != targets.shape() {
+            return Err(BarracudaError::shape_mismatch(
+                predictions.shape().to_vec(),
+                targets.shape().to_vec(),
+            ));
+        }
+
+        Ok(Self {
+            predictions,
+            targets,
+            smooth,
+        })
     }
 
-    let mut intersection = 0.0;
-    let mut union = 0.0;
-
-    for i in 0..predictions.len() {
-        intersection += predictions[i] * targets[i];
-        union += predictions[i] + targets[i] - predictions[i] * targets[i];
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/iou_loss.wgsl")
     }
 
-    // IoU = |A ∩ B| / |A ∪ B|
-    let iou = (intersection + smooth) / (union + smooth);
+    /// Execute the IoU loss operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.predictions.device();
+        let size = self.predictions.len();
 
-    // IoU loss = 1 - IoU
-    Ok(1.0 - iou)
+        // Create reduction buffers
+        let intersection_buffer = device.create_buffer_f32(1)?;
+        let union_buffer = device.create_buffer_f32(1)?;
+        let output_buffer = device.create_buffer_f32(1)?;
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            size: u32,
+            smooth: f32,
+            _pad1: u32,
+            _pad2: u32,
+        }
+
+        let params = Params {
+            size: size as u32,
+            smooth: self.smooth,
+            _pad1: 0,
+            _pad2: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("IoU Loss Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("IoU Loss Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("IoU Loss Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("IoU Loss Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.predictions.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.targets.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: intersection_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: union_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipelines
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("IoU Loss Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        let compute_pipeline_pass1 = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("IoU Loss Pipeline Pass1"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            },
+        );
+
+        let compute_pipeline_pass2 = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("IoU Loss Pipeline Pass2"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "compute_loss",
+            },
+        );
+
+        // Execute compute shader (two passes)
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("IoU Loss Encoder"),
+            },
+        );
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("IoU Loss Pass"),
+                timestamp_writes: None,
+            });
+
+            // Pass 1: Compute intersection and union
+            compute_pass.set_pipeline(&compute_pipeline_pass1);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+
+            // Pass 2: Compute final loss
+            compute_pass.set_pipeline(&compute_pipeline_pass2);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(1, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Output shape: scalar [1]
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![1],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_iou_loss() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let predictions = vec![0.8; 500];
-        let targets = vec![1.0; 500];
-        let loss = iou_loss(&dev.device, &dev.queue, &predictions, &targets, 1e-6)
+        let device = get_test_device().await;
+        let predictions = Tensor::from_vec_on(vec![0.8; 500], vec![500], device.clone())
             .await
             .unwrap();
-        assert!(loss > 0.0 && loss < 1.0);
+        let targets = Tensor::from_vec_on(vec![1.0; 500], vec![500], device.clone())
+            .await
+            .unwrap();
+        let loss = IoULoss::new(predictions, targets, 1e-6)
+            .unwrap()
+            .execute()
+            .unwrap();
+        let result = loss.to_vec().unwrap();
+        assert_eq!(result.len(), 1);
+        assert!(result[0] > 0.0 && result[0] < 1.0);
     }
 }

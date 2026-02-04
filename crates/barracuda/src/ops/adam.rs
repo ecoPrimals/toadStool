@@ -176,7 +176,7 @@ impl Adam {
 
         // Create writable buffers (shader does in-place updates)
         let zeros = vec![0.0f32; size];
-        
+
         // Copy params to writable buffer
         let params_data = self.params.to_vec()?;
         let params_buffer = device
@@ -215,13 +215,14 @@ impl Adam {
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             });
 
-        let adam_params_buffer = device
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("adam_params"),
-                contents: bytemuck::cast_slice(&[adam_params]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let adam_params_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("adam_params"),
+                    contents: bytemuck::cast_slice(&[adam_params]),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         let shader = device
             .device
@@ -362,11 +363,9 @@ impl Adam {
         let updated_params =
             Tensor::from_buffer(params_buffer, self.params.shape().to_vec(), device.clone());
 
-        let updated_m =
-            Tensor::from_buffer(m_buffer, self.params.shape().to_vec(), device.clone());
+        let updated_m = Tensor::from_buffer(m_buffer, self.params.shape().to_vec(), device.clone());
 
-        let updated_v =
-            Tensor::from_buffer(v_buffer, self.params.shape().to_vec(), device.clone());
+        let updated_v = Tensor::from_buffer(v_buffer, self.params.shape().to_vec(), device.clone());
 
         Ok((updated_params, updated_m, updated_v))
     }
@@ -397,7 +396,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // First step
     /// let (w1, m1, v1) = weights.adam_step(&grads, 0.001, 0.9, 0.999, 1, None, None)?;
-    /// 
+    ///
     /// // Subsequent steps
     /// let (w2, m2, v2) = w1.adam_step(&grads, 0.001, 0.9, 0.999, 2, Some(&m1), Some(&v1))?;
     /// ```

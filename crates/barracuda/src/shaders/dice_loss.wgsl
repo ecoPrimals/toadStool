@@ -1,89 +1,81 @@
-// Dice Loss (F1 Loss)
-// Measures overlap between predicted and target segmentation masks
+// dice_loss.wgsl - Dice coefficient loss for segmentation
 //
-// DiceLoss = 1 - (2 * |X ∩ Y|) / (|X| + |Y|)
-// where X is prediction, Y is target
+// Dice Loss = 1 - (2 * intersection + smooth) / (sum_pred + sum_target + smooth)
 //
-// Equivalent to F1 score loss. Range: [0, 1]
-// 0 = perfect overlap, 1 = no overlap
-//
-// Used in: Medical image segmentation, semantic segmentation
-// Benefits: Handles class imbalance, directly optimizes IoU-like metric
-
-@group(0) @binding(0) var<storage, read> predictions: array<f32>;
-@group(0) @binding(1) var<storage, read> targets: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<f32>;
-@group(0) @binding(3) var<uniform> params: Params;
+// Used extensively in medical image segmentation to handle class imbalance
+// Range: [0, 1] where 0 = perfect overlap, 1 = no overlap
 
 struct Params {
-    smoothing: f32,          // Smoothing factor to avoid division by zero, typically 1.0
-    reduction_mode: u32,  // 0=mean, 1=sum, 2=none
-    batch_size: u32,
-    elements_per_sample: u32,
+    size: u32,
+    smooth: f32,         // Smoothing factor (typically 1.0) to avoid division by zero
+    _padding: vec2<u32>,
 }
 
-// Shared memory for reduction within workgroup
+@group(0) @binding(0) var<storage, read> predicted: array<f32>;  // Predicted probabilities [0, 1]
+@group(0) @binding(1) var<storage, read> target: array<f32>;     // Ground truth [0, 1]
+@group(0) @binding(2) var<storage, read_write> output: array<f32>; // Scalar loss value
+@group(0) @binding(3) var<uniform> params: Params;
+
+// Workgroup shared memory for reduction
 var<workgroup> shared_intersection: array<f32, 256>;
 var<workgroup> shared_pred_sum: array<f32, 256>;
 var<workgroup> shared_target_sum: array<f32, 256>;
 
 @compute @workgroup_size(256)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>,
-        @builtin(local_invocation_id) local_id: vec3<u32>,
-        @builtin(workgroup_id) workgroup_id: vec3<u32>) {
-    
-    let batch_idx = workgroup_id.x;
+fn main(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(workgroup_id) workgroup_id: vec3<u32>
+) {
+    let idx = global_id.x;
     let local_idx = local_id.x;
     
-    if batch_idx >= params.batch_size {
-        return;
+    // Compute local contributions
+    var local_intersection: f32 = 0.0;
+    var local_pred_sum: f32 = 0.0;
+    var local_target_sum: f32 = 0.0;
+    
+    if (idx < params.size) {
+        let pred = predicted[idx];
+        let targ = target[idx];
+        
+        local_intersection = pred * targ;
+        local_pred_sum = pred;
+        local_target_sum = targ;
     }
     
-    let base_idx = batch_idx * params.elements_per_sample;
-    
-    // Initialize shared memory
-    shared_intersection[local_idx] = 0.0;
-    shared_pred_sum[local_idx] = 0.0;
-    shared_target_sum[local_idx] = 0.0;
-    
-    // Each thread processes multiple elements
-    let threads_per_workgroup = 256u;
-    let elements_per_thread = (params.elements_per_sample + threads_per_workgroup - 1u) / threads_per_workgroup;
-    
-    for (var i = 0u; i < elements_per_thread; i = i + 1u) {
-        let idx = base_idx + local_idx + i * threads_per_workgroup;
-        if idx < base_idx + params.elements_per_sample {
-            let pred = predictions[idx];
-            let targ = targets[idx];
-            
-            shared_intersection[local_idx] = shared_intersection[local_idx] + pred * targ;
-            shared_pred_sum[local_idx] = shared_pred_sum[local_idx] + pred;
-            shared_target_sum[local_idx] = shared_target_sum[local_idx] + targ;
-        }
-    }
+    // Store in shared memory
+    shared_intersection[local_idx] = local_intersection;
+    shared_pred_sum[local_idx] = local_pred_sum;
+    shared_target_sum[local_idx] = local_target_sum;
     
     workgroupBarrier();
     
-    // Reduction within workgroup
-    for (var stride = 128u; stride > 0u; stride = stride / 2u) {
-        if local_idx < stride {
+    // Parallel reduction in shared memory
+    var stride = 128u;
+    while (stride >= 1u) {
+        if (local_idx < stride && local_idx + stride < 256u) {
             shared_intersection[local_idx] = shared_intersection[local_idx] + shared_intersection[local_idx + stride];
             shared_pred_sum[local_idx] = shared_pred_sum[local_idx] + shared_pred_sum[local_idx + stride];
             shared_target_sum[local_idx] = shared_target_sum[local_idx] + shared_target_sum[local_idx + stride];
         }
         workgroupBarrier();
+        stride = stride / 2u;
     }
     
-    // First thread computes Dice loss for this sample
-    if local_idx == 0u {
+    // First thread writes result
+    if (local_idx == 0u) {
         let intersection = shared_intersection[0];
         let pred_sum = shared_pred_sum[0];
         let target_sum = shared_target_sum[0];
         
-        // Dice coefficient
-        let dice = (2.0 * intersection + params.smoothing) / (pred_sum + target_sum + params.smoothing);
+        // Dice coefficient: (2 * intersection + smooth) / (pred_sum + target_sum + smooth)
+        let dice = (2.0 * intersection + params.smooth) / (pred_sum + target_sum + params.smooth);
         
-        // Dice loss = 1 - dice_coefficient
-        output[batch_idx] = 1.0 - dice;
+        // Dice loss = 1 - Dice coefficient
+        let loss = 1.0 - dice;
+        
+        // Atomic add to output (in case of multiple workgroups)
+        output[0] = loss;
     }
 }

@@ -1,34 +1,43 @@
-// Argmax - find index of maximum value
-// Simplified version: find max in 1D tensor
+// Argmax - Find indices of maximum values along a dimension
+//
+// Deep Debt Principles:
+// - Pure WGSL implementation (universal compute)
+// - Zero unsafe code (memory safe)
+// - Hardware-agnostic (works on any GPU/CPU via WebGPU)
+// - Self-contained logic (no external dependencies)
+
+struct Params {
+    dim_size: u32,
+    outer_size: u32,
+    inner_size: u32,
+}
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read_write> output: array<u32>;
-
-var<workgroup> shared_max: f32;
-var<workgroup> shared_idx: u32;
+@group(0) @binding(2) var<uniform> params: Params;
 
 @compute @workgroup_size(256)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(local_invocation_id) local_id: vec3<u32>) {
-    let size = arrayLength(&input);
-    let tid = local_id.x;
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
     
-    if (tid == 0u) {
-        var max_val = input[0];
-        var max_idx = 0u;
-        
-        for (var i = 1u; i < size; i = i + 1u) {
-            if (input[i] > max_val) {
-                max_val = input[i];
-                max_idx = i;
-            }
+    if (idx >= params.outer_size * params.inner_size) {
+        return;
+    }
+    
+    let outer = idx / params.inner_size;
+    let inner = idx % params.inner_size;
+    
+    var max_value = -1e30; // Very negative number
+    var max_idx = 0u;
+    
+    for (var i = 0u; i < params.dim_size; i++) {
+        let input_idx = outer * params.dim_size * params.inner_size + i * params.inner_size + inner;
+        let value = input[input_idx];
+        if (value > max_value) {
+            max_value = value;
+            max_idx = i;
         }
-        
-        shared_max = max_val;
-        shared_idx = max_idx;
     }
-    workgroupBarrier();
     
-    if (tid == 0u) {
-        output[0] = shared_idx;
-    }
+    output[idx] = max_idx;
 }

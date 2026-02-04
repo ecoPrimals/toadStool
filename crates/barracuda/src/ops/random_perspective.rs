@@ -2,100 +2,247 @@
 //!
 //! Applies random perspective distortion.
 //! Simulates different camera viewpoints.
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn random_perspective(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    image: &[f32],
-    channels: usize,
-    height: usize,
-    width: usize,
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// RandomPerspective operation
+pub struct RandomPerspective {
+    input: Tensor,
     distortion_scale: f32,
     seed: u64,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    // Generate random corner displacements
-    let mut rng = seed;
-    let mut rand = || {
-        rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-        ((rng % 2000) as f32 / 1000.0 - 1.0) * distortion_scale
-    };
+}
 
-    // Source corners
-    let src_corners = [
-        (0.0, 0.0),
-        (width as f32, 0.0),
-        (width as f32, height as f32),
-        (0.0, height as f32),
-    ];
-
-    // Destination corners with random displacement
-    let dst_corners = [
-        (
-            src_corners[0].0 + rand() * width as f32,
-            src_corners[0].1 + rand() * height as f32,
-        ),
-        (
-            src_corners[1].0 + rand() * width as f32,
-            src_corners[1].1 + rand() * height as f32,
-        ),
-        (
-            src_corners[2].0 + rand() * width as f32,
-            src_corners[2].1 + rand() * height as f32,
-        ),
-        (
-            src_corners[3].0 + rand() * width as f32,
-            src_corners[3].1 + rand() * height as f32,
-        ),
-    ];
-
-    let mut output = vec![0.0f32; channels * height * width];
-
-    // Simplified perspective transform using bilinear interpolation
-    for c in 0..channels {
-        for i in 0..height {
-            for j in 0..width {
-                let u = j as f32 / width as f32;
-                let v = i as f32 / height as f32;
-
-                // Bilinear interpolation of perspective coordinates
-                let top = (
-                    dst_corners[0].0 * (1.0 - u) + dst_corners[1].0 * u,
-                    dst_corners[0].1 * (1.0 - u) + dst_corners[1].1 * u,
-                );
-                let bottom = (
-                    dst_corners[3].0 * (1.0 - u) + dst_corners[2].0 * u,
-                    dst_corners[3].1 * (1.0 - u) + dst_corners[2].1 * u,
-                );
-
-                let src_x = top.0 * (1.0 - v) + bottom.0 * v;
-                let src_y = top.1 * (1.0 - v) + bottom.1 * v;
-
-                // Sample from source with bilinear interpolation
-                if src_x >= 0.0
-                    && src_x < (width - 1) as f32
-                    && src_y >= 0.0
-                    && src_y < (height - 1) as f32
-                {
-                    let x0 = src_x as usize;
-                    let y0 = src_y as usize;
-                    let dx = src_x - x0 as f32;
-                    let dy = src_y - y0 as f32;
-
-                    let v00 = image[c * height * width + y0 * width + x0];
-                    let v01 = image[c * height * width + y0 * width + x0 + 1];
-                    let v10 = image[c * height * width + (y0 + 1) * width + x0];
-                    let v11 = image[c * height * width + (y0 + 1) * width + x0 + 1];
-
-                    output[c * height * width + i * width + j] = v00 * (1.0 - dx) * (1.0 - dy)
-                        + v01 * dx * (1.0 - dy)
-                        + v10 * (1.0 - dx) * dy
-                        + v11 * dx * dy;
-                }
-            }
+impl RandomPerspective {
+    /// Create a new random perspective operation
+    pub fn new(input: Tensor, distortion_scale: f32, seed: u64) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() != 3 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "RandomPerspective",
+                format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
+            ));
         }
+        
+        Ok(Self {
+            input,
+            distortion_scale,
+            seed,
+        })
     }
 
-    Ok(output)
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/random_perspective.wgsl")
+    }
+
+    /// Execute the random perspective operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        
+        let channels = shape[0];
+        let height = shape[1];
+        let width = shape[2];
+        
+        // Generate random corner displacements from seed (CPU-side, deterministic)
+        let mut rng = self.seed;
+        let mut rand = || {
+            rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+            ((rng % 2000) as f32 / 1000.0 - 1.0) * self.distortion_scale
+        };
+
+        // Source corners
+        let src_corners = [
+            (0.0, 0.0),
+            (width as f32, 0.0),
+            (width as f32, height as f32),
+            (0.0, height as f32),
+        ];
+
+        // Destination corners with random displacement
+        let dst_corners = [
+            (
+                src_corners[0].0 + rand() * width as f32,
+                src_corners[0].1 + rand() * height as f32,
+            ),
+            (
+                src_corners[1].0 + rand() * width as f32,
+                src_corners[1].1 + rand() * height as f32,
+            ),
+            (
+                src_corners[2].0 + rand() * width as f32,
+                src_corners[2].1 + rand() * height as f32,
+            ),
+            (
+                src_corners[3].0 + rand() * width as f32,
+                src_corners[3].1 + rand() * height as f32,
+            ),
+        ];
+        
+        let output_size = channels * height * width;
+
+        // Create buffers
+        let input_buffer = self.input.buffer();
+
+        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("RandomPerspective Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            channels: u32,
+            height: u32,
+            width: u32,
+            dst_corner0: [f32; 2],
+            dst_corner1: [f32; 2],
+            dst_corner2: [f32; 2],
+            dst_corner3: [f32; 2],
+        }
+
+        let params = Params {
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            dst_corner0: [dst_corners[0].0, dst_corners[0].1],
+            dst_corner1: [dst_corners[1].0, dst_corners[1].1],
+            dst_corner2: [dst_corners[2].0, dst_corners[2].1],
+            dst_corner3: [dst_corners[3].0, dst_corners[3].1],
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("RandomPerspective Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("RandomPerspective Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RandomPerspective Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RandomPerspective Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("RandomPerspective Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("RandomPerspective Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("RandomPerspective Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("RandomPerspective Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups_x = (width as u32 + 15) / 16;
+            let workgroups_y = (height as u32 + 15) / 16;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let output_data = crate::utils::read_buffer(device, &output_buffer, output_size)?;
+
+        Ok(Tensor::new(
+            output_data,
+            vec![channels, height, width],
+            device.clone(),
+        ))
+    }
+}
+
+impl Tensor {
+    /// Apply random perspective transformation
+    ///
+    /// # Arguments
+    ///
+    /// * `distortion_scale` - Scale of perspective distortion
+    /// * `seed` - Random seed for deterministic transformation
+    pub fn random_perspective(self, distortion_scale: f32, seed: u64) -> Result<Self> {
+        RandomPerspective::new(self, distortion_scale, seed)?.execute()
+    }
 }
 
 #[cfg(test)]

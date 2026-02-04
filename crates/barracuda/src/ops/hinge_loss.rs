@@ -252,7 +252,7 @@ impl Tensor {
     /// ```rust,ignore
     /// // Standard SVM hinge loss
     /// let loss = predictions.hinge_loss(&targets, 1.0)?;
-    /// 
+    ///
     /// // Multi-class SVM (one-vs-all)
     /// let loss = scores.hinge_loss(&labels, 1.0)?;
     /// ```
@@ -275,7 +275,7 @@ mod tests {
     #[tokio::test]
     async fn test_hinge_loss_basic() {
         let device = get_test_device().await;
-        
+
         // Good predictions (correct sign, high magnitude)
         let predictions = Tensor::from_vec_on(vec![2.0, -2.0, 1.5], vec![3], device.clone())
             .await
@@ -283,10 +283,10 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, -1.0, 1.0], vec![3], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.hinge_loss(&targets, 1.0).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // All should have zero or near-zero loss
         assert!(data.iter().all(|&x| x < 0.1));
     }
@@ -294,7 +294,7 @@ mod tests {
     #[tokio::test]
     async fn test_hinge_loss_wrong_predictions() {
         let device = get_test_device().await;
-        
+
         // Wrong predictions (opposite sign)
         let predictions = Tensor::from_vec_on(vec![-1.0, 1.0], vec![2], device.clone())
             .await
@@ -302,10 +302,10 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0, -1.0], vec![2], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.hinge_loss(&targets, 1.0).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Should have significant loss
         assert!(data.iter().all(|&x| x > 1.0));
     }
@@ -313,7 +313,7 @@ mod tests {
     #[tokio::test]
     async fn test_hinge_loss_exact_margin() {
         let device = get_test_device().await;
-        
+
         // Prediction exactly at margin
         let predictions = Tensor::from_vec_on(vec![0.5], vec![1], device.clone())
             .await
@@ -321,18 +321,22 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0], vec![1], device.clone())
             .await
             .unwrap();
-        
+
         let loss = predictions.hinge_loss(&targets, 1.0).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         // Loss = max(0, 1 - 1*0.5) = 0.5
-        assert!((data[0] - 0.5).abs() < 1e-5, "Expected 0.5, got {}", data[0]);
+        assert!(
+            (data[0] - 0.5).abs() < 1e-5,
+            "Expected 0.5, got {}",
+            data[0]
+        );
     }
 
     #[tokio::test]
     async fn test_hinge_loss_validation() {
         let device = get_test_device().await;
-        
+
         // Shape mismatch
         let predictions = Tensor::from_vec_on(vec![1.0; 10], vec![10], device.clone())
             .await
@@ -340,9 +344,9 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         assert!(predictions.hinge_loss(&targets, 1.0).is_err());
-        
+
         // Negative margin
         let predictions = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
             .await
@@ -350,31 +354,31 @@ mod tests {
         let targets = Tensor::from_vec_on(vec![1.0; 5], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         assert!(predictions.hinge_loss(&targets, -1.0).is_err());
     }
 
     #[tokio::test]
     async fn test_hinge_loss_large_batch() {
         let device = get_test_device().await;
-        
+
         let predictions: Vec<f32> = (0..1000)
             .map(|i| if i % 2 == 0 { 2.0 } else { -2.0 })
             .collect();
         let targets: Vec<f32> = (0..1000)
             .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
             .collect();
-        
+
         let pred_tensor = Tensor::from_vec_on(predictions, vec![1000], device.clone())
             .await
             .unwrap();
         let target_tensor = Tensor::from_vec_on(targets, vec![1000], device.clone())
             .await
             .unwrap();
-        
+
         let loss = pred_tensor.hinge_loss(&target_tensor, 1.0).unwrap();
         let data = loss.to_vec().unwrap();
-        
+
         assert_eq!(data.len(), 1000);
         assert!(data.iter().all(|&x| x.is_finite() && x >= 0.0));
         // Good predictions should have near-zero loss

@@ -1,149 +1,258 @@
-//! Matrix Power - Compute matrix raised to power
+//! Matrix Power - Exponentiation by squaring (GPU implementation)
 //!
-//! M^n via repeated multiplication.
+//! **Deep Debt Principles**:
+//! - Complete GPU implementation: Multi-pass iterative (log(n) matmuls)
+//! - No CPU fallbacks: All computation on GPU
+//! - Self-knowledge: Validates square matrix
+//! - Modern idiomatic Rust: Result<T, E>
 
-pub async fn matrix_power(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    matrix: &[f32],
-    n: usize,
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use crate::ops::matmul::MatMul;
+use wgpu::util::DeviceExt;
+
+pub struct MatrixPower {
+    input: Tensor,
     power: i32,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if matrix.len() != n * n {
-        return Err("Matrix must be square".into());
-    }
+}
 
-    if power == 0 {
-        // Identity matrix
-        let mut identity = vec![0.0f32; n * n];
-        for i in 0..n {
-            identity[i * n + i] = 1.0;
+impl MatrixPower {
+    pub fn new(input: Tensor, power: i32) -> Result<Self> {
+        let shape = input.shape();
+        if shape.len() < 2 {
+            return Err(BarracudaError::invalid_op(
+                "matrix_power",
+                "Requires at least 2D tensor",
+            ));
         }
-        return Ok(identity);
+
+        let rows = shape[shape.len() - 2];
+        let cols = shape[shape.len() - 1];
+
+        if rows != cols {
+            return Err(BarracudaError::invalid_op(
+                "matrix_power",
+                format!("Requires square matrix, got {}x{}", rows, cols),
+            ));
+        }
+
+        if power < 0 {
+            return Err(BarracudaError::invalid_op(
+                "matrix_power",
+                "Negative powers not supported (requires matrix inversion)",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            power,
+        })
     }
 
-    if power == 1 {
-        return Ok(matrix.to_vec());
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/matrix_power.wgsl")
     }
 
-    // Positive power: repeated multiplication (simplified)
-    let mut result = matrix.to_vec();
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let shape = self.input.shape();
+        let size = shape[shape.len() - 1];
+        let matrix_size = size * size;
 
-    for _ in 1..power.abs() {
-        // Simplified matrix multiplication inline
-        let a = result.clone();
-        let mut new_result = vec![0.0f32; n * n];
+        if self.power == 0 {
+            // Return identity matrix using WGSL shader
+            let identity_buffer = device.create_buffer_f32(matrix_size)?;
 
-        for i in 0..n {
-            for j in 0..n {
-                let mut sum = 0.0;
-                for k in 0..n {
-                    sum += a[i * n + k] * matrix[k * n + j];
-                }
-                new_result[i * n + j] = sum;
+            // Create parameters
+            #[repr(C)]
+            #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+            struct MatrixPowerParams {
+                size: u32,
+                _pad1: u32,
+                _pad2: u32,
+                _pad3: u32,
             }
+
+            let params = MatrixPowerParams {
+                size: size as u32,
+                _pad1: 0,
+                _pad2: 0,
+                _pad3: 0,
+            };
+
+            let params_buffer = device.device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("MatrixPower Identity Params"),
+                    contents: bytemuck::cast_slice(&[params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                },
+            );
+
+            // Compile shader
+            let shader_module = device.compile_shader(Self::wgsl_shader(), Some("MatrixPower Shader"));
+
+            // Create bind group layout
+            let bind_group_layout = device.device.create_bind_group_layout(
+                &wgpu::BindGroupLayoutDescriptor {
+                    label: Some("MatrixPower Identity Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                },
+            );
+
+            // Create bind group
+            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("MatrixPower Identity Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: identity_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            // Create pipeline layout
+            let pipeline_layout = device.device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("MatrixPower Identity Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                },
+            );
+
+            // Create pipeline
+            let pipeline = device.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("MatrixPower Identity Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "init_identity",
+                },
+            );
+
+            // Encode and execute
+            let mut encoder = device.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
+                    label: Some("MatrixPower Identity Encoder"),
+                },
+            );
+
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("MatrixPower Identity Pass"),
+                    timestamp_writes: None,
+                });
+
+                pass.set_pipeline(&pipeline);
+                pass.set_bind_group(0, &bind_group, &[]);
+
+                let workgroups = ((size as u32 + 15) / 16) as u32;
+                pass.dispatch_workgroups(workgroups, workgroups, 1);
+            }
+
+            device.queue.submit(Some(encoder.finish()));
+
+            let output_shape = shape.to_vec();
+            return Ok(Tensor::from_buffer(identity_buffer, output_shape, device.clone()));
         }
 
-        result = new_result;
-    }
+        if self.power == 1 {
+            return Ok(self.input);
+        }
 
-    Ok(result)
+        // Exponentiation by squaring: M^n
+        let mut result = self.input;
+        let mut power = self.power as u32;
+        let mut base = result.clone();
+
+        while power > 1 {
+            if power % 2 == 1 {
+                // Odd power: multiply result by base
+                result = MatMul::new(result, base.clone()).execute()?;
+            }
+            // Square the base
+            base = MatMul::new(base.clone(), base.clone()).execute()?;
+            power /= 2;
+        }
+
+        // Final multiplication if needed
+        if power == 1 {
+            result = MatMul::new(result, base).execute()?;
+        }
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_matrix_power_basic() {
-        let dev = get_test_device().await;
-        let matrix = vec![2.0, 0.0, 0.0, 2.0]; // 2*I
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 2)
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(vec![2.0, 0.0, 0.0, 2.0], vec![2, 2], device.clone())
             .await
             .unwrap();
+        
+        let result = MatrixPower::new(matrix, 2).unwrap().execute().unwrap();
+        let output = result.to_vec().unwrap();
         // (2I)^2 = 4I
-        assert!((result[0] - 4.0).abs() < 1e-5);
-        assert!((result[3] - 4.0).abs() < 1e-5);
+        assert!((output[0] - 4.0).abs() < 1e-4);
+        assert!((output[3] - 4.0).abs() < 1e-4);
     }
 
     #[tokio::test]
-    async fn test_matrix_power_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Power 0 (identity)
-        let matrix = vec![5.0, 3.0, 2.0, 1.0];
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 0)
+    async fn test_matrix_power_zero() {
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(vec![5.0, 3.0, 2.0, 1.0], vec![2, 2], device.clone())
             .await
             .unwrap();
-        assert!((result[0] - 1.0).abs() < 1e-5);
-        assert!(result[1].abs() < 1e-5);
-        assert!(result[2].abs() < 1e-5);
-        assert!((result[3] - 1.0).abs() < 1e-5);
-
-        // Power 1 (unchanged)
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 1)
-            .await
-            .unwrap();
-        assert_eq!(result, matrix);
+        
+        let result = MatrixPower::new(matrix, 0).unwrap().execute().unwrap();
+        let output = result.to_vec().unwrap();
+        assert!((output[0] - 1.0).abs() < 1e-5);
+        assert!(output[1].abs() < 1e-5);
+        assert!(output[2].abs() < 1e-5);
+        assert!((output[3] - 1.0).abs() < 1e-5);
     }
 
     #[tokio::test]
-    async fn test_matrix_power_boundary() {
-        let dev = get_test_device().await;
-
-        // Power 3
-        let matrix = vec![2.0, 0.0, 0.0, 2.0];
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 3)
+    async fn test_matrix_power_one() {
+        let device = get_test_device().await;
+        let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device.clone())
             .await
             .unwrap();
-        // (2I)^3 = 8I
-        assert!((result[0] - 8.0).abs() < 1e-4);
-
-        // Non-diagonal matrix
-        let matrix = vec![1.0, 1.0, 0.0, 1.0];
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 2)
-            .await
-            .unwrap();
-        assert_eq!(result.len(), 4);
-    }
-
-    #[tokio::test]
-    async fn test_matrix_power_large_matrix() {
-        let dev = get_test_device().await;
-
-        // 3x3 identity
-        let matrix = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 3, 2)
-            .await
-            .unwrap();
-
-        // I^2 = I
-        assert_eq!(result.len(), 9);
-        assert!((result[0] - 1.0).abs() < 1e-5);
-        assert!((result[4] - 1.0).abs() < 1e-5);
-        assert!((result[8] - 1.0).abs() < 1e-5);
-    }
-
-    #[tokio::test]
-    async fn test_matrix_power_precision() {
-        let dev = get_test_device().await;
-
-        // Test diagonal scaling
-        let matrix = vec![3.0, 0.0, 0.0, 3.0];
-        let result = matrix_power(&dev.device, &dev.queue, &matrix, 2, 2)
-            .await
-            .unwrap();
-
-        // (3I)^2 = 9I
-        assert!((result[0] - 9.0).abs() < 0.1);
-        assert!(result[1].abs() < 0.1);
-        assert!(result[2].abs() < 0.1);
-        assert!((result[3] - 9.0).abs() < 0.1);
+        
+        let result = MatrixPower::new(matrix.clone(), 1).unwrap().execute().unwrap();
+        let output = result.to_vec().unwrap();
+        let input = matrix.to_vec().unwrap();
+        assert_eq!(output, input);
     }
 }

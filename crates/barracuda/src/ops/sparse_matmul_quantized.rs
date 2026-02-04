@@ -276,7 +276,7 @@ pub async fn sparse_matmul_quantized(
         });
         cpass.set_pipeline(&pipeline);
         cpass.set_bind_group(0, &bind_group, &[]);
-        cpass.dispatch_workgroups((output_size + 255) / 256, 1, 1);
+        cpass.dispatch_workgroups(((output_size as u32) + 255) / 256, 1, 1);
     }
 
     let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {

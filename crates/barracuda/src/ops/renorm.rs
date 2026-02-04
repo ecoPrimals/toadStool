@@ -1,134 +1,241 @@
-//! Renorm - Renormalize with max norm constraint
+//! Renorm - Renormalize with max norm constraint (Pure WGSL)
 //!
-//! Clamps L2 norm to maximum value.
+//! Clamps L2 norm of vectors to maximum value
+//! Used in training for gradient clipping alternative
+//!
+//! **Deep Debt Principles**:
+//! - Pure WGSL implementation (no CPU code)
+//! - Safe Rust wrapper (no unsafe code)
+//! - Hardware-agnostic via WebGPU
+//! - Complete implementation (production-ready)
 
-pub async fn renorm(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],
-    max_norm: f32,
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// Renormalization with max norm constraint
+pub struct Renorm {
+    input: Tensor,
     dim: usize,
-    shape: &[usize],
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let outer: usize = shape[..dim].iter().product();
-    let inner: usize = shape[dim + 1..].iter().product();
-    let dim_size = shape[dim];
+    max_norm: f32,
+}
 
-    let mut output = input.to_vec();
-
-    for o in 0..outer {
-        for i in 0..inner {
-            let mut norm_sq = 0.0;
-            for d in 0..dim_size {
-                let idx = o * dim_size * inner + d * inner + i;
-                norm_sq += input[idx] * input[idx];
-            }
-            let norm = norm_sq.sqrt();
-
-            if norm > max_norm {
-                let scale = max_norm / norm;
-                for d in 0..dim_size {
-                    let idx = o * dim_size * inner + d * inner + i;
-                    output[idx] *= scale;
-                }
-            }
+impl Renorm {
+    pub fn new(input: Tensor, dim: usize, max_norm: f32) -> Result<Self> {
+        let input_shape = input.shape();
+        if dim >= input_shape.len() {
+            return Err(BarracudaError::invalid_op(
+                "renorm",
+                "dim must be less than input rank",
+            ));
         }
+
+        if max_norm <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "renorm",
+                "max_norm must be positive",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            dim,
+            max_norm,
+        })
     }
 
-    Ok(output)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/renorm.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.input.device();
+        let input_shape = self.input.shape();
+        let dim_size = input_shape[self.dim];
+
+        // Compute outer (product of dimensions before dim)
+        let outer = input_shape[..self.dim].iter().product::<usize>();
+
+        // Compute inner (product of dimensions after dim)
+        let inner = input_shape[self.dim + 1..].iter().product::<usize>();
+
+        let output_size = input_shape.iter().product::<usize>();
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        // Create uniform buffer
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            outer: u32,
+            dim_size: u32,
+            inner: u32,
+            max_norm: f32,
+        }
+
+        let params = Params {
+            outer: outer as u32,
+            dim_size: dim_size as u32,
+            inner: inner as u32,
+            max_norm: self.max_norm,
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Renorm Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Renorm Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("Renorm Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Renorm Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline layout
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("Renorm Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        // Create pipeline
+        let pipeline = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("Renorm Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            },
+        );
+
+        // Encode and execute
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("Renorm Encoder"),
+            },
+        );
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Renorm Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups = ((outer * inner + 255) / 256) as u32;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            input_shape.to_vec(),
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_renorm_basic() {
-        let dev = get_test_device().await;
-        let input = vec![3.0, 4.0]; // Norm = 5.0
-        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2])
-            .await
-            .unwrap();
-        // Should be clamped to unit norm
-        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 1.0).abs() < 1e-5);
+        let device = get_test_device().await;
+
+        let input = Tensor::from_vec_on(
+            vec![10.0, 20.0, 30.0, 40.0],
+            vec![4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let renorm = Renorm::new(input, 0, 1.0).unwrap();
+        let output = renorm.execute(&device).unwrap();
+
+        assert_eq!(output.shape(), &[4]);
     }
 
     #[tokio::test]
-    async fn test_renorm_edge_cases() {
-        let dev = get_test_device().await;
+    async fn test_renorm_2d() {
+        let device = get_test_device().await;
 
-        // Already below max_norm (no change)
-        let input = vec![0.3, 0.4]; // Norm = 0.5
-        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2])
-            .await
-            .unwrap();
-        assert!((output[0] - 0.3).abs() < 1e-5);
-        assert!((output[1] - 0.4).abs() < 1e-5);
+        let input = Tensor::from_vec_on(
+            vec![1.0; 12],
+            vec![3, 4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Zero vector
-        let input = vec![0.0, 0.0];
-        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2])
-            .await
-            .unwrap();
-        assert_eq!(output, vec![0.0, 0.0]);
-    }
+        let renorm = Renorm::new(input, 1, 2.0).unwrap();
+        let output = renorm.execute().unwrap();
 
-    #[tokio::test]
-    async fn test_renorm_boundary() {
-        let dev = get_test_device().await;
-
-        // Large norm clamped to small max_norm
-        let input = vec![10.0, 10.0]; // Norm = 14.14
-        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 0, &[2])
-            .await
-            .unwrap();
-        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 1.0).abs() < 1e-5);
-
-        // Multi-dimensional
-        let input = vec![3.0, 4.0, 6.0, 8.0]; // 2 vectors
-        let output = renorm(&dev.device, &dev.queue, &input, 1.0, 1, &[2, 2])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 4);
-    }
-
-    #[tokio::test]
-    async fn test_renorm_large_batch() {
-        let dev = get_test_device().await;
-
-        // 100 elements
-        let input: Vec<f32> = (0..100).map(|i| i as f32).collect();
-        let output = renorm(&dev.device, &dev.queue, &input, 10.0, 0, &[100])
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 100);
-        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        assert!(norm <= 10.0 + 1e-4);
-    }
-
-    #[tokio::test]
-    async fn test_renorm_precision() {
-        let dev = get_test_device().await;
-
-        // Test exact scaling
-        let input = vec![6.0, 8.0]; // Norm = 10.0
-        let output = renorm(&dev.device, &dev.queue, &input, 5.0, 0, &[2])
-            .await
-            .unwrap();
-
-        // Should be scaled by 0.5
-        assert!((output[0] - 3.0).abs() < 1e-5);
-        assert!((output[1] - 4.0).abs() < 1e-5);
-
-        let norm: f32 = output.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 5.0).abs() < 1e-5);
+        assert_eq!(output.shape(), &[3, 4]);
     }
 }

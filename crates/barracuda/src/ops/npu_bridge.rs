@@ -89,7 +89,7 @@ where
     if backend_guard.is_none() {
         // Lazy initialization - only create NPU when first needed
         log::info!("Initializing NPU backend (runtime discovery)...");
-        
+
         match NpuMlBackend::new() {
             Ok(npu) => {
                 log::info!("✅ NPU backend initialized successfully");
@@ -253,9 +253,9 @@ pub fn should_use_npu(data: &[f32], priority: crate::workload::Priority) -> bool
 
     // Decision logic based on validation data
     match priority {
-        Priority::Energy => true,                  // NPU always for energy (7× efficient!)
+        Priority::Energy => true, // NPU always for energy (7× efficient!)
         Priority::Latency if data.len() < 1024 => true, // NPU good for small, real-time
-        _ => sparsity > 0.5,                       // Use NPU if >50% sparse
+        _ => sparsity > 0.5,      // Use NPU if >50% sparse
     }
 }
 

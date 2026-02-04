@@ -63,8 +63,18 @@ impl SongbirdAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(songbird_endpoint: &str) -> Result<Self> {
-        // Use unix socket instead of HTTP (pure Rust!)
-        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
+        // Note: This function is sync, so we use the tokio blocking bridge
+        let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle
+                .block_on(toadstool_common::primal_sockets::discover_coordination_socket())
+                .unwrap_or_else(|_| {
+                    toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+                })
+        } else {
+            toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+        };
+
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         // Get ToadStool's own endpoint from environment (required - primal self-knowledge)
@@ -85,8 +95,17 @@ impl SongbirdAdapter {
     /// Create adapter with explicit endpoint (for testing/development)
     #[cfg(test)]
     pub fn new_with_endpoint(songbird_endpoint: &str, toadstool_endpoint: String) -> Result<Self> {
-        // Use unix socket instead of HTTP (pure Rust!)
-        let socket_path = toadstool_common::primal_sockets::get_songbird_socket_path();
+        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
+        let socket_path = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle
+                .block_on(toadstool_common::primal_sockets::discover_coordination_socket())
+                .unwrap_or_else(|_| {
+                    toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+                })
+        } else {
+            toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+        };
+
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {

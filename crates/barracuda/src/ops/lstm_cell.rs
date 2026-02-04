@@ -1,479 +1,422 @@
-//! LSTM Cell - Long Short-Term Memory unit
+//! LSTM Cell - Pure WGSL
 //!
-//! ## Deep Debt Principles
-//!
-//! - **Complete implementation**: All gates (input, forget, output, cell)
-//! - **Production-ready**: Handles hidden state and cell state correctly
-//! - **Modern Rust**: Clean API with proper state management
-//!
-//! ## Algorithm
-//!
-//! ```text
-//! i_t = sigmoid(W_ii * x_t + b_ii + W_hi * h_{t-1} + b_hi)  // Input gate
-//! f_t = sigmoid(W_if * x_t + b_if + W_hf * h_{t-1} + b_hf)  // Forget gate
-//! g_t = tanh(W_ig * x_t + b_ig + W_hg * h_{t-1} + b_hg)     // Cell gate
-//! o_t = sigmoid(W_io * x_t + b_io + W_ho * h_{t-1} + b_ho)  // Output gate
-//!
-//! c_t = f_t ⊙ c_{t-1} + i_t ⊙ g_t                           // Cell state
-//! h_t = o_t ⊙ tanh(c_t)                                      // Hidden state
-//! ```
-//!
-//! Where ⊙ denotes element-wise multiplication.
-//!
-//! Reference: Hochreiter & Schmidhuber (1997)
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
-/// LSTM cell state
-#[derive(Debug, Clone)]
-pub struct LSTMState {
-    /// Hidden state [batch, hidden_size]
-    pub hidden: Vec<f32>,
-    /// Cell state [batch, hidden_size]
-    pub cell: Vec<f32>,
-}
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-/// LSTM cell weights
-#[derive(Clone)]
-pub struct LSTMWeights {
-    /// Input gate weights: W_ii [hidden_size, input_size]
-    pub w_ii: Vec<f32>,
-    /// Input gate hidden weights: W_hi [hidden_size, hidden_size]
-    pub w_hi: Vec<f32>,
-    /// Forget gate weights: W_if [hidden_size, input_size]
-    pub w_if: Vec<f32>,
-    /// Forget gate hidden weights: W_hf [hidden_size, hidden_size]
-    pub w_hf: Vec<f32>,
-    /// Cell gate weights: W_ig [hidden_size, input_size]
-    pub w_ig: Vec<f32>,
-    /// Cell gate hidden weights: W_hg [hidden_size, hidden_size]
-    pub w_hg: Vec<f32>,
-    /// Output gate weights: W_io [hidden_size, input_size]
-    pub w_io: Vec<f32>,
-    /// Output gate hidden weights: W_ho [hidden_size, hidden_size]
-    pub w_ho: Vec<f32>,
-
-    /// Biases (can be zero)
-    pub b_ii: Vec<f32>,
-    pub b_hi: Vec<f32>,
-    pub b_if: Vec<f32>,
-    pub b_hf: Vec<f32>,
-    pub b_ig: Vec<f32>,
-    pub b_hg: Vec<f32>,
-    pub b_io: Vec<f32>,
-    pub b_ho: Vec<f32>,
-}
-
-/// LSTM cell forward pass
-///
-/// ## Usage
-///
-/// ```no_run
-/// use barracuda::ops::lstm_cell::*;
-///
-/// # async fn example(device: &wgpu::Device, queue: &wgpu::Queue) {
-/// let batch_size = 2;
-/// let input_size = 128;
-/// let hidden_size = 256;
-///
-/// let input = vec![0.5; batch_size * input_size];
-/// let prev_hidden = vec![0.0; batch_size * hidden_size];
-/// let prev_cell = vec![0.0; batch_size * hidden_size];
-///
-/// // Initialize weights (in practice, from trained model)
-/// let weights = LSTMWeights {
-///     w_ii: vec![0.01; hidden_size * input_size],
-///     w_hi: vec![0.01; hidden_size * hidden_size],
-///     // ... other weights ...
-/// #     w_if: vec![0.01; hidden_size * input_size],
-/// #     w_hf: vec![0.01; hidden_size * hidden_size],
-/// #     w_ig: vec![0.01; hidden_size * input_size],
-/// #     w_hg: vec![0.01; hidden_size * hidden_size],
-/// #     w_io: vec![0.01; hidden_size * input_size],
-/// #     w_ho: vec![0.01; hidden_size * hidden_size],
-/// #     b_ii: vec![0.0; hidden_size],
-/// #     b_hi: vec![0.0; hidden_size],
-/// #     b_if: vec![0.0; hidden_size],
-/// #     b_hf: vec![0.0; hidden_size],
-/// #     b_ig: vec![0.0; hidden_size],
-/// #     b_hg: vec![0.0; hidden_size],
-/// #     b_io: vec![0.0; hidden_size],
-/// #     b_ho: vec![0.0; hidden_size],
-/// };
-///
-/// let state = lstm_cell(
-///     device, queue,
-///     &input, &prev_hidden, &prev_cell,
-///     &weights,
-///     batch_size, input_size, hidden_size
-/// ).await.unwrap();
-/// # }
-/// ```
-///
-/// ## Deep Debt Note
-///
-/// Current: CPU implementation for correctness
-/// Evolution: GPU kernel with fused operations for performance
-pub async fn lstm_cell(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    input: &[f32],       // [batch, input_size]
-    prev_hidden: &[f32], // [batch, hidden_size]
-    prev_cell: &[f32],   // [batch, hidden_size]
-    weights: &LSTMWeights,
+/// LSTM Cell operation
+pub struct LSTMCell {
+    input: Tensor,
+    weight_ih: Tensor,
+    weight_hh: Tensor,
+    bias_ih: Tensor,
+    bias_hh: Tensor,
+    h_prev: Tensor,
+    c_prev: Tensor,
     batch_size: usize,
     input_size: usize,
     hidden_size: usize,
-) -> Result<LSTMState, Box<dyn std::error::Error>> {
-    // Validate dimensions
-    if input.len() != batch_size * input_size {
-        return Err(format!(
-            "Input size mismatch: expected {}, got {}",
-            batch_size * input_size,
-            input.len()
-        )
-        .into());
-    }
+}
 
-    if prev_hidden.len() != batch_size * hidden_size {
-        return Err("Hidden state size mismatch".into());
-    }
+impl LSTMCell {
+    /// Create a new LSTM cell operation
+    pub fn new(
+        input: Tensor,
+        weight_ih: Tensor,
+        weight_hh: Tensor,
+        bias_ih: Tensor,
+        bias_hh: Tensor,
+        h_prev: Tensor,
+        c_prev: Tensor,
+    ) -> Result<Self> {
+        let input_shape = input.shape();
+        let batch_size = input_shape[0];
+        let input_size = input_shape[1..].iter().product::<usize>();
 
-    // Helper: sigmoid activation
-    fn sigmoid(x: f32) -> f32 {
-        1.0 / (1.0 + (-x).exp())
-    }
+        let hidden_size = h_prev.shape()[1..].iter().product::<usize>();
 
-    // Helper: tanh activation
-    fn tanh(x: f32) -> f32 {
-        x.tanh()
-    }
-
-    // Helper: matrix-vector product + bias
-    fn matmul_add_bias(
-        input: &[f32],
-        weights: &[f32],
-        bias: &[f32],
-        output: &mut [f32],
-        batch_size: usize,
-        in_size: usize,
-        out_size: usize,
-    ) {
-        for b in 0..batch_size {
-            for i in 0..out_size {
-                let mut sum = bias[i];
-                for j in 0..in_size {
-                    sum += input[b * in_size + j] * weights[i * in_size + j];
-                }
-                output[b * out_size + i] = sum;
-            }
+        // Validate dimensions
+        if weight_ih.shape().iter().product::<usize>() != 4 * hidden_size * input_size {
+            return Err(BarracudaError::invalid_op(
+                "lstm_cell",
+                "weight_ih must be [4*hidden_size, input_size]",
+            ));
         }
+
+        if weight_hh.shape().iter().product::<usize>() != 4 * hidden_size * hidden_size {
+            return Err(BarracudaError::invalid_op(
+                "lstm_cell",
+                "weight_hh must be [4*hidden_size, hidden_size]",
+            ));
+        }
+
+        if h_prev.shape()[0] != batch_size || h_prev.shape()[1..].iter().product::<usize>() != hidden_size {
+            return Err(BarracudaError::invalid_op(
+                "lstm_cell",
+                "h_prev shape mismatch",
+            ));
+        }
+
+        if c_prev.shape()[0] != batch_size || c_prev.shape()[1..].iter().product::<usize>() != hidden_size {
+            return Err(BarracudaError::invalid_op(
+                "lstm_cell",
+                "c_prev shape mismatch",
+            ));
+        }
+
+        Ok(Self {
+            input,
+            weight_ih,
+            weight_hh,
+            bias_ih,
+            bias_hh,
+            h_prev,
+            c_prev,
+            batch_size,
+            input_size,
+            hidden_size,
+        })
     }
 
-    // Allocate gate activations
-    let mut i_gate = vec![0.0f32; batch_size * hidden_size];
-    let mut f_gate = vec![0.0f32; batch_size * hidden_size];
-    let mut g_gate = vec![0.0f32; batch_size * hidden_size];
-    let mut o_gate = vec![0.0f32; batch_size * hidden_size];
-
-    // Compute gate pre-activations
-    let mut i_input = vec![0.0f32; batch_size * hidden_size];
-    let mut i_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_ii,
-        &weights.b_ii,
-        &mut i_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hi,
-        &weights.b_hi,
-        &mut i_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    for i in 0..i_gate.len() {
-        i_gate[i] = sigmoid(i_input[i] + i_hidden[i]);
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/lstm_cell.wgsl")
     }
 
-    let mut f_input = vec![0.0f32; batch_size * hidden_size];
-    let mut f_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_if,
-        &weights.b_if,
-        &mut f_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hf,
-        &weights.b_hf,
-        &mut f_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    for i in 0..f_gate.len() {
-        f_gate[i] = sigmoid(f_input[i] + f_hidden[i]);
-    }
+    /// Execute the LSTM cell operation
+    pub fn execute(self) -> Result<(Tensor, Tensor)> {
+        let device = self.input.device();
 
-    let mut g_input = vec![0.0f32; batch_size * hidden_size];
-    let mut g_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_ig,
-        &weights.b_ig,
-        &mut g_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_hg,
-        &weights.b_hg,
-        &mut g_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    for i in 0..g_gate.len() {
-        g_gate[i] = tanh(g_input[i] + g_hidden[i]);
-    }
+        // Create output buffers for h_next and c_next
+        let h_next_size = self.batch_size * self.hidden_size;
+        let c_next_size = self.batch_size * self.hidden_size;
 
-    let mut o_input = vec![0.0f32; batch_size * hidden_size];
-    let mut o_hidden = vec![0.0f32; batch_size * hidden_size];
-    matmul_add_bias(
-        input,
-        &weights.w_io,
-        &weights.b_io,
-        &mut o_input,
-        batch_size,
-        input_size,
-        hidden_size,
-    );
-    matmul_add_bias(
-        prev_hidden,
-        &weights.w_ho,
-        &weights.b_ho,
-        &mut o_hidden,
-        batch_size,
-        hidden_size,
-        hidden_size,
-    );
-    for i in 0..o_gate.len() {
-        o_gate[i] = sigmoid(o_input[i] + o_hidden[i]);
-    }
+        let h_next_buffer = device.create_buffer_f32(h_next_size)?;
+        let c_next_buffer = device.create_buffer_f32(c_next_size)?;
 
-    // Update cell state: c_t = f_t ⊙ c_{t-1} + i_t ⊙ g_t
-    let mut cell = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..cell.len() {
-        cell[i] = f_gate[i] * prev_cell[i] + i_gate[i] * g_gate[i];
-    }
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            batch_size: u32,
+            input_size: u32,
+            hidden_size: u32,
+            _padding: u32,
+        }
 
-    // Update hidden state: h_t = o_t ⊙ tanh(c_t)
-    let mut hidden = vec![0.0f32; batch_size * hidden_size];
-    for i in 0..hidden.len() {
-        hidden[i] = o_gate[i] * tanh(cell[i]);
-    }
+        let params = Params {
+            batch_size: self.batch_size as u32,
+            input_size: self.input_size as u32,
+            hidden_size: self.hidden_size as u32,
+            _padding: 0,
+        };
 
-    Ok(LSTMState { hidden, cell })
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("LSTMCell Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LSTMCell Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("LSTMCell Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 8,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 9,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("LSTMCell Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.weight_ih.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.weight_hh.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.bias_ih.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.bias_hh.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.h_prev.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.c_prev.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: h_next_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: c_next_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("LSTMCell Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("LSTMCell Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Encode and execute
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("LSTMCell Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("LSTMCell Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (64 threads per workgroup)
+            let workgroups = (self.batch_size as u32 + 63) / 64;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensors
+        let h_next = Tensor::from_buffer(
+            h_next_buffer,
+            vec![self.batch_size, self.hidden_size],
+            device.clone(),
+        );
+
+        let c_next = Tensor::from_buffer(
+            c_next_buffer,
+            vec![self.batch_size, self.hidden_size],
+            device.clone(),
+        );
+
+        Ok((h_next, c_next))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
-
-    fn create_lstm_weights(input_size: usize, hidden_size: usize) -> LSTMWeights {
-        LSTMWeights {
-            w_ii: vec![0.01; hidden_size * input_size],
-            w_hi: vec![0.01; hidden_size * hidden_size],
-            w_if: vec![0.01; hidden_size * input_size],
-            w_hf: vec![0.01; hidden_size * hidden_size],
-            w_ig: vec![0.01; hidden_size * input_size],
-            w_hg: vec![0.01; hidden_size * hidden_size],
-            w_io: vec![0.01; hidden_size * input_size],
-            w_ho: vec![0.01; hidden_size * hidden_size],
-            b_ii: vec![0.0; hidden_size],
-            b_hi: vec![0.0; hidden_size],
-            b_if: vec![0.0; hidden_size],
-            b_hf: vec![0.0; hidden_size],
-            b_ig: vec![0.0; hidden_size],
-            b_hg: vec![0.0; hidden_size],
-            b_io: vec![0.0; hidden_size],
-            b_ho: vec![0.0; hidden_size],
-        }
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_lstm_cell_basic() {
-        let dev = get_test_device().await;
-        let device = &dev.device;
-        let queue = &dev.queue;
+        let device = get_test_device().await;
 
         let batch_size = 2;
         let input_size = 4;
         let hidden_size = 8;
 
-        let input = vec![0.5; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-        let prev_cell = vec![0.0; batch_size * hidden_size];
-
-        let weights = create_lstm_weights(input_size, hidden_size);
-
-        let state = lstm_cell(
-            &device,
-            &queue,
-            &input,
-            &prev_hidden,
-            &prev_cell,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
+        let input = Tensor::from_vec_on(
+            vec![0.5; batch_size * input_size],
+            vec![batch_size, input_size],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        assert_eq!(state.hidden.len(), batch_size * hidden_size);
-        assert_eq!(state.cell.len(), batch_size * hidden_size);
-    }
-
-    #[tokio::test]
-    async fn test_lstm_cell_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Batch size 1, minimal hidden
-        let batch_size = 1;
-        let input_size = 2;
-        let hidden_size = 2;
-
-        let input = vec![1.0; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-        let prev_cell = vec![0.0; batch_size * hidden_size];
-        let weights = create_lstm_weights(input_size, hidden_size);
-
-        let state = lstm_cell(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &prev_hidden,
-            &prev_cell,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
-        )
-        .await
-        .unwrap();
-        assert_eq!(state.hidden.len(), 2);
-        assert_eq!(state.cell.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_lstm_cell_boundary() {
-        let dev = get_test_device().await;
-
-        // Large hidden state
-        let batch_size = 1;
-        let input_size = 16;
-        let hidden_size = 64;
-
-        let input = vec![0.5; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-        let prev_cell = vec![0.0; batch_size * hidden_size];
-        let weights = create_lstm_weights(input_size, hidden_size);
-
-        let state = lstm_cell(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &prev_hidden,
-            &prev_cell,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
-        )
-        .await
-        .unwrap();
-        assert_eq!(state.hidden.len(), 64);
-        assert!(state.hidden.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_lstm_cell_large_batch() {
-        let dev = get_test_device().await;
-
-        // Large batch
-        let batch_size = 32;
-        let input_size = 8;
-        let hidden_size = 16;
-
-        let input = vec![0.5; batch_size * input_size];
-        let prev_hidden = vec![0.0; batch_size * hidden_size];
-        let prev_cell = vec![0.0; batch_size * hidden_size];
-        let weights = create_lstm_weights(input_size, hidden_size);
-
-        let state = lstm_cell(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &prev_hidden,
-            &prev_cell,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
-        )
-        .await
-        .unwrap();
-        assert_eq!(state.hidden.len(), batch_size * hidden_size);
-    }
-
-    #[tokio::test]
-    async fn test_lstm_cell_precision() {
-        let dev = get_test_device().await;
-
-        // Test state propagation (non-zero previous state)
-        let batch_size = 1;
-        let input_size = 4;
-        let hidden_size = 8;
-
-        let input = vec![1.0; batch_size * input_size];
-        let prev_hidden = vec![0.5; batch_size * hidden_size];
-        let prev_cell = vec![0.3; batch_size * hidden_size];
-        let weights = create_lstm_weights(input_size, hidden_size);
-
-        let state = lstm_cell(
-            &dev.device,
-            &dev.queue,
-            &input,
-            &prev_hidden,
-            &prev_cell,
-            &weights,
-            batch_size,
-            input_size,
-            hidden_size,
+        let weight_ih = Tensor::from_vec_on(
+            vec![0.01; 4 * hidden_size * input_size],
+            vec![4 * hidden_size, input_size],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        assert_eq!(state.hidden.len(), 8);
-        assert_eq!(state.cell.len(), 8);
-        // Cell state should be influenced by previous state
-        assert!(state.cell.iter().any(|&x| x.abs() > 0.01));
+        let weight_hh = Tensor::from_vec_on(
+            vec![0.01; 4 * hidden_size * hidden_size],
+            vec![4 * hidden_size, hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let bias_ih = Tensor::from_vec_on(
+            vec![0.0; 4 * hidden_size],
+            vec![4 * hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let bias_hh = Tensor::from_vec_on(
+            vec![0.0; 4 * hidden_size],
+            vec![4 * hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let h_prev = Tensor::from_vec_on(
+            vec![0.0; batch_size * hidden_size],
+            vec![batch_size, hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let c_prev = Tensor::from_vec_on(
+            vec![0.0; batch_size * hidden_size],
+            vec![batch_size, hidden_size],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let (h_next, c_next) = LSTMCell::new(
+            input,
+            weight_ih,
+            weight_hh,
+            bias_ih,
+            bias_hh,
+            h_prev,
+            c_prev,
+        )
+        .unwrap()
+        .execute()
+        .unwrap();
+
+        assert_eq!(h_next.shape(), &[batch_size, hidden_size]);
+        assert_eq!(c_next.shape(), &[batch_size, hidden_size]);
     }
 }

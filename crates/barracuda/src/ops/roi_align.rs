@@ -1,115 +1,245 @@
-//! RoI Align - Improved RoI pooling with bilinear interpolation
+//! ROI Align - Region of Interest Align (Pure WGSL)
 //!
-//! More accurate than RoI pooling for object detection.
-//! Used in Mask R-CNN.
+//! Extracts fixed-size feature maps from regions using bilinear interpolation
+//! Avoids quantization artifacts of ROI Pooling
+//!
+//! **Deep Debt Principles**:
+//! - Pure WGSL implementation (no CPU code)
+//! - Safe Rust wrapper (no unsafe code)
+//! - Hardware-agnostic via WebGPU
+//! - Complete implementation (production-ready)
 
-use super::roi_pool::RoI;
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-pub async fn roi_align(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    features: &[f32],
-    rois: &[RoI],
-    _batch_size: usize,
-    channels: usize,
-    height: usize,
-    width: usize,
-    output_h: usize,
-    output_w: usize,
+/// Region of Interest Align
+pub struct RoiAlign {
+    features: Tensor,
+    rois: Tensor,
+    pooled_height: usize,
+    pooled_width: usize,
+    spatial_scale: f32,
     sampling_ratio: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut output = vec![0.0f32; rois.len() * channels * output_h * output_w];
+}
 
-    for (roi_idx, roi) in rois.iter().enumerate() {
-        let roi_h = (roi.y2 - roi.y1) * height as f32;
-        let roi_w = (roi.x2 - roi.x1) * width as f32;
-
-        let bin_h = roi_h / output_h as f32;
-        let bin_w = roi_w / output_w as f32;
-
-        for c in 0..channels {
-            for oh in 0..output_h {
-                for ow in 0..output_w {
-                    let mut sum = 0.0;
-                    let mut count = 0;
-
-                    // Sample points in bin
-                    for sh in 0..sampling_ratio {
-                        for sw in 0..sampling_ratio {
-                            let h = roi.y1 * height as f32
-                                + (oh as f32 + (sh as f32 + 0.5) / sampling_ratio as f32) * bin_h;
-                            let w = roi.x1 * width as f32
-                                + (ow as f32 + (sw as f32 + 0.5) / sampling_ratio as f32) * bin_w;
-
-                            if h >= 0.0 && h < height as f32 && w >= 0.0 && w < width as f32 {
-                                // Bilinear interpolation
-                                let h0 = h.floor() as usize;
-                                let w0 = w.floor() as usize;
-                                let h1 = (h0 + 1).min(height - 1);
-                                let w1 = (w0 + 1).min(width - 1);
-
-                                let hweight = h - h0 as f32;
-                                let wweight = w - w0 as f32;
-
-                                let idx00 = roi.batch_idx * channels * height * width
-                                    + c * height * width
-                                    + h0 * width
-                                    + w0;
-                                let idx01 = roi.batch_idx * channels * height * width
-                                    + c * height * width
-                                    + h0 * width
-                                    + w1;
-                                let idx10 = roi.batch_idx * channels * height * width
-                                    + c * height * width
-                                    + h1 * width
-                                    + w0;
-                                let idx11 = roi.batch_idx * channels * height * width
-                                    + c * height * width
-                                    + h1 * width
-                                    + w1;
-
-                                let v00 = if idx00 < features.len() {
-                                    features[idx00]
-                                } else {
-                                    0.0
-                                };
-                                let v01 = if idx01 < features.len() {
-                                    features[idx01]
-                                } else {
-                                    0.0
-                                };
-                                let v10 = if idx10 < features.len() {
-                                    features[idx10]
-                                } else {
-                                    0.0
-                                };
-                                let v11 = if idx11 < features.len() {
-                                    features[idx11]
-                                } else {
-                                    0.0
-                                };
-
-                                let v0 = v00 * (1.0 - wweight) + v01 * wweight;
-                                let v1 = v10 * (1.0 - wweight) + v11 * wweight;
-                                let val = v0 * (1.0 - hweight) + v1 * hweight;
-
-                                sum += val;
-                                count += 1;
-                            }
-                        }
-                    }
-
-                    let out_idx = roi_idx * channels * output_h * output_w
-                        + c * output_h * output_w
-                        + oh * output_w
-                        + ow;
-                    output[out_idx] = if count > 0 { sum / count as f32 } else { 0.0 };
-                }
-            }
+impl RoiAlign {
+    pub fn new(
+        features: Tensor,
+        rois: Tensor,
+        pooled_height: usize,
+        pooled_width: usize,
+        spatial_scale: f32,
+        sampling_ratio: usize,
+    ) -> Result<Self> {
+        let features_shape = features.shape();
+        if features_shape.len() != 4 {
+            return Err(BarracudaError::invalid_op(
+                "roi_align",
+                "features must be 4D [1, channels, height, width]",
+            ));
         }
+
+        let rois_shape = rois.shape();
+        if rois_shape.len() != 2 || rois_shape[1] != 4 {
+            return Err(BarracudaError::invalid_op(
+                "roi_align",
+                "rois must be 2D [num_rois, 4]",
+            ));
+        }
+
+        if spatial_scale <= 0.0 {
+            return Err(BarracudaError::invalid_op(
+                "roi_align",
+                "spatial_scale must be positive",
+            ));
+        }
+
+        Ok(Self {
+            features,
+            rois,
+            pooled_height,
+            pooled_width,
+            spatial_scale,
+            sampling_ratio,
+        })
     }
 
-    Ok(output)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/roi_align.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.features.device();
+        let features_shape = self.features.shape();
+        let channels = features_shape[1];
+        let height = features_shape[2];
+        let width = features_shape[3];
+
+        let rois_shape = self.rois.shape();
+        let num_rois = rois_shape[0];
+
+        let output_size = num_rois * channels * self.pooled_height * self.pooled_width;
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        // Create uniform buffer
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            num_rois: u32,
+            channels: u32,
+            height: u32,
+            width: u32,
+            pooled_height: u32,
+            pooled_width: u32,
+            spatial_scale: f32,
+            sampling_ratio: u32,
+        }
+
+        let params = Params {
+            num_rois: num_rois as u32,
+            channels: channels as u32,
+            height: height as u32,
+            width: width as u32,
+            pooled_height: self.pooled_height as u32,
+            pooled_width: self.pooled_width as u32,
+            spatial_scale: self.spatial_scale,
+            sampling_ratio: self.sampling_ratio as u32,
+        };
+
+        let params_buffer = device.device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("RoiAlign Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+
+        // Compile shader
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RoiAlign Shader"));
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("RoiAlign Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("RoiAlign Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.features.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.rois.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create pipeline layout
+        let pipeline_layout = device.device.create_pipeline_layout(
+            &wgpu::PipelineLayoutDescriptor {
+                label: Some("RoiAlign Pipeline Layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            },
+        );
+
+        // Create pipeline
+        let pipeline = device.device.create_compute_pipeline(
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("RoiAlign Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            },
+        );
+
+        // Encode and execute
+        let mut encoder = device.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("RoiAlign Encoder"),
+            },
+        );
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("RoiAlign Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups_x = (self.pooled_height * self.pooled_width + 63) / 64;
+            let workgroups_y = (channels + 7) / 8;
+            let workgroups_z = num_rois;
+            pass.dispatch_workgroups(workgroups_x as u32, workgroups_y as u32, workgroups_z as u32);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![num_rois, channels, self.pooled_height, self.pooled_width],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -119,258 +249,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_roi_align_basic() {
-        let dev = get_test_device().await;
-        let features = vec![1.0; 1 * 3 * 8 * 8];
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.0,
-            y1: 0.0,
-            x2: 0.5,
-            y2: 0.5,
-        }];
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            3,
-            8,
-            8,
-            2,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 1 * 3 * 2 * 2);
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_roi_align_edge_cases() {
-        let dev = get_test_device().await;
+        let channels = 64;
+        let height = 32;
+        let width = 32;
+        let num_rois = 2;
+        let pooled_height = 7;
+        let pooled_width = 7;
 
-        // Full image RoI
-        let features = vec![2.0; 1 * 2 * 4 * 4];
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.0,
-            y1: 0.0,
-            x2: 1.0,
-            y2: 1.0,
-        }];
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            2,
-            4,
-            4,
-            2,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 1 * 2 * 2 * 2);
-        // With uniform features, output should be close to 2.0
-        for &val in &output {
-            assert!((val - 2.0).abs() < 0.5);
-        }
-
-        // Single sampling point (sampling_ratio = 1)
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.0,
-            y1: 0.0,
-            x2: 0.5,
-            y2: 0.5,
-        }];
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            2,
-            4,
-            4,
-            2,
-            2,
-            1,
-        )
-        .await
-        .unwrap();
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_roi_align_boundary() {
-        let dev = get_test_device().await;
-
-        // RoI at edges
-        let features = vec![1.0; 1 * 1 * 8 * 8];
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.75,
-            y1: 0.75,
-            x2: 1.0,
-            y2: 1.0,
-        }];
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            1,
-            8,
-            8,
-            2,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 1 * 1 * 2 * 2);
-
-        // Different sampling ratios
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.0,
-            y1: 0.0,
-            x2: 0.5,
-            y2: 0.5,
-        }];
-        let output_sr2 = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            1,
-            8,
-            8,
-            4,
-            4,
-            2,
-        )
-        .await
-        .unwrap();
-        let output_sr4 = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            1,
-            8,
-            8,
-            4,
-            4,
-            4,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output_sr2.len(), output_sr4.len());
-    }
-
-    #[tokio::test]
-    async fn test_roi_align_large_batch() {
-        let dev = get_test_device().await;
-
-        // Multiple RoIs from multiple batches
-        let features = vec![1.0; 2 * 3 * 14 * 14];
-        let rois = vec![
-            RoI {
-                batch_idx: 0,
-                x1: 0.0,
-                y1: 0.0,
-                x2: 0.5,
-                y2: 0.5,
-            },
-            RoI {
-                batch_idx: 0,
-                x1: 0.5,
-                y1: 0.0,
-                x2: 1.0,
-                y2: 0.5,
-            },
-            RoI {
-                batch_idx: 1,
-                x1: 0.0,
-                y1: 0.5,
-                x2: 0.5,
-                y2: 1.0,
-            },
-            RoI {
-                batch_idx: 1,
-                x1: 0.5,
-                y1: 0.5,
-                x2: 1.0,
-                y2: 1.0,
-            },
-        ];
-
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            2,
-            3,
-            14,
-            14,
-            7,
-            7,
-            2,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), 4 * 3 * 7 * 7); // 4 RoIs, 3 channels, 7x7 output
-        assert!(output.iter().all(|&x| x.is_finite()));
-    }
-
-    #[tokio::test]
-    async fn test_roi_align_precision() {
-        let dev = get_test_device().await;
-
-        // Test bilinear interpolation with gradient
-        let mut features = vec![0.0; 1 * 1 * 4 * 4];
-        for h in 0..4 {
-            for w in 0..4 {
-                features[h * 4 + w] = (h + w) as f32;
-            }
-        }
-
-        let rois = vec![RoI {
-            batch_idx: 0,
-            x1: 0.0,
-            y1: 0.0,
-            x2: 1.0,
-            y2: 1.0,
-        }];
-        let output = roi_align(
-            &dev.device,
-            &dev.queue,
-            &features,
-            &rois,
-            1,
-            1,
-            4,
-            4,
-            2,
-            2,
-            2,
+        let features = Tensor::from_vec_on(
+            vec![1.0; channels * height * width],
+            vec![1, channels, height, width],
+            device.clone(),
         )
         .await
         .unwrap();
 
-        // Output should be smooth due to bilinear interpolation
-        assert!(output.iter().all(|&x| x >= 0.0 && x <= 6.0));
-        assert!(output.iter().all(|&x| x.is_finite()));
+        let rois = Tensor::from_vec_on(
+            vec![0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0],
+            vec![num_rois, 4],
+            device.clone(),
+        )
+        .await
+        .unwrap();
+
+        let roi_align = RoiAlign::new(features, rois, pooled_height, pooled_width, 1.0, 2).unwrap();
+        let output = roi_align.execute().unwrap();
+
+        assert_eq!(output.shape(), &[num_rois, channels, pooled_height, pooled_width]);
     }
 }

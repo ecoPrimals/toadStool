@@ -9,8 +9,8 @@
 //!
 //! **Coverage Goal**: 5+ tests per operation × 32 operations = 160+ tests
 
-use ml_inference::error::{BarracudaError, Result};
-use ml_inference::wgpu::tensor_ops::*;
+use ml_inference_showcase::error::{BarracudaError, Result};
+use ml_inference_showcase::wgpu::tensor_ops::*;
 
 /// FP32 precision epsilon for floating point comparisons
 const EPSILON: f32 = 1e-5;

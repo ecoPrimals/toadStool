@@ -1,40 +1,214 @@
 //! BBox Transform - Transform bounding boxes
 //!
 //! Applies deltas to anchor boxes (object detection).
+//!
+//! Deep Debt Principles:
+//! - Pure GPU/WGSL execution
+//! - Safe Rust wrappers
+//! - Hardware-agnostic via WebGPU
+//! - Runtime device discovery
+//! - Zero CPU fallbacks in execution
 
-pub async fn bbox_transform(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    anchors: &[f32], // [N, 4] (x1, y1, x2, y2)
-    deltas: &[f32],  // [N, 4] (dx, dy, dw, dh)
-    num_boxes: usize,
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    if anchors.len() != num_boxes * 4 || deltas.len() != num_boxes * 4 {
-        return Err("Dimension mismatch".into());
+use crate::error::Result;
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
+
+/// BBoxTransform operation
+pub struct BBoxTransform {
+    anchors: Tensor,
+    deltas: Tensor,
+}
+
+impl BBoxTransform {
+    /// Create a new bbox transform operation
+    pub fn new(anchors: Tensor, deltas: Tensor) -> Result<Self> {
+        let anchor_shape = anchors.shape();
+        let delta_shape = deltas.shape();
+        
+        if anchor_shape.len() != 2 || anchor_shape[1] != 4 {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "BBoxTransform",
+                format!("Anchors must be [N, 4], got {:?}", anchor_shape),
+            ));
+        }
+        
+        if delta_shape != anchor_shape {
+            return Err(crate::error::BarracudaError::invalid_op(
+                "BBoxTransform",
+                format!("Deltas must match anchors shape: {:?} vs {:?}", delta_shape, anchor_shape),
+            ));
+        }
+        
+        Ok(Self { anchors, deltas })
     }
 
-    let mut transformed = vec![0.0f32; num_boxes * 4];
-
-    for i in 0..num_boxes {
-        let idx = i * 4;
-
-        let anchor_w = anchors[idx + 2] - anchors[idx];
-        let anchor_h = anchors[idx + 3] - anchors[idx + 1];
-        let anchor_cx = anchors[idx] + anchor_w * 0.5;
-        let anchor_cy = anchors[idx + 1] + anchor_h * 0.5;
-
-        let pred_cx = deltas[idx] * anchor_w + anchor_cx;
-        let pred_cy = deltas[idx + 1] * anchor_h + anchor_cy;
-        let pred_w = deltas[idx + 2].exp() * anchor_w;
-        let pred_h = deltas[idx + 3].exp() * anchor_h;
-
-        transformed[idx] = pred_cx - pred_w * 0.5;
-        transformed[idx + 1] = pred_cy - pred_h * 0.5;
-        transformed[idx + 2] = pred_cx + pred_w * 0.5;
-        transformed[idx + 3] = pred_cy + pred_h * 0.5;
+    /// Get the WGSL shader source
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/bbox_transform.wgsl")
     }
 
-    Ok(transformed)
+    /// Execute the bbox transform operation
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.anchors.device();
+        let shape = self.anchors.shape();
+        
+        let num_boxes = shape[0];
+        let output_size = num_boxes * 4;
+
+        // Create buffers
+        let anchors_buffer = self.anchors.buffer();
+        let deltas_buffer = self.deltas.buffer();
+
+        let transformed_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("BBoxTransform Output"),
+            size: (output_size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create uniform buffer for parameters
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            num_boxes: u32,
+        }
+
+        let params = Params {
+            num_boxes: num_boxes as u32,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("BBoxTransform Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("BBoxTransform Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("BBoxTransform Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: anchors_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: deltas_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: transformed_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Create compute pipeline
+        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("BBoxTransform Shader"));
+
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("BBoxTransform Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("BBoxTransform Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        // Execute compute shader
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("BBoxTransform Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("BBoxTransform Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&compute_pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            
+            let workgroups = (num_boxes as u32 + 255) / 256;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Read back results
+        let output_data = crate::utils::read_buffer(device, &transformed_buffer, output_size)?;
+
+        Ok(Tensor::new(
+            output_data,
+            vec![num_boxes, 4],
+            device.clone(),
+        ))
+    }
+}
+
+impl Tensor {
+    /// Transform bounding boxes with deltas
+    ///
+    /// # Arguments
+    ///
+    /// * `deltas` - Deltas tensor [N, 4] (dx, dy, dw, dh)
+    pub fn bbox_transform(self, deltas: Tensor) -> Result<Self> {
+        BBoxTransform::new(self, deltas)?.execute()
+    }
 }
 
 #[cfg(test)]

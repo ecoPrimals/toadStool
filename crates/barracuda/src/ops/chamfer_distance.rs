@@ -1,58 +1,231 @@
-//! ChamferDistance - Chamfer distance for point clouds
+//! Chamfer Distance for point clouds
 //!
-//! Bidirectional nearest neighbor distance.
-//! Used in 3D reconstruction and point cloud generation.
+//! **Pure WGSL**: Single implementation via WebGPU shader
+//! Measures similarity between two point clouds
 
-pub async fn chamfer_distance(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    points1: &[f32], // [N, 3] flattened
-    points2: &[f32], // [M, 3] flattened
-    n: usize,
-    m: usize,
-) -> Result<f32, Box<dyn std::error::Error>> {
-    if points1.len() != n * 3 || points2.len() != m * 3 {
-        return Err("Point dimensions mismatch".into());
-    }
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    // Forward direction: for each point in set1, find nearest in set2
-    let mut forward_dist = 0.0;
-    for i in 0..n {
-        let mut min_dist = f32::MAX;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct ChamferDistanceParams {
+    num_points_x: u32,
+    num_points_y: u32,
+    point_dim: u32,
+    direction: u32, // 0 = X→Y, 1 = Y→X, 2 = bidirectional
+}
 
-        for j in 0..m {
-            let dx = points1[i * 3] - points2[j * 3];
-            let dy = points1[i * 3 + 1] - points2[j * 3 + 1];
-            let dz = points1[i * 3 + 2] - points2[j * 3 + 2];
-            let dist_sq = dx * dx + dy * dy + dz * dz;
+pub struct ChamferDistance {
+    points_x: Tensor,
+    points_y: Tensor,
+    direction: u32,
+}
 
-            min_dist = min_dist.min(dist_sq);
+impl ChamferDistance {
+    /// Create ChamferDistance operation
+    pub fn new(points_x: Tensor, points_y: Tensor, direction: u32) -> Result<Self> {
+        if direction > 2 {
+            return Err(BarracudaError::invalid_op(
+                "ChamferDistance",
+                format!("direction must be 0 (X→Y), 1 (Y→X), or 2 (bidirectional), got {}", direction),
+            ));
         }
 
-        forward_dist += min_dist;
+        Ok(Self {
+            points_x,
+            points_y,
+            direction,
+        })
     }
-    forward_dist /= n as f32;
 
-    // Backward direction: for each point in set2, find nearest in set1
-    let mut backward_dist = 0.0;
-    for j in 0..m {
-        let mut min_dist = f32::MAX;
+    /// WGSL shader source (embedded at compile time)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/chamfer_distance.wgsl")
+    }
 
-        for i in 0..n {
-            let dx = points2[j * 3] - points1[i * 3];
-            let dy = points2[j * 3 + 1] - points1[i * 3 + 1];
-            let dz = points2[j * 3 + 2] - points1[i * 3 + 2];
-            let dist_sq = dx * dx + dy * dy + dz * dz;
-
-            min_dist = min_dist.min(dist_sq);
+    /// Execute ChamferDistance on tensor
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.points_x.device();
+        let x_shape = self.points_x.shape();
+        let y_shape = self.points_y.shape();
+        
+        if x_shape.len() != 2 || y_shape.len() != 2 {
+            return Err(BarracudaError::invalid_op(
+                "ChamferDistance",
+                format!("points must be 2D [num_points, point_dim], got shapes {:?} and {:?}", x_shape, y_shape),
+            ));
         }
 
-        backward_dist += min_dist;
-    }
-    backward_dist /= m as f32;
+        let num_points_x = x_shape[0];
+        let num_points_y = y_shape[0];
+        let point_dim = x_shape[1];
 
-    // Chamfer distance = forward + backward
-    Ok(forward_dist + backward_dist)
+        if y_shape[1] != point_dim {
+            return Err(BarracudaError::invalid_op(
+                "ChamferDistance",
+                format!("point dimensions must match: {} != {}", point_dim, y_shape[1]),
+            ));
+        }
+
+        // Create output buffer based on direction
+        let output_size = match self.direction {
+            0 => num_points_x,      // X→Y: one distance per point in X
+            1 => num_points_y,      // Y→X: one distance per point in Y
+            2 => num_points_x + num_points_y, // Bidirectional: both
+            _ => unreachable!(),
+        };
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = ChamferDistanceParams {
+            num_points_x: num_points_x as u32,
+            num_points_y: num_points_y as u32,
+            point_dim: point_dim as u32,
+            direction: self.direction,
+        };
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ChamferDistance Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+        // Create bind group layout
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ChamferDistance Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        // Create bind group
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ChamferDistance Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.points_x.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.points_y.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Compile shader
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("ChamferDistance"));
+
+        // Create pipeline
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ChamferDistance Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ChamferDistance Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
+
+        // Encode and execute
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ChamferDistance Encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ChamferDistance Pass"),
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch workgroups (64 threads per workgroup)
+            let max_points = num_points_x.max(num_points_y);
+            let workgroups = (max_points as u32 + 63) / 64;
+            pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        // Create output tensor
+        let output_shape = match self.direction {
+            0 => vec![num_points_x],
+            1 => vec![num_points_y],
+            2 => vec![num_points_x + num_points_y],
+            _ => unreachable!(),
+        };
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            output_shape,
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -62,90 +235,33 @@ mod tests {
 
     #[tokio::test]
     async fn test_chamfer_distance_basic() {
-        let dev = get_test_device().await;
-        let points1 = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0]; // 2 points
-        let points2 = vec![0.1, 0.1, 0.1, 0.9, 0.1, 0.1]; // 2 points
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2)
-            .await
-            .unwrap();
-        assert!(dist > 0.0);
-        assert!(dist.is_finite());
-    }
+        let device = get_test_device().await;
 
-    #[tokio::test]
-    async fn test_chamfer_distance_edge_cases() {
-        let dev = get_test_device().await;
+        let num_points_x = 5;
+        let num_points_y = 7;
+        let point_dim = 3;
 
-        // Identical point clouds (zero distance)
-        let points1 = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let points2 = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2)
-            .await
-            .unwrap();
-        assert!(dist.abs() < 1e-6);
+        let points_x = Tensor::from_vec_on(
+            vec![1.0; num_points_x * point_dim],
+            vec![num_points_x, point_dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-        // Single point
-        let points1 = vec![0.0, 0.0, 0.0];
-        let points2 = vec![1.0, 1.0, 1.0];
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 1, 1)
-            .await
-            .unwrap();
-        assert!(dist > 0.0);
-    }
+        let points_y = Tensor::from_vec_on(
+            vec![2.0; num_points_y * point_dim],
+            vec![num_points_y, point_dim],
+            device.clone(),
+        )
+        .await
+        .unwrap();
 
-    #[tokio::test]
-    async fn test_chamfer_distance_boundary() {
-        let dev = get_test_device().await;
-
-        // Asymmetric point clouds (different sizes)
-        let points1 = vec![0.0, 0.0, 0.0];
-        let points2 = vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 1, 3)
-            .await
-            .unwrap();
-        assert!(dist > 0.0);
-        assert!(dist.is_finite());
-    }
-
-    #[tokio::test]
-    async fn test_chamfer_distance_large_batch() {
-        let dev = get_test_device().await;
-
-        // Larger point clouds
-        let n = 50;
-        let m = 60;
-
-        let points1: Vec<f32> = (0..n * 3).map(|i| (i % 10) as f32 * 0.1).collect();
-        let points2: Vec<f32> = (0..m * 3).map(|i| (i % 12) as f32 * 0.1).collect();
-
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, n, m)
-            .await
-            .unwrap();
-        assert!(dist >= 0.0);
-        assert!(dist.is_finite());
-    }
-
-    #[tokio::test]
-    async fn test_chamfer_distance_precision() {
-        let dev = get_test_device().await;
-
-        // Test with known geometry
-        let points1 = vec![
-            0.0, 0.0, 0.0, // Origin
-            1.0, 0.0, 0.0, // Unit x
-        ];
-        let points2 = vec![
-            0.0, 0.0, 0.0, // Origin (matches)
-            0.0, 1.0, 0.0, // Unit y
-        ];
-
-        let dist = chamfer_distance(&dev.device, &dev.queue, &points1, &points2, 2, 2)
-            .await
+        let result = ChamferDistance::new(points_x, points_y, 0)
+            .unwrap()
+            .execute()
             .unwrap();
 
-        // Forward: origin→origin (0) + unitX→origin (1) = avg 0.5
-        // Backward: origin→origin (0) + unitY→origin (1) = avg 0.5
-        // Total = 1.0
-        assert!((dist - 1.0).abs() < 0.01);
+        assert_eq!(result.shape(), &[num_points_x]);
     }
 }

@@ -96,49 +96,47 @@ pub fn npu_matmul(
     // ═══════════════════════════════════════════════════════════
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
-    
+
     // Create tensors from raw data
     // Note: We get WGSL device for universal compute
     // The WGSL shader is hardware-agnostic - wgpu routes to best available
-    use crate::tensor::Tensor;
     use crate::device::WgpuDevice;
+    use crate::tensor::Tensor;
     use std::sync::Arc;
-    
+
     // Get device (auto-detect GPU, fallback to CPU via wgpu)
     let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
-    
+
     // Block on async tensor creation
-    let tensor_a = futures::executor::block_on(
-        Tensor::from_vec_on(a.to_vec(), vec![m, k], device.clone())
-    )?;
-    let tensor_b = futures::executor::block_on(
-        Tensor::from_vec_on(b.to_vec(), vec![k, n], device)
-    )?;
-    
+    let tensor_a =
+        futures::executor::block_on(Tensor::from_vec_on(a.to_vec(), vec![m, k], device.clone()))?;
+    let tensor_b =
+        futures::executor::block_on(Tensor::from_vec_on(b.to_vec(), vec![k, n], device))?;
+
     // Execute matmul using WGSL shader (same as GPU/CPU!)
     // This uses ops/matmul.rs → shaders/matmul.wgsl
     let result_tensor = tensor_a.matmul(&tensor_b)?;
-    
+
     // Extract result data
     let result = result_tensor.to_vec()?;
-    
+
     // ═══════════════════════════════════════════════════════════
     // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
     // ═══════════════════════════════════════════════════════════
-    
+
     // For sparse data, we can encode as events for energy savings
     // This is NPU-specific optimization, NOT the math computation!
     if sparsity_a > 0.5 || sparsity_b > 0.5 {
         let events_a = codec.encode(a);
         let events_b = codec.encode(b);
-        
+
         log::debug!(
             "NPU event encoding: {} + {} events ({}% reduction)",
             events_a.len(),
             events_b.len(),
             ((1.0 - (events_a.len() + events_b.len()) as f32 / (a.len() + b.len()) as f32) * 100.0)
         );
-        
+
         // In full implementation: Send events to Akida for validation
         // npu.validate_matmul_events(&events_a, &events_b)?;
         let _ = npu; // Suppress unused warning for now

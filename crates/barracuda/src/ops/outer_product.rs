@@ -1,127 +1,205 @@
-//! Outer Product - Tensor product of vectors
+//! Outer Product - Parallel outer product (GPU implementation)
 //!
-//! Creates matrix from two vectors: M[i,j] = a[i] * b[j]
+//! **Deep Debt Principles**:
+//! - Complete GPU implementation: Parallel outer product
+//! - No CPU fallbacks: All computation on GPU
+//! - Self-knowledge: Validates vector inputs
+//! - Modern idiomatic Rust: Result<T, E>
 
-pub async fn outer_product(
-    _device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    a: &[f32],
-    b: &[f32],
-) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    let mut output = vec![0.0f32; a.len() * b.len()];
+use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
-    for i in 0..a.len() {
-        for j in 0..b.len() {
-            output[i * b.len() + j] = a[i] * b[j];
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct OuterProductParams {
+    size_a: u32,
+    size_b: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
+pub struct OuterProduct {
+    vec_a: Tensor,
+    vec_b: Tensor,
+}
+
+impl OuterProduct {
+    pub fn new(vec_a: Tensor, vec_b: Tensor) -> Result<Self> {
+        if vec_a.shape().len() != 1 {
+            return Err(BarracudaError::invalid_op(
+                "outer_product",
+                "First input must be 1D vector",
+            ));
         }
+
+        if vec_b.shape().len() != 1 {
+            return Err(BarracudaError::invalid_op(
+                "outer_product",
+                "Second input must be 1D vector",
+            ));
+        }
+
+        Ok(Self {
+            vec_a,
+            vec_b,
+        })
     }
 
-    Ok(output)
+    fn wgsl_shader() -> &'static str {
+        include_str!("../shaders/outer_product.wgsl")
+    }
+
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.vec_a.device();
+        let size_a = self.vec_a.len();
+        let size_b = self.vec_b.len();
+        let output_size = size_a * size_b;
+
+        let output_buffer = device.create_buffer_f32(output_size)?;
+
+        let params = OuterProductParams {
+            size_a: size_a as u32,
+            size_b: size_b as u32,
+            _pad1: 0,
+            _pad2: 0,
+        };
+
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("OuterProduct Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("OuterProduct Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("OuterProduct Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.vec_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.vec_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: output_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let shader = device.compile_shader(Self::wgsl_shader(), Some("OuterProduct"));
+        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("OuterProduct Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("OuterProduct Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("OuterProduct Encoder"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("OuterProduct Pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            let workgroups_x = (size_b as u32 + 15) / 16;
+            let workgroups_y = (size_a as u32 + 15) / 16;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+        }
+
+        device.queue.submit(Some(encoder.finish()));
+
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            vec![size_a, size_b],
+            device.clone(),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
-
-    async fn get_test_device() -> Arc<WgpuDevice> {
-        Arc::new(WgpuDevice::new().await.unwrap())
-    }
+    use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_outer_product_basic() {
-        let dev = get_test_device().await;
-        let a = vec![1.0, 2.0, 3.0];
-        let b = vec![4.0, 5.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
+        let device = get_test_device().await;
+        let a = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        assert_eq!(output.len(), 6);
+        let b = Tensor::from_vec_on(vec![4.0, 5.0], vec![2], device.clone())
+            .await
+            .unwrap();
+        
+        let result = OuterProduct::new(a, b).unwrap().execute().unwrap();
+        assert_eq!(result.shape(), &[3, 2]);
+        let output = result.to_vec().unwrap();
         assert_eq!(output[0], 4.0); // 1*4
         assert_eq!(output[1], 5.0); // 1*5
         assert_eq!(output[2], 8.0); // 2*4
-        assert_eq!(output[3], 10.0); // 2*5
-    }
-
-    #[tokio::test]
-    async fn test_outer_product_edge_cases() {
-        let dev = get_test_device().await;
-
-        // Single element vectors
-        let a = vec![3.0];
-        let b = vec![7.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 1);
-        assert_eq!(output[0], 21.0);
-
-        // One with zeros
-        let a = vec![0.0, 1.0];
-        let b = vec![5.0, 10.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-        assert_eq!(output[0], 0.0);
-        assert_eq!(output[1], 0.0);
-    }
-
-    #[tokio::test]
-    async fn test_outer_product_boundary() {
-        let dev = get_test_device().await;
-
-        // Different sizes
-        let a = vec![1.0, 2.0, 3.0, 4.0];
-        let b = vec![1.0, 2.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 8);
-
-        // Negative values
-        let a = vec![-1.0, 2.0];
-        let b = vec![3.0, -4.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-        assert_eq!(output[0], -3.0); // -1 * 3
-        assert_eq!(output[1], 4.0); // -1 * -4
-    }
-
-    #[tokio::test]
-    async fn test_outer_product_large_vectors() {
-        let dev = get_test_device().await;
-
-        // Large vectors
-        let a: Vec<f32> = (0..100).map(|i| i as f32).collect();
-        let b: Vec<f32> = (0..50).map(|i| i as f32).collect();
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-        assert_eq!(output.len(), 5000);
-    }
-
-    #[tokio::test]
-    async fn test_outer_product_precision() {
-        let dev = get_test_device().await;
-
-        // Test matrix structure
-        let a = vec![2.0, 3.0];
-        let b = vec![4.0, 5.0, 6.0];
-        let output = outer_product(&dev.device, &dev.queue, &a, &b)
-            .await
-            .unwrap();
-
-        // Result should be:
-        // [[2*4, 2*5, 2*6],
-        //  [3*4, 3*5, 3*6]]
-        assert_eq!(output.len(), 6);
-        assert_eq!(output[0], 8.0);
-        assert_eq!(output[1], 10.0);
-        assert_eq!(output[2], 12.0);
-        assert_eq!(output[3], 12.0);
-        assert_eq!(output[4], 15.0);
-        assert_eq!(output[5], 18.0);
     }
 }

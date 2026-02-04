@@ -7,9 +7,11 @@
 //! - ✅ Hardware-agnostic (wgpu backend selection)
 //! - ✅ Numerically precise (Barrett reduction)
 //! - ✅ Production-ready (full error handling)
+//! - ✅ Canonical pattern: Tensor inputs/outputs, device from runtime
 
-use crate::device::WgpuDevice;
 use crate::error::{BarracudaError, Result};
+use crate::tensor::Tensor;
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 /// FHE polynomial addition operation
@@ -29,19 +31,21 @@ use wgpu::util::DeviceExt;
 ///
 /// ```no_run
 /// use barracuda::ops::fhe_poly_add::FhePolyAdd;
-/// use barracuda::WgpuDevice;
+/// use barracuda::Tensor;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let device = WgpuDevice::new().await?;
-/// let op = FhePolyAdd::new(&device, 2048, 0x1000000000000000)?; // degree=2048, q=2^60
+/// // Create tensors from u64 polynomial data
+/// let poly_a = Tensor::from_u64_poly(&poly_a_data, degree).await?;
+/// let poly_b = Tensor::from_u64_poly(&poly_b_data, degree).await?;
 ///
-/// // poly_a and poly_b are Vec<u64> of length 2048
-/// let result = op.execute(&poly_a, &poly_b).await?;
+/// let op = FhePolyAdd::new(poly_a, poly_b, degree, modulus)?;
+/// let result = op.execute()?; // Returns Tensor (data stays on GPU)
 /// # Ok(())
 /// # }
 /// ```
 pub struct FhePolyAdd {
-    device: WgpuDevice,
+    poly_a: Tensor,
+    poly_b: Tensor,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     degree: u32,
@@ -54,14 +58,41 @@ impl FhePolyAdd {
     ///
     /// ## Parameters
     ///
-    /// - `device`: GPU device
+    /// - `poly_a`: First polynomial tensor (u32 pairs representing u64 coefficients)
+    /// - `poly_b`: Second polynomial tensor (u32 pairs representing u64 coefficients)
     /// - `degree`: Polynomial degree (N), typically 2048, 4096, or 8192
     /// - `modulus`: Modulus q (large prime, e.g., 2^60)
     ///
     /// ## Barrett Constant
     ///
     /// Precomputes μ = ⌊2^128 / q⌋ for efficient modular reduction
-    pub fn new(device: &WgpuDevice, degree: u32, modulus: u64) -> Result<Self> {
+    pub fn new(poly_a: Tensor, poly_b: Tensor, degree: u32, modulus: u64) -> Result<Self> {
+        // Validate inputs
+        let expected_size = (degree as usize) * 2; // u32 pairs for u64
+        if poly_a.len() != expected_size {
+            return Err(BarracudaError::Device(format!(
+                "poly_a length {} doesn't match expected {} (degree {} * 2)",
+                poly_a.len(),
+                expected_size,
+                degree
+            )));
+        }
+        if poly_b.len() != expected_size {
+            return Err(BarracudaError::Device(format!(
+                "poly_b length {} doesn't match expected {} (degree {} * 2)",
+                poly_b.len(),
+                expected_size,
+                degree
+            )));
+        }
+
+        // Ensure both tensors are on same device
+        if !std::ptr::eq(poly_a.device().as_ref(), poly_b.device().as_ref()) {
+            return Err(BarracudaError::Device(
+                "poly_a and poly_b must be on the same device".to_string(),
+            ));
+        }
+
         // Compute Barrett constant μ = ⌊2^128 / q⌋
         // Simplified: μ ≈ 2^64 / q for 64-bit arithmetic
         let barrett_mu = if modulus > 0 {
@@ -72,9 +103,11 @@ impl FhePolyAdd {
             ));
         };
 
+        let device = poly_a.device();
+
         // Load WGSL shader
         let shader = device
-            .device()
+            .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("FHE Polynomial Addition Shader"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("fhe_poly_add.wgsl").into()),
@@ -137,7 +170,7 @@ impl FhePolyAdd {
         // Create pipeline layout
         let pipeline_layout =
             device
-                .device()
+                .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("FHE Poly Add Pipeline Layout"),
                     bind_group_layouts: &[&bind_group_layout],
@@ -146,7 +179,7 @@ impl FhePolyAdd {
 
         // Create compute pipeline
         let pipeline = device
-            .device()
+            .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("FHE Poly Add Pipeline"),
                 layout: Some(&pipeline_layout),
@@ -155,7 +188,8 @@ impl FhePolyAdd {
             });
 
         Ok(Self {
-            device: device.clone(),
+            poly_a,
+            poly_b,
             pipeline,
             bind_group_layout,
             degree,
@@ -166,67 +200,22 @@ impl FhePolyAdd {
 
     /// Execute polynomial addition on GPU
     ///
-    /// ## Parameters
-    ///
-    /// - `poly_a`: First polynomial (length = degree)
-    /// - `poly_b`: Second polynomial (length = degree)
-    ///
     /// ## Returns
     ///
-    /// Result polynomial: (poly_a + poly_b) mod q
+    /// Result tensor: (poly_a + poly_b) mod q
+    /// Data stays on GPU (no CPU readback)
     ///
     /// ## Deep Debt
     ///
     /// - ✅ Validates inputs (length, alignment)
     /// - ✅ GPU execution (parallel)
     /// - ✅ Numerically precise (Barrett reduction)
-    pub async fn execute(&self, poly_a: &[u64], poly_b: &[u64]) -> Result<Vec<u64>> {
-        // Validate inputs
-        if poly_a.len() != self.degree as usize {
-            return Err(BarracudaError::Device(format!(
-                "poly_a length {} doesn't match degree {}",
-                poly_a.len(),
-                self.degree
-            )));
-        }
-        if poly_b.len() != self.degree as usize {
-            return Err(BarracudaError::Device(format!(
-                "poly_b length {} doesn't match degree {}",
-                poly_b.len(),
-                self.degree
-            )));
-        }
+    /// - ✅ Pure GPU execution (no CPU fallback)
+    pub fn execute(self) -> Result<Tensor> {
+        let device = self.poly_a.device();
 
-        // Convert u64 to u32 pairs for GPU (WGSL limitation)
-        let poly_a_u32: Vec<u32> = poly_a
-            .iter()
-            .flat_map(|&val| vec![val as u32, (val >> 32) as u32])
-            .collect();
-        let poly_b_u32: Vec<u32> = poly_b
-            .iter()
-            .flat_map(|&val| vec![val as u32, (val >> 32) as u32])
-            .collect();
-
-        // Create GPU buffers
-        let poly_a_buffer =
-            self.device
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FHE Poly A Buffer"),
-                    contents: bytemuck::cast_slice(&poly_a_u32),
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
-
-        let poly_b_buffer =
-            self.device
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FHE Poly B Buffer"),
-                    contents: bytemuck::cast_slice(&poly_b_u32),
-                    usage: wgpu::BufferUsages::STORAGE,
-                });
-
-        let result_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
+        // Create output buffer (u32 pairs for u64 coefficients)
+        let result_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FHE Result Buffer"),
             size: (self.degree as u64 * 2 * std::mem::size_of::<u32>() as u64),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
@@ -255,8 +244,8 @@ impl FhePolyAdd {
         };
 
         let params_buffer =
-            self.device
-                .device()
+            device
+                .device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("FHE Params Buffer"),
                     contents: bytemuck::bytes_of(&params),
@@ -264,20 +253,19 @@ impl FhePolyAdd {
                 });
 
         // Create bind group
-        let bind_group = self
+        let bind_group = device
             .device
-            .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("FHE Poly Add Bind Group"),
                 layout: &self.bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: poly_a_buffer.as_entire_binding(),
+                        resource: self.poly_a.buffer().as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: poly_b_buffer.as_entire_binding(),
+                        resource: self.poly_b.buffer().as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
@@ -290,21 +278,12 @@ impl FhePolyAdd {
                 ],
             });
 
-        // Create staging buffer for readback
-        let staging_buffer = self.device.device().create_buffer(&wgpu::BufferDescriptor {
-            label: Some("FHE Staging Buffer"),
-            size: (self.degree as u64 * 2 * std::mem::size_of::<u32>() as u64),
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-
         // Execute compute shader
-        let mut encoder =
-            self.device
-                .device()
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("FHE Poly Add Encoder"),
-                });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("FHE Poly Add Encoder"),
+            });
 
         {
             let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -319,54 +298,96 @@ impl FhePolyAdd {
             cpass.dispatch_workgroups(workgroup_count, 1, 1);
         }
 
-        // Copy result to staging buffer
+        device.queue.submit(Some(encoder.finish()));
+
+        // Return tensor (data stays on GPU)
+        Ok(Tensor::from_buffer(
+            result_buffer,
+            vec![self.degree as usize * 2], // u32 pairs
+            device.clone(),
+        ))
+    }
+}
+
+/// Helper: Create FHE polynomial tensor from u64 coefficients
+///
+/// Converts u64 polynomial coefficients to u32 pairs for GPU storage
+pub async fn create_fhe_poly_tensor(
+    poly: &[u64],
+    device: Arc<crate::device::WgpuDevice>,
+) -> Result<Tensor> {
+    // Convert u64 to u32 pairs
+    let poly_u32: Vec<u32> = poly
+        .iter()
+        .flat_map(|&val| vec![val as u32, (val >> 32) as u32])
+        .collect();
+
+    Tensor::from_data(&poly_u32, vec![poly_u32.len()], device)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+    use wgpu::util::DeviceExt;
+
+    #[tokio::test]
+    async fn test_fhe_poly_add_basic() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        let degree = 8; // Small for testing
+        let modulus = 97; // Small prime for testing
+
+        // Test: [1, 2, 3, 4, 5, 6, 7, 8] + [10, 20, 30, 40, 50, 60, 70, 80]
+        let poly_a_data = vec![1u64, 2, 3, 4, 5, 6, 7, 8];
+        let poly_b_data = vec![10u64, 20, 30, 40, 50, 60, 70, 80];
+
+        let poly_a = create_fhe_poly_tensor(&poly_a_data, device.clone())
+            .await
+            .unwrap();
+        let poly_b = create_fhe_poly_tensor(&poly_b_data, device.clone())
+            .await
+            .unwrap();
+
+        let op = FhePolyAdd::new(poly_a, poly_b, degree, modulus).unwrap();
+        let result_tensor = op.execute().unwrap();
+
+        // Read back result (for testing) - use direct buffer read
+        let size = result_tensor.len();
+        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Test Staging Buffer"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.device.create_command_encoder(&Default::default());
         encoder.copy_buffer_to_buffer(
-            &result_buffer,
+            result_tensor.buffer(),
             0,
             &staging_buffer,
             0,
-            self.degree as u64 * 2 * std::mem::size_of::<u32>() as u64,
+            (size * std::mem::size_of::<u32>()) as u64,
         );
+        device.queue.submit(Some(encoder.finish()));
 
-        self.device.queue().submit(Some(encoder.finish()));
-
-        // Read back result
         let buffer_slice = staging_buffer.slice(..);
-        buffer_slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.device().poll(wgpu::Maintain::Wait);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        device.device.poll(wgpu::Maintain::Wait);
+        rx.await.unwrap().unwrap();
 
         let data = buffer_slice.get_mapped_range();
         let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
         drop(data);
         staging_buffer.unmap();
 
-        // Convert u32 pairs back to u64
         let result: Vec<u64> = result_u32
             .chunks(2)
             .map(|pair| (pair[0] as u64) | ((pair[1] as u64) << 32))
             .collect();
-
-        Ok(result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_fhe_poly_add_basic() {
-        let device = WgpuDevice::new().await.unwrap();
-        let degree = 8; // Small for testing
-        let modulus = 97; // Small prime for testing
-
-        let op = FhePolyAdd::new(&device, degree, modulus).unwrap();
-
-        // Test: [1, 2, 3, 4, 5, 6, 7, 8] + [10, 20, 30, 40, 50, 60, 70, 80]
-        let poly_a = vec![1, 2, 3, 4, 5, 6, 7, 8];
-        let poly_b = vec![10, 20, 30, 40, 50, 60, 70, 80];
-
-        let result = op.execute(&poly_a, &poly_b).await.unwrap();
 
         // Expected: [11, 22, 33, 44, 55, 66, 77, 88]
         let expected: Vec<u64> = vec![11, 22, 33, 44, 55, 66, 77, 88];
@@ -375,17 +396,60 @@ mod tests {
 
     #[tokio::test]
     async fn test_fhe_poly_add_with_modular_reduction() {
-        let device = WgpuDevice::new().await.unwrap();
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
         let degree = 4;
         let modulus = 100;
 
-        let op = FhePolyAdd::new(&device, degree, modulus).unwrap();
-
         // Test with values that need modular reduction
-        let poly_a = vec![50, 60, 70, 80];
-        let poly_b = vec![60, 50, 40, 30];
+        let poly_a_data = vec![50u64, 60, 70, 80];
+        let poly_b_data = vec![60u64, 50, 40, 30];
 
-        let result = op.execute(&poly_a, &poly_b).await.unwrap();
+        let poly_a = create_fhe_poly_tensor(&poly_a_data, device.clone())
+            .await
+            .unwrap();
+        let poly_b = create_fhe_poly_tensor(&poly_b_data, device.clone())
+            .await
+            .unwrap();
+
+        let op = FhePolyAdd::new(poly_a, poly_b, degree, modulus).unwrap();
+        let result_tensor = op.execute().unwrap();
+
+        // Read back result (for testing) - use direct buffer read
+        let size = result_tensor.len();
+        let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Test Staging Buffer"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            result_tensor.buffer(),
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<u32>()) as u64,
+        );
+        device.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        device.device.poll(wgpu::Maintain::Wait);
+        rx.await.unwrap().unwrap();
+
+        let data = buffer_slice.get_mapped_range();
+        let result_u32: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging_buffer.unmap();
+
+        let result: Vec<u64> = result_u32
+            .chunks(2)
+            .map(|pair| (pair[0] as u64) | ((pair[1] as u64) << 32))
+            .collect();
 
         // Expected: [10, 10, 10, 10] (all mod 100)
         let expected: Vec<u64> = vec![10, 10, 10, 10];

@@ -58,38 +58,37 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
     // ═══════════════════════════════════════════════════════════
     // CRITICAL: Use WGSL shader (same math as GPU/CPU!)
     // ═══════════════════════════════════════════════════════════
-    
-    use crate::tensor::Tensor;
+
     use crate::device::WgpuDevice;
+    use crate::tensor::Tensor;
     use std::sync::Arc;
-    
+
     // Get device (auto-detect GPU, fallback to CPU via wgpu)
     let device = Arc::new(futures::executor::block_on(WgpuDevice::new())?);
-    
+
     // Create tensor from raw data
     let input_len = input.len();
-    let tensor = futures::executor::block_on(
-        Tensor::from_vec_on(input.to_vec(), vec![input_len], device)
-    )?;
-    
+    let tensor =
+        futures::executor::block_on(Tensor::from_vec_on(input.to_vec(), vec![input_len], device))?;
+
     // Execute ReLU using WGSL shader (same as GPU/CPU!)
     // This uses ops/relu.rs → shaders/relu.wgsl
     let result_tensor = tensor.relu()?;
-    
+
     // Extract result
     let output = result_tensor.to_vec()?;
-    
+
     // ═══════════════════════════════════════════════════════════
     // NPU-SPECIFIC OPTIMIZATION: Event encoding (optional)
     // ═══════════════════════════════════════════════════════════
-    
+
     let sparsity = output.iter().filter(|&&x| x == 0.0).count() as f32 / output.len() as f32;
-    
+
     log::debug!(
         "NPU ReLU (WGSL) complete: {:.1}% sparsity created",
         sparsity * 100.0
     );
-    
+
     // For sparse outputs, encode as events for energy savings
     if sparsity > 0.3 {
         let codec = EventCodec::default();

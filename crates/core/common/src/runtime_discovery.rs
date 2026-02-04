@@ -426,8 +426,7 @@ mod tests {
     #[tokio::test]
     async fn test_runtime_discovery_with_cache_ttl() {
         let client = Arc::new(LocalhostDiscoveryClient::new());
-        let discovery = RuntimeDiscovery::new(client)
-            .with_cache_ttl(Duration::from_secs(60));
+        let discovery = RuntimeDiscovery::new(client).with_cache_ttl(Duration::from_secs(60));
 
         let services = discovery.discover_all_services().await.unwrap();
         assert!(!services.is_empty());

@@ -70,10 +70,17 @@ impl EntropyClient {
             Err(e) => {
                 tracing::warn!("bearDog service discovery failed: {}", e);
                 // Return unavailable client (will fallback to system entropy)
+                // Try capability-based discovery as fallback
+                let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+                    .await
+                    .unwrap_or_else(|_| {
+                        toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+                    });
+
                 Ok(Self {
                     endpoint: None,
                     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                        toadstool_common::primal_sockets::get_socket_path_for_service("beardog"),
+                        socket_path,
                     ),
                     available: false,
                 })
@@ -95,10 +102,26 @@ impl EntropyClient {
         // Future: Implement full capability discovery via songBird unix socket
         // Current: Falls back to system entropy (graceful degradation)
 
-        // Check for local development bearDog instance
+        // DEEP DEBT EVOLUTION: Check Unix socket first (no hardcoded ports!)
+        // Environment variable override takes precedence
+        if let Ok(url) = std::env::var("BEARDOG_URL") {
+            tracing::debug!("Using bearDog URL from environment: {}", url);
+            return Ok(url);
+        }
+
+        // Try Unix socket discovery (preferred - no port conflicts)
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
+        if tokio::fs::metadata(&socket_path).await.is_ok() {
+            tracing::debug!("Found bearDog via Unix socket: {:?}", socket_path);
+            return Ok(format!("unix://{}", socket_path.display()));
+        }
+
+        // DEPRECATED: HTTP fallback with hardcoded ports (for testing/development only)
+        // These will be removed in future versions
+        tracing::warn!("Using deprecated HTTP fallback for bearDog discovery. Set BEARDOG_URL or ensure Unix socket exists.");
         let candidate_urls = vec![
-            "http://localhost:8081", // Common bearDog port
-            "http://localhost:3000", // Alternative
+            "http://localhost:8081", // DEPRECATED: Common bearDog port
+            "http://localhost:3000", // DEPRECATED: Alternative
         ];
 
         for url in candidate_urls {
@@ -113,17 +136,22 @@ impl EntropyClient {
     /// Probe unix socket to check if bearDog service is available
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
+    /// **CAPABILITY-BASED**: Discovers crypto service by capability
     async fn probe_service(_url: &str) -> Result<()> {
-        // PURE RUST: Try to connect to unix socket (vendor-agnostic!)
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_service("beardog");
+        // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
+        let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+            });
 
         match tokio::net::UnixStream::connect(socket_path).await {
             Ok(_) => {
-                tracing::debug!("BearDog unix socket available");
+                tracing::debug!("Crypto service unix socket available");
                 Ok(())
             }
             Err(e) => {
-                anyhow::bail!("BearDog socket not available: {e}")
+                anyhow::bail!("Crypto service socket not available: {e}")
             }
         }
     }
@@ -131,10 +159,17 @@ impl EntropyClient {
     /// Connect to bearDog service via unix socket
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
+    /// **CAPABILITY-BASED**: Discovers crypto service by capability
     async fn connect(endpoint: &str) -> Result<Self> {
-        let socket_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-            toadstool_common::primal_sockets::get_socket_path_for_service("beardog"),
-        );
+        // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
+        let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+            });
+
+        let socket_client =
+            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         // Verify service is reachable via unix socket
         let available = Self::probe_service("").await.is_ok();
@@ -262,11 +297,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_generate_seed_fallback() {
+        // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
+        let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
+            .await
+            .unwrap_or_else(|_| {
+                toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock")
+            });
+
         let client = EntropyClient {
             endpoint: None,
-            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
-                toadstool_common::primal_sockets::get_beardog_socket_path(),
-            ),
+            rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };
 
