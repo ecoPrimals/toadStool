@@ -928,7 +928,8 @@ impl NeuralNetwork {
                 )?;
 
                 // Simple SGD update: w = w - lr * grad
-                // TODO: Implement Adam, momentum, etc.
+                // NOTE: For production training, use dedicated optimizers (Adam, SGD with momentum, RMSprop, etc.)
+                // Available in ops/: adam.rs, adamw.rs, sgd.rs, rmsprop.rs, adagrad.rs, adadelta.rs, nadam.rs, radam.rs
                 let lr_vec = vec![lr; averaged_grad.len()];
                 let lr_tensor = Tensor::from_data(
                     &lr_vec,

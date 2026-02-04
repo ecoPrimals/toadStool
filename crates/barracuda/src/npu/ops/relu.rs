@@ -111,8 +111,8 @@ pub fn npu_relu(input: &[f32]) -> Result<Vec<f32>> {
 /// **Universal Compute**: Would use WGSL shader if implemented in ops/
 /// **Current**: Fallback to simple computation (to be evolved to WGSL)
 pub fn npu_leaky_relu(input: &[f32], alpha: f32) -> Result<Vec<f32>> {
-    // TODO: Evolve to WGSL once ops/leaky_relu.rs exists
-    // For now, use simple computation (hardware-agnostic math)
+    // NOTE: ops/leaky_relu.rs exists with WGSL implementation
+    // This NPU bridge can be evolved to route to that universal implementation
     let mut output = Vec::with_capacity(input.len());
 
     for &val in input {
