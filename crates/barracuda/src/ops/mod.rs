@@ -356,6 +356,7 @@ pub mod reshape;
 // pub mod roll; // Now roll_wgsl
 pub mod take;
 pub mod upsample;
+pub mod view;
 
 // Graph Neural Networks (Category 13)
 pub mod edge_conv;
@@ -478,6 +479,7 @@ pub use swish_wgsl::Swish;
 pub mod tanh; // WGSL implementation in tanh.rs (not tanh_wgsl.rs)
 pub use transpose::Transpose;
 pub use unsqueeze::Unsqueeze;
+pub use view::View;
 pub use variance::Variance;
 pub use where_op::Where;
 // topk exports functions, not struct

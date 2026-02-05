@@ -1,19 +1,21 @@
-// NMS - Non-Maximum Suppression
-// Computes IoU matrix for all box pairs (GPU-accelerated)
-// Iterative selection happens on CPU due to sequential dependencies
-//
-// Input: boxes [num_boxes, 5] where each box is [x1, y1, x2, y2, score]
-// Output: iou_matrix [num_boxes, num_boxes] with IoU values
+// NMS - Non-Maximum Suppression (Pure GPU)
+// Multi-pass GPU implementation:
+// Pass 1: Compute IoU matrix for all box pairs
+// Pass 2: Mark suppressed boxes based on sorted order and IoU threshold
+// Pass 3: Compact results to get keep indices
 
-struct Params {
+// ============================================================================
+// Pass 1: IoU Matrix Computation
+// ============================================================================
+
+struct IoUParams {
     num_boxes: u32,
-    iou_threshold: f32,
-    _padding: [u32; 2],
+    _padding: [u32; 3],
 }
 
-@group(0) @binding(0) var<storage, read> boxes: array<f32>;  // [num_boxes, 5]
+@group(0) @binding(0) var<storage, read> boxes: array<f32>;  // [num_boxes, 5]: [x1, y1, x2, y2, score]
 @group(0) @binding(1) var<storage, read_write> iou_matrix: array<f32>;  // [num_boxes, num_boxes]
-@group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(2) var<uniform> params: IoUParams;
 
 // Compute IoU between two boxes
 fn compute_iou(box_a: vec4<f32>, box_b: vec4<f32>) -> f32 {
@@ -37,7 +39,7 @@ fn compute_iou(box_a: vec4<f32>, box_b: vec4<f32>) -> f32 {
 }
 
 @compute @workgroup_size(16, 16)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn compute_iou_matrix(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let i = global_id.x;
     let j = global_id.y;
     
@@ -69,4 +71,85 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // Store in IoU matrix (symmetric matrix)
     let idx = i * params.num_boxes + j;
     iou_matrix[idx] = iou;
+}
+
+// ============================================================================
+// Pass 2: Suppression Marking
+// ============================================================================
+
+struct SuppressParams {
+    num_boxes: u32,
+    iou_threshold: f32,
+    _padding: [u32; 2],
+}
+
+@group(1) @binding(0) var<storage, read> sorted_indices: array<u32>;  // Indices sorted by score (descending)
+@group(1) @binding(1) var<storage, read> iou_matrix: array<f32>;  // Pre-computed IoU matrix
+@group(1) @binding(2) var<storage, read_write> suppressed: array<u32>;  // 1 if suppressed, 0 if kept
+@group(1) @binding(3) var<uniform> params: SuppressParams;
+
+// Mark suppressed boxes based on sorted order
+// Each thread processes one box and checks if it should be suppressed
+@compute @workgroup_size(256)
+fn mark_suppressed(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    
+    if (idx >= params.num_boxes) {
+        return;
+    }
+    
+    let current_box_idx = sorted_indices[idx];
+    
+    // Check if this box should be suppressed by any higher-scoring box
+    for (var i = 0u; i < idx; i++) {
+        let higher_box_idx = sorted_indices[i];
+        
+        // If higher box is not suppressed, check IoU
+        if (suppressed[higher_box_idx] == 0u) {
+            let iou_idx = current_box_idx * params.num_boxes + higher_box_idx;
+            let iou = iou_matrix[iou_idx];
+            
+            if (iou > params.iou_threshold) {
+                suppressed[current_box_idx] = 1u;
+                return;  // Early exit once suppressed
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Pass 3: Compact Results
+// ============================================================================
+
+struct CompactParams {
+    num_boxes: u32,
+    _padding: [u32; 3],
+}
+
+@group(2) @binding(0) var<storage, read> sorted_indices: array<u32>;  // Indices sorted by score
+@group(2) @binding(1) var<storage, read> suppressed: array<u32>;  // Suppression flags
+@group(2) @binding(2) var<storage, read_write> keep_indices: array<u32>;  // Output: indices to keep
+@group(2) @binding(3) var<storage, read_write> keep_count: array<atomic<u32>>;  // Output: number of kept boxes (atomic)
+@group(2) @binding(4) var<uniform> params: CompactParams;
+
+// Compact suppressed array to get keep indices
+// Uses atomic counter for parallel compaction
+@compute @workgroup_size(256)
+fn compact_results(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    
+    if (idx >= params.num_boxes) {
+        return;
+    }
+    
+    let box_idx = sorted_indices[idx];
+    
+    // If not suppressed, add to keep list using atomic counter
+    if (suppressed[box_idx] == 0u) {
+        // Use atomic to get position in keep array
+        let position = atomicAdd(&keep_count[0], 1u);
+        if (position < params.num_boxes) {
+            keep_indices[position] = box_idx;
+        }
+    }
 }

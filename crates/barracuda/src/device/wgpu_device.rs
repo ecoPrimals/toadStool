@@ -325,6 +325,51 @@ impl WgpuDevice {
             .write_buffer(buffer, 0, bytemuck::cast_slice(data));
         Ok(())
     }
+
+    /// Read u32 buffer to host memory
+    pub fn read_buffer_u32(&self, buffer: &wgpu::Buffer, size: usize) -> Result<Vec<u32>> {
+        // Create staging buffer
+        let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Staging Buffer"),
+            size: (size * std::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        // Copy GPU -> staging
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(
+            buffer,
+            0,
+            &staging_buffer,
+            0,
+            (size * std::mem::size_of::<u32>()) as u64,
+        );
+        self.queue.submit(Some(encoder.finish()));
+
+        // Map and read
+        let buffer_slice = staging_buffer.slice(..);
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            sender.send(result).ok();
+        });
+
+        self.device.poll(wgpu::Maintain::Wait);
+
+        // Wait for mapping
+        futures::executor::block_on(receiver)
+            .map_err(|_| BarracudaError::gpu("Failed to map buffer"))?
+            .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
+
+        // Copy data
+        let data = buffer_slice.get_mapped_range();
+        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+
+        drop(data);
+        staging_buffer.unmap();
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]

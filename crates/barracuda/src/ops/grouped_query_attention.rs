@@ -40,11 +40,8 @@ pub struct GQAParams {
 
 /// Grouped Query Attention operation
 pub struct GroupedQueryAttention {
-    #[allow(dead_code)]
     query: Tensor,
-    #[allow(dead_code)]
     key: Tensor,
-    #[allow(dead_code)]
     value: Tensor,
     batch_size: usize,
     num_q_heads: usize,
@@ -133,24 +130,18 @@ impl GroupedQueryAttention {
     }
 
     /// Get WGSL shader for GQA attention matrix multiplication (Pass 1)
-    /// Adapted from attention_matmul.wgsl for grouped queries
-    #[allow(dead_code)]
     fn wgsl_shader_matmul() -> &'static str {
-        // Reuse attention_matmul.wgsl but with GQA-specific indexing
-        // For now, we'll create an inline shader that handles grouped queries
-        include_str!("../shaders/attention_matmul.wgsl")
+        include_str!("../shaders/gqa_matmul.wgsl")
     }
 
-    /// Get WGSL shader for attention softmax (Pass 2)
-    #[allow(dead_code)]
+    /// Get WGSL shader for GQA attention softmax (Pass 2)
     fn wgsl_shader_softmax() -> &'static str {
-        include_str!("../shaders/attention_softmax.wgsl")
+        include_str!("../shaders/gqa_softmax.wgsl")
     }
 
-    /// Get WGSL shader for attention apply (Pass 3)
-    #[allow(dead_code)]
+    /// Get WGSL shader for GQA attention apply (Pass 3)
     fn wgsl_shader_apply() -> &'static str {
-        include_str!("../shaders/attention_apply.wgsl")
+        include_str!("../shaders/gqa_apply.wgsl")
     }
 
     /// Execute the grouped query attention operation
@@ -169,8 +160,8 @@ impl GroupedQueryAttention {
         let output_size = self.batch_size * self.num_q_heads * self.seq_len * self.head_dim;
 
         // Create intermediate buffers
-        let _scores_buffer = device.create_buffer_f32(scores_size)?;
-        let _weights_buffer = device.create_buffer_f32(weights_size)?;
+        let scores_buffer = device.create_buffer_f32(scores_size)?;
+        let weights_buffer = device.create_buffer_f32(weights_size)?;
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         // Create parameters buffer
@@ -183,46 +174,341 @@ impl GroupedQueryAttention {
             heads_per_group: self.heads_per_group as u32,
         };
 
-        let _params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("GQA Params"),
             contents: bytemuck::cast_slice(&[params]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         // Create command encoder for all passes
-        let encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("GroupedQueryAttention Encoder"),
         });
 
         // ═══════════════════════════════════════════════════════════════
         // PASS 1: Compute Q @ K^T scores (with grouped KV heads)
         // ═══════════════════════════════════════════════════════════════
-        // Note: We reuse attention_matmul.wgsl but need to adapt it for GQA
-        // For now, we'll use a simplified approach that works with the existing shader
-        // by creating a modified version that handles grouped queries
-        // 
-        // The key difference: kv_head = q_head / heads_per_group
-        // This means we need to adapt the indexing in the shader
-        
-        // For GQA, we can reuse the attention shaders but need to handle the different
-        // number of heads. The simplest approach is to create a GQA-specific shader,
-        // but for now we'll use the existing attention shaders and handle grouping
-        // by processing each query head group separately.
-        
-        // Since adapting the shader inline would be complex, we'll note that
-        // a production implementation would have a dedicated GQA shader.
-        // For now, we'll use the standard attention flow but acknowledge the limitation.
-        
-        // TODO: Create gqa_matmul.wgsl shader that handles grouped queries properly
-        
-        // For compilation purposes, we'll use a placeholder that reuses existing shaders
-        // In production, this should be replaced with a GQA-specific shader
-        
-        // Submit passes (simplified - full implementation would use GQA-specific shaders)
+        {
+            let shader_module = device.compile_shader(
+                Self::wgsl_shader_matmul(),
+                Some("GQA MatMul Shader"),
+            );
+
+            let bind_group_layout = device.device.create_bind_group_layout(
+                &wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GQA MatMul Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                },
+            );
+
+            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("GQA MatMul Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.query.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.key.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: scores_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            let pipeline_layout = device.device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("GQA MatMul Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                },
+            );
+
+            let pipeline = device.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("GQA MatMul Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                },
+            );
+
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GQA MatMul Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch: workgroup_size(16, 16, 1) from shader
+            // Each workgroup handles one (i, j) pair for one batch-query_head
+            let workgroups_x = ((self.seq_len + 15) / 16) as u32;
+            let workgroups_y = ((self.seq_len + 15) / 16) as u32;
+            let workgroups_z = (self.batch_size * self.num_q_heads) as u32;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PASS 2: Apply softmax to scores
+        // ═══════════════════════════════════════════════════════════════
+        {
+            let shader_module = device.compile_shader(
+                Self::wgsl_shader_softmax(),
+                Some("GQA Softmax Shader"),
+            );
+
+            let bind_group_layout = device.device.create_bind_group_layout(
+                &wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GQA Softmax Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                },
+            );
+
+            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("GQA Softmax Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: scores_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: weights_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            let pipeline_layout = device.device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("GQA Softmax Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                },
+            );
+
+            let pipeline = device.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("GQA Softmax Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                },
+            );
+
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GQA Softmax Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch: workgroup_size(256) from shader
+            // Each thread handles one query position (one row of scores)
+            let total_rows = self.batch_size * self.num_q_heads * self.seq_len;
+            compute_pass.dispatch_workgroups((total_rows as u32 + 255) / 256, 1, 1);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PASS 3: Apply attention weights to values
+        // ═══════════════════════════════════════════════════════════════
+        {
+            let shader_module = device.compile_shader(
+                Self::wgsl_shader_apply(),
+                Some("GQA Apply Shader"),
+            );
+
+            let bind_group_layout = device.device.create_bind_group_layout(
+                &wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GQA Apply Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                },
+            );
+
+            let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("GQA Apply Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: weights_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.value.buffer().as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            let pipeline_layout = device.device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("GQA Apply Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                },
+            );
+
+            let pipeline = device.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("GQA Apply Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                },
+            );
+
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("GQA Apply Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            // Dispatch: workgroup_size(16, 16, 1) from shader
+            // Each workgroup handles one (i, d) pair for one batch-query_head
+            let workgroups_x = ((self.head_dim + 15) / 16) as u32;
+            let workgroups_y = ((self.seq_len + 15) / 16) as u32;
+            let workgroups_z = (self.batch_size * self.num_q_heads) as u32;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
+        }
+
+        // Submit all passes
         device.queue.submit(Some(encoder.finish()));
 
         // Return output tensor
-        // Note: This is a placeholder - full implementation would execute the shaders
         Ok(Tensor::from_buffer(
             output_buffer,
             vec![self.batch_size, self.num_q_heads, self.seq_len, self.head_dim],
