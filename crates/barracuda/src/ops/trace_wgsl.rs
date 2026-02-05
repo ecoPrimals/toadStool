@@ -16,6 +16,7 @@
 
 use crate::error::Result;
 use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
 pub struct Trace {
     input: Tensor,
@@ -44,8 +45,13 @@ impl Trace {
         
         let n = shape[0];
         
-        // Output buffer stores diagonal elements (will sum on CPU)
-        let output_buffer = device.create_buffer_f32(n)?;
+        // Calculate workgroups needed
+        let workgroups = (n as u32 + 255) / 256;
+        
+        // Output buffer: single element for final result, or partial results if multi-workgroup
+        let output_size = if workgroups > 1 { workgroups as usize } else { 1 };
+        let output_buffer = device.create_buffer_f32(output_size)?;
+        
         let params_buffer = device.create_uniform_buffer("Params", &[n as u32]);
         
         let bind_group_layout = device.device.create_bind_group_layout(
@@ -138,16 +144,145 @@ impl Trace {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             
-            let workgroups = (n as u32 + 255) / 256;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
         
         device.queue.submit(Some(encoder.finish()));
         
-        // Return vector of diagonal elements (caller can sum if needed)
+        // If multiple workgroups, reduce partial results in a second pass using reduce shader
+        let final_buffer = if workgroups > 1 {
+            // Second pass: reduce partial results using reduce.wgsl shader
+            let reduce_shader_source = include_str!("../shaders/reduce.wgsl");
+            let reduce_shader = device.device.create_shader_module(
+                wgpu::ShaderModuleDescriptor {
+                    label: Some("Trace Reduce Shader"),
+                    source: wgpu::ShaderSource::Wgsl(reduce_shader_source.into()),
+                }
+            );
+            
+            #[repr(C)]
+            #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+            struct ReduceParams {
+                size: u32,
+                operation: u32,  // 0 = Sum
+            }
+            
+            let reduce_params = ReduceParams {
+                size: workgroups,
+                operation: 0u32,  // Sum operation
+            };
+            
+            let final_output_buffer = device.create_buffer_f32(1)?;
+            let reduce_params_buffer = device.device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("Trace Reduce Params"),
+                    contents: bytemuck::cast_slice(&[reduce_params]),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                }
+            );
+            
+            let bind_group_layout_2 = device.device.create_bind_group_layout(
+                &wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Trace Reduce BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                }
+            );
+            
+            let bind_group_2 = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Trace Reduce BG"),
+                layout: &bind_group_layout_2,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: final_output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: reduce_params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+            
+            let pipeline_layout_2 = device.device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("Trace Reduce PL"),
+                    bind_group_layouts: &[&bind_group_layout_2],
+                    push_constant_ranges: &[],
+                }
+            );
+            
+            let pipeline_2 = device.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("Trace Reduce Pipeline"),
+                    layout: Some(&pipeline_layout_2),
+                    module: &reduce_shader,
+                    entry_point: "main",
+                }
+            );
+            
+            let mut encoder_2 = device.device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
+                    label: Some("Trace Reduce Encoder"),
+                }
+            );
+            
+            {
+                let mut pass_2 = encoder_2.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Trace Reduce Pass"),
+                    timestamp_writes: None,
+                });
+                
+                pass_2.set_pipeline(&pipeline_2);
+                pass_2.set_bind_group(0, &bind_group_2, &[]);
+                // Single workgroup for reducing partial results
+                pass_2.dispatch_workgroups(1, 1, 1);
+            }
+            
+            device.queue.submit(Some(encoder_2.finish()));
+            final_output_buffer
+        } else {
+            output_buffer
+        };
+        
+        // Return scalar tensor with trace result
         Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![n],
+            final_buffer,
+            vec![1],
             device.clone(),
         ))
     }
@@ -176,15 +311,56 @@ mod tests {
             .unwrap();
         
         let result = input.trace_wgsl().unwrap();
-        let diag_elements = result.to_vec().unwrap();
+        let trace_result = result.to_vec().unwrap();
         
-        // Diagonal elements: [1.0, 4.0]
-        assert_eq!(diag_elements.len(), 2);
-        assert!((diag_elements[0] - 1.0).abs() < 1e-5);
-        assert!((diag_elements[1] - 4.0).abs() < 1e-5);
+        // Result should be scalar tensor [trace_value]
+        assert_eq!(trace_result.len(), 1);
+        // Trace = 1.0 + 4.0 = 5.0
+        assert!((trace_result[0] - 5.0).abs() < 1e-5);
+    }
+    
+    #[tokio::test]
+    async fn test_trace_3x3() {
+        let device = get_test_device().await;
+        // Matrix: [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        // Diagonal: [1, 5, 9], trace = 15
+        let input_data = vec![
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        ];
+        let input = Tensor::from_vec_on(input_data, vec![3, 3], device)
+            .await
+            .unwrap();
         
-        // Trace = sum = 5.0
-        let trace: f32 = diag_elements.iter().sum();
-        assert!((trace - 5.0).abs() < 1e-5);
+        let result = input.trace_wgsl().unwrap();
+        let trace_result = result.to_vec().unwrap();
+        
+        assert_eq!(trace_result.len(), 1);
+        assert!((trace_result[0] - 15.0).abs() < 1e-5);
+    }
+    
+    #[tokio::test]
+    async fn test_trace_large_matrix() {
+        let device = get_test_device().await;
+        let n = 512; // Larger than workgroup size to test multi-workgroup reduction
+        let mut input_data = vec![0.0; n * n];
+        
+        // Fill diagonal with sequential values: 1, 2, 3, ..., n
+        for i in 0..n {
+            input_data[i * n + i] = (i + 1) as f32;
+        }
+        
+        let input = Tensor::from_vec_on(input_data, vec![n, n], device)
+            .await
+            .unwrap();
+        
+        let result = input.trace_wgsl().unwrap();
+        let trace_result = result.to_vec().unwrap();
+        
+        assert_eq!(trace_result.len(), 1);
+        // Sum of 1..n = n*(n+1)/2
+        let expected = (n * (n + 1) / 2) as f32;
+        assert!((trace_result[0] - expected).abs() < 1e-4);
     }
 }
