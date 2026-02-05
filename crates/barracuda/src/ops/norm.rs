@@ -1,30 +1,85 @@
 //! L2 Norm reduction - Pure WGSL
+//!
+//! Deep Debt Principles:
+//! - Self-knowledge: Operation knows its computation
+//! - Zero hardcoding: Hardware-agnostic implementation
+//! - Modern idiomatic Rust: Safe, zero unsafe code
+//! - Complete implementation: Production-ready, no mocks
+//! - Hardware-agnostic: Pure WGSL for universal compute
 
 use crate::error::Result;
 use crate::tensor::Tensor;
+use wgpu::util::DeviceExt;
 
+/// Norm reduction operation
 pub struct Norm {
     input: Tensor,
+    p: f32,              // p-norm parameter (default 2.0 for L2 norm)
+    dim: Option<usize>,  // None = global norm, Some(d) = norm along dimension d
+    keepdim: bool,       // Whether to keep dimension with size 1
 }
 
 impl Norm {
-    pub fn new(input: Tensor) -> Self {
-        Self { input }
+    /// Create a new norm operation
+    pub fn new(input: Tensor, p: f32, dim: Option<usize>, keepdim: bool) -> Self {
+        Self { input, p, dim, keepdim }
     }
 
-    fn wgsl_shader() -> &'static str {
-        include_str!("../shaders/norm_simple.wgsl")
+    /// Get the WGSL shader source for global reduction
+    fn wgsl_shader_reduce() -> &'static str {
+        include_str!("../shaders/norm_reduce.wgsl")
     }
 
+    /// Get the WGSL shader source for dimension-wise reduction
+    fn wgsl_shader_dim() -> &'static str {
+        include_str!("../shaders/norm_dim.wgsl")
+    }
+
+    /// Execute the norm operation
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        let output_buffer = device.create_buffer_f32(1)?;
+        let shape = self.input.shape();
+        let input_buffer = self.input.buffer();
 
-        let bind_group_layout =
-            device
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Norm BGL"),
+        match self.dim {
+            None => {
+                // Global norm reduction
+                let size: usize = shape.iter().product();
+                let num_workgroups = ((size + 255) / 256) as u32;
+
+                // Create output buffer for partial results
+                let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Norm Reduce Output"),
+                    size: (num_workgroups as usize * std::mem::size_of::<f32>()) as u64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                });
+
+                // Create uniform buffer for parameters
+                #[repr(C)]
+                #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+                struct Params {
+                    size: u32,
+                    p: f32,
+                }
+
+                let params = Params {
+                    size: size as u32,
+                    p: self.p,
+                };
+
+                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Norm Reduce Params"),
+                    contents: bytemuck::cast_slice(&[params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
+
+                // Compile shader
+                let shader_module = device.compile_shader(Self::wgsl_shader_reduce(), Some("Norm Reduce Shader"));
+
+                // Create bind group layout
+                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Norm Reduce Bind Group Layout"),
                     entries: &[
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
@@ -46,68 +101,255 @@ impl Norm {
                             },
                             count: None,
                         },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
                     ],
                 });
 
-        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Norm BG"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.input.buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: output_buffer.as_entire_binding(),
-                },
-            ],
-        });
+                // Create bind group
+                let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Norm Reduce Bind Group"),
+                    layout: &bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: input_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: output_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: params_buffer.as_entire_binding(),
+                        },
+                    ],
+                });
 
-        let shader = device.compile_shader(Self::wgsl_shader(), Some("Norm"));
-        let pipeline_layout =
-            device
-                .device
-                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Norm PL"),
+                // Create compute pipeline
+                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Norm Reduce Pipeline Layout"),
                     bind_group_layouts: &[&bind_group_layout],
                     push_constant_ranges: &[],
                 });
 
-        let pipeline = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Norm Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            });
+                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Norm Reduce Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
-        let mut encoder = device
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Norm Encoder"),
-            });
+                // Execute compute shader
+                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Norm Reduce Encoder"),
+                });
 
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Norm Pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(1, 1, 1);
+                {
+                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Norm Reduce Pass"),
+                        timestamp_writes: None,
+                    });
+                    compute_pass.set_pipeline(&compute_pipeline);
+                    compute_pass.set_bind_group(0, &bind_group, &[]);
+                    compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
+                }
+
+                device.queue.submit(Some(encoder.finish()));
+
+                // Read back partial results and reduce them on CPU
+                let partial_results = device.read_buffer_f32(&output_buffer, num_workgroups as usize)?;
+                let sum_power: f32 = partial_results.iter().sum();
+                // Compute (sum(|x|^p))^(1/p)
+                let global_norm = sum_power.powf(1.0 / self.p);
+
+                // Return scalar tensor
+                Ok(Tensor::new(
+                    vec![global_norm],
+                    vec![],
+                    device.clone(),
+                ))
+            }
+            Some(dim) => {
+                // Dimension-wise norm reduction
+                if dim >= shape.len() {
+                    return Err(crate::error::BarracudaError::InvalidInput {
+                        message: format!("Dimension {} out of range for shape {:?}", dim, shape),
+                    });
+                }
+
+                let dim_size = shape[dim];
+                let outer_size: usize = shape[..dim].iter().product();
+                let inner_size: usize = shape[dim + 1..].iter().product();
+                let output_size = outer_size * inner_size;
+
+                // Create output buffer
+                let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Norm Dim Output"),
+                    size: (output_size * std::mem::size_of::<f32>()) as u64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                });
+
+                // Create uniform buffer for parameters
+                #[repr(C)]
+                #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+                struct Params {
+                    dim_size: u32,
+                    outer_size: u32,
+                    inner_size: u32,
+                    p: f32,
+                }
+
+                let params = Params {
+                    dim_size: dim_size as u32,
+                    outer_size: outer_size as u32,
+                    inner_size: inner_size as u32,
+                    p: self.p,
+                };
+
+                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Norm Dim Params"),
+                    contents: bytemuck::cast_slice(&[params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
+
+                // Compile shader
+                let shader_module = device.compile_shader(Self::wgsl_shader_dim(), Some("Norm Dim Shader"));
+
+                // Create bind group layout
+                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Norm Dim Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+                // Create bind group
+                let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Norm Dim Bind Group"),
+                    layout: &bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: input_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: output_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: params_buffer.as_entire_binding(),
+                        },
+                    ],
+                });
+
+                // Create compute pipeline
+                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Norm Dim Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Norm Dim Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
+
+                // Execute compute shader
+                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Norm Dim Encoder"),
+                });
+
+                {
+                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Norm Dim Pass"),
+                        timestamp_writes: None,
+                    });
+                    compute_pass.set_pipeline(&compute_pipeline);
+                    compute_pass.set_bind_group(0, &bind_group, &[]);
+                    let workgroups = ((output_size as u32 + 255) / 256) as u32;
+                    compute_pass.dispatch_workgroups(workgroups, 1, 1);
+                }
+
+                device.queue.submit(Some(encoder.finish()));
+
+                // Read back results
+                let output_data = device.read_buffer_f32(&output_buffer, output_size)?;
+
+                // Calculate output shape
+                let mut output_shape = shape.to_vec();
+                if self.keepdim {
+                    output_shape[dim] = 1;
+                } else {
+                    output_shape.remove(dim);
+                }
+
+                Ok(Tensor::new(
+                    output_data,
+                    output_shape,
+                    device.clone(),
+                ))
+            }
         }
-
-        device.queue.submit(Some(encoder.finish()));
-
-        Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))
     }
 }
 
 impl Tensor {
-    pub fn norm(self) -> Result<Self> {
-        Norm::new(self).execute()
+    /// Compute norm (global reduction, default L2 norm with p=2.0)
+    pub fn norm(&self) -> Result<Self> {
+        Norm::new(self.clone(), 2.0, None, false).execute()
+    }
+
+    /// Compute p-norm along a dimension
+    ///
+    /// # Arguments
+    ///
+    /// * `p` - p-norm parameter (e.g., 2.0 for L2 norm, 1.0 for L1 norm)
+    /// * `dim` - Dimension to compute norm along
+    /// * `keepdim` - Whether to keep the reduced dimension with size 1
+    pub fn norm_dim(&self, p: f32, dim: usize, keepdim: bool) -> Result<Self> {
+        Norm::new(self.clone(), p, Some(dim), keepdim).execute()
     }
 }
 
@@ -116,9 +358,9 @@ mod tests {
     use super::*;
     use crate::device::test_pool::get_test_device;
 
-    fn norm_cpu(input: &[f32]) -> f32 {
-        let sum_sq: f32 = input.iter().map(|&x| x * x).sum();
-        sum_sq.sqrt()
+    fn norm_cpu(input: &[f32], p: f32) -> f32 {
+        let sum_power: f32 = input.iter().map(|&x| x.abs().powf(p)).sum();
+        sum_power.powf(1.0 / p)
     }
 
     #[tokio::test]
@@ -129,7 +371,7 @@ mod tests {
             .await
             .unwrap();
         let result = input.norm().unwrap().to_vec().unwrap();
-        let expected = norm_cpu(&input_data);
+        let expected = norm_cpu(&input_data, 2.0);
 
         assert!(
             (result[0] - expected).abs() < 1e-5,
@@ -157,7 +399,7 @@ mod tests {
             .await
             .unwrap();
         let result = input.norm().unwrap().to_vec().unwrap();
-        let expected = norm_cpu(&input_data);
+        let expected = norm_cpu(&input_data, 2.0);
         assert!((result[0] - expected).abs() < 1e-5);
     }
 
@@ -169,7 +411,7 @@ mod tests {
             .await
             .unwrap();
         let result = input.norm().unwrap().to_vec().unwrap();
-        let expected = norm_cpu(&input_data);
+        let expected = norm_cpu(&input_data, 2.0);
 
         let rel_error = (result[0] - expected).abs() / expected;
         assert!(
@@ -190,7 +432,7 @@ mod tests {
             .await
             .unwrap();
         let result = input.norm().unwrap().to_vec().unwrap();
-        let expected = norm_cpu(&input_data);
+        let expected = norm_cpu(&input_data, 2.0);
 
         let rel_error = (result[0] - expected).abs() / expected;
         assert!(rel_error < 1e-3, "Expected {}, got {}", expected, result[0]);
@@ -204,9 +446,39 @@ mod tests {
             .await
             .unwrap();
         let gpu_result = input.norm().unwrap().to_vec().unwrap();
-        let cpu_result = norm_cpu(&input_data);
+        let cpu_result = norm_cpu(&input_data, 2.0);
 
         let error = (gpu_result[0] - cpu_result).abs();
         assert!(error < 1e-4, "Error {} exceeds threshold", error);
+    }
+
+    #[tokio::test]
+    async fn test_norm_dim() {
+        let device = get_test_device().await;
+        // Test 2D tensor: [[3, 4], [5, 12]] (3-4-5 and 5-12-13 triangles)
+        let input_data = vec![3.0, 4.0, 5.0, 12.0];
+        let input = Tensor::from_vec_on(input_data.clone(), vec![2, 2], device.clone())
+            .await
+            .unwrap();
+        
+        // L2 norm along dim 0 (columns): [sqrt(34), sqrt(160)] ≈ [5.83, 12.65]
+        let result = input.norm_dim(2.0, 0, false).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 2);
+        let expected_0 = norm_cpu(&[3.0, 5.0], 2.0);
+        let expected_1 = norm_cpu(&[4.0, 12.0], 2.0);
+        assert!((result[0] - expected_0).abs() < 1e-4);
+        assert!((result[1] - expected_1).abs() < 1e-4);
+        
+        // L2 norm along dim 1 (rows): [5.0, 13.0]
+        let result = input.norm_dim(2.0, 1, false).unwrap().to_vec().unwrap();
+        assert_eq!(result.len(), 2);
+        let expected_0 = norm_cpu(&[3.0, 4.0], 2.0);
+        let expected_1 = norm_cpu(&[5.0, 12.0], 2.0);
+        assert!((result[0] - expected_0).abs() < 1e-4);
+        assert!((result[1] - expected_1).abs() < 1e-4);
+        
+        // Norm along dim 0 with keepdim: [[sqrt(34), sqrt(160)]]
+        let result = input.norm_dim(2.0, 0, true).unwrap();
+        assert_eq!(result.shape(), &[1, 2]);
     }
 }
