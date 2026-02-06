@@ -79,13 +79,23 @@ pub mod utils; // Utility functions for operations
 pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
+// Unified architecture modules (v0.2.0)
+pub mod unified_math;
+pub mod unified_hardware;
+pub mod cpu_executor;
+pub mod gpu_executor;
+pub mod scheduler;
+pub mod benchmarks;
+pub mod auto_tensor;
+
 // Re-export commonly used operations
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;
 
 /// Prelude: Common imports for using barracuda
 pub mod prelude {
     pub use crate::device::{
-        Auto, Capability, Device, DeviceContext, DeviceInfo, WgpuDevice, WorkloadHint,
+        Auto, Capability, Device, DeviceCapabilities, DeviceContext, DeviceInfo, WgpuDevice,
+        WorkloadHint,
     };
     pub use crate::error::{BarracudaError, Result};
     // pub use crate::esn::{ESNConfig, ESN};  // DEPRECATED: Use esn_v2

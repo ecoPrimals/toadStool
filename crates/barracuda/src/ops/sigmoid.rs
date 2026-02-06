@@ -1,8 +1,12 @@
 //! Sigmoid activation
 //!
-//! **Pure WGSL**: Single implementation via WebGPU shader
+//! **Deep Debt Principles**:
+//! - ✅ Pure WGSL implementation (universal compute)
+//! - ✅ Capability-based dispatch (vendor-optimized)
+//!
 //! Formula: σ(x) = 1 / (1 + e^(-x))
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -114,8 +118,10 @@ impl Sigmoid {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (256 threads per workgroup)
-            let workgroups = (size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

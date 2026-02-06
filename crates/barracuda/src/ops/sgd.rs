@@ -6,6 +6,7 @@
 //! - ✅ Hardware-agnostic via WebGPU
 //! - ✅ Complete implementation (production-ready)
 //! - ✅ Modern idiomatic Rust (no traits, direct impl)
+//! - ✅ Capability-based dispatch (vendor-optimized workgroups)
 //!
 //! ## Algorithm
 //!
@@ -48,6 +49,7 @@
 //! let (w2, v2) = w1.sgd_step(&gradients, 0.01, 0.9, 0.0, v1.as_ref())?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -321,7 +323,10 @@ impl SGD {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((size + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = ((size as u32) + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

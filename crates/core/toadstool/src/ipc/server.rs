@@ -44,6 +44,7 @@ impl IpcServer {
         endpoints.push(Endpoint::for_toadstool());
 
         // Tier 2: TCP (universal fallback)
+        #[allow(deprecated)]
         endpoints.push(Endpoint::Tcp {
             host: "127.0.0.1".to_string(),
             port: platform::tcp::DEFAULT_PORT,

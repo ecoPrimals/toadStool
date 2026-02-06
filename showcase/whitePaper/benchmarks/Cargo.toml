@@ -1,0 +1,34 @@
+[package]
+name = "whitepaper-benchmarks"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wgpu = "0.19"
+rand = "0.8"
+
+[[bin]]
+name = "fhe_hebench_compliance"
+path = "fhe_hebench_compliance.rs"
+
+[[bin]]
+name = "encrypted_mnist_inference"
+path = "encrypted_mnist_inference.rs"
+
+[[bin]]
+name = "fhe_operation_validation"
+path = "fhe_operation_validation.rs"
+
+[[bin]]
+name = "ntt_validation_benchmark"
+path = "ntt_validation_benchmark.rs"
+
+[[bin]]
+name = "matmul_fp64_benchmark"
+path = "matmul_fp64_benchmark.rs"

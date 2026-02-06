@@ -117,6 +117,13 @@ impl WgpuDevice {
         &self.device
     }
 
+    /// Get adapter info (for capability detection)
+    ///
+    /// **Deep Debt**: Runtime device information for capability-based execution
+    pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
+        &self.adapter_info
+    }
+
     /// Access command queue
     ///
     /// **Deep Debt**: Enables external consumers to submit custom compute passes

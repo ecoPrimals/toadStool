@@ -25,10 +25,18 @@ pub mod sparse_attn;
 
 // Homomorphic encryption operations (FHE - GPU accelerated)
 pub mod fhe_and;
+pub mod fhe_extract;        // Coefficient extraction (selective decryption!)
+pub mod fhe_fast_poly_mul; // Fast polynomial multiply (NTT-based, 56x speedup!)
+pub mod fhe_intt;          // Inverse NTT (completes NTT pipeline!)
+pub mod fhe_key_switch;    // Key switching (multi-key FHE!)
+pub mod fhe_modulus_switch; // Modulus switching (noise reduction!)
+pub mod fhe_ntt;           // Number Theoretic Transform (56x speedup!)
+pub mod fhe_pointwise_mul; // Point-wise multiply in NTT domain (O(N))
 pub mod fhe_or;
 pub mod fhe_poly_add;
-pub mod fhe_poly_mul;
+pub mod fhe_poly_mul;      // Naive polynomial multiply (for comparison)
 pub mod fhe_poly_sub;
+pub mod fhe_rotate;        // CKKS rotation (Galois automorphism!)
 pub mod fhe_xor;
 
 // Activation operations

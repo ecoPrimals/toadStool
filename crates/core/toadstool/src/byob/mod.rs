@@ -10,10 +10,14 @@
 //! - `deployment` - Deployment state and lifecycle management
 //! - `byob_impl` - Core executor implementation
 //! - `byob_types` - Type definitions
+//! - `network_manager` - Network lifecycle management
+//! - `health_monitor` - Health checking and monitoring
 
 pub mod byob_impl;
 pub mod byob_types;
 pub mod config;
+pub mod health_monitor;
+pub mod network_manager;
 mod deployment; // Internal module
 mod validation; // Internal validation logic
 
@@ -21,3 +25,5 @@ mod validation; // Internal validation logic
 pub use byob_impl::*;
 pub use byob_types::*;
 pub use config::*;
+pub use health_monitor::{ByobHealthMonitor, HealthMonitor};
+pub use network_manager::{ByobNetworkManager, NetworkManager};

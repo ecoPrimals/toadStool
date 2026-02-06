@@ -7,3 +7,5 @@
 pub mod random_inputs;
 pub mod stress;
 pub mod concurrent;
+pub mod fhe_chaos_tests;
+pub mod fhe_chaos_expanded;

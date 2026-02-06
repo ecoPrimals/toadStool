@@ -78,6 +78,7 @@ pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
 /// Get default ToadStool TCP address
 ///
 /// **Deep Debt**: Runtime detection, localhost-first
+#[allow(deprecated)]
 pub fn default_addr() -> SocketAddr {
     format!("127.0.0.1:{}", DEFAULT_PORT)
         .parse()
@@ -87,6 +88,7 @@ pub fn default_addr() -> SocketAddr {
 /// Get local network address for cross-device
 ///
 /// **Deep Debt**: Discovers local IP at runtime
+#[allow(deprecated)]
 pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
     // Try to get local IP via interface detection
     // Fallback to 0.0.0.0 (bind all interfaces)
@@ -107,11 +109,13 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_default_port() {
         assert_eq!(DEFAULT_PORT, 8370);
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_default_addr() {
         let addr = default_addr();
         assert_eq!(addr.port(), DEFAULT_PORT);
@@ -119,6 +123,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_local_network_addr() {
         let addr = local_network_addr().unwrap();
         assert_eq!(addr.port(), DEFAULT_PORT);

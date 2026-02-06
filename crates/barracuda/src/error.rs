@@ -47,6 +47,9 @@ pub enum BarracudaError {
     #[error("Device not available: {device} - {reason}")]
     DeviceNotAvailable { device: String, reason: String },
 
+    #[error("No available executor for operation: {operation}")]
+    NoAvailableExecutor { operation: String },
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

@@ -1,0 +1,80 @@
+[
+  {
+    "vendor": "NVIDIA",
+    "device_name": "NVIDIA GeForce RTX 3090",
+    "batch_size": 1,
+    "total_time_ms": 40.870767,
+    "images_per_sec": 2446.7365635687725,
+    "latency_ms_per_image": 0.40870767,
+    "power_watts": 350.0,
+    "energy_joules": 14.304769,
+    "energy_per_image_mj": 143.04768,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  },
+  {
+    "vendor": "AMD",
+    "device_name": "AMD Radeon RX 6950 XT (RADV NAVI21)",
+    "batch_size": 1,
+    "total_time_ms": 10.513431,
+    "images_per_sec": 9511.6427738956,
+    "latency_ms_per_image": 0.10513431000000001,
+    "power_watts": 335.0,
+    "energy_joules": 3.5219996,
+    "energy_per_image_mj": 35.219994,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  },
+  {
+    "vendor": "NVIDIA",
+    "device_name": "NVIDIA GeForce RTX 3090",
+    "batch_size": 32,
+    "total_time_ms": 31.213007,
+    "images_per_sec": 102521.36232821144,
+    "latency_ms_per_image": 0.009754064687500001,
+    "power_watts": 350.0,
+    "energy_joules": 10.924553,
+    "energy_per_image_mj": 3.4139228,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  },
+  {
+    "vendor": "AMD",
+    "device_name": "AMD Radeon RX 6950 XT (RADV NAVI21)",
+    "batch_size": 32,
+    "total_time_ms": 14.956385000000001,
+    "images_per_sec": 213955.4444473046,
+    "latency_ms_per_image": 0.0046738703125,
+    "power_watts": 335.0,
+    "energy_joules": 5.010389,
+    "energy_per_image_mj": 1.5657464,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  },
+  {
+    "vendor": "NVIDIA",
+    "device_name": "NVIDIA GeForce RTX 3090",
+    "batch_size": 128,
+    "total_time_ms": 43.955044,
+    "images_per_sec": 291206.6246595044,
+    "latency_ms_per_image": 0.0034339878125,
+    "power_watts": 350.0,
+    "energy_joules": 15.384265,
+    "energy_per_image_mj": 1.2018957,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  },
+  {
+    "vendor": "AMD",
+    "device_name": "AMD Radeon RX 6950 XT (RADV NAVI21)",
+    "batch_size": 128,
+    "total_time_ms": 15.574909,
+    "images_per_sec": 821834.6572683025,
+    "latency_ms_per_image": 0.001216789765625,
+    "power_watts": 335.0,
+    "energy_joules": 5.2175946,
+    "energy_per_image_mj": 0.4076246,
+    "backend": "Vulkan",
+    "actual_hardware": true
+  }
+]

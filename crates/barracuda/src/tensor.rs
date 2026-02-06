@@ -314,6 +314,11 @@ impl Tensor {
         self.device.read_buffer_f32(&self.buffer, self.len())
     }
 
+    /// Read tensor data as u32 (for FHE operations using u64 as u32 pairs)
+    pub fn to_vec_u32(&self) -> Result<Vec<u32>> {
+        self.device.read_buffer_u32(&self.buffer, self.len())
+    }
+
     /// Transfer tensor to another device
     pub async fn to_device(&self, target_device: Arc<WgpuDevice>) -> Result<Self> {
         let data = self.to_vec()?;

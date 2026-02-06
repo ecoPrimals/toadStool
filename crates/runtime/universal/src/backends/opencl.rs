@@ -1,22 +1,52 @@
-//! OpenCL compute unit implementation (legacy/stub)
+//! OpenCL compute unit implementation (DEPRECATED)
 //!
-//! **STATUS**: Stub - OpenCL API needs modernization for new ocl crate
-//! **RECOMMENDED**: Use wgpu (pure Rust) as primary GPU path
+//! **STATUS**: ⚠️ **DEPRECATED** - Use `wgpu` backend instead
+//! **REASON**: wgpu provides better Rust ergonomics and broader hardware support
 //!
-//! This shows how OpenCL GPUs are treated as ComputeUnits.
-//! The ocl crate API has changed significantly:
-//! - Platform::list() now returns Vec<Platform> directly (not Result)
-//! - Device info methods have changed (use info() with specific InfoKinds)
-//! - Need to update all device queries to match new API
+//! ## Why Deprecated
 //!
-//! For production use, prioritize wgpu (backends/wgpu_backend.rs) which:
-//! - Is pure Rust (no FFI, no unsafe in application code)
-//! - Works on NVIDIA, AMD, Intel via Vulkan/Metal/DX12
-//! - Has been verified and is production-ready
+//! 1. **wgpu is pure Rust** - No FFI, no unsafe in application code
+//! 2. **Broader hardware support** - Works on NVIDIA, AMD, Intel via Vulkan/Metal/DX12
+//! 3. **Modern API** - Better async support, clear error handling
+//! 4. **Production-ready** - Verified, tested, documented
+//! 5. **Maintenance** - ocl crate API changes frequently, wgpu is stable
+//!
+//! ## Migration Path
+//!
+//! ```rust
+//! // OLD (OpenCL)
+//! let device = OpenClComputeUnit::from_device(ocl_device)?;
+//! device.execute(workload).await?;
+//!
+//! // NEW (wgpu) - Recommended
+//! let device = WgpuDevice::new().await?;
+//! let backend = WgpuBackend::new(device);
+//! backend.execute(workload).await?;
+//! ```
+//!
+//! ## Deep Debt Evolution
+//!
+//! **Before**: OpenCL with C FFI, unsafe bindings  
+//! **After**: Pure Rust wgpu with zero unsafe  
+//! **Benefit**: Memory safety, better errors, faster compilation
+//!
+//! This module is kept for legacy compatibility only.
+//! **New code should use `wgpu_backend` instead.**
 
 use crate::types::*;
 
-/// OpenCL compute unit (stub)
+/// OpenCL compute unit (DEPRECATED - use wgpu instead)
+///
+/// **Deep Debt Evolution**:
+/// - ✅ This stub correctly returns errors (no panics)
+/// - ✅ Clear migration path to wgpu
+/// - ✅ Feature-gated for legacy compatibility
+///
+/// **Recommendation**: Use `WgpuBackend` for production
+#[deprecated(
+    since = "0.2.0",
+    note = "Use wgpu backend for pure Rust GPU compute. OpenCL is legacy-only."
+)]
 pub struct OpenClComputeUnit {
     name: String,
     capabilities: Capabilities,
@@ -24,17 +54,27 @@ pub struct OpenClComputeUnit {
 }
 
 impl OpenClComputeUnit {
-    /// Create from an OpenCL device
+    /// Create from an OpenCL device (DEPRECATED)
     ///
-    /// **TODO**: Update for new ocl crate API
-    /// - Use device.info(DeviceInfo::MaxComputeUnits)
-    /// - Use device.info(DeviceInfo::GlobalMemSize)
-    /// - Handle the new Result/Option return patterns
+    /// **Evolution Decision**: NOT implementing OpenCL backend
+    ///
+    /// **Rationale**:
+    /// 1. wgpu covers all OpenCL use cases (NVIDIA, AMD, Intel)
+    /// 2. wgpu is pure Rust (no FFI, safer)
+    /// 3. wgpu has better async support
+    /// 4. Maintaining two GPU backends adds complexity
+    ///
+    /// **If you need GPU compute**, use:
+    /// ```rust
+    /// use barracuda::device::WgpuDevice;
+    /// let device = WgpuDevice::new().await?;
+    /// ```
+    ///
+    /// Returns clear error directing users to wgpu
+    #[deprecated(since = "0.2.0", note = "Use barracuda::device::WgpuDevice")]
     pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
-        // Temporary stub - returns error until API is modernized
-        // Use wgpu backend for production GPU compute
         Err(ComputeError::BackendError(anyhow::anyhow!(
-            "OpenCL backend needs API modernization - use wgpu instead"
+            "OpenCL backend is deprecated. Use barracuda::device::WgpuDevice for GPU compute (pure Rust, safer, faster)"
         )))
 
         // OLD CODE - needs updating for new ocl API:
@@ -57,9 +97,10 @@ impl ComputeUnit for OpenClComputeUnit {
     }
 
     async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
-        // Placeholder - full implementation would use ocl crate
+        // Deep Debt Evolution: Clear error message with migration path
         Err(ComputeError::ExecutionFailed(
-            "OpenCL execution not yet fully implemented in universal runtime".to_string(),
+            "OpenCL backend is deprecated. Migrate to wgpu backend for GPU compute. \
+             See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide.".to_string(),
         ))
     }
 }
