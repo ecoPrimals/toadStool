@@ -14,6 +14,7 @@
 //! Each chunk gets consecutive elements
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -156,7 +157,10 @@ impl Chunk {
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 
-                let workgroups = (chunk_size as u32 + 255) / 256;
+                // Deep Debt Evolution: Capability-based dispatch
+                let caps = DeviceCapabilities::from_device(&device);
+                let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+                let workgroups = (chunk_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
                 pass.dispatch_workgroups(workgroups, 1, 1);
             }
             

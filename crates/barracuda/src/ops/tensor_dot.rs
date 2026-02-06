@@ -6,6 +6,7 @@
 //! - Self-knowledge: Validates contraction axes
 //! - Modern idiomatic Rust: Result<T, E>
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -241,7 +242,10 @@ impl TensorDot {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (output_size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+            let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

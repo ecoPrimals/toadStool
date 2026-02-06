@@ -9,6 +9,7 @@
 
 use crate::error::Result;
 use crate::tensor::Tensor;
+use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 pub struct Lgamma {
@@ -136,7 +137,11 @@ impl Lgamma {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

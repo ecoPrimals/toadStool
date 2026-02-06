@@ -9,6 +9,7 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -226,10 +227,14 @@ impl RoiAlign {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = (self.pooled_height * self.pooled_width + 63) / 64;
-            let workgroups_y = (channels + 7) / 8;
-            let workgroups_z = num_rois;
-            pass.dispatch_workgroups(workgroups_x as u32, workgroups_y as u32, workgroups_z as u32);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
+            let spatial_size = self.pooled_height * self.pooled_width;
+            let workgroups_x = (spatial_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_y = (channels as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_z = num_rois as u32;
+            pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
         device.queue.submit(Some(encoder.finish()));

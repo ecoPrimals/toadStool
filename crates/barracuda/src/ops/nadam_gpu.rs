@@ -22,6 +22,7 @@
 //!
 //! **Reference**: Dozat, 2016 - "Incorporating Nesterov Momentum into Adam"
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 

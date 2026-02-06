@@ -9,6 +9,7 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -261,7 +262,10 @@ impl GraphBatchNorm {
             });
             pass.set_pipeline(&mean_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (self.num_features as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (self.num_features as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -282,7 +286,10 @@ impl GraphBatchNorm {
             });
             pass.set_pipeline(&variance_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (self.num_features as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (self.num_features as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -303,7 +310,10 @@ impl GraphBatchNorm {
             });
             pass.set_pipeline(&normalize_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = ((output_size + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

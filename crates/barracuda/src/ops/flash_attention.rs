@@ -28,6 +28,7 @@
 //! let output = query.flash_attention(&key, &value, num_heads)?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -255,10 +256,12 @@ impl FlashAttention {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             
-            // Dispatch workgroups (16x16 workgroup size in shader)
-            let workgroups_x = (seq_len as u32 + 15) / 16;
-            let workgroups_y = (head_dim as u32 + 15) / 16;
-            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+            let total_size = seq_len * head_dim;
+            let workgroups = (total_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

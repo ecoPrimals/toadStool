@@ -3,6 +3,7 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Reparameterizes weights as: w = g * (v / ||v||)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -179,8 +180,10 @@ impl WeightNorm {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (256 threads per workgroup)
-            let workgroups = (num_weights as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (num_weights as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

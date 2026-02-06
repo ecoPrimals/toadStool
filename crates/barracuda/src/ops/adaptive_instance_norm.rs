@@ -224,7 +224,11 @@ impl AdaptiveInstanceNorm {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             
-            let workgroups = (output_size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            use crate::device::{DeviceCapabilities, WorkloadType};
+            let caps = DeviceCapabilities::from_device(device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -255,29 +259,21 @@ impl Tensor {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
+    // No longer needed - using Tensor method API
     use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_adaptive_instance_norm_basic() {
         let dev = get_test_device().await;
-        let content = vec![1.0; 1 * 3 * 4 * 4];
-        let style_mean = vec![0.5, 0.5, 0.5];
-        let style_std = vec![0.2, 0.2, 0.2];
-        let output = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &style_mean,
-            &style_std,
-            1,
-            3,
-            4,
-            4,
-        )
-        .await
-        .unwrap();
-        assert_eq!(output.len(), content.len());
+        let content_data = vec![1.0; 1 * 3 * 4 * 4];
+        let content = Tensor::new(content_data.clone(), vec![1, 3, 4, 4], dev.clone());
+        let style_mean = Tensor::new(vec![0.5, 0.5, 0.5], vec![3], dev.clone());
+        let style_std = Tensor::new(vec![0.2, 0.2, 0.2], vec![3], dev.clone());
+        let output_tensor = content.adaptive_instance_norm(style_mean, style_std).unwrap();
+        let output = output_tensor.to_vec().unwrap();
+        assert_eq!(output.len(), content_data.len());
         assert!(output.iter().all(|&x| x.is_finite()));
     }
 
@@ -286,41 +282,19 @@ mod tests {
         let dev = get_test_device().await;
 
         // Test with zero style std (should clamp)
-        let content = vec![1.0, 2.0, 3.0, 4.0];
-        let style_mean = vec![0.0];
-        let style_std = vec![0.0];
-        let output = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &style_mean,
-            &style_std,
-            1,
-            1,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
+        let content = Tensor::new(vec![1.0, 2.0, 3.0, 4.0], vec![1, 1, 2, 2], dev.clone());
+        let style_mean = Tensor::new(vec![0.0], vec![1], dev.clone());
+        let style_std = Tensor::new(vec![0.0], vec![1], dev.clone());
+        let output_tensor = content.adaptive_instance_norm(style_mean, style_std).unwrap();
+        let output = output_tensor.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
 
         // Test with single channel, single pixel
-        let content = vec![5.0];
-        let style_mean = vec![1.0];
-        let style_std = vec![2.0];
-        let output = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &style_mean,
-            &style_std,
-            1,
-            1,
-            1,
-            1,
-        )
-        .await
-        .unwrap();
+        let content = Tensor::new(vec![5.0], vec![1, 1, 1, 1], dev.clone());
+        let style_mean = Tensor::new(vec![1.0], vec![1], dev.clone());
+        let style_std = Tensor::new(vec![2.0], vec![1], dev.clone());
+        let output_tensor = content.adaptive_instance_norm(style_mean, style_std).unwrap();
+        let output = output_tensor.to_vec().unwrap();
         assert_eq!(output.len(), 1);
         assert!(output[0].is_finite());
     }
@@ -330,37 +304,21 @@ mod tests {
         let dev = get_test_device().await;
 
         // Test with different style statistics
-        let content = vec![0.0, 1.0, 2.0, 3.0];
+        let content_data = vec![0.0, 1.0, 2.0, 3.0];
 
         // Style 1: mean=0, std=1
-        let output1 = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &vec![0.0],
-            &vec![1.0],
-            1,
-            1,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
+        let content1 = Tensor::new(content_data.clone(), vec![1, 1, 2, 2], dev.clone());
+        let style_mean1 = Tensor::new(vec![0.0], vec![1], dev.clone());
+        let style_std1 = Tensor::new(vec![1.0], vec![1], dev.clone());
+        let result1 = content1.adaptive_instance_norm(style_mean1, style_std1).unwrap();
+        let output1 = result1.to_vec().unwrap();
 
         // Style 2: mean=10, std=5
-        let output2 = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &vec![10.0],
-            &vec![5.0],
-            1,
-            1,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
+        let content2 = Tensor::new(content_data.clone(), vec![1, 1, 2, 2], dev.clone());
+        let style_mean2 = Tensor::new(vec![10.0], vec![1], dev.clone());
+        let style_std2 = Tensor::new(vec![5.0], vec![1], dev.clone());
+        let result2 = content2.adaptive_instance_norm(style_mean2, style_std2).unwrap();
+        let output2 = result2.to_vec().unwrap();
 
         assert!(output1.iter().all(|&x| x.is_finite()));
         assert!(output2.iter().all(|&x| x.is_finite()));
@@ -380,27 +338,17 @@ mod tests {
         let height = 8;
         let width = 8;
 
-        let content: Vec<f32> = (0..batch_size * channels * height * width)
+        let content_data: Vec<f32> = (0..batch_size * channels * height * width)
             .map(|i| (i % 10) as f32)
             .collect();
-        let style_mean = vec![0.5, 1.0, 1.5, 2.0];
-        let style_std = vec![0.1, 0.2, 0.3, 0.4];
+        let content = Tensor::new(content_data.clone(), vec![batch_size, channels, height, width], dev.clone());
+        let style_mean = Tensor::new(vec![0.5, 1.0, 1.5, 2.0], vec![channels], dev.clone());
+        let style_std = Tensor::new(vec![0.1, 0.2, 0.3, 0.4], vec![channels], dev.clone());
 
-        let output = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &style_mean,
-            &style_std,
-            batch_size,
-            channels,
-            height,
-            width,
-        )
-        .await
-        .unwrap();
+        let output_tensor = content.adaptive_instance_norm(style_mean, style_std).unwrap();
+        let output = output_tensor.to_vec().unwrap();
 
-        assert_eq!(output.len(), content.len());
+        assert_eq!(output.len(), content_data.len());
         assert!(output.iter().all(|&x| x.is_finite()));
     }
 
@@ -409,25 +357,15 @@ mod tests {
         let dev = get_test_device().await;
 
         // Test with known values for style transfer
-        let content = vec![
+        let content_data = vec![
             0.0, 1.0, 2.0, 3.0, // Mean = 1.5
         ];
-        let style_mean = vec![5.0]; // Target mean
-        let style_std = vec![2.0]; // Target std
+        let content = Tensor::new(content_data, vec![1, 1, 2, 2], dev.clone());
+        let style_mean = Tensor::new(vec![5.0], vec![1], dev.clone()); // Target mean
+        let style_std = Tensor::new(vec![2.0], vec![1], dev.clone()); // Target std
 
-        let output = adaptive_instance_norm(
-            &dev.device,
-            &dev.queue,
-            &content,
-            &style_mean,
-            &style_std,
-            1,
-            1,
-            2,
-            2,
-        )
-        .await
-        .unwrap();
+        let result = content.adaptive_instance_norm(style_mean, style_std).unwrap();
+        let output = result.to_vec().unwrap();
 
         // After AdaIN, output should have approximately the target mean
         let out_mean = output.iter().sum::<f32>() / output.len() as f32;

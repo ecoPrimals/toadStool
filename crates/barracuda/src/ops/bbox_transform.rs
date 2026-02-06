@@ -9,6 +9,7 @@
 //! - Runtime device discovery
 //! - Zero CPU fallbacks in execution
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -183,7 +184,10 @@ impl BBoxTransform {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             
-            let workgroups = (num_boxes as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -213,17 +217,20 @@ impl Tensor {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
+    // No longer needed - using Tensor method API
     use crate::device::test_pool::get_test_device;
 
     #[tokio::test]
     async fn test_bbox_transform_basic() {
         let dev = get_test_device().await;
-        let anchors = vec![0.0, 0.0, 10.0, 10.0];
-        let deltas = vec![0.0, 0.0, 0.0, 0.0]; // Identity transform
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors_data = vec![0.0, 0.0, 10.0, 10.0];
+        let deltas_data = vec![0.0, 0.0, 0.0, 0.0]; // Identity transform
+        let anchors = Tensor::new(anchors_data, vec![1, 4], dev.clone());
+        let deltas = Tensor::new(deltas_data, vec![1, 4], dev.clone());
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
         assert_eq!(output.len(), 4);
         assert!(output.iter().all(|&x| x.is_finite()));
         // Zero deltas should preserve anchor center
@@ -236,19 +243,17 @@ mod tests {
         let dev = get_test_device().await;
 
         // Test with single anchor at origin
-        let anchors = vec![0.0, 0.0, 1.0, 1.0];
-        let deltas = vec![0.0, 0.0, 0.0, 0.0];
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(vec![0.0, 0.0, 1.0, 1.0], vec![1, 4], dev.clone());
+        let deltas = Tensor::new(vec![0.0, 0.0, 0.0, 0.0], vec![1, 4], dev.clone());
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
 
         // Test with translation only (no scaling)
-        let anchors = vec![10.0, 10.0, 20.0, 20.0];
-        let deltas = vec![0.5, 0.5, 0.0, 0.0]; // Move center
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(vec![10.0, 10.0, 20.0, 20.0], vec![1, 4], dev.clone());
+        let deltas = Tensor::new(vec![0.5, 0.5, 0.0, 0.0], vec![1, 4], dev.clone());
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
     }
 
@@ -257,11 +262,10 @@ mod tests {
         let dev = get_test_device().await;
 
         // Test with scaling (exponential deltas)
-        let anchors = vec![0.0, 0.0, 10.0, 10.0];
-        let deltas = vec![0.0, 0.0, 0.693, 0.693]; // exp(0.693) ≈ 2.0
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(vec![0.0, 0.0, 10.0, 10.0], vec![1, 4], dev.clone());
+        let deltas = Tensor::new(vec![0.0, 0.0, 0.693, 0.693], vec![1, 4], dev.clone()); // exp(0.693) ≈ 2.0
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
         assert!(output.iter().all(|&x| x.is_finite()));
 
         // Width and height should approximately double
@@ -271,10 +275,10 @@ mod tests {
         assert!(out_h > 15.0);
 
         // Test with negative scaling
-        let deltas = vec![0.0, 0.0, -0.693, -0.693]; // exp(-0.693) ≈ 0.5
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(vec![0.0, 0.0, 10.0, 10.0], vec![1, 4], dev.clone());
+        let deltas = Tensor::new(vec![0.0, 0.0, -0.693, -0.693], vec![1, 4], dev.clone()); // exp(-0.693) ≈ 0.5
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
         let out_w = output[2] - output[0];
         assert!(out_w < 7.0); // Should be ~5
     }
@@ -285,18 +289,19 @@ mod tests {
 
         // Multiple anchors
         let num_boxes = 100;
-        let mut anchors = Vec::new();
-        let mut deltas = Vec::new();
+        let mut anchors_data = Vec::new();
+        let mut deltas_data = Vec::new();
 
         for i in 0..num_boxes {
             let base = (i * 10) as f32;
-            anchors.extend_from_slice(&[base, base, base + 10.0, base + 10.0]);
-            deltas.extend_from_slice(&[0.1, 0.1, 0.0, 0.0]);
+            anchors_data.extend_from_slice(&[base, base, base + 10.0, base + 10.0]);
+            deltas_data.extend_from_slice(&[0.1, 0.1, 0.0, 0.0]);
         }
 
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, num_boxes)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(anchors_data, vec![num_boxes, 4], dev.clone());
+        let deltas = Tensor::new(deltas_data, vec![num_boxes, 4], dev.clone());
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
 
         assert_eq!(output.len(), num_boxes * 4);
         assert!(output.iter().all(|&x| x.is_finite()));
@@ -309,11 +314,10 @@ mod tests {
         // Test with known values
         // Anchor: [0, 0, 10, 10] → center (5, 5), size (10, 10)
         // Deltas: [0.1, 0.2, 0, 0] → shift center by (1, 2)
-        let anchors = vec![0.0, 0.0, 10.0, 10.0];
-        let deltas = vec![0.1, 0.2, 0.0, 0.0];
-        let output = bbox_transform(&dev.device, &dev.queue, &anchors, &deltas, 1)
-            .await
-            .unwrap();
+        let anchors = Tensor::new(vec![0.0, 0.0, 10.0, 10.0], vec![1, 4], dev.clone());
+        let deltas = Tensor::new(vec![0.1, 0.2, 0.0, 0.0], vec![1, 4], dev.clone());
+        let result = anchors.bbox_transform(deltas).unwrap();
+        let output = result.to_vec().unwrap();
 
         // New center: (5 + 1, 5 + 2) = (6, 7)
         // New box: [1, 2, 11, 12]

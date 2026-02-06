@@ -24,6 +24,7 @@
 //! let partial_sums = a.dotproduct(&b)?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -50,7 +51,10 @@ impl DotProduct {
 
         let params = DotProductParams { size: size as u32 };
 
-        let num_workgroups = ((size + 255) / 256) as u32;
+        // Deep Debt Evolution: Capability-based dispatch
+        let caps = DeviceCapabilities::from_device(&device);
+        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+        let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
 
         // Partial sums buffer
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {

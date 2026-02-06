@@ -3,6 +3,7 @@
 //! Cycles learning rate between bounds for better convergence
 //! Reference: "Cyclical Learning Rates for Training Neural Networks" by Smith (2017)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
@@ -201,8 +202,12 @@ impl CyclicalLr {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch single workgroup (workgroup_size(1))
-            pass.dispatch_workgroups(1, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            // Note: This is a scalar operation (single LR value), but using capability pattern for consistency
+            let caps = DeviceCapabilities::from_device(device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (1u32 + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

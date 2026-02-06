@@ -36,6 +36,7 @@
 //! let q_rotated = q.rotary_embedding()?;  // Apply RoPE
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -226,9 +227,11 @@ impl RotaryEmbedding {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch: one thread per dimension pair
+            // Deep Debt Evolution: Capability-based dispatch
             let total = (batch_size * seq_len * num_heads * half_dim) as u32;
-            let workgroups = (total + 255) / 256;
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (total + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

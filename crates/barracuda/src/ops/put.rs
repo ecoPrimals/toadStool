@@ -9,6 +9,7 @@
 //!
 //! NOTE: Uses atomic operations when accumulate=true
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -202,7 +203,12 @@ impl Put {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups((num_values as u32 + 255) / 256, 1, 1);
+            
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (num_values as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
@@ -238,7 +244,7 @@ mod tests {
         ).unwrap();
         
         let result = Put::new(output, vec![0, 2], values, false).unwrap().execute().unwrap();
-        let output_data = result.to_vec().await.unwrap();
+        let output_data = result.to_vec().unwrap();
         
         assert_eq!(output_data[0], 10.0);
         assert_eq!(output_data[2], 30.0);
@@ -261,7 +267,7 @@ mod tests {
         ).unwrap();
         
         let result = Put::new(output, vec![0, 1], values, true).unwrap().execute().unwrap();
-        let output_data = result.to_vec().await.unwrap();
+        let output_data = result.to_vec().unwrap();
         
         // With accumulate, values are added
         assert_eq!(output_data[0], 11.0);
@@ -318,7 +324,7 @@ mod tests {
         
         // Same index twice - last write wins if not accumulating
         let result = Put::new(output, vec![0, 0], values, false).unwrap().execute().unwrap();
-        let output_data = result.to_vec().await.unwrap();
+        let output_data = result.to_vec().unwrap();
         assert_eq!(output_data[0], 2.0); // Last write wins
     }
 }

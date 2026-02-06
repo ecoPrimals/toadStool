@@ -276,7 +276,22 @@ pub async fn sparse_matmul_quantized(
         });
         cpass.set_pipeline(&pipeline);
         cpass.set_bind_group(0, &bind_group, &[]);
-        cpass.dispatch_workgroups(((output_size as u32) + 255) / 256, 1, 1);
+        // Deep Debt Evolution: Capability-based dispatch
+        // Note: This function uses raw wgpu::Device, so we use device limits for capability awareness
+        let limits = device.limits();
+        let max_invocations = limits.max_compute_invocations_per_workgroup;
+        // Use capability-aware workgroup size, respecting device limits
+        // Choose optimal size based on device capabilities: prefer 256 for discrete GPUs,
+        // 128 for integrated GPUs, but always respect device limits
+        let optimal_wg_size = if max_invocations >= 256 {
+            256 // Optimal for discrete GPUs
+        } else if max_invocations >= 128 {
+            128 // Good for integrated GPUs
+        } else {
+            max_invocations.max(64) // Fallback: use device max or minimum viable size
+        };
+        let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        cpass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 
     let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {

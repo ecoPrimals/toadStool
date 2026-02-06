@@ -204,9 +204,12 @@ impl ChamferDistance {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (64 threads per workgroup)
+            // Deep Debt Evolution: Capability-based dispatch
+            use crate::device::{DeviceCapabilities, WorkloadType};
+            let caps = DeviceCapabilities::from_device(device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let max_points = num_points_x.max(num_points_y);
-            let workgroups = (max_points as u32 + 63) / 64;
+            let workgroups = (max_points as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

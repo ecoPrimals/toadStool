@@ -10,6 +10,7 @@
 //! - Runtime device discovery
 //! - Zero CPU fallbacks in execution
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -215,8 +216,11 @@ impl RandomPerspective {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             
-            let workgroups_x = (width as u32 + 15) / 16;
-            let workgroups_y = (height as u32 + 15) / 16;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
+            let workgroups_x = (width as u32 + wg_x - 1) / wg_x;
+            let workgroups_y = (height as u32 + wg_y - 1) / wg_y;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -247,18 +251,15 @@ impl Tensor {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
-    use crate::device::WgpuDevice;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_random_perspective() {
-        let dev = Arc::new(WgpuDevice::new().await.unwrap());
-        let image = vec![1.0; 3 * 100 * 100];
-        let transformed =
-            random_perspective(&dev.device, &dev.queue, &image, 3, 100, 100, 0.2, 33333)
-                .await
-                .unwrap();
-        assert_eq!(transformed.len(), image.len());
+        let image_data = vec![1.0; 3 * 100 * 100];
+        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 100, 100]).await.unwrap();
+        let transformed_tensor = tensor.random_perspective(0.2, 33333).unwrap();
+        let transformed = transformed_tensor.to_vec().unwrap();
+        assert_eq!(transformed.len(), image_data.len());
     }
 }

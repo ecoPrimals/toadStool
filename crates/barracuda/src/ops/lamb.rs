@@ -9,6 +9,7 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -358,7 +359,10 @@ impl Lamb {
             });
             pass.set_pipeline(&adam_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = ((size + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -379,7 +383,13 @@ impl Lamb {
             });
             pass.set_pipeline(&trust_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(1, 1, 1); // Single workgroup for reduction
+            // Deep Debt Evolution: Capability-based dispatch
+            // Trust ratio computation is a reduction over parameters
+            let caps = DeviceCapabilities::from_device(&device);
+            let param_size = self.parameters.shape().iter().product::<usize>();
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (param_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

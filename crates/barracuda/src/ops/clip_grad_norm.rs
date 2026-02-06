@@ -11,6 +11,7 @@
 //! 1. Compute total norm (parallel reduction)
 //! 2. Clip gradients based on computed norm
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -189,7 +190,12 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_norm);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            
+            // Deep Debt Evolution: Capability-based dispatch (reduction for norm)
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         // Pass 2: Clip gradients
@@ -200,7 +206,12 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_clip);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            
+            // Deep Debt Evolution: Capability-based dispatch (element-wise clipping)
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
@@ -234,7 +245,7 @@ mod tests {
         ).unwrap();
         
         let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
-        let result = clipped.to_vec().await.unwrap();
+        let result = clipped.to_vec().unwrap();
         
         // Original norm = 5, should be clipped to norm = 1
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();
@@ -251,7 +262,7 @@ mod tests {
         ).unwrap();
         
         let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
-        let result = clipped.to_vec().await.unwrap();
+        let result = clipped.to_vec().unwrap();
         
         // Norm ≈ 0.374, should not be clipped
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();
@@ -268,7 +279,7 @@ mod tests {
         ).unwrap();
         
         let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
-        let result = clipped.to_vec().await.unwrap();
+        let result = clipped.to_vec().unwrap();
         
         assert_eq!(result, vec![0.0, 0.0, 0.0]);
     }
@@ -284,7 +295,7 @@ mod tests {
         ).unwrap();
         
         let clipped = ClipGradNorm::new(gradients, 100.0).unwrap().execute().unwrap();
-        let result = clipped.to_vec().await.unwrap();
+        let result = clipped.to_vec().unwrap();
         
         assert_eq!(result.len(), 1000);
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();

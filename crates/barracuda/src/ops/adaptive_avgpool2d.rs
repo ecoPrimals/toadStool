@@ -24,6 +24,7 @@
 //! let pooled = input.adaptive_avgpool2d((7, 7))?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -189,8 +190,11 @@ impl AdaptiveAvgPool2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = ((out_width + 15) / 16) as u32;
-            let workgroups_y = ((out_height + 15) / 16) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
+            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
             let workgroups_z = (batch * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

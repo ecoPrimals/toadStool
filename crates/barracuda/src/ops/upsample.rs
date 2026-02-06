@@ -7,6 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -210,9 +211,11 @@ impl Upsample {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Use 2D workgroup dispatch for spatial operations
-            let workgroups_x = (out_width as u32 + 7) / 8;
-            let workgroups_y = (out_height as u32 + 7) / 8;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
+            let workgroups_x = (out_width as u32 + wg_x - 1) / wg_x;
+            let workgroups_y = (out_height as u32 + wg_y - 1) / wg_y;
             let workgroups_z = (batch_size * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

@@ -12,6 +12,7 @@
 //!
 //! Reference: RoFormer (Su et al., 2021), used in GPT-Neo, LLaMA, PaLM
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -182,9 +183,12 @@ impl RotaryEmbedding {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Dispatch: one thread per dimension pair
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
             let total = batch_size * seq_len * num_heads * half_dim;
-            compute_pass.dispatch_workgroups((total as u32 + 255) / 256, 1, 1);
+            let workgroups = (total as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

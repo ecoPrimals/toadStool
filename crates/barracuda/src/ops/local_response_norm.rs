@@ -12,6 +12,7 @@
 //!
 //! Formula: y_i = x_i / (k + alpha * sum(x_j^2) / size)^beta
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -180,10 +181,13 @@ impl LocalResponseNorm {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
             let workgroups_x = (width as u32 + 7) / 8;
             let workgroups_y = (height as u32 + 7) / 8;
-            let workgroups_z = batch_size * channels;
-            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
+            let workgroups_z = ((batch_size * channels) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
         device.queue.submit(Some(encoder.finish()));

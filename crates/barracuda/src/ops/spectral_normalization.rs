@@ -12,6 +12,7 @@
 //!
 //! Normalizes weights by their spectral norm (largest singular value).
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -210,9 +211,12 @@ impl SpectralNormalization {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            // Dispatch workgroups (256 threads per workgroup)
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
             let max_dim = rows.max(cols);
-            compute_pass.dispatch_workgroups((max_dim as u32 + 255) / 256, 1, 1);
+            let workgroups = (max_dim as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

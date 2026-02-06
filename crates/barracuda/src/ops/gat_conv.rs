@@ -8,6 +8,7 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -299,7 +300,10 @@ impl GatConv {
             });
             pass.set_pipeline(&transform_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (self.num_nodes as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+            let workgroups = (self.num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -320,7 +324,10 @@ impl GatConv {
             });
             pass.set_pipeline(&aggregate_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (self.num_edges as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+            let workgroups = (self.num_edges as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

@@ -10,6 +10,7 @@
 //! Quantizes floating point values to low-precision integers.
 //! Used for model compression and efficient inference.
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use bytemuck::{Pod, Zeroable};
@@ -198,8 +199,10 @@ impl Quantize {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (256 threads per workgroup)
-            let workgroups = (size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -270,7 +273,6 @@ mod tests {
         let output = Quantize::new(input, 0.01, 0.0, 8)
             .unwrap()
             .execute()
-            .await
             .unwrap();
         let result = output.to_vec().unwrap();
 

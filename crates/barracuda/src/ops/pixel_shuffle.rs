@@ -12,6 +12,7 @@
 //!
 //! Transform [B, C*r^2, H, W] → [B, C, H*r, W*r]
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -186,8 +187,11 @@ impl PixelShuffle {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = (out_width as u32 + 15) / 16;
-            let workgroups_y = (out_height as u32 + 15) / 16;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
+            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
             let workgroups_z = batch_size * out_channels;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
         }

@@ -9,6 +9,7 @@
 
 use crate::error::Result;
 use crate::tensor::Tensor;
+use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 /// Argmin operation - Find indices of minimum values
@@ -44,7 +45,10 @@ impl Argmin {
             None => {
                 // Global argmin reduction
                 let size: usize = shape.iter().product();
-                let num_workgroups = ((size + 255) / 256) as u32;
+                // Deep Debt Evolution: Capability-based dispatch
+                let caps = DeviceCapabilities::from_device(&device);
+                let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+                let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
 
                 // Create output buffer for partial results (indices)
                 let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -155,6 +159,7 @@ impl Argmin {
                     });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
+                    // Deep Debt Evolution: Capability-based dispatch (already computed above)
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
                 }
 
@@ -314,7 +319,10 @@ impl Argmin {
                     });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
-                    let workgroups = ((output_size as u32 + 255) / 256) as u32;
+                    // Deep Debt Evolution: Capability-based dispatch
+                    let caps = DeviceCapabilities::from_device(&device);
+                    let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+                    let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
                     compute_pass.dispatch_workgroups(workgroups, 1, 1);
                 }
 

@@ -12,6 +12,7 @@
 //!
 //! Reference: "Adaptive Gradient Methods with Dynamic Bound of Learning Rate" by Luo et al. (2019)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -319,7 +320,10 @@ impl AdaBound {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((size + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

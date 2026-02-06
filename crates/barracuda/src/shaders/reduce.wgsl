@@ -44,7 +44,8 @@ fn main(
     
     // Tree reduction in shared memory
     for (var stride = 128u; stride > 0u; stride = stride / 2u) {
-        if (tid < stride && (gid + stride) < params.size) {
+        // Deep Debt Fix: Use tid + stride (local) not gid + stride (global) for shared memory bounds
+        if (tid < stride && (tid + stride) < 256u) {
             let a = shared_data[tid];
             let b = shared_data[tid + stride];
             
@@ -63,8 +64,15 @@ fn main(
         workgroupBarrier();
     }
     
-    // Write partial result
+    // Thread 0 writes workgroup result
     if (tid == 0u) {
-        output[workgroup_id.x] = shared_data[0];
+        var result = shared_data[0];
+        
+        // Deep Debt Fix: Implement Mean operation (divide by size)
+        if (params.operation == 3u) {
+            result = result / f32(params.size);
+        }
+        
+        output[workgroup_id.x] = result;
     }
 }

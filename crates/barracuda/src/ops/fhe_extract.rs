@@ -54,6 +54,7 @@
 //! # }
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -266,9 +267,11 @@ impl FheExtract {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch: 1 thread per u64 coefficient
-            let num_workgroups = (self.degree + 255) / 256; // 256 threads per workgroup
-            compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
+            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(std::iter::once(encoder.finish()));
@@ -286,18 +289,18 @@ impl FheExtract {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_extract_validation() {
+    #[tokio::test]
+    async fn test_extract_validation() {
         // Test invalid degree
-        let result = FheExtract::new(Tensor::zeros(&[8], None).unwrap(), 3, 0);
+        let result = FheExtract::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 0);
         assert!(result.is_err());
 
         // Test index out of bounds
-        let result = FheExtract::new(Tensor::zeros(&[8], None).unwrap(), 4, 4);
+        let result = FheExtract::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 4);
         assert!(result.is_err());
 
         // Test index >= degree
-        let result = FheExtract::new(Tensor::zeros(&[8], None).unwrap(), 4, 5);
+        let result = FheExtract::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 5);
         assert!(result.is_err());
     }
 

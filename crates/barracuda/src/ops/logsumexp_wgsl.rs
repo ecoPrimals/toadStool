@@ -7,6 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -137,7 +138,12 @@ impl LogsumexpWgsl {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(1, 1, 1); // Single workgroup for reduction
+            // Deep Debt Evolution: Capability-based dispatch
+            // Logsumexp is a reduction operation over input elements
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

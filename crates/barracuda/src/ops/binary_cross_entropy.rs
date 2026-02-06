@@ -1,6 +1,7 @@
 //! Binary Cross Entropy Loss
 //! Pure WGSL implementation
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 
@@ -79,7 +80,13 @@ impl BinaryCrossEntropy {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups(1, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            // Binary cross entropy is a reduction over prediction elements
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let size = self.predictions.shape().iter().product::<usize>();
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));
 

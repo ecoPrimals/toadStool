@@ -9,6 +9,7 @@
 //! - Hardware-agnostic via WebGPU
 //! - Complete implementation (production-ready)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -184,7 +185,10 @@ impl Renorm {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((outer * inner + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = ((outer * inner) as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -216,7 +220,7 @@ mod tests {
         .unwrap();
 
         let renorm = Renorm::new(input, 0, 1.0).unwrap();
-        let output = renorm.execute(&device).unwrap();
+        let output = renorm.execute().unwrap();
 
         assert_eq!(output.shape(), &[4]);
     }

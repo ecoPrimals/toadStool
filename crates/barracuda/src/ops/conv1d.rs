@@ -7,6 +7,7 @@
 //! Used in: WaveNet, temporal CNNs, sequence models, audio processing
 //! Benefits: Captures temporal/sequential patterns efficiently
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -161,7 +162,10 @@ impl Conv1D {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = ((output_size + 255) / 256) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
+            let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));

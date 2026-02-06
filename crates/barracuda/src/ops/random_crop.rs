@@ -3,6 +3,7 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Randomly crops images to specified size
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -209,10 +210,12 @@ impl RandomCrop {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (8x8x1 threads per workgroup)
-            let workgroups_x = (self.out_width as u32 + 7) / 8;
-            let workgroups_y = (self.out_height as u32 + 7) / 8;
-            let workgroups_z = (batch_size * channels) as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let (wg_x, wg_y, wg_z) = caps.optimal_workgroup_size_3d(WorkloadType::Convolution);
+            let workgroups_x = (self.out_width as u32 + wg_x - 1) / wg_x;
+            let workgroups_y = (self.out_height as u32 + wg_y - 1) / wg_y;
+            let workgroups_z = ((batch_size * channels) as u32 + wg_z - 1) / wg_z;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -252,7 +255,7 @@ mod tests {
         .unwrap();
 
         let crop_positions = Tensor::from_vec_on(
-            vec![5u32, 5, 10, 10], // [batch, 2] - (top, left)
+            vec![5.0, 5.0, 10.0, 10.0], // [batch, 2] - (top, left)
             vec![batch_size, 2],
             device.clone(),
         )

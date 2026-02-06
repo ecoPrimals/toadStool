@@ -232,6 +232,7 @@ impl AnchorGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // No longer needed - using Tensor method API
 
     async fn get_test_device() -> std::sync::Arc<crate::device::WgpuDevice> {
         use crate::device::test_pool::get_test_device;
@@ -255,33 +256,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_edge_cases() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Single feature map location
-        let anchors = anchor_generator(&dev.device, &dev.queue, 1, 1, 8, &[16.0], &[1.0])
-            .await
-            .unwrap();
-        assert_eq!(anchors.len(), 1 * 1 * 1 * 1 * 4); // 4 coordinates
-        assert!(anchors.iter().all(|&x| x.is_finite()));
+        let op1 = AnchorGenerator::new(1, 1, 8, vec![16.0], vec![1.0], device.clone()).unwrap();
+        let result1 = op1.execute().unwrap();
+        let anchors1 = result1.to_vec().unwrap();
+        assert_eq!(anchors1.len(), 1 * 1 * 1 * 1 * 4); // 4 coordinates
+        assert!(anchors1.iter().all(|&x| x.is_finite()));
 
         // Test with single aspect ratio
-        let anchors = anchor_generator(&dev.device, &dev.queue, 2, 2, 16, &[32.0], &[1.0])
-            .await
-            .unwrap();
-        assert_eq!(anchors.len(), 2 * 2 * 1 * 1 * 4);
+        let op2 = AnchorGenerator::new(2, 2, 16, vec![32.0], vec![1.0], device.clone()).unwrap();
+        let result2 = op2.execute().unwrap();
+        let anchors2 = result2.to_vec().unwrap();
+        assert_eq!(anchors2.len(), 2 * 2 * 1 * 1 * 4);
     }
 
     #[tokio::test]
     async fn test_anchor_generator_boundary() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Test with different strides
-        let anchors1 = anchor_generator(&dev.device, &dev.queue, 3, 3, 8, &[16.0], &[1.0])
-            .await
-            .unwrap();
-        let anchors2 = anchor_generator(&dev.device, &dev.queue, 3, 3, 16, &[16.0], &[1.0])
-            .await
-            .unwrap();
+        let op1 = AnchorGenerator::new(3, 3, 8, vec![16.0], vec![1.0], device.clone()).unwrap();
+        let result1 = op1.execute().unwrap();
+        let anchors1 = result1.to_vec().unwrap();
+
+        let op2 = AnchorGenerator::new(3, 3, 16, vec![16.0], vec![1.0], device.clone()).unwrap();
+        let result2 = op2.execute().unwrap();
+        let anchors2 = result2.to_vec().unwrap();
 
         assert!(anchors1.iter().all(|&x| x.is_finite()));
         assert!(anchors2.iter().all(|&x| x.is_finite()));
@@ -294,7 +296,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_large_batch() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Large feature map with multiple scales and ratios
         let feature_h = 16;
@@ -302,17 +304,16 @@ mod tests {
         let sizes = vec![32.0, 64.0, 128.0];
         let ratios = vec![0.5, 1.0, 2.0];
 
-        let anchors = anchor_generator(
-            &dev.device,
-            &dev.queue,
+        let op = AnchorGenerator::new(
             feature_h,
             feature_w,
             16,
-            &sizes,
-            &ratios,
-        )
-        .await
-        .unwrap();
+            sizes.clone(),
+            ratios.clone(),
+            device.clone(),
+        ).unwrap();
+        let result = op.execute().unwrap();
+        let anchors = result.to_vec().unwrap();
 
         assert_eq!(
             anchors.len(),
@@ -323,12 +324,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_anchor_generator_precision() {
-        let dev = get_test_device().await;
+        let device = get_test_device().await;
 
         // Test with known values - single anchor at (0,0)
-        let anchors = anchor_generator(&dev.device, &dev.queue, 1, 1, 16, &[32.0], &[1.0])
-            .await
-            .unwrap();
+        let op = AnchorGenerator::new(1, 1, 16, vec![32.0], vec![1.0], device.clone()).unwrap();
+        let result = op.execute().unwrap();
+        let anchors = result.to_vec().unwrap();
 
         // Center should be at (8, 8) - stride/2
         // Size=32, ratio=1.0 → w=h=32

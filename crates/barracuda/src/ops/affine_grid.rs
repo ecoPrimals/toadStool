@@ -12,6 +12,7 @@
 //!
 //! Reference: "Spatial Transformer Networks" by Jaderberg et al. (2015)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -172,9 +173,12 @@ impl AffineGrid {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = (width as u32 + 15) / 16;
-            let workgroups_y = (height as u32 + 15) / 16;
-            let workgroups_z = batch_size as u32;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let (wg_x, wg_y, wg_z) = caps.optimal_workgroup_size_3d(WorkloadType::MatMul);
+            let workgroups_x = (width as u32 + wg_x - 1) / wg_x;
+            let workgroups_y = (height as u32 + wg_y - 1) / wg_y;
+            let workgroups_z = (batch_size as u32 + wg_z - 1) / wg_z;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 

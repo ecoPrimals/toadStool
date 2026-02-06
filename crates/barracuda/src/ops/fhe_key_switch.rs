@@ -61,6 +61,7 @@
 //! # }
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -325,7 +326,10 @@ impl FheKeySwitch {
             compute_pass.set_pipeline(&self.pipeline_decompose);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let num_workgroups = (self.degree + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
+            let num_workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
@@ -350,11 +354,11 @@ impl FheKeySwitch {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_key_switch_validation() {
+    #[tokio::test]
+    async fn test_key_switch_validation() {
         // Test invalid degree
         let result = FheKeySwitch::new(
-            Tensor::zeros(&[8], None).unwrap(),
+            Tensor::zeros(vec![8]).await.unwrap(),
             3,
             12289,
             1 << 16,
@@ -363,12 +367,12 @@ mod tests {
         assert!(result.is_err());
 
         // Test invalid decomposition base
-        let result = FheKeySwitch::new(Tensor::zeros(&[8], None).unwrap(), 4, 12289, 1, 3);
+        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12289, 1, 3);
         assert!(result.is_err());
 
         // Test invalid decomposition levels
         let result = FheKeySwitch::new(
-            Tensor::zeros(&[8], None).unwrap(),
+            Tensor::zeros(vec![8]).await.unwrap(),
             4,
             12289,
             1 << 16,

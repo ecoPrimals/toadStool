@@ -9,6 +9,7 @@
 //! - ✅ Production-ready (full error handling)
 //! - ✅ Canonical pattern: Tensor inputs/outputs, device from runtime
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -207,7 +208,10 @@ impl FheAnd {
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups = (self.degree + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
+            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -232,9 +236,11 @@ pub async fn create_fhe_bit_tensor(
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
     use crate::device::WgpuDevice;
     use std::sync::Arc;
+    #[allow(unused_imports)]
     use wgpu::util::DeviceExt;
 
     #[tokio::test]

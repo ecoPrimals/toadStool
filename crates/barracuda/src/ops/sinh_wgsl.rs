@@ -6,7 +6,9 @@
 //! - Modern idiomatic Rust: Safe, zero unsafe code
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
+//! - ✅ Capability-based dispatch (vendor-optimized workgroups)
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -136,7 +138,12 @@ impl Sinh {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            
+            // Deep Debt Evolution: Capability-based dispatch (vendor-optimized workgroups)
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = ((size as u32) + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

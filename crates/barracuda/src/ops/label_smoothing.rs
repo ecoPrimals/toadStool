@@ -3,6 +3,7 @@
 //! **Pure WGSL**: Single implementation via WebGPU shader
 //! Prevents overconfidence by smoothing hard labels
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -175,8 +176,10 @@ impl LabelSmoothing {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (64 threads per workgroup)
-            let workgroups = (batch_size as u32 + 63) / 64;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -204,7 +207,7 @@ mod tests {
         let num_classes = 3;
 
         let labels = Tensor::from_vec_on(
-            vec![0u32, 1, 2, 0],
+            vec![0.0, 1.0, 2.0, 0.0],
             vec![batch_size],
             device.clone(),
         )

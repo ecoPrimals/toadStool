@@ -23,6 +23,7 @@
 //! - `b_hh`: Hidden-to-hidden bias [hidden_size]
 //! - `h_t`: New hidden state [batch, hidden_size]
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -299,8 +300,10 @@ impl RNNCell {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // Dispatch workgroups (64 threads per workgroup)
-            let workgroups = (self.batch_size as u32 + 63) / 64;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
+            let workgroups = (self.batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

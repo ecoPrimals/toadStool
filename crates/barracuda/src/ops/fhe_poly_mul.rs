@@ -9,6 +9,7 @@
 //! - ✅ Production-ready (full error handling)
 //! - ✅ Canonical pattern: Tensor inputs/outputs, device from runtime
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -226,8 +227,11 @@ impl FhePolyMul {
             });
             cpass.set_pipeline(&self.pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
-            let workgroup_count = (self.degree + 255) / 256;
-            cpass.dispatch_workgroups(workgroup_count, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
+            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            cpass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
@@ -254,10 +258,12 @@ pub async fn create_fhe_poly_tensor(
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
     use crate::device::WgpuDevice;
     use crate::ops::fhe_poly_add::create_fhe_poly_tensor;
     use std::sync::Arc;
+    #[allow(unused_imports)]
     use wgpu::util::DeviceExt;
 
     #[tokio::test]

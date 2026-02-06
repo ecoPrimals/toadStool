@@ -10,6 +10,7 @@
 //! Average pooling for 3D data (video, volumetric medical imaging)
 //! Commonly used in 3D CNNs for action recognition and medical imaging
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -223,10 +224,12 @@ impl AvgPool3D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            // 3D dispatch: [out_width, out_height, out_depth]
-            let workgroups_x = (out_width as u32 + 3) / 4;
-            let workgroups_y = (out_height as u32 + 3) / 4;
-            let workgroups_z = (out_depth as u32 + 3) / 4;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
+            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_z = (out_depth as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 

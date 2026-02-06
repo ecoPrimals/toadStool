@@ -24,6 +24,7 @@
 //! let sum_tensor = input.reduce(ReduceOperation::Sum)?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -73,7 +74,10 @@ impl Reduce {
             operation: self.operation.to_u32(),
         };
 
-        let num_workgroups = ((size + 255) / 256) as u32;
+        // Deep Debt Evolution: Capability-based dispatch
+        let caps = DeviceCapabilities::from_device(&device);
+        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+        let num_workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
 
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("reduce_output"),

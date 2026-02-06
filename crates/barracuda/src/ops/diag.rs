@@ -17,6 +17,7 @@
 //! let matrix = vector.diag_create()?; // Returns 3x3 matrix with diagonal [1, 2, 3]
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -215,7 +216,10 @@ impl Diag {
                 DiagMode::Extract => size,
                 DiagMode::Create => output_size,
             };
-            let workgroups = (dispatch_size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (dispatch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

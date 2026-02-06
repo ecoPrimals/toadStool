@@ -190,7 +190,11 @@ impl DiceLoss {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             
-            let workgroups = (size as u32 + 255) / 256;
+            // Deep Debt Evolution: Capability-based dispatch
+            use crate::device::{DeviceCapabilities, WorkloadType};
+            let caps = DeviceCapabilities::from_device(device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

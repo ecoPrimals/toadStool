@@ -45,6 +45,7 @@
 //! let loss = predictions.tversky_loss(&targets, 0.3, 0.7, 1.0)?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
 
@@ -275,8 +276,11 @@ impl TverskyLoss {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // One workgroup per batch sample
-            pass.dispatch_workgroups(batch_size as u32, 1, 1);
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));

@@ -343,10 +343,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_gpu_can_execute() {
+    #[tokio::test]
+    async fn test_gpu_can_execute() {
         // Create mock executor for testing (without actual GPU)
-        let device = WgpuDevice::new();
+        let device = WgpuDevice::new().await;
         if device.is_err() {
             println!("No GPU for testing (okay)");
             return;

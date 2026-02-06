@@ -7,6 +7,7 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -179,7 +180,12 @@ impl Take {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups((output_size as u32 + 255) / 256, 1, 1);
+            
+            // Deep Debt Evolution: Capability-based dispatch
+            let caps = DeviceCapabilities::from_device(&device);
+            let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
+            let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
@@ -213,7 +219,7 @@ mod tests {
         ).unwrap();
         
         let result = Take::new(input, vec![0, 2, 1]).unwrap().execute().unwrap();
-        let output = result.to_vec().await.unwrap();
+        let output = result.to_vec().unwrap();
         
         assert_eq!(output.len(), 3);
         assert_eq!(output[0], 10.0);
@@ -231,7 +237,7 @@ mod tests {
         ).unwrap();
         
         let result = Take::new(input, vec![0, 0, 1, 1, 2]).unwrap().execute().unwrap();
-        let output = result.to_vec().await.unwrap();
+        let output = result.to_vec().unwrap();
         
         assert_eq!(output.len(), 5);
         assert_eq!(output[0], 1.0);
@@ -253,7 +259,7 @@ mod tests {
         
         let indices: Vec<u32> = (0..100).map(|i| (i * 10) as u32).collect();
         let result = Take::new(input, indices).unwrap().execute().unwrap();
-        let output = result.to_vec().await.unwrap();
+        let output = result.to_vec().unwrap();
         
         assert_eq!(output.len(), 100);
         for i in 0..100 {
@@ -271,7 +277,7 @@ mod tests {
         ).unwrap();
         
         let result = Take::new(input, vec![]).unwrap().execute().unwrap();
-        let output = result.to_vec().await.unwrap();
+        let output = result.to_vec().unwrap();
         
         assert_eq!(output.len(), 0);
     }

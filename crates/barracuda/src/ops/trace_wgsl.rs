@@ -14,6 +14,7 @@
 //! For [[a, b], [c, d]]: trace = a + d
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -45,8 +46,10 @@ impl Trace {
         
         let n = shape[0];
         
-        // Calculate workgroups needed
-        let workgroups = (n as u32 + 255) / 256;
+        // Deep Debt Evolution: Capability-based dispatch
+        let caps = DeviceCapabilities::from_device(&device);
+        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
+        let workgroups = (n as u32 + optimal_wg_size - 1) / optimal_wg_size;
         
         // Output buffer: single element for final result, or partial results if multi-workgroup
         let output_size = if workgroups > 1 { workgroups as usize } else { 1 };
@@ -269,8 +272,11 @@ impl Trace {
                 
                 pass_2.set_pipeline(&pipeline_2);
                 pass_2.set_bind_group(0, &bind_group_2, &[]);
-                // Single workgroup for reducing partial results
-                pass_2.dispatch_workgroups(1, 1, 1);
+                // Deep Debt Evolution: Capability-based dispatch for reduction pass
+                let caps_2 = DeviceCapabilities::from_device(&device);
+                let optimal_wg_size_2 = caps_2.optimal_workgroup_size(WorkloadType::Reduction);
+                let workgroups_2 = (workgroups + optimal_wg_size_2 - 1) / optimal_wg_size_2;
+                pass_2.dispatch_workgroups(workgroups_2.max(1), 1, 1);
             }
             
             device.queue.submit(Some(encoder_2.finish()));
