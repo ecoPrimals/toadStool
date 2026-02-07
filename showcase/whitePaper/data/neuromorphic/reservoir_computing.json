@@ -1,0 +1,68 @@
+[
+  {
+    "hardware": "GPU (NVIDIA RTX 3090)",
+    "task": "SpeechRecognition",
+    "reservoir_size": 500,
+    "sequence_length": 1000,
+    "throughput_samples_per_sec": 384615384615.38464,
+    "latency_ms": 2.5999999999999997e-6,
+    "power_watts": 250.0,
+    "energy_per_sample_mj": 6.499999999999999e-7,
+    "power_efficiency_vs_gpu": 1.0
+  },
+  {
+    "hardware": "NPU (BrainChip Akida)",
+    "task": "SpeechRecognition",
+    "reservoir_size": 500,
+    "sequence_length": 1000,
+    "throughput_samples_per_sec": 76923076923.07692,
+    "latency_ms": 0.000013,
+    "power_watts": 1.0,
+    "energy_per_sample_mj": 1.3e-8,
+    "power_efficiency_vs_gpu": 49.99999999999999
+  },
+  {
+    "hardware": "GPU (NVIDIA RTX 3090)",
+    "task": "IoTSensorAnalysis",
+    "reservoir_size": 200,
+    "sequence_length": 5000,
+    "throughput_samples_per_sec": 25000000000000.0,
+    "latency_ms": 2.0000000000000002e-7,
+    "power_watts": 250.0,
+    "energy_per_sample_mj": 1e-8,
+    "power_efficiency_vs_gpu": 1.0
+  },
+  {
+    "hardware": "NPU (BrainChip Akida)",
+    "task": "IoTSensorAnalysis",
+    "reservoir_size": 200,
+    "sequence_length": 5000,
+    "throughput_samples_per_sec": 217391304347.82608,
+    "latency_ms": 0.000023,
+    "power_watts": 1.0,
+    "energy_per_sample_mj": 4.6e-9,
+    "power_efficiency_vs_gpu": 49.99999999999999
+  },
+  {
+    "hardware": "GPU (NVIDIA RTX 3090)",
+    "task": "AlwaysOnVoiceDetect",
+    "reservoir_size": 100,
+    "sequence_length": 10000,
+    "throughput_samples_per_sec": 33333333333333.336,
+    "latency_ms": 3e-7,
+    "power_watts": 250.0,
+    "energy_per_sample_mj": 7.5e-9,
+    "power_efficiency_vs_gpu": 1.0
+  },
+  {
+    "hardware": "NPU (BrainChip Akida)",
+    "task": "AlwaysOnVoiceDetect",
+    "reservoir_size": 100,
+    "sequence_length": 10000,
+    "throughput_samples_per_sec": 6451612903225.807,
+    "latency_ms": 1.55e-6,
+    "power_watts": 1.0,
+    "energy_per_sample_mj": 1.55e-10,
+    "power_efficiency_vs_gpu": 50.0
+  }
+]
