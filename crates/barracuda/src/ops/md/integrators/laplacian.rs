@@ -183,10 +183,10 @@ impl Laplacian {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            // 3D workgroup dispatch (8x8x8 threads per workgroup)
-            let workgroups_x = ((nx as u32) + 7) / 8;
-            let workgroups_y = ((ny as u32) + 7) / 8;
-            let workgroups_z = ((nz as u32) + 7) / 8;
+            // 3D workgroup dispatch (4x4x4 threads per workgroup, 64 total)
+            let workgroups_x = ((nx as u32) + 3) / 4;
+            let workgroups_y = ((ny as u32) + 3) / 4;
+            let workgroups_z = ((nz as u32) + 3) / 4;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -207,30 +207,32 @@ mod tests {
     use std::sync::Arc;
 
     #[tokio::test]
-    #[ignore] // TODO: Debug tensor layout for 3D arrays
+    // Test un-ignored - issue was test code structure, not tensor implementation
     async fn test_laplacian_simple() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
 
-        // Simple 3x3x3 grid - easier to debug
+        // Simple 3x3x3 grid
+        let (nx, ny, nz) = (3, 3, 3);
+        let size = nx * ny * nz;
+        
         // Set all values to same number, Laplacian should be zero everywhere
-        let data = vec![1.0; 3 * 3 * 3];
+        let data = vec![1.0f32; size];
+        
+        let field_tensor = Tensor::from_data(&data, vec![nx, ny, nz], device.clone()).unwrap();
 
-        let field_tensor = Tensor::from_data(&data, vec![3, 3, 3], device.clone()).unwrap();
-
-        // Verify input
+        // Verify input (explicit validation to prevent rustc optimization issues)
         let field_check = field_tensor.to_vec().unwrap();
-        println!("Field values (first 10): {:?}", &field_check[0..10]);
+        assert_eq!(field_check.len(), size, "Field size mismatch");
         
         // All values should be 1.0
         for (i, &val) in field_check.iter().enumerate() {
-            assert_eq!(val, 1.0, "Index {} should be 1.0, got {}", i, val);
+            assert_eq!(val, 1.0, "Input corrupted at index {}: expected 1.0, got {}", i, val);
         }
 
         let laplacian = Laplacian::new(field_tensor, 1.0).unwrap();
         let result = laplacian.execute().unwrap();
 
         let lap_data = result.to_vec().unwrap();
-        println!("Laplacian values (first 10): {:?}", &lap_data[0..10]);
 
         // For constant field, Laplacian should be zero everywhere
         // ∇²(constant) = 0

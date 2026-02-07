@@ -44,7 +44,7 @@ fn idx(x: i32, y: i32, z: i32, nx: u32, ny: u32, nz: u32) -> u32 {
     return u32(x_wrap) + u32(y_wrap) * nx + u32(z_wrap) * nx * ny;
 }
 
-@compute @workgroup_size(8, 8, 8)
+@compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let x = i32(global_id.x);
     let y = i32(global_id.y);

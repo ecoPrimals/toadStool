@@ -126,10 +126,13 @@ impl Tensor {
     ) -> Result<Self> {
         use wgpu::util::DeviceExt;
 
+        // Generate unique label to avoid buffer caching/collision
+        let label = format!("Tensor Data {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+
         let buffer = device
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Tensor Data"),
+                label: Some(&label),
                 contents: bytemuck::cast_slice(data),
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_SRC
@@ -719,5 +722,101 @@ mod tests {
 
         let large = tensor.with_hint(WorkloadHint::LargeMatrices);
         assert_eq!(large.shape(), tensor.shape());
+    }
+
+    #[tokio::test]
+    async fn test_tensor_3d_roundtrip_minimal() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        println!("\n=== Testing 3D Tensor Roundtrip ===\n");
+        
+        // Test various 3D shapes
+        for &(nx, ny, nz) in &[(2,2,2), (3,3,3), (4,4,4)] {
+            let size = nx * ny * nz;
+            println!("Testing shape [{nx}, {ny}, {nz}] (size={size}):");
+            
+            // Create data: all 1.0s
+            let data = vec![1.0f32; size];
+            println!("  Input: {} elements, all 1.0", data.len());
+            
+            // Create tensor
+            let tensor = Tensor::from_data(&data, vec![nx, ny, nz], device.clone()).unwrap();
+            println!("  Tensor created: shape={:?}, len={}", tensor.shape(), tensor.len());
+            
+            // Read back
+            let result = tensor.to_vec().unwrap();
+            println!("  Output: {} elements", result.len());
+            println!("  First 10 values: {:?}", &result[0..10.min(result.len())]);
+            
+            // Validate
+            assert_eq!(result.len(), size, "Length mismatch");
+            
+            let mut errors = 0;
+            for (i, &val) in result.iter().enumerate() {
+                if (val - 1.0).abs() > 1e-5 {
+                    if errors < 5 {
+                        println!("  ❌ Index {i}: expected 1.0, got {val}");
+                    }
+                    errors += 1;
+                }
+            }
+            
+            if errors == 0 {
+                println!("  ✅ All values correct!\n");
+            } else {
+                println!("  ❌ {} corrupted values out of {}\n", errors, size);
+                panic!("Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]");
+            }
+        }
+        
+        println!("=== All 3D shapes passed! ===");
+    }
+
+    #[tokio::test]
+    async fn test_tensor_laplacian_context_debug() {
+        // EXACT COPY of test_tensor_3d_roundtrip_minimal
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        println!("\n=== Testing 3D Tensor Roundtrip (Laplacian Context) ===\n");
+        
+        // Test just 3x3x3 (the failing case)
+        let (nx, ny, nz) = (3, 3, 3);
+        let size = nx * ny * nz;
+        println!("Testing shape [{nx}, {ny}, {nz}] (size={size}):");
+        
+        // Create data: all 1.0s
+        let data = vec![1.0f32; size];
+        println!("  Input: {} elements, all 1.0", data.len());
+        
+        // Create tensor
+        let tensor = Tensor::from_data(&data, vec![nx, ny, nz], device.clone()).unwrap();
+        println!("  Tensor created: shape={:?}, len={}", tensor.shape(), tensor.len());
+        
+        // Read back
+        let result = tensor.to_vec().unwrap();
+        println!("  Output: {} elements", result.len());
+        println!("  First 10 values: {:?}", &result[0..10.min(result.len())]);
+        
+        // Validate
+        assert_eq!(result.len(), size, "Length mismatch");
+        
+        let mut errors = 0;
+        for (i, &val) in result.iter().enumerate() {
+            if (val - 1.0).abs() > 1e-5 {
+                if errors < 5 {
+                    println!("  ❌ Index {i}: expected 1.0, got {val}");
+                }
+                errors += 1;
+            }
+        }
+        
+        if errors == 0 {
+            println!("  ✅ All values correct!\n");
+        } else {
+            println!("  ❌ {} corrupted values out of {}\n", errors, size);
+            panic!("Tensor 3D corruption detected for shape [{nx}, {ny}, {nz}]");
+        }
+        
+        println!("=== Test passed! ===");
     }
 }
