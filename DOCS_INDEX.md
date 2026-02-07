@@ -1,8 +1,8 @@
 # 📚 Documentation Index - ToadStool & BarraCUDA
 
-**Last Updated**: February 6, 2026  
+**Last Updated**: February 7, 2026 (Evening)  
 **Version**: 0.2.0  
-**Status**: PRODUCTION-READY ✅
+**Status**: PRODUCTION-READY ✅ | SCIENTIFIC COMPUTING EVOLUTION ACTIVE 🚀
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### New Users
 
-1. **[README.md](README.md)** - Complete project overview (15 min) ⭐
+1. **[README.md](README.md)** - Complete project overview + scientific computing! (15 min) ⭐
 2. **[QUICK_STATUS.md](QUICK_STATUS.md)** - Current status snapshot (5 min)
 3. **[DOCUMENTATION.md](DOCUMENTATION.md)** - Documentation hub (10 min)
 
@@ -20,6 +20,12 @@
 2. **[TESTING.md](TESTING.md)** - Testing strategy (15 min)
 3. **[UNIVERSAL_COMPUTE_ARCHITECTURE.md](UNIVERSAL_COMPUTE_ARCHITECTURE.md)** - Architecture (30 min)
 
+### Scientists & Researchers
+
+1. **[BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md)** - Scientific computing status (10 min) 🆕
+2. **[BARRACUDA_EVOLUTION_TRACKER.md](BARRACUDA_EVOLUTION_TRACKER.md)** - Real-time progress (5 min)
+3. **[specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md)** - Full specification (30 min)
+
 ---
 
 ## 📖 Root Documentation
@@ -28,8 +34,8 @@
 
 | Document | Description | Audience |
 |----------|-------------|----------|
-| **[README.md](README.md)** | Project overview, features, quick start | Everyone |
-| **[QUICK_STATUS.md](QUICK_STATUS.md)** | Current status snapshot | Everyone |
+| **[README.md](README.md)** | Project overview, 3 domains (ML + FHE + Physics) | Everyone |
+| **[QUICK_STATUS.md](QUICK_STATUS.md)** | Current status snapshot (255 ops) | Everyone |
 | **[DOCUMENTATION.md](DOCUMENTATION.md)** | Documentation hub and navigation | Everyone |
 | **[DOCS_INDEX.md](DOCS_INDEX.md)** | This file - complete index | Everyone |
 
@@ -40,6 +46,21 @@
 | **[QUICK_START_GPU.md](QUICK_START_GPU.md)** | GPU operations quick start | 10 min |
 | **[QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md)** | FHE operations quick start | 10 min |
 
+### Scientific Computing 🆕
+
+| Document | Description | Time |
+|----------|-------------|------|
+| **[BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md)** | Current progress (35% complete!) | 10 min |
+| **[BARRACUDA_EVOLUTION_TRACKER.md](BARRACUDA_EVOLUTION_TRACKER.md)** | Real-time operation tracking | 5 min |
+| **[specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md)** | Full technical specification | 30 min |
+
+### Session Reports (Latest)
+
+| Document | Description | Date |
+|----------|-------------|------|
+| **[SESSION_COMPLEX_ARITHMETIC_COMPLETE_FEB07_2026.md](SESSION_COMPLEX_ARITHMETIC_COMPLETE_FEB07_2026.md)** | Phase 1: Complex ops complete | Feb 7, 2026 |
+| **[SESSION_FFT_FOUNDATION_COMPLETE_FEB07_2026.md](SESSION_FFT_FOUNDATION_COMPLETE_FEB07_2026.md)** | Phase 2: FFT suite complete | Feb 7, 2026 |
+
 ### Technical Documentation
 
 | Document | Description | Audience |
@@ -47,13 +68,6 @@
 | **[UNIVERSAL_COMPUTE_ARCHITECTURE.md](UNIVERSAL_COMPUTE_ARCHITECTURE.md)** | Complete architecture vision | Architects |
 | **[TESTING.md](TESTING.md)** | Testing strategy and procedures | Developers |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes | Everyone |
-
-### Status & Verification
-
-| Document | Description | Date |
-|----------|-------------|------|
-| **[FINAL_VERIFICATION_FEB06_2026.md](FINAL_VERIFICATION_FEB06_2026.md)** | Production verification report | Feb 6, 2026 |
-| **[FINAL_STATUS_FEB06_2026.md](FINAL_STATUS_FEB06_2026.md)** | Complete metrics dashboard | Feb 6, 2026 |
 
 ---
 
@@ -138,7 +152,8 @@ Technical specifications:
 
 | Document | Description |
 |----------|-------------|
-| **BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md** | Technical specification |
+| **BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md** | Universal compute specification |
+| **BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md** | Scientific computing spec (40 ops) 🆕 |
 | **OPERATION_SPEC.md** | Operation specification |
 | **SHADER_SPEC.md** | WGSL shader specification |
 
@@ -154,9 +169,18 @@ Technical specifications:
 
 ### Operations & Features
 
-- [README.md](README.md) - Feature overview (345 operations)
+- [README.md](README.md) - Feature overview (255 operations across 3 domains)
+- [BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md) - Scientific ops (14 live) 🆕
 - [docs/reference/OPERATIONS_CATALOG.md](docs/reference/OPERATIONS_CATALOG.md) - Complete catalog
 - [QUICK_START_GPU.md](QUICK_START_GPU.md) - GPU operations usage
+
+### Scientific Computing 🆕
+
+- [BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md) - Current status (35%)
+- [BARRACUDA_EVOLUTION_TRACKER.md](BARRACUDA_EVOLUTION_TRACKER.md) - Progress tracking
+- [specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md) - Full specification
+- [SESSION_COMPLEX_ARITHMETIC_COMPLETE_FEB07_2026.md](SESSION_COMPLEX_ARITHMETIC_COMPLETE_FEB07_2026.md) - Complex ops complete
+- [SESSION_FFT_FOUNDATION_COMPLETE_FEB07_2026.md](SESSION_FFT_FOUNDATION_COMPLETE_FEB07_2026.md) - FFT suite complete
 
 ### Testing & Quality
 
@@ -167,8 +191,8 @@ Technical specifications:
 ### Performance
 
 - [docs/reference/PERFORMANCE_BENCHMARKS.md](docs/reference/PERFORMANCE_BENCHMARKS.md) - Benchmarks
-- [FINAL_STATUS_FEB06_2026.md](FINAL_STATUS_FEB06_2026.md) - Metrics dashboard
-- [README.md](README.md) - Real-world results (FHE: 21.1x speedup)
+- [QUICK_STATUS.md](QUICK_STATUS.md) - Metrics dashboard (updated Feb 7)
+- [README.md](README.md) - Real-world results (8 showcases)
 
 ### Development
 
@@ -194,6 +218,15 @@ Technical specifications:
 3. [docs/reference/OPERATIONS_CATALOG.md](docs/reference/OPERATIONS_CATALOG.md) - All operations
 
 **Topics**: Operations, performance, examples
+
+### Scientists & Researchers 🆕
+
+**Priority Docs**:
+1. [BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md) - Scientific computing status
+2. [README.md](README.md) - Overview (FFT + complex ops examples)
+3. [specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md](specs/BARRACUDA_SCIENTIFIC_COMPUTING_OPS.md) - Full specification
+
+**Topics**: FFT, complex ops, molecular dynamics, wave physics
 
 ### System Architects
 
@@ -267,17 +300,20 @@ Technical specifications:
 
 ### Content Volume
 
-- **Root Documents**: 9 essential files
+- **Root Documents**: 11 essential files (updated Feb 7)
 - **Architecture Docs**: 7 documents
 - **Planning Docs**: 11 documents
-- **Session Reports**: 25+ archived
-- **Total Docs**: 75+ documents
-- **Total Lines**: 50,000+ lines of documentation
+- **Scientific Computing**: 3 core docs 🆕
+- **Session Reports**: 27+ archived
+- **Total Docs**: 80+ documents
+- **Total Lines**: 52,000+ lines of documentation
 
 ### Coverage
 
-- **Operations**: 345/345 documented (100%)
-- **WGSL Shaders**: 380/380 documented (100%)
+- **ML Operations**: 226/226 documented (100%)
+- **FHE Operations**: 15/15 documented (100%)
+- **Scientific Operations**: 14/40 documented (35%) 🆕
+- **WGSL Shaders**: 390+/390+ documented (100%)
 - **Architecture**: Complete coverage
 - **Testing**: Complete coverage
 - **Quality**: A++ (production-ready)
@@ -290,26 +326,28 @@ Technical specifications:
 
 **What's Documented**:
 - ✅ Complete project overview
-- ✅ All 345 operations
-- ✅ Universal compute architecture
-- ✅ Testing strategy
+- ✅ All 255 operations (ML + FHE + Scientific)
+- ✅ Universal compute architecture (3 domains!)
+- ✅ Testing strategy (677 tests passing)
 - ✅ Quality audits
-- ✅ Performance benchmarks
+- ✅ Performance benchmarks (8 showcases)
 - ✅ Quick start guides
-- ✅ Session history
+- ✅ Scientific computing roadmap 🆕
+- ✅ Session history (27+ reports)
 
 **Quality**: A++ Exceptional
 
-**Navigation**: Multiple paths for different roles
+**Navigation**: Multiple paths for different roles (including scientists!)
 
 ---
 
 **Start Here**: [README.md](README.md)  
 **Quick Status**: [QUICK_STATUS.md](QUICK_STATUS.md)  
-**Hub**: [DOCUMENTATION.md](DOCUMENTATION.md)
+**Hub**: [DOCUMENTATION.md](DOCUMENTATION.md)  
+**Scientific Computing**: [BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md](BARRACUDA_SCIENTIFIC_COMPUTING_STATUS.md) 🆕
 
 ---
 
-*Last Updated: February 6, 2026*  
+*Last Updated: February 7, 2026 (Evening)*  
 *Version: 0.2.0*  
-*Status: Production-Ready ✅*
+*Status: Production-Ready ✅ | Scientific Computing Evolution Active 🚀*
