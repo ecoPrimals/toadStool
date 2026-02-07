@@ -8,8 +8,10 @@
 //! **Deep Debt Compliance**: All math in WGSL, zero unsafe
 
 pub mod pbc;
+pub mod forces;
 
 pub use pbc::{PbcDistance, DistanceMetric};
+pub use forces::CoulombForce;
 
 // Re-export for convenience
 pub use pbc::PbcDistance as Pbc;
