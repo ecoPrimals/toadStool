@@ -1,0 +1,20 @@
+{
+  "dataset": "MNIST-100",
+  "model": "LinearClassifier_784x10",
+  "test_size": 100,
+  "unencrypted_accuracy": 0.02,
+  "unencrypted_time_ms": 0.694242,
+  "unencrypted_throughput": 144041.99112125166,
+  "encrypted_accuracy": 0.02,
+  "encrypted_time_ms": 51.166779000000005,
+  "encrypted_throughput": 1954.3931033845222,
+  "accuracy_delta": 0.0,
+  "accuracy_delta_percent": 0.0,
+  "overhead_factor": 73.70164726421046,
+  "polynomial_degree": 4096,
+  "modulus": 1152921504606584833,
+  "security_bits": 128,
+  "device": "NVIDIA GeForce RTX 3090",
+  "vendor": "NVIDIA",
+  "backend": "Vulkan"
+}
