@@ -32,3 +32,7 @@ path = "ntt_validation_benchmark.rs"
 [[bin]]
 name = "matmul_fp64_benchmark"
 path = "matmul_fp64_benchmark.rs"
+
+[[bin]]
+name = "fhe_cross_vendor_validation"
+path = "fhe_cross_vendor_validation.rs"
