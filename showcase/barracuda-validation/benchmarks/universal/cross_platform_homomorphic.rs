@@ -19,6 +19,7 @@
 //! - ✅ Complete implementations (no mocks)
 
 use anyhow::Result;
+use std::sync::Arc;
 use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use tfhe::prelude::*;
@@ -317,7 +318,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     
     // Check for GPU availability
     let device = match WgpuDevice::new().await {
-        Ok(dev) => dev,
+        Ok(dev) => Arc::new(dev),
         Err(e) => {
             return Err(anyhow::anyhow!("GPU not available: {}", e));
         }
@@ -337,17 +338,42 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     let poly_a = vec![workload.a_plain as u64; degree];
     let poly_b = vec![workload.b_plain as u64; degree];
     
+    // Convert to tensors (modern BarraCUDA API requires tensors as input)
+    let poly_a_u32: Vec<u32> = poly_a.iter()
+        .flat_map(|&val| vec![(val & 0xFFFFFFFF) as u32, (val >> 32) as u32])
+        .collect();
+    let poly_b_u32: Vec<u32> = poly_b.iter()
+        .flat_map(|&val| vec![(val & 0xFFFFFFFF) as u32, (val >> 32) as u32])
+        .collect();
+    
+    let poly_a_tensor = barracuda::tensor::Tensor::from_data(
+        &poly_a_u32,
+        vec![degree * 2],
+        device.clone(),
+    )?;
+    let poly_b_tensor = barracuda::tensor::Tensor::from_data(
+        &poly_b_u32,
+        vec![degree * 2],
+        device.clone(),
+    )?;
+    
     // Test 1: Polynomial Addition (FHE ADD primitive)
     {
         println!("   Running GPU polynomial addition (degree={})...", degree);
-        let op = FhePolyAdd::new(&device, degree as u32, modulus)?;
+        let op = FhePolyAdd::new(poly_a_tensor.clone(), poly_b_tensor.clone(), degree as u32, modulus)?;
         let start = Instant::now();
-        let result = op.execute(&poly_a, &poly_b).await?;
+        let result = op.execute()?;  // No .await - not async anymore
         let elapsed = start.elapsed();
+        
+        // Extract result back to Vec<u64>
+        let result_vec = result.to_vec()?;
+        let result_u64: Vec<u64> = result_vec.chunks(2)
+            .map(|chunk| chunk[0] as u64 | ((chunk[1] as u64) << 32))
+            .collect();
         
         // Verify correctness
         let expected_coeff = ((workload.a_plain as u64 + workload.b_plain as u64) % modulus) as u8;
-        let correct = result.iter().all(|&x| x == expected_coeff as u64);
+        let correct = result_u64.iter().all(|&x| x == expected_coeff as u64);
         
         let energy_joules = 50.0 * elapsed.as_secs_f32();  // ~50W GPU power
         
@@ -360,7 +386,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             input_a_encrypted: workload.a_plain,
             input_b_encrypted: workload.b_plain,
             expected_result: workload.a_plain.wrapping_add(workload.b_plain),
-            actual_result: result[0] as u8,
+            actual_result: result_u64[0] as u8,
             numerically_correct: correct,
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
@@ -376,13 +402,19 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     // Test 2: Polynomial Multiplication (FHE AND/MUL primitive)
     {
         println!("   Running GPU polynomial multiplication (degree={})...", degree);
-        let op = FhePolyMul::new(&device, degree as u32, modulus)?;
+        let op = FhePolyMul::new(poly_a_tensor.clone(), poly_b_tensor.clone(), degree as u32, modulus)?;
         let start = Instant::now();
-        let result = op.execute(&poly_a, &poly_b).await?;
+        let result = op.execute()?;  // No .await - not async anymore
         let elapsed = start.elapsed();
         
+        // Extract result back to Vec<u64>
+        let result_vec = result.to_vec()?;
+        let result_u64: Vec<u64> = result_vec.chunks(2)
+            .map(|chunk| chunk[0] as u64 | ((chunk[1] as u64) << 32))
+            .collect();
+        
         let expected_coeff = ((workload.a_plain as u64 * workload.b_plain as u64) % modulus) as u8;
-        let correct = result.iter().all(|&x| x == expected_coeff as u64);
+        let correct = result_u64.iter().all(|&x| x == expected_coeff as u64);
         
         let energy_joules = 50.0 * elapsed.as_secs_f32();
         
@@ -395,7 +427,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             input_a_encrypted: workload.a_plain,
             input_b_encrypted: workload.b_plain,
             expected_result: workload.a_plain & workload.b_plain,
-            actual_result: result[0] as u8,
+            actual_result: result_u64[0] as u8,
             numerically_correct: correct,
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
@@ -418,17 +450,35 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     let binary_a = vec![1u64; degree];  // Represents encrypted bit "1"
     let binary_b = vec![1u64; degree];  // Represents encrypted bit "1"
     
+    // Convert to tensors for modern BarraCUDA API
+    let binary_a_u32: Vec<u32> = binary_a.iter().map(|&x| x as u32).collect();
+    let binary_b_u32: Vec<u32> = binary_b.iter().map(|&x| x as u32).collect();
+    
+    let binary_a_tensor = barracuda::tensor::Tensor::from_data(
+        &binary_a_u32,
+        vec![degree],
+        device.clone(),
+    )?;
+    let binary_b_tensor = barracuda::tensor::Tensor::from_data(
+        &binary_b_u32,
+        vec![degree],
+        device.clone(),
+    )?;
+    
     // Test 3: AND Gate
     {
         println!("   Running GPU AND gate (degree={})...", degree);
-        let op = FheAnd::new(&device, degree as u32, modulus)?;
+        let op = FheAnd::new(binary_a_tensor.clone(), binary_b_tensor.clone(), degree as u32, modulus)?;
         let start = Instant::now();
-        let result = op.execute(&binary_a, &binary_b).await?;
+        let result = op.execute()?;  // No .await
         let elapsed = start.elapsed();
+        
+        // Extract result
+        let result_vec = result.to_vec()?;
         
         // Expected: 1 AND 1 = 1
         let expected = 1u8;
-        let actual = result[0] as u8;
+        let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
         let energy_joules = 250.0 * elapsed.as_secs_f32();  // ~250W GPU power
@@ -458,14 +508,17 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     // Test 4: OR Gate
     {
         println!("   Running GPU OR gate (degree={})...", degree);
-        let op = FheOr::new(&device, degree as u32, modulus)?;
+        let op = FheOr::new(binary_a_tensor.clone(), binary_b_tensor.clone(), degree as u32, modulus)?;
         let start = Instant::now();
-        let result = op.execute(&binary_a, &binary_b).await?;
+        let result = op.execute()?;  // No .await
         let elapsed = start.elapsed();
+        
+        // Extract result
+        let result_vec = result.to_vec()?;
         
         // Expected: 1 OR 1 = 1
         let expected = 1u8;
-        let actual = result[0] as u8;
+        let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
         let energy_joules = 250.0 * elapsed.as_secs_f32();
@@ -495,14 +548,17 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
     // Test 5: XOR Gate
     {
         println!("   Running GPU XOR gate (degree={})...", degree);
-        let op = FheXor::new(&device, degree as u32, modulus)?;
+        let op = FheXor::new(binary_a_tensor.clone(), binary_b_tensor.clone(), degree as u32, modulus)?;
         let start = Instant::now();
-        let result = op.execute(&binary_a, &binary_b).await?;
+        let result = op.execute()?;  // No .await
         let elapsed = start.elapsed();
+        
+        // Extract result
+        let result_vec = result.to_vec()?;
         
         // Expected: 1 XOR 1 = 0
         let expected = 0u8;
-        let actual = result[0] as u8;
+        let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
         let energy_joules = 250.0 * elapsed.as_secs_f32();
