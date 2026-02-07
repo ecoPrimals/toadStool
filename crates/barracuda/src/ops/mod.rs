@@ -333,6 +333,9 @@ pub mod complex;
 // Fast Fourier Transform (evolved from NTT!)
 pub mod fft;
 
+// Molecular Dynamics primitives
+pub mod md;
+
 // Quantization
 pub mod dequantize;
 pub mod fake_quantize;
