@@ -1,8 +1,8 @@
 # 📚 ToadStool Documentation Hub
 
-**Last Updated**: February 6, 2026  
+**Last Updated**: February 8, 2026  
 **Version**: 0.2.0  
-**Status**: ✅ **PRODUCTION-READY**
+**Status**: ✅ **PRODUCTION-READY** | 🔥 **Hardware Wiring Complete**
 
 ---
 
@@ -15,10 +15,11 @@
 | **Get started quickly** | [README.md](README.md) | 15 min |
 | **See current status** | [QUICK_STATUS.md](QUICK_STATUS.md) | 5 min |
 | **Browse all docs** | [DOCS_INDEX.md](DOCS_INDEX.md) | 10 min |
+| **Hardware wiring** 🆕 | [HARDWARE_WIRING_COMPLETE_FEB08_2026.md](HARDWARE_WIRING_COMPLETE_FEB08_2026.md) | 15 min |
+| **Scientific computing** 🆕 | [README.md](README.md) (Scientific section) | 10 min |
 | **Try GPU operations** | [QUICK_START_GPU.md](QUICK_START_GPU.md) | 10 min |
 | **Learn FHE** | [QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md) | 10 min |
 | **Understand architecture** | [UNIVERSAL_COMPUTE_ARCHITECTURE.md](UNIVERSAL_COMPUTE_ARCHITECTURE.md) | 30 min |
-| **See verification** | [FINAL_VERIFICATION_FEB06_2026.md](FINAL_VERIFICATION_FEB06_2026.md) | 15 min |
 | **Run tests** | [TESTING.md](TESTING.md) | 15 min |
 
 ---

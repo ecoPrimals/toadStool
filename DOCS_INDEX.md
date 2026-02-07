@@ -16,7 +16,8 @@
 
 **Read First**:
 1. **[HARDWARE_WIRING_COMPLETE_FEB08_2026.md](HARDWARE_WIRING_COMPLETE_FEB08_2026.md)** - Complete summary ⭐🆕
-2. **[SESSION_HANDOFF_HARDWARE_WIRING_FEB08_2026.md](SESSION_HANDOFF_HARDWARE_WIRING_FEB08_2026.md)** - Handoff 🆕
+2. **[HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md](HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md)** - Evolution plan
+3. **[docs/archive/sessions-feb08-2026-hardware-wiring/](docs/archive/sessions-feb08-2026-hardware-wiring/)** - All session reports
 
 ---
 
@@ -28,10 +29,9 @@
 3. **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
 ### Hardware Wiring (Feb 8, 2026) 🆕
-1. **[HARDWARE_WIRING_COMPLETE_FEB08_2026.md](HARDWARE_WIRING_COMPLETE_FEB08_2026.md)** - Complete summary
-2. **[SESSION_HANDOFF_HARDWARE_WIRING_FEB08_2026.md](SESSION_HANDOFF_HARDWARE_WIRING_FEB08_2026.md)** - Handoff document
-3. **[HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md](HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md)** - Original plan
-4. **[docs/archive/sessions-feb08-2026-hardware-wiring/](docs/archive/sessions-feb08-2026-hardware-wiring/)** - All phase reports
+1. **[HARDWARE_WIRING_COMPLETE_FEB08_2026.md](HARDWARE_WIRING_COMPLETE_FEB08_2026.md)** - Complete summary ⭐
+2. **[HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md](HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md)** - Evolution plan
+3. **[docs/archive/sessions-feb08-2026-hardware-wiring/](docs/archive/sessions-feb08-2026-hardware-wiring/)** - Session reports (13 files)
 
 ### Scientific Computing (Feb 7-8, 2026)
 1. **[docs/archive/sessions-feb08-2026-hardware-wiring/FINAL_STATUS_SCIENTIFIC_COMPUTING_FEB08_2026.md](docs/archive/sessions-feb08-2026-hardware-wiring/FINAL_STATUS_SCIENTIFIC_COMPUTING_FEB08_2026.md)** - Complete status
