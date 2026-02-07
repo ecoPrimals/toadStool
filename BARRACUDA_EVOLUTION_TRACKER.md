@@ -79,12 +79,13 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 |---|-----------|------|--------|---------|----------------|
 | 2.1 | FFT 1D | `fft/fft_1d.wgsl` | ✅ COMPLETE | - | 80% (butterfly) |
 | 2.2 | IFFT 1D | `fft/ifft_1d.wgsl` | ✅ COMPLETE | - | 80% (from INTT) |
-| 2.3 | FFT 2D | `fft/fft_2d.wgsl` | ⬜ TODO | - | Row-column |
-| 2.4 | FFT 3D | `fft/fft_3d.wgsl` | ⬜ TODO | ⚠️ **PPPM** | 3 × 1D |
+| 2.3 | FFT 2D | `fft/fft_2d.rs` | ✅ COMPLETE | - | Compose 1D |
+| 2.4 | FFT 3D | `fft/fft_3d.rs` | ✅ COMPLETE | - | Compose 1D |
 | 2.5 | RFFT | `fft/rfft.wgsl` | ⬜ TODO | - | Half-complex |
 
-**Progress**: 2/5 (40%) ✅ **FFT VALIDATED!**  
-**Inverse Property**: FFT(IFFT(x)) = x proven (< 1e-4 error)
+**Progress**: 4/5 (80%) ✅ **PPPM UNBLOCKED!** 🚀  
+**Inverse Property**: FFT(IFFT(x)) = x proven  
+**Critical Achievement**: **3D FFT complete = Molecular dynamics ready!**
 
 ---
 

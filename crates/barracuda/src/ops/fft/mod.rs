@@ -63,9 +63,13 @@
 
 pub mod fft_1d;
 pub mod ifft_1d;
+pub mod fft_2d;
+pub mod fft_3d;
 
 #[cfg(test)]
 mod tests;
 
 pub use fft_1d::Fft1D;
 pub use ifft_1d::Ifft1D;
+pub use fft_2d::Fft2D;
+pub use fft_3d::Fft3D;
