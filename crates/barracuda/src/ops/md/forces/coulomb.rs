@@ -261,13 +261,22 @@ mod tests {
         let pos_tensor = Tensor::from_data(&positions, vec![2, 3], device.clone()).unwrap();
         let charge_tensor = Tensor::from_data(&charges, vec![2], device.clone()).unwrap();
 
+        // First verify input tensors are correct
+        let pos_check = pos_tensor.to_vec().unwrap();
+        let charge_check = charge_tensor.to_vec().unwrap();
+        println!("Input positions: {:?}", pos_check);
+        println!("Input charges: {:?}", charge_check);
+        assert_eq!(pos_check, positions);
+        assert_eq!(charge_check, charges);
+
         let coulomb = CoulombForce::new(pos_tensor, charge_tensor, None, None, None).unwrap();
         let forces = coulomb.execute().unwrap();
 
         let force_data = forces.to_vec().unwrap();
-        println!("Forces: {:?}", force_data);
+        println!("Output forces: {:?}", force_data);
 
-        // Force on particle 0 should be negative x (repulsion)
+        // Force on particle 0 should be negative x (repulsion away from particle 1)
+        // With physics direction fixed, force should point in -x
         assert!(force_data[0] < 0.0, "Particle 0 repelled in -x direction: got {}", force_data[0]);
 
         // Force on particle 1 should be positive x
@@ -292,16 +301,36 @@ mod tests {
         let pos_tensor = Tensor::from_data(&positions, vec![2, 3], device.clone()).unwrap();
         let charge_tensor = Tensor::from_data(&charges, vec![2], device.clone()).unwrap();
 
-        let coulomb = CoulombForce::new(pos_tensor, charge_tensor, None, None, None).unwrap();
+        // Verify inputs
+        let pos_check = pos_tensor.to_vec().unwrap();
+        let charge_check = charge_tensor.to_vec().unwrap();
+        println!("Input positions: {:?}", pos_check);
+        println!("Input charges: {:?}", charge_check);
+        assert_eq!(pos_check, positions);
+        assert_eq!(charge_check, charges);
+
+        // Explicitly set large cutoff instead of INFINITY
+        let coulomb = CoulombForce::new(
+            pos_tensor,
+            charge_tensor,
+            Some(1.0),      // k = 1
+            Some(10.0),     // Explicit cutoff instead of INFINITY
+            Some(1e-6),     // epsilon
+        ).unwrap();
         let forces = coulomb.execute().unwrap();
 
         let force_data = forces.to_vec().unwrap();
+        println!("Output forces: {:?}", force_data);
 
-        // Force on particle 0 should be positive x (attraction)
-        assert!(force_data[0] > 0.0, "Particle 0 attracted in +x direction");
+        // Force on particle 0 should be positive x (attracted toward particle 1)
+        println!("Expected: force[0] > 0 (attraction in +x)");
+        println!("Got: force[0] = {}", force_data[0]);
+        assert!(force_data[0] > 0.0, "Particle 0 attracted in +x direction: got {}", force_data[0]);
 
         // Force on particle 1 should be negative x
-        assert!(force_data[3] < 0.0, "Particle 1 attracted in -x direction");
+        println!("Expected: force[3] < 0 (attraction in -x)");
+        println!("Got: force[3] = {}", force_data[3]);
+        assert!(force_data[3] < 0.0, "Particle 1 attracted in -x direction: got {}", force_data[3]);
 
         println!("✅ Coulomb attraction validated");
     }

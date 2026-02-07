@@ -342,6 +342,25 @@ mod tests {
         let f_new_tensor = Tensor::from_data(&forces_new, vec![1, 3], device.clone()).unwrap();
         let mass_tensor = Tensor::from_data(&masses, vec![1], device.clone()).unwrap();
 
+        // Verify inputs are correct
+        let pos_check = pos_tensor.to_vec().unwrap();
+        let vel_check = vel_tensor.to_vec().unwrap();
+        let f_old_check = f_old_tensor.to_vec().unwrap();
+        let f_new_check = f_new_tensor.to_vec().unwrap();
+        let mass_check = mass_tensor.to_vec().unwrap();
+        
+        println!("Input positions: {:?}", pos_check);
+        println!("Input velocities: {:?}", vel_check);
+        println!("Input forces_old: {:?}", f_old_check);
+        println!("Input forces_new: {:?}", f_new_check);
+        println!("Input masses: {:?}", mass_check);
+
+        assert_eq!(pos_check, positions);
+        assert_eq!(vel_check, velocities);
+        assert_eq!(f_old_check, forces_old);
+        assert_eq!(f_new_check, forces_new);
+        assert_eq!(mass_check, masses);
+
         let vv = VelocityVerlet::new(
             pos_tensor,
             vel_tensor,
