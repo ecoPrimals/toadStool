@@ -49,3 +49,7 @@ path = "transformer_inference.rs"
 [[bin]]
 name = "vision_inference"
 path = "vision_inference.rs"
+
+[[bin]]
+name = "audio_processing"
+path = "audio_processing.rs"
