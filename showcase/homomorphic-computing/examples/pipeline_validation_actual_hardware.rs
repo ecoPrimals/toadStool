@@ -7,6 +7,7 @@
 
 use anyhow::Result;
 use barracuda::prelude::*;
+use akida_driver::{AkidaDevice, InferenceConfig, InferenceExecutor};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::Instant;
@@ -198,7 +199,7 @@ async fn main() -> Result<()> {
     println!("╚══════════════════════════════════════════════════════════════════╝\n");
 
     // Initialize all hardware
-    let hardware = HardwareContext::initialize().await?;
+    let mut hardware = HardwareContext::initialize().await?;
 
     println!("📊 Hardware Summary:");
     println!("  CPU:  ✅ Available (AMD Ryzen 9 5950X)");
@@ -302,7 +303,7 @@ async fn main() -> Result<()> {
                 workload.name()
             );
 
-            match run_pipeline_benchmark(&hardware, pipeline, workload, &client_key, &server_key)
+            match run_pipeline_benchmark(&mut hardware, pipeline, workload, &client_key, &server_key)
                 .await
             {
                 Ok(result) => {
@@ -345,7 +346,7 @@ async fn main() -> Result<()> {
 
 /// Run a single pipeline benchmark with actual hardware
 async fn run_pipeline_benchmark(
-    hardware: &HardwareContext,
+    hardware: &mut HardwareContext,
     pipeline: &PipelineConfig,
     workload: &WorkloadType,
     client_key: &tfhe::ClientKey,
@@ -400,17 +401,11 @@ async fn run_pipeline_benchmark(
                 uses_actual_npu = true;
 
                 // ACTUAL NPU execution via Akida!
-                let _device = &hardware.npu_devices[0];
-                let start = Instant::now();
+                let device = &mut hardware.npu_devices[0];
+                
+                // Real Akida inference - sparse event processing
+                let time = execute_npu_sparse_inference(device, iterations, sparsity)?;
 
-                // Sparse event processing simulation
-                // TODO: Wire actual Akida inference
-                for _ in 0..iterations {
-                    let events = (iterations as f32 * (1.0 - sparsity)) as u64;
-                    tokio::time::sleep(tokio::time::Duration::from_micros(events)).await;
-                }
-
-                let time = start.elapsed().as_micros();
                 chip_times.push(("NPU (Akida)".to_string(), time));
                 chip_power.push(("NPU".to_string(), 2.0)); // Akida measured
             }
@@ -422,11 +417,9 @@ async fn run_pipeline_benchmark(
                 uses_actual_npu = true;
                 uses_actual_gpu = true;
 
-                // NPU stage (sparse preprocessing)
-                let npu_start = Instant::now();
-                let events = (iterations as f32 * (1.0 - sparsity)) as u64;
-                tokio::time::sleep(tokio::time::Duration::from_micros(events * 50)).await;
-                let npu_time = npu_start.elapsed().as_micros();
+                // NPU stage (sparse preprocessing) - REAL Akida execution
+                let device = &mut hardware.npu_devices[0];
+                let npu_time = execute_npu_sparse_inference(device, iterations, sparsity)?;
 
                 // GPU stage (dense compute)
                 let gpu_start = Instant::now();
@@ -459,11 +452,9 @@ async fn run_pipeline_benchmark(
                 }
                 let gpu_time = gpu_start.elapsed().as_micros();
 
-                // NPU stage
-                let npu_start = Instant::now();
-                let events = (iterations as f32 * (1.0 - sparsity)) as u64;
-                tokio::time::sleep(tokio::time::Duration::from_micros(events * 50)).await;
-                let npu_time = npu_start.elapsed().as_micros();
+                // NPU stage (sparse postprocessing) - REAL Akida execution
+                let device = &mut hardware.npu_devices[0];
+                let npu_time = execute_npu_sparse_inference(device, iterations, sparsity)?;
 
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_times.push(("NPU".to_string(), npu_time));
@@ -519,6 +510,53 @@ async fn run_pipeline_benchmark(
         uses_actual_gpu,
         uses_actual_npu,
     })
+}
+
+/// Convert sparse workload to event stream for NPU
+/// Deep Debt: Actual encoding, not simulation
+fn generate_sparse_events(iterations: usize, sparsity: f32) -> Vec<u8> {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    
+    // Calculate number of active events based on sparsity
+    let num_events = ((iterations as f32) * (1.0 - sparsity)) as usize;
+    
+    // Generate sparse event stream
+    let mut events = vec![0u8; iterations];
+    for _ in 0..num_events {
+        let idx = rng.gen_range(0..iterations);
+        events[idx] = rng.gen_range(1..255); // Non-zero event
+    }
+    
+    events
+}
+
+/// Execute actual NPU inference via Akida driver
+/// Deep Debt: Real hardware execution, no simulation
+fn execute_npu_sparse_inference(
+    device: &mut AkidaDevice,
+    iterations: usize,
+    sparsity: f32,
+) -> Result<u128> {
+    // Generate sparse event stream
+    let events = generate_sparse_events(iterations, sparsity);
+    
+    // Configure inference for sparse event processing
+    let config = InferenceConfig::new(
+        vec![events.len()],  // Input: sparse event stream
+        vec![128],           // Output: 128-dimensional embedding
+        1,                   // Byte per element
+        1                    // Byte per element
+    );
+    
+    let executor = InferenceExecutor::new(config);
+    
+    let start = Instant::now();
+    
+    // ACTUAL NPU INFERENCE - Real Akida execution!
+    let _result = executor.infer(&events, device)?;
+    
+    Ok(start.elapsed().as_micros())
 }
 
 /// Execute actual GPU polynomial addition via BarraCUDA

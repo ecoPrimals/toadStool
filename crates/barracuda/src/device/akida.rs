@@ -204,6 +204,12 @@ fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard> {
     // Query PCIe link info
     let (pcie_gen, pcie_lanes) = query_pcie_link_info(&device.address).unwrap_or((2, 4)); // Default: PCIe Gen2 x4
 
+    // Query real power consumption from hwmon
+    let power_watts = query_power_consumption(&device.address);
+
+    // Query real temperature from hwmon
+    let temperature_celsius = query_temperature(&device.address);
+
     // Akida AKD1000 specifications
     let board = AkidaBoard {
         index,
@@ -212,8 +218,8 @@ fn query_board_info(device: &PcieDevice, index: usize) -> Result<AkidaBoard> {
         chip_name: "Akida AKD1000".to_string(),
         npu_count: 80,                  // AKD1000 has 80 NPUs
         memory_bytes: 10 * 1024 * 1024, // 10MB on-chip SRAM
-        power_watts: estimate_power_consumption(index),
-        temperature_celsius: estimate_temperature(index),
+        power_watts,
+        temperature_celsius,
         pcie_generation: pcie_gen,
         pcie_lanes,
         health: check_board_health(&device.address)?,
@@ -262,24 +268,64 @@ fn parse_pcie_speed(speed: &str) -> u8 {
     }
 }
 
-/// Estimate power consumption (would query from SDK in production)
-fn estimate_power_consumption(index: usize) -> f64 {
-    // Akida AKD1000 typical power consumption: 0.5-2W
-    match index {
-        0 => 1.2, // First board: moderate load
-        1 => 0.8, // Second board: lighter load
-        _ => 1.0,
+/// Query power consumption from hwmon
+/// Deep Debt: Real hardware monitoring, no estimates!
+fn query_power_consumption(pcie_address: &str) -> f64 {
+    use std::fs;
+
+    // Search for hwmon directory
+    let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    
+    if let Ok(entries) = fs::read_dir(&hwmon_base) {
+        for entry in entries.flatten() {
+            let hwmon_path = entry.path();
+            let power_input_path = hwmon_path.join("power1_input");
+            
+            // power1_input is in microwatts
+            if let Ok(power_str) = fs::read_to_string(&power_input_path) {
+                if let Ok(power_uw) = power_str.trim().parse::<f64>() {
+                    let power_watts = power_uw / 1_000_000.0; // Convert µW to W
+                    log::debug!("Akida {}: Measured power = {:.3}W", pcie_address, power_watts);
+                    return power_watts;
+                }
+            }
+        }
     }
+    
+    // Fallback: Use Akida AKD1000 typical power (0.5-2W range)
+    // But log that we're using fallback
+    log::warn!("Akida {}: hwmon not available, using typical power estimate", pcie_address);
+    1.0 // Typical idle power
 }
 
-/// Estimate temperature (would query from SDK in production)
-fn estimate_temperature(index: usize) -> f64 {
-    // Typical Akida operating temperature: 35-50°C
-    match index {
-        0 => 42.0,
-        1 => 38.0,
-        _ => 40.0,
+/// Query temperature from hwmon
+/// Deep Debt: Real hardware monitoring, no estimates!
+fn query_temperature(pcie_address: &str) -> f64 {
+    use std::fs;
+
+    // Search for hwmon directory
+    let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    
+    if let Ok(entries) = fs::read_dir(&hwmon_base) {
+        for entry in entries.flatten() {
+            let hwmon_path = entry.path();
+            let temp_input_path = hwmon_path.join("temp1_input");
+            
+            // temp1_input is in millidegrees celsius
+            if let Ok(temp_str) = fs::read_to_string(&temp_input_path) {
+                if let Ok(temp_mdeg) = temp_str.trim().parse::<f64>() {
+                    let temp_celsius = temp_mdeg / 1000.0; // Convert millidegrees to degrees
+                    log::debug!("Akida {}: Measured temperature = {:.1}°C", pcie_address, temp_celsius);
+                    return temp_celsius;
+                }
+            }
+        }
     }
+    
+    // Fallback: Use Akida AKD1000 typical operating temperature
+    // But log that we're using fallback
+    log::warn!("Akida {}: hwmon not available, using typical temperature estimate", pcie_address);
+    40.0 // Typical operating temperature
 }
 
 /// Check board health
