@@ -1,0 +1,62 @@
+[
+  {
+    "model_name": "BERT-tiny",
+    "sequence_length": 128,
+    "batch_size": 4,
+    "hidden_size": 256,
+    "num_layers": 4,
+    "inference_time_ms": 5.593453500000001,
+    "tokens_per_second": 91535.57815399734,
+    "throughput_sequences_per_sec": 715.1217043281042,
+    "device": "NVIDIA GeForce RTX 3090",
+    "vendor": "NVIDIA",
+    "backend": "Vulkan",
+    "operations": [
+      "MatMul",
+      "LayerNorm",
+      "Add",
+      "GELU",
+      "Softmax"
+    ]
+  },
+  {
+    "model_name": "BERT-mini",
+    "sequence_length": 256,
+    "batch_size": 8,
+    "hidden_size": 384,
+    "num_layers": 6,
+    "inference_time_ms": 18.626648,
+    "tokens_per_second": 109950.00281317391,
+    "throughput_sequences_per_sec": 429.4921984889606,
+    "device": "NVIDIA GeForce RTX 3090",
+    "vendor": "NVIDIA",
+    "backend": "Vulkan",
+    "operations": [
+      "MatMul",
+      "LayerNorm",
+      "Add",
+      "GELU",
+      "Softmax"
+    ]
+  },
+  {
+    "model_name": "BERT-small",
+    "sequence_length": 512,
+    "batch_size": 16,
+    "hidden_size": 512,
+    "num_layers": 8,
+    "inference_time_ms": 46.0968485,
+    "tokens_per_second": 177712.79960711414,
+    "throughput_sequences_per_sec": 347.0953117326448,
+    "device": "NVIDIA GeForce RTX 3090",
+    "vendor": "NVIDIA",
+    "backend": "Vulkan",
+    "operations": [
+      "MatMul",
+      "LayerNorm",
+      "Add",
+      "GELU",
+      "Softmax"
+    ]
+  }
+]
