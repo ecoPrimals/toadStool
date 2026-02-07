@@ -339,76 +339,122 @@ showcase/whitePaper/data/ml_systems/
 
 ---
 
-### Priority 4: NPU Raytracing Demo (MOONSHOT) 🌙
+### Priority 4: Hybrid NPU-GPU Raytracing (RESEARCH) 🌙🔬
 
-**What**: Demonstrate raytracing on NPU using spiking neural networks
+**What**: NPU accelerates sparse raytracing queries (empty space rejection) + GPU handles dense intersections
 
-**Why**:
-- This would be UNPRECEDENTED
-- Shows ToadStool's universal compute vision
-- Akida's event-driven nature could be interesting for ray-object intersections
+**Why**: 
+- 95-99% of raytracing queries hit empty space (sparse matrix problem)
+- NPU's event-driven architecture perfect for "nothing here" checks
+- **Not replacement, but complementary** - hybrid efficiency gain
+- Vision: Future GPUs with integrated NPU cores
 
-**Approach** (Research-oriented):
+**Key Insight**: Sparse raytracing as specialized workload
+```
+Typical scene:
+├── BVH queries: 1,000 nodes checked
+├── Empty space: 950 nodes (95%)  ← NPU excels here (event-driven)
+├── Actual hits: 50 nodes (5%)    ← GPU excels here (parallel math)
+└── Power savings: 10-55x potential (if hypothesis holds)
+```
 
-1. **Ray-Scene Encoding** 🆕
+**Hybrid Architecture**:
+```
+Stage 1: NPU Sparse Filtering (2W)
+└── BVH traversal, empty space rejection
+    └── Output: 1% rays that hit geometry
+
+Stage 2: GPU Dense Intersection (250W @ 1% duty = 2.5W)
+└── Triangle intersection, shading
+    └── Output: Final pixels
+
+Net power: 4.5W vs 250W = 55x savings (theoretical)
+```
+
+**Research Questions**:
+
+1. **Sparse Scene Efficiency** 🆕
    ```
-   Concept: Encode ray directions as spike patterns
+   Test matrix:
+   - 0.1% density (outdoor): NPU 100x better? ← Hypothesis
+   - 1% density (architectural): NPU 10x better?
+   - 10% density (medium): NPU 2x better?
+   - 50% density (dense): GPU better (expected)
    
-   Pipeline:
-   1. Scene geometry → Spike-encoded representation
-   2. Ray queries → Spike events
-   3. Intersection tests → Temporal coincidence detection
-   4. Results → Spike decoding
-   
-   Feasibility:
-   - High latency (not real-time)
-   - Very low power (<5W)
-   - Novel research direction
-   
-   Target: Proof of concept, not production
+   Goal: Find crossover point, quantify advantage
    ```
 
-2. **Comparison Matrix**
+2. **Spike Encoding Validation** 🆕
    ```
-   Same simple scene:
+   Can rays be spike-encoded?
+   - Spatial position → spike ID
+   - Temporal traversal → spike timing
+   - Empty cells → no spike (zero power!)
    
-   CPU raytracer:
-   - Latency: 100ms/frame
-   - Power: 15W
-   - Accuracy: Perfect
+   Test: Correct classification on Akida?
+   ```
+
+3. **Hybrid Pipeline Proof of Concept** 🆕
+   ```
+   NPU filter → GPU render
    
-   GPU raytracer (RTX 3090):
-   - Latency: 1ms/frame (RT cores)
-   - Power: 250W
-   - Accuracy: Perfect
-   
-   NPU raytracer (Akida):
-   - Latency: ???ms/frame (research)
-   - Power: 2W
-   - Accuracy: Approximate
-   
-   Insight: Not competitive, but scientifically interesting
+   Success criteria:
+   - Working end-to-end
+   - Measured power savings (target: 10x minimum)
+   - Correct results vs pure GPU
    ```
 
 **Honest Assessment**:
-- ⚠️ **Experimental** - May not be practical
-- ✅ **Novel** - World's first attempt
-- ✅ **Educational** - Shows universal compute limits
-- 🎯 **Goal**: Explore possibilities, quantify tradeoffs
+- ✅ **Novel Research** - First spike-encoded raytracing
+- ✅ **Clear Use Case** - Sparse scenes (outdoor, architectural)
+- ✅ **Future Vision** - Next-gen GPUs with NPU cores (2027-2030?)
+- ⚠️ **Not Real-time** - 10-100ms latency (research prototype)
+- ⚠️ **Not Replacement** - Complement GPU, don't replace
+- 🎯 **Goal**: Quantify sparse advantage, prove hybrid concept
 
-**Files to Create** (if pursued):
+**Files to Create**:
 ```
-showcase/neuromorphic/05-experimental-raytracing/
-├── README.md (explain research nature)
-├── examples/
-│   ├── simple_scene_npu.rs               🆕
-│   ├── spike_encoding.rs                 🆕
-│   └── intersection_snn.rs               🆕
-└── docs/
-    ├── APPROACH.md                       🆕
-    ├── LIMITATIONS.md                    🆕
-    └── RESEARCH_FINDINGS.md              🆕
+showcase/neuromorphic/05-hybrid-raytracing/
+├── README.md (overview, motivation)
+├── HYBRID_RAYTRACING_VISION.md          ✅ Created
+├── LIMITATIONS.md (clear boundaries)
+├── 01-spike-encoding/
+│   ├── README.md
+│   ├── examples/
+│   │   ├── encode_ray.rs                🆕
+│   │   ├── simple_bvh.rs                🆕
+│   │   └── test_on_akida.rs             🆕
+│   └── results/
+│       └── spike_validation.json        🆕
+├── 02-sparse-benchmark/
+│   ├── benchmarks/
+│   │   ├── sparse_scene_npu.rs          🆕
+│   │   ├── sparse_scene_gpu.rs          🆕
+│   │   └── comparison.rs                🆕
+│   └── data/
+│       ├── 0.1pct_density.json          🆕
+│       ├── 1pct_density.json            🆕
+│       └── crossover_analysis.csv       🆕
+├── 03-hybrid-prototype/
+│   ├── src/
+│   │   ├── npu_filter.rs                🆕
+│   │   ├── gpu_tracer.rs                🆕
+│   │   └── hybrid_pipeline.rs           🆕
+│   └── results/
+│       └── power_comparison.json        🆕
+└── 04-publication/
+    ├── PAPER.md (research paper draft)  🆕
+    └── figures/ (diagrams, graphs)      🆕
 ```
+
+**Expected Outcomes**:
+- ✅ Quantified sparse scene advantage (100x power for 0.1% density)
+- ✅ Crossover point identified (~10% density)
+- ✅ Hybrid proof of concept (10x system efficiency)
+- ✅ First spike-encoded raytracing demo (scientific contribution)
+- ✅ Future hardware architecture vision
+
+**Timeline**: 4 weeks research prototype
 
 ---
 
