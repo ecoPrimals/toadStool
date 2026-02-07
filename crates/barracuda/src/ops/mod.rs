@@ -330,6 +330,9 @@ pub mod clip_grad_value;
 // Complex arithmetic (for FFT and wave physics)
 pub mod complex;
 
+// Fast Fourier Transform (evolved from NTT!)
+pub mod fft;
+
 // Quantization
 pub mod dequantize;
 pub mod fake_quantize;
