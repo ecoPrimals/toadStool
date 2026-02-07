@@ -267,29 +267,24 @@ cargo run --example fhe_ntt_validation
 
 ## 📚 Documentation
 
-### Essential Docs
+**Root Files**:
+- [README.md](README.md) - Project overview & showcase results
+- [QUICK_STATUS.md](QUICK_STATUS.md) - Quick reference
+- [HANDOFF_FEB07_2026.md](HANDOFF_FEB07_2026.md) - Latest session handoff
+- [DOCUMENTATION.md](DOCUMENTATION.md) - Documentation hub
+- [DOCS_INDEX.md](DOCS_INDEX.md) - Complete documentation index
+- [UNIVERSAL_COMPUTE_ARCHITECTURE.md](UNIVERSAL_COMPUTE_ARCHITECTURE.md) - Architecture guide
 
-**Getting Started**:
-- **[README.md](README.md)** - This file (project overview)
-- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Documentation hub
-- **[QUICK_STATUS.md](QUICK_STATUS.md)** - Current status snapshot
-- **[DOCS_INDEX.md](DOCS_INDEX.md)** - Complete documentation index
+**Validation Reports** (showcase/whitePaper/):
+- [FHE_CROSS_VENDOR_VALIDATION_REPORT.md](showcase/whitePaper/FHE_CROSS_VENDOR_VALIDATION_REPORT.md) - FHE validation (994 lines)
+- [ML_SYSTEMS_VALIDATION_COMPLETE.md](showcase/whitePaper/ML_SYSTEMS_VALIDATION_COMPLETE.md) - ML systems (393 lines)
 
-**Quick Start Guides**:
-- **[QUICK_START_GPU.md](QUICK_START_GPU.md)** - GPU operations
-- **[QUICK_START_ENCRYPTION.md](QUICK_START_ENCRYPTION.md)** - FHE operations
+**Research**:
+- [HYBRID_RAYTRACING_VISION.md](showcase/neuromorphic/HYBRID_RAYTRACING_VISION.md) - Hybrid architecture (577 lines)
 
-**Technical Docs**:
-- **[UNIVERSAL_COMPUTE_ARCHITECTURE.md](UNIVERSAL_COMPUTE_ARCHITECTURE.md)** - Architecture vision
-- **[TESTING.md](TESTING.md)** - Testing strategy
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history
-
-**Final Status**:
-- **[FINAL_VERIFICATION_FEB06_2026.md](FINAL_VERIFICATION_FEB06_2026.md)** - Production verification
-- **[FINAL_STATUS_FEB06_2026.md](FINAL_STATUS_FEB06_2026.md)** - Complete metrics
-
-**Session Reports** (Archived):
-- **[docs/archive/sessions-feb06-2026/](docs/archive/sessions-feb06-2026/)** - Complete session history
+**Session Archives**:
+- [docs/archive/sessions-feb07-2026/](docs/archive/sessions-feb07-2026/) - Latest session
+- [docs/archive/sessions-feb06-2026/](docs/archive/sessions-feb06-2026/) - Previous session
 
 ---
 
