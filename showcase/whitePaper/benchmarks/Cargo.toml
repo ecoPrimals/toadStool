@@ -62,3 +62,7 @@ path = "npu_reservoir_computing.rs"
 [[bin]]
 name = "hybrid_raytracing"
 path = "hybrid_raytracing.rs"
+
+[[bin]]
+name = "encrypted_mnist_pipeline"
+path = "encrypted_mnist_pipeline.rs"

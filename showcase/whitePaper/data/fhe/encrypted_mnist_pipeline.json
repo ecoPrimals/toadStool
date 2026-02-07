@@ -1,0 +1,53 @@
+[
+  {
+    "hardware": "GPU (NVIDIA RTX 3090)",
+    "phase": "training",
+    "training_samples": 1000,
+    "test_samples": 0,
+    "time_ms": 500.117057,
+    "throughput_samples_per_sec": 1999.5318815930727,
+    "accuracy": 0.0,
+    "plaintext_time_ms": 5.00117057,
+    "encrypted_time_ms": 500.117057,
+    "overhead_factor": 100.0,
+    "power_watts": 250.0,
+    "energy_per_sample_j": 0.12502926425,
+    "polynomial_degree": 4096,
+    "modulus": 1152921504606584833,
+    "security_bits": 128
+  },
+  {
+    "hardware": "GPU (NVIDIA RTX 3090)",
+    "phase": "inference",
+    "training_samples": 0,
+    "test_samples": 100,
+    "time_ms": 541.2031000000001,
+    "throughput_samples_per_sec": 184.7735166335891,
+    "accuracy": 0.08,
+    "plaintext_time_ms": 0.21648124000000002,
+    "encrypted_time_ms": 541.2031000000001,
+    "overhead_factor": 50.0,
+    "power_watts": 250.0,
+    "energy_per_sample_j": 1.3530077500000002,
+    "polynomial_degree": 4096,
+    "modulus": 1152921504606584833,
+    "security_bits": 128
+  },
+  {
+    "hardware": "NPU (BrainChip Akida)",
+    "phase": "inference",
+    "training_samples": 0,
+    "test_samples": 100,
+    "time_ms": 105.21629999999999,
+    "throughput_samples_per_sec": 950.4230808344336,
+    "accuracy": 0.08,
+    "plaintext_time_ms": 0.01402884,
+    "encrypted_time_ms": 105.21629999999999,
+    "overhead_factor": 150.0,
+    "power_watts": 1.0,
+    "energy_per_sample_j": 0.0010521629999999998,
+    "polynomial_degree": 4096,
+    "modulus": 1152921504606584833,
+    "security_bits": 128
+  }
+]
