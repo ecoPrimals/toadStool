@@ -392,7 +392,10 @@ async fn run_pipeline_benchmark(
 
                 let time = start.elapsed().as_micros();
                 chip_times.push(("GPU (BarraCUDA)".to_string(), time));
-                chip_power.push(("GPU".to_string(), 250.0)); // RTX 3090 measured
+                
+                // Query real GPU power via nvidia-smi
+                let gpu_power = query_gpu_power();
+                chip_power.push(("GPU".to_string(), gpu_power));
             }
         }
 
@@ -433,7 +436,10 @@ async fn run_pipeline_benchmark(
                 chip_times.push(("NPU".to_string(), npu_time));
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_power.push(("NPU".to_string(), 2.0));
-                chip_power.push(("GPU".to_string(), 250.0));
+                
+                // Query real GPU power via nvidia-smi
+                let gpu_power = query_gpu_power();
+                chip_power.push(("GPU".to_string(), gpu_power));
             }
         }
 
@@ -458,7 +464,10 @@ async fn run_pipeline_benchmark(
 
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_times.push(("NPU".to_string(), npu_time));
-                chip_power.push(("GPU".to_string(), 250.0));
+                
+                // Query real GPU power via nvidia-smi
+                let gpu_power = query_gpu_power();
+                chip_power.push(("GPU".to_string(), gpu_power));
                 chip_power.push(("NPU".to_string(), 2.0));
             }
         }
@@ -510,6 +519,36 @@ async fn run_pipeline_benchmark(
         uses_actual_gpu,
         uses_actual_npu,
     })
+}
+
+/// Query GPU power consumption via nvidia-smi
+/// Deep Debt: Real hardware measurement, no hardcoding!
+fn query_gpu_power() -> f32 {
+    use std::process::Command;
+    
+    // Try to query nvidia-smi for real-time power draw
+    match Command::new("nvidia-smi")
+        .args(&["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let power_str = String::from_utf8_lossy(&output.stdout);
+            if let Ok(power_watts) = power_str.trim().parse::<f32>() {
+                tracing::debug!("GPU power measured: {:.2}W via nvidia-smi", power_watts);
+                return power_watts;
+            }
+        }
+        Err(e) => {
+            tracing::warn!("nvidia-smi unavailable: {}", e);
+        }
+        _ => {
+            tracing::warn!("nvidia-smi query failed");
+        }
+    }
+    
+    // Fallback: Use typical RTX 3090 power under load
+    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    250.0 // Typical RTX 3090 under compute load
 }
 
 /// Convert sparse workload to event stream for NPU
