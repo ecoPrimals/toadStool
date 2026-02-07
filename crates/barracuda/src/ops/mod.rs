@@ -327,6 +327,9 @@ pub mod tensor_dot;
 pub mod clip_grad_norm;
 pub mod clip_grad_value;
 
+// Complex arithmetic (for FFT and wave physics)
+pub mod complex;
+
 // Quantization
 pub mod dequantize;
 pub mod fake_quantize;

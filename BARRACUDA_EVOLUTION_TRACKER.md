@@ -15,7 +15,7 @@
 
 ```
 Phase 0: Planning          ████████████████████ 100% ✅ COMPLETE
-Phase 1: Complex (Weeks 1-4)   ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 1: Complex (Weeks 1-4)   ████░░░░░░░░░░░░░░░░  20% 🔄 IN PROGRESS
 Phase 2: FFT (Weeks 5-12)      ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░░░░░   0%
 ```
@@ -52,9 +52,9 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 
 | # | Operation | File | Status | Blocker | Notes |
 |---|-----------|------|--------|---------|-------|
-| 1.1 | Complex Add | `complex/add.wgsl` | ⬜ TODO | - | Trivial (vec2 native) |
+| 1.1 | Complex Add | `complex/add.wgsl` | ✅ COMPLETE | - | Trivial (vec2 native) |
 | 1.2 | Complex Sub | `complex/sub.wgsl` | ⬜ TODO | - | Trivial (vec2 native) |
-| 1.3 | Complex Mul | `complex/mul.wgsl` | ⬜ TODO | ⚠️ **FFT** | 4 muls, 2 adds |
+| 1.3 | Complex Mul | `complex/mul.wgsl` | ✅ COMPLETE | ⚠️ **FFT** | 4 muls, 2 adds |
 | 1.4 | Complex Conj | `complex/conj.wgsl` | ⬜ TODO | ⚠️ FFT | 1 negation |
 | 1.5 | Complex Abs | `complex/abs.wgsl` | ⬜ TODO | - | Native length() |
 | 1.6 | Complex Exp | `complex/exp.wgsl` | ⬜ TODO | ⚠️ **FFT** | Twiddle factors |
@@ -63,8 +63,8 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 | 1.9 | Complex Log | `complex/log.wgsl` | ⬜ TODO | - | log\|z\| + i·arg |
 | 1.10 | Complex Pow | `complex/pow.wgsl` | ⬜ TODO | - | De Moivre |
 
-**Progress**: 0/10 (0%)  
-**Blockers Remaining**: 3 (mul, conj, exp block FFT)
+**Progress**: 2/10 (20%)  
+**Blockers Remaining**: 2 (conj, exp block FFT)
 
 ---
 
