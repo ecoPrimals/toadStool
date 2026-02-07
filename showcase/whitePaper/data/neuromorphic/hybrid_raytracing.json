@@ -1,0 +1,74 @@
+[
+  {
+    "hardware": "Pure GPU",
+    "scene_complexity": "IndoorScene",
+    "rays": 1000000,
+    "bvh_nodes": 10000,
+    "sparsity": 0.95,
+    "rays_per_second": 1666666666666666.8,
+    "traversal_time_ms": 6e-7,
+    "power_watts": 250.0,
+    "energy_per_ray_mj": 1.5e-10,
+    "power_efficiency_vs_pure_gpu": 1.0
+  },
+  {
+    "hardware": "Hybrid (NPU+GPU)",
+    "scene_complexity": "IndoorScene",
+    "rays": 1000000,
+    "bvh_nodes": 10000,
+    "sparsity": 0.95,
+    "rays_per_second": 3448275862068965.5,
+    "traversal_time_ms": 2.9e-7,
+    "power_watts": 14.500003,
+    "energy_per_ray_mj": 4.205000829696655e-12,
+    "power_efficiency_vs_pure_gpu": 17.241375908415716
+  },
+  {
+    "hardware": "Pure GPU",
+    "scene_complexity": "OutdoorLandscape",
+    "rays": 4000000,
+    "bvh_nodes": 50000,
+    "sparsity": 0.98,
+    "rays_per_second": 1.2903225806451614e+16,
+    "traversal_time_ms": 3.1e-7,
+    "power_watts": 250.0,
+    "energy_per_ray_mj": 1.9375e-11,
+    "power_efficiency_vs_pure_gpu": 1.0
+  },
+  {
+    "hardware": "Hybrid (NPU+GPU)",
+    "scene_complexity": "OutdoorLandscape",
+    "rays": 4000000,
+    "bvh_nodes": 50000,
+    "sparsity": 0.98,
+    "rays_per_second": 1.2903225806451614e+16,
+    "traversal_time_ms": 3.1e-7,
+    "power_watts": 6.999995,
+    "energy_per_ray_mj": 5.424996304512023e-13,
+    "power_efficiency_vs_pure_gpu": 35.714310042728734
+  },
+  {
+    "hardware": "Pure GPU",
+    "scene_complexity": "ComplexCity",
+    "rays": 10000000,
+    "bvh_nodes": 200000,
+    "sparsity": 0.99,
+    "rays_per_second": 3.3333333333333336e+16,
+    "traversal_time_ms": 3e-7,
+    "power_watts": 250.0,
+    "energy_per_ray_mj": 7.5e-12,
+    "power_efficiency_vs_pure_gpu": 1.0
+  },
+  {
+    "hardware": "Hybrid (NPU+GPU)",
+    "scene_complexity": "ComplexCity",
+    "rays": 10000000,
+    "bvh_nodes": 200000,
+    "sparsity": 0.99,
+    "rays_per_second": 3.3333333333333336e+16,
+    "traversal_time_ms": 3e-7,
+    "power_watts": 4.4999976,
+    "energy_per_ray_mj": 1.3499992847442627e-13,
+    "power_efficiency_vs_pure_gpu": 55.555584989963634
+  }
+]

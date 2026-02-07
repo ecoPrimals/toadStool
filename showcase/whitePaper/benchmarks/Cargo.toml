@@ -58,3 +58,7 @@ path = "audio_processing.rs"
 [[bin]]
 name = "npu_reservoir_computing"
 path = "npu_reservoir_computing.rs"
+
+[[bin]]
+name = "hybrid_raytracing"
+path = "hybrid_raytracing.rs"
