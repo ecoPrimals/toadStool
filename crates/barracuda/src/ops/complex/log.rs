@@ -47,3 +47,43 @@ impl ComplexLog {
         Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_complex_log_one() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test log(1+0i) = 0+0i
+        let data = vec![1.0f32, 0.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let log_op = ComplexLog::new(tensor).unwrap();
+        let result = log_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 0.0).abs() < 1e-5, "log(1) real part should be 0");
+        assert!((result_data[1] - 0.0).abs() < 1e-5, "log(1) imag part should be 0");
+    }
+
+    #[tokio::test]
+    async fn test_complex_log_euler_base() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test log(e+0i) = 1+0i (approximately)
+        let e = std::f32::consts::E;
+        let data = vec![e, 0.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let log_op = ComplexLog::new(tensor).unwrap();
+        let result = log_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 1.0).abs() < 1e-5, "log(e) real part should be 1");
+        assert!((result_data[1] - 0.0).abs() < 1e-5, "log(e) imag part should be 0");
+    }
+}

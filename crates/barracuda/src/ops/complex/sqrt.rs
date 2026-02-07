@@ -82,3 +82,48 @@ impl ComplexSqrt {
         Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_complex_sqrt_basic() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test sqrt(4+0i) = 2+0i
+        let data = vec![4.0f32, 0.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let sqrt_op = ComplexSqrt::new(tensor).unwrap();
+        let result = sqrt_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 2.0).abs() < 1e-5, "Real part should be ~2.0");
+        assert!((result_data[1] - 0.0).abs() < 1e-5, "Imag part should be ~0.0");
+    }
+
+    #[tokio::test]
+    async fn test_complex_sqrt_identity() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test sqrt(z)^2 = z for z = 3+4i
+        let data = vec![3.0f32, 4.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let sqrt_op = ComplexSqrt::new(tensor).unwrap();
+        let sqrt_result = sqrt_op.execute().unwrap();
+        
+        // Square the result (re^2 - im^2, 2*re*im)
+        let sqrt_data = sqrt_result.to_vec().unwrap();
+        let re = sqrt_data[0];
+        let im = sqrt_data[1];
+        let squared_re = re * re - im * im;
+        let squared_im = 2.0 * re * im;
+        
+        assert!((squared_re - 3.0).abs() < 1e-4, "Should recover real part");
+        assert!((squared_im - 4.0).abs() < 1e-4, "Should recover imag part");
+    }
+}

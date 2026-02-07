@@ -49,3 +49,58 @@ impl ComplexPow {
         Ok(Tensor::from_buffer(output_buffer, self.input.shape().to_vec(), device.clone()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::device::WgpuDevice;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_complex_pow_square() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test (2+0i)^2 = 4+0i
+        let data = vec![2.0f32, 0.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let pow_op = ComplexPow::new(tensor, 2.0).unwrap();
+        let result = pow_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 4.0).abs() < 1e-4, "2^2 real part should be 4");
+        assert!((result_data[1] - 0.0).abs() < 1e-4, "2^2 imag part should be 0");
+    }
+
+    #[tokio::test]
+    async fn test_complex_pow_identity() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test z^1 = z
+        let data = vec![3.0f32, 4.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let pow_op = ComplexPow::new(tensor, 1.0).unwrap();
+        let result = pow_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 3.0).abs() < 1e-4, "z^1 should preserve real part");
+        assert!((result_data[1] - 4.0).abs() < 1e-4, "z^1 should preserve imag part");
+    }
+
+    #[tokio::test]
+    async fn test_complex_pow_zero_exponent() {
+        let device = Arc::new(WgpuDevice::new().await.unwrap());
+        
+        // Test z^0 = 1+0i
+        let data = vec![5.0f32, 12.0];
+        let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
+        
+        let pow_op = ComplexPow::new(tensor, 0.0).unwrap();
+        let result = pow_op.execute().unwrap();
+        let result_data = result.to_vec().unwrap();
+        
+        assert!((result_data[0] - 1.0).abs() < 1e-4, "z^0 real part should be 1");
+        assert!((result_data[1] - 0.0).abs() < 1e-4, "z^0 imag part should be 0");
+    }
+}
