@@ -1,4 +1,4 @@
 metric,unencrypted,encrypted,delta
-accuracy,0.020000,0.020000,0.000000
-time_ms,0.69,51.17,50.47
-throughput,144041.99,1954.39,142087.60
+accuracy,0.070000,0.070000,0.000000
+time_ms,0.70,7825.25,7824.55
+throughput,142948.43,12.78,142935.65
