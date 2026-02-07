@@ -45,3 +45,7 @@ path = "encrypted_vs_unencrypted_accuracy.rs"
 [[bin]]
 name = "transformer_inference"
 path = "transformer_inference.rs"
+
+[[bin]]
+name = "vision_inference"
+path = "vision_inference.rs"
