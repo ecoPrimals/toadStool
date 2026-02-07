@@ -62,5 +62,10 @@
 //! ```
 
 pub mod fft_1d;
+pub mod ifft_1d;
+
+#[cfg(test)]
+mod tests;
 
 pub use fft_1d::Fft1D;
+pub use ifft_1d::Ifft1D;

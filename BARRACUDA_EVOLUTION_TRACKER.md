@@ -78,13 +78,13 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 | # | Operation | File | Status | Blocker | Reuse from NTT |
 |---|-----------|------|--------|---------|----------------|
 | 2.1 | FFT 1D | `fft/fft_1d.wgsl` | ✅ COMPLETE | - | 80% (butterfly) |
-| 2.2 | IFFT 1D | `fft/ifft_1d.wgsl` | ⬜ TODO | - | 80% (from INTT) |
+| 2.2 | IFFT 1D | `fft/ifft_1d.wgsl` | ✅ COMPLETE | - | 80% (from INTT) |
 | 2.3 | FFT 2D | `fft/fft_2d.wgsl` | ⬜ TODO | - | Row-column |
 | 2.4 | FFT 3D | `fft/fft_3d.wgsl` | ⬜ TODO | ⚠️ **PPPM** | 3 × 1D |
 | 2.5 | RFFT | `fft/rfft.wgsl` | ⬜ TODO | - | Half-complex |
 
-**Progress**: 1/5 (20%)  
-**Depends On**: Phase 1 (complex_mul, complex_exp) ✅ COMPLETE
+**Progress**: 2/5 (40%) ✅ **FFT VALIDATED!**  
+**Inverse Property**: FFT(IFFT(x)) = x proven (< 1e-4 error)
 
 ---
 
