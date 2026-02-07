@@ -82,7 +82,23 @@
 
 pub mod add;
 pub mod mul;
+pub mod sub;
+pub mod conj;
+pub mod abs;
+pub mod exp;
+pub mod div;
+pub mod sqrt;
+pub mod log;
+pub mod pow;
 
 // Re-export main operations
 pub use add::ComplexAdd;
 pub use mul::ComplexMul;
+pub use sub::ComplexSub;
+pub use conj::ComplexConj;
+pub use abs::ComplexAbs;
+pub use exp::ComplexExp;
+pub use div::ComplexDiv;
+pub use sqrt::ComplexSqrt;
+pub use log::ComplexLog;
+pub use pow::ComplexPow;

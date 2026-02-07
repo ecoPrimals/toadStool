@@ -15,7 +15,7 @@
 
 ```
 Phase 0: Planning          ████████████████████ 100% ✅ COMPLETE
-Phase 1: Complex (Weeks 1-4)   ████░░░░░░░░░░░░░░░░  20% 🔄 IN PROGRESS
+Phase 1: Complex (Weeks 1-4)   ████████████████████ 100% ✅ COMPLETE (FFT UNBLOCKED!)
 Phase 2: FFT (Weeks 5-12)      ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░░░░░   0%
 ```
@@ -53,18 +53,18 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 | # | Operation | File | Status | Blocker | Notes |
 |---|-----------|------|--------|---------|-------|
 | 1.1 | Complex Add | `complex/add.wgsl` | ✅ COMPLETE | - | Trivial (vec2 native) |
-| 1.2 | Complex Sub | `complex/sub.wgsl` | ⬜ TODO | - | Trivial (vec2 native) |
-| 1.3 | Complex Mul | `complex/mul.wgsl` | ✅ COMPLETE | ⚠️ **FFT** | 4 muls, 2 adds |
-| 1.4 | Complex Conj | `complex/conj.wgsl` | ⬜ TODO | ⚠️ FFT | 1 negation |
-| 1.5 | Complex Abs | `complex/abs.wgsl` | ⬜ TODO | - | Native length() |
-| 1.6 | Complex Exp | `complex/exp.wgsl` | ⬜ TODO | ⚠️ **FFT** | Twiddle factors |
-| 1.7 | Complex Div | `complex/div.wgsl` | ⬜ TODO | - | Compose mul+conj |
-| 1.8 | Complex Sqrt | `complex/sqrt.wgsl` | ⬜ TODO | - | Polar form |
-| 1.9 | Complex Log | `complex/log.wgsl` | ⬜ TODO | - | log\|z\| + i·arg |
-| 1.10 | Complex Pow | `complex/pow.wgsl` | ⬜ TODO | - | De Moivre |
+| 1.2 | Complex Sub | `complex/sub.wgsl` | ✅ COMPLETE | - | Trivial (vec2 native) |
+| 1.3 | Complex Mul | `complex/mul.wgsl` | ✅ COMPLETE | - | 4 muls, 2 adds |
+| 1.4 | Complex Conj | `complex/conj.wgsl` | ✅ COMPLETE | - | 1 negation |
+| 1.5 | Complex Abs | `complex/abs.wgsl` | ✅ COMPLETE | - | Native length() |
+| 1.6 | Complex Exp | `complex/exp.wgsl` | ✅ COMPLETE | - | **Euler verified!** |
+| 1.7 | Complex Div | `complex/div.wgsl` | ✅ COMPLETE | - | Compose mul+conj |
+| 1.8 | Complex Sqrt | `complex/sqrt.wgsl` | ✅ COMPLETE | - | Polar form |
+| 1.9 | Complex Log | `complex/log.wgsl` | ✅ COMPLETE | - | log\|z\| + i·arg |
+| 1.10 | Complex Pow | `complex/pow.wgsl` | ✅ COMPLETE | - | De Moivre |
 
-**Progress**: 2/10 (20%)  
-**Blockers Remaining**: 2 (conj, exp block FFT)
+**Progress**: 10/10 (100%) ✅ **PHASE 1 COMPLETE!**  
+**Blockers Remaining**: 0 - **FFT UNBLOCKED!** 🚀
 
 ---
 
@@ -186,27 +186,29 @@ Phase 3: Physics (Weeks 13-20) ░░░░░░░░░░░░░░░░�
 
 **Status**: Not started
 
-### Week 2 (Feb 17-21, 2026) - Critical Ops
-- ⬜ Implement complex_mul.wgsl ⚠️ **FFT BLOCKER**
-- ⬜ Implement complex_exp.wgsl ⚠️ **FFT BLOCKER**
-- ⬜ Implement complex_abs.wgsl
-- ⬜ Comprehensive testing (Euler's identity)
+### Week 2 (Feb 10-14, 2026) - FFT Development ⚠️ **NOW READY TO START!**
+- ⬜ Study fhe_ntt.wgsl butterfly structure (ancestral code)
+- ⬜ Implement fft_1d.wgsl (evolve from NTT) ⚠️ **CRITICAL**
+- ⬜ Twiddle factor precomputation using complex_exp
+- ⬜ Bit-reversal permutation (adapt from NTT)
+- ⬜ Unit tests: FFT(IFFT(x)) = x
 
-**Status**: Not started
+**Status**: Ready to proceed (complex ops complete!)
 
-### Week 3 (Feb 24-28, 2026) - Extended Ops
-- ⬜ Implement complex_div, sqrt, log, pow
-- ⬜ Validation tests (inverse properties)
-- ⬜ Performance benchmarks
+### Week 3 (Feb 17-21, 2026) - FFT Completion
+- ⬜ Implement ifft_1d.wgsl (inverse transform)
+- ⬜ Implement fft_2d.wgsl (row-column decomposition)
+- ⬜ Performance benchmarks (4096-point < 5ms target)
 
-**Status**: Not started
+**Status**: Awaiting FFT 1D completion
 
-### Week 4 (Mar 3-7, 2026) - Integration
-- ⬜ Tensor integration (Complex tensor type)
-- ⬜ Documentation + examples
-- ⬜ FFT team handoff
+### Week 4 (Feb 24-28, 2026) - 3D FFT for PPPM
+- ⬜ Implement fft_3d.wgsl ⚠️ **BLOCKS PPPM/Sarkas**
+- ⬜ RFFT optimization (real-to-complex)
+- ⬜ Integration testing + documentation
+- ⬜ **MILESTONE**: Phase 2 complete, PPPM unblocked!
 
-**Status**: Not started
+**Status**: Awaiting FFT 2D completion
 
 ---
 
@@ -254,8 +256,10 @@ Sarkas compatibility
 ### Code Statistics
 - Existing WGSL shaders: 15
 - Existing Rust ops: 226+
-- New WGSL planned: 40
-- **Target total**: ~270 ops (ML + FHE + Physics)
+- New WGSL (Phase 1): 10 ✅
+- New Rust wrappers (Phase 1): 10 ✅
+- **Total WGSL shaders**: 25 (15 baseline + 10 complex)
+- **Total operations**: 236+ (226 baseline + 10 complex)
 
 ### Performance Targets
 - Complex ops: ~100 GFLOPS (measured)
