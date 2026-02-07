@@ -16,7 +16,7 @@ echo ""
 echo "📊 This demo runs 8 production-ready benchmarks:"
 echo "   1. FHE Cross-Vendor (Real GPU NTT/INTT)"
 echo "   2. FHE Encrypted Accuracy (Real GPU FHE ops)"
-echo "   3. FHE MNIST Pipeline (Real GPU/NPU FHE ops)"
+echo "   3. 🔥 FHE MNIST Pipeline (REAL ENCRYPTED TRAINING!)"
 echo "   4. Transformer Inference (Real MatMul)"
 echo "   5. Vision Inference (Real Tensor ops)"
 echo "   6. Audio Processing (Real Tensor ops)"
@@ -54,7 +54,7 @@ cargo run --release --bin encrypted_vs_unencrypted_accuracy
 echo ""
 
 echo "3️⃣  Running Encrypted MNIST Pipeline..."
-echo "   (Real GPU/NPU FHE operations - upgraded Feb 7)"
+echo "   (REAL ENCRYPTED TRAINING + INFERENCE - LEGENDARY!)"
 cargo run --release --bin encrypted_mnist_pipeline
 echo ""
 
