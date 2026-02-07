@@ -9,9 +9,11 @@
 
 pub mod pbc;
 pub mod forces;
+pub mod integrators;
 
 pub use pbc::{PbcDistance, DistanceMetric};
-pub use forces::CoulombForce;
+pub use forces::*;
+pub use integrators::*;
 
 // Re-export for convenience
 pub use pbc::PbcDistance as Pbc;
