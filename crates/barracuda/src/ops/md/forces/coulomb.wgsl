@@ -56,7 +56,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         );
         let q_j = charges[j];
         
-        // Compute distance vector
+        // Compute distance vector (from i to j)
         let r_vec = pos_j - pos_i;
         let r2 = dot(r_vec, r_vec) + params.epsilon;  // Softened
         let r = sqrt(r2);
@@ -66,11 +66,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
         
-        // Coulomb force: F = k * q_i * q_j / r^2 * r_hat
+        // Coulomb force on i from j
+        // Standard formula: F = k * q_i * q_j / r² * (r_i - r_j) / |r_i - r_j|
+        // Since r_vec = r_j - r_i, the unit vector should be -r_vec/r
+        // Like charges (q_i * q_j > 0) → force away from j (along -r_hat)
+        // Opposite charges (q_i * q_j < 0) → force toward j (along +r_hat)
         let force_magnitude = params.coulomb_constant * q_i * q_j / r2;
         let r_hat = r_vec / r;
         
-        force = force + force_magnitude * r_hat;
+        // Apply negative sign for correct direction
+        force = force - force_magnitude * r_hat;
     }
     
     // Write accumulated force

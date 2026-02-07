@@ -11,16 +11,18 @@
 //         r0 = equilibrium bond distance
 
 @group(0) @binding(0) var<storage, read> positions: array<f32>;
-@group(0) @binding(1) var<storage, read> bond_pairs: array<u32>;  // [N_bonds, 2]
-@group(0) @binding(2) var<storage, read> bond_params: array<f32>; // [N_bonds, 3] (D, a, r0)
-@group(0) @binding(3) var<storage, read_write> forces: array<f32>;
-@group(0) @binding(4) var<uniform> params: Params;
+@group(0) @binding(1) var<storage, read> bond_pairs: array<f32>;  // [N_bonds, 2]
+@group(0) @binding(2) var<storage, read> dissociation_energy: array<f32>;  // [N_bonds]
+@group(0) @binding(3) var<storage, read> width_param: array<f32>;  // [N_bonds]
+@group(0) @binding(4) var<storage, read> equilibrium_dist: array<f32>;  // [N_bonds]
+@group(0) @binding(5) var<storage, read_write> forces: array<atomic<i32>>;  // Atomic for concurrent updates
+@group(0) @binding(6) var<uniform> params: Params;
 
 struct Params {
+    n_particles: u32,
     n_bonds: u32,
     pad1: f32,
     pad2: f32,
-    pad3: f32,
 }
 
 @compute @workgroup_size(256)
@@ -31,9 +33,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    // Load bond pair
-    let i = bond_pairs[bond_idx * 2u];
-    let j = bond_pairs[bond_idx * 2u + 1u];
+    // Load bond pair (stored as f32, convert to u32)
+    let i = u32(bond_pairs[bond_idx * 2u]);
+    let j = u32(bond_pairs[bond_idx * 2u + 1u]);
     
     // Load positions
     let pos_i = vec3<f32>(
@@ -48,9 +50,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     );
     
     // Load bond parameters
-    let D = bond_params[bond_idx * 3u];
-    let a = bond_params[bond_idx * 3u + 1u];
-    let r0 = bond_params[bond_idx * 3u + 2u];
+    let D = dissociation_energy[bond_idx];
+    let a = width_param[bond_idx];
+    let r0 = equilibrium_dist[bond_idx];
     
     // Compute distance
     let r_vec = pos_j - pos_i;
@@ -68,12 +70,19 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let r_hat = r_vec / r;
     let force_vec = force_magnitude * r_hat;
     
-    // Apply forces (Newton's third law)
-    atomicAdd(&forces[i * 3u], force_vec.x);
-    atomicAdd(&forces[i * 3u + 1u], force_vec.y);
-    atomicAdd(&forces[i * 3u + 2u], force_vec.z);
+    // Convert to fixed-point for atomic operations (scale by 1000)
+    let force_scaled = vec3<i32>(
+        i32(force_vec.x * 1000.0),
+        i32(force_vec.y * 1000.0),
+        i32(force_vec.z * 1000.0)
+    );
     
-    atomicAdd(&forces[j * 3u], -force_vec.x);
-    atomicAdd(&forces[j * 3u + 1u], -force_vec.y);
-    atomicAdd(&forces[j * 3u + 2u], -force_vec.z);
+    // Apply forces (Newton's third law) using atomics
+    atomicAdd(&forces[i * 3u], force_scaled.x);
+    atomicAdd(&forces[i * 3u + 1u], force_scaled.y);
+    atomicAdd(&forces[i * 3u + 2u], force_scaled.z);
+    
+    atomicAdd(&forces[j * 3u], -force_scaled.x);
+    atomicAdd(&forces[j * 3u + 1u], -force_scaled.y);
+    atomicAdd(&forces[j * 3u + 2u], -force_scaled.z);
 }
