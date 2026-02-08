@@ -5,6 +5,41 @@ use std::io::Write as IoWrite;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Query real-time GPU power via nvidia-smi
+fn query_gpu_power() -> f32 {
+    match std::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let power_str = String::from_utf8_lossy(&output.stdout);
+            if let Ok(watts) = power_str.trim().parse::<f32>() {
+                return watts;
+            }
+        }
+        _ => {}
+    }
+    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    250.0
+}
+
+/// Query NPU power from Akida hwmon sysfs
+fn query_npu_power(pcie_address: &str) -> f32 {
+    let hwmon_dir = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    if let Ok(entries) = std::fs::read_dir(&hwmon_dir) {
+        for entry in entries.flatten() {
+            let power_path = entry.path().join("power1_input");
+            if let Ok(power_str) = std::fs::read_to_string(&power_path) {
+                if let Ok(power_uw) = power_str.trim().parse::<f64>() {
+                    return (power_uw / 1_000_000.0) as f32;
+                }
+            }
+        }
+    }
+    tracing::warn!("NPU power: using typical estimate (hwmon unavailable for {})", pcie_address);
+    1.0
+}
+
 /// Complete Encrypted MNIST Pipeline: Training + Inference
 ///
 /// This benchmark demonstrates a full encrypted ML workflow:
@@ -507,8 +542,11 @@ async fn encrypted_inference_gpu(
         plaintext_time_ms: plaintext_time,
         encrypted_time_ms: encrypted_time,
         overhead_factor: fhe_overhead,
-        power_watts: 250.0,
-        energy_per_sample_j: 250.0 * (encrypted_time / 1000.0) / test_samples as f64,
+        power_watts: query_gpu_power(),
+        energy_per_sample_j: {
+            let power = query_gpu_power() as f64;
+            power * (encrypted_time / 1000.0) / test_samples as f64
+        },
         polynomial_degree: poly_degree,
         modulus,
         security_bits: 128,
@@ -616,8 +654,11 @@ async fn encrypted_inference_npu(
         plaintext_time_ms: plaintext_time,
         encrypted_time_ms: encrypted_time_npu,
         overhead_factor: fhe_overhead,
-        power_watts: 1.0, // NPU: 1W vs 250W GPU
-        energy_per_sample_j: 1.0 * (encrypted_time_npu / 1000.0) / test_samples as f64,
+        power_watts: query_npu_power("0000:a1:00.0"),
+        energy_per_sample_j: {
+            let power = query_npu_power("0000:a1:00.0") as f64;
+            power * (encrypted_time_npu / 1000.0) / test_samples as f64
+        },
         polynomial_degree: poly_degree,
         modulus,
         security_bits: 128,

@@ -134,9 +134,12 @@ impl SubstrateSelector {
         // Try CPU (always available - pure Rust)
         match CpuHomomorphic::new() {
             Ok(cpu) => {
+                // ✅ Query real CPU power via substrate's measure_power method
+                let power_watts = cpu.measure_power().unwrap_or(25.0);
+                
                 let capability = SubstrateCapability {
                     name: cpu.name().to_string(),
-                    power_watts: 25.0, // Typical multi-core usage
+                    power_watts,
                     typical_throughput_ops_per_sec: 1_000_000.0,
                     typical_latency_ms: 5.0,
                     best_for_batch: false,
@@ -154,9 +157,12 @@ impl SubstrateSelector {
         // Try GPU (requires wgpu/graphics drivers)
         match GpuHomomorphic::new().await {
             Ok(gpu) => {
+                // ✅ Query real GPU power via substrate's measure_power method
+                let power_watts = gpu.measure_power().unwrap_or(150.0);
+                
                 let capability = SubstrateCapability {
                     name: gpu.name().to_string(),
-                    power_watts: 150.0, // Typical GPU under load
+                    power_watts,
                     typical_throughput_ops_per_sec: 15_000_000.0,
                     typical_latency_ms: 2.0,
                     best_for_batch: true,
@@ -174,9 +180,12 @@ impl SubstrateSelector {
         // Try NPU (requires Akida hardware)
         match NpuHomomorphic::new() {
             Ok(npu) => {
+                // ✅ Query real NPU power via substrate's measure_power method
+                let power_watts = npu.measure_power().unwrap_or(2.0);
+                
                 let capability = SubstrateCapability {
                     name: npu.name().to_string(),
-                    power_watts: 2.0, // Ultra-low power
+                    power_watts,
                     typical_throughput_ops_per_sec: 5_000_000.0,
                     typical_latency_ms: 3.0,
                     best_for_batch: false,

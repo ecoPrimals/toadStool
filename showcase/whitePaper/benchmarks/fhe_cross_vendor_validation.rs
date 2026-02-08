@@ -7,6 +7,43 @@ use std::fs::File;
 use std::sync::Arc;
 use std::time::Instant;
 
+/// Query real-time GPU power via nvidia-smi
+fn query_gpu_power() -> f64 {
+    match std::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let power_str = String::from_utf8_lossy(&output.stdout);
+            if let Ok(watts) = power_str.trim().parse::<f64>() {
+                return watts;
+            }
+        }
+        _ => {}
+    }
+    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    250.0
+}
+
+/// Query real-time CPU power via RAPL (Linux)
+fn query_cpu_power() -> f64 {
+    let rapl_path = "/sys/class/powercap/intel-rapl:0/energy_uj";
+    if let Ok(energy_before) = std::fs::read_to_string(rapl_path) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(energy_after) = std::fs::read_to_string(rapl_path) {
+            if let (Ok(before), Ok(after)) = (
+                energy_before.trim().parse::<u64>(),
+                energy_after.trim().parse::<u64>(),
+            ) {
+                let delta_uj = after.saturating_sub(before);
+                return delta_uj as f64 / 100_000.0;
+            }
+        }
+    }
+    tracing::warn!("CPU power: using typical estimate (RAPL unavailable)");
+    15.0
+}
+
 /// FHE Cross-Vendor Validation: NVIDIA vs AMD GPU
 ///
 /// This benchmark validates that BarraCUDA's capability-based dispatch
@@ -150,9 +187,9 @@ async fn main() -> Result<()> {
         // Calculate metrics
         let speedup = cpu_result.time_ms / gpu_result.time_ms;
         
-        // Power measurements (TODO: integrate with hardware monitors)
-        let cpu_power_w = 15.0; // Typical x86 CPU
-        let gpu_power_w = if vendor == "NVIDIA" { 250.0 } else { 300.0 }; // RTX 3090 vs RX 6950 XT
+        // ✅ Real power measurements via hardware monitors
+        let cpu_power_w = query_cpu_power();
+        let gpu_power_w = query_gpu_power();
         
         let cpu_ops_per_joule = cpu_result.throughput / cpu_power_w;
         let gpu_ops_per_joule = gpu_result.throughput / gpu_power_w;
