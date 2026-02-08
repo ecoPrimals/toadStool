@@ -2,81 +2,81 @@
   {
     "substrate": "CPU",
     "blocks": 1000,
-    "time_ms": 12.046977,
-    "throughput_mbps": 132.81340206758924,
-    "blocks_per_sec": 8300837.629224327,
-    "power_w": 15.0,
-    "energy_j": 0.180704655,
-    "energy_per_mb_j": 0.112940409375
+    "time_ms": 11.97622,
+    "throughput_mbps": 133.5980801955876,
+    "blocks_per_sec": 8349880.012224225,
+    "power_w": 5.0,
+    "energy_j": 0.05988109999999999,
+    "energy_per_mb_j": 0.03742568749999999
   },
   {
     "substrate": "GPU",
     "blocks": 1000,
-    "time_ms": 9.333347,
-    "throughput_mbps": 171.42832040853082,
-    "blocks_per_sec": 10714270.025533177,
-    "power_w": 250.0,
-    "energy_j": 2.33333675,
-    "energy_per_mb_j": 1.4583354687499999
+    "time_ms": 6.623161,
+    "throughput_mbps": 241.57649194999186,
+    "blocks_per_sec": 15098530.74687449,
+    "power_w": 58.209999084472656,
+    "energy_j": 0.385534195746315,
+    "energy_per_mb_j": 0.24095887234144686
   },
   {
     "substrate": "CPU",
     "blocks": 10000,
-    "time_ms": 127.215263,
-    "throughput_mbps": 125.77107198214101,
-    "blocks_per_sec": 7860691.998883814,
-    "power_w": 15.0,
-    "energy_j": 1.9082289449999998,
-    "energy_per_mb_j": 0.11926430906249999
+    "time_ms": 123.844646,
+    "throughput_mbps": 129.19411954231757,
+    "blocks_per_sec": 8074632.471394847,
+    "power_w": 5.0,
+    "energy_j": 0.61922323,
+    "energy_per_mb_j": 0.038701451875
   },
   {
     "substrate": "GPU",
     "blocks": 10000,
-    "time_ms": 7.978262,
-    "throughput_mbps": 2005.4493071297984,
-    "blocks_per_sec": 125340581.6956124,
-    "power_w": 250.0,
-    "energy_j": 1.9945655,
-    "energy_per_mb_j": 0.12466034375
+    "time_ms": 7.108275,
+    "throughput_mbps": 2250.89772131776,
+    "blocks_per_sec": 140681107.58236,
+    "power_w": 70.0199966430664,
+    "energy_j": 0.49772139163799284,
+    "energy_per_mb_j": 0.031107586977374552
   },
   {
     "substrate": "CPU",
     "blocks": 100000,
-    "time_ms": 119.985413,
-    "throughput_mbps": 133.3495430815411,
-    "blocks_per_sec": 8334346.442596318,
-    "power_w": 15.0,
-    "energy_j": 1.799781195,
-    "energy_per_mb_j": 0.1124863246875
+    "time_ms": 120.008907,
+    "throughput_mbps": 133.32343740119222,
+    "blocks_per_sec": 8332714.837574515,
+    "power_w": 5.0,
+    "energy_j": 0.600044535,
+    "energy_per_mb_j": 0.0375027834375
   },
   {
     "substrate": "GPU",
     "blocks": 100000,
-    "time_ms": 1.839399,
-    "throughput_mbps": 8698.493366583323,
-    "blocks_per_sec": 543655835.4114578,
-    "power_w": 250.0,
-    "energy_j": 0.45984975,
-    "energy_per_mb_j": 0.028740609375
+    "time_ms": 1.9347450000000002,
+    "throughput_mbps": 8269.823671853397,
+    "blocks_per_sec": 516863979.4908373,
+    "power_w": 78.77999877929688,
+    "energy_j": 0.15241920873825074,
+    "energy_per_mb_j": 0.009526200546140671
   },
   {
     "substrate": "CPU",
     "blocks": 1000000,
-    "time_ms": 1209.74435,
-    "throughput_mbps": 132.25934884506796,
-    "blocks_per_sec": 8266209.302816748,
-    "power_w": 15.0,
-    "energy_j": 18.14616525,
-    "energy_per_mb_j": 0.1134135328125
+    "time_ms": 1206.761563,
+    "throughput_mbps": 132.586258052702,
+    "blocks_per_sec": 8286641.128293876,
+    "power_w": 5.0,
+    "energy_j": 6.033807814999999,
+    "energy_per_mb_j": 0.03771129884375
   },
   {
     "substrate": "GPU",
     "blocks": 1000000,
-    "time_ms": 12.629061,
-    "throughput_mbps": 12669.192111749242,
-    "blocks_per_sec": 791824506.9843277,
-    "power_w": 250.0,
-    "energy_j": 3.15726525,
-    "energy_per_mb_j": 0.0197329078125
+    "time_ms": 11.961451,
+    "throughput_mbps": 13376.30359393689,
+    "blocks_per_sec": 836018974.6210556,
+    "power_w": 134.74000549316406,
+    "energy_j": 1.6116859734462128,
+    "energy_per_mb_j": 0.01007303733403883
   }
 ]
