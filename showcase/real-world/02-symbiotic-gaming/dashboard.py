@@ -344,7 +344,9 @@ class SymbioticDashboard:
             except curses.error:
                 pass
             
-            # Sleep
+            # ✅ Polling interval for dashboard refresh (NOT simulation)
+            # Updates UI metrics every 1 second from real hardware telemetry.
+            # All GPU/power values are queried from actual hardware via nvidia-smi/rocm-smi.
             time.sleep(1)
 
 def main(stdscr):

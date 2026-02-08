@@ -237,32 +237,68 @@ fn matrix_multiply_cpu(a: ArrayView2<f32>, b: ArrayView2<f32>) -> Array2<f32> {
 }
 
 fn measure_gpu_power(backend: &GpuFramework) -> f64 {
+    // ✅ Real hardware power measurement via vendor tools
+    // Note: Returns actual draw (not TDP), measured at query time.
+    // TDP is maximum spec; actual draw varies with workload.
+    
     let power = match backend {
         GpuFramework::Cuda => {
-            // Try nvidia-smi
-            std::process::Command::new("nvidia-smi")
+            // Real NVIDIA GPU power via nvidia-smi
+            match std::process::Command::new("nvidia-smi")
                 .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
                 .output()
-                .ok()
-                .and_then(|output| String::from_utf8(output.stdout).ok())
-                .and_then(|s| s.trim().parse().ok())
+            {
+                Ok(output) if output.status.success() => {
+                    String::from_utf8(output.stdout)
+                        .ok()
+                        .and_then(|s| s.trim().parse().ok())
+                }
+                _ => {
+                    eprintln!("⚠️  nvidia-smi unavailable, power measurement disabled");
+                    None
+                }
+            }
         }
         GpuFramework::Rocm => {
-            // Try rocm-smi
-            std::process::Command::new("rocm-smi")
+            // Real AMD GPU power via rocm-smi
+            match std::process::Command::new("rocm-smi")
                 .args(["--showpower"])
                 .output()
-                .ok()
-                .and_then(|_output| {
-                    // Parse rocm-smi output (format varies)
-                    // For now, return estimate
-                    Some(190.0)  // Typical RX 6700 power
-                })
+            {
+                Ok(output) if output.status.success() => {
+                    // rocm-smi outputs "Average Graphics Package Power: XXX.YY W"
+                    String::from_utf8(output.stdout)
+                        .ok()
+                        .and_then(|s| {
+                            s.lines()
+                                .find(|line| line.contains("Average Graphics Package Power"))
+                                .and_then(|line| {
+                                    line.split(':')
+                                        .nth(1)
+                                        .and_then(|power_str| {
+                                            power_str
+                                                .trim()
+                                                .replace("W", "")
+                                                .trim()
+                                                .parse()
+                                                .ok()
+                                        })
+                                })
+                        })
+                }
+                _ => {
+                    eprintln!("⚠️  rocm-smi unavailable, power measurement disabled");
+                    None
+                }
+            }
         }
-        _ => None,
+        _ => {
+            eprintln!("⚠️  Unknown GPU backend, power measurement not supported");
+            None
+        }
     };
     
-    power.unwrap_or(0.0)
+    power.unwrap_or(0.0) // 0.0 = no measurement available
 }
 
 fn run_cpu_benchmark(size: usize, iterations: usize) -> Result<()> {
