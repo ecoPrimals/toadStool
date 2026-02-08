@@ -19,7 +19,7 @@ fn query_gpu_power() -> f32 {
         }
         _ => {}
     }
-    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    eprintln!("⚠️  GPU power: using typical estimate (nvidia-smi unavailable)");
     250.0
 }
 
@@ -36,7 +36,7 @@ fn query_npu_power(pcie_address: &str) -> f32 {
             }
         }
     }
-    tracing::warn!("NPU power: using typical estimate (hwmon unavailable for {})", pcie_address);
+    eprintln!("⚠️  NPU power: using typical estimate (hwmon unavailable for {})", pcie_address);
     1.0
 }
 

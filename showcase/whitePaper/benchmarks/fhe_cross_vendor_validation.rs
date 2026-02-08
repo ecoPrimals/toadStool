@@ -21,7 +21,7 @@ fn query_gpu_power() -> f64 {
         }
         _ => {}
     }
-    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    eprintln!("⚠️  GPU power: using typical estimate (nvidia-smi unavailable)");
     250.0
 }
 
@@ -40,7 +40,7 @@ fn query_cpu_power() -> f64 {
             }
         }
     }
-    tracing::warn!("CPU power: using typical estimate (RAPL unavailable)");
+    eprintln!("⚠️  CPU power: using typical estimate (RAPL unavailable)");
     15.0
 }
 
