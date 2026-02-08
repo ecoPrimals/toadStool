@@ -252,23 +252,13 @@ impl GpuPowerMonitor {
 ///
 /// **Deep Debt**: Real measurement via BrainChip Akida API
 pub struct NpuPowerMonitor {
-    has_akida: bool,
+    // Removed unused field - detection happens in measure_watts()
 }
 
 impl NpuPowerMonitor {
     /// Create new NPU power monitor
     pub fn new() -> Result<Self> {
-        // Check if Akida hardware is available
-        // (In real implementation, would use Akida SDK)
-        let has_akida = Self::detect_akida();
-
-        Ok(Self { has_akida })
-    }
-
-    /// Detect Akida hardware via device node or sysfs
-    fn detect_akida() -> bool {
-        std::path::Path::new("/dev/akida0").exists()
-            || std::path::Path::new("/sys/class/akida").exists()
+        Ok(Self {})
     }
 
     /// Measure actual NPU power consumption via Linux hwmon sysfs

@@ -19,6 +19,7 @@ akida-driver = { path = "../../../crates/neuromorphic/akida-driver" }
 name = "fhe_hebench_compliance"
 path = "fhe_hebench_compliance.rs"
 
+# Deprecated benchmark (superseded)
 [[bin]]
 name = "encrypted_mnist_inference"
 path = "encrypted_mnist_inference.rs"

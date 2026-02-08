@@ -172,7 +172,9 @@ async fn benchmark_pure_gpu_raytracing(
     let rays_per_sec = (rays * iterations) as f64 / elapsed.as_secs_f64();
     let traversal_time = elapsed.as_secs_f64() * 1000.0 / iterations as f64;
     
-    // GPU power: RTX 3090 raytracing = ~250W
+    // ⚠️ Power: Using typical GPU TDP for proof-of-concept
+    // Real implementation would query via nvidia-smi
+    // For research comparison: RTX 3090 raytracing ~250W
     let gpu_power: f32 = 250.0;
     let energy_per_ray = (gpu_power as f64 / rays_per_sec) * 1000.0; // mJ
     
@@ -221,10 +223,10 @@ async fn benchmark_hybrid_raytracing(
     let rays_per_sec = (rays * iterations) as f64 / elapsed.as_secs_f64();
     let traversal_time = elapsed.as_secs_f64() * 1000.0 / iterations as f64;
     
-    // Hybrid power:
-    // - NPU: 2W for sparse traversal
-    // - GPU: Still needed for intersection tests, but less time
-    //   (GPU only active for ~5% of work, rest is in NPU)
+    // ⚠️ Hybrid power model (proof-of-concept):
+    // - NPU: 2W for sparse traversal (Akida AKD1000 typical)
+    // - GPU: Active only for occupied nodes (~5% of work for 95% sparse scene)
+    // Real implementation would query via hwmon/nvidia-smi
     let npu_power = 2.0;
     let gpu_active_fraction = 1.0 - sparsity; // GPU only needed for occupied nodes
     let gpu_power_hybrid = 250.0 * gpu_active_fraction;

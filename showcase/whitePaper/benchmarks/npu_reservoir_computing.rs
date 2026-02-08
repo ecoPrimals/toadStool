@@ -161,6 +161,8 @@ async fn benchmark_gpu_inference(
     let throughput = (sequence_length * iterations) as f64 / elapsed.as_secs_f64();
     let latency = elapsed.as_secs_f64() * 1000.0 / iterations as f64;
     
+    // ⚠️ Power: Using typical GPU compute power for proof-of-concept
+    // Real implementation would query via nvidia-smi  
     // GPU power: RTX 3090 TDP = 250W at load
     let gpu_power: f32 = 250.0;
     let energy_per_sample = (gpu_power as f64 / throughput) * 1000.0; // mJ
