@@ -10,10 +10,68 @@
 
 use anyhow::Result;
 use rand::Rng;
+use std::process::Command;
 use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use std::fs;
 use barracuda::prelude::*;
+
+/// Query real-time GPU power via nvidia-smi
+/// Falls back to typical estimate if nvidia-smi unavailable
+fn query_gpu_power() -> f32 {
+    match Command::new("nvidia-smi")
+        .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let power_str = String::from_utf8_lossy(&output.stdout);
+            if let Ok(watts) = power_str.trim().parse::<f32>() {
+                return watts;
+            }
+        }
+        _ => {}
+    }
+    tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+    250.0
+}
+
+/// Query real-time CPU package power via RAPL (Linux)
+/// Falls back to typical single-core estimate if RAPL unavailable
+fn query_cpu_power() -> f32 {
+    let rapl_path = "/sys/class/powercap/intel-rapl:0/energy_uj";
+    if let Ok(energy_before) = std::fs::read_to_string(rapl_path) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(energy_after) = std::fs::read_to_string(rapl_path) {
+            if let (Ok(before), Ok(after)) = (
+                energy_before.trim().parse::<u64>(),
+                energy_after.trim().parse::<u64>(),
+            ) {
+                let delta_uj = after.saturating_sub(before);
+                return delta_uj as f32 / 100_000.0; // 100ms sample → watts
+            }
+        }
+    }
+    tracing::warn!("CPU power: using typical estimate (RAPL unavailable)");
+    5.0
+}
+
+/// Query NPU power from Akida hwmon sysfs
+/// Falls back to typical estimate if hwmon unavailable
+fn query_npu_power(pcie_address: &str) -> f32 {
+    let hwmon_dir = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
+    if let Ok(entries) = std::fs::read_dir(&hwmon_dir) {
+        for entry in entries.flatten() {
+            let power_path = entry.path().join("power1_input");
+            if let Ok(power_str) = std::fs::read_to_string(&power_path) {
+                if let Ok(power_uw) = power_str.trim().parse::<f64>() {
+                    return (power_uw / 1_000_000.0) as f32;
+                }
+            }
+        }
+    }
+    tracing::warn!("NPU power: using typical estimate (hwmon unavailable for {})", pcie_address);
+    2.0
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BenchmarkResult {
@@ -154,7 +212,7 @@ fn bench_sparse_cpu(sparsity: f32, size: usize, iterations: usize) -> Result<Ben
     
     let total_time_us = duration.as_micros();
     let throughput = (iterations as f64) / duration.as_secs_f64();
-    let power = 5.0; // Single-core CPU ~5W
+    let power = query_cpu_power();
     let energy = power * duration.as_secs_f32();
     let efficiency = iterations as f32 / energy;
     
@@ -190,7 +248,7 @@ fn bench_dense_cpu(size: usize, iterations: usize) -> Result<BenchmarkResult> {
     
     let total_time_us = duration.as_micros();
     let throughput = (iterations as f64) / duration.as_secs_f64();
-    let power = 5.0;
+    let power = query_cpu_power();
     let energy = power * duration.as_secs_f32();
     let efficiency = iterations as f32 / energy;
     
@@ -281,7 +339,7 @@ async fn bench_gpu_dense(device: &WgpuDevice, size: usize, iterations: usize) ->
     
     let total_time_us = duration.as_micros();
     let throughput = (iterations as f64) / duration.as_secs_f64();
-    let power = 250.0; // RTX 3090 under compute
+    let power = query_gpu_power();
     let energy = power * duration.as_secs_f32();
     let efficiency = iterations as f32 / energy;
     
@@ -343,7 +401,8 @@ async fn bench_npu_sparse(device: &mut akida_driver::AkidaDevice, sparsity: f32,
     
     let total_time_us = duration.as_micros();
     let throughput = (iterations as f64) / duration.as_secs_f64();
-    let power = 2.0; // Akida measured
+    // Query real NPU power via hwmon (known PCIe address or fallback)
+    let power = query_npu_power("0000:a1:00.0");
     let energy = power * duration.as_secs_f32();
     let efficiency = iterations as f32 / energy;
     

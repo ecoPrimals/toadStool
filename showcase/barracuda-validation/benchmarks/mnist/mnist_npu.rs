@@ -6,6 +6,7 @@ use std::time::Instant;
 use akida_driver::{AkidaDevice, InferenceConfig, InferenceExecutor};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use barracuda_validation::query_npu_power;
 
 /// MLP configuration for MNIST
 const INPUT_SIZE: usize = 784;  // 28x28 pixels
@@ -120,8 +121,10 @@ async fn bench_mnist_npu(
     let img_per_sec = total_images as f64 / elapsed.as_secs_f64();
     let latency_ms = time_ms / total_images as f64;
     
-    // NPU power (measured from Akida specs)
-    let power_w = 2.0;  // Akida AKD1000 typical
+    // NPU power measurement (real hwmon or estimate)
+    // TODO: Add method to AkidaDevice to expose pcie_address
+    // For now, use typical estimate since device doesn't expose pcie_address yet
+    let power_w = query_npu_power("0000:a1:00.0") as f64;  // Use known PCIe address or fallback to estimate
     let energy_j = power_w * elapsed.as_secs_f64();
     let energy_per_img_mj = (energy_j / total_images as f64) * 1000.0;
     

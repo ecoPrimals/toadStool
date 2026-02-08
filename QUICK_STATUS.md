@@ -153,26 +153,26 @@
 
 ## 🎯 What's Next
 
-### Immediate: Upstream Submission 🚀
+### Immediate: Upstream Wiring (In Progress) 🔄
+
+**✅ COMPLETED** (2 showcases):
+- ✅ **barracuda-validation** - Fixed 2 hardcoded power values
+- ✅ **akida-characterization** - Fixed 4 hardcoded power values
 
 **Ready NOW** (0 hours):
 - ✅ **neuromorphic showcase** - 100% production-ready, zero fixes needed
 
-**This Week** (4 hours):
-- ⚠️ **barracuda-validation** - Replace 5 hardcoded power values (1h)
+**This Week** (10.5 hours remaining):
+- ⚠️ **homomorphic-computing** - Wire 2 simulated benchmarks + power (4h)
+- ⚠️ **whitePaper** - Wire 4+ FHE operations to BarraCUDA (6h)
 - ⚠️ **gpu-universal** - Add optional nvidia-smi (1h)
 - ⚠️ **real-world** - Document polling intervals (30m)
-- ⚠️ **akida-characterization** - Replace 4 hardcoded power values (1h)
-
-**Next Week** (10 hours):
-- ⚠️ **homomorphic-computing** - Wire 2 simulated benchmarks (4h)
-- ⚠️ **whitePaper** - Wire 4+ FHE operations to BarraCUDA (6h)
 
 **Deferred** (Phase 2):
 - ❌ **inter-primal** - Requires multi-primal API infrastructure (2-3 days)
 
-**Total**: 7 of 8 showcases ready (88%) | 14 hours total work  
-**See**: `UPSTREAM_READINESS_STATUS_FEB08_2026.md` for full audit
+**Progress**: 2 of 7 showcases fixed (29%) | 11.5 hours remaining  
+**See**: `UPSTREAM_WIRING_PROGRESS_FEB08_2026.md` for detailed status
 
 ### Production Ready ✅
 ToadStool core is production-ready for:

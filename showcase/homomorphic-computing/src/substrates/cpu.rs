@@ -88,8 +88,8 @@ impl HomomorphicSubstrate for CpuHomomorphic {
         let throughput = total_ops as f64 / duration_secs;
         let latency_ms = (duration_secs * 1000.0) / iterations as f64;
 
-        // Estimate CPU power consumption (typical for full-core compute)
-        let power_watts = 25.0;
+        // Real CPU power via RAPL (Linux), fallback to typical estimate
+        let power_watts = Self::measure_cpu_power();
         let ops_per_joule = throughput / power_watts;
 
         Ok(BenchmarkResult {
@@ -103,9 +103,29 @@ impl HomomorphicSubstrate for CpuHomomorphic {
     }
 
     fn measure_power(&self) -> Option<f64> {
-        // TODO: Integrate with system power measurement (RAPL, etc.)
-        // For now, estimate based on typical CPU usage
-        Some(25.0)
+        Some(Self::measure_cpu_power())
+    }
+}
+
+impl CpuHomomorphic {
+    /// Query real-time CPU package power via RAPL (Linux)
+    /// Falls back to typical single-core estimate if RAPL unavailable
+    fn measure_cpu_power() -> f64 {
+        let rapl_path = "/sys/class/powercap/intel-rapl:0/energy_uj";
+        if let Ok(energy_before) = std::fs::read_to_string(rapl_path) {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            if let Ok(energy_after) = std::fs::read_to_string(rapl_path) {
+                if let (Ok(before), Ok(after)) = (
+                    energy_before.trim().parse::<u64>(),
+                    energy_after.trim().parse::<u64>(),
+                ) {
+                    let delta_uj = after.saturating_sub(before);
+                    return delta_uj as f64 / 100_000.0; // 100ms sample → watts
+                }
+            }
+        }
+        tracing::warn!("CPU power: using typical estimate (RAPL unavailable)");
+        25.0
     }
 }
 
@@ -135,6 +155,6 @@ mod tests {
         assert_eq!(result.substrate_name, "CPU (Pure Rust)");
         assert!(result.throughput_ops_per_sec > 0.0);
         assert!(result.latency_ms > 0.0);
-        assert_eq!(result.power_watts, 25.0);
+        assert!(result.power_watts > 0.0); // Real measurement or estimate
     }
 }

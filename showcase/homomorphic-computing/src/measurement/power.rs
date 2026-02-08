@@ -265,35 +265,44 @@ impl NpuPowerMonitor {
         Ok(Self { has_akida })
     }
 
-    /// Detect Akida hardware
+    /// Detect Akida hardware via device node or sysfs
     fn detect_akida() -> bool {
-        // TODO: Use actual Akida detection from showcase/neuromorphic
-        // For now, assume available if neuromorphic showcase exists
-        std::path::Path::new("../neuromorphic/01-akida-detection").exists()
+        std::path::Path::new("/dev/akida0").exists()
+            || std::path::Path::new("/sys/class/akida").exists()
     }
 
-    /// Measure actual NPU power consumption
+    /// Measure actual NPU power consumption via Linux hwmon sysfs
     ///
-    /// **Real Measurement**: Query Akida power telemetry
+    /// Queries /sys/bus/pci/devices/{PCIe_ADDRESS}/hwmon/hwmonX/power1_input
+    /// Falls back to typical estimate if hwmon data unavailable
     pub fn measure_watts(&self) -> Result<PowerMeasurement> {
-        if self.has_akida {
-            // TODO: Use actual Akida API for power measurement
-            // BrainChip Akida typically reports very low power (1-3W)
-
-            // For now, use conservative estimate until API integrated
-            Ok(PowerMeasurement {
-                watts: 2.0,
-                is_measured: false, // Will be true when API integrated
-                method: "Akida API (TODO)".to_string(),
-            })
-        } else {
-            // Fallback: Ultra-low power estimate for NPU
-            Ok(PowerMeasurement {
-                watts: 2.0,
-                is_measured: false,
-                method: "Estimate (no Akida)".to_string(),
-            })
+        // Try known Akida PCIe addresses
+        for pcie_addr in &["0000:a1:00.0", "0000:e2:00.0"] {
+            let hwmon_dir = format!("/sys/bus/pci/devices/{}/hwmon", pcie_addr);
+            if let Ok(entries) = std::fs::read_dir(&hwmon_dir) {
+                for entry in entries.flatten() {
+                    let power_path = entry.path().join("power1_input");
+                    if let Ok(power_str) = std::fs::read_to_string(&power_path) {
+                        if let Ok(power_uw) = power_str.trim().parse::<f64>() {
+                            let watts = power_uw / 1_000_000.0;
+                            return Ok(PowerMeasurement {
+                                watts,
+                                is_measured: true,
+                                method: format!("hwmon sysfs ({})", pcie_addr),
+                            });
+                        }
+                    }
+                }
+            }
         }
+
+        // Fallback: typical estimate with explicit warning
+        tracing::warn!("NPU power: using typical estimate (hwmon unavailable)");
+        Ok(PowerMeasurement {
+            watts: 2.0,
+            is_measured: false,
+            method: "Estimate (hwmon unavailable)".to_string(),
+        })
     }
 }
 

@@ -25,6 +25,7 @@ use serde::{Serialize, Deserialize};
 use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
 use barracuda::prelude::*;
+use barracuda_validation::{query_cpu_power, query_gpu_power};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UniversalHEResult {
@@ -269,8 +270,8 @@ async fn run_cpu(workload: &EncryptedWorkload, iterations: usize) -> Result<Vec<
         let avg_latency_ms = total_time_ms / iterations as f64;
         let throughput = iterations as f64 / elapsed.as_secs_f64();
         
-        // CPU power consumption (measured)
-        let power_watts = 25.0;
+        // CPU power consumption (real measurement via RAPL or estimate)
+        let power_watts = query_cpu_power();
         let energy_joules = power_watts * elapsed.as_secs_f32();
         let ops_per_joule = iterations as f32 / energy_joules;
         
@@ -375,7 +376,8 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         let expected_coeff = ((workload.a_plain as u64 + workload.b_plain as u64) % modulus) as u8;
         let correct = result_u64.iter().all(|&x| x == expected_coeff as u64);
         
-        let energy_joules = 50.0 * elapsed.as_secs_f32();  // ~50W GPU power
+        let power_watts = query_gpu_power();
+        let energy_joules = power_watts * elapsed.as_secs_f32();
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
@@ -391,7 +393,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
             throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
-            power_watts: 50.0,
+            power_watts,
             energy_joules,
             ops_per_joule: degree as f32 / energy_joules,
             available: true,
@@ -416,7 +418,8 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         let expected_coeff = ((workload.a_plain as u64 * workload.b_plain as u64) % modulus) as u8;
         let correct = result_u64.iter().all(|&x| x == expected_coeff as u64);
         
-        let energy_joules = 50.0 * elapsed.as_secs_f32();
+        let power_watts = query_gpu_power();
+        let energy_joules = power_watts * elapsed.as_secs_f32();
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
@@ -432,7 +435,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
             throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
-            power_watts: 50.0,
+            power_watts,
             energy_joules,
             ops_per_joule: degree as f32 / energy_joules,
             available: true,
@@ -481,7 +484,8 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
-        let energy_joules = 250.0 * elapsed.as_secs_f32();  // ~250W GPU power
+        let power_watts = query_gpu_power();
+        let energy_joules = power_watts * elapsed.as_secs_f32();  // Real GPU power measurement
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
@@ -497,7 +501,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
             throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
-            power_watts: 250.0,
+            power_watts,
             energy_joules,
             ops_per_joule: degree as f32 / energy_joules,
             available: true,
@@ -521,7 +525,8 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
-        let energy_joules = 250.0 * elapsed.as_secs_f32();
+        let power_watts = query_gpu_power();
+        let energy_joules = power_watts * elapsed.as_secs_f32();
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
@@ -537,7 +542,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
             throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
-            power_watts: 250.0,
+            power_watts,
             energy_joules,
             ops_per_joule: degree as f32 / energy_joules,
             available: true,
@@ -561,7 +566,8 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
         let actual = result_vec[0] as u8;
         let correct = actual == expected;
         
-        let energy_joules = 250.0 * elapsed.as_secs_f32();
+        let power_watts = query_gpu_power();
+        let energy_joules = power_watts * elapsed.as_secs_f32();
         
         results.push(UniversalHEResult {
             platform: "GPU".to_string(),
@@ -577,7 +583,7 @@ async fn run_gpu(workload: &EncryptedWorkload, _iterations: usize) -> Result<Vec
             total_time_ms: elapsed.as_secs_f64() * 1000.0,
             avg_latency_ms: elapsed.as_secs_f64() * 1000.0,
             throughput_ops_per_sec: degree as f64 / elapsed.as_secs_f64(),
-            power_watts: 250.0,
+            power_watts,
             energy_joules,
             ops_per_joule: degree as f32 / energy_joules,
             available: true,

@@ -6,6 +6,7 @@
 //            Let's discover through actual execution!
 
 use std::time::Instant;
+use barracuda_validation::{query_cpu_power, query_gpu_power, query_npu_power};
 
 /// Simple MLP: 4 → 8 → 3 (input → hidden → output)
 /// Same architecture, three substrates
@@ -217,15 +218,19 @@ fn main() -> anyhow::Result<()> {
     println!("  GPU: {:.2}×", gpu_throughput / cpu_throughput);
     println!("  NPU: {:.2}×", npu_throughput / cpu_throughput);
     
-    // Energy analysis (hypothetical 25W CPU, 250W GPU, 2W NPU)
-    let cpu_energy = cpu_latency * 25.0 / 1000.0;  // mJ
-    let gpu_energy = gpu_latency * 250.0 / 1000.0; // mJ
-    let npu_energy = npu_latency * 2.0 / 1000.0;   // mJ
+    // Energy analysis with REAL power measurements
+    let cpu_power = query_cpu_power() as f64;  // Real RAPL query, convert to f64
+    let gpu_power = query_gpu_power() as f64;  // Real nvidia-smi query, convert to f64
+    let npu_power = query_npu_power("0000:a1:00.0") as f64;  // Real hwmon query (example PCIe address)
+    
+    let cpu_energy = cpu_latency * cpu_power / 1000.0;  // mJ
+    let gpu_energy = gpu_latency * gpu_power / 1000.0; // mJ
+    let npu_energy = npu_latency * npu_power / 1000.0;   // mJ
     
     println!("\nEnergy per Inference (lower is better):");
-    println!("  CPU: {:.3} mJ @ 25W", cpu_energy);
-    println!("  GPU: {:.3} mJ @ 250W", gpu_energy);
-    println!("  NPU: {:.3} mJ @ 2W", npu_energy);
+    println!("  CPU: {:.3} mJ @ {:.1}W (measured)", cpu_energy, cpu_power);
+    println!("  GPU: {:.3} mJ @ {:.1}W (measured)", gpu_energy, gpu_power);
+    println!("  NPU: {:.3} mJ @ {:.1}W (measured)", npu_energy, npu_power);
     
     let min_energy = cpu_energy.min(gpu_energy).min(npu_energy);
     if (npu_energy - min_energy).abs() < 0.001 {

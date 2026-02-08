@@ -508,8 +508,8 @@ impl HomomorphicSubstrate for GpuHomomorphic {
         let throughput = (total_ops as f64 / duration_secs) * 5.0;
         let latency_ms = (duration_secs * 1000.0) / iterations as f64 / 5.0;
 
-        // Typical GPU power for compute workloads
-        let power_watts = 150.0;
+        // Real GPU power measurement via nvidia-smi
+        let power_watts = Self::measure_gpu_power();
         let ops_per_joule = throughput / power_watts;
 
         Ok(BenchmarkResult {
@@ -523,8 +523,29 @@ impl HomomorphicSubstrate for GpuHomomorphic {
     }
 
     fn measure_power(&self) -> Option<f64> {
-        // TODO: Integrate with nvidia-smi or similar for actual measurement
-        Some(150.0)
+        Some(Self::measure_gpu_power() as f64)
+    }
+}
+
+impl GpuHomomorphic {
+    /// Query real-time GPU power via nvidia-smi
+    /// Falls back to typical estimate if nvidia-smi unavailable
+    fn measure_gpu_power() -> f64 {
+        use std::process::Command;
+        match Command::new("nvidia-smi")
+            .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                let power_str = String::from_utf8_lossy(&output.stdout);
+                if let Ok(watts) = power_str.trim().parse::<f64>() {
+                    return watts;
+                }
+            }
+            _ => {}
+        }
+        tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
+        250.0
     }
 }
 

@@ -18,6 +18,7 @@ use serde::{Serialize, Deserialize};
 use std::fs;
 use std::time::Instant;
 use rand::Rng;
+use barracuda_validation::{query_cpu_power, query_gpu_power};
 
 /// MNIST inference result with full metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,8 +240,8 @@ async fn bench_mnist_gpu(
     let images_per_sec = total_images as f64 / duration.as_secs_f64();
     let latency_ms = total_time_ms / total_images as f64;
     
-    // Energy calculations - **Deep Debt**: Measured power, not estimated
-    let power_watts = 250.0; // RTX 3090 measured under ML load
+    // Energy calculations - **Deep Debt**: Real GPU power measurement
+    let power_watts = query_gpu_power();
     let energy_joules = power_watts * duration.as_secs_f32();
     let energy_per_image_mj = (energy_joules * 1000.0) / total_images as f32;
     
@@ -316,7 +317,8 @@ fn bench_mnist_cpu(
     let images_per_sec = total_images as f64 / duration.as_secs_f64();
     let latency_ms = total_time_ms / total_images as f64;
     
-    let power_watts = 5.0; // Single-core CPU
+    // CPU power measurement (real RAPL or estimate)
+    let power_watts = query_cpu_power();
     let energy_joules = power_watts * duration.as_secs_f32();
     let energy_per_image_mj = (energy_joules * 1000.0) / total_images as f32;
     

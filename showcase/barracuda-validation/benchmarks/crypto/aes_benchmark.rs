@@ -6,6 +6,7 @@ use std::time::Instant;
 use barracuda::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use barracuda_validation::{query_cpu_power, query_gpu_power};
 
 /// AES-128 state size (16 bytes = 4x4 matrix)
 const AES_BLOCK_SIZE: usize = 16;
@@ -151,8 +152,8 @@ fn bench_aes_cpu(blocks: usize, iterations: usize) -> Result<AesBenchmarkResult>
     let throughput_mbps = total_mb / elapsed.as_secs_f64();
     let blocks_per_sec = (blocks * iterations) as f64 / elapsed.as_secs_f64();
     
-    // Power estimation (typical CPU crypto workload)
-    let power_w = 15.0; // Higher than idle due to crypto operations
+    // Power measurement (real RAPL or estimate)
+    let power_w = query_cpu_power() as f64;
     let energy_j = power_w * elapsed.as_secs_f64();
     let energy_per_mb_j = energy_j / total_mb;
     
@@ -300,7 +301,8 @@ async fn bench_aes_gpu(device: &WgpuDevice, blocks: usize, iterations: usize) ->
     let throughput_mbps = total_mb / elapsed.as_secs_f64();
     let blocks_per_sec = (blocks * iterations) as f64 / elapsed.as_secs_f64();
     
-    let power_w = 250.0; // RTX 3090 under compute load
+    // GPU power measurement (real nvidia-smi or estimate)
+    let power_w = query_gpu_power() as f64;
     let energy_j = power_w * elapsed.as_secs_f64();
     let energy_per_mb_j = energy_j / total_mb;
     

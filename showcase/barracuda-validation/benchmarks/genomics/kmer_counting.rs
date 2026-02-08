@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::time::Instant;
 use rand::Rng;
+use barracuda_validation::{query_cpu_power, query_gpu_power};
 
 /// K-mer counting benchmark result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,7 +143,8 @@ fn bench_kmer_cpu(
     let kmers_per_sec = total_kmers as f64 / duration.as_secs_f64();
     let throughput_mbps = (sequence_length * iterations) as f64 / duration.as_secs_f64() / 1_000_000.0;
     
-    let power_watts = 5.0; // Single-core CPU
+    // CPU power measurement (real RAPL or estimate)
+    let power_watts = query_cpu_power();
     let energy_joules = power_watts * duration.as_secs_f32();
     let energy_per_million = (energy_joules * 1000.0) / (total_kmers as f32 / 1_000_000.0);
     
@@ -277,7 +279,8 @@ async fn bench_kmer_gpu(
     let kmers_per_sec = total_kmers as f64 / duration.as_secs_f64();
     let throughput_mbps = (sequence_length * iterations) as f64 / duration.as_secs_f64() / 1_000_000.0;
     
-    let power_watts = 250.0; // RTX 3090
+    // GPU power measurement (real nvidia-smi or estimate)
+    let power_watts = query_gpu_power();
     let energy_joules = power_watts * duration.as_secs_f32();
     let energy_per_million = (energy_joules * 1000.0) / (total_kmers as f32 / 1_000_000.0);
     
