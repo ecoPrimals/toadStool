@@ -12,7 +12,6 @@ use ml_inference_showcase::{
 };
 use std::time::Instant;
 use tracing::info;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -77,7 +76,7 @@ async fn main() -> Result<()> {
 
         // NVIDIA GPU
         println!("  🎮 NVIDIA RTX 3090:");
-        let nvidia_result = benchmark_gpu(&nvidia_gpu, &network, &test_data, size).await?;
+        let nvidia_result = benchmark_gpu(nvidia_gpu, &network, &test_data, size).await?;
         println!(
             "      Time: {:.2}s | Throughput: {:.0} img/s | Speedup: {:.2}x | Accuracy: {:.1}%",
             nvidia_result.time_sec,
@@ -88,7 +87,7 @@ async fn main() -> Result<()> {
 
         // AMD GPU
         println!("  🎮 AMD RX 6950 XT:");
-        let amd_result = benchmark_gpu(&amd_gpu, &network, &test_data, size).await?;
+        let amd_result = benchmark_gpu(amd_gpu, &network, &test_data, size).await?;
         println!(
             "      Time: {:.2}s | Throughput: {:.0} img/s | Speedup: {:.2}x | Accuracy: {:.1}%",
             amd_result.time_sec,

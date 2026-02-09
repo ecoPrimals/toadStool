@@ -56,7 +56,7 @@ pub struct GpuFingerprint {
     pub vendor: GpuVendor,
     /// Architecture name (RDNA2, Ampere, Xe, etc.)
     pub architecture: String,
-    /// Model class (high_end, mid_range, mobile, etc.)
+    /// Model class (`high_end`, `mid_range`, mobile, etc.)
     pub model_class: String,
     /// Driver version (for cache invalidation)
     pub driver_version: String,
@@ -124,7 +124,7 @@ impl GpuFingerprint {
     }
 
     /// Detect vendor from PCI vendor ID
-    fn detect_vendor(vendor_id: u32) -> GpuVendor {
+    const fn detect_vendor(vendor_id: u32) -> GpuVendor {
         match vendor_id {
             0x1002 => GpuVendor::AMD,
             0x10DE => GpuVendor::NVIDIA,

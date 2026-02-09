@@ -67,7 +67,7 @@ impl MultiHeadAttention {
         d_model: u32,
     ) -> Result<Self> {
         anyhow::ensure!(
-            d_model % num_heads == 0,
+            d_model.is_multiple_of(num_heads),
             "d_model ({}) must be divisible by num_heads ({})",
             d_model,
             num_heads

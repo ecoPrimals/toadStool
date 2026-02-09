@@ -7,9 +7,9 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 /// One-hot operation - Convert indices to one-hot encoded vectors
@@ -39,11 +39,13 @@ impl OneHot {
 
         // Create buffers
         let indices_u32: Vec<u32> = self.indices.iter().map(|&x| x as u32).collect();
-        let indices_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("OneHot Indices"),
-            contents: bytemuck::cast_slice(&indices_u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let indices_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("OneHot Indices"),
+                contents: bytemuck::cast_slice(&indices_u32),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("OneHot Output"),
@@ -65,48 +67,53 @@ impl OneHot {
             num_classes: self.num_classes as u32,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("OneHot Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("OneHot Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("OneHot Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("OneHot Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -131,23 +138,31 @@ impl OneHot {
         // Create compute pipeline
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Shader"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("OneHot Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("OneHot Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("OneHot Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("OneHot Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("OneHot Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("OneHot Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -157,9 +172,9 @@ impl OneHot {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -208,19 +223,19 @@ mod tests {
 
         assert_eq!(output.shape(), &[3, 4]);
         let result = output.to_vec().unwrap();
-        
+
         // First row: class 0
         assert_eq!(result[0], 1.0);
         assert_eq!(result[1], 0.0);
         assert_eq!(result[2], 0.0);
         assert_eq!(result[3], 0.0);
-        
+
         // Second row: class 1
         assert_eq!(result[4], 0.0);
         assert_eq!(result[5], 1.0);
         assert_eq!(result[6], 0.0);
         assert_eq!(result[7], 0.0);
-        
+
         // Third row: class 2
         assert_eq!(result[8], 0.0);
         assert_eq!(result[9], 0.0);

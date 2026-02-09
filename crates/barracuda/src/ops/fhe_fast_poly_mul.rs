@@ -68,14 +68,14 @@ impl FheFastPolyMul {
                 degree
             )));
         }
-        
-        if degree < 4 || degree > 65536 {
+
+        if !(4..=65536).contains(&degree) {
             return Err(BarracudaError::Device(format!(
                 "Degree must be in range [4, 65536], got {}",
                 degree
             )));
         }
-        
+
         let expected_len = (degree * 2) as usize; // 2 u32 per coefficient
         if input_a.len() != expected_len {
             return Err(BarracudaError::Device(format!(
@@ -91,10 +91,10 @@ impl FheFastPolyMul {
                 input_b.len()
             )));
         }
-        
+
         // Compute inverse root of unity: ω^(-1) mod q
         let inv_root_of_unity = compute_modular_inverse(root_of_unity, modulus);
-        
+
         Ok(Self {
             input_a,
             input_b,
@@ -104,7 +104,7 @@ impl FheFastPolyMul {
             inv_root_of_unity,
         })
     }
-    
+
     /// Execute fast polynomial multiplication on GPU
     ///
     /// Returns: c = a * b (polynomial product)
@@ -124,9 +124,9 @@ impl FheFastPolyMul {
             self.modulus,
             self.root_of_unity,
         )?;
-        
+
         let a_ntt = ntt_a.execute()?;
-        
+
         // Step 2: B = NTT(b)
         let ntt_b = FheNtt::new(
             self.input_b.clone(),
@@ -134,22 +134,22 @@ impl FheFastPolyMul {
             self.modulus,
             self.root_of_unity,
         )?;
-        
+
         let b_ntt = ntt_b.execute()?;
-        
+
         // Step 3: C = A ⊙ B (point-wise multiply in NTT domain)
         let pointwise = FhePointwiseMul::new(a_ntt, b_ntt, self.degree, self.modulus)?;
-        
+
         let c_ntt = pointwise.execute()?;
-        
+
         // Step 4: c = INTT(C)
         let intt = FheIntt::new(c_ntt, self.degree, self.modulus, self.inv_root_of_unity)?;
-        
+
         let result = intt.execute()?;
-        
+
         Ok(result)
     }
-    
+
     /// Get expected speedup vs naive multiplication
     ///
     /// Theoretical: N² / (N log N) = N / log N
@@ -157,10 +157,10 @@ impl FheFastPolyMul {
     pub fn expected_speedup(&self) -> f64 {
         let n = self.degree as f64;
         let log_n = n.log2();
-        
+
         // Theoretical: N / log N
         let theoretical = n / log_n;
-        
+
         // Practical: ~16% efficiency (measured)
         let efficiency = 0.164;
         theoretical * efficiency
@@ -173,23 +173,23 @@ impl FheFastPolyMul {
 fn compute_modular_inverse(a: u64, m: u64) -> u64 {
     let (mut old_r, mut r) = (a as i128, m as i128);
     let (mut old_s, mut s) = (1i128, 0i128);
-    
+
     while r != 0 {
         let quotient = old_r / r;
         let temp_r = r;
         r = old_r - quotient * r;
         old_r = temp_r;
-        
+
         let temp_s = s;
         s = old_s - quotient * s;
         old_s = temp_s;
     }
-    
+
     // Ensure result is positive
     if old_s < 0 {
         old_s += m as i128;
     }
-    
+
     old_s as u64
 }
 

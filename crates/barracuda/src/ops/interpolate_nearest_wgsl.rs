@@ -12,15 +12,15 @@
 //! ```text
 //! Input:  [B, C, H_in, W_in]
 //! Output: [B, C, H_out, W_out]
-//! 
+//!
 //! For each output pixel, finds nearest input pixel:
 //! in_y = floor(out_y * scale_h)
 //! in_x = floor(out_x * scale_w)
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 
 pub struct InterpolateNearest {
     input: Tensor,
@@ -31,15 +31,15 @@ impl InterpolateNearest {
     pub fn new(input: Tensor, output_size: (usize, usize)) -> Self {
         Self { input, output_size }
     }
-    
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/interpolate_nearest.wgsl")
     }
-    
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // Expect 4D tensor [batch, channels, height, width]
         if shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidShape {
@@ -47,16 +47,16 @@ impl InterpolateNearest {
                 actual: shape.to_vec(),
             });
         }
-        
+
         let batch_size = shape[0];
         let channels = shape[1];
         let in_height = shape[2];
         let in_width = shape[3];
         let (out_height, out_width) = self.output_size;
-        
+
         let output_size = batch_size * channels * out_height * out_width;
         let output_buffer = device.create_buffer_f32(output_size)?;
-        
+
         // Create params buffer
         let params_data = [
             batch_size as u32,
@@ -67,45 +67,46 @@ impl InterpolateNearest {
             out_width as u32,
         ];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
-        
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("InterpolateNearest BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("InterpolateNearest BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            }
-        );
-        
+                    ],
+                });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("InterpolateNearest BG"),
             layout: &bind_group_layout,
@@ -124,50 +125,51 @@ impl InterpolateNearest {
                 },
             ],
         });
-        
+
         let shader = device.compile_shader(Self::wgsl_shader(), Some("InterpolateNearest"));
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("InterpolateNearest PL"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            }
-        );
-        
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("InterpolateNearest PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("InterpolateNearest Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            }
-        );
-        
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("InterpolateNearest Encoder"),
-            }
-        );
-        
+            });
+
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("InterpolateNearest Pass"),
                 timestamp_writes: None,
             });
-            
+
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         Ok(Tensor::from_buffer(
             output_buffer,
             vec![batch_size, channels, out_height, out_width],
@@ -191,17 +193,14 @@ mod tests {
     async fn test_interpolate_nearest_upsample() {
         let device = get_test_device().await;
         // 1x1x2x2 image, upsample to 4x4
-        let input_data = vec![
-            1.0, 2.0,
-            3.0, 4.0,
-        ];
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data, vec![1, 1, 2, 2], device)
             .await
             .unwrap();
-        
+
         let result = input.interpolate_nearest_wgsl((4, 4)).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Each input pixel should be replicated 2x2
         assert_eq!(output.len(), 16);
         // Top-left quadrant should all be 1.0

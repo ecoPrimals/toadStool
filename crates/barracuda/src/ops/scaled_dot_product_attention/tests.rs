@@ -20,13 +20,17 @@ async fn test_scaled_dot_product_attention_basic() {
     let dev = Arc::new(WgpuDevice::new().await.unwrap());
 
     // Small example: 1 batch, 1 head, 2 seq, 2 dim
-    let query = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 0.5).await.unwrap();
-    let key = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 0.5).await.unwrap();
-    let value = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 1.0).await.unwrap();
-
-    let output = query
-        .scaled_dot_product_attention(key, value)
+    let query = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 0.5)
+        .await
         .unwrap();
+    let key = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 0.5)
+        .await
+        .unwrap();
+    let value = create_test_tensor(dev.clone(), vec![1, 1, 2, 2], 1.0)
+        .await
+        .unwrap();
+
+    let output = query.scaled_dot_product_attention(key, value).unwrap();
 
     assert_eq!(output.shape(), &[1, 1, 2, 2]);
 }
@@ -36,13 +40,17 @@ async fn test_scaled_dot_product_attention_multi_head() {
     let dev = Arc::new(WgpuDevice::new().await.unwrap());
 
     // Multi-head: 2 batch, 4 heads, 8 seq, 16 dim
-    let query = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 0.5).await.unwrap();
-    let key = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 0.5).await.unwrap();
-    let value = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 1.0).await.unwrap();
-
-    let output = query
-        .scaled_dot_product_attention(key, value)
+    let query = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 0.5)
+        .await
         .unwrap();
+    let key = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 0.5)
+        .await
+        .unwrap();
+    let value = create_test_tensor(dev.clone(), vec![2, 4, 8, 16], 1.0)
+        .await
+        .unwrap();
+
+    let output = query.scaled_dot_product_attention(key, value).unwrap();
 
     assert_eq!(output.shape(), &[2, 4, 8, 16]);
 }
@@ -51,9 +59,15 @@ async fn test_scaled_dot_product_attention_multi_head() {
 async fn test_scaled_dot_product_attention_shape_validation() {
     let dev = Arc::new(WgpuDevice::new().await.unwrap());
 
-    let query = create_test_tensor(dev.clone(), vec![1, 1, 4, 4], 0.5).await.unwrap();
-    let key = create_test_tensor(dev.clone(), vec![1, 1, 4, 4], 0.5).await.unwrap();
-    let value = create_test_tensor(dev.clone(), vec![1, 1, 4, 5], 1.0).await.unwrap(); // Wrong shape
+    let query = create_test_tensor(dev.clone(), vec![1, 1, 4, 4], 0.5)
+        .await
+        .unwrap();
+    let key = create_test_tensor(dev.clone(), vec![1, 1, 4, 4], 0.5)
+        .await
+        .unwrap();
+    let value = create_test_tensor(dev.clone(), vec![1, 1, 4, 5], 1.0)
+        .await
+        .unwrap(); // Wrong shape
 
     let result = query.scaled_dot_product_attention(key, value);
     assert!(result.is_err()); // Should fail shape validation

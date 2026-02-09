@@ -115,7 +115,7 @@ impl FheKeySwitch {
         }
 
         // ✅ VALIDATION: Decomposition base must be reasonable
-        if decomp_base < 2 || decomp_base > (1 << 24) {
+        if !(2..=(1 << 24)).contains(&decomp_base) {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Decomposition base must be in [2, 2^24], got {}",
@@ -211,23 +211,25 @@ impl FheKeySwitch {
                     push_constant_ranges: &[],
                 });
 
-        let pipeline_decompose = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE Key Switch Decompose Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "decompose_base_b",
-            });
+        let pipeline_decompose =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FHE Key Switch Decompose Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "decompose_base_b",
+                });
 
-        let pipeline_accumulate = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FHE Key Switch Accumulate Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "accumulate_switched",
-            });
+        let pipeline_accumulate =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FHE Key Switch Accumulate Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "accumulate_switched",
+                });
 
         Ok(Self {
             input,
@@ -327,9 +329,9 @@ impl FheKeySwitch {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let num_workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            let num_workgroups = self.degree.div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 
@@ -357,13 +359,7 @@ mod tests {
     #[tokio::test]
     async fn test_key_switch_validation() {
         // Test invalid degree
-        let result = FheKeySwitch::new(
-            Tensor::zeros(vec![8]).await.unwrap(),
-            3,
-            12289,
-            1 << 16,
-            3,
-        );
+        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 3, 12289, 1 << 16, 3);
         assert!(result.is_err());
 
         // Test invalid decomposition base
@@ -371,13 +367,7 @@ mod tests {
         assert!(result.is_err());
 
         // Test invalid decomposition levels
-        let result = FheKeySwitch::new(
-            Tensor::zeros(vec![8]).await.unwrap(),
-            4,
-            12289,
-            1 << 16,
-            0,
-        );
+        let result = FheKeySwitch::new(Tensor::zeros(vec![8]).await.unwrap(), 4, 12289, 1 << 16, 0);
         assert!(result.is_err());
     }
 

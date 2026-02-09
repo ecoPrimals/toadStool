@@ -12,14 +12,14 @@
 //! ```text
 //! Input x split into two halves: [a, b]
 //! glu(x) = a ⊙ sigmoid(b)
-//! 
+//!
 //! Output size is half of input size
 //! Used in language models and transformers
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 
 pub struct GLU {
     input: Tensor,
@@ -29,70 +29,71 @@ impl GLU {
     pub fn new(input: Tensor) -> Self {
         Self { input }
     }
-    
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/glu.wgsl")
     }
-    
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let size = self.input.len();
-        
+
         // Input must be even-sized for splitting
-        if size % 2 != 0 {
+        if !size.is_multiple_of(2) {
             return Err(crate::error::BarracudaError::InvalidShape {
                 expected: vec![size / 2 * 2],
                 actual: vec![size],
             });
         }
-        
+
         let half_size = size / 2;
         let output_buffer = device.create_buffer_f32(half_size)?;
-        
+
         let params_data = [
             size as u32,
-            0u32,  // split_dim (placeholder)
+            0u32, // split_dim (placeholder)
         ];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
-        
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("GLU BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GLU BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            }
-        );
-        
+                    ],
+                });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("GLU BG"),
             layout: &bind_group_layout,
@@ -111,55 +112,56 @@ impl GLU {
                 },
             ],
         });
-        
+
         let shader = device.compile_shader(Self::wgsl_shader(), Some("GLU"));
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("GLU PL"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            }
-        );
-        
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GLU PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("GLU Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            }
-        );
-        
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("GLU Encoder"),
-            }
-        );
-        
+            });
+
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("GLU Pass"),
                 timestamp_writes: None,
             });
-            
+
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (half_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (half_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         // Output shape is half the input size
         let mut output_shape = self.input.shape().to_vec();
         if let Some(last) = output_shape.last_mut() {
             *last = half_size;
         }
-        
+
         Ok(Tensor::from_buffer(
             output_buffer,
             output_shape,
@@ -187,10 +189,10 @@ mod tests {
         let input = Tensor::from_vec_on(input_data, vec![6], device)
             .await
             .unwrap();
-        
+
         let result = input.glu_wgsl().unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Output should be 3 elements (half of input)
         assert_eq!(output.len(), 3);
         // glu([a, b]) = a * sigmoid(b)

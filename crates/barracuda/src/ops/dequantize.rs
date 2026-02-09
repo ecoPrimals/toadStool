@@ -180,7 +180,7 @@ impl Dequantize {
             use crate::device::{DeviceCapabilities, WorkloadType};
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -205,13 +205,9 @@ mod tests {
         let device = get_test_device().await;
 
         // Simulate quantized values (as f32, will be cast to i32)
-        let input = Tensor::from_vec_on(
-            vec![100.0, 150.0, 200.0, 250.0],
-            vec![4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![100.0, 150.0, 200.0, 250.0], vec![4], device)
+            .await
+            .unwrap();
 
         let output = Dequantize::new(input, 0.1, 128.0)
             .unwrap()

@@ -643,14 +643,14 @@ impl WgpuExecutor {
             0,
             &weights_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &velocity_out_buffer,
             0,
             &velocity_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -830,7 +830,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(predictions) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -985,7 +985,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(predictions) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1191,14 +1191,14 @@ impl WgpuExecutor {
             0,
             &weights_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &sq_avg_out_buffer,
             0,
             &sq_avg_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1381,7 +1381,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(predictions) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1534,7 +1534,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(predictions) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1722,14 +1722,14 @@ impl WgpuExecutor {
             0,
             &weights_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &acc_out_buffer,
             0,
             &acc_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1988,21 +1988,21 @@ impl WgpuExecutor {
             0,
             &weights_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &m_out_buffer,
             0,
             &m_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &v_out_buffer,
             0,
             &v_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -2272,21 +2272,21 @@ impl WgpuExecutor {
             0,
             &weights_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &acc_grad_out_buffer,
             0,
             &acc_grad_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
         encoder.copy_buffer_to_buffer(
             &acc_delta_out_buffer,
             0,
             &acc_delta_staging,
             0,
-            (num_params * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(weights) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -2504,7 +2504,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(predictions) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));

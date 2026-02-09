@@ -244,7 +244,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -510,7 +510,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -784,7 +784,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -1019,7 +1019,7 @@ impl WgpuExecutor {
             "GroupNorm: input size must equal batch_size * channels * spatial_size"
         );
         anyhow::ensure!(
-            channels % config.num_groups == 0,
+            channels.is_multiple_of(config.num_groups),
             "GroupNorm: channels must be divisible by num_groups"
         );
         anyhow::ensure!(
@@ -1249,7 +1249,7 @@ impl WgpuExecutor {
             pass.set_pipeline(&normalize_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             let workgroups = self.calculate_workgroups(total_size, 256);
-            pass.dispatch_workgroups(workgroups as u32, 1, 1);
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         encoder.copy_buffer_to_buffer(
@@ -1749,7 +1749,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -2068,7 +2068,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -2270,7 +2270,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));

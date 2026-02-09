@@ -11,7 +11,13 @@ use bytemuck::{Pod, Zeroable};
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct CrossProductParams {
     num_vectors: u32,
-    _padding: [u32; 3],
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
 }
 
 /// Cross product operation
@@ -71,7 +77,13 @@ impl CrossProduct {
         // Create params
         let params = CrossProductParams {
             num_vectors: num_vectors as u32,
-            _padding: [0; 3],
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+            _pad3: 0,
+            _pad4: 0,
+            _pad5: 0,
+            _pad6: 0,
         };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -200,7 +212,7 @@ impl CrossProduct {
             use crate::device::{DeviceCapabilities, WorkloadType};
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_vectors as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_vectors as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

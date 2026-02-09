@@ -198,7 +198,7 @@ impl GpuPowerMonitor {
     fn measure_nvidia(&self) -> Result<PowerMeasurement> {
         // nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits
         let output = std::process::Command::new("nvidia-smi")
-            .args(&["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
+            .args(["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
             .output()?;
 
         if !output.status.success() {

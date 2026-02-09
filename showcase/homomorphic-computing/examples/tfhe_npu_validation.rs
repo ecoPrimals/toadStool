@@ -11,7 +11,7 @@
 
 use anyhow::Result;
 use std::process::Command;
-use std::sync::Arc;
+
 use std::time::Instant;
 use tfhe::prelude::*;
 use tfhe::{generate_keys, set_server_key, ConfigBuilder, FheUint8};
@@ -78,7 +78,10 @@ fn query_npu_power(pcie_address: &str) -> f32 {
             }
         }
     }
-    tracing::warn!("NPU power: using typical estimate (hwmon unavailable for {})", pcie_address);
+    tracing::warn!(
+        "NPU power: using typical estimate (hwmon unavailable for {})",
+        pcie_address
+    );
     2.0
 }
 
@@ -229,7 +232,7 @@ fn bench_gpu_real(client_key: &tfhe::ClientKey, iterations: usize) -> Result<Ben
 
 /// NPU benchmark: Real Akida inference with hwmon power measurement
 fn bench_npu_real(iterations: usize) -> Result<BenchResult> {
-    use akida_driver::{AkidaDevice, InferenceConfig, InferenceExecutor};
+    use akida_driver::{InferenceConfig, InferenceExecutor};
 
     println!("   Using real Akida hardware...");
 

@@ -40,14 +40,14 @@ impl GridMask {
                 format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
             ));
         }
-        
-        if ratio < 0.0 || ratio > 1.0 {
+
+        if !(0.0..=1.0).contains(&ratio) {
             return Err(crate::error::BarracudaError::invalid_op(
                 "GridMask",
                 format!("Ratio must be in [0, 1], got {}", ratio),
             ));
         }
-        
+
         Ok(Self {
             input,
             ratio,
@@ -66,23 +66,23 @@ impl GridMask {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         let channels = shape[0];
         let height = shape[1];
         let width = shape[2];
-        
+
         // Compute random offsets from seed (CPU-side, deterministic)
         let offset_x = ((self.seed * 1103515245) % self.grid_size as u64) as usize;
         let offset_y = ((self.seed * 22695477) % self.grid_size as u64) as usize;
-        
+
         let mask_size = (self.grid_size as f32 * self.ratio) as usize;
         let angle_rad = self.rotate * std::f32::consts::PI / 180.0;
         let cos_a = angle_rad.cos();
         let sin_a = angle_rad.sin();
-        
+
         let cx = width as f32 / 2.0;
         let cy = height as f32 / 2.0;
-        
+
         let output_size = channels * height * width;
 
         // Create buffers
@@ -130,48 +130,53 @@ impl GridMask {
             cy,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("GridMask Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("GridMask Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("GridMask Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GridMask Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -196,23 +201,31 @@ impl GridMask {
         // Create compute pipeline
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GridMask Shader"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("GridMask Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GridMask Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("GridMask Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GridMask Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("GridMask Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("GridMask Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -221,12 +234,12 @@ impl GridMask {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (height as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -265,7 +278,9 @@ mod tests {
     #[tokio::test]
     async fn test_grid_mask_basic() {
         let image_data = vec![1.0; 3 * 224 * 224];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 224, 224]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 224, 224])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(0.6, 15.0, 96, 11111).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
@@ -278,14 +293,18 @@ mod tests {
     async fn test_grid_mask_edge_cases() {
         // Ratio = 0 (no masking)
         let image_data = vec![1.0; 1 * 32 * 32];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 32, 32]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 32, 32])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(0.0, 0.0, 16, 12345).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked, image_data); // No masking applied
 
         // Small image
         let small_image_data = vec![1.0; 1 * 8 * 8];
-        let tensor = Tensor::from_vec(small_image_data.clone(), vec![1, 8, 8]).await.unwrap();
+        let tensor = Tensor::from_vec(small_image_data.clone(), vec![1, 8, 8])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(0.5, 0.0, 4, 99999).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), 64);
@@ -295,7 +314,9 @@ mod tests {
     async fn test_grid_mask_boundary() {
         // Ratio = 1.0 (maximum masking)
         let image_data = vec![1.0; 1 * 64 * 64];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 64, 64]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 64, 64])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(1.0, 0.0, 32, 77777).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
@@ -303,7 +324,9 @@ mod tests {
 
         // With rotation
         let image_data = vec![1.0; 1 * 64 * 64];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 64, 64]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![1, 64, 64])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(0.5, 45.0, 16, 55555).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
@@ -316,7 +339,9 @@ mod tests {
         let height = 128;
         let width = 128;
         let image_data = vec![1.0; channels * height * width];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![channels, height, width]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![channels, height, width])
+            .await
+            .unwrap();
         let masked_tensor = tensor.grid_mask(0.6, 30.0, 48, 88888).unwrap();
         let masked = masked_tensor.to_vec().unwrap();
         assert_eq!(masked.len(), image_data.len());
@@ -328,11 +353,15 @@ mod tests {
     async fn test_grid_mask_precision() {
         // Deterministic with same seed
         let image_data = vec![1.0; 1 * 32 * 32];
-        let tensor1 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32]).await.unwrap();
+        let tensor1 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32])
+            .await
+            .unwrap();
         let masked_tensor1 = tensor1.grid_mask(0.5, 0.0, 16, 12345).unwrap();
         let masked1 = masked_tensor1.to_vec().unwrap();
-        
-        let tensor2 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32]).await.unwrap();
+
+        let tensor2 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32])
+            .await
+            .unwrap();
         let masked_tensor2 = tensor2.grid_mask(0.5, 0.0, 16, 12345).unwrap();
         let masked2 = masked_tensor2.to_vec().unwrap();
 
@@ -340,7 +369,9 @@ mod tests {
         assert_eq!(masked1, masked2);
 
         // Different seed should produce different mask
-        let tensor3 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32]).await.unwrap();
+        let tensor3 = Tensor::from_vec(image_data.clone(), vec![1, 32, 32])
+            .await
+            .unwrap();
         let masked_tensor3 = tensor3.grid_mask(0.5, 0.0, 16, 99999).unwrap();
         let masked3 = masked_tensor3.to_vec().unwrap();
         let different = masked1

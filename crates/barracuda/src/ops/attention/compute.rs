@@ -166,12 +166,12 @@ impl Attention {
             // Deep Debt Evolution: Capability-based dispatch
             // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
             // We use capability awareness to determine optimal tile count
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
             // Tile size is shader-constrained to 16x16, but we ensure capability awareness
             const TILE_SIZE: u32 = 16;
-            let workgroups_x = ((seq_len as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-            let workgroups_y = ((seq_len as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
+            let workgroups_x = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
+            let workgroups_y = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
             let workgroups_z = (batch_size * num_heads) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -273,9 +273,9 @@ impl Attention {
 
             // Deep Debt Evolution: Capability-based dispatch
             // Softmax is element-wise per [batch, head, query_pos]
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((batch_size * num_heads * seq_len) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = ((batch_size * num_heads * seq_len) as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -390,12 +390,12 @@ impl Attention {
             // Deep Debt Evolution: Capability-based dispatch
             // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
             // We use capability awareness to determine optimal tile count
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
             // Tile size is shader-constrained to 16x16, but we ensure capability awareness
             const TILE_SIZE: u32 = 16;
-            let workgroups_x = ((head_dim as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-            let workgroups_y = ((seq_len as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
+            let workgroups_x = (head_dim as u32).div_ceil(TILE_SIZE).max(1);
+            let workgroups_y = (seq_len as u32).div_ceil(TILE_SIZE).max(1);
             let workgroups_z = (batch_size * num_heads) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

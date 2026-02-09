@@ -40,6 +40,9 @@ use crate::tensor::Tensor;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct TopKParams {
     k: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 /// TopK operation
@@ -92,7 +95,12 @@ impl TopK {
         let device = self.input.device();
 
         // Create parameters
-        let params = TopKParams { k: self.k as u32 };
+        let params = TopKParams {
+            k: self.k as u32,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("TopK Params"),
@@ -215,10 +223,10 @@ impl TopK {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
             let size = self.input.len();
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

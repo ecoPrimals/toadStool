@@ -71,7 +71,7 @@ impl Determinant {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         // Get matrix dimensions
         let matrix_size = shape[shape.len() - 1]; // N for NxN matrix
         let total_matrices: usize = if shape.len() > 2 {
@@ -199,11 +199,11 @@ impl Determinant {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (total_matrices as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (total_matrices as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -216,7 +216,11 @@ impl Determinant {
             shape[..shape.len() - 2].to_vec()
         };
 
-        Ok(Tensor::from_buffer(output_buffer, output_shape, device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            output_shape,
+            device.clone(),
+        ))
     }
 }
 
@@ -236,9 +240,13 @@ mod tests {
 
         let det = Determinant::new(matrix).unwrap().execute().unwrap();
         let result = det.to_vec().unwrap();
-        
+
         assert_eq!(result.len(), 1);
-        assert!((result[0] - 10.0).abs() < 1e-4, "Expected 10.0, got {}", result[0]);
+        assert!(
+            (result[0] - 10.0).abs() < 1e-4,
+            "Expected 10.0, got {}",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -285,9 +293,13 @@ mod tests {
 
         let det = Determinant::new(matrix).unwrap().execute().unwrap();
         let result = det.to_vec().unwrap();
-        
+
         // Expected: 1*(1*0 - 4*6) - 2*(0*0 - 4*5) + 3*(0*6 - 1*5) = -24 + 40 - 15 = 1
-        assert!((result[0] - 1.0).abs() < 1e-3, "Expected 1.0, got {}", result[0]);
+        assert!(
+            (result[0] - 1.0).abs() < 1e-3,
+            "Expected 1.0, got {}",
+            result[0]
+        );
     }
 
     #[tokio::test]
@@ -301,7 +313,7 @@ mod tests {
 
         let det = Determinant::new(matrix).unwrap().execute().unwrap();
         let result = det.to_vec().unwrap();
-        
+
         // det = 1.5*4.5 - 2.5*3.5 = 6.75 - 8.75 = -2.0
         assert!((result[0] - (-2.0)).abs() < 1e-5);
     }
@@ -317,7 +329,7 @@ mod tests {
 
         let det = Determinant::new(matrix).unwrap().execute().unwrap();
         let result = det.to_vec().unwrap();
-        
+
         // det = 2*4 - 3*1 = 8 - 3 = 5
         assert!((result[0] - 5.0).abs() < 1e-5);
     }

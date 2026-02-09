@@ -275,26 +275,33 @@ fn query_power_consumption(pcie_address: &str) -> f64 {
 
     // Search for hwmon directory
     let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
-    
+
     if let Ok(entries) = fs::read_dir(&hwmon_base) {
         for entry in entries.flatten() {
             let hwmon_path = entry.path();
             let power_input_path = hwmon_path.join("power1_input");
-            
+
             // power1_input is in microwatts
             if let Ok(power_str) = fs::read_to_string(&power_input_path) {
                 if let Ok(power_uw) = power_str.trim().parse::<f64>() {
                     let power_watts = power_uw / 1_000_000.0; // Convert µW to W
-                    log::debug!("Akida {}: Measured power = {:.3}W", pcie_address, power_watts);
+                    log::debug!(
+                        "Akida {}: Measured power = {:.3}W",
+                        pcie_address,
+                        power_watts
+                    );
                     return power_watts;
                 }
             }
         }
     }
-    
+
     // Fallback: Use Akida AKD1000 typical power (0.5-2W range)
     // But log that we're using fallback
-    log::warn!("Akida {}: hwmon not available, using typical power estimate", pcie_address);
+    log::warn!(
+        "Akida {}: hwmon not available, using typical power estimate",
+        pcie_address
+    );
     1.0 // Typical idle power
 }
 
@@ -305,26 +312,33 @@ fn query_temperature(pcie_address: &str) -> f64 {
 
     // Search for hwmon directory
     let hwmon_base = format!("/sys/bus/pci/devices/{}/hwmon", pcie_address);
-    
+
     if let Ok(entries) = fs::read_dir(&hwmon_base) {
         for entry in entries.flatten() {
             let hwmon_path = entry.path();
             let temp_input_path = hwmon_path.join("temp1_input");
-            
+
             // temp1_input is in millidegrees celsius
             if let Ok(temp_str) = fs::read_to_string(&temp_input_path) {
                 if let Ok(temp_mdeg) = temp_str.trim().parse::<f64>() {
                     let temp_celsius = temp_mdeg / 1000.0; // Convert millidegrees to degrees
-                    log::debug!("Akida {}: Measured temperature = {:.1}°C", pcie_address, temp_celsius);
+                    log::debug!(
+                        "Akida {}: Measured temperature = {:.1}°C",
+                        pcie_address,
+                        temp_celsius
+                    );
                     return temp_celsius;
                 }
             }
         }
     }
-    
+
     // Fallback: Use Akida AKD1000 typical operating temperature
     // But log that we're using fallback
-    log::warn!("Akida {}: hwmon not available, using typical temperature estimate", pcie_address);
+    log::warn!(
+        "Akida {}: hwmon not available, using typical temperature estimate",
+        pcie_address
+    );
     40.0 // Typical operating temperature
 }
 

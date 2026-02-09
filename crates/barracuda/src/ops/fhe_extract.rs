@@ -105,7 +105,9 @@ impl FheExtract {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input must have {} elements (degree={}, u64 emulated), got {}",
-                    expected_size, degree, input.shape()[0]
+                    expected_size,
+                    degree,
+                    input.shape()[0]
                 ),
             });
         }
@@ -268,9 +270,9 @@ impl FheExtract {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = self.degree.div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

@@ -173,7 +173,10 @@ impl SecurityClient {
             *provider_lock = Some(discovered);
         }
 
-        Ok(provider_lock.as_ref().unwrap().clone())
+        provider_lock
+            .as_ref()
+            .cloned()
+            .ok_or(SecurityClientError::NoProvider)
     }
 
     /// Encrypt data

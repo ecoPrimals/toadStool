@@ -135,10 +135,10 @@ impl MultiHeadAttention {
         }
 
         let d_model = query.shape()[2];
-        if w_q.shape() != &[d_model, d_model]
-            || w_k.shape() != &[d_model, d_model]
-            || w_v.shape() != &[d_model, d_model]
-            || w_o.shape() != &[d_model, d_model]
+        if w_q.shape() != [d_model, d_model]
+            || w_k.shape() != [d_model, d_model]
+            || w_v.shape() != [d_model, d_model]
+            || w_o.shape() != [d_model, d_model]
         {
             return Err(BarracudaError::shape_mismatch(
                 w_q.shape().to_vec(),
@@ -147,7 +147,7 @@ impl MultiHeadAttention {
         }
 
         // Validate num_heads divides d_model evenly
-        if d_model % num_heads != 0 {
+        if !d_model.is_multiple_of(num_heads) {
             return Err(BarracudaError::InvalidOperation {
                 op: "multi_head_attention".to_string(),
                 reason: format!(

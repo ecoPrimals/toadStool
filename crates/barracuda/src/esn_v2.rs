@@ -302,7 +302,7 @@ impl ESN {
     /// Updated reservoir state (reservoir_size × 1)
     pub async fn update(&mut self, input: &Tensor) -> BarracudaResult<Tensor> {
         // Validate input shape
-        if input.shape() != &[self.config.input_size, 1] {
+        if input.shape() != [self.config.input_size, 1] {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input shape mismatch: expected [{}, 1], got {:?}",

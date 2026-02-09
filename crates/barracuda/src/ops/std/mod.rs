@@ -18,14 +18,18 @@ use crate::tensor::Tensor;
 /// Standard deviation reduction operation
 pub struct Std {
     input: Tensor,
-    dim: Option<usize>,  // None = global std, Some(d) = std along dimension d
-    keepdim: bool,       // Whether to keep dimension with size 1
+    dim: Option<usize>, // None = global std, Some(d) = std along dimension d
+    keepdim: bool,      // Whether to keep dimension with size 1
 }
 
 impl Std {
     /// Create a new std operation
     pub fn new(input: Tensor, dim: Option<usize>, keepdim: bool) -> Self {
-        Self { input, dim, keepdim }
+        Self {
+            input,
+            dim,
+            keepdim,
+        }
     }
 
     /// Get the WGSL shader source for global reduction

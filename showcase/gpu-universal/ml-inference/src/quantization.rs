@@ -128,7 +128,7 @@ impl QuantizeInt8 {
         num_channels: usize,
     ) -> Result<(Vec<i8>, Vec<f32>, Vec<f32>)> {
         anyhow::ensure!(
-            input.len() % num_channels == 0,
+            input.len().is_multiple_of(num_channels),
             "Input size must be divisible by num_channels"
         );
 
@@ -251,7 +251,7 @@ impl DequantizeInt8 {
             "Per-channel mode requires zero_point per channel"
         );
         anyhow::ensure!(
-            quantized.len() % num_channels == 0,
+            quantized.len().is_multiple_of(num_channels),
             "Quantized size must be divisible by num_channels"
         );
 

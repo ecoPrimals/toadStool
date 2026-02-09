@@ -23,7 +23,7 @@ pub enum OpType {
     Mul,
     /// Element-wise division
     Div,
-    /// ReLU activation
+    /// `ReLU` activation
     ReLU,
     /// Sigmoid activation
     Sigmoid,
@@ -95,7 +95,7 @@ pub enum SizeClass {
 impl SizeClass {
     /// Determine size class from element count
     #[must_use]
-    pub fn from_size(size: usize) -> Self {
+    pub const fn from_size(size: usize) -> Self {
         if size < 1_000 {
             Self::Tiny
         } else if size < 100_000 {
@@ -111,7 +111,7 @@ impl SizeClass {
 
     /// Get representative size for benchmarking
     #[must_use]
-    pub fn representative_size(self) -> usize {
+    pub const fn representative_size(self) -> usize {
         match self {
             Self::Tiny => 512,
             Self::Small => 10_000,

@@ -104,7 +104,7 @@ impl View {
         // Note: We need to access private fields, so we'll use a helper method
         // or construct directly. Since buffer and device are private, we'll
         // use the same approach as reshape - clone the tensor and update shape.
-        Ok(self.input.reshape(self.new_shape)?)
+        self.input.reshape(self.new_shape)
     }
 }
 
@@ -156,7 +156,9 @@ mod tests {
     #[tokio::test]
     async fn test_view_3d() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        let input = Tensor::zeros_on(vec![2, 3, 4], device.clone()).await.unwrap();
+        let input = Tensor::zeros_on(vec![2, 3, 4], device.clone())
+            .await
+            .unwrap();
 
         let output = input.view(&[6, 4]).unwrap();
 

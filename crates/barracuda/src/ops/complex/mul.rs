@@ -147,38 +147,36 @@ impl ComplexMul {
         });
 
         let params = [num_elements as u32 / 2];
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Complex Mul Params"),
                 contents: bytemuck::cast_slice(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
-
-        let bind_group = device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Complex Mul Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.input_a.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.input_b.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
             });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Complex Mul Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.input_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         let mut encoder = device
             .device
@@ -195,10 +193,10 @@ impl ComplexMul {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let num_complex = num_elements / 2;
-            let workgroups = (num_complex as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_complex as u32).div_ceil(optimal_wg_size);
 
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
@@ -235,7 +233,7 @@ mod tests {
 
         let result_data = result.to_vec().unwrap();
         assert!((result_data[0] - (-5.0)).abs() < 1e-5); // Real part
-        assert!((result_data[1] - 10.0).abs() < 1e-5);   // Imag part
+        assert!((result_data[1] - 10.0).abs() < 1e-5); // Imag part
     }
 
     #[tokio::test]

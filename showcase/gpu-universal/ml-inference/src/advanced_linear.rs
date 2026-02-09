@@ -115,9 +115,7 @@ impl MatrixInverse {
             // Swap rows if needed
             if pivot_row != col {
                 for j in 0..(2 * n) {
-                    let temp = augmented[col * (2 * n) + j];
-                    augmented[col * (2 * n) + j] = augmented[pivot_row * (2 * n) + j];
-                    augmented[pivot_row * (2 * n) + j] = temp;
+                    augmented.swap(col * (2 * n) + j, pivot_row * (2 * n) + j);
                 }
             }
 
@@ -260,9 +258,7 @@ impl MatrixDeterminant {
             // Swap rows if needed (changes sign of determinant)
             if pivot_row != col {
                 for j in 0..n {
-                    let temp = a[col * n + j];
-                    a[col * n + j] = a[pivot_row * n + j];
-                    a[pivot_row * n + j] = temp;
+                    a.swap(col * n + j, pivot_row * n + j);
                 }
                 sign = -sign;
             }

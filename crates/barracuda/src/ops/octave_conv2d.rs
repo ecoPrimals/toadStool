@@ -116,7 +116,12 @@ impl OctaveConv2D {
         let device = match (&self.input_high, &self.input_low) {
             (Some(h), _) => h.device(),
             (_, Some(l)) => l.device(),
-            _ => return Err(BarracudaError::invalid_op("octave_conv2d", "No input provided")),
+            _ => {
+                return Err(BarracudaError::invalid_op(
+                    "octave_conv2d",
+                    "No input provided",
+                ))
+            }
         };
 
         // Determine output dimensions based on path
@@ -137,7 +142,10 @@ impl OctaveConv2D {
                     let out_w = ((w * 2 + 2 * self.padding - self.kernel_size) / self.stride) + 1;
                     (shape[0], self.bias.shape()[0], out_h, out_w)
                 } else {
-                    return Err(BarracudaError::invalid_op("octave_conv2d", "No input provided"));
+                    return Err(BarracudaError::invalid_op(
+                        "octave_conv2d",
+                        "No input provided",
+                    ));
                 }
             }
             OctaveConvPath::HighToLow | OctaveConvPath::LowToLow => {
@@ -156,7 +164,10 @@ impl OctaveConv2D {
                     let out_w = ((w + 2 * self.padding - self.kernel_size) / self.stride) + 1;
                     (shape[0], self.bias.shape()[0], out_h, out_w)
                 } else {
-                    return Err(BarracudaError::invalid_op("octave_conv2d", "No input provided"));
+                    return Err(BarracudaError::invalid_op(
+                        "octave_conv2d",
+                        "No input provided",
+                    ));
                 }
             }
         };
@@ -165,30 +176,38 @@ impl OctaveConv2D {
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         // Get input dimensions
-        let (in_channels_high, in_height_high, in_width_high) = if let Some(ref input_high) = self.input_high {
-            let shape = input_high.shape();
-            (shape[1], shape[2], shape[3])
-        } else {
-            (0, 0, 0)
-        };
+        let (in_channels_high, in_height_high, in_width_high) =
+            if let Some(ref input_high) = self.input_high {
+                let shape = input_high.shape();
+                (shape[1], shape[2], shape[3])
+            } else {
+                (0, 0, 0)
+            };
 
-        let (in_channels_low, in_height_low, in_width_low) = if let Some(ref input_low) = self.input_low {
-            let shape = input_low.shape();
-            (shape[1], shape[2], shape[3])
-        } else {
-            (0, 0, 0)
-        };
+        let (in_channels_low, in_height_low, in_width_low) =
+            if let Some(ref input_low) = self.input_low {
+                let shape = input_low.shape();
+                (shape[1], shape[2], shape[3])
+            } else {
+                (0, 0, 0)
+            };
 
         let params = OctaveConv2DParams {
             batch_size: batch_size as u32,
             in_channels_high: in_channels_high as u32,
             in_channels_low: in_channels_low as u32,
-            out_channels_high: if matches!(self.path, OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh) {
+            out_channels_high: if matches!(
+                self.path,
+                OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh
+            ) {
                 out_channels as u32
             } else {
                 0
             },
-            out_channels_low: if matches!(self.path, OctaveConvPath::HighToLow | OctaveConvPath::LowToLow) {
+            out_channels_low: if matches!(
+                self.path,
+                OctaveConvPath::HighToLow | OctaveConvPath::LowToLow
+            ) {
                 out_channels as u32
             } else {
                 0
@@ -197,22 +216,34 @@ impl OctaveConv2D {
             in_width_high: in_width_high as u32,
             in_height_low: in_height_low as u32,
             in_width_low: in_width_low as u32,
-            out_height_high: if matches!(self.path, OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh) {
+            out_height_high: if matches!(
+                self.path,
+                OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh
+            ) {
                 out_height as u32
             } else {
                 0
             },
-            out_width_high: if matches!(self.path, OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh) {
+            out_width_high: if matches!(
+                self.path,
+                OctaveConvPath::HighToHigh | OctaveConvPath::LowToHigh
+            ) {
                 out_width as u32
             } else {
                 0
             },
-            out_height_low: if matches!(self.path, OctaveConvPath::HighToLow | OctaveConvPath::LowToLow) {
+            out_height_low: if matches!(
+                self.path,
+                OctaveConvPath::HighToLow | OctaveConvPath::LowToLow
+            ) {
                 out_height as u32
             } else {
                 0
             },
-            out_width_low: if matches!(self.path, OctaveConvPath::HighToLow | OctaveConvPath::LowToLow) {
+            out_width_low: if matches!(
+                self.path,
+                OctaveConvPath::HighToLow | OctaveConvPath::LowToLow
+            ) {
                 out_width as u32
             } else {
                 0
@@ -228,99 +259,115 @@ impl OctaveConv2D {
             },
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("octave_conv2d_params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("octave_conv2d_params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("octave_conv2d_shader"));
 
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("octave_conv2d_bind_group_layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("octave_conv2d_bind_group_layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("octave_conv2d_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("octave_conv2d_pipeline_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("octave_conv2d_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("octave_conv2d_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         // Create bind group entries - use dummy buffers for None inputs
         let dummy_buffer = device.create_buffer_f32(1)?;
-        let input_high_buffer = self.input_high.as_ref().map(|t| t.buffer()).unwrap_or(&dummy_buffer);
-        let input_low_buffer = self.input_low.as_ref().map(|t| t.buffer()).unwrap_or(&dummy_buffer);
+        let input_high_buffer = self
+            .input_high
+            .as_ref()
+            .map(|t| t.buffer())
+            .unwrap_or(&dummy_buffer);
+        let input_low_buffer = self
+            .input_low
+            .as_ref()
+            .map(|t| t.buffer())
+            .unwrap_or(&dummy_buffer);
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("octave_conv2d_bind_group"),
@@ -353,9 +400,11 @@ impl OctaveConv2D {
             ],
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("octave_conv2d_encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("octave_conv2d_encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -366,10 +415,10 @@ impl OctaveConv2D {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             let workgroups_z = batch_size * out_channels;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
         }
@@ -430,16 +479,14 @@ mod tests {
     async fn test_octave_conv2d_basic() {
         let device = get_test_device().await;
 
-        let input_high = Tensor::from_vec_on(
-            vec![1.0; 1 * 3 * 4 * 4],
-            vec![1, 3, 4, 4],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-        let weight = Tensor::from_vec_on(vec![0.1; 4 * 3 * 3 * 3], vec![4, 3, 3, 3], device.clone())
-            .await
-            .unwrap();
+        let input_high =
+            Tensor::from_vec_on(vec![1.0; 1 * 3 * 4 * 4], vec![1, 3, 4, 4], device.clone())
+                .await
+                .unwrap();
+        let weight =
+            Tensor::from_vec_on(vec![0.1; 4 * 3 * 3 * 3], vec![4, 3, 3, 3], device.clone())
+                .await
+                .unwrap();
         let bias = Tensor::from_vec_on(vec![0.0; 4], vec![4], device.clone())
             .await
             .unwrap();

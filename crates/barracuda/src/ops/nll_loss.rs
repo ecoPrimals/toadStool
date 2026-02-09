@@ -73,11 +73,7 @@ impl NLLLoss {
         let num_classes = self.log_probs.shape()[1..].iter().product::<usize>();
 
         // Output size depends on reduction
-        let output_size = if self.reduction == 0 {
-            batch_size
-        } else {
-            1
-        };
+        let output_size = if self.reduction == 0 { batch_size } else { 1 };
         let output_buffer = device.create_buffer_f32(output_size)?;
 
         // Create uniform buffer for parameters
@@ -97,11 +93,13 @@ impl NLLLoss {
             reduction: self.reduction,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NLLLoss Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("NLLLoss Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create weight buffer (use ones if not provided)
         let ones_buffer;
@@ -109,11 +107,13 @@ impl NLLLoss {
             w.buffer()
         } else {
             let ones = vec![1.0f32; num_classes];
-            ones_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("NLLLoss Weight"),
-                contents: bytemuck::cast_slice(&ones),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
+            ones_buffer = device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NLLLoss Weight"),
+                    contents: bytemuck::cast_slice(&ones),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
             &ones_buffer
         };
 
@@ -121,61 +121,64 @@ impl NLLLoss {
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("NLLLoss Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("NLLLoss Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("NLLLoss Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -206,23 +209,30 @@ impl NLLLoss {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("NLLLoss Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("NLLLoss Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("NLLLoss Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("NLLLoss Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("NLLLoss Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NLLLoss Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -234,9 +244,9 @@ impl NLLLoss {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -277,13 +287,9 @@ mod tests {
         .await
         .unwrap();
 
-        let targets = Tensor::from_vec_on(
-            vec![0.0, 1.0],
-            vec![batch_size],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let targets = Tensor::from_vec_on(vec![0.0, 1.0], vec![batch_size], device.clone())
+            .await
+            .unwrap();
 
         let output = NLLLoss::new(log_probs, targets, None, None, None)
             .unwrap()

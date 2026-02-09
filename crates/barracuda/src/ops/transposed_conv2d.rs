@@ -179,8 +179,8 @@ impl TransposedConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = ((output_w + 15) / 16) as u32;
-            let workgroups_y = ((output_h + 15) / 16) as u32;
+            let workgroups_x = output_w.div_ceil(16) as u32;
+            let workgroups_y = output_h.div_ceil(16) as u32;
             let workgroups_z = out_channels as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

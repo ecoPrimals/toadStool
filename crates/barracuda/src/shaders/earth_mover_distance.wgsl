@@ -7,7 +7,13 @@
 
 struct Params {
     size: u32,
-    _padding: vec3<u32>,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
 }
 
 @group(0) @binding(0) var<storage, read> dist1: array<f32>;     // Distribution 1 (probabilities)

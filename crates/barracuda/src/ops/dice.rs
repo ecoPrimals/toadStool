@@ -87,7 +87,7 @@ impl DiceLoss {
 
         // Determine batch and elements
         let total_size = self.predictions.len();
-        let batch_size = if self.predictions.shape().len() > 0 {
+        let batch_size = if !self.predictions.shape().is_empty() {
             self.predictions.shape()[0]
         } else {
             1
@@ -231,9 +231,9 @@ impl DiceLoss {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

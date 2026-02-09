@@ -2,6 +2,12 @@
 name = "ml-inference-showcase"
 version = "0.1.0"
 edition = "2021"
+authors = ["ToadStool Contributors"]
+description = "Showcase: ML inference pipeline demonstration using ToadStool GPU runtime"
+license = "MIT"
+repository = "https://github.com/ecoPrimals/toadStool"
+keywords = ["ml", "inference", "gpu", "showcase"]
+categories = ["science", "hardware-support"]
 
 [dependencies]
 # Deep Debt Week 1: Add thiserror for comprehensive error handling

@@ -13,9 +13,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     // Get model path from args
-    let model_path = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "/home/strandgate/minimal_test.fbz".to_string());
+    let model_path = std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("Usage: cargo run --example load_to_device -- <path_to_model.fbz>");
+        eprintln!("Example: cargo run --example load_to_device -- /path/to/model.fbz");
+        std::process::exit(1);
+    });
 
     println!("📂 Loading model: {}\n", model_path);
 

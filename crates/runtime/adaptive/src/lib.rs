@@ -138,7 +138,7 @@ impl AdaptiveExecutor {
 
     /// Quick profile common operations
     ///
-    /// Profiles core operations (MatMul, LayerNorm, etc.) to establish baseline.
+    /// Profiles core operations (`MatMul`, `LayerNorm`, etc.) to establish baseline.
     /// Takes ~10 seconds on first run, results cached for future runs.
     async fn quick_profile(
         profiler: &RuntimeProfiler,
@@ -187,7 +187,7 @@ impl AdaptiveExecutor {
 
     /// Get GPU fingerprint
     #[must_use]
-    pub fn fingerprint(&self) -> &GpuFingerprint {
+    pub const fn fingerprint(&self) -> &GpuFingerprint {
         &self.fingerprint
     }
 

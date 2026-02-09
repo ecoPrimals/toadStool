@@ -32,8 +32,12 @@ impl Stack {
         for (i, tensor) in tensors.iter().enumerate().skip(1) {
             if tensor.shape() != first_shape {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!("All tensors must have same shape. Tensor 0: {:?}, Tensor {}: {:?}", 
-                        first_shape, i, tensor.shape()),
+                    message: format!(
+                        "All tensors must have same shape. Tensor 0: {:?}, Tensor {}: {:?}",
+                        first_shape,
+                        i,
+                        tensor.shape()
+                    ),
                 });
             }
         }
@@ -44,10 +48,7 @@ impl Stack {
             });
         }
 
-        Ok(Self {
-            tensors,
-            dim,
-        })
+        Ok(Self { tensors, dim })
     }
 
     /// Get the WGSL shader source
@@ -71,9 +72,11 @@ impl Stack {
         let input_buffer = device.create_buffer_f32(input_size)?;
 
         // Copy each tensor buffer directly to the concatenated buffer
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Stack Copy Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Stack Copy Encoder"),
+            });
 
         for (i, tensor) in self.tensors.iter().enumerate() {
             let offset = i * tensor_size * std::mem::size_of::<f32>();
@@ -108,55 +111,56 @@ impl Stack {
             stack_dim: self.dim as u32,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Stack Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Stack Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("Stack Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Stack Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -179,30 +183,31 @@ impl Stack {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("Stack Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Stack Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create pipeline
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("Stack Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            },
-        );
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Stack Encoder"),
-            },
-        );
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -214,9 +219,9 @@ impl Stack {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -245,7 +250,7 @@ mod tests {
         let device = get_test_device().await;
         let t1 = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
         let t2 = Tensor::from_data(&[3.0, 4.0], vec![2], device.clone()).unwrap();
-        
+
         let stacked = Stack::new(vec![t1, t2], 0).unwrap().execute().unwrap();
         assert_eq!(stacked.shape(), &vec![2, 2]);
     }
@@ -256,7 +261,7 @@ mod tests {
         let tensors: Vec<Tensor> = (0..5)
             .map(|i| Tensor::from_data(&[i as f32; 4], vec![2, 2], device.clone()).unwrap())
             .collect();
-        
+
         let stacked = Stack::new(tensors, 0).unwrap().execute().unwrap();
         assert_eq!(stacked.shape(), &vec![5, 2, 2]);
     }
@@ -272,7 +277,7 @@ mod tests {
         let device = get_test_device().await;
         let t1 = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
         let t2 = Tensor::from_data(&[3.0, 4.0, 5.0], vec![3], device.clone()).unwrap();
-        
+
         assert!(Stack::new(vec![t1, t2], 0).is_err());
     }
 
@@ -281,7 +286,7 @@ mod tests {
         let device = get_test_device().await;
         let t1 = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
         let t2 = Tensor::from_data(&[3.0, 4.0], vec![2], device.clone()).unwrap();
-        
+
         assert!(Stack::new(vec![t1, t2], 10).is_err());
     }
 }

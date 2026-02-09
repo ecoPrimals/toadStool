@@ -33,9 +33,10 @@ impl Default for WorkloadScheduler {
 }
 
 /// Scheduling strategies
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum SchedulingStrategy {
     /// Single substrate (no parallelism)
+    #[default]
     Single,
 
     /// Data parallelism (split data across substrates)
@@ -46,12 +47,6 @@ pub enum SchedulingStrategy {
 
     /// Hybrid (mix of data and pipeline)
     Hybrid,
-}
-
-impl Default for SchedulingStrategy {
-    fn default() -> Self {
-        Self::Single
-    }
 }
 
 /// Schedule for workload execution

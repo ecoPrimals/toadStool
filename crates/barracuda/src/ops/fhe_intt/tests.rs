@@ -6,7 +6,7 @@ use super::*;
 fn test_modular_inverse() {
     // Test: 3^(-1) mod 7 = 5 (because 3 * 5 = 15 ≡ 1 mod 7)
     assert_eq!(compute_modular_inverse(3, 7), 5);
-    
+
     // Test: 4^(-1) mod 17 = 13 (because 4 * 13 = 52 ≡ 1 mod 17)
     assert_eq!(compute_modular_inverse(4, 17), 13);
 }

@@ -20,7 +20,8 @@ struct Params {
 struct Params2D {
     rows: u32,
     cols: u32,
-    _padding: [u32; 2],
+    _pad0: u32,
+    _pad1: u32,
 }
 @group(0) @binding(3) var<uniform> params_2d: Params2D;
 

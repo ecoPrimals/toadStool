@@ -18,11 +18,11 @@ use wgpu::util::DeviceExt;
 /// Updates positions and velocities for one time step.
 /// Requires forces at both t and t+Δt.
 pub struct VelocityVerlet {
-    positions: Tensor,      // [N, 3]
-    velocities: Tensor,     // [N, 3]
-    forces_old: Tensor,     // [N, 3] at time t
-    forces_new: Tensor,     // [N, 3] at time t+Δt
-    masses: Tensor,         // [N]
+    positions: Tensor,  // [N, 3]
+    velocities: Tensor, // [N, 3]
+    forces_old: Tensor, // [N, 3] at time t
+    forces_new: Tensor, // [N, 3] at time t+Δt
+    masses: Tensor,     // [N]
     dt: f32,
 }
 
@@ -89,7 +89,7 @@ impl VelocityVerlet {
 
         // Create output buffers
         let buffer_size = (n_particles * 3 * std::mem::size_of::<f32>()) as u64;
-        
+
         let positions_new_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("VV Positions New"),
             size: buffer_size,
@@ -296,23 +296,17 @@ impl VelocityVerlet {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        let positions_new = Tensor::from_buffer(
-            positions_new_buffer,
-            vec![n_particles, 3],
-            device.clone(),
-        );
+        let positions_new =
+            Tensor::from_buffer(positions_new_buffer, vec![n_particles, 3], device.clone());
 
-        let velocities_new = Tensor::from_buffer(
-            velocities_new_buffer,
-            vec![n_particles, 3],
-            device.clone(),
-        );
+        let velocities_new =
+            Tensor::from_buffer(velocities_new_buffer, vec![n_particles, 3], device.clone());
 
         Ok((positions_new, velocities_new))
     }
@@ -348,7 +342,7 @@ mod tests {
         let f_old_check = f_old_tensor.to_vec().unwrap();
         let f_new_check = f_new_tensor.to_vec().unwrap();
         let mass_check = mass_tensor.to_vec().unwrap();
-        
+
         println!("Input positions: {:?}", pos_check);
         println!("Input velocities: {:?}", vel_check);
         println!("Input forces_old: {:?}", f_old_check);

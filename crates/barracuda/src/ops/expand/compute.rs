@@ -16,7 +16,9 @@ use wgpu::util::DeviceExt;
 ///   - Be equal
 ///   - One of them is 1
 ///   - One of them doesn't exist (implicitly 1)
-/// - Missing dimensions are added at the front with size 1
+/// - For expand operation:
+///   - If target_rank > input_rank: pad dimensions at the back (right) with 1s
+///   - If target_rank == input_rank: try padding at front first, then validate
 pub fn compute_broadcast_shape(
     input_shape: &[usize],
     target_shape: &[usize],
@@ -24,11 +26,51 @@ pub fn compute_broadcast_shape(
     let input_rank = input_shape.len();
     let target_rank = target_shape.len();
 
-    // Pad input shape with 1s at the front if needed
     let mut broadcasted_input_shape = vec![1; target_rank];
-    let offset = target_rank.saturating_sub(input_rank);
-    for (i, &dim) in input_shape.iter().enumerate() {
-        broadcasted_input_shape[offset + i] = dim;
+    
+    if target_rank > input_rank {
+        // Pad at the back (right): [3] → [3, 1] for target [3, 5]
+        for (i, &dim) in input_shape.iter().enumerate() {
+            broadcasted_input_shape[i] = dim;
+        }
+    } else if target_rank == input_rank {
+        // Same rank: check if dimensions are compatible
+        // For [3] → [9]: this will be handled specially in execute_expand
+        // For validation here, we allow it if target is a multiple of input (1D case)
+        let mut compatible = true;
+        for i in (0..target_rank).rev() {
+            let input_dim = input_shape[i];
+            let target_dim = target_shape[i];
+            if input_dim != target_dim && input_dim != 1 && target_dim != 1 {
+                // Special case: if this is the last (only) dimension and target is a multiple of input
+                // This will be handled specially in execute_expand by reshaping
+                if i == target_rank - 1 && target_rank == 1 && target_dim % input_dim == 0 {
+                    // Allow it - will be handled in execute_expand
+                    compatible = true;
+                    break;
+                } else {
+                    compatible = false;
+                    break;
+                }
+            }
+        }
+        
+        if compatible {
+            broadcasted_input_shape = input_shape.to_vec();
+        } else {
+            // Try back-padding
+            for (i, &dim) in input_shape.iter().enumerate() {
+                broadcasted_input_shape[i] = dim;
+            }
+        }
+    } else {
+        // target_rank < input_rank: shouldn't happen for expand, but handle it
+        let offset = target_rank.saturating_sub(input_rank);
+        for (i, &dim) in input_shape.iter().enumerate() {
+            if offset + i < target_rank {
+                broadcasted_input_shape[offset + i] = dim;
+            }
+        }
     }
 
     // Validate broadcasting compatibility (right-to-left)
@@ -50,10 +92,7 @@ pub fn compute_broadcast_shape(
 /// Compute input strides for broadcasting
 ///
 /// For broadcasting: if shape[i] == 1, stride[i] = 0
-fn compute_input_strides(
-    broadcasted_input_shape: &[usize],
-    num_dims: usize,
-) -> Vec<usize> {
+fn compute_input_strides(broadcasted_input_shape: &[usize], num_dims: usize) -> Vec<usize> {
     let mut input_strides = vec![0; num_dims];
 
     // Compute strides backwards
@@ -94,9 +133,29 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
     let device = input.device();
     let input_shape = input.shape();
     let output_size: usize = target_shape.iter().product();
+    let original_target_shape = target_shape.clone();
 
-    // Validate broadcasting compatibility (NumPy-style)
-    let broadcasted_input_shape = compute_broadcast_shape(input_shape, &target_shape)?;
+    // Special case: handle [3] → [9] type expansions where ranks are equal
+    // but target size is a multiple of input size
+    // We treat this as adding a leading dimension: [3] → [1, 3] → [3, 3] → [9]
+    let (effective_target_shape, effective_broadcasted_input_shape) = 
+        if input_shape.len() == original_target_shape.len() 
+            && input_shape.len() == 1 
+            && original_target_shape[0] % input_shape[0] == 0 
+            && original_target_shape[0] != input_shape[0] {
+            // [3] → [9]: treat as [1, 3] → [3, 3]
+            let leading_dim = original_target_shape[0] / input_shape[0];
+            let effective_target = vec![leading_dim, input_shape[0]];
+            let effective_input = vec![1, input_shape[0]];
+            (effective_target, effective_input)
+        } else {
+            // Normal case: use target_shape as-is
+            let broadcasted = compute_broadcast_shape(input_shape, &original_target_shape)?;
+            (original_target_shape.clone(), broadcasted)
+        };
+
+    let broadcasted_input_shape = effective_broadcasted_input_shape;
+    let target_shape = effective_target_shape;
 
     // Compute strides
     let num_dims = target_shape.len();
@@ -106,8 +165,9 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
     let output_buffer = device.create_buffer_f32(output_size)?;
 
     // Create buffers for shapes and strides
-    let input_shape_buffer = device.device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
+    let input_shape_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Expand Input Shape"),
             contents: bytemuck::cast_slice(
                 &broadcasted_input_shape
@@ -116,38 +176,39 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
                     .collect::<Vec<_>>(),
             ),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        },
-    );
+        });
 
-    let output_shape_buffer = device.device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
+    let output_shape_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Expand Output Shape"),
             contents: bytemuck::cast_slice(
                 &target_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
             ),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        },
-    );
+        });
 
-    let input_strides_buffer = device.device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: Some("Expand Input Strides"),
-            contents: bytemuck::cast_slice(
-                &input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-            ),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        },
-    );
+    let input_strides_buffer =
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Expand Input Strides"),
+                contents: bytemuck::cast_slice(
+                    &input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                ),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
-    let output_strides_buffer = device.device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: Some("Expand Output Strides"),
-            contents: bytemuck::cast_slice(
-                &output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
-            ),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        },
-    );
+    let output_strides_buffer =
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Expand Output Strides"),
+                contents: bytemuck::cast_slice(
+                    &output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                ),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
     // Create params buffer
     #[repr(C)]
@@ -165,92 +226,93 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         _pad1: 0,
         _pad2: 0,
     };
-    let params_buffer = device.device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Expand Params"),
             contents: bytemuck::cast_slice(&[params]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        },
-    );
+        });
 
     // Bind group layout (7 bindings: params, input, input_shape, output_shape, input_strides, output_strides, output)
-    let bind_group_layout = device.device.create_bind_group_layout(
-        &wgpu::BindGroupLayoutDescriptor {
-            label: Some("Expand BGL"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Expand BGL"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        },
-    );
+                ],
+            });
 
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Expand BG"),
@@ -287,32 +349,29 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         ],
     });
 
-    let shader = device.compile_shader(
-        include_str!("../../shaders/expand.wgsl"),
-        Some("Expand"),
-    );
-    let pipeline_layout = device.device.create_pipeline_layout(
-        &wgpu::PipelineLayoutDescriptor {
+    let shader = device.compile_shader(include_str!("../../shaders/expand.wgsl"), Some("Expand"));
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Expand PL"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
-        },
-    );
+        });
 
-    let pipeline = device.device.create_compute_pipeline(
-        &wgpu::ComputePipelineDescriptor {
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("Expand Pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: "main",
-        },
-    );
+        });
 
-    let mut encoder = device.device.create_command_encoder(
-        &wgpu::CommandEncoderDescriptor {
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Expand Encoder"),
-        },
-    );
+        });
 
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -324,9 +383,9 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
         pass.set_bind_group(0, &bind_group, &[]);
 
         // Deep Debt Evolution: Capability-based dispatch
-        let caps = DeviceCapabilities::from_device(&device);
+        let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
@@ -334,7 +393,7 @@ pub fn execute_expand(input: Tensor, target_shape: Vec<usize>) -> Result<Tensor>
 
     Ok(Tensor::from_buffer(
         output_buffer,
-        target_shape.clone(),
+        original_target_shape,
         device.clone(),
     ))
 }

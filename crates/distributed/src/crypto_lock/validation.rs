@@ -69,10 +69,7 @@ impl SecurityPermissionValidator {
                         // Try to create provider from handle
                         use crate::security_provider::factory::SecurityProviderFactory;
 
-                        match SecurityProviderFactory::create_from_handle(&handle).await {
-                            Ok(provider) => Some(provider),
-                            Err(_) => None,
-                        }
+                        (SecurityProviderFactory::create_from_handle(&handle).await).ok()
                     }
                     Err(_) => None,
                 }

@@ -3,7 +3,7 @@
 //! This module contains the GPU execution for SGD optimizer
 //! with optional momentum and weight decay.
 
-use super::{SGD, SGDParams};
+use super::{SGDParams, SGD};
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
@@ -202,9 +202,9 @@ impl SGD {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((size as u32) + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

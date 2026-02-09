@@ -5,7 +5,7 @@
 //! 2. Output projection pass: Project concatenated heads through output matrix
 
 use super::{MHAProjectionParams, MultiHeadAttention};
-use crate::device::{DeviceCapabilities, WorkloadType, WgpuDevice};
+use crate::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 use crate::error::Result;
 use wgpu::util::DeviceExt;
 
@@ -40,64 +40,67 @@ pub(super) fn execute_projection(
         head_dim: op.head_dim() as u32,
     };
 
-    let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("MHA Projection Params"),
-        contents: bytemuck::cast_slice(&[params]),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MHA Projection Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
     let shader_module = device.compile_shader(
         MultiHeadAttention::wgsl_shader_projection(),
         Some("MHA Projection Shader"),
     );
 
-    let bind_group_layout = device.device.create_bind_group_layout(
-        &wgpu::BindGroupLayoutDescriptor {
-            label: Some("MHA Projection Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("MHA Projection Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        },
-    );
+                ],
+            });
 
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("MHA Projection Bind Group"),
@@ -122,22 +125,22 @@ pub(super) fn execute_projection(
         ],
     });
 
-    let pipeline_layout = device.device.create_pipeline_layout(
-        &wgpu::PipelineLayoutDescriptor {
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("MHA Projection Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
-        },
-    );
+        });
 
-    let pipeline = device.device.create_compute_pipeline(
-        &wgpu::ComputePipelineDescriptor {
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("MHA Projection Pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader_module,
             entry_point: "main",
-        },
-    );
+        });
 
     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
         label: Some("MHA Projection Pass"),
@@ -149,13 +152,13 @@ pub(super) fn execute_projection(
     // Deep Debt Evolution: Capability-based dispatch
     // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
     // We use capability awareness to determine optimal tile count
-    let caps = DeviceCapabilities::from_device(&device);
+    let caps = DeviceCapabilities::from_device(device);
     let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
     // Tile size is shader-constrained to 16x16, but we ensure capability awareness
     const TILE_SIZE: u32 = 16;
-    let workgroups_x = ((op.batch_size() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-    let workgroups_y = ((op.num_heads() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-    let workgroups_z = ((op.seq_len() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
+    let workgroups_x = (op.batch_size() as u32).div_ceil(TILE_SIZE).max(1);
+    let workgroups_y = (op.num_heads() as u32).div_ceil(TILE_SIZE).max(1);
+    let workgroups_z = (op.seq_len() as u32).div_ceil(TILE_SIZE).max(1);
     compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
 
     Ok(output_buffer)
@@ -179,64 +182,67 @@ pub(super) fn execute_output_projection(
         head_dim: op.head_dim() as u32,
     };
 
-    let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("MHA Output Params"),
-        contents: bytemuck::cast_slice(&[params]),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MHA Output Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
     let shader_module = device.compile_shader(
         MultiHeadAttention::wgsl_shader_output(),
         Some("MHA Output Shader"),
     );
 
-    let bind_group_layout = device.device.create_bind_group_layout(
-        &wgpu::BindGroupLayoutDescriptor {
-            label: Some("MHA Output Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("MHA Output Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        },
-    );
+                ],
+            });
 
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("MHA Output Bind Group"),
@@ -261,22 +267,22 @@ pub(super) fn execute_output_projection(
         ],
     });
 
-    let pipeline_layout = device.device.create_pipeline_layout(
-        &wgpu::PipelineLayoutDescriptor {
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("MHA Output Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
-        },
-    );
+        });
 
-    let pipeline = device.device.create_compute_pipeline(
-        &wgpu::ComputePipelineDescriptor {
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("MHA Output Pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader_module,
             entry_point: "main",
-        },
-    );
+        });
 
     let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
         label: Some("MHA Output Pass"),
@@ -288,13 +294,13 @@ pub(super) fn execute_output_projection(
     // Deep Debt Evolution: Capability-based dispatch
     // Shader uses fixed 16x16 tiles (workgroup_size(16, 16, 1))
     // We use capability awareness to determine optimal tile count
-    let caps = DeviceCapabilities::from_device(&device);
+    let caps = DeviceCapabilities::from_device(device);
     let _optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
     // Tile size is shader-constrained to 16x16, but we ensure capability awareness
     const TILE_SIZE: u32 = 16;
-    let workgroups_x = ((op.batch_size() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-    let workgroups_y = ((op.seq_len() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
-    let workgroups_z = ((op.d_model() as u32 + TILE_SIZE - 1) / TILE_SIZE).max(1);
+    let workgroups_x = (op.batch_size() as u32).div_ceil(TILE_SIZE).max(1);
+    let workgroups_y = (op.seq_len() as u32).div_ceil(TILE_SIZE).max(1);
+    let workgroups_z = (op.d_model() as u32).div_ceil(TILE_SIZE).max(1);
     compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
 
     Ok(output_buffer)

@@ -68,9 +68,11 @@ impl ProtocolClient {
         }
 
         // Emit event
-        let _ = self.event_bus.send(ProtocolEvent::ServiceRegistered {
+        if let Err(e) = self.event_bus.send(ProtocolEvent::ServiceRegistered {
             service: service_info.clone(),
-        });
+        }) {
+            tracing::debug!("Event bus send failed (no listeners): {e}");
+        }
 
         info!("Successfully registered service: {}", service_info.id);
         Ok(())
@@ -177,15 +179,19 @@ impl ProtocolClient {
             .await?;
 
         // Emit events
-        let _ = self.event_bus.send(ProtocolEvent::MessageSent {
+        if let Err(e) = self.event_bus.send(ProtocolEvent::MessageSent {
             message_id: message.id,
             destination: destination.to_string(),
-        });
+        }) {
+            tracing::debug!("Event bus send failed (no listeners): {e}");
+        }
 
-        let _ = self.event_bus.send(ProtocolEvent::MessageReceived {
+        if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
             message_id: response.id,
             source: response.source.clone(),
-        });
+        }) {
+            tracing::debug!("Event bus send failed (no listeners): {e}");
+        }
 
         info!("Successfully sent message to: {}", destination);
         Ok(response)
@@ -213,10 +219,12 @@ impl ProtocolClient {
             let result = handler.handle_message(message.clone())?;
 
             // Emit event
-            let _ = self.event_bus.send(ProtocolEvent::MessageReceived {
+            if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
                 message_id: message.id,
                 source: message.source,
-            });
+            }) {
+                tracing::debug!("Event bus send failed (no listeners): {e}");
+            }
 
             return Ok(result);
         }

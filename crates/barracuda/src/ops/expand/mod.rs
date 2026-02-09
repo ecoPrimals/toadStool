@@ -31,7 +31,10 @@ pub struct Expand {
 impl Expand {
     /// Create a new expand operation
     pub fn new(input: Tensor, target_shape: Vec<usize>) -> Self {
-        Self { input, target_shape }
+        Self {
+            input,
+            target_shape,
+        }
     }
 
     /// Execute the expand operation

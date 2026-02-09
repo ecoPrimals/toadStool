@@ -32,7 +32,7 @@ impl RandomPerspective {
                 format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
             ));
         }
-        
+
         Ok(Self {
             input,
             distortion_scale,
@@ -49,11 +49,11 @@ impl RandomPerspective {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         let channels = shape[0];
         let height = shape[1];
         let width = shape[2];
-        
+
         // Generate random corner displacements from seed (CPU-side, deterministic)
         let mut rng = self.seed;
         let mut rand = || {
@@ -88,7 +88,7 @@ impl RandomPerspective {
                 src_corners[3].1 + rand() * height as f32,
             ),
         ];
-        
+
         let output_size = channels * height * width;
 
         // Create buffers
@@ -124,48 +124,53 @@ impl RandomPerspective {
             dst_corner3: [dst_corners[3].0, dst_corners[3].1],
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("RandomPerspective Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RandomPerspective Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("RandomPerspective Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("RandomPerspective Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -188,25 +193,34 @@ impl RandomPerspective {
         });
 
         // Create compute pipeline
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RandomPerspective Shader"));
+        let shader_module =
+            device.compile_shader(Self::wgsl_shader(), Some("RandomPerspective Shader"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("RandomPerspective Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("RandomPerspective Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("RandomPerspective Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("RandomPerspective Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("RandomPerspective Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("RandomPerspective Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -215,12 +229,12 @@ impl RandomPerspective {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
-            let workgroups_x = (width as u32 + wg_x - 1) / wg_x;
-            let workgroups_y = (height as u32 + wg_y - 1) / wg_y;
+            let workgroups_x = (width as u32).div_ceil(wg_x);
+            let workgroups_y = (height as u32).div_ceil(wg_y);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -257,7 +271,9 @@ mod tests {
     #[tokio::test]
     async fn test_random_perspective() {
         let image_data = vec![1.0; 3 * 100 * 100];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 100, 100]).await.unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 100, 100])
+            .await
+            .unwrap();
         let transformed_tensor = tensor.random_perspective(0.2, 33333).unwrap();
         let transformed = transformed_tensor.to_vec().unwrap();
         assert_eq!(transformed.len(), image_data.len());

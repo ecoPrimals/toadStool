@@ -5,9 +5,9 @@
 //!
 //! **CRITICAL FOR PPPM**: This operation unblocks molecular dynamics!
 
+use super::Fft1D;
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use super::Fft1D;
 
 /// 3D Complex FFT operation
 pub struct Fft3D {
@@ -20,17 +20,28 @@ pub struct Fft3D {
 impl Fft3D {
     pub fn new(input: Tensor, nx: u32, ny: u32, nz: u32) -> Result<Self> {
         let shape = input.shape();
-        
+
         if shape.len() != 4 {
-            return Err(BarracudaError::Device("FFT 3D input must have 4 dimensions [nx, ny, nz, 2]".to_string()));
+            return Err(BarracudaError::Device(
+                "FFT 3D input must have 4 dimensions [nx, ny, nz, 2]".to_string(),
+            ));
         }
-        
-        if shape[0] != nx as usize || shape[1] != ny as usize || shape[2] != nz as usize || shape[3] != 2 {
-            return Err(BarracudaError::Device(format!("FFT 3D shape mismatch: expected [{}, {}, {}, 2], got {:?}", nx, ny, nz, shape)));
+
+        if shape[0] != nx as usize
+            || shape[1] != ny as usize
+            || shape[2] != nz as usize
+            || shape[3] != 2
+        {
+            return Err(BarracudaError::Device(format!(
+                "FFT 3D shape mismatch: expected [{}, {}, {}, 2], got {:?}",
+                nx, ny, nz, shape
+            )));
         }
-        
+
         if nx & (nx - 1) != 0 || ny & (ny - 1) != 0 || nz & (nz - 1) != 0 {
-            return Err(BarracudaError::Device("FFT 3D dimensions must be powers of 2".to_string()));
+            return Err(BarracudaError::Device(
+                "FFT 3D dimensions must be powers of 2".to_string(),
+            ));
         }
 
         Ok(Self { input, nx, ny, nz })
@@ -38,7 +49,7 @@ impl Fft3D {
 
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        
+
         // FFT along X
         let mut x_results = Vec::new();
         for y in 0..self.ny {
@@ -49,9 +60,13 @@ impl Fft3D {
                 x_results.extend(fft.execute()?.to_vec()?);
             }
         }
-        
-        let x_transformed = Tensor::from_data(&x_results, vec![self.nx as usize, self.ny as usize, self.nz as usize, 2], device.clone())?;
-        
+
+        let x_transformed = Tensor::from_data(
+            &x_results,
+            vec![self.nx as usize, self.ny as usize, self.nz as usize, 2],
+            device.clone(),
+        )?;
+
         // FFT along Y
         let mut y_results = Vec::new();
         for x in 0..self.nx {
@@ -62,9 +77,13 @@ impl Fft3D {
                 y_results.extend(fft.execute()?.to_vec()?);
             }
         }
-        
-        let y_transformed = Tensor::from_data(&y_results, vec![self.nx as usize, self.ny as usize, self.nz as usize, 2], device.clone())?;
-        
+
+        let y_transformed = Tensor::from_data(
+            &y_results,
+            vec![self.nx as usize, self.ny as usize, self.nz as usize, 2],
+            device.clone(),
+        )?;
+
         // FFT along Z
         let mut z_results = Vec::new();
         for x in 0..self.nx {
@@ -75,10 +94,14 @@ impl Fft3D {
                 z_results.extend(fft.execute()?.to_vec()?);
             }
         }
-        
-        Ok(Tensor::from_data(&z_results, vec![self.nx as usize, self.ny as usize, self.nz as usize, 2], device.clone())?)
+
+        Tensor::from_data(
+            &z_results,
+            vec![self.nx as usize, self.ny as usize, self.nz as usize, 2],
+            device.clone(),
+        )
     }
-    
+
     fn extract_x_pencil(&self, y: u32, z: u32) -> Result<Vec<f32>> {
         let data = self.input.to_vec()?;
         let mut pencil = Vec::with_capacity((self.nx * 2) as usize);
@@ -89,7 +112,7 @@ impl Fft3D {
         }
         Ok(pencil)
     }
-    
+
     fn extract_y_pencil(&self, tensor: &Tensor, x: u32, z: u32) -> Result<Vec<f32>> {
         let data = tensor.to_vec()?;
         let mut pencil = Vec::with_capacity((self.ny * 2) as usize);
@@ -100,7 +123,7 @@ impl Fft3D {
         }
         Ok(pencil)
     }
-    
+
     fn extract_z_pencil(&self, tensor: &Tensor, x: u32, y: u32) -> Result<Vec<f32>> {
         let data = tensor.to_vec()?;
         let mut pencil = Vec::with_capacity((self.nz * 2) as usize);
@@ -122,15 +145,15 @@ mod tests {
     #[tokio::test]
     async fn test_fft_3d_simple() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        
+
         // 2×2×2 FFT test
         let data = vec![
-            1.0f32, 0.0, 2.0, 0.0,  // (0,0,:)
-            3.0, 0.0, 4.0, 0.0,     // (0,1,:)
-            5.0, 0.0, 6.0, 0.0,     // (1,0,:)
-            7.0, 0.0, 8.0, 0.0,     // (1,1,:)
+            1.0f32, 0.0, 2.0, 0.0, // (0,0,:)
+            3.0, 0.0, 4.0, 0.0, // (0,1,:)
+            5.0, 0.0, 6.0, 0.0, // (1,0,:)
+            7.0, 0.0, 8.0, 0.0, // (1,1,:)
         ];
-        
+
         let tensor = Tensor::from_data(&data, vec![2, 2, 2, 2], device.clone()).unwrap();
         let fft = Fft3D::new(tensor, 2, 2, 2).unwrap();
         let result = fft.execute().unwrap();

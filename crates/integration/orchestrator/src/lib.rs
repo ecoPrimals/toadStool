@@ -1,21 +1,23 @@
 //! # Generic Orchestrator Integration
 //!
-//! **LEGACY CRATE**: This crate contains legacy HTTP-based orchestrator patterns.
+//! **LEGACY CRATE - DEPRECATED**
 //!
-//! **MODERN APPROACH**: Use Songbird directly for orchestration capabilities.
+//! This crate contains legacy HTTP-based orchestrator patterns and is being
+//! phased out in favor of direct Songbird integration via Unix socket RPC.
 //!
-//! ## Evolution Path
+//! ## Migration
 //!
-//! This crate is being phased out in favor of direct Songbird integration.
-//! New code should use:
-//! - `toadstool-distributed/songbird_integration` for orchestration
-//! - Unix socket RPC for primal-to-primal communication
+//! Use these replacements:
+//! - `toadstool-distributed::songbird_integration::SongbirdClient` for orchestration
+//! - `toadstool-common::primal_sockets::discover_coordination_socket()` for discovery
+//! - Unix socket RPC for all primal-to-primal communication
 //!
-//! ## Status
-//!
-//! - **Compilation**: Enabled (stub implementation)
-//! - **Usage**: Deprecated
-//! - **Migration**: Use Songbird integration directly
+//! All methods in this crate return stub responses and log deprecation warnings.
+//! Remove usage from new code.
+#![deprecated(
+    since = "0.2.0",
+    note = "Use toadstool-distributed::songbird_integration instead"
+)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

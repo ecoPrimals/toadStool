@@ -186,13 +186,9 @@ async fn test_local_attention_precision() {
 async fn test_local_attention_window_size_validation() {
     let device = get_test_device().await;
 
-    let q = Tensor::from_vec_on(
-        vec![0.5; 1 * 1 * 4 * 2],
-        vec![1, 1, 4, 2],
-        device.clone(),
-    )
-    .await
-    .unwrap();
+    let q = Tensor::from_vec_on(vec![0.5; 1 * 1 * 4 * 2], vec![1, 1, 4, 2], device.clone())
+        .await
+        .unwrap();
     let k = q.clone();
     let v = q.clone();
 

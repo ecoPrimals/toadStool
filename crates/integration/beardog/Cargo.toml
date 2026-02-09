@@ -29,6 +29,9 @@ toadstool-common = { path = "../../core/common" }
 [dev-dependencies]
 tokio-test = { workspace = true }
 
+[lints]
+workspace = true
+
 [features]
 default = []
 

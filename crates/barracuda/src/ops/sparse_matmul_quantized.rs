@@ -290,7 +290,7 @@ pub async fn sparse_matmul_quantized(
         } else {
             max_invocations.max(64) // Fallback: use device max or minimum viable size
         };
-        let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = output_size.div_ceil(optimal_wg_size);
         cpass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 

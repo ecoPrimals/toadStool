@@ -226,13 +226,13 @@ impl GroupedConv2D {
         padding: u32,
     ) -> Result<Self> {
         anyhow::ensure!(
-            in_channels % groups == 0,
+            in_channels.is_multiple_of(groups),
             "in_channels ({}) must be divisible by groups ({})",
             in_channels,
             groups
         );
         anyhow::ensure!(
-            out_channels % groups == 0,
+            out_channels.is_multiple_of(groups),
             "out_channels ({}) must be divisible by groups ({})",
             out_channels,
             groups

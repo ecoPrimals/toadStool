@@ -218,8 +218,9 @@ async fn benchmark_neuromorphic(
     _input_size: usize,
 ) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
     // For neuromorphic, we need a model
-    let model_path = std::env::var("AKIDA_TEST_MODEL")
-        .unwrap_or_else(|_| "/home/strandgate/minimal_test.fbz".to_string());
+    let model_path = std::env::args().nth(1).unwrap_or_else(|| {
+        std::env::var("AKIDA_TEST_MODEL").unwrap_or_else(|_| "minimal_test.fbz".to_string())
+    });
 
     let model = Model::from_file(&model_path)?;
     let mut device = manager.open_first()?;
@@ -249,7 +250,7 @@ async fn benchmark_neuromorphic(
 
 fn validate_output(expected: &[f32], actual: &[f32]) -> String {
     if expected.len() != actual.len() {
-        return format!("❌ Size mismatch");
+        return "❌ Size mismatch".to_string();
     }
 
     let mut max_diff = 0.0f32;
@@ -261,7 +262,7 @@ fn validate_output(expected: &[f32], actual: &[f32]) -> String {
     }
 
     if max_diff < 1e-5 {
-        format!("✅ Perfect")
+        "✅ Perfect".to_string()
     } else if max_diff < 1e-3 {
         format!("✅ Good ({:.6})", max_diff)
     } else {

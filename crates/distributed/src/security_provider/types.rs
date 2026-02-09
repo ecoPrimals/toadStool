@@ -59,7 +59,7 @@ pub struct PermissionScope {
 }
 
 /// Resource limits for permissions
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceLimits {
     /// Maximum CPU cores
     pub max_cpu: Option<u32>,
@@ -72,17 +72,6 @@ pub struct ResourceLimits {
 
     /// Maximum API calls per hour
     pub max_api_calls_per_hour: Option<u64>,
-}
-
-impl Default for ResourceLimits {
-    fn default() -> Self {
-        Self {
-            max_cpu: None,
-            max_memory_gb: None,
-            max_storage_gb: None,
-            max_api_calls_per_hour: None,
-        }
-    }
 }
 
 /// Delegation information

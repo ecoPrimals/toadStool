@@ -7,8 +7,8 @@
 //! - Modern idiomatic Rust: Result<T, E>
 
 use crate::error::{BarracudaError, Result};
-use crate::tensor::Tensor;
 use crate::ops::matmul::MatMul;
+use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
 
 pub struct MatrixPower {
@@ -43,10 +43,7 @@ impl MatrixPower {
             ));
         }
 
-        Ok(Self {
-            input,
-            power,
-        })
+        Ok(Self { input, power })
     }
 
     fn wgsl_shader() -> &'static str {
@@ -80,45 +77,48 @@ impl MatrixPower {
                 _pad3: 0,
             };
 
-            let params_buffer = device.device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some("MatrixPower Identity Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                },
-            );
+            let params_buffer =
+                device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("MatrixPower Identity Params"),
+                        contents: bytemuck::cast_slice(&[params]),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    });
 
             // Compile shader
-            let shader_module = device.compile_shader(Self::wgsl_shader(), Some("MatrixPower Shader"));
+            let shader_module =
+                device.compile_shader(Self::wgsl_shader(), Some("MatrixPower Shader"));
 
             // Create bind group layout
-            let bind_group_layout = device.device.create_bind_group_layout(
-                &wgpu::BindGroupLayoutDescriptor {
-                    label: Some("MatrixPower Identity Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
+            let bind_group_layout =
+                device
+                    .device
+                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        label: Some("MatrixPower Identity Bind Group Layout"),
+                        entries: &[
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 0,
+                                visibility: wgpu::ShaderStages::COMPUTE,
+                                ty: wgpu::BindingType::Buffer {
+                                    ty: wgpu::BufferBindingType::Uniform,
+                                    has_dynamic_offset: false,
+                                    min_binding_size: None,
+                                },
+                                count: None,
                             },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 3,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 3,
+                                visibility: wgpu::ShaderStages::COMPUTE,
+                                ty: wgpu::BindingType::Buffer {
+                                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                    has_dynamic_offset: false,
+                                    min_binding_size: None,
+                                },
+                                count: None,
                             },
-                            count: None,
-                        },
-                    ],
-                },
-            );
+                        ],
+                    });
 
             // Create bind group
             let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -137,30 +137,33 @@ impl MatrixPower {
             });
 
             // Create pipeline layout
-            let pipeline_layout = device.device.create_pipeline_layout(
-                &wgpu::PipelineLayoutDescriptor {
-                    label: Some("MatrixPower Identity Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                },
-            );
+            let pipeline_layout =
+                device
+                    .device
+                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: Some("MatrixPower Identity Pipeline Layout"),
+                        bind_group_layouts: &[&bind_group_layout],
+                        push_constant_ranges: &[],
+                    });
 
             // Create pipeline
-            let pipeline = device.device.create_compute_pipeline(
-                &wgpu::ComputePipelineDescriptor {
-                    label: Some("MatrixPower Identity Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "init_identity",
-                },
-            );
+            let pipeline =
+                device
+                    .device
+                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("MatrixPower Identity Pipeline"),
+                        layout: Some(&pipeline_layout),
+                        module: &shader_module,
+                        entry_point: "init_identity",
+                    });
 
             // Encode and execute
-            let mut encoder = device.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor {
-                    label: Some("MatrixPower Identity Encoder"),
-                },
-            );
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("MatrixPower Identity Encoder"),
+                    });
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -171,14 +174,18 @@ impl MatrixPower {
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
 
-                let workgroups = ((size as u32 + 15) / 16) as u32;
+                let workgroups = (size as u32).div_ceil(16);
                 pass.dispatch_workgroups(workgroups, workgroups, 1);
             }
 
             device.queue.submit(Some(encoder.finish()));
 
             let output_shape = shape.to_vec();
-            return Ok(Tensor::from_buffer(identity_buffer, output_shape, device.clone()));
+            return Ok(Tensor::from_buffer(
+                identity_buffer,
+                output_shape,
+                device.clone(),
+            ));
         }
 
         if self.power == 1 {
@@ -220,7 +227,7 @@ mod tests {
         let matrix = Tensor::from_vec_on(vec![2.0, 0.0, 0.0, 2.0], vec![2, 2], device.clone())
             .await
             .unwrap();
-        
+
         let result = MatrixPower::new(matrix, 2).unwrap().execute().unwrap();
         let output = result.to_vec().unwrap();
         // (2I)^2 = 4I
@@ -234,7 +241,7 @@ mod tests {
         let matrix = Tensor::from_vec_on(vec![5.0, 3.0, 2.0, 1.0], vec![2, 2], device.clone())
             .await
             .unwrap();
-        
+
         let result = MatrixPower::new(matrix, 0).unwrap().execute().unwrap();
         let output = result.to_vec().unwrap();
         assert!((output[0] - 1.0).abs() < 1e-5);
@@ -249,8 +256,11 @@ mod tests {
         let matrix = Tensor::from_vec_on(vec![1.0, 2.0, 3.0, 4.0], vec![2, 2], device.clone())
             .await
             .unwrap();
-        
-        let result = MatrixPower::new(matrix.clone(), 1).unwrap().execute().unwrap();
+
+        let result = MatrixPower::new(matrix.clone(), 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         let output = result.to_vec().unwrap();
         let input = matrix.to_vec().unwrap();
         assert_eq!(output, input);

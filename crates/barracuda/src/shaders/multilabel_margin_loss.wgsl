@@ -12,7 +12,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;        // [batch, num_classes] - scores
-@group(0) @binding(1) var<storage, read> target: array<f32>;       // [batch, num_classes] - binary labels
+@group(0) @binding(1) var<storage, read> target_data: array<f32>;       // [batch, num_classes] - binary labels
 @group(0) @binding(2) var<storage, read_write> output: array<f32>; // [batch] - per-sample loss
 @group(0) @binding(3) var<uniform> params: Params;
 
@@ -29,14 +29,14 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // For each positive label
     for (var pos_c: u32 = 0u; pos_c < params.num_classes; pos_c = pos_c + 1u) {
-        let is_positive = target[b * params.num_classes + pos_c] > 0.5;
+        let is_positive = target_data[b * params.num_classes + pos_c] > 0.5;
         
         if (is_positive) {
             let pos_score = input[b * params.num_classes + pos_c];
             
             // Compare with negative labels
             for (var neg_c: u32 = 0u; neg_c < params.num_classes; neg_c = neg_c + 1u) {
-                let is_negative = target[b * params.num_classes + neg_c] < 0.5;
+                let is_negative = target_data[b * params.num_classes + neg_c] < 0.5;
                 
                 if (is_negative) {
                     let neg_score = input[b * params.num_classes + neg_c];

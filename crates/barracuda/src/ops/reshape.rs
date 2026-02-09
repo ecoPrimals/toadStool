@@ -20,7 +20,6 @@
 //! data buffer itself is never modified or copied. This is the correct
 //! implementation pattern for reshape operations.
 
-
 /// Reshape parameters
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -44,19 +43,19 @@ pub struct ReshapeParams {
 /// # }
 /// ```
 ///
-    /// ## Deep Debt Note
-    ///
-    /// **This is a metadata-only operation by design.**
-    ///
-    /// Reshape is fundamentally a metadata operation - the underlying data buffer
-    /// remains unchanged, only the interpretation of its dimensions changes.
-    /// This implementation uses pure metadata (zero GPU invocation) for efficiency.
-    ///
-    /// **CPU fallback is acceptable here**: This operation does not perform any
-    /// computation - it only changes how the tensor's shape is interpreted. The
-    /// data buffer itself is never modified or copied. This is the correct
-    /// implementation pattern for reshape operations.
-    pub async fn reshape(
+/// ## Deep Debt Note
+///
+/// **This is a metadata-only operation by design.**
+///
+/// Reshape is fundamentally a metadata operation - the underlying data buffer
+/// remains unchanged, only the interpretation of its dimensions changes.
+/// This implementation uses pure metadata (zero GPU invocation) for efficiency.
+///
+/// **CPU fallback is acceptable here**: This operation does not perform any
+/// computation - it only changes how the tensor's shape is interpreted. The
+/// data buffer itself is never modified or copied. This is the correct
+/// implementation pattern for reshape operations.
+pub async fn reshape(
     _device: &wgpu::Device,
     _queue: &wgpu::Queue,
     input: &[f32],

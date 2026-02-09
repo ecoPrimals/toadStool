@@ -15,7 +15,13 @@ struct RandomRotationParams {
     height: u32,
     width: u32,
     fill_value: f32,
-    _padding: [u32; 3],
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
 }
 
 pub struct RandomRotation {
@@ -32,7 +38,10 @@ impl RandomRotation {
         if rot_shape.len() != 2 || rot_shape[1] != 4 {
             return Err(BarracudaError::invalid_op(
                 "RandomRotation",
-                format!("rotation_matrices must be 2D [batch_size, 4], got shape {:?}", rot_shape),
+                format!(
+                    "rotation_matrices must be 2D [batch_size, 4], got shape {:?}",
+                    rot_shape
+                ),
             ));
         }
 
@@ -52,11 +61,14 @@ impl RandomRotation {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_shape = self.input.shape();
-        
+
         if input_shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "RandomRotation",
-                format!("input must be 4D [batch, channels, height, width], got shape {:?}", input_shape),
+                format!(
+                    "input must be 4D [batch, channels, height, width], got shape {:?}",
+                    input_shape
+                ),
             ));
         }
 
@@ -68,7 +80,11 @@ impl RandomRotation {
         if self.rotation_matrices.shape()[0] != batch_size {
             return Err(BarracudaError::invalid_op(
                 "RandomRotation",
-                format!("rotation_matrices batch size {} must match input batch size {}", self.rotation_matrices.shape()[0], batch_size),
+                format!(
+                    "rotation_matrices batch size {} must match input batch size {}",
+                    self.rotation_matrices.shape()[0],
+                    batch_size
+                ),
             ));
         }
 
@@ -82,7 +98,13 @@ impl RandomRotation {
             height: height as u32,
             width: width as u32,
             fill_value: self.fill_value,
-            _padding: [0; 3],
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+            _pad3: 0,
+            _pad4: 0,
+            _pad5: 0,
+            _pad6: 0,
         };
 
         let params_buffer = device
@@ -206,8 +228,8 @@ impl RandomRotation {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (8x8x1 threads per workgroup)
-            let workgroups_x = (width as u32 + 7) / 8;
-            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_x = (width as u32).div_ceil(8);
+            let workgroups_y = (height as u32).div_ceil(8);
             let workgroups_z = (batch_size * channels) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

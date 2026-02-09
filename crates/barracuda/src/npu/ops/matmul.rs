@@ -209,15 +209,25 @@ mod tests {
         let b = vec![5.0, 6.0, 7.0, 8.0]; // [[5,6], [7,8]]
                                           // Expected: [[19,22], [43,50]]
 
-        // Test dimension validation
-        match npu_matmul(&a, &b, 2, 2, 2, &mut create_mock_npu()) {
-            Ok(_) => {}  // Would work if NPU available
-            Err(_) => {} // Expected if no NPU
-        }
-    }
+        // Gracefully skip if no NPU hardware available
+        let npu = match NpuMlBackend::new() {
+            Ok(npu) => npu,
+            Err(_) => {
+                eprintln!("Skipping NPU matmul test: no NPU hardware available");
+                return;
+            }
+        };
 
-    fn create_mock_npu() -> NpuMlBackend {
-        // Try to create, will fail gracefully if no hardware
-        NpuMlBackend::new().unwrap_or_else(|_| panic!("No NPU available for test"))
+        // Test dimension validation
+        match npu_matmul(&a, &b, 2, 2, 2, &mut { npu }) {
+            Ok(result) => {
+                // Verify correctness: [[1,2],[3,4]] × [[5,6],[7,8]] = [[19,22],[43,50]]
+                assert!((result[0] - 19.0).abs() < 1e-3);
+                assert!((result[1] - 22.0).abs() < 1e-3);
+                assert!((result[2] - 43.0).abs() < 1e-3);
+                assert!((result[3] - 50.0).abs() < 1e-3);
+            }
+            Err(e) => eprintln!("NPU matmul not available: {e}"),
+        }
     }
 }

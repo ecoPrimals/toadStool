@@ -154,10 +154,8 @@ impl LocalAttention {
         // PASS 2: Apply softmax with local window mask (NEW shader!)
         // ═══════════════════════════════════════════════════════════
 
-        let shader_softmax = device.compile_shader(
-            Self::shader_local_softmax(),
-            Some("LocalAttentionSoftmax"),
-        );
+        let shader_softmax =
+            device.compile_shader(Self::shader_local_softmax(), Some("LocalAttentionSoftmax"));
 
         let bgl_softmax =
             device
@@ -240,8 +238,7 @@ impl LocalAttention {
         // PASS 3: Apply weights to values (REUSED from attention ✅)
         // ═══════════════════════════════════════════════════════════
 
-        let shader_apply =
-            device.compile_shader(Self::shader_apply(), Some("LocalAttentionApply"));
+        let shader_apply = device.compile_shader(Self::shader_apply(), Some("LocalAttentionApply"));
 
         let bgl_apply = device
             .device
@@ -353,9 +350,10 @@ impl LocalAttention {
             pass.set_bind_group(0, &bg_matmul, &[]);
             // Deep Debt Evolution: Capability-based dispatch
             // MatMul is element-wise per score element
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = ((batch_size * num_heads * seq_len * seq_len) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups =
+                ((batch_size * num_heads * seq_len * seq_len) as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -369,9 +367,9 @@ impl LocalAttention {
             pass.set_bind_group(0, &bg_softmax, &[]);
             // Deep Debt Evolution: Capability-based dispatch
             // Softmax is element-wise per [batch, head, query_pos]
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((batch_size * num_heads * seq_len) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = ((batch_size * num_heads * seq_len) as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -385,9 +383,10 @@ impl LocalAttention {
             pass.set_bind_group(0, &bg_apply, &[]);
             // Deep Debt Evolution: Capability-based dispatch
             // Apply is element-wise per output element
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((batch_size * num_heads * seq_len * head_dim) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups =
+                ((batch_size * num_heads * seq_len * head_dim) as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 

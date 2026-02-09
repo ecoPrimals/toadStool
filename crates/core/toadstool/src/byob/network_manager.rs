@@ -127,7 +127,9 @@ impl NetworkManager for ByobNetworkManager {
         // ✅ RUNTIME ALLOCATION: Allocate from team's IP pool
         // In production, this would query IP pool service
         // For now, use predictable allocation based on team ID hash
-        let team_hash = team_id.chars().fold(0u32, |acc, c| acc.wrapping_add(c as u32));
+        let team_hash = team_id
+            .chars()
+            .fold(0u32, |acc, c| acc.wrapping_add(c as u32));
         let ip_offset = team_hash % 1000;
 
         // Use base 203.0.113.0/24 (TEST-NET-3 range, safe for examples)
@@ -227,7 +229,7 @@ mod tests {
         let db_endpoint = network.service_endpoints.get("db").unwrap();
         assert!(db_endpoint.internal_ip.starts_with("10.0.0.")); // Internal IP allocated
         assert!(db_endpoint.external_ip.is_none()); // DB doesn't expose web ports
-        
+
         // Verify IPs are different
         assert_ne!(web_endpoint.internal_ip, db_endpoint.internal_ip);
     }

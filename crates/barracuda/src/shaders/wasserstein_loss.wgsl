@@ -11,7 +11,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> pred: array<f32>;         // Predicted distribution
-@group(0) @binding(1) var<storage, read> target: array<f32>;       // Target distribution
+@group(0) @binding(1) var<storage, read> target_data: array<f32>;       // Target distribution
 @group(0) @binding(2) var<storage, read_write> output: array<f32>; // [1] - distance
 @group(0) @binding(3) var<uniform> params: Params;
 
@@ -29,7 +29,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     for (var i: u32 = 0u; i <= idx; i = i + 1u) {
         cdf_pred = cdf_pred + pred[i];
-        cdf_target = cdf_target + target[i];
+        cdf_target = cdf_target + target_data[i];
     }
     
     // Store difference

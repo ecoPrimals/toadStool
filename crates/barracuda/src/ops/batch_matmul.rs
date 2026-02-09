@@ -123,8 +123,8 @@ impl BatchMatMul {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch with 2D grid for matrix dimensions + batch dimension
-            let workgroups_x = ((n + 15) / 16) as u32;
-            let workgroups_y = ((m + 15) / 16) as u32;
+            let workgroups_x = n.div_ceil(16) as u32;
+            let workgroups_y = m.div_ceil(16) as u32;
             let workgroups_z = batch_size as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

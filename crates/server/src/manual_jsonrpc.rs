@@ -497,12 +497,12 @@ impl ManualJsonRpcServer {
             "toadstool.health" => self.handle_health(request).await,
             "toadstool.version" => self.handle_version(request).await,
             "toadstool.query_capabilities" => self.handle_query_capabilities(request).await,
-            // Collaborative Intelligence methods
-            "resources.estimate" => self.handle_resources_estimate(request).await,
-            "resources.validate_availability" => {
+            // Collaborative Intelligence methods (semantic naming: toadstool.resources.*)
+            "toadstool.resources.estimate" => self.handle_resources_estimate(request).await,
+            "toadstool.resources.validate_availability" => {
                 self.handle_resources_validate_availability(request).await
             }
-            "resources.suggest_optimizations" => {
+            "toadstool.resources.suggest_optimizations" => {
                 self.handle_resources_suggest_optimizations(request).await
             }
             _ => {

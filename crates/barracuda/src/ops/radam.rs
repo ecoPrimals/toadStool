@@ -118,13 +118,13 @@ impl RAdam {
 
         // Create writable buffers using GPU copy operations (zero CPU fallbacks)
         let parameters_buffer = device.create_buffer_f32(size)?;
-        
+
         // Copy parameters buffer using GPU copy
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("RAdam Buffer Copy Encoder"),
-            },
-        );
+            });
         encoder.copy_buffer_to_buffer(
             self.parameters.buffer(),
             0,
@@ -136,13 +136,7 @@ impl RAdam {
         // Create momentum buffer (GPU copy or zero initialization)
         let m_buffer = if let Some(ref m_tensor) = self.momentum {
             let m_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                m_tensor.buffer(),
-                0,
-                &m_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(m_tensor.buffer(), 0, &m_buf, 0, byte_size);
             m_buf
         } else {
             device.create_buffer_f32(size)?
@@ -151,13 +145,7 @@ impl RAdam {
         // Create variance buffer (GPU copy or zero initialization)
         let v_buffer = if let Some(ref v_tensor) = self.variance {
             let v_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                v_tensor.buffer(),
-                0,
-                &v_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(v_tensor.buffer(), 0, &v_buf, 0, byte_size);
             v_buf
         } else {
             device.create_buffer_f32(size)?
@@ -194,85 +182,86 @@ impl RAdam {
             _pad2: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("RAdam Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RAdam Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("RAdam Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("RAdam Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -307,30 +296,31 @@ impl RAdam {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("RAdam Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("RAdam Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create pipeline
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("RAdam Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            },
-        );
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("RAdam Encoder"),
-            },
-        );
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -342,9 +332,9 @@ impl RAdam {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -356,8 +346,10 @@ impl RAdam {
             device.clone(),
         );
 
-        let updated_m = Tensor::from_buffer(m_buffer, self.parameters.shape().to_vec(), device.clone());
-        let updated_v = Tensor::from_buffer(v_buffer, self.parameters.shape().to_vec(), device.clone());
+        let updated_m =
+            Tensor::from_buffer(m_buffer, self.parameters.shape().to_vec(), device.clone());
+        let updated_v =
+            Tensor::from_buffer(v_buffer, self.parameters.shape().to_vec(), device.clone());
 
         Ok((updated_params, updated_m, updated_v))
     }
@@ -413,8 +405,8 @@ mod tests {
         let (params1, m1, v1) = radam1.execute().unwrap();
 
         // Step 2 with accumulated state
-        let radam2 = RAdam::new(params1, gradients, 0.001, 0.9, 0.999, 2, Some(m1), Some(v1))
-            .unwrap();
+        let radam2 =
+            RAdam::new(params1, gradients, 0.001, 0.9, 0.999, 2, Some(m1), Some(v1)).unwrap();
         let (params2, _m2, _v2) = radam2.execute().unwrap();
 
         assert_eq!(params2.shape(), &[4]);

@@ -99,13 +99,13 @@ impl GinConv {
             .collect();
 
         // Create edge_index buffer
-        let edge_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let edge_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GINConv Edge Index"),
                 contents: bytemuck::cast_slice(&edge_data),
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Create aggregated features buffer (zero-initialized for atomic accumulation)
         let aggregated_size = self.num_nodes * self.in_features;
@@ -140,95 +140,96 @@ impl GinConv {
             _pad3: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GINConv Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GINConv Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("GINConv Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GINConv Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 6,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 6,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -267,30 +268,32 @@ impl GinConv {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("GINConv Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GINConv Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create encoder
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("GINConv Encoder"),
-            },
-        );
+            });
 
         // Step 1: Aggregate neighbors
-        let aggregate_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("GINConv Aggregate Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "aggregate",
-            },
-        );
+        let aggregate_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GINConv Aggregate Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "aggregate",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -300,21 +303,22 @@ impl GinConv {
             pass.set_pipeline(&aggregate_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.num_edges as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (self.num_edges as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         // Step 2: Apply MLP
-        let mlp_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("GINConv MLP Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "apply_mlp",
-            },
-        );
+        let mlp_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GINConv MLP Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "apply_mlp",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -324,9 +328,9 @@ impl GinConv {
             pass.set_pipeline(&mlp_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (self.num_nodes as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -371,13 +375,10 @@ mod tests {
         .await
         .unwrap();
 
-        let mlp_bias = Tensor::from_vec_on(
-            vec![0.0; out_features],
-            vec![out_features],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let mlp_bias =
+            Tensor::from_vec_on(vec![0.0; out_features], vec![out_features], device.clone())
+                .await
+                .unwrap();
 
         let gin = GinConv::new(node_features, edge_index, mlp_weights, mlp_bias, 0.0).unwrap();
         let output = gin.execute().unwrap();
@@ -411,13 +412,10 @@ mod tests {
         .await
         .unwrap();
 
-        let mlp_bias = Tensor::from_vec_on(
-            vec![0.0; out_features],
-            vec![out_features],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let mlp_bias =
+            Tensor::from_vec_on(vec![0.0; out_features], vec![out_features], device.clone())
+                .await
+                .unwrap();
 
         let gin = GinConv::new(node_features, edge_index, mlp_weights, mlp_bias, 0.1).unwrap();
         let output = gin.execute().unwrap();
@@ -454,13 +452,10 @@ mod tests {
         .await
         .unwrap();
 
-        let mlp_bias = Tensor::from_vec_on(
-            vec![0.0; out_features],
-            vec![out_features],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let mlp_bias =
+            Tensor::from_vec_on(vec![0.0; out_features], vec![out_features], device.clone())
+                .await
+                .unwrap();
 
         let gin = GinConv::new(node_features, edge_index, mlp_weights, mlp_bias, 0.0).unwrap();
         let output = gin.execute().unwrap();

@@ -38,57 +38,62 @@ fn compute_prefix_sum_gpu(
         _pad3: 0,
     };
 
-    let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("PrefixSum Params"),
-        contents: bytemuck::bytes_of(&params),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PrefixSum Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
-    let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("PrefixSum Bind Group Layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    });
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("PrefixSum Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("PrefixSum Bind Group"),
@@ -114,22 +119,28 @@ fn compute_prefix_sum_gpu(
     });
 
     let shader = device.compile_shader(Unique::prefix_sum_shader(), Some("PrefixSum"));
-    let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("PrefixSum Pipeline Layout"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("PrefixSum Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
 
-    let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("PrefixSum Pipeline"),
-        layout: Some(&pipeline_layout),
-        module: &shader,
-        entry_point: "inclusive_scan",
-    });
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("PrefixSum Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "inclusive_scan",
+        });
 
-    let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("PrefixSum Encoder"),
-    });
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("PrefixSum Encoder"),
+        });
 
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -142,7 +153,7 @@ fn compute_prefix_sum_gpu(
         // Prefix sum is a reduction operation
         let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-        let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = (size as u32).div_ceil(optimal_wg_size);
         pass.dispatch_workgroups(workgroups.max(1), 1, 1);
     }
 
@@ -167,9 +178,11 @@ fn read_buffer_u32_last(
         mapped_at_creation: false,
     });
 
-    let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Read Buffer Last Encoder"),
-    });
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Read Buffer Last Encoder"),
+        });
     encoder.copy_buffer_to_buffer(
         buffer,
         ((size - 1) * std::mem::size_of::<u32>()) as u64,
@@ -186,7 +199,7 @@ fn read_buffer_u32_last(
     });
     device.device.poll(wgpu::Maintain::Wait);
 
-    let _result = futures::executor::block_on(receiver)
+    futures::executor::block_on(receiver)
         .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
         .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
 
@@ -202,23 +215,27 @@ fn read_buffer_u32_last(
 pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     let device = unique.input().device();
     let input_size: usize = unique.input().len();
-    
+
     // Use hash table size ~2x input for good distribution
     let num_buckets = (input_size * 2).next_power_of_two().min(65536);
 
     // Create hash table (atomic u32)
     let hash_table_buffer = device.create_buffer_u32(num_buckets)?;
-    
+
     // Create unique flags buffer
     let unique_flags_buffer = device.create_buffer_u32(input_size)?;
-    
+
     // Initialize hash table to zeros
     let zeros = vec![0u32; num_buckets];
-    device.queue.write_buffer(&hash_table_buffer, 0, bytemuck::cast_slice(&zeros));
-    
+    device
+        .queue
+        .write_buffer(&hash_table_buffer, 0, bytemuck::cast_slice(&zeros));
+
     // Initialize flags to zeros
     let zeros_flags = vec![0u32; input_size];
-    device.queue.write_buffer(&unique_flags_buffer, 0, bytemuck::cast_slice(&zeros_flags));
+    device
+        .queue
+        .write_buffer(&unique_flags_buffer, 0, bytemuck::cast_slice(&zeros_flags));
 
     let params = super::UniqueParams {
         input_size: input_size as u32,
@@ -227,58 +244,63 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         _pad2: 0,
     };
 
-    let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Unique Params"),
-        contents: bytemuck::bytes_of(&params),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Unique Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
     // Step 1: Mark unique values
-    let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Unique Bind Group Layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    });
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Unique Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Unique Bind Group"),
@@ -304,22 +326,28 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     });
 
     let shader = device.compile_shader(Unique::wgsl_shader(), Some("Unique"));
-    let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Unique Pipeline Layout"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Unique Pipeline Layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
 
-    let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("Unique Pipeline"),
-        layout: Some(&pipeline_layout),
-        module: &shader,
-        entry_point: "mark_unique",
-    });
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Unique Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "mark_unique",
+        });
 
-    let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Unique Encoder"),
-    });
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Unique Encoder"),
+        });
 
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -331,7 +359,7 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         // Deep Debt Evolution: Capability-based dispatch
         let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (input_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
@@ -355,71 +383,76 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
     let output_buffer = device.create_buffer_f32(unique_count)?;
 
     // Update bind group for compaction pass
-    let compact_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Unique Compact Bind Group Layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 4,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 5,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    });
+    let compact_bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Unique Compact Bind Group Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            // Must match WGSL: hash_table is atomic<u32> (read_write)
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            // Must match WGSL: unique_flags is read_write
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
     let compact_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("Unique Compact Bind Group"),
@@ -452,22 +485,31 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         ],
     });
 
-    let compact_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Unique Compact Pipeline Layout"),
-        bind_group_layouts: &[&compact_bind_group_layout],
-        push_constant_ranges: &[],
-    });
+    let compact_pipeline_layout =
+        device
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Unique Compact Pipeline Layout"),
+                bind_group_layouts: &[&compact_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
-    let compact_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("Unique Compact Pipeline"),
-        layout: Some(&compact_pipeline_layout),
-        module: &shader,
-        entry_point: "compact_unique",
-    });
+    let compact_pipeline =
+        device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Unique Compact Pipeline"),
+                layout: Some(&compact_pipeline_layout),
+                module: &shader,
+                entry_point: "compact_unique",
+            });
 
-    let mut compact_encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Unique Compact Encoder"),
-    });
+    let mut compact_encoder =
+        device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Unique Compact Encoder"),
+            });
 
     {
         let mut pass = compact_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -479,7 +521,7 @@ pub(super) fn execute(unique: Unique) -> Result<Tensor> {
         // Deep Debt Evolution: Capability-based dispatch
         let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (input_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 

@@ -1,57 +1,54 @@
-#!/bin/bash
-# Akida Detection Demo Runner
+#!/usr/bin/env bash
+# Akida Detection Demo
+# Deep Debt: No sudo required - uses best available backend
 
-set -e
+set -euo pipefail
 
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║         ToadStool Akida Detection & Integration            ║"
-echo "╚════════════════════════════════════════════════════════════╝"
+echo "=== Akida NPU Detection Demo ==="
+echo ""
+echo "Testing dual-backend driver architecture..."
 echo ""
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-cd "$(dirname "$0")"
-
-echo -e "${BLUE}Building examples...${NC}"
-cargo build --examples --release
+# Auto-select best backend
+echo "[1/4] Auto-detection (tries kernel, falls back to userspace)..."
+cargo run --release --example detect_akida || {
+    echo "   No hardware detected (expected in most environments)"
+}
 echo ""
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 1. Basic Detection"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-cargo run --example detect_akida --release
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 2. Board Enumeration & Topology"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-cargo run --example enumerate_boards --release
+# Try userspace explicitly
+echo "[2/4] Userspace backend (no kernel module needed)..."
+cargo run --release --example detect_akida -- --backend=userspace || {
+    echo "   No hardware detected (expected in most environments)"
+}
 echo ""
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 3. Capability Query"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-cargo run --example query_capabilities --release
-echo ""
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 4. Health Check & Diagnostics"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-cargo run --example health_check --release
+# Enumerate boards
+echo "[3/4] Enumerating all Akida boards..."
+cargo run --release --example enumerate_boards || {
+    echo "   No hardware detected (expected in most environments)"
+}
 echo ""
 
-echo -e "${GREEN}✓ All detection demos complete!${NC}"
+# Query capabilities
+echo "[4/4] Querying NPU capabilities..."
+cargo run --release --example query_capabilities || {
+    echo "   No hardware detected (expected in most environments)"
+}
 echo ""
-echo "Next steps:"
-echo "  • Verify board detection on actual hardware"
-echo "  • Proceed to bioinformatics demo: ../02-akida-bioinformatics/"
-echo "  • Test LLM intent routing: ../03-akida-llm-intent/"
-echo "  • Run mesh orchestration: ../04-akida-mesh/"
 
+echo "=== Demo Complete ==="
+echo ""
+echo "Driver Status:"
+if lsmod | grep -q akida 2>/dev/null; then
+    echo "  ✓ Kernel driver loaded (high performance)"
+elif ls /sys/bus/pci/devices/*/resource0 2>/dev/null | grep -q .; then
+    echo "  ✓ Userspace driver available (no kernel module needed)"
+else
+    echo "  ℹ No Akida hardware detected"
+fi
+echo ""
+echo "For production deployment:"
+echo "  sudo ../../scripts/install-akida-driver.sh"
+echo ""
+echo "See: docs/guides/AKIDA_DRIVER_DEPLOYMENT.md"

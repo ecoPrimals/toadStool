@@ -211,24 +211,24 @@ impl EndpointSource for MDNSSource {
             // mDNS discovery would require platform-specific libraries (Avahi on Linux, Bonjour on macOS)
             // For now, check common local service patterns that don't require external libraries
 
-            // DEEP DEBT EVOLUTION: Ports are no longer used, converted to Unix sockets below
-            // These are kept for service name matching only
-            let common_mdns_services: &[&str] = &["songbird", "nestgate", "squirrel", "beardog"];
+            // DEEP DEBT EVOLUTION: Discover ANY primal by scanning biomeos socket dir
+            // No hardcoded primal names - filesystem-based capability discovery
+            let biomeos_dir = crate::primal_sockets::get_biomeos_dir();
 
-            // Check if service matches common patterns
-            for svc in common_mdns_services {
-                if service.contains(svc) {
-                    // DEEP DEBT COMPLIANT: Use Unix socket paths instead of HTTP with ports
-                    // No hardcoded ports - filesystem-based discovery
-                    let socket_path = crate::primal_sockets::get_socket_path_for_service(svc);
-                    let endpoint = format!("unix://{}", socket_path.display());
-
-                    tracing::debug!(
-                        service,
-                        endpoint,
-                        "Found local service via Unix socket discovery (zero hardcoded ports!)"
-                    );
-                    return Ok(Some(endpoint));
+            if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                        if service.contains(name) {
+                            let endpoint = format!("unix://{}", path.display());
+                            tracing::debug!(
+                                service,
+                                endpoint,
+                                "Found local service via biomeos socket discovery"
+                            );
+                            return Ok(Some(endpoint));
+                        }
+                    }
                 }
             }
 

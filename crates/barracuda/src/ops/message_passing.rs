@@ -99,14 +99,17 @@ impl MessagePassing {
             aggr_type: self.aggr_type,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("MessagePassing Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("MessagePassing Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("MessagePassing Shader"));
+        let shader_module =
+            device.compile_shader(Self::wgsl_shader(), Some("MessagePassing Shader"));
 
         // Create bind group layout (simplified - edge_features optional)
         let mut entries = vec![
@@ -189,10 +192,13 @@ impl MessagePassing {
             },
         ]);
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("MessagePassing Bind Group Layout"),
-            entries: &entries,
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("MessagePassing Bind Group Layout"),
+                    entries: &entries,
+                });
 
         // Create bind group entries
         let mut bind_entries = vec![
@@ -243,23 +249,30 @@ impl MessagePassing {
         });
 
         // Create pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("MessagePassing Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("MessagePassing Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("MessagePassing Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("MessagePassing Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: "main",
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MessagePassing Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MessagePassing Encoder"),
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -271,9 +284,9 @@ impl MessagePassing {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (self.num_nodes as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

@@ -17,6 +17,13 @@ anyhow = "1"
 # Logging
 tracing = "0.1"
 
+# Safe byte casting (replaces unsafe f32<->u8 conversions)
+bytemuck = { version = "1", features = ["derive"] }
+
+# System utilities
+which = "6.0"
+glob = "0.3"  # For hwmon power discovery
+
 # Async runtime (optional)
 tokio = { version = "1", features = ["fs", "io-util"], optional = true }
 
@@ -45,6 +52,10 @@ path = "examples/basic_io.rs"
 [[example]]
 name = "device_info"
 path = "examples/device_info.rs"
+
+[[example]]
+name = "setup_npu"
+path = "examples/setup_npu.rs"
 
 [lib]
 crate-type = ["rlib"]

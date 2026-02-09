@@ -411,7 +411,7 @@ impl ResourceOptimizer {
         for (node_id, node_estimate) in &estimate.node_estimates {
             level_groups
                 .entry(node_estimate.parallelism_level)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(node_id.clone());
         }
 
@@ -512,7 +512,7 @@ impl ResourceOptimizer {
         for node in &graph.nodes {
             operation_groups
                 .entry(node.operation.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(node.id.clone());
         }
 

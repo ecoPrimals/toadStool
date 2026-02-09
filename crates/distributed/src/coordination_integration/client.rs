@@ -86,7 +86,7 @@ impl CoordinationDiscovery {
             .find_service_by_capability(capability)
             .await
             .map(Some)
-            .or_else(|_| Ok(None))
+            .or(Ok(None))
     }
 
     /// Filter services by location preference

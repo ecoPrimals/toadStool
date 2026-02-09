@@ -210,20 +210,25 @@ impl Adam {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((size as u32) + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        let updated_params =
-            Tensor::from_buffer(params_buffer, self.params().shape().to_vec(), device.clone());
+        let updated_params = Tensor::from_buffer(
+            params_buffer,
+            self.params().shape().to_vec(),
+            device.clone(),
+        );
 
-        let updated_m = Tensor::from_buffer(m_buffer, self.params().shape().to_vec(), device.clone());
+        let updated_m =
+            Tensor::from_buffer(m_buffer, self.params().shape().to_vec(), device.clone());
 
-        let updated_v = Tensor::from_buffer(v_buffer, self.params().shape().to_vec(), device.clone());
+        let updated_v =
+            Tensor::from_buffer(v_buffer, self.params().shape().to_vec(), device.clone());
 
         Ok((updated_params, updated_m, updated_v))
     }

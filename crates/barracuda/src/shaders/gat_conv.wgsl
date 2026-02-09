@@ -24,7 +24,7 @@ struct Params {
 @group(0) @binding(3) var<storage, read> weights: array<f32>;         // [in_features, out_features]
 @group(0) @binding(4) var<storage, read> attention: array<f32>;       // [2 * out_features]
 @group(0) @binding(5) var<storage, read_write> transformed: array<f32>; // [num_nodes, out_features] (temp)
-@group(0) @binding(6) var<storage, read_write> output: array<f32>;    // [num_nodes, out_features]
+@group(0) @binding(6) var<storage, read_write> output: array<atomic<i32>>;    // [num_nodes, out_features] (atomic accumulation)
 
 // Step 1: Transform features (H' = HW)
 @compute @workgroup_size(256)

@@ -1,3 +1,0 @@
-This is test data from ToadStool
-Timestamp: Sat Dec 20 11:27:35 PM EST 2025
-Purpose: Demonstrate NestGate storage

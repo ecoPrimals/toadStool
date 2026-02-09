@@ -102,13 +102,13 @@ impl GcnConv {
             .collect();
 
         // Create edge_index buffer
-        let edge_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let edge_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GCNConv Edge Index"),
                 contents: bytemuck::cast_slice(&edge_data),
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Create temporary transformed features buffer
         let transformed_size = self.num_nodes * self.out_features;
@@ -142,95 +142,96 @@ impl GcnConv {
             _pad2: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GCNConv Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GCNConv Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("GCNConv Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GCNConv Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 6,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 6,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -269,30 +270,32 @@ impl GcnConv {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("GCNConv Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GCNConv Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create encoder
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("GCNConv Encoder"),
-            },
-        );
+            });
 
         // Step 1: Transform features
-        let transform_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("GCNConv Transform Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "transform_features",
-            },
-        );
+        let transform_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GCNConv Transform Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "transform_features",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -302,21 +305,22 @@ impl GcnConv {
             pass.set_pipeline(&transform_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (self.num_nodes as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         // Step 2: Aggregate with normalization
-        let aggregate_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("GCNConv Aggregate Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "aggregate",
-            },
-        );
+        let aggregate_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("GCNConv Aggregate Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "aggregate",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -326,22 +330,23 @@ impl GcnConv {
             pass.set_pipeline(&aggregate_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (self.num_edges as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (self.num_edges as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         // Step 3: Add self-loops (if enabled)
         if self.add_self_loops {
-            let self_loops_pipeline = device.device.create_compute_pipeline(
-                &wgpu::ComputePipelineDescriptor {
-                    label: Some("GCNConv Self Loops Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "add_self_loops",
-                },
-            );
+            let self_loops_pipeline =
+                device
+                    .device
+                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("GCNConv Self Loops Pipeline"),
+                        layout: Some(&pipeline_layout),
+                        module: &shader_module,
+                        entry_point: "add_self_loops",
+                    });
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -351,9 +356,9 @@ impl GcnConv {
                 pass.set_pipeline(&self_loops_pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(&device);
+                let caps = DeviceCapabilities::from_device(device);
                 let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-                let workgroups = (self.num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+                let workgroups = (self.num_nodes as u32).div_ceil(optimal_wg_size);
                 pass.dispatch_workgroups(workgroups, 1, 1);
             }
         }
@@ -399,23 +404,11 @@ mod tests {
         .await
         .unwrap();
 
-        let degrees = Tensor::from_vec_on(
-            vec![1.0; num_nodes],
-            vec![num_nodes],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let degrees = Tensor::from_vec_on(vec![1.0; num_nodes], vec![num_nodes], device.clone())
+            .await
+            .unwrap();
 
-        let gcn = GcnConv::new(
-            node_features,
-            edge_index,
-            weight,
-            degrees,
-            true,
-            true,
-        )
-        .unwrap();
+        let gcn = GcnConv::new(node_features, edge_index, weight, degrees, true, true).unwrap();
         let output = gcn.execute().unwrap();
 
         assert_eq!(output.shape(), &[num_nodes, out_features]);
@@ -447,23 +440,11 @@ mod tests {
         .await
         .unwrap();
 
-        let degrees = Tensor::from_vec_on(
-            vec![1.0; num_nodes],
-            vec![num_nodes],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let degrees = Tensor::from_vec_on(vec![1.0; num_nodes], vec![num_nodes], device.clone())
+            .await
+            .unwrap();
 
-        let gcn = GcnConv::new(
-            node_features,
-            edge_index,
-            weight,
-            degrees,
-            false,
-            true,
-        )
-        .unwrap();
+        let gcn = GcnConv::new(node_features, edge_index, weight, degrees, false, true).unwrap();
         let output = gcn.execute().unwrap();
 
         assert_eq!(output.shape(), &[num_nodes, out_features]);
@@ -498,23 +479,11 @@ mod tests {
         .await
         .unwrap();
 
-        let degrees = Tensor::from_vec_on(
-            vec![1.0; num_nodes],
-            vec![num_nodes],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let degrees = Tensor::from_vec_on(vec![1.0; num_nodes], vec![num_nodes], device.clone())
+            .await
+            .unwrap();
 
-        let gcn = GcnConv::new(
-            node_features,
-            edge_index,
-            weight,
-            degrees,
-            true,
-            true,
-        )
-        .unwrap();
+        let gcn = GcnConv::new(node_features, edge_index, weight, degrees, true, true).unwrap();
         let output = gcn.execute().unwrap();
 
         assert_eq!(output.shape(), &[num_nodes, out_features]);

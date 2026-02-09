@@ -327,7 +327,7 @@ impl ScaledDotProductAttention {
 
             // Dispatch: one workgroup per (batch, sequence_position)
             let workgroup_size = 256;
-            let num_workgroups = ((batch * seq_len) + workgroup_size - 1) / workgroup_size;
+            let num_workgroups = (batch * seq_len).div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
 

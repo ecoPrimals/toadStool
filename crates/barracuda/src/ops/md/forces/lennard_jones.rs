@@ -18,9 +18,9 @@ use wgpu::util::DeviceExt;
 /// Computes van der Waals forces between particles.
 /// Uses Lorentz-Berthelot mixing rules for multi-component systems.
 pub struct LennardJonesForce {
-    positions: Tensor,      // [N, 3]
-    sigmas: Tensor,         // [N] - per-particle σ
-    epsilons: Tensor,       // [N] - per-particle ε
+    positions: Tensor, // [N, 3]
+    sigmas: Tensor,    // [N] - per-particle σ
+    epsilons: Tensor,  // [N] - per-particle ε
     cutoff_radius: f32,
 }
 
@@ -222,7 +222,7 @@ impl LennardJonesForce {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -255,8 +255,7 @@ mod tests {
         let sigma_tensor = Tensor::from_data(&sigmas, vec![2], device.clone()).unwrap();
         let epsilon_tensor = Tensor::from_data(&epsilons, vec![2], device.clone()).unwrap();
 
-        let lj = LennardJonesForce::new(pos_tensor, sigma_tensor, epsilon_tensor, None)
-            .unwrap();
+        let lj = LennardJonesForce::new(pos_tensor, sigma_tensor, epsilon_tensor, None).unwrap();
         let forces = lj.execute().unwrap();
 
         assert_eq!(forces.shape(), &[2, 3]);

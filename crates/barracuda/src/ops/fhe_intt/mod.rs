@@ -85,12 +85,7 @@ impl FheIntt {
     /// - N must be a power of 2
     /// - q must be prime
     /// - ω^(-1) * ω ≡ 1 (mod q)
-    pub fn new(
-        input: Tensor,
-        degree: u32,
-        modulus: u64,
-        inv_root_of_unity: u64,
-    ) -> Result<Self> {
+    pub fn new(input: Tensor, degree: u32, modulus: u64, inv_root_of_unity: u64) -> Result<Self> {
         // Validate inputs (same as NTT)
         let expected_size = (degree as usize) * 2;
         if input.len() != expected_size {
@@ -116,11 +111,7 @@ impl FheIntt {
         }
 
         // Precompute Barrett constant
-        let barrett_mu = if modulus > 0 {
-            u64::MAX / modulus
-        } else {
-            0
-        };
+        let barrett_mu = if modulus > 0 { u64::MAX / modulus } else { 0 };
 
         // Precompute inverse twiddle factors: (ω^(-1))^0, (ω^(-1))^1, ..., (ω^(-1))^(N-1)
         let inv_twiddle_factors = compute_twiddle_factors(degree, modulus, inv_root_of_unity);
@@ -321,22 +312,22 @@ pub(crate) fn compute_modular_inverse(a: u64, m: u64) -> u64 {
     // Extended Euclidean Algorithm
     let (mut t, mut new_t) = (0i128, 1i128);
     let (mut r, mut new_r) = (m as i128, a as i128);
-    
+
     while new_r != 0 {
         let quotient = r / new_r;
         (t, new_t) = (new_t, t - quotient * new_t);
         (r, new_r) = (new_r, r - quotient * new_r);
     }
-    
+
     if r > 1 {
         // a is not invertible
         return 0;
     }
-    
+
     if t < 0 {
         t += m as i128;
     }
-    
+
     t as u64
 }
 

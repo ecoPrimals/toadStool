@@ -40,11 +40,14 @@ impl CosineSimilarity {
         let device = self.vectors_a.device();
         let a_shape = self.vectors_a.shape();
         let b_shape = self.vectors_b.shape();
-        
+
         if a_shape.len() != 2 || b_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "CosineSimilarity",
-                format!("vectors must be 2D [num_vectors, dim], got shapes {:?} and {:?}", a_shape, b_shape),
+                format!(
+                    "vectors must be 2D [num_vectors, dim], got shapes {:?} and {:?}",
+                    a_shape, b_shape
+                ),
             ));
         }
 
@@ -55,7 +58,10 @@ impl CosineSimilarity {
         if b_shape[1] != vector_dim {
             return Err(BarracudaError::invalid_op(
                 "CosineSimilarity",
-                format!("vector dimensions must match: {} != {}", vector_dim, b_shape[1]),
+                format!(
+                    "vector dimensions must match: {} != {}",
+                    vector_dim, b_shape[1]
+                ),
             ));
         }
 
@@ -191,8 +197,8 @@ impl CosineSimilarity {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (16x16 threads per workgroup)
-            let workgroups_x = (num_vectors_b as u32 + 15) / 16;
-            let workgroups_y = (num_vectors_a as u32 + 15) / 16;
+            let workgroups_x = (num_vectors_b as u32).div_ceil(16);
+            let workgroups_y = (num_vectors_a as u32).div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 

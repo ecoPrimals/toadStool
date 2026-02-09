@@ -11,13 +11,13 @@
 //! Computes Mean Absolute Error loss:
 //! ```text
 //! L1(pred, target) = mean(|pred - target|)
-//! 
+//!
 //! Element-wise: loss[i] = |pred[i] - target[i]|
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 
 pub struct L1Loss {
     predictions: Tensor,
@@ -26,81 +26,85 @@ pub struct L1Loss {
 
 impl L1Loss {
     pub fn new(predictions: Tensor, targets: Tensor) -> Self {
-        Self { predictions, targets }
+        Self {
+            predictions,
+            targets,
+        }
     }
-    
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/l1_loss.wgsl")
     }
-    
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.predictions.device();
         let size = self.predictions.len();
-        
+
         if size != self.targets.len() {
             return Err(crate::error::BarracudaError::InvalidShape {
                 expected: self.predictions.shape().to_vec(),
                 actual: self.targets.shape().to_vec(),
             });
         }
-        
+
         let output_buffer = device.create_buffer_f32(size)?;
-        
+
         // Create params buffer (size and reduction mode)
         let params_data = [
             size as u32,
-            0u32,  // reduction: 0=none (element-wise)
+            0u32, // reduction: 0=none (element-wise)
         ];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
-        
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("L1Loss BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("L1Loss BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            }
-        );
-        
+                    ],
+                });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("L1Loss BG"),
             layout: &bind_group_layout,
@@ -123,49 +127,50 @@ impl L1Loss {
                 },
             ],
         });
-        
+
         let shader = device.compile_shader(Self::wgsl_shader(), Some("L1Loss"));
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("L1Loss PL"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            }
-        );
-        
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("L1Loss PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("L1Loss Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            }
-        );
-        
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("L1Loss Encoder"),
-            }
-        );
-        
+            });
+
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("L1Loss Pass"),
                 timestamp_writes: None,
             });
-            
+
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         Ok(Tensor::from_buffer(
             output_buffer,
             self.predictions.shape().to_vec(),
@@ -190,17 +195,17 @@ mod tests {
         let device = get_test_device().await;
         let pred_data = vec![1.0, 2.0, 3.0, 4.0];
         let target_data = vec![1.5, 2.5, 2.0, 5.0];
-        
+
         let predictions = Tensor::from_vec_on(pred_data, vec![4], device.clone())
             .await
             .unwrap();
         let targets = Tensor::from_vec_on(target_data, vec![4], device)
             .await
             .unwrap();
-        
+
         let result = predictions.l1_loss_wgsl(targets).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // |1.0 - 1.5| = 0.5
         assert!((output[0] - 0.5).abs() < 1e-5);
         // |2.0 - 2.5| = 0.5

@@ -260,7 +260,7 @@ async fn benchmark_primal_discovery(
     println!("\n🔍 Benchmarking Primal Discovery");
     println!("{}", "-".repeat(50));
 
-    let capabilities = vec![
+    let capabilities = [
         PrimalCapability::NativeExecution {
             architectures: vec!["x86_64".to_string()],
         },

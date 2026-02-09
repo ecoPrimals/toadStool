@@ -23,25 +23,25 @@ use std::sync::Arc;
 pub struct TpuDevice {
     /// Device name (e.g., "Google TPU v4", "Coral Edge TPU")
     pub name: String,
-    
+
     /// Device ID (for multi-TPU systems)
     pub device_id: usize,
-    
+
     /// TPU generation (v2, v3, v4, v5, etc.)
     pub generation: TpuGeneration,
-    
+
     /// Memory capacity (bytes)
     pub memory_bytes: u64,
-    
+
     /// Peak TFLOPS (theoretical)
     pub peak_tflops: f64,
-    
+
     /// Matrix multiply units
     pub matrix_units: u32,
-    
+
     /// Connected (available for use)
     pub connected: bool,
-    
+
     /// Backend handle (libtpu, vendor-specific, etc.)
     backend: Arc<TpuBackend>,
 }
@@ -73,16 +73,14 @@ enum TpuBackend {
     CloudTpu {
         // Reserved for libtpu FFI handle
     },
-    
+
     /// Coral Edge TPU (via libedgetpu)
     CoralEdge {
         // Reserved for Coral API handle
     },
-    
+
     /// Mock TPU (for testing without hardware)
-    Mock {
-        mock_device_name: String,
-    },
+    Mock { mock_device_name: String },
 }
 
 impl TpuDevice {
@@ -92,12 +90,12 @@ impl TpuDevice {
     pub async fn new() -> Result<Self> {
         Self::new_with_filter(|_| true).await
     }
-    
+
     /// Create TPU with specific device ID
     pub async fn new_with_id(device_id: usize) -> Result<Self> {
         Self::new_with_filter(|info| info.device_id == device_id).await
     }
-    
+
     /// Create TPU with custom filter
     pub async fn new_with_filter<F>(filter: F) -> Result<Self>
     where
@@ -105,14 +103,14 @@ impl TpuDevice {
     {
         // Discover available TPUs
         let available_tpus = Self::discover_all().await?;
-        
+
         if available_tpus.is_empty() {
             return Err(BarracudaError::DeviceNotAvailable {
                 device: "TPU".to_string(),
                 reason: "No TPU devices found. Please install TPU drivers.".to_string(),
             });
         }
-        
+
         // Find matching TPU
         let tpu_info = available_tpus
             .into_iter()
@@ -121,11 +119,11 @@ impl TpuDevice {
                 device: "TPU".to_string(),
                 reason: "No TPU matching filter found".to_string(),
             })?;
-        
+
         // Create device from info
         Ok(Self::from_info(tpu_info))
     }
-    
+
     /// Discover all available TPUs on the system
     ///
     /// **Deep Debt**: Runtime discovery, capability-based
@@ -139,7 +137,7 @@ impl TpuDevice {
     pub async fn discover_all() -> Result<Vec<TpuInfo>> {
         #[allow(unused_mut)] // Mut needed when features enabled
         let mut tpus = Vec::new();
-        
+
         // Try Google Cloud TPU discovery (via libtpu)
         #[cfg(feature = "cloud-tpu")]
         {
@@ -147,7 +145,7 @@ impl TpuDevice {
                 tpus.extend(cloud_tpus);
             }
         }
-        
+
         // Try Coral Edge TPU discovery
         #[cfg(feature = "coral-tpu")]
         {
@@ -155,17 +153,17 @@ impl TpuDevice {
                 tpus.extend(coral_tpus);
             }
         }
-        
+
         // Mock TPU for testing (when no hardware available)
         // ✅ ISOLATED: Mock only available via feature flag, not in production
         #[cfg(feature = "mock-tpu")]
         {
             tpus.push(TpuInfo::mock());
         }
-        
+
         Ok(tpus)
     }
-    
+
     /// Create device from discovery info
     fn from_info(info: TpuInfo) -> Self {
         Self {
@@ -179,37 +177,37 @@ impl TpuDevice {
             backend: Arc::new(info.backend),
         }
     }
-    
+
     /// Get device name
     pub fn name(&self) -> &str {
         &self.name
     }
-    
+
     /// Get device ID
     pub fn device_id(&self) -> usize {
         self.device_id
     }
-    
+
     /// Get TPU generation
     pub fn generation(&self) -> TpuGeneration {
         self.generation
     }
-    
+
     /// Get memory capacity (bytes)
     pub fn memory_bytes(&self) -> u64 {
         self.memory_bytes
     }
-    
+
     /// Get peak TFLOPS
     pub fn peak_tflops(&self) -> f64 {
         self.peak_tflops
     }
-    
+
     /// Check if TPU is available/connected
     pub fn is_connected(&self) -> bool {
         self.connected
     }
-    
+
     /// Execute matrix multiply on TPU
     ///
     /// **Deep Debt Evolution**:
@@ -242,12 +240,14 @@ impl TpuDevice {
                         device: "TPU".to_string(),
                     })
                 }
-                
+
                 #[cfg(not(feature = "cloud-tpu"))]
                 {
                     Err(BarracudaError::DeviceNotAvailable {
                         device: "Cloud TPU".to_string(),
-                        reason: "Feature 'cloud-tpu' not enabled. Rebuild with --features cloud-tpu".to_string(),
+                        reason:
+                            "Feature 'cloud-tpu' not enabled. Rebuild with --features cloud-tpu"
+                                .to_string(),
                     })
                 }
             }
@@ -261,12 +261,14 @@ impl TpuDevice {
                         device: "TPU".to_string(),
                     })
                 }
-                
+
                 #[cfg(not(feature = "coral-tpu"))]
                 {
                     Err(BarracudaError::DeviceNotAvailable {
                         device: "Coral Edge TPU".to_string(),
-                        reason: "Feature 'coral-tpu' not enabled. Rebuild with --features coral-tpu".to_string(),
+                        reason:
+                            "Feature 'coral-tpu' not enabled. Rebuild with --features coral-tpu"
+                                .to_string(),
                     })
                 }
             }

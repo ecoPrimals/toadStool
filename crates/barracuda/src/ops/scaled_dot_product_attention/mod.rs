@@ -77,7 +77,8 @@ impl ScaledDotProductAttention {
 
         if q_shape.len() != 4 || k_shape.len() != 4 || v_shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: "All inputs must be 4D tensors [batch, heads, seq_len, head_dim]".to_string(),
+                message: "All inputs must be 4D tensors [batch, heads, seq_len, head_dim]"
+                    .to_string(),
             });
         }
 
@@ -90,7 +91,11 @@ impl ScaledDotProductAttention {
         if k_shape != q_shape || v_shape != q_shape {
             return Err(crate::error::BarracudaError::shape_mismatch(
                 q_shape.to_vec(),
-                if k_shape != q_shape { k_shape.to_vec() } else { v_shape.to_vec() },
+                if k_shape != q_shape {
+                    k_shape.to_vec()
+                } else {
+                    v_shape.to_vec()
+                },
             ));
         }
 
@@ -187,11 +192,7 @@ impl Tensor {
     ///
     /// # Returns
     /// Output tensor [batch, heads, seq_len, head_dim]
-    pub fn scaled_dot_product_attention(
-        self,
-        key: Tensor,
-        value: Tensor,
-    ) -> Result<Self> {
+    pub fn scaled_dot_product_attention(self, key: Tensor, value: Tensor) -> Result<Self> {
         ScaledDotProductAttention::new(self, key, value)?.execute()
     }
 }

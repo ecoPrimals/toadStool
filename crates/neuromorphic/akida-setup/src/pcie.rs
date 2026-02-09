@@ -1,0 +1,125 @@
+//! PCIe device management
+
+use anyhow::{bail, Context, Result};
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct AkidaDevice {
+    pub pcie_address: String,
+    pub vendor_id: String,
+    pub device_id: String,
+}
+
+/// Discover Akida devices via lspci
+pub fn discover_akida_devices() -> Result<Vec<AkidaDevice>> {
+    let output = Command::new("lspci")
+        .arg("-d")
+        .arg("1e7c:bca1") // Akida vendor:device
+        .output()
+        .context("Failed to run lspci")?;
+
+    if !output.status.success() {
+        bail!("lspci failed: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut devices = Vec::new();
+
+    for line in stdout.lines() {
+        // Parse: "a1:00.0 Co-processor: Brainchip..."
+        if let Some(pcie_addr) = line.split_whitespace().next() {
+            devices.push(AkidaDevice {
+                pcie_address: format!("0000:{}", pcie_addr),
+                vendor_id: "1e7c".to_string(),
+                device_id: "bca1".to_string(),
+            });
+        }
+    }
+
+    Ok(devices)
+}
+
+/// Enable PCIe device via sysfs
+pub fn enable_pcie_device(pcie_address: &str) -> Result<()> {
+    let enable_path = format!("/sys/bus/pci/devices/{}/enable", pcie_address);
+
+    // Check if already enabled
+    if let Ok(content) = fs::read_to_string(&enable_path) {
+        if content.trim() == "1" {
+            tracing::debug!("Device {} already enabled", pcie_address);
+            return Ok(());
+        }
+    }
+
+    // Enable device
+    fs::write(&enable_path, "1")
+        .with_context(|| format!("Failed to enable device {}", pcie_address))?;
+
+    // Verify
+    let enabled = fs::read_to_string(&enable_path)?;
+    if enabled.trim() != "1" {
+        bail!("Failed to enable device {}", pcie_address);
+    }
+
+    Ok(())
+}
+
+/// Load kernel module
+pub fn load_kernel_module(module_path: &str) -> Result<()> {
+    let path = Path::new(module_path);
+
+    if !path.exists() {
+        bail!("Kernel module not found: {}", module_path);
+    }
+
+    // Check if already loaded
+    if is_module_loaded()? {
+        tracing::info!("Module already loaded, unloading first...");
+        unload_kernel_module()?;
+    }
+
+    // Load module with insmod
+    let output = Command::new("insmod")
+        .arg(module_path)
+        .output()
+        .context("Failed to run insmod")?;
+
+    if !output.status.success() {
+        bail!("insmod failed: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    // Verify loaded
+    if !is_module_loaded()? {
+        bail!("Module loaded but not found in lsmod");
+    }
+
+    Ok(())
+}
+
+/// Check if akida_pcie module is loaded
+pub fn is_module_loaded() -> Result<bool> {
+    let output = Command::new("lsmod")
+        .output()
+        .context("Failed to run lsmod")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.contains("akida_pcie"))
+}
+
+/// Unload kernel module
+pub fn unload_kernel_module() -> Result<()> {
+    let output = Command::new("rmmod")
+        .arg("akida_pcie")
+        .output()
+        .context("Failed to run rmmod")?;
+
+    // Ignore errors (module might not be loaded)
+    if !output.status.success() {
+        tracing::warn!("rmmod warning: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    Ok(())
+}

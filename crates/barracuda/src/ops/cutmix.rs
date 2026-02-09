@@ -19,7 +19,14 @@ struct CutMixParams {
     cut_w: u32,
     cut_h: u32,
     mix_idx: u32,
-    _padding: [u32; 3],
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
+    _pad7: u32,
 }
 
 /// CutMix data augmentation operation
@@ -114,7 +121,14 @@ impl CutMix {
             cut_w: self.cut_w,
             cut_h: self.cut_h,
             mix_idx: self.mix_idx,
-            _padding: [0; 3],
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+            _pad3: 0,
+            _pad4: 0,
+            _pad5: 0,
+            _pad6: 0,
+            _pad7: 0,
         };
 
         let params_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -226,8 +240,8 @@ impl CutMix {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (8x8x1 workgroup size)
-            let workgroups_x = (width as u32 + 7) / 8;
-            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_x = (width as u32).div_ceil(8);
+            let workgroups_y = (height as u32).div_ceil(8);
             let workgroups_z = batch_size as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -253,13 +267,9 @@ mod tests {
         let device = get_test_device().await;
 
         // Create 2x3x4x4 batch (batch=2, channels=3, height=4, width=4)
-        let input = Tensor::from_vec_on(
-            vec![1.0; 2 * 3 * 4 * 4],
-            vec![2, 3, 4, 4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 4 * 4], vec![2, 3, 4, 4], device)
+            .await
+            .unwrap();
 
         let output = CutMix::new(input, 1, 1, 2, 2, 1)
             .unwrap()

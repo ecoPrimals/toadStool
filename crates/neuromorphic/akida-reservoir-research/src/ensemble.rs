@@ -35,6 +35,10 @@ pub struct DualChipEnsemble {
 
 impl DualChipEnsemble {
     /// Create ensemble with two devices
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if model files cannot be loaded or parsed.
     pub fn new(config: EnsembleConfig, device1: AkidaDevice, device2: AkidaDevice) -> Result<Self> {
         info!("Creating dual-chip ensemble");
         info!("  Chip 1: {}", config.reservoir1_path);
@@ -62,6 +66,10 @@ impl DualChipEnsemble {
     }
 
     /// Discover devices and create ensemble
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if device discovery fails, fewer than 2 devices are found, or devices cannot be opened.
     pub fn discover_and_create(config: EnsembleConfig) -> Result<Self> {
         info!("Discovering Akida devices for ensemble...");
 
@@ -84,6 +92,10 @@ impl DualChipEnsemble {
     }
 
     /// Load reservoirs to devices
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if models cannot be loaded to their respective devices.
     pub fn load_reservoirs(&mut self) -> Result<()> {
         info!("Loading reservoirs to devices...");
 
@@ -112,6 +124,10 @@ impl DualChipEnsemble {
     /// Both chips run inference in parallel (~70-96µs each).
     /// State extraction and concatenation add ~10-50µs.
     /// Total: ~100-150µs for dual-chip ensemble state!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if inference fails on either chip or state concatenation fails.
     pub fn get_ensemble_state(&mut self, input: &[u8]) -> Result<Array1<f32>> {
         debug!("Running ensemble inference");
 
@@ -150,6 +166,10 @@ impl DualChipEnsemble {
     }
 
     /// Collect ensemble states for training dataset
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if inference fails for any input sample.
     pub fn collect_training_states(&mut self, inputs: &[Vec<u8>]) -> Result<Vec<Array1<f32>>> {
         info!("Collecting ensemble states for {} inputs", inputs.len());
 

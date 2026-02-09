@@ -50,14 +50,17 @@ impl SpatialDropout {
 
         // Validate mask shape: must be [B, C]
         let mask_shape = mask.shape();
-        if mask_shape.len() != 2 || mask_shape[0] != input_shape[0] || mask_shape[1] != input_shape[1] {
+        if mask_shape.len() != 2
+            || mask_shape[0] != input_shape[0]
+            || mask_shape[1] != input_shape[1]
+        {
             return Err(BarracudaError::invalid_op(
                 "spatial_dropout",
                 "mask must be 2D tensor [B, C] matching input batch and channels",
             ));
         }
 
-        if drop_prob < 0.0 || drop_prob >= 1.0 {
+        if !(0.0..1.0).contains(&drop_prob) {
             return Err(BarracudaError::invalid_op(
                 "spatial_dropout",
                 "drop_prob must be in range [0.0, 1.0)",
@@ -98,74 +101,82 @@ impl SpatialDropout {
             _padding2: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("spatial_dropout_params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("spatial_dropout_params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("spatial_dropout_shader"));
 
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("spatial_dropout_bind_group_layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("spatial_dropout_bind_group_layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("spatial_dropout_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("spatial_dropout_pipeline_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("spatial_dropout_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("spatial_dropout_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("spatial_dropout_bind_group"),
@@ -190,9 +201,11 @@ impl SpatialDropout {
             ],
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("spatial_dropout_encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("spatial_dropout_encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -203,10 +216,10 @@ impl SpatialDropout {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups_x = (width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (height as u32).div_ceil(optimal_wg_size);
             let workgroups_z = batch_size * channels;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z as u32);
         }
@@ -228,12 +241,7 @@ impl Tensor {
     /// - `mask`: Channel mask tensor [B, C] (random values on CPU, passed in)
     /// - `drop_prob`: Dropout probability
     /// - `training`: Whether in training mode
-    pub fn spatial_dropout(
-        self,
-        mask: Tensor,
-        drop_prob: f32,
-        training: bool,
-    ) -> Result<Self> {
+    pub fn spatial_dropout(self, mask: Tensor, drop_prob: f32, training: bool) -> Result<Self> {
         SpatialDropout::new(self, mask, drop_prob, training)?.execute()
     }
 }

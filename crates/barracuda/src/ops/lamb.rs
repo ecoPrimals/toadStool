@@ -121,13 +121,13 @@ impl Lamb {
 
         // Create writable buffers using GPU copy operations (zero CPU fallbacks)
         let parameters_buffer = device.create_buffer_f32(size)?;
-        
+
         // Copy parameters buffer using GPU copy
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("LAMB Buffer Copy Encoder"),
-            },
-        );
+            });
         encoder.copy_buffer_to_buffer(
             self.parameters.buffer(),
             0,
@@ -139,13 +139,7 @@ impl Lamb {
         // Create momentum buffer (GPU copy or zero initialization)
         let m_buffer = if let Some(ref m_tensor) = self.momentum {
             let m_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                m_tensor.buffer(),
-                0,
-                &m_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(m_tensor.buffer(), 0, &m_buf, 0, byte_size);
             m_buf
         } else {
             device.create_buffer_f32(size)?
@@ -154,13 +148,7 @@ impl Lamb {
         // Create variance buffer (GPU copy or zero initialization)
         let v_buffer = if let Some(ref v_tensor) = self.variance {
             let v_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                v_tensor.buffer(),
-                0,
-                &v_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(v_tensor.buffer(), 0, &v_buf, 0, byte_size);
             v_buf
         } else {
             device.create_buffer_f32(size)?
@@ -200,95 +188,96 @@ impl Lamb {
             _pad1: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("LAMB Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("LAMB Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("LAMB Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("LAMB Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 6,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 6,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -327,30 +316,32 @@ impl Lamb {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("LAMB Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("LAMB Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create encoder
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("LAMB Encoder"),
-            },
-        );
+            });
 
         // Step 1: Compute Adam step
-        let adam_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("LAMB Adam Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "compute_adam_step",
-            },
-        );
+        let adam_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("LAMB Adam Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "compute_adam_step",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -360,21 +351,22 @@ impl Lamb {
             pass.set_pipeline(&adam_pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         // Step 2: Apply trust ratio
-        let trust_pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("LAMB Trust Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader_module,
-                entry_point: "apply_trust_ratio",
-            },
-        );
+        let trust_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("LAMB Trust Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "apply_trust_ratio",
+                });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -385,10 +377,10 @@ impl Lamb {
             pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
             // Trust ratio computation is a reduction over parameters
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let param_size = self.parameters.shape().iter().product::<usize>();
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (param_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (param_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -400,8 +392,10 @@ impl Lamb {
             device.clone(),
         );
 
-        let updated_m = Tensor::from_buffer(m_buffer, self.parameters.shape().to_vec(), device.clone());
-        let updated_v = Tensor::from_buffer(v_buffer, self.parameters.shape().to_vec(), device.clone());
+        let updated_m =
+            Tensor::from_buffer(m_buffer, self.parameters.shape().to_vec(), device.clone());
+        let updated_v =
+            Tensor::from_buffer(v_buffer, self.parameters.shape().to_vec(), device.clone());
 
         Ok((updated_params, updated_m, updated_v))
     }
@@ -458,8 +452,18 @@ mod tests {
         let (params1, m1, v1) = lamb1.execute().unwrap();
 
         // Step 2 with accumulated state
-        let lamb2 = Lamb::new(params1, gradients, 0.001, 0.9, 0.999, 2, 0.0, Some(m1), Some(v1))
-            .unwrap();
+        let lamb2 = Lamb::new(
+            params1,
+            gradients,
+            0.001,
+            0.9,
+            0.999,
+            2,
+            0.0,
+            Some(m1),
+            Some(v1),
+        )
+        .unwrap();
         let (params2, _m2, _v2) = lamb2.execute().unwrap();
 
         assert_eq!(params2.shape(), &[4]);

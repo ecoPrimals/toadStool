@@ -1,4 +1,0 @@
-hardware,phase,samples,time_ms,throughput,accuracy,overhead,power_watts,energy_per_sample
-GPU (NVIDIA RTX 3090),training,50,143.75,347.82,0.0000,41.28,250.00,0.718769
-GPU (NVIDIA RTX 3090),inference,100,8245.66,12.13,0.0900,10218.67,250.00,20.614154
-NPU (BrainChip Akida),inference,100,9315.03,10.74,0.0900,13094.08,1.00,0.093150

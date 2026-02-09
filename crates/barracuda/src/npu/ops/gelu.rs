@@ -107,7 +107,7 @@ pub fn npu_gelu(input: &[f32]) -> Result<Vec<f32>> {
 /// **Accuracy**: ~0.1% error vs exact Gaussian CDF
 #[inline]
 fn gelu_approx(x: f32) -> f32 {
-    const SQRT_2_OVER_PI: f32 = 0.7978845608; // √(2/π)
+    const SQRT_2_OVER_PI: f32 = 0.797_884_6; // √(2/π)
     const COEFF: f32 = 0.044715;
 
     let x_cubed = x * x * x;
@@ -144,7 +144,7 @@ fn fast_tanh(x: f32) -> f32 {
 pub fn npu_gelu_exact(input: &[f32]) -> Result<Vec<f32>> {
     let mut output = Vec::with_capacity(input.len());
 
-    const SQRT_2: f32 = 1.4142135624;
+    const SQRT_2: f32 = std::f32::consts::SQRT_2;
 
     for &x in input {
         // erf approximation (good to ~1e-4)
@@ -175,11 +175,11 @@ fn erf_approx(x: f32) -> f32 {
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let x = x.abs();
 
-    const A1: f32 = 0.254829592;
-    const A2: f32 = -0.284496736;
-    const A3: f32 = 1.421413741;
-    const A4: f32 = -1.453152027;
-    const A5: f32 = 1.061405429;
+    const A1: f32 = 0.254_829_6;
+    const A2: f32 = -0.284_496_72;
+    const A3: f32 = 1.421_413_8;
+    const A4: f32 = -1.453_152_1;
+    const A5: f32 = 1.061_405_4;
     const P: f32 = 0.3275911;
 
     let t = 1.0 / (1.0 + P * x);

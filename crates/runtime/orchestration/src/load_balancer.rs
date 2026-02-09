@@ -27,22 +27,17 @@ impl Default for LoadBalancer {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum BalancingStrategy {
     /// Equal distribution
     Equal,
 
     /// Weighted by substrate capacity
+    #[default]
     Weighted,
 
     /// Dynamic based on current load
     Dynamic,
-}
-
-impl Default for BalancingStrategy {
-    fn default() -> Self {
-        Self::Weighted
-    }
 }
 
 #[cfg(test)]

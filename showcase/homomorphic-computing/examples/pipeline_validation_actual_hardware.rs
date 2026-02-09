@@ -5,9 +5,9 @@
 // Comprehensive validation of heterogeneous pipeline architectures
 // using ACTUAL hardware measurements for scientific validation.
 
+use akida_driver::{AkidaDevice, InferenceConfig, InferenceExecutor};
 use anyhow::Result;
 use barracuda::prelude::*;
-use akida_driver::{AkidaDevice, InferenceConfig, InferenceExecutor};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::Instant;
@@ -303,8 +303,14 @@ async fn main() -> Result<()> {
                 workload.name()
             );
 
-            match run_pipeline_benchmark(&mut hardware, pipeline, workload, &client_key, &server_key)
-                .await
+            match run_pipeline_benchmark(
+                &mut hardware,
+                pipeline,
+                workload,
+                &client_key,
+                &server_key,
+            )
+            .await
             {
                 Ok(result) => {
                     println!("    ✓ Time: {:.2}ms, Throughput: {:.0} ops/s, Energy: {:.6}J, Efficiency: {:.1} ops/J",
@@ -392,7 +398,7 @@ async fn run_pipeline_benchmark(
 
                 let time = start.elapsed().as_micros();
                 chip_times.push(("GPU (BarraCUDA)".to_string(), time));
-                
+
                 // Query real GPU power via nvidia-smi
                 let gpu_power = query_gpu_power();
                 chip_power.push(("GPU".to_string(), gpu_power));
@@ -405,7 +411,7 @@ async fn run_pipeline_benchmark(
 
                 // ACTUAL NPU execution via Akida!
                 let device = &mut hardware.npu_devices[0];
-                
+
                 // Real Akida inference - sparse event processing
                 let time = execute_npu_sparse_inference(device, iterations, sparsity)?;
 
@@ -436,7 +442,7 @@ async fn run_pipeline_benchmark(
                 chip_times.push(("NPU".to_string(), npu_time));
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_power.push(("NPU".to_string(), 2.0));
-                
+
                 // Query real GPU power via nvidia-smi
                 let gpu_power = query_gpu_power();
                 chip_power.push(("GPU".to_string(), gpu_power));
@@ -464,7 +470,7 @@ async fn run_pipeline_benchmark(
 
                 chip_times.push(("GPU".to_string(), gpu_time));
                 chip_times.push(("NPU".to_string(), npu_time));
-                
+
                 // Query real GPU power via nvidia-smi
                 let gpu_power = query_gpu_power();
                 chip_power.push(("GPU".to_string(), gpu_power));
@@ -525,7 +531,7 @@ async fn run_pipeline_benchmark(
 /// Deep Debt: Real hardware measurement, no hardcoding!
 fn query_gpu_power() -> f32 {
     use std::process::Command;
-    
+
     // Try to query nvidia-smi for real-time power draw
     match Command::new("nvidia-smi")
         .args(&["--query-gpu=power.draw", "--format=csv,noheader,nounits"])
@@ -545,7 +551,7 @@ fn query_gpu_power() -> f32 {
             tracing::warn!("nvidia-smi query failed");
         }
     }
-    
+
     // Fallback: Use typical RTX 3090 power under load
     tracing::warn!("GPU power: using typical estimate (nvidia-smi unavailable)");
     250.0 // Typical RTX 3090 under compute load
@@ -556,17 +562,17 @@ fn query_gpu_power() -> f32 {
 fn generate_sparse_events(iterations: usize, sparsity: f32) -> Vec<u8> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
-    
+
     // Calculate number of active events based on sparsity
     let num_events = ((iterations as f32) * (1.0 - sparsity)) as usize;
-    
+
     // Generate sparse event stream
     let mut events = vec![0u8; iterations];
     for _ in 0..num_events {
         let idx = rng.gen_range(0..iterations);
         events[idx] = rng.gen_range(1..255); // Non-zero event
     }
-    
+
     events
 }
 
@@ -579,22 +585,22 @@ fn execute_npu_sparse_inference(
 ) -> Result<u128> {
     // Generate sparse event stream
     let events = generate_sparse_events(iterations, sparsity);
-    
+
     // Configure inference for sparse event processing
     let config = InferenceConfig::new(
-        vec![events.len()],  // Input: sparse event stream
-        vec![128],           // Output: 128-dimensional embedding
-        1,                   // Byte per element
-        1                    // Byte per element
+        vec![events.len()], // Input: sparse event stream
+        vec![128],          // Output: 128-dimensional embedding
+        1,                  // Byte per element
+        1,                  // Byte per element
     );
-    
+
     let executor = InferenceExecutor::new(config);
-    
+
     let start = Instant::now();
-    
+
     // ACTUAL NPU INFERENCE - Real Akida execution!
     let _result = executor.infer(&events, device)?;
-    
+
     Ok(start.elapsed().as_micros())
 }
 

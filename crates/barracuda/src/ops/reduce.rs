@@ -24,7 +24,6 @@
 //! let sum_tensor = input.reduce(ReduceOperation::Sum)?;
 //! ```
 
-use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use wgpu::util::DeviceExt;
@@ -34,6 +33,8 @@ use wgpu::util::DeviceExt;
 struct ReduceParams {
     size: u32,
     operation: u32,
+    _pad0: u32,
+    _pad1: u32,
 }
 
 pub struct Reduce {
@@ -72,18 +73,21 @@ impl Reduce {
         let params = ReduceParams {
             size: size as u32,
             operation: self.operation.to_u32(),
+            _pad0: 0,
+            _pad1: 0,
         };
 
         // Deep Debt Evolution: Capability-based dispatch
-        let caps = DeviceCapabilities::from_device(&device);
-        let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-        let num_workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        // Note: Shader hardcodes @workgroup_size(256), so we must use 256 here
+        let workgroup_size = 256u32;  // Must match shader's @workgroup_size(256)
+        let num_workgroups = (size as u32).div_ceil(workgroup_size);
 
-        let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
+        // Initialize output buffer to zeros
+        let output_data = vec![0.0f32; num_workgroups as usize];
+        let output_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("reduce_output"),
-            size: (num_workgroups as usize * std::mem::size_of::<f32>()) as u64,
+            contents: bytemuck::cast_slice(&output_data),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
         });
 
         let params_buffer = device
@@ -195,6 +199,9 @@ impl Reduce {
         }
 
         device.queue.submit(Some(encoder.finish()));
+        
+        // Ensure GPU finishes before returning
+        device.device.poll(wgpu::Maintain::Wait);
 
         // Return partial results (caller can reduce further if needed)
         Ok(Tensor::from_buffer(
@@ -255,10 +262,12 @@ mod tests {
         let input = Tensor::from_data(&vec![1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
 
         let result = input.reduce(ReduceOperation::Sum).unwrap();
+        println!("Result shape: {:?}, len: {}", result.shape(), result.len());
         let partial_sums = result.to_vec().unwrap();
 
         // Sum all partial results
         let total: f32 = partial_sums.iter().sum();
+        println!("Partial sums: {:?}, Total: {}", partial_sums, total);
         assert!((total - 10.0).abs() < 1e-5);
     }
 

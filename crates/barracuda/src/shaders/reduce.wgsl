@@ -9,6 +9,8 @@
 struct Params {
     size: u32,
     operation: u32,  // 0=Sum, 1=Max, 2=Min, 3=Mean
+    _pad0: u32,
+    _pad1: u32,
 }
 @group(0) @binding(2) var<uniform> params: Params;
 
@@ -43,9 +45,9 @@ fn main(
     workgroupBarrier();
     
     // Tree reduction in shared memory
+    // Use exact same pattern as sum_reduce.wgsl which is known to work
     for (var stride = 128u; stride > 0u; stride = stride / 2u) {
-        // Deep Debt Fix: Use tid + stride (local) not gid + stride (global) for shared memory bounds
-        if (tid < stride && (tid + stride) < 256u) {
+        if (tid < stride && (gid + stride) < params.size) {
             let a = shared_data[tid];
             let b = shared_data[tid + stride];
             

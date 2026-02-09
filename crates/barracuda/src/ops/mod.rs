@@ -6,6 +6,12 @@
 //! - Single implementation per operation
 //! - Zero duplication
 
+// Linear algebra operations (scientific computing)
+pub mod linalg;
+
+// Interpolation operations (RBF, splines, etc.)
+pub mod interpolation;
+
 // NPU Bridge - Phase 3 unified API (Tensor ↔ NPU conversion)
 pub mod npu_bridge;
 
@@ -25,18 +31,18 @@ pub mod sparse_attn;
 
 // Homomorphic encryption operations (FHE - GPU accelerated)
 pub mod fhe_and;
-pub mod fhe_extract;        // Coefficient extraction (selective decryption!)
+pub mod fhe_extract; // Coefficient extraction (selective decryption!)
 pub mod fhe_fast_poly_mul; // Fast polynomial multiply (NTT-based, 56x speedup!)
-pub mod fhe_intt;          // Inverse NTT (completes NTT pipeline!)
-pub mod fhe_key_switch;    // Key switching (multi-key FHE!)
+pub mod fhe_intt; // Inverse NTT (completes NTT pipeline!)
+pub mod fhe_key_switch; // Key switching (multi-key FHE!)
 pub mod fhe_modulus_switch; // Modulus switching (noise reduction!)
-pub mod fhe_ntt;           // Number Theoretic Transform (56x speedup!)
-pub mod fhe_pointwise_mul; // Point-wise multiply in NTT domain (O(N))
+pub mod fhe_ntt; // Number Theoretic Transform (56x speedup!)
 pub mod fhe_or;
+pub mod fhe_pointwise_mul; // Point-wise multiply in NTT domain (O(N))
 pub mod fhe_poly_add;
-pub mod fhe_poly_mul;      // Naive polynomial multiply (for comparison)
+pub mod fhe_poly_mul; // Naive polynomial multiply (for comparison)
 pub mod fhe_poly_sub;
-pub mod fhe_rotate;        // CKKS rotation (Galois automorphism!)
+pub mod fhe_rotate; // CKKS rotation (Galois automorphism!)
 pub mod fhe_xor;
 
 // Activation operations
@@ -74,39 +80,39 @@ pub mod gt;
 pub mod lt;
 
 // Trigonometric operations
-pub mod cos_wgsl;
-pub mod sin_wgsl;
-pub mod tan_wgsl;
-pub mod asin_wgsl;
 pub mod acos_wgsl;
+pub mod asin_wgsl;
 pub mod atan_wgsl;
-pub mod sinh_wgsl;
+pub mod cos_wgsl;
 pub mod cosh_wgsl;
+pub mod sin_wgsl;
+pub mod sinh_wgsl;
+pub mod tan_wgsl;
 // pub mod tanh_wgsl; // REMOVED - duplicate of tanh.rs
-pub mod asinh_wgsl;
 pub mod acosh_wgsl;
+pub mod asinh_wgsl;
 pub mod atanh_wgsl;
 
 // Rounding operations
 pub mod ceil_wgsl;
 pub mod floor_wgsl;
+pub mod frac_wgsl;
 pub mod round_wgsl;
 pub mod trunc_wgsl;
-pub mod frac_wgsl;
 
 // Reduction operations
+pub mod erf_wgsl;
+pub mod erfc_wgsl;
+pub mod lgamma_wgsl;
 pub mod max_wgsl;
 pub mod mean;
 pub mod min_wgsl;
 pub mod norm;
 pub mod prod;
+pub mod rsqrt_wgsl;
 pub mod std;
 pub mod sum;
 pub mod variance;
-pub mod rsqrt_wgsl;
-pub mod erf_wgsl;
-pub mod erfc_wgsl;
-pub mod lgamma_wgsl;
 
 // Shape operations
 pub mod concat;
@@ -124,27 +130,27 @@ pub mod where_op;
 // Neuromorphic operations
 pub mod adaptive_avgpool2d;
 pub mod adaptive_maxpool2d;
-pub mod avgpool2d;
 pub mod avg_pool1d_wgsl;
-pub mod max_pool1d_wgsl;
+pub mod avgpool2d;
 pub mod batch_norm;
 pub mod cast;
 pub mod conv2d;
 pub mod dropout_wgsl;
-pub mod spatial_dropout;
 pub mod embedding_wgsl;
 pub mod gather_wgsl;
 pub mod global_maxpool;
 pub mod layer_norm_wgsl;
 pub mod matmul;
+pub mod max_pool1d_wgsl;
 pub mod maxpool2d;
 pub mod scatter_wgsl;
+pub mod spatial_dropout;
 pub mod topk;
 
 // Utility operations
 pub mod broadcast;
-pub mod cumsum_wgsl;
 pub mod cumprod_wgsl;
+pub mod cumsum_wgsl;
 pub mod fill;
 pub mod flip_wgsl;
 pub mod one_hot_wgsl;
@@ -210,35 +216,35 @@ pub mod rnn_cell;
 pub mod rnn_cell_wgsl;
 
 // Advanced activations
+pub mod celu_wgsl;
+pub mod gelu_approximate_wgsl;
 pub mod glu_wgsl;
+pub mod hardshrink_wgsl;
+pub mod hardsigmoid_wgsl;
+pub mod hardtanh_wgsl;
+pub mod log_softmax_wgsl;
+pub mod logsigmoid_wgsl;
 pub mod prelu_wgsl;
+pub mod rrelu_wgsl;
+pub mod silu_wgsl;
+pub mod softshrink_wgsl;
 pub mod softsign_wgsl;
 pub mod tanhshrink_wgsl;
-pub mod silu_wgsl;
-pub mod hardtanh_wgsl;
-pub mod logsigmoid_wgsl;
-pub mod gelu_approximate_wgsl;
-pub mod hardsigmoid_wgsl;
-pub mod celu_wgsl;
 pub mod threshold_wgsl;
-pub mod softshrink_wgsl;
-pub mod hardshrink_wgsl;
-pub mod log_softmax_wgsl;
-pub mod rrelu_wgsl;
 
 // Advanced convolutions
 pub mod avgpool3d;
-pub mod circular_pad_wgsl;
 pub mod circular_pad2d;
-pub mod replication_pad_wgsl;
-pub mod reflection_pad_wgsl;
+pub mod circular_pad_wgsl;
+pub mod deformable_conv2d;
 pub mod dilated_conv2d;
+pub mod gated_conv2d;
 pub mod grouped_conv2d;
 pub mod maxpool3d;
-pub mod separable_conv2d;
-pub mod deformable_conv2d;
 pub mod octave_conv2d;
-pub mod gated_conv2d;
+pub mod reflection_pad_wgsl;
+pub mod replication_pad_wgsl;
+pub mod separable_conv2d;
 
 // Advanced loss functions
 pub mod bce_loss;
@@ -247,7 +253,7 @@ pub mod cosine_embedding_loss;
 pub mod hinge_loss;
 pub mod kl_divergence; // WGSL implementation (not kl_divergence_wgsl.rs)
 pub mod kldiv_loss; // Alternative KL divergence loss implementation
-// pub mod kl_divergence_wgsl; // REMOVED - duplicate of kl_divergence.rs
+                    // pub mod kl_divergence_wgsl; // REMOVED - duplicate of kl_divergence.rs
 pub mod margin_ranking_loss;
 pub mod multi_margin_loss;
 pub mod multilabel_margin_loss;
@@ -259,47 +265,47 @@ pub mod triplet_loss;
 pub mod adaptive_instance_norm;
 pub mod filter_response_norm;
 pub mod local_response_norm;
-pub mod spectral_normalization;
 pub mod spectral_norm;
-pub mod weight_normalization;
+pub mod spectral_normalization;
 pub mod weight_norm;
+pub mod weight_normalization;
 
 // Advanced utilities
 pub mod affine_grid;
 pub mod bincount_wgsl;
 pub mod bucketize_wgsl;
 pub mod cdist_wgsl;
+pub mod channel_shuffle_wgsl;
+pub mod color_jitter_wgsl;
 pub mod diag;
 pub mod fold;
+pub mod gather_nd;
 pub mod grid_sample_wgsl;
 pub mod histc;
-pub mod index_select_wgsl;
-pub mod index_select;
-pub mod slice_assign;
 pub mod index_add;
-pub mod gather_nd;
-pub mod scatter_nd;
-pub mod interpolate_wgsl;
+pub mod index_select;
+pub mod index_select_wgsl;
 pub mod interpolate_nearest_wgsl;
+pub mod interpolate_wgsl;
+pub mod inverse_wgsl;
 pub mod logsumexp; // Need to check which one has WGSL
 pub mod logsumexp_wgsl; // Need to analyze before removing
-pub mod masked_select;
 pub mod masked_fill_wgsl;
+pub mod masked_select;
 pub mod nonzero;
 pub mod normalize;
 pub mod pairwise_distance;
 pub mod pdist;
 pub mod renorm;
-pub mod sinkhorn_distance;
+pub mod scatter_nd;
 pub mod searchsorted;
+pub mod sinkhorn_distance;
+pub mod slice_assign;
 pub mod trace_wgsl;
 pub mod tril;
 pub mod triu;
 pub mod unfold;
 pub mod unique;
-pub mod inverse_wgsl;
-pub mod channel_shuffle_wgsl;
-pub mod color_jitter_wgsl;
 
 // Tensor manipulation
 pub mod chunk;
@@ -361,7 +367,7 @@ pub mod lp_pool2d;
 pub mod focal_loss_alpha;
 pub mod focal_loss_v2;
 pub mod smooth_l1_loss; // WGSL implementation (not smooth_l1_loss_wgsl.rs)
-// pub mod smooth_l1_loss_wgsl; // REMOVED - duplicate of smooth_l1_loss.rs
+                        // pub mod smooth_l1_loss_wgsl; // REMOVED - duplicate of smooth_l1_loss.rs
 
 // Utility operations (original)
 // pub mod channel_shuffle; // Now channel_shuffle_wgsl
@@ -422,8 +428,8 @@ pub mod mosaic;
 pub mod random_affine;
 pub mod random_crop;
 pub mod random_erasing;
-pub mod random_rotation;
 pub mod random_perspective;
+pub mod random_rotation;
 
 // Specialized Losses & Metrics (Category 17)
 pub mod psnr;
@@ -452,16 +458,14 @@ pub use elu_wgsl::ELU;
 pub use eq::Eq;
 pub use exp_wgsl::Exp;
 pub use floor_wgsl::Floor;
-pub use gather_wgsl::Gather;
 pub use gather_nd::GatherNd;
+pub use gather_wgsl::Gather;
 pub use gelu_wgsl::GELU;
+pub use gt::Gt;
+pub use hardswish_wgsl::Hardswish;
 pub use index_add::IndexAdd;
 pub use index_select::IndexSelect;
 pub use index_select_wgsl::IndexSelect as IndexSelectWgsl;
-pub use scatter_nd::ScatterNd;
-pub use slice_assign::{SliceAssign, SliceRange};
-pub use gt::Gt;
-pub use hardswish_wgsl::Hardswish;
 pub use layer_norm_wgsl::LayerNorm;
 pub use leaky_relu_wgsl::LeakyRelu;
 pub use log_wgsl::Log;
@@ -480,12 +484,14 @@ pub use reciprocal_wgsl::Reciprocal;
 /// Re-exports
 pub use relu::ReLU;
 pub use round_wgsl::Round;
+pub use scatter_nd::ScatterNd;
 pub use scatter_wgsl::Scatter;
 pub use selu_wgsl::SELU;
 pub use sigmoid::Sigmoid;
 pub use sign_wgsl::Sign;
 pub use sin_wgsl::Sin;
 pub use slice::Slice;
+pub use slice_assign::{SliceAssign, SliceRange};
 pub use softmax::Softmax;
 pub use sqrt_wgsl::Sqrt;
 pub use squeeze::Squeeze;
@@ -496,8 +502,8 @@ pub use swish_wgsl::Swish;
 pub mod tanh; // WGSL implementation in tanh.rs (not tanh_wgsl.rs)
 pub use transpose::Transpose;
 pub use unsqueeze::Unsqueeze;
-pub use view::View;
 pub use variance::Variance;
+pub use view::View;
 pub use where_op::Where;
 // topk exports functions, not struct
 pub use adaptive_avgpool2d::AdaptiveAvgPool2D;
@@ -550,18 +556,18 @@ pub use scan::Scan;
 pub mod lovasz_loss;
 
 // Week 7 operations - Universal compute via WGSL
-pub use asin_wgsl::Asin;
 pub use acos_wgsl::Acos;
-pub use atan_wgsl::Atan;
-pub use sinh_wgsl::Sinh;
-pub use cosh_wgsl::Cosh;
-pub use tanh::Tanh; // Using tanh.rs (has WGSL shader)
-pub use asinh_wgsl::Asinh;
 pub use acosh_wgsl::Acosh;
+pub use asin_wgsl::Asin;
+pub use asinh_wgsl::Asinh;
+pub use atan_wgsl::Atan;
 pub use atanh_wgsl::Atanh;
+pub use cosh_wgsl::Cosh;
 pub use erf_wgsl::Erf;
 pub use erfc_wgsl::Erfc;
-pub use lgamma_wgsl::Lgamma;
-pub use smooth_l1_loss::SmoothL1Loss; // Using smooth_l1_loss.rs (has WGSL shader)
 pub use kl_divergence::KLDivergence; // Using kl_divergence.rs (has WGSL shader)
-pub use logsumexp_wgsl::LogsumexpWgsl; // Keep for now, need to analyze logsumexp.rs
+pub use lgamma_wgsl::Lgamma;
+pub use logsumexp_wgsl::LogsumexpWgsl;
+pub use sinh_wgsl::Sinh;
+pub use smooth_l1_loss::SmoothL1Loss; // Using smooth_l1_loss.rs (has WGSL shader)
+pub use tanh::Tanh; // Using tanh.rs (has WGSL shader) // Keep for now, need to analyze logsumexp.rs

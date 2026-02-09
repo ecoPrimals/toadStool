@@ -78,7 +78,7 @@ impl Adafactor {
         }
 
         // Validate betas in valid range
-        if beta1 < 0.0 || beta1 >= 1.0 {
+        if !(0.0..1.0).contains(&beta1) {
             return Err(BarracudaError::invalid_op(
                 "adafactor",
                 "beta1 must be in range [0.0, 1.0)",
@@ -157,32 +157,20 @@ impl Adafactor {
 
         // Create writable buffers using GPU copy operations (zero CPU fallbacks)
         let byte_size = (size * std::mem::size_of::<f32>()) as u64;
-        
+
         // Copy params to writable buffer using GPU copy
         let params_buffer = device.create_buffer_f32(size)?;
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Adafactor Buffer Copy Encoder"),
-            },
-        );
-        encoder.copy_buffer_to_buffer(
-            self.params.buffer(),
-            0,
-            &params_buffer,
-            0,
-            byte_size,
-        );
+            });
+        encoder.copy_buffer_to_buffer(self.params.buffer(), 0, &params_buffer, 0, byte_size);
 
         // Copy or create m buffer (GPU copy or zero initialization)
         let m_buffer = if let Some(ref m_tensor) = self.m {
             let m_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                m_tensor.buffer(),
-                0,
-                &m_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(m_tensor.buffer(), 0, &m_buf, 0, byte_size);
             m_buf
         } else {
             device.create_buffer_f32(size)?
@@ -191,13 +179,7 @@ impl Adafactor {
         // Copy or create v buffer (GPU copy or zero initialization)
         let v_buffer = if let Some(ref v_tensor) = self.v {
             let v_buf = device.create_buffer_f32(size)?;
-            encoder.copy_buffer_to_buffer(
-                v_tensor.buffer(),
-                0,
-                &v_buf,
-                0,
-                byte_size,
-            );
+            encoder.copy_buffer_to_buffer(v_tensor.buffer(), 0, &v_buf, 0, byte_size);
             v_buf
         } else {
             device.create_buffer_f32(size)?
@@ -206,86 +188,93 @@ impl Adafactor {
         // Submit buffer copies
         device.queue.submit(Some(encoder.finish()));
 
-        let adafactor_params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("adafactor_params"),
-                contents: bytemuck::cast_slice(&[adafactor_params]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
+        let adafactor_params_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("adafactor_params"),
+                    contents: bytemuck::cast_slice(&[adafactor_params]),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
         let shader = device.compile_shader(Self::wgsl_shader(), Some("adafactor_shader"));
 
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("adafactor_bind_group_layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("adafactor_bind_group_layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("adafactor_pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("adafactor_pipeline_layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("adafactor_pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("adafactor_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("adafactor_bind_group"),
@@ -314,9 +303,11 @@ impl Adafactor {
             ],
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("adafactor_encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("adafactor_encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -327,19 +318,16 @@ impl Adafactor {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        let updated_params = Tensor::from_buffer(
-            params_buffer,
-            self.params.shape().to_vec(),
-            device.clone(),
-        );
+        let updated_params =
+            Tensor::from_buffer(params_buffer, self.params.shape().to_vec(), device.clone());
 
         let updated_m = Tensor::from_buffer(m_buffer, self.params.shape().to_vec(), device.clone());
 

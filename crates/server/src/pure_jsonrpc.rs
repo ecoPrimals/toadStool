@@ -285,13 +285,13 @@ impl JsonRpcHandler {
 
         let tarpc_submission = submission
             .to_tarpc()
-            .map_err(|e| JsonRpcError::invalid_params(e))?;
+            .map_err(JsonRpcError::invalid_params)?;
 
         let result = self
             .executor
             .execute(tarpc_submission)
             .await
-            .map_err(|e| JsonRpcError::internal_error(e))?;
+            .map_err(JsonRpcError::internal_error)?;
 
         serde_json::to_value(result)
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
@@ -332,7 +332,7 @@ impl JsonRpcHandler {
         self.executor
             .cancel(&workload_id)
             .await
-            .map_err(|e| JsonRpcError::internal_error(e))?;
+            .map_err(JsonRpcError::internal_error)?;
 
         Ok(serde_json::json!({"success": true}))
     }
@@ -356,7 +356,7 @@ impl JsonRpcHandler {
             .executor
             .query_capabilities()
             .await
-            .map_err(|e| JsonRpcError::internal_error(e))?;
+            .map_err(JsonRpcError::internal_error)?;
 
         serde_json::to_value(caps)
             .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))

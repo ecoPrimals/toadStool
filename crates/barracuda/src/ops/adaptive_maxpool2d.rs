@@ -75,7 +75,7 @@ impl AdaptiveMaxPool2D {
             out_width: out_width as u32,
         };
 
-        let output_shape = &vec![batch, channels, out_height, out_width];
+        let output_shape = &[batch, channels, out_height, out_width];
         let output_size = output_shape.iter().product::<usize>() * std::mem::size_of::<f32>();
 
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -191,10 +191,10 @@ impl AdaptiveMaxPool2D {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             let workgroups_z = (batch * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

@@ -17,81 +17,100 @@ pub struct ComplexDiv {
 impl ComplexDiv {
     pub fn new(input_a: Tensor, input_b: Tensor) -> Result<Self> {
         if input_a.shape() != input_b.shape() {
-            return Err(BarracudaError::Device("Tensors must have same shape".to_string()));
+            return Err(BarracudaError::Device(
+                "Tensors must have same shape".to_string(),
+            ));
         }
         if input_a.shape().last() != Some(&2) {
-            return Err(BarracudaError::Device("Must have last dimension = 2".to_string()));
+            return Err(BarracudaError::Device(
+                "Must have last dimension = 2".to_string(),
+            ));
         }
         if !std::ptr::eq(input_a.device().as_ref(), input_b.device().as_ref()) {
             return Err(BarracudaError::Device("Must be on same device".to_string()));
         }
 
         let device = input_a.device();
-        let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Complex Div Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("div.wgsl").into()),
-        });
+        let shader = device
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Complex Div Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("div.wgsl").into()),
+            });
 
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Complex Div Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Complex Div Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Complex Div Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Complex Div Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Complex Div Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: "main",
-        });
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Complex Div Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: "main",
+            });
 
-        Ok(Self { input_a, input_b, pipeline, bind_group_layout })
+        Ok(Self {
+            input_a,
+            input_b,
+            pipeline,
+            bind_group_layout,
+        })
     }
 
     pub fn execute(self) -> Result<Tensor> {
@@ -106,26 +125,42 @@ impl ComplexDiv {
         });
 
         let params = [num_elements as u32 / 2];
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Complex Div Params"),
-            contents: bytemuck::cast_slice(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Complex Div Params"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Complex Div Bind Group"),
             layout: &self.bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.input_a.buffer().as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: self.input_b.buffer().as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: output_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: params_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.input_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Complex Div Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Complex Div Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -135,14 +170,18 @@ impl ComplexDiv {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((num_elements / 2) as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = ((num_elements / 2) as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
-        Ok(Tensor::from_buffer(output_buffer, self.input_a.shape().to_vec(), device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            self.input_a.shape().to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -160,7 +199,12 @@ mod tests {
         let b = vec![2.0f32, 0.0];
         let ta = Tensor::from_data(&a, vec![1, 2], device.clone()).unwrap();
         let tb = Tensor::from_data(&b, vec![1, 2], device.clone()).unwrap();
-        let result = ComplexDiv::new(ta, tb).unwrap().execute().unwrap().to_vec().unwrap();
+        let result = ComplexDiv::new(ta, tb)
+            .unwrap()
+            .execute()
+            .unwrap()
+            .to_vec()
+            .unwrap();
         assert!((result[0] - 0.5).abs() < 1e-5);
         assert!((result[1] - 0.0).abs() < 1e-5);
     }

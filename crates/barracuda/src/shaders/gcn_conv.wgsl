@@ -24,7 +24,7 @@ struct Params {
 @group(0) @binding(3) var<storage, read> weights: array<f32>;         // [in_features, out_features]
 @group(0) @binding(4) var<storage, read> degrees: array<f32>;         // [num_nodes] (sqrt(degree))
 @group(0) @binding(5) var<storage, read_write> transformed: array<f32>; // [num_nodes, out_features]
-@group(0) @binding(6) var<storage, read_write> output: array<f32>;    // [num_nodes, out_features]
+@group(0) @binding(6) var<storage, read_write> output: array<atomic<i32>>;    // [num_nodes, out_features] (atomic accumulation)
 
 // Step 1: Transform features (H' = HW)
 @compute @workgroup_size(256)
@@ -80,7 +80,7 @@ fn add_self_loops(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (params.add_self_loops != 0u) {
         for (var f = 0u; f < params.out_features; f++) {
             let idx = node * params.out_features + f;
-            output[idx] += transformed[idx];
+            atomicAdd(&output[idx], bitcast<i32>(transformed[idx]));
         }
     }
 }

@@ -7,10 +7,10 @@ fn test_twiddle_factors() {
     // Small test: N=4, q=17 (17 ≡ 1 mod 8)
     // Root of unity: 4^2 ≡ 1 (mod 17), so ω=4
     let factors = compute_twiddle_factors(4, 17, 4);
-    
+
     assert_eq!(factors.len(), 4);
-    assert_eq!(factors[0], 1);  // ω^0 = 1
-    assert_eq!(factors[1], 4);  // ω^1 = 4
+    assert_eq!(factors[0], 1); // ω^0 = 1
+    assert_eq!(factors[1], 4); // ω^1 = 4
     assert_eq!(factors[2], 16); // ω^2 = 16 ≡ -1 (mod 17)
     assert_eq!(factors[3], 13); // ω^3 = 13 ≡ -4 (mod 17)
 }

@@ -28,7 +28,7 @@ use wgpu::util::DeviceExt;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct DiceLossParams {
     size: u32,
-    smooth: f32,
+    smooth_val: f32,
     _padding: [u32; 2],
 }
 
@@ -67,7 +67,7 @@ impl DiceLoss {
 
         let params = DiceLossParams {
             size: size as u32,
-            smooth: self.smooth,
+            smooth_val: self.smooth,
             _padding: [0, 0],
         };
 
@@ -189,12 +189,12 @@ impl DiceLoss {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
             use crate::device::{DeviceCapabilities, WorkloadType};
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -220,10 +220,7 @@ mod tests {
             .await
             .unwrap();
 
-        let loss = DiceLoss::new(pred, target, 1.0)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let loss = DiceLoss::new(pred, target, 1.0).unwrap().execute().unwrap();
         let result = loss.to_vec().unwrap();
 
         // Perfect overlap: Dice = 1.0, Loss = 0.0
@@ -241,10 +238,7 @@ mod tests {
             .await
             .unwrap();
 
-        let loss = DiceLoss::new(pred, target, 1.0)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let loss = DiceLoss::new(pred, target, 1.0).unwrap().execute().unwrap();
         let result = loss.to_vec().unwrap();
 
         // No overlap: Loss should be high (close to 1.0)
@@ -261,10 +255,7 @@ mod tests {
             .await
             .unwrap();
 
-        let loss = DiceLoss::new(pred, target, 1.0)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let loss = DiceLoss::new(pred, target, 1.0).unwrap().execute().unwrap();
         let result = loss.to_vec().unwrap();
 
         // Partial overlap: 0 < Loss < 1

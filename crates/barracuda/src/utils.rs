@@ -7,7 +7,7 @@ use crate::error::Result;
 use std::sync::Arc;
 
 /// Read buffer data from GPU back to CPU
-/// 
+///
 /// This is used by WGSL operations to retrieve computation results
 pub fn read_buffer(
     device: &Arc<WgpuDevice>,
@@ -15,7 +15,7 @@ pub fn read_buffer(
     size: usize,
 ) -> Result<Vec<f32>> {
     let byte_size = (size * std::mem::size_of::<f32>()) as u64;
-    
+
     // Create staging buffer for reading
     let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Read Buffer Staging"),
@@ -37,10 +37,10 @@ pub fn read_buffer(
 
     // Map the staging buffer and read data
     let buffer_slice = staging_buffer.slice(..);
-    
+
     // Create a channel for async notification
     let (sender, receiver) = std::sync::mpsc::channel();
-    
+
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
         sender.send(result).ok();
     });
@@ -57,7 +57,7 @@ pub fn read_buffer(
     // Read the data
     let data = buffer_slice.get_mapped_range();
     let result: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
-    
+
     // Clean up
     drop(data);
     staging_buffer.unmap();
@@ -66,7 +66,7 @@ pub fn read_buffer(
 }
 
 /// Read u32 buffer data from GPU back to CPU
-/// 
+///
 /// This is used by operations that return integer indices (argmax, argmin, etc.)
 pub fn read_buffer_u32(
     device: &Arc<WgpuDevice>,
@@ -74,7 +74,7 @@ pub fn read_buffer_u32(
     size: usize,
 ) -> Result<Vec<u32>> {
     let byte_size = (size * std::mem::size_of::<u32>()) as u64;
-    
+
     // Create staging buffer for reading
     let staging_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Read Buffer U32 Staging"),
@@ -96,10 +96,10 @@ pub fn read_buffer_u32(
 
     // Map the staging buffer and read data
     let buffer_slice = staging_buffer.slice(..);
-    
+
     // Create a channel for async notification
     let (sender, receiver) = std::sync::mpsc::channel();
-    
+
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
         sender.send(result).ok();
     });
@@ -116,7 +116,7 @@ pub fn read_buffer_u32(
     // Read the data
     let data = buffer_slice.get_mapped_range();
     let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-    
+
     // Clean up
     drop(data);
     staging_buffer.unmap();

@@ -74,7 +74,7 @@ impl RotaryEmbedding {
 
         // Validate head_dim is even (required for pairwise rotation)
         let head_dim = input.shape()[3];
-        if head_dim % 2 != 0 {
+        if !head_dim.is_multiple_of(2) {
             return Err(BarracudaError::invalid_op(
                 "RotaryEmbedding",
                 format!("head_dim ({}) must be even for pairwise rotation", head_dim),
@@ -229,9 +229,9 @@ impl RotaryEmbedding {
 
             // Deep Debt Evolution: Capability-based dispatch
             let total = (batch_size * seq_len * num_heads * half_dim) as u32;
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (total + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = total.div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

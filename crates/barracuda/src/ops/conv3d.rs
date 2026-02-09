@@ -198,9 +198,9 @@ impl Conv3D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = ((output_w + 3) / 4) as u32;
-            let workgroups_y = ((output_h + 3) / 4) as u32;
-            let workgroups_z = ((output_d + 3) / 4) as u32;
+            let workgroups_x = output_w.div_ceil(4) as u32;
+            let workgroups_y = output_h.div_ceil(4) as u32;
+            let workgroups_z = output_d.div_ceil(4) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
         device.queue.submit(Some(encoder.finish()));

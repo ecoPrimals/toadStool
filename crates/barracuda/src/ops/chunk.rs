@@ -14,8 +14,8 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct ChunkParams {
-    chunk_idx: u32,
-    chunk_size: u32,
+    start_offset: u32,  // Start offset in the split dimension for this chunk
+    chunk_size: u32,    // Size of this chunk along split dimension
     split_dim: u32,
     dim_size: u32,
     inner_size: u32,
@@ -47,19 +47,10 @@ impl Chunk {
             ));
         }
 
-        let dim_size = shape[dim];
-        if dim_size % chunks != 0 {
-            return Err(BarracudaError::invalid_op(
-                "chunk",
-                format!("dimension size {} must be divisible by chunks {}", dim_size, chunks),
-            ));
-        }
+        // Note: PyTorch allows non-divisible chunks - first (dim_size % chunks) chunks
+        // get (dim_size // chunks) + 1 elements, rest get (dim_size // chunks) elements
 
-        Ok(Self {
-            input,
-            chunks,
-            dim,
-        })
+        Ok(Self { input, chunks, dim })
     }
 
     fn wgsl_shader() -> &'static str {
@@ -70,18 +61,30 @@ impl Chunk {
         let device = self.input.device();
         let shape = self.input.shape();
         let dim_size = shape[self.dim];
-        let chunk_size = dim_size / self.chunks;
+        
+        // PyTorch-style chunking: first (dim_size % chunks) chunks get +1 element
+        let base_chunk_size = dim_size / self.chunks;
+        let extra_chunks = dim_size % self.chunks;
 
         // Compute sizes
         let outer_size: usize = shape[..self.dim].iter().product();
         let inner_size: usize = shape[self.dim + 1..].iter().product();
-        let output_size = outer_size * chunk_size * inner_size;
 
         let mut results = Vec::with_capacity(self.chunks);
+        let mut start_offset = 0;
 
         for chunk_idx in 0..self.chunks {
+            // Calculate chunk size: first extra_chunks get +1 element
+            let chunk_size = if chunk_idx < extra_chunks {
+                base_chunk_size + 1
+            } else {
+                base_chunk_size
+            };
+            
+            let output_size = outer_size * chunk_size * inner_size;
+
             let params = ChunkParams {
-                chunk_idx: chunk_idx as u32,
+                start_offset: start_offset as u32,
                 chunk_size: chunk_size as u32,
                 split_dim: self.dim as u32,
                 dim_size: dim_size as u32,
@@ -90,50 +93,58 @@ impl Chunk {
                 output_size: output_size as u32,
                 _pad1: 0,
             };
+            
+            start_offset += chunk_size;
 
-            let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Chunk Params"),
-                contents: bytemuck::bytes_of(&params),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+            let params_buffer =
+                device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Chunk Params"),
+                        contents: bytemuck::bytes_of(&params),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    });
 
             let output_buffer = device.create_buffer_f32(output_size)?;
 
-            let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Chunk Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
+            let bind_group_layout =
+                device
+                    .device
+                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        label: Some("Chunk Bind Group Layout"),
+                        entries: &[
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 0,
+                                visibility: wgpu::ShaderStages::COMPUTE,
+                                ty: wgpu::BindingType::Buffer {
+                                    ty: wgpu::BufferBindingType::Uniform,
+                                    has_dynamic_offset: false,
+                                    min_binding_size: None,
+                                },
+                                count: None,
+                            },
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 1,
+                                visibility: wgpu::ShaderStages::COMPUTE,
+                                ty: wgpu::BindingType::Buffer {
+                                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                    has_dynamic_offset: false,
+                                    min_binding_size: None,
+                                },
+                                count: None,
+                            },
+                            wgpu::BindGroupLayoutEntry {
+                                binding: 2,
+                                visibility: wgpu::ShaderStages::COMPUTE,
+                                ty: wgpu::BindingType::Buffer {
+                                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                    has_dynamic_offset: false,
+                                    min_binding_size: None,
+                                },
+                                count: None,
+                            },
+                        ],
+                    });
 
             let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Chunk Bind Group"),
@@ -155,22 +166,31 @@ impl Chunk {
             });
 
             let shader = device.compile_shader(Self::wgsl_shader(), Some("Chunk"));
-            let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Chunk Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
+            let pipeline_layout =
+                device
+                    .device
+                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: Some("Chunk Pipeline Layout"),
+                        bind_group_layouts: &[&bind_group_layout],
+                        push_constant_ranges: &[],
+                    });
 
-            let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("Chunk Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            });
+            let pipeline =
+                device
+                    .device
+                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("Chunk Pipeline"),
+                        layout: Some(&pipeline_layout),
+                        module: &shader,
+                        entry_point: "main",
+                    });
 
-            let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Chunk Encoder"),
-            });
+            let mut encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Chunk Encoder"),
+                    });
 
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -180,9 +200,9 @@ impl Chunk {
                 pass.set_pipeline(&pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(&device);
+                let caps = DeviceCapabilities::from_device(device);
                 let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-                let workgroups = (output_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+                let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
                 pass.dispatch_workgroups(workgroups, 1, 1);
             }
 
@@ -218,10 +238,12 @@ mod tests {
         )
         .await
         .unwrap();
-        
+
         let chunks = Chunk::new(input, 2, 0).unwrap().execute().unwrap();
         assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].shape(), &[1, 4]);
+        // PyTorch-style: first chunk gets +1 element when not divisible
+        // 3 elements into 2 chunks: first gets 2, second gets 1
+        assert_eq!(chunks[0].shape(), &[2, 4]);
         assert_eq!(chunks[1].shape(), &[1, 4]);
     }
 
@@ -235,7 +257,7 @@ mod tests {
         )
         .await
         .unwrap();
-        
+
         let chunks = Chunk::new(input, 3, 1).unwrap().execute().unwrap();
         assert_eq!(chunks.len(), 3);
         assert_eq!(chunks[0].shape(), &[2, 2]);
@@ -247,8 +269,12 @@ mod tests {
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        
+
         assert!(Chunk::new(input.clone(), 0, 0).is_err());
-        assert!(Chunk::new(input.clone(), 2, 0).is_err()); // 3 not divisible by 2
+        // Non-divisible chunks are now allowed (PyTorch-style)
+        let chunks = Chunk::new(input.clone(), 2, 0).unwrap().execute().unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].shape(), &[2]);
+        assert_eq!(chunks[1].shape(), &[1]);
     }
 }

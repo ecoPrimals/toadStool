@@ -61,7 +61,7 @@ impl ComponentModelSupport for WasmRuntimeEngine {
         self.config()
             .component_model
             .as_ref()
-            .map_or(false, |c| c.enabled)
+            .is_some_and(|c| c.enabled)
     }
 
     /// Get component model configuration

@@ -1,216 +1,97 @@
-# ToadStool / BarraCUDA - Quick Status
-## February 8, 2026 (Evening) - HARDWARE WIRING COMPLETE! 🎉
+# ToadStool + BarraCUDA -- Quick Status
 
-**Status**: ✅ Production-ready universal compute platform  
-**Latest**: 🔥 **ALL CRITICAL HARDWARE WIRING DONE** (Phases 1-5 complete!)
+**Date**: February 9, 2026
 
 ---
 
-## 🎯 Epic Achievement: Hardware Wiring Evolution COMPLETE
+## At a Glance
 
-**Session**: 4-hour marathon (Feb 8, 2026)  
-**Phases Completed**: 5 of 6 (Phase 6 is optional/long-term)  
-**Deep Debt Eliminated**: 32 items  
-**Result**: 100% real hardware execution, zero simulations/mocks/hardcoding
-
-### What Got Wired ✅
-
-1. **Phase 2: NPU Pipeline Wiring** (60 min)
-   - Eliminated 3x `tokio::time::sleep()` simulations
-   - Added real Akida AKD1000 inference via `akida_driver`
-   - Created `execute_npu_sparse_inference()` with InferenceExecutor
-
-2. **Phase 3: Akida Power Telemetry** (45 min)
-   - Eliminated 6 hardcoded power/temperature values
-   - Added real Linux hwmon queries (power1_input, temp1_input)
-   - Evolved from index-based to PCIe address-based queries
-
-3. **Phase 4: FHE Operation Validation** (75 min)
-   - Eliminated 6 simulated FHE operations + 1 TODO
-   - Added real BarraCUDA GPU execution (FhePolyAdd/Sub/Mul/And/Or/Xor)
-   - Created `validate_operation_gpu()` with dual validation
-
-4. **Phase 5: GPU Power Measurement** (30 min)
-   - Eliminated 3 hardcoded GPU power values (250.0)
-   - Added real nvidia-smi queries via `query_gpu_power()`
-   - Real-time power measurement per pipeline
-
----
-
-## 🚀 Production Capabilities
-
-### 1. Scientific Computing Foundation ✅
-- **Operations**: 250+ GPU-accelerated operations
-- **Domains**: Complex arithmetic, FFT, MD forces, time integrators
-- **Tests**: 40/40 passing (100%)
-- **Architecture**: WGSL shaders + Rust API
-- **Status**: Production-ready
-
-### 2. NPU Acceleration (Real Hardware) ✅
-- **Hardware**: 2x BrainChip Akida AKD1000
-- **Detection**: Runtime PCIe discovery (/dev/akida0, /dev/akida1)
-- **Execution**: Real akida_driver inference (NO simulation!)
-- **Telemetry**: Linux hwmon power/temp queries
-- **Status**: Fully wired and operational
-
-### 3. FHE Operations (GPU Accelerated) ✅
-- **Operations**: 6 validated (Add, Sub, Mul, And, Or, Xor)
-- **Total Available**: 14 in BarraCUDA
-- **Execution**: Real WGSL GPU shaders (NO simulation!)
-- **Validation**: Dual (CPU baseline + GPU execution)
-- **Status**: Validated on real hardware
-
-### 4. GPU Compute (Universal) ✅
-- **Backend**: BarraCUDA (100% Rust + WGSL)
-- **Portability**: NVIDIA, AMD, Intel (via wgpu)
-- **Power**: Real-time nvidia-smi queries (136.31W measured)
-- **Status**: Production-ready
-
----
-
-## 🏗️ Architecture
-
-**Design**: 3-Domain Universal Compute
 ```
-┌─────────────────────────────────────────────┐
-│  CPU: Rust orchestration + TFHE-rs          │
-│  GPU: BarraCUDA (WGSL shaders)              │
-│  NPU: Akida driver (neuromorphic)           │
-└─────────────────────────────────────────────┘
-```
+ToadStool (Hardware Infrastructure)
+  Pure Rust hardware discovery (sysfs/PCIe)
+  3 GPUs across 2 machines, 2 vendors (NVIDIA + AMD)
+  52 GB combined VRAM, 88 CPU threads
 
-**Deep Debt Compliance**: ✅ 100%
-- Zero unsafe code
-- Zero hardcoding (runtime discovery)
-- Zero mocks in production
-- Zero simulations
-- Modern idiomatic Rust
-- Capability-based queries
-- Graceful fallbacks with explicit logging
-
----
-
-## 🔧 Hardware Verified
-
-### Akida NPUs
-```bash
-✅ 2x BrainChip AKD1000
-✅ PCIe: a1:00.0, e2:00.0
-✅ /dev/akida0, /dev/akida1
-✅ Real inference execution
-✅ hwmon power/temp telemetry
-```
-
-### GPU
-```bash
-✅ NVIDIA RTX 3090
-✅ BarraCUDA execution (wgpu)
-✅ nvidia-smi: 136.31W measured
-✅ 250+ operations validated
-✅ Real-time power queries
-```
-
-### CPU
-```bash
-✅ AMD Ryzen 9 5950X
-✅ TFHE-rs encryption baseline
-✅ Scientific computing orchestration
+BarraCUDA (Universal Compute)
+  400+ WGSL shaders, proven cross-vendor
+  Bit-identical results: RTX 4070 = RTX 3090 = RX 6950 XT
+  39.85 tok/s distributed LLM inference
 ```
 
 ---
 
-## 📊 Session Metrics
+## Cross-Vendor Validation (Feb 9)
 
-### Deep Debt Eliminated: 32 Items
-- 11 fake sleep() calls → real hardware execution
-- 9 hardcoded power/temp values → real queries
-- 6 simulated FHE operations → real GPU shaders
-- 4 TODO comments → complete implementations
-- 2 index-based queries → capability-based
+| GPU | Vendor | GFLOPS | Checksum |
+|-----|--------|--------|----------|
+| RTX 4070 | NVIDIA | 388.7 | 5.128010 |
+| RTX 3090 | NVIDIA | 481.0 | 5.128010 |
+| RX 6950 XT | AMD | 222.7 | 5.128010 |
 
-### Code Changes
-- **Files modified**: 4
-- **Lines added**: +333
-- **Lines removed**: -45
-- **Net change**: +288 lines
-- **Functions added**: 6
-- **Compilation errors**: 0
-- **Compilation warnings**: 0
+Same binary. Same shader. Same results. Zero vendor SDK.
 
 ---
 
-## 📚 Documentation
+## What Works
 
-### Session Reports (2,900+ lines total)
-1. `HARDWARE_WIRING_COMPLETE_FEB08_2026.md` - Complete summary
-2. `PHASE2_COMPLETE_NPU_WIRING_FEB08_2026.md` - NPU wiring details
-3. `PHASE3_COMPLETE_AKIDA_POWER_FEB08_2026.md` - Power telemetry
-4. `PHASE4_COMPLETE_FHE_VALIDATION_FEB08_2026.md` - FHE operations
-5. `PHASE5_COMPLETE_GPU_POWER_FEB08_2026.md` - GPU power measurement
-6. `HARDWARE_WIRING_EVOLUTION_PLAN_FEB08_2026.md` - Original plan
+- 400+ WGSL shaders on any GPU (NVIDIA, AMD via Vulkan)
+- Distributed LLM inference across machines (LAN TCP)
+- BearDog-encrypted tensor transport (ChaCha20-Poly1305)
+- Hardware discovery (GPUs, NPUs, CPUs) -- pure Rust, no scripts
+- Scientific computing (Cholesky, triangular solve, RBF, MD forces)
+- FHE acceleration (21.1x speedup on RTX 3090)
 
----
+## What Needs Evolution
 
-## 🎯 What's Next
-
-### Immediate: Upstream Wiring (In Progress) 🔄
-
-**✅ COMPLETED** (2 showcases):
-- ✅ **barracuda-validation** - Fixed 2 hardcoded power values
-- ✅ **akida-characterization** - Fixed 4 hardcoded power values
-
-**Ready NOW** (0 hours):
-- ✅ **neuromorphic showcase** - 100% production-ready, zero fixes needed
-
-**This Week** (10.5 hours remaining):
-- ⚠️ **homomorphic-computing** - Wire 2 simulated benchmarks + power (4h)
-- ⚠️ **whitePaper** - Wire 4+ FHE operations to BarraCUDA (6h)
-- ⚠️ **gpu-universal** - Add optional nvidia-smi (1h)
-- ⚠️ **real-world** - Document polling intervals (30m)
-
-**Deferred** (Phase 2):
-- ❌ **inter-primal** - Requires multi-primal API infrastructure (2-3 days)
-
-**Progress**: 2 of 7 showcases fixed (29%) | 11.5 hours remaining  
-**See**: `UPSTREAM_WIRING_PROGRESS_FEB08_2026.md` for detailed status
-
-### Production Ready ✅
-ToadStool core is production-ready for:
-1. Scientific computing workloads (MD, FFT, physics)
-2. NPU-accelerated inference (Akida)
-3. FHE operations (GPU-accelerated)
-4. Heterogeneous CPU+GPU+NPU pipelines
-
-### Optional (Future Enhancement)
-- **Phase 6**: ML Architecture Expansion (2-3 weeks, optional)
-  - Expand simplified MLPs for validation
-  - Add CNNs, Transformers
-  - Not blocking - current implementations work fine
+- Safetensors/GGUF weight loader (eliminate PyTorch dependency)
+- Multi-GPU DevicePool (use all GPUs on a machine)
+- Toadstool JSON-RPC workload service
+- INT4/INT8 quantization WGSL shaders
+- Tensor serialization for network transfer
 
 ---
 
-## 🚦 Quick Commands
+## Deep Debt
+
+| Principle | Status |
+|-----------|--------|
+| Modern idiomatic Rust | Clean -- zero unsafe in barracuda |
+| No external scripts | Clean -- pure Rust hardware |
+| Runtime discovery | Clean -- sysfs/PCIe scanning |
+| Mocks isolated | Clean -- feature-gated only |
+| Vendor-agnostic | Proven -- NVIDIA + AMD bit-identical |
+| Honest documentation | Updated Feb 9 |
+
+---
+
+## Quick Commands
 
 ```bash
-# Run scientific computing tests (all passing)
-cargo test --package barracuda --lib ops::complex ops::fft ops::md
+# Build
+cargo build --release
 
-# Run FHE validation (CPU + GPU)
-cargo run --manifest-path showcase/whitePaper/benchmarks/Cargo.toml --bin fhe_operation_validation
+# Test linear algebra
+cargo test -p barracuda --lib ops::linalg --release
 
-# Run pipeline validation (real hardware)
-cargo run --example pipeline_validation_actual_hardware --release
+# Test interpolation
+cargo test -p barracuda --lib ops::interpolation --release
 
-# Check Akida NPUs
-ls -la /dev/akida*
-lspci -nn | grep -i brain
+# Run RBF demo
+cd showcase/rbf-surrogate && ./demo.sh
 
-# Check GPU power
-nvidia-smi --query-gpu=name,power.draw --format=csv
+# NPU detection
+cd showcase/neuromorphic/01-akida-detection && ./demo.sh
 ```
 
 ---
 
-**Status**: 🎉 **All critical phases complete - Production ready!**  
-**Completion**: 83% (5 of 6 phases, Phase 6 optional)  
-**Deep Debt**: ✅ ZERO in hardware wiring domain
+## Documentation
+
+- [README.md](README.md) -- Full overview
+- [STATUS.md](STATUS.md) -- Detailed status
+- [DOCUMENTATION.md](DOCUMENTATION.md) -- Navigation hub
+- [CHANGELOG.md](CHANGELOG.md) -- History
+
+---
+
+**Last Updated**: February 9, 2026

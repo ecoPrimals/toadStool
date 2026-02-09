@@ -38,7 +38,7 @@ impl CosineEmbeddingLoss {
             ));
         }
 
-        if label.shape() != &[1] {
+        if label.shape() != [1] {
             return Err(BarracudaError::invalid_op(
                 "cosine_embedding_loss",
                 format!("label must be scalar [1], got shape {:?}", label.shape()),
@@ -210,20 +210,16 @@ impl CosineEmbeddingLoss {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
         // Create output tensor (scalar)
-        Ok(Tensor::from_buffer(
-            output_buffer,
-            vec![1],
-            device.clone(),
-        ))
+        Ok(Tensor::from_buffer(output_buffer, vec![1], device.clone()))
     }
 }
 
@@ -244,7 +240,9 @@ mod tests {
             .await
             .unwrap();
 
-        let label = Tensor::from_vec_on(vec![1.0], vec![1], device).await.unwrap();
+        let label = Tensor::from_vec_on(vec![1.0], vec![1], device)
+            .await
+            .unwrap();
 
         let output = CosineEmbeddingLoss::new(input1, input2, label, 0.5)
             .unwrap()

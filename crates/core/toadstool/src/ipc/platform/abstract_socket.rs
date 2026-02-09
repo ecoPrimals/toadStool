@@ -41,12 +41,8 @@ pub async fn bind(name: &str) -> ToadStoolResult<UnixListener> {
     use std::os::linux::net::SocketAddrExt;
     use std::os::unix::net::SocketAddr; // Linux-specific extension trait
 
-    // Ensure name starts with @ (convention for null byte)
-    let abstract_name = if name.starts_with('@') {
-        &name[1..] // Remove @ prefix
-    } else {
-        name
-    };
+    // Strip @ prefix (convention for null byte in abstract namespace)
+    let abstract_name = name.strip_prefix('@').unwrap_or(name);
 
     // Create abstract socket address using Linux extension
     let socket_addr = SocketAddr::from_abstract_name(abstract_name.as_bytes()).map_err(|e| {
@@ -85,12 +81,8 @@ pub async fn connect(name: &str) -> ToadStoolResult<UnixStream> {
     use std::os::linux::net::SocketAddrExt;
     use std::os::unix::net::SocketAddr; // Linux-specific extension trait
 
-    // Ensure name starts with @ (convention for null byte)
-    let abstract_name = if name.starts_with('@') {
-        &name[1..] // Remove @ prefix
-    } else {
-        name
-    };
+    // Strip @ prefix (convention for null byte in abstract namespace)
+    let abstract_name = name.strip_prefix('@').unwrap_or(name);
 
     // Create abstract socket address using Linux extension
     let socket_addr = SocketAddr::from_abstract_name(abstract_name.as_bytes()).map_err(|e| {

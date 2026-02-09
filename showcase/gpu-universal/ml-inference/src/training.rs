@@ -60,7 +60,7 @@ impl SimpleNetwork {
 
             let mut epoch_loss = 0.0;
             let mut correct = 0;
-            let num_batches = (num_samples + config.batch_size - 1) / config.batch_size;
+            let num_batches = num_samples.div_ceil(config.batch_size);
 
             for batch_idx in 0..num_batches {
                 let batch_start = batch_idx * config.batch_size;

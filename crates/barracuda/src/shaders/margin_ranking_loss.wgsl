@@ -13,7 +13,7 @@ struct Params {
 
 @group(0) @binding(0) var<storage, read> input1: array<f32>;       // First input
 @group(0) @binding(1) var<storage, read> input2: array<f32>;       // Second input
-@group(0) @binding(2) var<storage, read> target: array<f32>;       // 1 or -1
+@group(0) @binding(2) var<storage, read> target_data: array<f32>;       // 1 or -1
 @group(0) @binding(3) var<storage, read_write> output: array<f32>; // Per-pair loss
 @group(0) @binding(4) var<uniform> params: Params;
 
@@ -27,7 +27,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     let x1 = input1[idx];
     let x2 = input2[idx];
-    let y = target[idx];
+    let y = target_data[idx];
     
     // Loss = max(0, -y * (x1 - x2) + margin)
     let diff = x1 - x2;

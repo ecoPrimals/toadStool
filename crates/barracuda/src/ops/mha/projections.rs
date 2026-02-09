@@ -160,9 +160,9 @@ impl MultiHeadAttention {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch: one thread per (batch, head, seq) - each processes head_dim
-            let workgroups_x = (params.batch_size + 15) / 16;
-            let workgroups_y = (params.num_heads + 15) / 16;
-            let workgroups_z = (params.seq_len + 15) / 16;
+            let workgroups_x = params.batch_size.div_ceil(16);
+            let workgroups_y = params.num_heads.div_ceil(16);
+            let workgroups_z = params.seq_len.div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -323,9 +323,9 @@ impl MultiHeadAttention {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch: one thread per (batch, seq, output_dim)
-            let workgroups_x = (params.batch_size + 15) / 16;
-            let workgroups_y = (params.seq_len + 15) / 16;
-            let workgroups_z = (params.d_model + 15) / 16;
+            let workgroups_x = params.batch_size.div_ceil(16);
+            let workgroups_y = params.seq_len.div_ceil(16);
+            let workgroups_z = params.d_model.div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 

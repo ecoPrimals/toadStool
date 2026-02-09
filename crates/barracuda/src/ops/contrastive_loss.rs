@@ -39,9 +39,9 @@
 //! let loss = embeddings.contrastive_loss(0.5)?;  // temperature=0.5
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -72,7 +72,7 @@ impl ContrastiveLoss {
         }
 
         let batch_total = embeddings.shape()[0];
-        if batch_total % 2 != 0 {
+        if !batch_total.is_multiple_of(2) {
             return Err(BarracudaError::invalid_op(
                 "ContrastiveLoss",
                 format!(
@@ -229,7 +229,7 @@ impl ContrastiveLoss {
             // Deep Debt Evolution: Capability-based dispatch
             let caps = DeviceCapabilities::from_device(device.as_ref());
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

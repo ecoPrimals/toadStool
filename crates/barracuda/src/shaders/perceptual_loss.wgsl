@@ -18,7 +18,7 @@ struct Params {
 @group(0) @binding(0) var<storage, read> features1: array<f32>;
 @group(0) @binding(1) var<storage, read> features2: array<f32>;
 @group(0) @binding(2) var<storage, read> weights: array<f32>; // Optional per-layer weights
-@group(0) @binding(3) var<storage, read_write> loss_buffer: array<f32>; // [1] - atomic reduction
+@group(0) @binding(3) var<storage, read_write> loss_buffer: array<atomic<i32>>; // [1] - atomic reduction
 @group(0) @binding(4) var<storage, read_write> output: array<f32>; // [1] - final loss
 @group(0) @binding(5) var<uniform> params: Params;
 
@@ -45,12 +45,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     // Atomic add to loss buffer
-    atomicAdd(&loss_buffer[0], weighted_sq_diff);
+    atomicAdd(&loss_buffer[0], bitcast<i32>(weighted_sq_diff));
 }
 
 // Second pass: compute final loss (mean)
 @compute @workgroup_size(1)
 fn compute_mean_loss(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    let total_loss = loss_buffer[0];
+    let total_loss = bitcast<f32>(atomicLoad(&loss_buffer[0]));
     output[0] = total_loss / f32(params.size);
 }

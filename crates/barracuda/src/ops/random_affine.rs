@@ -42,7 +42,7 @@ impl RandomAffine {
                 format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
             ));
         }
-        
+
         Ok(Self {
             input,
             degrees,
@@ -62,16 +62,21 @@ impl RandomAffine {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let shape = self.input.shape();
-        
+
         let channels = shape[0];
         let height = shape[1];
         let width = shape[2];
-        
+
         // Generate random parameters from seed (CPU-side, deterministic)
         let angle = self.degrees * (((self.seed * 1103515245) % 2000) as f32 / 1000.0 - 1.0);
-        let tx = self.translate.0 * width as f32 * (((self.seed * 22695477) % 2000) as f32 / 1000.0 - 1.0);
-        let ty = self.translate.1 * height as f32 * (((self.seed * 1664525) % 2000) as f32 / 1000.0 - 1.0);
-        let sc = self.scale.0 + (self.scale.1 - self.scale.0) * ((self.seed * 48271) % 1000) as f32 / 1000.0;
+        let tx = self.translate.0
+            * width as f32
+            * (((self.seed * 22695477) % 2000) as f32 / 1000.0 - 1.0);
+        let ty = self.translate.1
+            * height as f32
+            * (((self.seed * 1664525) % 2000) as f32 / 1000.0 - 1.0);
+        let sc = self.scale.0
+            + (self.scale.1 - self.scale.0) * ((self.seed * 48271) % 1000) as f32 / 1000.0;
         let sh = self.shear * (((self.seed * 69621) % 2000) as f32 / 1000.0 - 1.0);
 
         // Build affine matrix
@@ -88,10 +93,10 @@ impl RandomAffine {
         let d = sc * sin_a;
         let e = sc * (cos_a + sin_a * tan_sh);
         let f = ty;
-        
+
         let cx = width as f32 / 2.0;
         let cy = height as f32 / 2.0;
-        
+
         let output_size = channels * height * width;
 
         // Create buffers
@@ -135,48 +140,53 @@ impl RandomAffine {
             cy,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("RandomAffine Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("RandomAffine Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("RandomAffine Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("RandomAffine Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -201,23 +211,31 @@ impl RandomAffine {
         // Create compute pipeline
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("RandomAffine Shader"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("RandomAffine Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("RandomAffine Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("RandomAffine Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("RandomAffine Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("RandomAffine Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("RandomAffine Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -226,12 +244,12 @@ impl RandomAffine {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
-            let workgroups_x = (width as u32 + wg_x - 1) / wg_x;
-            let workgroups_y = (height as u32 + wg_y - 1) / wg_y;
+            let workgroups_x = (width as u32).div_ceil(wg_x);
+            let workgroups_y = (height as u32).div_ceil(wg_y);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -278,14 +296,12 @@ mod tests {
     #[tokio::test]
     async fn test_random_affine() {
         let image_data = vec![1.0; 3 * 64 * 64];
-        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 64, 64]).await.unwrap();
-        let transformed_tensor = tensor.random_affine(
-            15.0,
-            (0.1, 0.1),
-            (0.9, 1.1),
-            5.0,
-            42424,
-        ).unwrap();
+        let tensor = Tensor::from_vec(image_data.clone(), vec![3, 64, 64])
+            .await
+            .unwrap();
+        let transformed_tensor = tensor
+            .random_affine(15.0, (0.1, 0.1), (0.9, 1.1), 5.0, 42424)
+            .unwrap();
         let transformed = transformed_tensor.to_vec().unwrap();
         assert_eq!(transformed.len(), image_data.len());
     }

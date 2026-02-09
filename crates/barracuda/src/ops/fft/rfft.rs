@@ -12,8 +12,8 @@
 //! - ✅ Capability-based dispatch
 
 use crate::error::{BarracudaError, Result};
-use crate::tensor::Tensor;
 use crate::ops::fft::Fft1D;
+use crate::tensor::Tensor;
 
 /// Real-to-Complex FFT Operation
 ///
@@ -79,8 +79,8 @@ impl Rfft {
         let real_data = self.input.to_vec()?;
         let mut complex_data = Vec::with_capacity(n * 2);
         for &val in &real_data {
-            complex_data.push(val);  // Real part
-            complex_data.push(0.0);  // Imaginary part (zero)
+            complex_data.push(val); // Real part
+            complex_data.push(0.0); // Imaginary part (zero)
         }
 
         let complex_input = Tensor::from_data(&complex_data, vec![n, 2], device.clone())?;
@@ -93,14 +93,14 @@ impl Rfft {
         // For real input: X[k] = conj(X[N-k]), so we only keep k=0..N/2
         let unique_points = (n / 2) + 1;
         let spectrum_data = full_spectrum.to_vec()?;
-        
+
         let mut rfft_spectrum = Vec::with_capacity(unique_points * 2);
         for i in 0..unique_points {
-            rfft_spectrum.push(spectrum_data[i * 2]);     // Real part
+            rfft_spectrum.push(spectrum_data[i * 2]); // Real part
             rfft_spectrum.push(spectrum_data[i * 2 + 1]); // Imaginary part
         }
 
-        Ok(Tensor::from_data(&rfft_spectrum, vec![unique_points, 2], device.clone())?)
+        Tensor::from_data(&rfft_spectrum, vec![unique_points, 2], device.clone())
     }
 }
 
@@ -147,7 +147,7 @@ mod tests {
         // DC component (k=0) should be N
         let dc_real = spectrum_data[0];
         assert!((dc_real - (n as f32)).abs() < 1e-4, "DC component = N");
-        
+
         // All other components should be ~0
         for i in 1..((n / 2) + 1) {
             let mag = (spectrum_data[i * 2].powi(2) + spectrum_data[i * 2 + 1].powi(2)).sqrt();
@@ -178,7 +178,7 @@ mod tests {
 
         // Should have N/2+1 = 17 unique points
         assert_eq!(spectrum.shape(), &[17, 2]);
-        
+
         // Verify spectrum has energy (not all zeros)
         let spectrum_data = spectrum.to_vec().unwrap();
         let total_energy: f32 = (0..17)
@@ -205,7 +205,7 @@ mod tests {
         let elapsed = start.elapsed();
 
         println!("✅ RFFT {} points: {:?}", n, elapsed);
-        
+
         // Should complete in reasonable time (benefit from symmetry exploitation)
         assert!(elapsed.as_secs() < 5, "RFFT completes efficiently");
     }

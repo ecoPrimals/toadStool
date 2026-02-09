@@ -134,13 +134,13 @@ impl Reshape {
         }
 
         // Check for zero dimensions
-        if old_shape.iter().any(|&d| d == 0) {
+        if old_shape.contains(&0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
                 format!("Old shape contains zero: {:?}", old_shape),
             ));
         }
-        if new_shape.iter().any(|&d| d == 0) {
+        if new_shape.contains(&0) {
             return Err(BarracudaError::invalid_params(
                 "Reshape",
                 format!("New shape contains zero: {:?}", new_shape),
@@ -210,7 +210,7 @@ impl Slice {
         // Compute output shape
         let output_shape: Vec<usize> = ranges
             .iter()
-            .map(|(start, end, step)| ((end - start) + step - 1) / step)
+            .map(|(start, end, step)| (end - start).div_ceil(*step))
             .collect();
 
         // Compute total output size
@@ -1745,7 +1745,7 @@ impl GELU {
         data.iter()
             .map(|&x| {
                 // Approximation: 0.5 * x * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
-                let sqrt_2_over_pi = 0.7978845608;
+                let sqrt_2_over_pi = 0.797_884_6;
                 let coeff = sqrt_2_over_pi * (x + 0.044715 * x.powi(3));
                 0.5 * x * (1.0 + coeff.tanh())
             })

@@ -39,9 +39,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // Collect messages from neighbors
     for (var e: u32 = 0u; e < params.num_edges; e = e + 1u) {
         let source = edge_index[e * 2u];
-        let target = edge_index[e * 2u + 1u];
+        let target_data = edge_index[e * 2u + 1u];
         
-        if (target == target_node) {
+        if (target_data == target_node) {
             neighbor_count = neighbor_count + 1u;
             
             // Simplified message: just copy source features (full version would use MLP)

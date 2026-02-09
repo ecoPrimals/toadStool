@@ -39,7 +39,10 @@ impl Upsample {
         let shape = input.shape();
         if shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Upsample expects 4D tensor [B, C, H, W], got shape {:?}", shape),
+                message: format!(
+                    "Upsample expects 4D tensor [B, C, H, W], got shape {:?}",
+                    shape
+                ),
             });
         }
 
@@ -76,7 +79,10 @@ impl Upsample {
         let (out_height, out_width) = if let Some((h, w)) = self.size {
             (h, w)
         } else if let Some((sh, sw)) = self.scale_factor {
-            ((in_height as f32 * sh) as usize, (in_width as f32 * sw) as usize)
+            (
+                (in_height as f32 * sh) as usize,
+                (in_width as f32 * sw) as usize,
+            )
         } else {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: "Either size or scale_factor must be provided".to_string(),
@@ -119,51 +125,56 @@ impl Upsample {
             align_corners: if self.align_corners { 1 } else { 0 },
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Upsample Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Upsample Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Upsample Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Upsample Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Upsample Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -186,23 +197,31 @@ impl Upsample {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Upsample Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Upsample Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Upsample Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Upsample Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Upsample Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Upsample Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -212,10 +231,10 @@ impl Upsample {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let (wg_x, wg_y) = caps.optimal_workgroup_size_2d(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + wg_x - 1) / wg_x;
-            let workgroups_y = (out_height as u32 + wg_y - 1) / wg_y;
+            let workgroups_x = (out_width as u32).div_ceil(wg_x);
+            let workgroups_y = (out_height as u32).div_ceil(wg_y);
             let workgroups_z = (batch_size * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -245,20 +264,13 @@ mod tests {
     async fn test_upsample_basic() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 3, 4],
-            device.clone(),
-        ).unwrap();
-        
-        let upsampled = Upsample::new(
-            input,
-            Some((6, 8)),
-            None,
-            UpsampleMode::Nearest,
-            false,
-        ).unwrap().execute().unwrap();
-        
+        let input = Tensor::from_data(&data, vec![1, 1, 3, 4], device.clone()).unwrap();
+
+        let upsampled = Upsample::new(input, Some((6, 8)), None, UpsampleMode::Nearest, false)
+            .unwrap()
+            .execute()
+            .unwrap();
+
         assert_eq!(upsampled.shape(), &vec![1, 1, 6, 8]);
     }
 
@@ -266,77 +278,43 @@ mod tests {
     async fn test_upsample_scale_factor() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..8).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 2, 4],
-            device.clone(),
-        ).unwrap();
-        
-        let upsampled = Upsample::new(
-            input,
-            None,
-            Some((2.0, 2.0)),
-            UpsampleMode::Bilinear,
-            false,
-        ).unwrap().execute().unwrap();
-        
+        let input = Tensor::from_data(&data, vec![1, 1, 2, 4], device.clone()).unwrap();
+
+        let upsampled = Upsample::new(input, None, Some((2.0, 2.0)), UpsampleMode::Bilinear, false)
+            .unwrap()
+            .execute()
+            .unwrap();
+
         assert_eq!(upsampled.shape(), &vec![1, 1, 4, 8]);
     }
 
     #[tokio::test]
     async fn test_upsample_invalid_shape() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0, 3.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
-        assert!(Upsample::new(
-            input,
-            Some((10, 10)),
-            None,
-            UpsampleMode::Nearest,
-            false,
-        ).is_err());
+        let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
+
+        assert!(Upsample::new(input, Some((10, 10)), None, UpsampleMode::Nearest, false,).is_err());
     }
 
     #[tokio::test]
     async fn test_upsample_no_params() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0; 12],
-            vec![1, 1, 3, 4],
-            device.clone(),
-        ).unwrap();
-        
-        assert!(Upsample::new(
-            input,
-            None,
-            None,
-            UpsampleMode::Nearest,
-            false,
-        ).is_err());
+        let input = Tensor::from_data(&[1.0; 12], vec![1, 1, 3, 4], device.clone()).unwrap();
+
+        assert!(Upsample::new(input, None, None, UpsampleMode::Nearest, false,).is_err());
     }
 
     #[tokio::test]
     async fn test_upsample_large() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..256).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 16, 16],
-            device.clone(),
-        ).unwrap();
-        
-        let upsampled = Upsample::new(
-            input,
-            Some((32, 32)),
-            None,
-            UpsampleMode::Bilinear,
-            true,
-        ).unwrap().execute().unwrap();
-        
+        let input = Tensor::from_data(&data, vec![1, 1, 16, 16], device.clone()).unwrap();
+
+        let upsampled = Upsample::new(input, Some((32, 32)), None, UpsampleMode::Bilinear, true)
+            .unwrap()
+            .execute()
+            .unwrap();
+
         assert_eq!(upsampled.shape(), &vec![1, 1, 32, 32]);
     }
 }

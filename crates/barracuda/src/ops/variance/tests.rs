@@ -5,8 +5,7 @@ use crate::device::test_pool::get_test_device;
 
 fn variance_cpu(input: &[f32]) -> f32 {
     let mean: f32 = input.iter().sum::<f32>() / input.len() as f32;
-    let variance: f32 =
-        input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
+    let variance: f32 = input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
     variance
 }
 
@@ -104,7 +103,7 @@ async fn test_variance_dim() {
     let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())
         .await
         .unwrap();
-    
+
     // Variance along dim 0 (columns): variance of [1,4], [2,5], [3,6]
     let result = input.variance_dim(0, false).unwrap().to_vec().unwrap();
     assert_eq!(result.len(), 3);
@@ -114,7 +113,7 @@ async fn test_variance_dim() {
     assert!((result[1] - 2.25).abs() < 1e-4);
     // Variance of [3, 6] = ((3-4.5)^2 + (6-4.5)^2) / 2 = (2.25 + 2.25) / 2 = 2.25
     assert!((result[2] - 2.25).abs() < 1e-4);
-    
+
     // Variance along dim 1 (rows): variance of [1,2,3], [4,5,6]
     let result = input.variance_dim(1, false).unwrap().to_vec().unwrap();
     assert_eq!(result.len(), 2);
@@ -122,7 +121,7 @@ async fn test_variance_dim() {
     assert!((result[0] - 0.6666667).abs() < 1e-4);
     // Variance of [4, 5, 6] = ((4-5)^2 + (5-5)^2 + (6-5)^2) / 3 = (1 + 0 + 1) / 3 = 0.666...
     assert!((result[1] - 0.6666667).abs() < 1e-4);
-    
+
     // Variance along dim 0 with keepdim: [[2.25, 2.25, 2.25]]
     let result = input.variance_dim(0, true).unwrap();
     assert_eq!(result.shape(), &[1, 3]);

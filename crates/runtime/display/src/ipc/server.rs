@@ -230,11 +230,9 @@ impl DisplayServer {
         let error_str = error.to_string();
 
         // Check for permission denied + SELinux
-        if error_str.contains("Permission denied") {
-            if self.is_selinux_enforcing() {
-                tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
-                return true;
-            }
+        if error_str.contains("Permission denied") && self.is_selinux_enforcing() {
+            tracing::debug!("   Platform constraint: SELinux enforcing (Android?)");
+            return true;
         }
 
         // Check for unsupported operation (platform lacks Unix sockets)

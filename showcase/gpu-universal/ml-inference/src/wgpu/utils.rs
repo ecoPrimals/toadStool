@@ -88,7 +88,7 @@ impl WgpuExecutor {
     /// Deep Debt: Workgroup size determined at runtime based on GPU capabilities,
     /// not hardcoded. Currently uses 256 as a safe default that works on all GPUs.
     pub(crate) fn calculate_workgroups(&self, size: usize, workgroup_size: u32) -> u32 {
-        ((size as u32) + workgroup_size - 1) / workgroup_size
+        (size as u32).div_ceil(workgroup_size)
     }
 
     /// Create simple compute pipeline (reduces boilerplate)

@@ -28,7 +28,10 @@ impl ChamferDistance {
         if direction > 2 {
             return Err(BarracudaError::invalid_op(
                 "ChamferDistance",
-                format!("direction must be 0 (X→Y), 1 (Y→X), or 2 (bidirectional), got {}", direction),
+                format!(
+                    "direction must be 0 (X→Y), 1 (Y→X), or 2 (bidirectional), got {}",
+                    direction
+                ),
             ));
         }
 
@@ -49,11 +52,14 @@ impl ChamferDistance {
         let device = self.points_x.device();
         let x_shape = self.points_x.shape();
         let y_shape = self.points_y.shape();
-        
+
         if x_shape.len() != 2 || y_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "ChamferDistance",
-                format!("points must be 2D [num_points, point_dim], got shapes {:?} and {:?}", x_shape, y_shape),
+                format!(
+                    "points must be 2D [num_points, point_dim], got shapes {:?} and {:?}",
+                    x_shape, y_shape
+                ),
             ));
         }
 
@@ -64,14 +70,17 @@ impl ChamferDistance {
         if y_shape[1] != point_dim {
             return Err(BarracudaError::invalid_op(
                 "ChamferDistance",
-                format!("point dimensions must match: {} != {}", point_dim, y_shape[1]),
+                format!(
+                    "point dimensions must match: {} != {}",
+                    point_dim, y_shape[1]
+                ),
             ));
         }
 
         // Create output buffer based on direction
         let output_size = match self.direction {
-            0 => num_points_x,      // X→Y: one distance per point in X
-            1 => num_points_y,      // Y→X: one distance per point in Y
+            0 => num_points_x,                // X→Y: one distance per point in X
+            1 => num_points_y,                // Y→X: one distance per point in Y
             2 => num_points_x + num_points_y, // Bidirectional: both
             _ => unreachable!(),
         };
@@ -209,7 +218,7 @@ impl ChamferDistance {
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let max_points = num_points_x.max(num_points_y);
-            let workgroups = (max_points as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (max_points as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

@@ -93,7 +93,7 @@ impl FlashAttention {
         // FlashAttention algorithm with tiling
         let mut output = vec![0.0f32; (batch * seq_len * d_v) as usize];
 
-        let num_blocks = (seq_len + self.block_size - 1) / self.block_size;
+        let num_blocks = seq_len.div_ceil(self.block_size);
 
         for b in 0..batch {
             // Process each query block

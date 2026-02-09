@@ -49,11 +49,14 @@ impl LabelSmoothing {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.labels.device();
         let labels_shape = self.labels.shape();
-        
+
         if labels_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "LabelSmoothing",
-                format!("labels must be 1D [batch_size], got shape {:?}", labels_shape),
+                format!(
+                    "labels must be 1D [batch_size], got shape {:?}",
+                    labels_shape
+                ),
             ));
         }
 
@@ -177,9 +180,9 @@ impl LabelSmoothing {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -206,13 +209,10 @@ mod tests {
         let batch_size = 4;
         let num_classes = 3;
 
-        let labels = Tensor::from_vec_on(
-            vec![0.0, 1.0, 2.0, 0.0],
-            vec![batch_size],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let labels =
+            Tensor::from_vec_on(vec![0.0, 1.0, 2.0, 0.0], vec![batch_size], device.clone())
+                .await
+                .unwrap();
 
         let result = LabelSmoothing::new(labels, num_classes, 0.1)
             .unwrap()

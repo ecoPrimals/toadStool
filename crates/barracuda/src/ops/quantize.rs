@@ -95,52 +95,53 @@ impl Quantize {
             _padding: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Quantize Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Create bind group layout
-        let bind_group_layout = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Quantize Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Quantize Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            });
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -166,13 +167,14 @@ impl Quantize {
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Quantize"));
 
         // Create pipeline
-        let pipeline_layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Quantize Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Quantize Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         let pipeline = device
             .device
@@ -200,9 +202,9 @@ impl Quantize {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -215,9 +217,12 @@ impl Quantize {
         });
 
         // Copy output to staging buffer
-        let mut copy_encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Quantize Copy Encoder"),
-        });
+        let mut copy_encoder =
+            device
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Quantize Copy Encoder"),
+                });
         copy_encoder.copy_buffer_to_buffer(
             &output_buffer,
             0,
@@ -235,7 +240,7 @@ impl Quantize {
         });
         device.device.poll(wgpu::Maintain::Wait);
 
-        let _result = futures::executor::block_on(receiver)
+        futures::executor::block_on(receiver)
             .map_err(|e| BarracudaError::gpu(format!("Failed to map buffer: {:?}", e)))?
             .map_err(|e| BarracudaError::gpu(format!("Buffer mapping error: {:?}", e)))?;
 
@@ -246,11 +251,7 @@ impl Quantize {
         staging_buffer.unmap();
 
         // Create tensor from f32 data (values represent quantized integers)
-        Ok(Tensor::from_data(
-            &f32_data,
-            self.input.shape().to_vec(),
-            device.clone(),
-        )?)
+        Tensor::from_data(&f32_data, self.input.shape().to_vec(), device.clone())
     }
 }
 
@@ -262,13 +263,9 @@ mod tests {
     #[tokio::test]
     async fn test_quantize_basic() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(
-            vec![-1.0, 0.0, 1.0],
-            vec![3],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-1.0, 0.0, 1.0], vec![3], device.clone())
+            .await
+            .unwrap();
 
         let output = Quantize::new(input, 0.01, 0.0, 8)
             .unwrap()
@@ -285,13 +282,9 @@ mod tests {
         let device = get_test_device().await;
 
         // Test clamping at boundaries
-        let input = Tensor::from_vec_on(
-            vec![-1000.0, 1000.0, 0.0],
-            vec![3],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-1000.0, 1000.0, 0.0], vec![3], device.clone())
+            .await
+            .unwrap();
 
         let output = Quantize::new(input, 1.0, 0.0, 8)
             .unwrap()
@@ -308,13 +301,9 @@ mod tests {
     #[tokio::test]
     async fn test_quantize_int4() {
         let device = get_test_device().await;
-        let input = Tensor::from_vec_on(
-            vec![-10.0, 0.0, 10.0],
-            vec![3],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![-10.0, 0.0, 10.0], vec![3], device.clone())
+            .await
+            .unwrap();
 
         let output = Quantize::new(input, 1.0, 0.0, 4)
             .unwrap()

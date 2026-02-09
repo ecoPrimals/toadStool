@@ -5,6 +5,7 @@ members = [
     "crates/core/common",
     "crates/core/config", 
     "crates/core/toadstool",
+    "crates/toadstool-core",  # NEW: Hardware infrastructure layer (Feb 8, 2026) 🍄
     "crates/auto_config",  # Re-enabled for zero-touch demo
     "crates/barracuda",     # NEW: Hardware-agnostic tensor compute (Jan 30, 2026) 🦈
     
@@ -36,8 +37,9 @@ members = [
     # Neuromorphic hardware
     "crates/neuromorphic/akida-driver",  # NEW: Pure Rust Akida driver (Jan 29, 2026) 🧠
     "crates/neuromorphic/akida-models",  # NEW: Model parser (Jan 29, 2026) 🧠
-    "crates/neuromorphic/cross-substrate-validation",  # NEW: Cross-substrate benchmark (Jan 29, 2026) 🧠
     "crates/neuromorphic/akida-reservoir-research",  # NEW: Reservoir computing research (Jan 29, 2026) 🔬
+    "crates/neuromorphic/akida-setup",  # NEW: Rust binary for NPU setup (Feb 8, 2026)
+    "crates/neuromorphic/cross-substrate-validation",  # NEW: Cross-substrate benchmark (Jan 29, 2026) 🧠
     
     "crates/security/monitoring",
     "crates/security/policies",
@@ -45,11 +47,12 @@ members = [
     "crates/distributed",             # Sprint 5
     "crates/testing",
     "examples",
-    "showcase",                       # Production showcase demos
-    "showcase/local-capabilities",    # Local capabilities showcase
+    # Showcases - Core working demonstrations
     "showcase/neuromorphic/01-akida-detection",  # Akida detection showcase
-    "showcase/gpu-universal/ml-inference",  # barraCUDA ML inference showcase
-    "showcase/homomorphic-computing",  # NEW: NPU-accelerated homomorphic encryption (Jan 31, 2026) 🔐🧠
+    "showcase/neuromorphic/04-raytracing-comparison",  # NPU vs GPU raytracing (Feb 8, 2026)
+    "showcase/rbf-surrogate",  # RBF surrogate learning (Feb 8, 2026)
+    "showcase/gpu-universal/ml-inference",  # BarraCUDA ML inference showcase
+    "showcase/homomorphic-computing",  # NPU-accelerated homomorphic encryption (Jan 31, 2026)
 ]
 
 [workspace.package]
@@ -199,10 +202,16 @@ lto = true
 
 
  
+# Production code quality: warnings as errors
+[workspace.lints.rust]
+
 # Pedantic clippy enabled for improved code quality
 [workspace.lints.clippy]
 # PEDANTIC MODE - Production-grade code quality
 pedantic = { level = "warn", priority = -1 }
+
+# Cargo lints - selectively enabled (not using full cargo group
+# to avoid multiple_crate_versions blocking on transitive conflicts)
 
 # Allow reasonable exceptions for production code
 missing_errors_doc = "allow"       # Too verbose for every Result

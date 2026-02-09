@@ -38,18 +38,18 @@ impl UnifiedScheduler {
     pub async fn new() -> Result<Self> {
         Self::discover().await
     }
-    
+
     /// Discover all available hardware
     pub async fn discover() -> Result<Self> {
         let mut executors: Vec<Arc<dyn ComputeExecutor>> = Vec::new();
-        
+
         println!("🔍 Discovering compute hardware...");
-        
+
         // 1. CPU is always available (guaranteed fallback)
         let cpu = Arc::new(CpuExecutor::new());
         println!("  ✅ CPU: {}", cpu.name());
         executors.push(cpu.clone());
-        
+
         // 2. Try to discover GPU
         match GpuExecutor::new().await {
             Ok(gpu) => {
@@ -60,7 +60,7 @@ impl UnifiedScheduler {
                 println!("  ⚠️  No GPU available (using CPU fallback)");
             }
         }
-        
+
         // 3. Try to discover TPU (when hardware available)
         #[cfg(feature = "tpu")]
         {
@@ -75,7 +75,7 @@ impl UnifiedScheduler {
                 }
             }
         }
-        
+
         // 4. Try to discover NPU (Akida) - always available in barracuda
         {
             use crate::device::detect_akida_boards;
@@ -90,18 +90,18 @@ impl UnifiedScheduler {
                 }
             }
         }
-        
+
         println!("✨ Discovered {} executor(s)", executors.len());
-        
+
         // CPU is the default fallback
         let default_executor = cpu;
-        
+
         Ok(Self {
             executors,
             default_executor,
         })
     }
-    
+
     /// Select best executor for an operation
     pub fn select_executor(
         &self,
@@ -109,39 +109,42 @@ impl UnifiedScheduler {
         inputs: &[TensorDescriptor],
     ) -> Arc<dyn ComputeExecutor> {
         // Find all executors that can handle this operation
-        let candidates: Vec<_> = self.executors
+        let candidates: Vec<_> = self
+            .executors
             .iter()
             .filter(|e| e.can_execute(op, inputs))
             .collect();
-        
+
         if candidates.is_empty() {
             // No executor can handle this - use default (CPU)
             return self.default_executor.clone();
         }
-        
+
         // Score each candidate and pick the best
         let best = candidates
             .iter()
             .max_by(|a, b| {
                 let score_a = a.score_operation(op, inputs);
                 let score_b = b.score_operation(op, inputs);
-                score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .unwrap(); // Safe because candidates is non-empty
-        
+
         (*best).clone()
     }
-    
+
     /// Get all available executors
     pub fn executors(&self) -> &[Arc<dyn ComputeExecutor>] {
         &self.executors
     }
-    
+
     /// Get default executor (CPU fallback)
     pub fn default_executor(&self) -> &Arc<dyn ComputeExecutor> {
         &self.default_executor
     }
-    
+
     /// Get executor by hardware type
     pub fn get_executor(&self, hardware_type: HardwareType) -> Option<Arc<dyn ComputeExecutor>> {
         self.executors
@@ -149,26 +152,37 @@ impl UnifiedScheduler {
             .find(|e| e.hardware_type() == hardware_type)
             .cloned()
     }
-    
+
     /// Print summary of available hardware
     pub fn print_summary(&self) {
         println!("\n📊 Compute Hardware Summary");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         for executor in &self.executors {
             let caps = executor.capabilities();
             println!("\n🔧 {}", executor.name());
             println!("   Type: {:?}", executor.hardware_type());
             println!("   Parallel Units: {}", caps.parallelism.max_parallel_units);
             println!("   Memory: {:.1} GB", caps.memory.total_bytes as f64 / 1e9);
-            println!("   Peak TFLOPS (FP32): {:.1}", caps.performance.peak_tflops_fp32);
+            println!(
+                "   Peak TFLOPS (FP32): {:.1}",
+                caps.performance.peak_tflops_fp32
+            );
             println!("   Operations:");
-            if caps.operations.matmul { println!("     ✅ Matrix Multiply"); }
-            if caps.operations.convolution { println!("     ✅ Convolution"); }
-            if caps.operations.reductions { println!("     ✅ Reductions"); }
-            if caps.operations.custom_kernels { println!("     ✅ Custom Kernels"); }
+            if caps.operations.matmul {
+                println!("     ✅ Matrix Multiply");
+            }
+            if caps.operations.convolution {
+                println!("     ✅ Convolution");
+            }
+            if caps.operations.reductions {
+                println!("     ✅ Reductions");
+            }
+            if caps.operations.custom_kernels {
+                println!("     ✅ Custom Kernels");
+            }
         }
-        
+
         println!("\n✨ Default Fallback: {}", self.default_executor.name());
         println!();
     }
@@ -207,20 +221,23 @@ mod tests {
     #[tokio::test]
     async fn test_scheduler_creation() {
         let scheduler = UnifiedScheduler::new().await.unwrap();
-        
+
         // At least CPU should be available
         assert!(!scheduler.executors().is_empty());
-        assert_eq!(scheduler.default_executor().hardware_type(), HardwareType::CPU);
+        assert_eq!(
+            scheduler.default_executor().hardware_type(),
+            HardwareType::CPU
+        );
     }
 
     #[tokio::test]
     async fn test_scheduler_discovery() {
         let scheduler = UnifiedScheduler::discover().await.unwrap();
-        
+
         // CPU is always available
         let cpu = scheduler.get_executor(HardwareType::CPU);
         assert!(cpu.is_some());
-        
+
         // Print what we found
         scheduler.print_summary();
     }
@@ -228,19 +245,22 @@ mod tests {
     #[tokio::test]
     async fn test_small_vs_large_selection() {
         let scheduler = UnifiedScheduler::new().await.unwrap();
-        
+
         // Small operation
         let small = TensorDescriptor::new(vec![10, 10], DType::F32);
         let small_op = MathOp::ReLU;
         let small_exec = scheduler.select_executor(&small_op, &[small]);
         println!("Small ReLU → {}", small_exec.name());
-        
+
         // Large operation
         let large = TensorDescriptor::new(vec![2048, 2048], DType::F32);
-        let large_op = MathOp::MatMul { transpose_a: false, transpose_b: false };
+        let large_op = MathOp::MatMul {
+            transpose_a: false,
+            transpose_b: false,
+        };
         let large_exec = scheduler.select_executor(&large_op, &[large.clone(), large]);
         println!("Large MatMul → {}", large_exec.name());
-        
+
         // If GPU available, large should use GPU, small should use CPU
         if scheduler.get_executor(HardwareType::GPU).is_some() {
             // GPU available - verify smart selection
@@ -251,18 +271,21 @@ mod tests {
     #[tokio::test]
     async fn test_matmul_scoring() {
         let scheduler = UnifiedScheduler::new().await.unwrap();
-        
+
         // Test different matrix sizes
         let sizes = vec![
-            (10, 10),      // Tiny
-            (100, 100),    // Small
-            (1000, 1000),  // Medium
-            (4096, 4096),  // Large
+            (10, 10),     // Tiny
+            (100, 100),   // Small
+            (1000, 1000), // Medium
+            (4096, 4096), // Large
         ];
-        
+
         for (m, n) in sizes {
             let desc = TensorDescriptor::new(vec![m, n], DType::F32);
-            let op = MathOp::MatMul { transpose_a: false, transpose_b: false };
+            let op = MathOp::MatMul {
+                transpose_a: false,
+                transpose_b: false,
+            };
             let exec = scheduler.select_executor(&op, &[desc.clone(), desc]);
             println!("MatMul [{}x{}] → {}", m, n, exec.name());
         }

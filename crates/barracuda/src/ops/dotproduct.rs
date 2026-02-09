@@ -52,9 +52,9 @@ impl DotProduct {
         let params = DotProductParams { size: size as u32 };
 
         // Deep Debt Evolution: Capability-based dispatch
-        let caps = DeviceCapabilities::from_device(&device);
+        let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-        let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+        let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
 
         // Partial sums buffer
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {

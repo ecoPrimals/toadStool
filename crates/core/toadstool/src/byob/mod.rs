@@ -16,9 +16,9 @@
 pub mod byob_impl;
 pub mod byob_types;
 pub mod config;
+mod deployment; // Internal module
 pub mod health_monitor;
 pub mod network_manager;
-mod deployment; // Internal module
 mod validation; // Internal validation logic
 
 // Re-export all public types and implementations

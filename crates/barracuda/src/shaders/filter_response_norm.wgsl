@@ -20,7 +20,7 @@ struct Params {
 @group(0) @binding(0) var<storage, read> input: array<f32>;
 @group(0) @binding(1) var<storage, read> gamma: array<f32>;  // [channels]
 @group(0) @binding(2) var<storage, read> beta: array<f32>;     // [channels]
-@group(0) @binding(3) var<storage, read_write> sum_sq_buffer: array<f32>; // [batch * channels] - for reduction
+@group(0) @binding(3) var<storage, read_write> sum_sq_buffer: array<atomic<i32>>; // [batch * channels] - for reduction (atomic)
 @group(0) @binding(4) var<storage, read_write> output: array<f32>;
 @group(0) @binding(5) var<uniform> params: Params;
 
@@ -44,7 +44,7 @@ fn compute_sum_sq(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // Atomic add to sum_sq_buffer[batch_idx * channels + channel_idx]
     let buffer_idx = batch_idx * params.channels + channel_idx;
-    atomicAdd(&sum_sq_buffer[buffer_idx], sq_value);
+    atomicAdd(&sum_sq_buffer[buffer_idx], bitcast<i32>(sq_value));
 }
 
 // Step 2: Normalize and apply scale/shift
@@ -64,7 +64,7 @@ fn normalize_and_scale(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // Get sum of squares for this filter
     let buffer_idx = batch_idx * params.channels + channel_idx;
-    let sum_sq = sum_sq_buffer[buffer_idx];
+    let sum_sq = bitcast<f32>(atomicLoad(&sum_sq_buffer[buffer_idx]));
     
     // Compute nu = sqrt(sum_sq / spatial_size)
     let nu = sqrt(sum_sq / f32(params.spatial_size));

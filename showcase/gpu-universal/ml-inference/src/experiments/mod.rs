@@ -117,7 +117,7 @@ impl Statistics {
             // Handle NaN/Inf gracefully: NaN goes to end, maintain order otherwise
             a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
         });
-        let median = if n % 2 == 0 {
+        let median = if n.is_multiple_of(2) {
             (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
         } else {
             sorted[n / 2]

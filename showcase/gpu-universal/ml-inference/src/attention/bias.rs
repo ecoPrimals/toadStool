@@ -172,7 +172,7 @@ impl AttentionBias {
 
             for i in 0..seq_len {
                 for j in 0..seq_len {
-                    let distance = if j > i { j - i } else { i - j };
+                    let distance = j.abs_diff(i);
                     let bias = -slope * distance as f32;
                     let idx = ((h * seq_len + i) * seq_len + j) as usize;
                     biases[idx] = bias;

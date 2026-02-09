@@ -6,7 +6,9 @@
 
 struct Params {
     size: u32,
-    _padding: [u32; 3],
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;

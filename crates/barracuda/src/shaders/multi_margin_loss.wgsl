@@ -13,7 +13,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;        // [batch, num_classes] - scores
-@group(0) @binding(1) var<storage, read> target: array<u32>;       // [batch] - true class
+@group(0) @binding(1) var<storage, read> target_data: array<u32>;       // [batch] - true class
 @group(0) @binding(2) var<storage, read> weight: array<f32>;       // [num_classes] - class weights
 @group(0) @binding(3) var<storage, read_write> output: array<f32>; // [batch] - per-sample loss
 @group(0) @binding(4) var<uniform> params: Params;
@@ -26,7 +26,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    let true_class = target[b];
+    let true_class = target_data[b];
     
     if (true_class >= params.num_classes) {
         output[b] = 0.0;

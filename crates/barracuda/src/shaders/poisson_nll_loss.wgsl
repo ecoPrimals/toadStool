@@ -14,7 +14,7 @@ struct Params {
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;        // Predicted values
-@group(0) @binding(1) var<storage, read> target: array<f32>;       // Target counts
+@group(0) @binding(1) var<storage, read> target_data: array<f32>;       // Target counts
 @group(0) @binding(2) var<storage, read_write> output: array<f32>; // Per-element loss
 @group(0) @binding(3) var<uniform> params: Params;
 
@@ -35,7 +35,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = input[idx];
-    let tgt = target[idx];
+    let tgt = target_data[idx];
     
     var loss: f32;
     

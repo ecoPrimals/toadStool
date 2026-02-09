@@ -11,7 +11,7 @@ use crate::orchestrator::*;
 /// Selection policy for choosing substrates
 ///
 /// **Deep Debt**: Configurable strategy, not hardcoded
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum SelectionPolicy {
     /// Always select fastest substrate
     Fastest,
@@ -20,6 +20,7 @@ pub enum SelectionPolicy {
     MostEfficient,
 
     /// Select based on workload target
+    #[default]
     Adaptive,
 
     /// Round-robin across substrates
@@ -27,12 +28,6 @@ pub enum SelectionPolicy {
 
     /// Custom scoring function
     Custom,
-}
-
-impl Default for SelectionPolicy {
-    fn default() -> Self {
-        Self::Adaptive
-    }
 }
 
 impl SelectionPolicy {

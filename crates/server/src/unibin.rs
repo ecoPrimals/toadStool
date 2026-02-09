@@ -494,8 +494,12 @@ async fn try_unix_servers(
     }
 
     // Remove existing sockets
-    let _ = tokio::fs::remove_file(&socket_path).await;
-    let _ = tokio::fs::remove_file(&jsonrpc_socket).await;
+    if let Err(e) = tokio::fs::remove_file(&socket_path).await {
+        tracing::debug!("Socket cleanup: {e}");
+    }
+    if let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await {
+        tracing::debug!("Socket cleanup: {e}");
+    }
 
     info!("✅ ToadStool server ready (Unix sockets)");
     info!("   Socket (tarpc): {:?}", socket_path);

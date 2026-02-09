@@ -58,6 +58,7 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::cargo)]
+#![allow(clippy::multiple_crate_versions)] // Transitive dep conflicts not actionable
 #![allow(clippy::module_name_repetitions)] // Common in this domain
 
 // Public modules

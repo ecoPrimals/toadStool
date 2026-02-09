@@ -88,15 +88,10 @@ impl IpcServer {
             .into(),
         });
 
-        // TCP with port allocation
-        let port = match primal_name.to_lowercase().as_str() {
-            "toadstool" => 8370,
-            "songbird" => 8371,
-            "beardog" => 8372,
-            "squirrel" => 8373,
-            "nestgate" => 8374,
-            _ => 8375,
-        };
+        // TCP with environment-based port allocation (Deep Debt: no hardcoded primal ports)
+        // Self-knowledge: ToadStool knows its own default port.
+        // Other primals discovered at runtime, not hardcoded here.
+        let port = Self::resolve_port(primal_name);
 
         endpoints.push(Endpoint::Tcp {
             host: "127.0.0.1".to_string(),
@@ -107,6 +102,33 @@ impl IpcServer {
             endpoints,
             shutdown_tx: None,
         }
+    }
+
+    /// Resolve TCP port for a primal using environment-first discovery
+    ///
+    /// **Deep Debt**: Self-knowledge pattern. ToadStool knows its own default port (8370).
+    /// All other primals provide their ports via environment variables at runtime.
+    ///
+    /// Priority:
+    /// 1. `{PRIMAL_NAME}_PORT` environment variable
+    /// 2. `BIOMEOS_IPC_PORT` environment variable
+    /// 3. Default 8370 (ToadStool's own well-known port)
+    fn resolve_port(primal_name: &str) -> u16 {
+        let env_key = format!("{}_PORT", primal_name.to_uppercase().replace('-', "_"));
+        if let Ok(port_str) = std::env::var(&env_key) {
+            if let Ok(port) = port_str.parse::<u16>() {
+                return port;
+            }
+        }
+
+        if let Ok(port_str) = std::env::var("BIOMEOS_IPC_PORT") {
+            if let Ok(port) = port_str.parse::<u16>() {
+                return port;
+            }
+        }
+
+        // Self-knowledge: ToadStool's own default port
+        8370
     }
 
     /// Create server with custom endpoints

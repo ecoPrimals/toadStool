@@ -22,11 +22,6 @@ impl EventCodec {
         Self { threshold }
     }
 
-    /// Create with default threshold
-    pub fn default() -> Self {
-        Self::new(0.1) // Default from MNIST validation
-    }
-
     /// Convert dense activations to sparse events
     ///
     /// Only encodes values above threshold. This is where NPU's
@@ -128,7 +123,7 @@ impl EventCodec {
 
 impl Default for EventCodec {
     fn default() -> Self {
-        Self::default()
+        Self::new(0.1) // Default from MNIST validation
     }
 }
 

@@ -35,7 +35,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Create ESN (pure Rust - no device needed!)
     println!("🧠 Creating ESN...");
-    let mut esn = ESN::new(config)?;
+    let mut esn = ESN::new(config).await?;
     println!("✅ ESN initialized (pure Rust!)\n");
 
     // Generate training data
@@ -54,17 +54,22 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Train (pure Rust - no GPU!)
     println!("🎓 Training ESN...");
-    let mse = esn.train(&train_inputs, &train_targets)?;
+    let mse = esn.train(&train_inputs, &train_targets).await?;
     println!("✅ Training MSE: {:.6}\n", mse);
 
     // Test
     println!("🔮 Testing predictions...");
-    esn.reset_state();
+    esn.reset_state().await?;
     let test_inputs: Vec<Vec<f32>> = (0..20)
         .map(|i| vec![((num_train + i) as f32 * 0.1).sin()])
         .collect();
 
-    let predictions = esn.predict(&test_inputs)?;
+    // Predict for each input individually
+    let mut predictions = Vec::new();
+    for input in &test_inputs {
+        let pred = esn.predict(input).await?;
+        predictions.push(pred);
+    }
 
     println!(
         "✅ {} predictions generated (pure Rust!)\n",

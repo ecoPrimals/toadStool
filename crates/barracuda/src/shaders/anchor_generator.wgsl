@@ -8,7 +8,9 @@ struct Params {
     stride: u32,
     num_sizes: u32,
     num_ratios: u32,
-    _padding: vec2<u32>,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> anchors: array<f32>;

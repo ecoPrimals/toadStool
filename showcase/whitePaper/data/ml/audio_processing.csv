@@ -1,4 +1,0 @@
-task,sample_rate,duration_sec,fft_size,hop_size,processing_time_ms,real_time_factor,throughput_samples_per_sec,device,vendor
-MFCC-Speech,16000,1.0,512,160,0.41,2409.88,38558081.97,NVIDIA GeForce RTX 3090,NVIDIA
-STFT-Music,44100,2.0,2048,512,4.29,466.53,20574127.80,NVIDIA GeForce RTX 3090,NVIDIA
-Spectrogram-Voice,16000,5.0,1024,256,2.94,1698.45,27175230.27,NVIDIA GeForce RTX 3090,NVIDIA

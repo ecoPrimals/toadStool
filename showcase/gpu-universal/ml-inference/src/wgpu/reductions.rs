@@ -395,7 +395,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(input) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));

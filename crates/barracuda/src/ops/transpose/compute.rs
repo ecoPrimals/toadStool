@@ -3,10 +3,10 @@
 //! This module contains GPU pipeline setup, buffer creation, and execution
 //! logic for both 2D and N-D transpose operations.
 
+use super::TransposeParams2D;
 use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use super::TransposeParams2D;
 use wgpu::util::DeviceExt;
 
 /// Execute transpose operation
@@ -64,41 +64,44 @@ fn execute_2d(
     device.queue.write_buffer(&params_buffer, 0, params_bytes);
 
     // Create bind group layout
-    let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Transpose Bind Group Layout 2D"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    });
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Transpose Bind Group Layout 2D"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
     // Create bind group
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -124,23 +127,29 @@ fn execute_2d(
     let shader = device.compile_shader(super::Transpose::wgsl_shader(), Some("Transpose 2D"));
 
     // Create pipeline
-    let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Transpose Pipeline Layout 2D"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Transpose Pipeline Layout 2D"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
 
-    let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("Transpose Pipeline 2D"),
-        layout: Some(&pipeline_layout),
-        module: &shader,
-        entry_point: "main_2d",
-    });
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Transpose Pipeline 2D"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main_2d",
+        });
 
     // Encode and execute
-    let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Transpose Encoder 2D"),
-    });
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Transpose Encoder 2D"),
+        });
 
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -155,8 +164,8 @@ fn execute_2d(
         // 2D transpose is element-wise operation
         let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups_x = ((cols as u32 + optimal_wg_size - 1) / optimal_wg_size).max(1);
-        let workgroups_y = ((rows as u32 + optimal_wg_size - 1) / optimal_wg_size).max(1);
+        let workgroups_x = cols.div_ceil(optimal_wg_size).max(1);
+        let workgroups_y = rows.div_ceil(optimal_wg_size).max(1);
         pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
     }
 
@@ -181,9 +190,7 @@ fn execute_nd(
     let num_dims = shape.len();
 
     // Compute output shape
-    let output_shape: Vec<usize> = permutation.iter()
-        .map(|&idx| shape[idx])
-        .collect();
+    let output_shape: Vec<usize> = permutation.iter().map(|&idx| shape[idx]).collect();
 
     // Compute input strides
     let mut input_strides = vec![1; num_dims];
@@ -201,35 +208,55 @@ fn execute_nd(
     let output_buffer = device.create_buffer_f32(size)?;
 
     // Create buffers for shape and stride data
-    let input_shape_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Input Shape"),
-        contents: bytemuck::cast_slice(&shape.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let input_shape_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Transpose Input Shape"),
+            contents: bytemuck::cast_slice(&shape.iter().map(|&x| x as u32).collect::<Vec<_>>()),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
 
-    let output_shape_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Output Shape"),
-        contents: bytemuck::cast_slice(&output_shape.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let output_shape_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Transpose Output Shape"),
+            contents: bytemuck::cast_slice(
+                &output_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+            ),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
 
-    let permutation_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Permutation"),
-        contents: bytemuck::cast_slice(&permutation.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let permutation_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Transpose Permutation"),
+            contents: bytemuck::cast_slice(
+                &permutation.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+            ),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
 
-    let input_strides_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Input Strides"),
-        contents: bytemuck::cast_slice(&input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let input_strides_buffer =
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Transpose Input Strides"),
+                contents: bytemuck::cast_slice(
+                    &input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                ),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
-    let output_strides_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Output Strides"),
-        contents: bytemuck::cast_slice(&output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-    });
+    let output_strides_buffer =
+        device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Transpose Output Strides"),
+                contents: bytemuck::cast_slice(
+                    &output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                ),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
     // Create params
     #[repr(C)]
@@ -248,98 +275,103 @@ fn execute_nd(
         _padding: 0,
     };
 
-    let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Transpose Params"),
-        contents: bytemuck::cast_slice(&[params]),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-    });
+    let params_buffer = device
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Transpose Params"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
     // Create bind group layout
-    let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("Transpose Bind Group Layout ND"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 4,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 5,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 6,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 7,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 8,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    });
+    let bind_group_layout =
+        device
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Transpose Bind Group Layout ND"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 7,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 8,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
     // Create bind group
     let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -385,23 +417,29 @@ fn execute_nd(
     let shader = device.compile_shader(super::Transpose::wgsl_shader(), Some("Transpose ND"));
 
     // Create pipeline
-    let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Transpose Pipeline Layout ND"),
-        bind_group_layouts: &[&bind_group_layout],
-        push_constant_ranges: &[],
-    });
+    let pipeline_layout = device
+        .device
+        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Transpose Pipeline Layout ND"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
 
-    let pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("Transpose Pipeline ND"),
-        layout: Some(&pipeline_layout),
-        module: &shader,
-        entry_point: "main_nd",
-    });
+    let pipeline = device
+        .device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Transpose Pipeline ND"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "main_nd",
+        });
 
     // Encode and execute
-    let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Transpose Encoder ND"),
-    });
+    let mut encoder = device
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Transpose Encoder ND"),
+        });
 
     {
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -416,7 +454,7 @@ fn execute_nd(
         use crate::device::{DeviceCapabilities, WorkloadType};
         let caps = DeviceCapabilities::from_device(device);
         let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-        let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+        let workgroups = (size as u32).div_ceil(optimal_wg_size);
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 

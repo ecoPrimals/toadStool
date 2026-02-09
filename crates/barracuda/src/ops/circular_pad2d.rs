@@ -197,8 +197,8 @@ impl CircularPad2d {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (8x8x1 workgroup size)
-            let workgroups_x = (out_width as u32 + 7) / 8;
-            let workgroups_y = (out_height as u32 + 7) / 8;
+            let workgroups_x = (out_width as u32).div_ceil(8);
+            let workgroups_y = (out_height as u32).div_ceil(8);
             let workgroups_z = (batch_size * channels) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -223,13 +223,9 @@ mod tests {
     async fn test_circular_pad2d_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![1.0; 2 * 3 * 4 * 4],
-            vec![2, 3, 4, 4],
-            device,
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 4 * 4], vec![2, 3, 4, 4], device)
+            .await
+            .unwrap();
 
         let output = CircularPad2d::new(input, 1, 1, 1, 1)
             .unwrap()

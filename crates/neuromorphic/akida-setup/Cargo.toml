@@ -1,0 +1,26 @@
+[package]
+name = "akida-setup"
+version = "0.1.0"
+edition = "2021"
+authors = ["ToadStool Contributors"]
+description = "Setup and configuration utility for Akida neuromorphic hardware"
+license = "MIT"
+repository = "https://github.com/ecoPrimals/toadStool"
+readme = "README.md"
+keywords = ["akida", "neuromorphic", "setup", "hardware"]
+categories = ["hardware-support", "development-tools"]
+
+[[bin]]
+name = "akida-setup"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+glob = "0.3"
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"

@@ -16,7 +16,7 @@ struct Params {
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> values: array<f32>;
 @group(0) @binding(2) var<storage, read> indices: array<u32>;
-@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+@group(0) @binding(3) var<storage, read_write> output: array<atomic<i32>>; // Atomic when accumulate=1, otherwise overwrite
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -35,7 +35,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             atomicAdd(&output[out_idx], bitcast<i32>(value));
         } else {
             // Overwrite (last write wins if multiple indices point to same location)
-            output[out_idx] = value;
+            atomicStore(&output[out_idx], bitcast<i32>(value));
         }
     }
 }

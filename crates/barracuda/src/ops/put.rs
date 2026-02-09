@@ -35,8 +35,11 @@ impl Put {
 
         if indices.len() != values_size {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Indices length {} doesn't match values size {}", 
-                    indices.len(), values_size),
+                message: format!(
+                    "Indices length {} doesn't match values size {}",
+                    indices.len(),
+                    values_size
+                ),
             });
         }
 
@@ -44,7 +47,10 @@ impl Put {
         for &idx in &indices {
             if idx as usize >= output_size {
                 return Err(crate::error::BarracudaError::InvalidInput {
-                    message: format!("Index {} out of bounds for output size {}", idx, output_size),
+                    message: format!(
+                        "Index {} out of bounds for output size {}",
+                        idx, output_size
+                    ),
                 });
             }
         }
@@ -74,11 +80,13 @@ impl Put {
         let output_buffer = self.output.buffer();
 
         // Create indices buffer
-        let indices_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Put Indices"),
-            contents: bytemuck::cast_slice(&self.indices),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let indices_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Put Indices"),
+                contents: bytemuck::cast_slice(&self.indices),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create uniform buffer for parameters
         #[repr(C)]
@@ -97,61 +105,66 @@ impl Put {
             _pad1: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Put Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Put Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Put Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Put Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Put Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -178,23 +191,31 @@ impl Put {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Put Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Put Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Put Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Put Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Put Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Put Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -203,11 +224,11 @@ impl Put {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_values as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_values as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -232,20 +253,15 @@ mod tests {
     #[tokio::test]
     async fn test_put_basic() {
         let device = get_test_device().await;
-        let output = Tensor::from_data(
-            &[0.0, 0.0, 0.0, 0.0],
-            vec![4],
-            device.clone(),
-        ).unwrap();
-        let values = Tensor::from_data(
-            &[10.0, 30.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
-        let result = Put::new(output, vec![0, 2], values, false).unwrap().execute().unwrap();
+        let output = Tensor::from_data(&[0.0, 0.0, 0.0, 0.0], vec![4], device.clone()).unwrap();
+        let values = Tensor::from_data(&[10.0, 30.0], vec![2], device.clone()).unwrap();
+
+        let result = Put::new(output, vec![0, 2], values, false)
+            .unwrap()
+            .execute()
+            .unwrap();
         let output_data = result.to_vec().unwrap();
-        
+
         assert_eq!(output_data[0], 10.0);
         assert_eq!(output_data[2], 30.0);
         assert_eq!(output_data[1], 0.0);
@@ -255,20 +271,15 @@ mod tests {
     #[tokio::test]
     async fn test_put_accumulate() {
         let device = get_test_device().await;
-        let output = Tensor::from_data(
-            &[1.0, 2.0, 3.0, 4.0],
-            vec![4],
-            device.clone(),
-        ).unwrap();
-        let values = Tensor::from_data(
-            &[10.0, 20.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
-        let result = Put::new(output, vec![0, 1], values, true).unwrap().execute().unwrap();
+        let output = Tensor::from_data(&[1.0, 2.0, 3.0, 4.0], vec![4], device.clone()).unwrap();
+        let values = Tensor::from_data(&[10.0, 20.0], vec![2], device.clone()).unwrap();
+
+        let result = Put::new(output, vec![0, 1], values, true)
+            .unwrap()
+            .execute()
+            .unwrap();
         let output_data = result.to_vec().unwrap();
-        
+
         // With accumulate, values are added
         assert_eq!(output_data[0], 11.0);
         assert_eq!(output_data[1], 22.0);
@@ -277,53 +288,32 @@ mod tests {
     #[tokio::test]
     async fn test_put_invalid_index() {
         let device = get_test_device().await;
-        let output = Tensor::from_data(
-            &[0.0, 0.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        let values = Tensor::from_data(
-            &[1.0],
-            vec![1],
-            device.clone(),
-        ).unwrap();
-        
+        let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
+        let values = Tensor::from_data(&[1.0], vec![1], device.clone()).unwrap();
+
         assert!(Put::new(output, vec![5], values, false).is_err());
     }
 
     #[tokio::test]
     async fn test_put_length_mismatch() {
         let device = get_test_device().await;
-        let output = Tensor::from_data(
-            &[0.0, 0.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        let values = Tensor::from_data(
-            &[1.0, 2.0, 3.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
+        let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
+        let values = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
+
         assert!(Put::new(output, vec![0], values, false).is_err());
     }
 
     #[tokio::test]
     async fn test_put_repeated_indices() {
         let device = get_test_device().await;
-        let output = Tensor::from_data(
-            &[0.0, 0.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        let values = Tensor::from_data(
-            &[1.0, 2.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
+        let output = Tensor::from_data(&[0.0, 0.0], vec![2], device.clone()).unwrap();
+        let values = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
+
         // Same index twice - last write wins if not accumulating
-        let result = Put::new(output, vec![0, 0], values, false).unwrap().execute().unwrap();
+        let result = Put::new(output, vec![0, 0], values, false)
+            .unwrap()
+            .execute()
+            .unwrap();
         let output_data = result.to_vec().unwrap();
         assert_eq!(output_data[0], 2.0); // Last write wins
     }

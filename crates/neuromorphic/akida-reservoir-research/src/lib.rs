@@ -1,7 +1,7 @@
 //! Akida Reservoir Computing Research Library
 //!
 //! Experimental crate for exploring reservoir computing (echo state networks)
-//! on BrainChip Akida neuromorphic hardware.
+//! on `BrainChip` Akida neuromorphic hardware.
 //!
 //! # Research Questions
 //!

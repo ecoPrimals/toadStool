@@ -3,8 +3,8 @@
 # Created: January 30, 2026
 
 [build]
-# Default to x86_64 musl for maximum portability
-target = "x86_64-unknown-linux-musl"
+# NOTE: -D warnings moved to [workspace.lints.rust] in Cargo.toml
+# This enables proper override via [lints.clippy] for transitive dep conflicts
 
 # ARM64 Linux (musl for static linking)
 [target.aarch64-unknown-linux-musl]

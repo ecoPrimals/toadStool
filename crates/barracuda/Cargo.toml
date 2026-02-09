@@ -5,6 +5,10 @@ edition = "2021"
 authors = ["ToadStool Team <team@toadstool.bio>"]
 description = "Hardware-agnostic tensor compute library using WebGPU (WGSL)"
 license = "MIT"
+repository = "https://github.com/ecoPrimals/toadStool"
+readme = "README.md"
+keywords = ["gpu", "tensor", "compute", "webgpu", "wgsl"]
+categories = ["science", "hardware-support"]
 
 [dependencies]
 # Core
@@ -23,8 +27,12 @@ async-trait = "0.1"
 # NPU support (pure Rust Akida driver)
 akida-driver = { path = "../neuromorphic/akida-driver" }
 
+# ToadStool hardware layer
+toadstool-core = { path = "../toadstool-core" }  # Hardware infrastructure
+
 # Logging
 log = "0.4"
+tracing = "0.1"
 
 # Utilities
 serde = { version = "1.0", features = ["derive"] }
@@ -55,7 +63,5 @@ mock-tpu = ["tpu"]       # Mock TPU for testing
 benchmarks = ["chrono"]
 cuda-comparison = ["benchmarks"]
 
-[[bin]]
-name = "barracuda_benchmark"
-path = "src/bin/benchmark.rs"
-required-features = ["benchmarks"]
+# NOTE: benchmark binary removed during deep-debt cleanup (Feb 2026)
+# Benchmarks are now run via `cargo bench` and the harness in src/benchmarks/

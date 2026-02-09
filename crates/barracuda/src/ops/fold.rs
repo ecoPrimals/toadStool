@@ -35,7 +35,10 @@ impl Fold {
         let shape = input.shape();
         if shape.len() != 3 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Fold expects 3D tensor [B, C*K*K, L], got shape {:?}", shape),
+                message: format!(
+                    "Fold expects 3D tensor [B, C*K*K, L], got shape {:?}",
+                    shape
+                ),
             });
         }
 
@@ -60,16 +63,18 @@ impl Fold {
         let shape = self.input.shape();
         let batch_size = shape[0];
         let channels_times_kernel = shape[1];
-        
+
         // Infer channels from input shape
         // channels_times_kernel = channels * kernel_height * kernel_width
         let kernel_elements = self.kernel_size.0 * self.kernel_size.1;
         let channels = channels_times_kernel / kernel_elements;
-        
-        if channels_times_kernel % kernel_elements != 0 {
+
+        if !channels_times_kernel.is_multiple_of(kernel_elements) {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Input channels*kernel ({}) must be divisible by kernel elements ({})", 
-                    channels_times_kernel, kernel_elements),
+                message: format!(
+                    "Input channels*kernel ({}) must be divisible by kernel elements ({})",
+                    channels_times_kernel, kernel_elements
+                ),
             });
         }
 
@@ -78,8 +83,14 @@ impl Fold {
         let output_size = batch_size * channels * out_height * out_width;
 
         // Compute number of blocks
-        let num_blocks_h = ((out_height + 2 * self.padding - self.dilation * (self.kernel_size.0 - 1) - 1) / self.stride) + 1;
-        let num_blocks_w = ((out_width + 2 * self.padding - self.dilation * (self.kernel_size.1 - 1) - 1) / self.stride) + 1;
+        let num_blocks_h =
+            ((out_height + 2 * self.padding - self.dilation * (self.kernel_size.0 - 1) - 1)
+                / self.stride)
+                + 1;
+        let num_blocks_w =
+            ((out_width + 2 * self.padding - self.dilation * (self.kernel_size.1 - 1) - 1)
+                / self.stride)
+                + 1;
 
         // Access input buffer directly (zero-copy)
         let input_buffer = self.input.buffer();
@@ -120,51 +131,56 @@ impl Fold {
             _pad1: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Fold Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Fold Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Fold Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Fold Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Fold Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -187,23 +203,31 @@ impl Fold {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Fold Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Fold Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Fold Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Fold Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Fold Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Fold Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -213,10 +237,10 @@ impl Fold {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             let workgroups_z = (batch_size * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -251,21 +275,21 @@ mod tests {
             &data,
             vec![1, 9, 36], // 1 channel * 9 kernel elements, 36 blocks
             device.clone(),
-        ).unwrap();
-        
-        let folded = Fold::new(input, (6, 6), (3, 3), 1, 0, 1).unwrap().execute().unwrap();
+        )
+        .unwrap();
+
+        let folded = Fold::new(input, (6, 6), (3, 3), 1, 0, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         assert_eq!(folded.shape(), &vec![1, 1, 6, 6]);
     }
 
     #[tokio::test]
     async fn test_fold_invalid_shape() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0, 3.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
+
         assert!(Fold::new(input, (4, 4), (3, 3), 1, 0, 1).is_err());
     }
 
@@ -273,13 +297,12 @@ mod tests {
     async fn test_fold_with_padding() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..576).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 9, 64],
-            device.clone(),
-        ).unwrap();
-        
-        let folded = Fold::new(input, (8, 8), (3, 3), 1, 1, 1).unwrap().execute().unwrap();
+        let input = Tensor::from_data(&data, vec![1, 9, 64], device.clone()).unwrap();
+
+        let folded = Fold::new(input, (8, 8), (3, 3), 1, 1, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         assert_eq!(folded.shape(), &vec![1, 1, 8, 8]);
     }
 }

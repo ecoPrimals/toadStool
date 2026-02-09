@@ -20,8 +20,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let pred = predictions[idx];
-    let target = targets[idx];
-    let abs_diff = abs(pred - target);
+    let target_data = targets[idx];
+    let abs_diff = abs(pred - target_data);
     
     // Store individual losses
     output[idx] = abs_diff;

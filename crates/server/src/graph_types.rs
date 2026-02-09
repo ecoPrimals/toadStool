@@ -99,10 +99,9 @@ impl ExecutionGraph {
             adj_list.insert(&node.id, Vec::new());
         }
         for edge in &self.edges {
-            adj_list
-                .get_mut(edge.from.as_str())
-                .unwrap_or_else(|| panic!("Node should exist"))
-                .push(&edge.to);
+            if let Some(neighbors) = adj_list.get_mut(edge.from.as_str()) {
+                neighbors.push(&edge.to);
+            }
         }
 
         // DFS with three colors: white (unvisited), gray (visiting), black (visited)
@@ -352,6 +351,7 @@ impl GraphEdge {
 /// Type of dependency edge
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum EdgeType {
     /// Data flows from source to target (output → input)
     DataFlow,
@@ -360,13 +360,8 @@ pub enum EdgeType {
     Control,
 
     /// General dependency - no specific semantics
+    #[default]
     Dependency,
-}
-
-impl Default for EdgeType {
-    fn default() -> Self {
-        EdgeType::Dependency
-    }
 }
 
 /// Graph validation error

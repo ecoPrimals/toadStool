@@ -271,7 +271,7 @@ impl EventParser {
             _ => {
                 // Try to map other buttons by code
                 let code = button.code();
-                if code >= 0x110 && code <= 0x11f {
+                if (0x110..=0x11f).contains(&code) {
                     MouseButton::Other((code - 0x110) as u8)
                 } else {
                     return None;

@@ -314,28 +314,82 @@ impl fmt::Display for DeviceCapabilities {
         writeln!(f, "Device Capabilities:")?;
         writeln!(f, "  Name: {}", self.device_name)?;
         writeln!(f, "  Type: {:?}", self.device_type)?;
-        writeln!(f, "  Vendor: {} (0x{:04X})", self.vendor_name(), self.vendor)?;
+        writeln!(
+            f,
+            "  Vendor: {} (0x{:04X})",
+            self.vendor_name(),
+            self.vendor
+        )?;
         writeln!(f, "  Backend: {:?}", self.backend)?;
         writeln!(f)?;
         writeln!(f, "Memory:")?;
-        writeln!(f, "  Max Buffer Size: {} MB", self.max_buffer_size / (1024 * 1024))?;
-        writeln!(f, "  Max Allocation: {} MB", self.max_allocation_size() / (1024 * 1024))?;
+        writeln!(
+            f,
+            "  Max Buffer Size: {} MB",
+            self.max_buffer_size / (1024 * 1024)
+        )?;
+        writeln!(
+            f,
+            "  Max Allocation: {} MB",
+            self.max_allocation_size() / (1024 * 1024)
+        )?;
         writeln!(f)?;
         writeln!(f, "Compute:")?;
         writeln!(f, "  Max Workgroup Size: {:?}", self.max_workgroup_size)?;
-        writeln!(f, "  Max Invocations/Workgroup: {}", self.max_compute_invocations_per_workgroup)?;
-        writeln!(f, "  Max Compute Workgroups: {:?}", self.max_compute_workgroups)?;
+        writeln!(
+            f,
+            "  Max Invocations/Workgroup: {}",
+            self.max_compute_invocations_per_workgroup
+        )?;
+        writeln!(
+            f,
+            "  Max Compute Workgroups: {:?}",
+            self.max_compute_workgroups
+        )?;
         writeln!(f)?;
         writeln!(f, "Optimal Configurations:")?;
-        writeln!(f, "  Element-wise: {} threads", self.optimal_workgroup_size(WorkloadType::ElementWise))?;
-        writeln!(f, "  MatMul: {} threads (tile: {})", self.optimal_workgroup_size(WorkloadType::MatMul), self.optimal_matmul_tile_size())?;
-        writeln!(f, "  Reduction: {} threads", self.optimal_workgroup_size(WorkloadType::Reduction))?;
-        writeln!(f, "  FHE: {} threads", self.optimal_workgroup_size(WorkloadType::FHE))?;
-        writeln!(f, "  Convolution: {:?}", self.optimal_workgroup_size_2d(WorkloadType::Convolution))?;
+        writeln!(
+            f,
+            "  Element-wise: {} threads",
+            self.optimal_workgroup_size(WorkloadType::ElementWise)
+        )?;
+        writeln!(
+            f,
+            "  MatMul: {} threads (tile: {})",
+            self.optimal_workgroup_size(WorkloadType::MatMul),
+            self.optimal_matmul_tile_size()
+        )?;
+        writeln!(
+            f,
+            "  Reduction: {} threads",
+            self.optimal_workgroup_size(WorkloadType::Reduction)
+        )?;
+        writeln!(
+            f,
+            "  FHE: {} threads",
+            self.optimal_workgroup_size(WorkloadType::FHE)
+        )?;
+        writeln!(
+            f,
+            "  Convolution: {:?}",
+            self.optimal_workgroup_size_2d(WorkloadType::Convolution)
+        )?;
         writeln!(f)?;
         writeln!(f, "Features:")?;
-        writeln!(f, "  FHE Support: {}", if self.supports_fhe() { "Yes" } else { "No" })?;
-        writeln!(f, "  High Performance: {}", if self.is_high_performance() { "Yes" } else { "No" })?;
+        writeln!(
+            f,
+            "  FHE Support: {}",
+            if self.supports_fhe() { "Yes" } else { "No" }
+        )?;
+        writeln!(
+            f,
+            "  High Performance: {}",
+            if self.is_high_performance() {
+                "Yes"
+            } else {
+                "No"
+            }
+        )?;
 
         Ok(())
     }
@@ -373,9 +427,13 @@ mod tests {
 
         for workload in workloads {
             let size = caps.optimal_workgroup_size(workload);
-            assert!(size <= caps.max_compute_invocations_per_workgroup, 
+            assert!(
+                size <= caps.max_compute_invocations_per_workgroup,
                 "Workgroup size {} exceeds max {} for workload {:?}",
-                size, caps.max_compute_invocations_per_workgroup, workload);
+                size,
+                caps.max_compute_invocations_per_workgroup,
+                workload
+            );
 
             let (x, y) = caps.optimal_workgroup_size_2d(workload);
             assert!(x <= caps.max_workgroup_size.0);

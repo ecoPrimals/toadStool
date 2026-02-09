@@ -7,7 +7,7 @@
 //! 4. Pass 4: Compact results on GPU (parallel with atomics)
 
 use super::NMS;
-use crate::device::{DeviceCapabilities, WorkloadType, WgpuDevice};
+use crate::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -66,52 +66,58 @@ impl NMS {
             _padding: [0; 3],
         };
 
-        let iou_params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NMS IoU Params"),
-            contents: bytemuck::cast_slice(&[iou_params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let iou_params_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NMS IoU Params"),
+                    contents: bytemuck::cast_slice(&[iou_params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Compile shader for IoU computation
         let shader_source = Self::wgsl_shader();
         let shader_module = device.compile_shader(shader_source, Some("NMS IoU Shader"));
 
         // Create bind group layout for IoU pass
-        let iou_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("NMS IoU Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let iou_bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("NMS IoU Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let iou_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("NMS IoU Bind Group"),
@@ -132,23 +138,31 @@ impl NMS {
             ],
         });
 
-        let iou_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("NMS IoU Pipeline Layout"),
-            bind_group_layouts: &[&iou_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let iou_pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("NMS IoU Pipeline Layout"),
+                    bind_group_layouts: &[&iou_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let iou_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("NMS IoU Pipeline"),
-            layout: Some(&iou_pipeline_layout),
-            module: &shader_module,
-            entry_point: "compute_iou_matrix",
-        });
+        let iou_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("NMS IoU Pipeline"),
+                    layout: Some(&iou_pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "compute_iou_matrix",
+                });
 
         // Execute IoU computation
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("NMS Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NMS Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -161,8 +175,8 @@ impl NMS {
             // IoU computation is element-wise per box pair
             let caps = DeviceCapabilities::from_device(&device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups_x = ((num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size).max(1);
-            let workgroups_y = ((num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size).max(1);
+            let workgroups_x = (num_boxes as u32).div_ceil(optimal_wg_size).max(1);
+            let workgroups_y = (num_boxes as u32).div_ceil(optimal_wg_size).max(1);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -180,11 +194,14 @@ impl NMS {
         });
 
         // Create sorted indices buffer
-        let sorted_indices_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NMS Sorted Indices"),
-            contents: bytemuck::cast_slice(&sorted_indices),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let sorted_indices_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NMS Sorted Indices"),
+                    contents: bytemuck::cast_slice(&sorted_indices),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
         // ====================================================================
         // Pass 3: Mark Suppressed Boxes on GPU
@@ -205,58 +222,64 @@ impl NMS {
             _padding: [0; 2],
         };
 
-        let suppress_params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NMS Suppress Params"),
-            contents: bytemuck::cast_slice(&[suppress_params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let suppress_params_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NMS Suppress Params"),
+                    contents: bytemuck::cast_slice(&[suppress_params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Create bind group layout for suppression pass
-        let suppress_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("NMS Suppress Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let suppress_bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("NMS Suppress Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let suppress_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("NMS Suppress Bind Group"),
@@ -281,23 +304,31 @@ impl NMS {
             ],
         });
 
-        let suppress_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("NMS Suppress Pipeline Layout"),
-            bind_group_layouts: &[&suppress_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let suppress_pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("NMS Suppress Pipeline Layout"),
+                    bind_group_layouts: &[&suppress_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let suppress_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("NMS Suppress Pipeline"),
-            layout: Some(&suppress_pipeline_layout),
-            module: &shader_module,
-            entry_point: "mark_suppressed",
-        });
+        let suppress_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("NMS Suppress Pipeline"),
+                    layout: Some(&suppress_pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "mark_suppressed",
+                });
 
         // Execute suppression marking
-        let mut encoder2 = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("NMS Suppress Encoder"),
-        });
+        let mut encoder2 = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NMS Suppress Encoder"),
+            });
 
         {
             let mut compute_pass = encoder2.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -310,7 +341,7 @@ impl NMS {
             use crate::device::{DeviceCapabilities, WorkloadType};
             let caps = DeviceCapabilities::from_device(&device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_boxes as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -320,11 +351,16 @@ impl NMS {
         // Pass 4: Compact Results on GPU
         // ====================================================================
         let keep_indices_buffer = device.create_buffer_u32(num_boxes)?;
-        let keep_count_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NMS Keep Count"),
-            contents: bytemuck::cast_slice(&[0u32]),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-        });
+        let keep_count_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NMS Keep Count"),
+                    contents: bytemuck::cast_slice(&[0u32]),
+                    usage: wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_DST
+                        | wgpu::BufferUsages::COPY_SRC,
+                });
 
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -338,68 +374,74 @@ impl NMS {
             _padding: [0; 3],
         };
 
-        let compact_params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("NMS Compact Params"),
-            contents: bytemuck::cast_slice(&[compact_params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let compact_params_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("NMS Compact Params"),
+                    contents: bytemuck::cast_slice(&[compact_params]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Create bind group layout for compact pass
-        let compact_bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("NMS Compact Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let compact_bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("NMS Compact Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         let compact_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("NMS Compact Bind Group"),
@@ -428,23 +470,31 @@ impl NMS {
             ],
         });
 
-        let compact_pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("NMS Compact Pipeline Layout"),
-            bind_group_layouts: &[&compact_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let compact_pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("NMS Compact Pipeline Layout"),
+                    bind_group_layouts: &[&compact_bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compact_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("NMS Compact Pipeline"),
-            layout: Some(&compact_pipeline_layout),
-            module: &shader_module,
-            entry_point: "compact_results",
-        });
+        let compact_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("NMS Compact Pipeline"),
+                    layout: Some(&compact_pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "compact_results",
+                });
 
         // Execute compaction
-        let mut encoder3 = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("NMS Compact Encoder"),
-        });
+        let mut encoder3 = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("NMS Compact Encoder"),
+            });
 
         {
             let mut compute_pass = encoder3.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -457,7 +507,7 @@ impl NMS {
             use crate::device::{DeviceCapabilities, WorkloadType};
             let caps = DeviceCapabilities::from_device(&device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_boxes as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

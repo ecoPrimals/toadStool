@@ -9,7 +9,13 @@ struct Params {
     height: u32,
     width: u32,
     fill_value: f32,  // Value for out-of-bounds pixels
-    _padding: vec3<u32>,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;           // [B, C, H, W]

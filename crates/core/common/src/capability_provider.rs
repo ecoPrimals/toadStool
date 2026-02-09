@@ -111,7 +111,7 @@ impl CapabilityProvider {
             .map(|arr| {
                 arr.iter()
                     .filter_map(|v| v.as_str())
-                    .map(|s| string_to_capability(s))
+                    .map(string_to_capability)
                     .collect()
             })
             .unwrap_or_default();
@@ -140,7 +140,12 @@ impl CapabilityProvider {
             *client_lock = Some(new_client);
         }
 
-        let client = client_lock.as_mut().unwrap();
+        // SAFETY: We just ensured the client is Some above
+        let Some(client) = client_lock.as_mut() else {
+            return Err(CapabilityError::ProviderUnreachable(
+                "Client initialization failed unexpectedly".to_string(),
+            ));
+        };
 
         // Call method
         client
@@ -209,7 +214,7 @@ pub async fn discover_all(capability: Capability) -> Result<Vec<CapabilityProvid
             .map(|arr| {
                 arr.iter()
                     .filter_map(|v| v.as_str())
-                    .map(|s| string_to_capability(s))
+                    .map(string_to_capability)
                     .collect()
             })
             .unwrap_or_default();

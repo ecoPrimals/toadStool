@@ -1,0 +1,67 @@
+# =============================================================
+# Cursor crashes on this project due to ~15,000 files.
+# This ignore file reduces the indexed set to ~2,500 (source code only).
+# =============================================================
+
+# --- Archives (4,000+ files, 2+ GB) ---
+docs/archive/
+showcase/archive/
+
+# --- Session docs (140+ files, historical) ---
+docs/sessions/
+
+# --- All showcase subdirectories (7,000+ files, 3.9 GB) ---
+# These are demos, not actively edited source code.
+# Open specific files directly when needed.
+showcase/gaming-evolution/
+showcase/gpu-universal/
+showcase/homomorphic-computing/
+showcase/inter-primal/
+showcase/local-capabilities/
+showcase/multi-primal-nestgate/
+showcase/nestgate-compute/
+showcase/nestgate-integration/
+showcase/nestgate-standalone/
+showcase/real-world/
+showcase/secure-enclave/
+showcase/whitePaper/
+showcase/python-ml/
+showcase/barracuda-validation/
+showcase/neuromorphic/
+showcase/biomes/
+showcase/workloads/
+showcase/scripts/
+showcase/utils/
+showcase/src/
+showcase/results/
+showcase/akida-characterization/
+
+# --- Binary/data files ---
+showcase/**/*.bin
+showcase/**/*.npz
+**/*.csv
+**/*.json
+!package.json
+!package-lock.json
+!biome.yaml
+!toadstool.toml
+
+# --- Build artifacts ---
+target/
+
+# --- Generated output ---
+pipeline_validation_actual_hardware.*
+actual_gpu_validation.*
+benchmark_output.txt
+test_results.txt
+
+# --- Large non-source doc directories ---
+docs/biomeos/
+docs/unified-memory/
+docs/team/
+
+# --- Benches (not frequently edited) ---
+benches/
+
+# --- UI (not active) ---
+ui/

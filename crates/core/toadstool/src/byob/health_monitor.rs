@@ -60,12 +60,8 @@ pub struct ByobHealthMonitor {
 impl ByobHealthMonitor {
     /// Create a new health monitor (internal constructor)
     #[allow(dead_code)] // Will be used when integrating into byob_impl.rs
-    pub(super) fn new(
-        active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>,
-    ) -> Self {
-        Self {
-            active_deployments,
-        }
+    pub(super) fn new(active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>) -> Self {
+        Self { active_deployments }
     }
 }
 
@@ -174,7 +170,9 @@ impl HealthMonitor for ByobHealthMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::byob::byob_types::{ByobDeploymentRequest, ServiceSpec, ServiceResourceRequirements};
+    use crate::byob::byob_types::{
+        ByobDeploymentRequest, ServiceResourceRequirements, ServiceSpec,
+    };
     use chrono::Utc;
 
     fn create_test_deployment_with_health_check(
@@ -184,7 +182,11 @@ mod tests {
 
         let health_check = if healthy {
             Some(HealthCheck {
-                command: vec!["curl".to_string(), "-f".to_string(), "http://localhost:8080/health".to_string()],
+                command: vec![
+                    "curl".to_string(),
+                    "-f".to_string(),
+                    "http://localhost:8080/health".to_string(),
+                ],
                 interval: 30,
                 timeout: 5,
                 retries: 3,
@@ -294,7 +296,11 @@ mod tests {
         let monitor = ByobHealthMonitor::new(deployments);
 
         let health_check = HealthCheck {
-            command: vec!["curl".to_string(), "-f".to_string(), "http://localhost:8080/health".to_string()],
+            command: vec![
+                "curl".to_string(),
+                "-f".to_string(),
+                "http://localhost:8080/health".to_string(),
+            ],
             interval: 30,
             timeout: 5,
             retries: 3,

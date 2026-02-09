@@ -287,8 +287,6 @@ pub fn query_system_resources() -> SystemResources {
 ///
 /// **Design**: Vendor-agnostic, no hardcoded GPU assumptions
 fn query_gpu_devices() -> Vec<GpuDevice> {
-    let devices = Vec::new();
-
     // DESIGN NOTE: GPU detection would be feature-gated in production:
     //
     // #[cfg(feature = "cuda")]
@@ -313,7 +311,7 @@ fn query_gpu_devices() -> Vec<GpuDevice> {
 
     // Graceful degradation: ToadStool works without GPU detection
     // GPU capabilities are optional enhancement, not required
-    devices
+    Vec::new()
 }
 
 /// Build capabilities list from resources

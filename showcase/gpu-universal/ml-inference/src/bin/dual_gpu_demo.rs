@@ -205,7 +205,7 @@ async fn run_inference_on_gpu(
     }
 
     // Run inference (batched if GPU, single if CPU)
-    let num_batches = (num_samples + batch_size - 1) / batch_size;
+    let num_batches = num_samples.div_ceil(batch_size);
 
     for batch_idx in 0..num_batches {
         let batch_start_idx = batch_idx * batch_size;

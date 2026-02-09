@@ -48,11 +48,14 @@ impl Mixup {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_shape = self.input.shape();
-        
+
         if input_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "Mixup",
-                format!("input must be 2D [batch_size, feature_size], got shape {:?}", input_shape),
+                format!(
+                    "input must be 2D [batch_size, feature_size], got shape {:?}",
+                    input_shape
+                ),
             ));
         }
 
@@ -181,7 +184,7 @@ impl Mixup {
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let total_elements = batch_size * feature_size;
-            let workgroups = (total_elements as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (total_elements as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -216,10 +219,7 @@ mod tests {
         .await
         .unwrap();
 
-        let result = Mixup::new(input, 0.5, 1)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let result = Mixup::new(input, 0.5, 1).unwrap().execute().unwrap();
 
         assert_eq!(result.shape(), &[batch_size, feature_size]);
     }

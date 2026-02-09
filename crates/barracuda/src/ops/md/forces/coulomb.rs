@@ -19,11 +19,11 @@ use wgpu::util::DeviceExt;
 /// Computes electrostatic forces between all particle pairs.
 /// Uses softened potential to avoid singularities.
 pub struct CoulombForce {
-    positions: Tensor,          // [N, 3]
-    charges: Tensor,            // [N]
-    coulomb_constant: f32,      // k (can absorb units into charges)
-    cutoff_radius: f32,         // Maximum interaction distance
-    epsilon: f32,               // Softening parameter
+    positions: Tensor,     // [N, 3]
+    charges: Tensor,       // [N]
+    coulomb_constant: f32, // k (can absorb units into charges)
+    cutoff_radius: f32,    // Maximum interaction distance
+    epsilon: f32,          // Softening parameter
 }
 
 impl CoulombForce {
@@ -230,7 +230,7 @@ impl CoulombForce {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // One workgroup per particle
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -277,10 +277,18 @@ mod tests {
 
         // Force on particle 0 should be negative x (repulsion away from particle 1)
         // With physics direction fixed, force should point in -x
-        assert!(force_data[0] < 0.0, "Particle 0 repelled in -x direction: got {}", force_data[0]);
+        assert!(
+            force_data[0] < 0.0,
+            "Particle 0 repelled in -x direction: got {}",
+            force_data[0]
+        );
 
         // Force on particle 1 should be positive x
-        assert!(force_data[3] > 0.0, "Particle 1 repelled in +x direction: got {}", force_data[3]);
+        assert!(
+            force_data[3] > 0.0,
+            "Particle 1 repelled in +x direction: got {}",
+            force_data[3]
+        );
 
         // Newton's third law: F_0 = -F_1
         let f0 = force_data[0];
@@ -313,10 +321,11 @@ mod tests {
         let coulomb = CoulombForce::new(
             pos_tensor,
             charge_tensor,
-            Some(1.0),      // k = 1
-            Some(10.0),     // Explicit cutoff instead of INFINITY
-            Some(1e-6),     // epsilon
-        ).unwrap();
+            Some(1.0),  // k = 1
+            Some(10.0), // Explicit cutoff instead of INFINITY
+            Some(1e-6), // epsilon
+        )
+        .unwrap();
         let forces = coulomb.execute().unwrap();
 
         let force_data = forces.to_vec().unwrap();
@@ -325,12 +334,20 @@ mod tests {
         // Force on particle 0 should be positive x (attracted toward particle 1)
         println!("Expected: force[0] > 0 (attraction in +x)");
         println!("Got: force[0] = {}", force_data[0]);
-        assert!(force_data[0] > 0.0, "Particle 0 attracted in +x direction: got {}", force_data[0]);
+        assert!(
+            force_data[0] > 0.0,
+            "Particle 0 attracted in +x direction: got {}",
+            force_data[0]
+        );
 
         // Force on particle 1 should be negative x
         println!("Expected: force[3] < 0 (attraction in -x)");
         println!("Got: force[3] = {}", force_data[3]);
-        assert!(force_data[3] < 0.0, "Particle 1 attracted in -x direction: got {}", force_data[3]);
+        assert!(
+            force_data[3] < 0.0,
+            "Particle 1 attracted in -x direction: got {}",
+            force_data[3]
+        );
 
         println!("✅ Coulomb attraction validated");
     }

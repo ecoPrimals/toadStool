@@ -50,11 +50,14 @@ impl SpectralNorm {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.weight.device();
         let weight_shape = self.weight.shape();
-        
+
         if weight_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "SpectralNorm",
-                format!("weight must be 2D [rows, cols], got shape {:?}", weight_shape),
+                format!(
+                    "weight must be 2D [rows, cols], got shape {:?}",
+                    weight_shape
+                ),
             ));
         }
 
@@ -62,14 +65,14 @@ impl SpectralNorm {
         let cols = weight_shape[1];
 
         // Validate u and v shapes
-        if self.u.shape() != &[rows] {
+        if self.u.shape() != [rows] {
             return Err(BarracudaError::invalid_op(
                 "SpectralNorm",
                 format!("u must be 1D [rows], got shape {:?}", self.u.shape()),
             ));
         }
 
-        if self.v.shape() != &[cols] {
+        if self.v.shape() != [cols] {
             return Err(BarracudaError::invalid_op(
                 "SpectralNorm",
                 format!("v must be 1D [cols], got shape {:?}", self.v.shape()),
@@ -208,7 +211,7 @@ impl SpectralNorm {
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let max_dim = rows.max(cols);
-            let workgroups = (max_dim as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (max_dim as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -231,29 +234,17 @@ mod tests {
         let rows = 10;
         let cols = 8;
 
-        let weight = Tensor::from_vec_on(
-            vec![0.1; rows * cols],
-            vec![rows, cols],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let weight = Tensor::from_vec_on(vec![0.1; rows * cols], vec![rows, cols], device.clone())
+            .await
+            .unwrap();
 
-        let u = Tensor::from_vec_on(
-            vec![1.0; rows],
-            vec![rows],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let u = Tensor::from_vec_on(vec![1.0; rows], vec![rows], device.clone())
+            .await
+            .unwrap();
 
-        let v = Tensor::from_vec_on(
-            vec![1.0; cols],
-            vec![cols],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let v = Tensor::from_vec_on(vec![1.0; cols], vec![cols], device.clone())
+            .await
+            .unwrap();
 
         let result = SpectralNorm::new(weight, u, v, 1)
             .unwrap()

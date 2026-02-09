@@ -11,7 +11,6 @@ use ml_inference_showcase::{
     network::SimpleNetwork,
 };
 use std::time::Instant;
-use tracing_subscriber;
 
 #[derive(Debug)]
 struct BenchmarkStats {
@@ -85,14 +84,14 @@ async fn main() -> Result<()> {
 
         // Configuration 1: Single GPU (NVIDIA baseline)
         println!("  Configuration 1: Single GPU (NVIDIA Baseline)");
-        let single_gpu_stats = run_single_gpu(&nvidia_gpu, &network, &test_data, size).await?;
+        let single_gpu_stats = run_single_gpu(nvidia_gpu, &network, &test_data, size).await?;
         print_stats(&single_gpu_stats);
         println!();
 
         // Configuration 2: Cross-GPU (Both GPUs)
         println!("  Configuration 2: Cross-GPU Parallel (NVIDIA + AMD)");
         let cross_gpu_stats =
-            run_cross_gpu(&nvidia_gpu, &amd_gpu, &network, &test_data, size).await?;
+            run_cross_gpu(nvidia_gpu, amd_gpu, &network, &test_data, size).await?;
         print_stats(&cross_gpu_stats);
         println!();
 

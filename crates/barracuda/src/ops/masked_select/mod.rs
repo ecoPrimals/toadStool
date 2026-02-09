@@ -35,10 +35,7 @@ impl MaskedSelect {
             });
         }
 
-        Ok(Self {
-            input,
-            mask,
-        })
+        Ok(Self { input, mask })
     }
 
     /// Get the WGSL shader source

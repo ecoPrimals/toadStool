@@ -202,40 +202,37 @@ impl FhePolySub {
             _padding: [0; 5],
         };
 
-        let params_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FHE Params Buffer"),
-                    contents: bytemuck::bytes_of(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FHE Params Buffer"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group
-        let bind_group = device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("FHE Poly Sub Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.poly_a.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.poly_b.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: result_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
-            });
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("FHE Poly Sub Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.poly_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.poly_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: result_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         // Execute compute shader
         let mut encoder = device
@@ -253,9 +250,9 @@ impl FhePolySub {
             cpass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = self.degree.div_ceil(optimal_wg_size);
             cpass.dispatch_workgroups(workgroups, 1, 1);
         }
 

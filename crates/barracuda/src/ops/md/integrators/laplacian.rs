@@ -17,8 +17,8 @@ use wgpu::util::DeviceExt;
 /// Computes ∇²u using central difference formula.
 /// Includes periodic boundary conditions.
 pub struct Laplacian {
-    field: Tensor,          // [nx, ny, nz] input field
-    grid_spacing: f32,      // h (mesh spacing)
+    field: Tensor,     // [nx, ny, nz] input field
+    grid_spacing: f32, // h (mesh spacing)
 }
 
 impl Laplacian {
@@ -184,9 +184,9 @@ impl Laplacian {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // 3D workgroup dispatch (4x4x4 threads per workgroup, 64 total)
-            let workgroups_x = ((nx as u32) + 3) / 4;
-            let workgroups_y = ((ny as u32) + 3) / 4;
-            let workgroups_z = ((nz as u32) + 3) / 4;
+            let workgroups_x = (nx as u32).div_ceil(4);
+            let workgroups_y = (ny as u32).div_ceil(4);
+            let workgroups_z = (nz as u32).div_ceil(4);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -214,19 +214,23 @@ mod tests {
         // Simple 3x3x3 grid
         let (nx, ny, nz) = (3, 3, 3);
         let size = nx * ny * nz;
-        
+
         // Set all values to same number, Laplacian should be zero everywhere
         let data = vec![1.0f32; size];
-        
+
         let field_tensor = Tensor::from_data(&data, vec![nx, ny, nz], device.clone()).unwrap();
 
         // Verify input (explicit validation to prevent rustc optimization issues)
         let field_check = field_tensor.to_vec().unwrap();
         assert_eq!(field_check.len(), size, "Field size mismatch");
-        
+
         // All values should be 1.0
         for (i, &val) in field_check.iter().enumerate() {
-            assert_eq!(val, 1.0, "Input corrupted at index {}: expected 1.0, got {}", i, val);
+            assert_eq!(
+                val, 1.0,
+                "Input corrupted at index {}: expected 1.0, got {}",
+                i, val
+            );
         }
 
         let laplacian = Laplacian::new(field_tensor, 1.0).unwrap();
@@ -237,7 +241,12 @@ mod tests {
         // For constant field, Laplacian should be zero everywhere
         // ∇²(constant) = 0
         for (i, &val) in lap_data.iter().enumerate() {
-            assert!(val.abs() < 1e-5, "Index {} Laplacian should be ~0, got {}", i, val);
+            assert!(
+                val.abs() < 1e-5,
+                "Index {} Laplacian should be ~0, got {}",
+                i,
+                val
+            );
         }
 
         println!("✅ Laplacian validated (constant field)");

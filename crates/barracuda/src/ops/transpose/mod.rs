@@ -35,7 +35,7 @@ pub struct Transpose {
 
 impl Transpose {
     /// Create Transpose operation
-    /// 
+    ///
     /// For 2D tensors: swaps rows and columns (default behavior)
     /// For N-D tensors: requires permutation vector specifying dimension order
     pub fn new(input: Tensor) -> Result<Self> {
@@ -46,7 +46,7 @@ impl Transpose {
     }
 
     /// Create Transpose operation with explicit permutation
-    /// 
+    ///
     /// # Arguments
     /// * `input` - Input tensor
     /// * `permutation` - Dimension permutation (e.g., [0, 2, 1] swaps dims 1 and 2)
@@ -55,8 +55,11 @@ impl Transpose {
         if permutation.len() != num_dims {
             return Err(BarracudaError::invalid_op(
                 "Transpose",
-                format!("Permutation length {} doesn't match tensor rank {}", 
-                    permutation.len(), num_dims),
+                format!(
+                    "Permutation length {} doesn't match tensor rank {}",
+                    permutation.len(),
+                    num_dims
+                ),
             ));
         }
 

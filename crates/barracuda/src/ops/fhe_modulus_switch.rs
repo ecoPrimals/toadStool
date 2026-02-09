@@ -84,12 +84,7 @@ impl FheModulusSwitch {
     /// - Invalid degree (not power of 2)
     /// - modulus_new >= modulus_old
     /// - Input tensor size mismatch
-    pub fn new(
-        input: Tensor,
-        degree: u32,
-        modulus_old: u64,
-        modulus_new: u64,
-    ) -> Result<Self> {
+    pub fn new(input: Tensor, degree: u32, modulus_old: u64, modulus_new: u64) -> Result<Self> {
         // ✅ VALIDATION: Degree must be power of 2
         if !degree.is_power_of_two() || degree < 4 {
             return Err(BarracudaError::InvalidInput {
@@ -113,7 +108,9 @@ impl FheModulusSwitch {
             return Err(BarracudaError::InvalidInput {
                 message: format!(
                     "Input must have {} elements (degree={}, u64 emulated), got {}",
-                    expected_size, degree, input.shape()[0]
+                    expected_size,
+                    degree,
+                    input.shape()[0]
                 ),
             });
         }
@@ -283,9 +280,9 @@ impl FheModulusSwitch {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = self.degree.div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

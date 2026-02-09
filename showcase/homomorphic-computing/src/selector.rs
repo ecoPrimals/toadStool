@@ -39,7 +39,7 @@ use crate::substrates::{CpuHomomorphic, GpuHomomorphic, HomomorphicSubstrate, Np
 use anyhow::{anyhow, Result};
 
 /// Workload hints for substrate selection
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct WorkloadHints {
     /// Power budget in watts (None = unlimited)
     pub power_budget_watts: Option<f64>,
@@ -55,18 +55,6 @@ pub struct WorkloadHints {
 
     /// Continuous operation (24/7) - favors energy efficiency
     pub continuous_operation: bool,
-}
-
-impl Default for WorkloadHints {
-    fn default() -> Self {
-        Self {
-            power_budget_watts: None,
-            throughput_priority: false,
-            latency_ms_target: None,
-            batch_size: None,
-            continuous_operation: false,
-        }
-    }
 }
 
 impl WorkloadHints {
@@ -136,7 +124,7 @@ impl SubstrateSelector {
             Ok(cpu) => {
                 // ✅ Query real CPU power via substrate's measure_power method
                 let power_watts = cpu.measure_power().unwrap_or(25.0);
-                
+
                 let capability = SubstrateCapability {
                     name: cpu.name().to_string(),
                     power_watts,
@@ -159,7 +147,7 @@ impl SubstrateSelector {
             Ok(gpu) => {
                 // ✅ Query real GPU power via substrate's measure_power method
                 let power_watts = gpu.measure_power().unwrap_or(150.0);
-                
+
                 let capability = SubstrateCapability {
                     name: gpu.name().to_string(),
                     power_watts,
@@ -182,7 +170,7 @@ impl SubstrateSelector {
             Ok(npu) => {
                 // ✅ Query real NPU power via substrate's measure_power method
                 let power_watts = npu.measure_power().unwrap_or(2.0);
-                
+
                 let capability = SubstrateCapability {
                     name: npu.name().to_string(),
                     power_watts,

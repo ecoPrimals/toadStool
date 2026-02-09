@@ -1,16 +1,20 @@
-// Index Select - Select elements by indices
+// Index Select - Select elements by indices along a dimension
 //
 // Deep Debt Principles:
 // - Pure WGSL implementation (universal compute)
 // - Zero unsafe code (memory safe)
 // - Hardware-agnostic (works on any GPU/CPU via WebGPU)
-// - Self-contained logic (no external dependencies)
+// - Supports multi-dimensional tensors
 
 struct Params {
-    input_size: u32,
-    output_size: u32,
-    num_indices: u32,
-    _pad: u32,
+    total_size: u32,     // Total output elements
+    dim_size: u32,       // Size of indexed dimension in input
+    outer_size: u32,     // Product of dims before index dim
+    inner_size: u32,     // Product of dims after index dim
+    num_indices: u32,    // Number of index values
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
 }
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -22,19 +26,22 @@ struct Params {
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let idx = global_id.x;
     
-    if (idx >= params.output_size) {
+    if (idx >= params.total_size) {
         return;
     }
     
-    // For 1D case: output[idx] = input[indices[idx]]
-    // For multi-dimensional, we need to handle strides
-    // Simplified: assume 1D for now
-    let index = indices[idx];
+    // Decompose flat index into (outer, index_pos, inner)
+    let inner_idx = idx % params.inner_size;
+    let index_pos = (idx / params.inner_size) % params.num_indices;
+    let outer_idx = idx / (params.num_indices * params.inner_size);
     
-    // Bounds check
-    if (index < params.input_size) {
-        output[idx] = input[index];
-    } else {
-        output[idx] = 0.0;
-    }
+    // Look up the source dimension index
+    let src_dim_idx = indices[index_pos];
+    
+    // Compute source flat index
+    let src_idx = outer_idx * (params.dim_size * params.inner_size)
+                + src_dim_idx * params.inner_size
+                + inner_idx;
+    
+    output[idx] = input[src_idx];
 }

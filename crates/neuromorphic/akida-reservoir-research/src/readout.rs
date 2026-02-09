@@ -3,7 +3,7 @@
 //! Trains a simple linear layer to map reservoir states to target outputs.
 //! Uses ridge regression (fast, no backpropagation needed!).
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ndarray::{Array1, Array2};
 use tracing::{debug, info};
 
@@ -51,6 +51,10 @@ impl ReadoutTrainer {
     /// - No learning rate tuning
     /// - No gradient computation
     /// - Direct matrix solve
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the number of samples in states and targets don't match, or if the ridge regression solve fails.
     pub fn train(&self, states: &Array2<f32>, targets: &Array2<f32>) -> Result<Array2<f32>> {
         info!("Training readout layer...");
         debug!("States shape: {:?}", states.shape());
@@ -74,8 +78,8 @@ impl ReadoutTrainer {
         );
 
         // Convert to f64 for numerical stability
-        let states_f64 = states.mapv(|x| x as f64);
-        let targets_f64 = targets.mapv(|x| x as f64);
+        let states_f64 = states.mapv(f64::from);
+        let targets_f64 = targets.mapv(f64::from);
 
         // Compute X^T X
         debug!("Computing X^T X");
@@ -95,11 +99,11 @@ impl ReadoutTrainer {
         // Solve (X^T X + αI) W = X^T Y
         // For now, use pseudo-inverse (TODO: proper Cholesky solve)
         debug!("Solving linear system");
-        let weights = self
-            .solve_ridge(xt_x_reg, xt_y)
-            .context("Failed to solve ridge regression")?;
+        let weights = Self::solve_ridge(xt_x_reg, xt_y);
 
         // Convert back to f32
+        // Precision is sufficient for neuromorphic computation
+        #[allow(clippy::cast_possible_truncation)]
         let weights_f32 = weights.mapv(|x| x as f32);
 
         info!("✅ Readout trained: {} weights", weights_f32.len());
@@ -112,7 +116,7 @@ impl ReadoutTrainer {
     ///
     /// For now, uses simple pseudo-inverse.
     /// TODO: Implement proper Cholesky decomposition for better numerical stability.
-    fn solve_ridge(&self, _xt_x_reg: Array2<f64>, xt_y: Array2<f64>) -> Result<Array2<f64>> {
+    fn solve_ridge(_xt_x_reg: Array2<f64>, xt_y: Array2<f64>) -> Array2<f64> {
         // Simplified solution using least squares
         // In production, use ndarray-linalg or nalgebra for proper solve
 
@@ -120,7 +124,7 @@ impl ReadoutTrainer {
         // TODO: Implement proper matrix inversion or Cholesky solve
         warn_once_ridge_placeholder();
 
-        Ok(xt_y)
+        xt_y
     }
 }
 
@@ -147,12 +151,20 @@ impl ReadoutPredictor {
     ///
     /// # Returns
     /// * Output prediction (C classes)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if matrix dimensions are incompatible.
     pub fn predict(&self, state: &Array1<f32>) -> Result<Array1<f32>> {
         // output = W * state
         Ok(self.weights.dot(state))
     }
 
     /// Predict batch of states
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if matrix dimensions are incompatible.
     pub fn predict_batch(&self, states: &Array2<f32>) -> Result<Array2<f32>> {
         // outputs = states * W^T
         Ok(states.dot(&self.weights.t()))

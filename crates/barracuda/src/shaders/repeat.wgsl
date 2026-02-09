@@ -10,8 +10,9 @@ struct Params {
     input_size: u32,
     output_size: u32,
     num_dims: u32,
-    dim_sizes: array<u32, 4>,
-    repeats: array<u32, 4>,
+    _pad: u32,
+    dim_sizes: vec4<u32>,
+    repeats: vec4<u32>,
 }
 
 @group(0) @binding(0) var<storage, read> input: array<f32>;

@@ -20,6 +20,7 @@ pub mod akida;
 pub mod akida_executor;
 pub mod capabilities;
 pub mod substrate;
+pub mod toadstool_integration; // NEW: ToadStool hardware layer integration
 pub mod tpu;
 pub mod unified;
 pub mod wgpu_device;
@@ -28,6 +29,10 @@ pub use akida::{detect_akida_boards, AkidaBoard, AkidaCapabilities, BoardHealth}
 pub use akida_executor::{AkidaExecutor, NeuromorphicComparison};
 pub use capabilities::{DeviceCapabilities, WorkloadType};
 pub use substrate::{Substrate, SubstrateType};
+pub use toadstool_integration::{
+    discover_devices, has_gpu, has_npu, select_best_device, select_device_prefer,
+    hardware_report, DeviceSelection, HardwareReport, HardwareWorkload,
+};
 pub use tpu::{TpuDevice, TpuGeneration, TpuInfo};
 pub use unified::{Capability, Device, DeviceContext, DeviceInfo, WorkloadHint};
 pub use wgpu_device::WgpuDevice;
@@ -45,6 +50,9 @@ pub struct Auto;
 
 impl Auto {
     /// Discover best available device (wgpu handles selection)
+    ///
+    /// Returns `WgpuDevice` (not `Self`) because `Auto` is a zero-sized factory type.
+    #[allow(clippy::new_ret_no_self)]
     pub async fn new() -> Result<WgpuDevice> {
         WgpuDevice::new().await
     }

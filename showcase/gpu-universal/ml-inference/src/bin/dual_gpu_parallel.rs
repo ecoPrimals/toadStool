@@ -11,7 +11,6 @@ use ml_inference_showcase::{
 use ndarray::{Array1, Array2};
 use std::collections::HashSet;
 use std::time::Instant;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<()> {

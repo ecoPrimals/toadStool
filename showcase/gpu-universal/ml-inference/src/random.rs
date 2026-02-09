@@ -254,7 +254,7 @@ impl RandomNormal {
     /// ```
     pub async fn generate(&self, count: usize) -> Result<Vec<f32>> {
         // Generate twice as many uniform random numbers (Box-Muller uses pairs)
-        let uniform_count = ((count + 1) / 2) * 2;
+        let uniform_count = count.div_ceil(2) * 2;
         let uniform_samples = self.uniform.generate(uniform_count).await?;
 
         let mut normal_samples = Vec::with_capacity(count);

@@ -45,7 +45,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         pred_boxes[idx * 4u + 3u]
     );
     
-    let target = vec4<f32>(
+    let target_data = vec4<f32>(
         target_boxes[idx * 4u + 0u],
         target_boxes[idx * 4u + 1u],
         target_boxes[idx * 4u + 2u],
@@ -54,7 +54,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     // Convert to xyxy
     let p = box_to_xyxy(pred, params.box_format);
-    let t = box_to_xyxy(target, params.box_format);
+    let t = box_to_xyxy(target_data, params.box_format);
     
     // Intersection
     let x1 = max(p.x, t.x);

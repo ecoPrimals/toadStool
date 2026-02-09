@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 authors = ["ToadStool Contributors"]
 description = "Reservoir computing research for Akida neuromorphic hardware"
+license = "MIT"
+repository = "https://github.com/ecoPrimals/toadStool"
+keywords = ["neuromorphic", "reservoir", "akida", "research"]
+categories = ["science", "hardware-support"]
 
 [dependencies]
 akida-driver = { path = "../akida-driver" }

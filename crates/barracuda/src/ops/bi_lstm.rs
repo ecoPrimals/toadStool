@@ -41,7 +41,10 @@ impl BiLSTM {
         if direction > 1 {
             return Err(BarracudaError::invalid_op(
                 "BiLSTM",
-                format!("direction must be 0 (forward) or 1 (backward), got {}", direction),
+                format!(
+                    "direction must be 0 (forward) or 1 (backward), got {}",
+                    direction
+                ),
             ));
         }
 
@@ -64,11 +67,14 @@ impl BiLSTM {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_shape = self.input.shape();
-        
+
         if input_shape.len() != 3 {
             return Err(BarracudaError::invalid_op(
                 "BiLSTM",
-                format!("input must be 3D [seq_len, batch, input_size], got shape {:?}", input_shape),
+                format!(
+                    "input must be 3D [seq_len, batch, input_size], got shape {:?}",
+                    input_shape
+                ),
             ));
         }
 
@@ -87,8 +93,16 @@ impl BiLSTM {
         let c_state_buffer = device.create_buffer_f32(state_size)?;
 
         // Initialize states to zero
-        device.queue.write_buffer(&h_state_buffer, 0, bytemuck::cast_slice(&vec![0.0f32; state_size]));
-        device.queue.write_buffer(&c_state_buffer, 0, bytemuck::cast_slice(&vec![0.0f32; state_size]));
+        device.queue.write_buffer(
+            &h_state_buffer,
+            0,
+            bytemuck::cast_slice(&vec![0.0f32; state_size]),
+        );
+        device.queue.write_buffer(
+            &c_state_buffer,
+            0,
+            bytemuck::cast_slice(&vec![0.0f32; state_size]),
+        );
 
         let params = BiLSTMParams {
             batch_size: batch_size as u32,
@@ -289,9 +303,9 @@ impl BiLSTM {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

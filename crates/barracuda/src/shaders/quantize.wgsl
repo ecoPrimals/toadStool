@@ -34,8 +34,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let quantized = round((value - params.zero_point) * params.scale);
     
     // Calculate quantization range based on bits
-    let qmin: f32;
-    let qmax: f32;
+    var qmin: f32;
+    var qmax: f32;
     if (params.num_bits == 4u) {
         qmin = -8.0;
         qmax = 7.0;

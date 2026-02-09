@@ -502,7 +502,7 @@ impl GroupNormalization {
         anyhow::ensure!(gamma.len() == channels, "Gamma size mismatch");
         anyhow::ensure!(beta.len() == channels, "Beta size mismatch");
         anyhow::ensure!(
-            channels % self.num_groups == 0,
+            channels.is_multiple_of(self.num_groups),
             "Channels must be divisible by num_groups"
         );
 

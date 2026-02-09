@@ -143,7 +143,7 @@ impl InputManager {
                     .evdev_device_mut()
                     .fetch_events()
                     .map(|iter| iter.collect())
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+                    .map_err(std::io::Error::other);
                 (device, events)
             })
             .await;

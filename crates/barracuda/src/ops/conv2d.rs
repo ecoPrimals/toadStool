@@ -163,8 +163,8 @@ impl Conv2D {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            let workgroups_x = (output_width as u32 + 15) / 16;
-            let workgroups_y = (output_height as u32 + 15) / 16;
+            let workgroups_x = (output_width as u32).div_ceil(16);
+            let workgroups_y = (output_height as u32).div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 

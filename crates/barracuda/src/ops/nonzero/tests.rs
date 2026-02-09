@@ -10,7 +10,7 @@ async fn test_nonzero_basic() {
     let input = Tensor::from_vec_on(vec![0.0, 1.0, 0.0, 2.0, 0.0], vec![5], device.clone())
         .await
         .unwrap();
-    
+
     let result = NonZero::new(input).unwrap().execute().unwrap();
     let indices = result.to_vec().unwrap();
     assert_eq!(indices.len(), 2);
@@ -24,7 +24,7 @@ async fn test_nonzero_all_zero() {
     let input = Tensor::from_vec_on(vec![0.0, 0.0, 0.0], vec![3], device.clone())
         .await
         .unwrap();
-    
+
     let result = NonZero::new(input).unwrap().execute().unwrap();
     assert_eq!(result.shape(), &[0]);
 }
@@ -35,7 +35,7 @@ async fn test_nonzero_all_nonzero() {
     let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
         .await
         .unwrap();
-    
+
     let result = NonZero::new(input).unwrap().execute().unwrap();
     let indices = result.to_vec().unwrap();
     assert_eq!(indices.len(), 3);
@@ -51,7 +51,7 @@ async fn test_nonzero_2d() {
     )
     .await
     .unwrap();
-    
+
     let result = NonZero::new(input).unwrap().execute().unwrap();
     let indices = result.to_vec().unwrap();
     assert_eq!(indices.len(), 3);
@@ -63,6 +63,6 @@ async fn test_nonzero_empty() {
     let input = Tensor::from_vec_on(vec![], vec![0], device.clone())
         .await
         .unwrap();
-    
+
     assert!(NonZero::new(input).is_err());
 }

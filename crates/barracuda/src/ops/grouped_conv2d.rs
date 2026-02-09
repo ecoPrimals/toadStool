@@ -58,14 +58,14 @@ impl GroupedConv2D {
         let in_per_group = kernel_shape[1];
         let kernel_size = kernel_shape[2]; // Assuming square kernel
 
-        if in_channels % groups != 0 {
+        if !in_channels.is_multiple_of(groups) {
             return Err(BarracudaError::invalid_op(
                 "grouped_conv2d",
                 "in_channels must be divisible by groups",
             ));
         }
 
-        if out_channels % groups != 0 {
+        if !out_channels.is_multiple_of(groups) {
             return Err(BarracudaError::invalid_op(
                 "grouped_conv2d",
                 "out_channels must be divisible by groups",
@@ -133,11 +133,13 @@ impl GroupedConv2D {
         } else {
             // Create zero-initialized buffer for bias
             let zeros = vec![0.0f32; out_channels];
-            zero_bias = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("GroupedConv2D Bias Zeros"),
-                contents: bytemuck::cast_slice(&zeros),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
+            zero_bias = device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("GroupedConv2D Bias Zeros"),
+                    contents: bytemuck::cast_slice(&zeros),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
             &zero_bias
         };
 
@@ -182,75 +184,77 @@ impl GroupedConv2D {
             _pad3: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("GroupedConv2D Params"),
                 contents: bytemuck::cast_slice(&[params]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+            });
 
         // Compile shader
-        let shader_module = device.compile_shader(Self::wgsl_shader(), Some("GroupedConv2D Shader"));
+        let shader_module =
+            device.compile_shader(Self::wgsl_shader(), Some("GroupedConv2D Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("GroupedConv2D Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GroupedConv2D Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            },
-        );
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -281,30 +285,31 @@ impl GroupedConv2D {
         });
 
         // Create pipeline layout
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("GroupedConv2D Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            },
-        );
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GroupedConv2D Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         // Create pipeline
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("GroupedConv2D Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader_module,
                 entry_point: "main",
-            },
-        );
+            });
 
         // Encode and execute
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("GroupedConv2D Encoder"),
-            },
-        );
+            });
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -316,11 +321,11 @@ impl GroupedConv2D {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
             let spatial_size = (out_height * out_width) as u32;
-            let workgroups_x = (spatial_size + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_channels as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = spatial_size.div_ceil(optimal_wg_size);
+            let workgroups_y = (out_channels as u32).div_ceil(optimal_wg_size);
             let workgroups_z = batch_size as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -369,13 +374,9 @@ mod tests {
         .await
         .unwrap();
 
-        let bias = Tensor::from_vec_on(
-            vec![0.0; out_channels],
-            vec![out_channels],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let bias = Tensor::from_vec_on(vec![0.0; out_channels], vec![out_channels], device.clone())
+            .await
+            .unwrap();
 
         let conv = GroupedConv2D::new(input, kernel, 1, 1, groups, Some(bias)).unwrap();
         let output = conv.execute().unwrap();

@@ -179,13 +179,12 @@ impl ResourceEstimator {
         }
 
         for edge in &graph.edges {
-            *in_degree
-                .get_mut(&edge.to)
-                .unwrap_or_else(|| panic!("Target node should exist")) += 1;
-            adj_list
-                .get_mut(&edge.from)
-                .unwrap_or_else(|| panic!("Source node should exist"))
-                .push(edge.to.clone());
+            if let Some(deg) = in_degree.get_mut(&edge.to) {
+                *deg += 1;
+            }
+            if let Some(neighbors) = adj_list.get_mut(&edge.from) {
+                neighbors.push(edge.to.clone());
+            }
         }
 
         // Kahn's algorithm for topological sort
@@ -206,21 +205,20 @@ impl ResourceEstimator {
             let mut current_level = Vec::new();
 
             for _ in 0..level_size {
-                let node_id = queue
-                    .pop_front()
-                    .unwrap_or_else(|| panic!("Queue should not be empty"));
+                let Some(node_id) = queue.pop_front() else {
+                    break;
+                };
                 current_level.push(node_id.clone());
                 visited += 1;
 
                 // Reduce in-degree of neighbors
                 if let Some(neighbors) = adj_list.get(&node_id) {
                     for neighbor in neighbors {
-                        let degree = in_degree
-                            .get_mut(neighbor)
-                            .unwrap_or_else(|| panic!("Neighbor should exist"));
-                        *degree -= 1;
-                        if *degree == 0 {
-                            queue.push_back(neighbor.clone());
+                        if let Some(degree) = in_degree.get_mut(neighbor) {
+                            *degree -= 1;
+                            if *degree == 0 {
+                                queue.push_back(neighbor.clone());
+                            }
                         }
                     }
                 }

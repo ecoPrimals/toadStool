@@ -80,25 +80,25 @@
 //! **Magnitude**: |z| = sqrt(a² + b²)  
 //! **Polar Form**: z = r·exp(iθ) where r = |z|, θ = arg(z)
 
-pub mod add;
-pub mod mul;
-pub mod sub;
-pub mod conj;
 pub mod abs;
-pub mod exp;
+pub mod add;
+pub mod conj;
 pub mod div;
-pub mod sqrt;
+pub mod exp;
 pub mod log;
+pub mod mul;
 pub mod pow;
+pub mod sqrt;
+pub mod sub;
 
 // Re-export main operations
-pub use add::ComplexAdd;
-pub use mul::ComplexMul;
-pub use sub::ComplexSub;
-pub use conj::ComplexConj;
 pub use abs::ComplexAbs;
-pub use exp::ComplexExp;
+pub use add::ComplexAdd;
+pub use conj::ComplexConj;
 pub use div::ComplexDiv;
-pub use sqrt::ComplexSqrt;
+pub use exp::ComplexExp;
 pub use log::ComplexLog;
+pub use mul::ComplexMul;
 pub use pow::ComplexPow;
+pub use sqrt::ComplexSqrt;
+pub use sub::ComplexSub;

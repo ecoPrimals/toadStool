@@ -316,7 +316,7 @@ impl SequenceAnalyzer {
             let matches = window
                 .iter()
                 .zip(pattern.iter())
-                .all(|(&a, &b)| a.to_ascii_uppercase() == b.to_ascii_uppercase());
+                .all(|(&a, &b)| a.eq_ignore_ascii_case(&b));
 
             if matches {
                 positions.push(i);

@@ -17,9 +17,9 @@ use wgpu::util::DeviceExt;
 /// 4th-order accurate ODE solver for general dynamics.
 /// For MD: treats acceleration as constant within timestep (simplified RK4).
 pub struct Rk4 {
-    positions: Tensor,      // [N, 3]
-    velocities: Tensor,     // [N, 3]
-    accelerations: Tensor,  // [N, 3]
+    positions: Tensor,     // [N, 3]
+    velocities: Tensor,    // [N, 3]
+    accelerations: Tensor, // [N, 3]
     dt: f32,
 }
 
@@ -72,7 +72,7 @@ impl Rk4 {
 
         // Create output buffers
         let buffer_size = (n_particles * 3 * std::mem::size_of::<f32>()) as u64;
-        
+
         let positions_new_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("RK4 Positions New"),
             size: buffer_size,
@@ -251,23 +251,17 @@ impl Rk4 {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
-        let positions_new = Tensor::from_buffer(
-            positions_new_buffer,
-            vec![n_particles, 3],
-            device.clone(),
-        );
+        let positions_new =
+            Tensor::from_buffer(positions_new_buffer, vec![n_particles, 3], device.clone());
 
-        let velocities_new = Tensor::from_buffer(
-            velocities_new_buffer,
-            vec![n_particles, 3],
-            device.clone(),
-        );
+        let velocities_new =
+            Tensor::from_buffer(velocities_new_buffer, vec![n_particles, 3], device.clone());
 
         Ok((positions_new, velocities_new))
     }

@@ -22,7 +22,7 @@ struct Params {
 @group(0) @binding(2) var<storage, read> edge_index: array<u32>;       // [num_edges * 2]
 @group(0) @binding(3) var<storage, read> weights: array<f32>;          // [2 * in_features, out_features]
 @group(0) @binding(4) var<storage, read> degrees: array<u32>;          // [num_nodes] (neighbor count)
-@group(0) @binding(5) var<storage, read_write> aggregated: array<f32>; // [num_nodes, in_features]
+@group(0) @binding(5) var<storage, read_write> aggregated: array<atomic<i32>>; // [num_nodes, in_features] (atomic accumulation)
 @group(0) @binding(6) var<storage, read_write> output: array<f32>;     // [num_nodes, out_features]
 
 // Step 1: Aggregate neighbors (mean pooling)
@@ -66,7 +66,7 @@ fn apply_transform(@builtin(global_invocation_id) global_id: vec3<u32>) {
         
         // Aggregated features: second half of weight matrix
         for (var in_f = 0u; in_f < params.in_features; in_f++) {
-            var aggr = aggregated[node * params.in_features + in_f];
+            var aggr = bitcast<f32>(atomicLoad(&aggregated[node * params.in_features + in_f]));
             if (deg > 0.0) {
                 aggr /= deg; // Mean aggregation
             }

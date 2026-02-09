@@ -205,9 +205,9 @@ impl AdamW {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -221,16 +221,8 @@ impl AdamW {
                 self.params().shape().to_vec(),
                 device.clone(),
             ),
-            Tensor::from_buffer(
-                m_out_buffer,
-                self.m().shape().to_vec(),
-                device.clone(),
-            ),
-            Tensor::from_buffer(
-                v_out_buffer,
-                self.v().shape().to_vec(),
-                device.clone(),
-            ),
+            Tensor::from_buffer(m_out_buffer, self.m().shape().to_vec(), device.clone()),
+            Tensor::from_buffer(v_out_buffer, self.v().shape().to_vec(), device.clone()),
         ))
     }
 }

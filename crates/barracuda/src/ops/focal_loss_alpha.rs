@@ -52,11 +52,14 @@ impl FocalLossAlpha {
         let device = self.predictions.device();
         let pred_shape = self.predictions.shape();
         let target_shape = self.targets.shape();
-        
+
         if pred_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!("predictions must be 2D [batch, num_classes], got shape {:?}", pred_shape),
+                format!(
+                    "predictions must be 2D [batch, num_classes], got shape {:?}",
+                    pred_shape
+                ),
             ));
         }
 
@@ -73,14 +76,20 @@ impl FocalLossAlpha {
         if target_shape[0] != batch_size {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!("targets batch size {} must match predictions batch size {}", target_shape[0], batch_size),
+                format!(
+                    "targets batch size {} must match predictions batch size {}",
+                    target_shape[0], batch_size
+                ),
             ));
         }
 
-        if self.alpha.shape() != &[num_classes] {
+        if self.alpha.shape() != [num_classes] {
             return Err(BarracudaError::invalid_op(
                 "FocalLossAlpha",
-                format!("alpha must be 1D [num_classes], got shape {:?}", self.alpha.shape()),
+                format!(
+                    "alpha must be 1D [num_classes], got shape {:?}",
+                    self.alpha.shape()
+                ),
             ));
         }
 
@@ -229,9 +238,9 @@ impl FocalLossAlpha {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (batch_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (batch_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -266,21 +275,14 @@ mod tests {
         .await
         .unwrap();
 
-        let targets = Tensor::from_vec_on(
-            vec![0.0, 1.0, 2.0, 0.0],
-            vec![batch_size],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let targets =
+            Tensor::from_vec_on(vec![0.0, 1.0, 2.0, 0.0], vec![batch_size], device.clone())
+                .await
+                .unwrap();
 
-        let alpha = Tensor::from_vec_on(
-            vec![0.25, 0.25, 0.5],
-            vec![num_classes],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let alpha = Tensor::from_vec_on(vec![0.25, 0.25, 0.5], vec![num_classes], device.clone())
+            .await
+            .unwrap();
 
         let result = FocalLossAlpha::new(predictions, targets, alpha, 2.0)
             .unwrap()

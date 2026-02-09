@@ -50,11 +50,13 @@ impl ClipGradNorm {
         let input_buffer = self.gradients.buffer();
 
         // Create norm buffer (for intermediate result)
-        let norm_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ClipGradNorm Norm Buffer"),
-            contents: bytemuck::cast_slice(&[0.0f32]),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let norm_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ClipGradNorm Norm Buffer"),
+                contents: bytemuck::cast_slice(&[0.0f32]),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(size)?;
@@ -76,61 +78,66 @@ impl ClipGradNorm {
             _pad2: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("ClipGradNorm Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("ClipGradNorm Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("ClipGradNorm Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ClipGradNorm Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ClipGradNorm Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -157,30 +164,41 @@ impl ClipGradNorm {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ClipGradNorm Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ClipGradNorm Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline_norm = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("ClipGradNorm Norm Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "compute_norm",
-        });
+        let compute_pipeline_norm =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("ClipGradNorm Norm Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "compute_norm",
+                });
 
-        let compute_pipeline_clip = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("ClipGradNorm Clip Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "clip_gradients",
-        });
+        let compute_pipeline_clip =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("ClipGradNorm Clip Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "clip_gradients",
+                });
 
         // Execute compute shaders (2 passes)
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("ClipGradNorm Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ClipGradNorm Encoder"),
+            });
 
         // Pass 1: Compute norm
         {
@@ -190,11 +208,11 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_norm);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch (reduction for norm)
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -206,11 +224,11 @@ impl ClipGradNorm {
             });
             compute_pass.set_pipeline(&compute_pipeline_clip);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch (element-wise clipping)
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -238,15 +256,14 @@ mod tests {
     #[tokio::test]
     async fn test_clip_grad_norm_basic() {
         let device = get_test_device().await;
-        let gradients = Tensor::from_data(
-            &[3.0, 4.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
-        let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
+        let gradients = Tensor::from_data(&[3.0, 4.0], vec![2], device.clone()).unwrap();
+
+        let clipped = ClipGradNorm::new(gradients, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
         let result = clipped.to_vec().unwrap();
-        
+
         // Original norm = 5, should be clipped to norm = 1
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();
         assert!((norm - 1.0).abs() < 0.1); // Allow some tolerance for atomic operations
@@ -255,15 +272,14 @@ mod tests {
     #[tokio::test]
     async fn test_clip_grad_norm_no_clip() {
         let device = get_test_device().await;
-        let gradients = Tensor::from_data(
-            &[0.1, 0.2, 0.3],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
-        let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
+        let gradients = Tensor::from_data(&[0.1, 0.2, 0.3], vec![3], device.clone()).unwrap();
+
+        let clipped = ClipGradNorm::new(gradients, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
         let result = clipped.to_vec().unwrap();
-        
+
         // Norm ≈ 0.374, should not be clipped
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();
         assert!(norm < 1.0);
@@ -272,15 +288,14 @@ mod tests {
     #[tokio::test]
     async fn test_clip_grad_norm_zero() {
         let device = get_test_device().await;
-        let gradients = Tensor::from_data(
-            &[0.0, 0.0, 0.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
-        let clipped = ClipGradNorm::new(gradients, 1.0).unwrap().execute().unwrap();
+        let gradients = Tensor::from_data(&[0.0, 0.0, 0.0], vec![3], device.clone()).unwrap();
+
+        let clipped = ClipGradNorm::new(gradients, 1.0)
+            .unwrap()
+            .execute()
+            .unwrap();
         let result = clipped.to_vec().unwrap();
-        
+
         assert_eq!(result, vec![0.0, 0.0, 0.0]);
     }
 
@@ -288,15 +303,14 @@ mod tests {
     async fn test_clip_grad_norm_large() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..1000).map(|i| (i % 10) as f32).collect();
-        let gradients = Tensor::from_data(
-            &data,
-            vec![1000],
-            device.clone(),
-        ).unwrap();
-        
-        let clipped = ClipGradNorm::new(gradients, 100.0).unwrap().execute().unwrap();
+        let gradients = Tensor::from_data(&data, vec![1000], device.clone()).unwrap();
+
+        let clipped = ClipGradNorm::new(gradients, 100.0)
+            .unwrap()
+            .execute()
+            .unwrap();
         let result = clipped.to_vec().unwrap();
-        
+
         assert_eq!(result.len(), 1000);
         let norm: f32 = result.iter().map(|&x| x * x).sum::<f32>().sqrt();
         assert!(norm <= 100.0 + 1.0); // Allow tolerance
@@ -305,12 +319,8 @@ mod tests {
     #[tokio::test]
     async fn test_clip_grad_norm_invalid() {
         let device = get_test_device().await;
-        let gradients = Tensor::from_data(
-            &[1.0, 2.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
+        let gradients = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
+
         assert!(ClipGradNorm::new(gradients, -1.0).is_err());
     }
 }

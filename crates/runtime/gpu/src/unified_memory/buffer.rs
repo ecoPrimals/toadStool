@@ -113,7 +113,7 @@ impl UnifiedBuffer {
         }
 
         // Check pointer alignment (must be properly aligned)
-        if ptr_val % std::mem::align_of::<u8>() != 0 {
+        if !ptr_val.is_multiple_of(std::mem::align_of::<u8>()) {
             return Err(ToadStoolError::runtime(format!(
                 "CPU pointer {:#x} is not properly aligned",
                 ptr_val

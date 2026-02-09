@@ -45,14 +45,20 @@ impl DilatedConv2D {
         if input.shape().len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "dilated_conv2d",
-                format!("Input must be 4D [B, C, H, W], got shape: {:?}", input.shape()),
+                format!(
+                    "Input must be 4D [B, C, H, W], got shape: {:?}",
+                    input.shape()
+                ),
             ));
         }
 
         if weight.shape().len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "dilated_conv2d",
-                format!("Weight must be 4D [C_out, C_in, Kh, Kw], got shape: {:?}", weight.shape()),
+                format!(
+                    "Weight must be 4D [C_out, C_in, Kh, Kw], got shape: {:?}",
+                    weight.shape()
+                ),
             ));
         }
 
@@ -85,8 +91,13 @@ impl DilatedConv2D {
         let kernel_width = w_shape[3];
 
         // Calculate output dimensions
-        let out_height = (in_height + 2 * self.padding.0 - self.dilation.0 * (kernel_height - 1) - 1) / self.stride.0 + 1;
-        let out_width = (in_width + 2 * self.padding.1 - self.dilation.1 * (kernel_width - 1) - 1) / self.stride.1 + 1;
+        let out_height =
+            (in_height + 2 * self.padding.0 - self.dilation.0 * (kernel_height - 1) - 1)
+                / self.stride.0
+                + 1;
+        let out_width = (in_width + 2 * self.padding.1 - self.dilation.1 * (kernel_width - 1) - 1)
+            / self.stride.1
+            + 1;
 
         let output_size = batch_size * out_channels * out_height * out_width;
         let output_buffer = device.create_buffer_f32(output_size)?;
@@ -134,63 +145,64 @@ impl DilatedConv2D {
                 usage: wgpu::BufferUsages::UNIFORM,
             });
 
-        let bind_group_layout = device
-            .device
-            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Dilated Conv2D Bind Group Layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Dilated Conv2D Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            });
+                    ],
+                });
 
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Dilated Conv2D Bind Group"),
@@ -226,13 +238,14 @@ impl DilatedConv2D {
                 source: wgpu::ShaderSource::Wgsl(Self::wgsl_shader().into()),
             });
 
-        let pipeline_layout = device
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Dilated Conv2D Pipeline Layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Dilated Conv2D Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
         let pipeline = device
             .device
@@ -257,8 +270,8 @@ impl DilatedConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = (out_width as u32 + 7) / 8;
-            let workgroups_y = (out_height as u32 + 7) / 8;
+            let workgroups_x = (out_width as u32).div_ceil(8);
+            let workgroups_y = (out_height as u32).div_ceil(8);
             let workgroups_z = batch_size as u32 * out_channels as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -281,7 +294,7 @@ mod tests {
     #[tokio::test]
     async fn test_dilated_conv2d_basic() {
         let device = get_test_device().await;
-        
+
         let batch_size = 1;
         let in_channels = 3;
         let out_channels = 8;

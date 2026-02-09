@@ -50,11 +50,15 @@ impl StateExtractor {
     ///
     /// This is THE critical function for reservoir computing feasibility.
     ///
-    /// According to BrainChip documentation, the Akida SDK has:
+    /// According to `BrainChip` documentation, the Akida SDK has:
     /// - `model.get_layer(idx)` - retrieve specific layer
     /// - Layer activations can be accessed
     ///
     /// We need to verify this works in our pure Rust driver.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if state extraction fails (currently always succeeds, but may fail when full implementation is added).
     pub fn extract_states(
         &self,
         _model: &Model,
@@ -76,7 +80,7 @@ impl StateExtractor {
         warn!("    Need to extend akida-driver to expose internal layer states.");
 
         // Return final output as a single "layer"
-        let final_values: Vec<f32> = result.output.iter().map(|&x| x as f32).collect();
+        let final_values: Vec<f32> = result.output.iter().map(|&x| f32::from(x)).collect();
 
         let final_layer = LayerActivations {
             layer_idx: 0,
@@ -90,6 +94,10 @@ impl StateExtractor {
     }
 
     /// Extract state as ndarray for easier computation
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if state extraction fails or array conversion fails.
     pub fn extract_as_array(
         &self,
         model: &Model,
@@ -121,11 +129,11 @@ impl StateExtractor {
     ///    - Map NPU memory regions for each layer
     ///
     /// This is FEASIBLE because:
-    /// - BrainChip SDK already exposes this functionality
+    /// - `BrainChip` SDK already exposes this functionality
     /// - Akida hardware maintains layer states in NPU SRAM
     /// - We just need to add the correct ioctl interface
     pub fn research_notes() -> &'static str {
-        r#"
+        r"
 RESEARCH STATUS: State Extraction
 
 Current Limitations:
@@ -151,24 +159,28 @@ Next Steps:
 
 Estimated Effort: 2-4 weeks of driver development
 Feasibility: HIGH (hardware supports it, just need driver work)
-        "#
+        "
     }
 }
 
 /// Helper to convert inference output to reservoir state
 pub fn inference_to_state(result: &InferenceResult) -> Array1<f32> {
-    let values: Vec<f32> = result.output.iter().map(|&x| x as f32).collect();
+    let values: Vec<f32> = result.output.iter().map(|&x| f32::from(x)).collect();
 
     Array1::from_vec(values)
 }
 
 /// Concatenate states from multiple reservoirs (for ensemble)
+///
+/// # Errors
+///
+/// Returns an error if the states list is empty or if array slice conversion fails.
 pub fn concatenate_states(states: &[Array1<f32>]) -> Result<Array1<f32>> {
     if states.is_empty() {
         anyhow::bail!("Cannot concatenate empty state list");
     }
 
-    let total_size: usize = states.iter().map(|s| s.len()).sum();
+    let total_size: usize = states.iter().map(ndarray::ArrayBase::len).sum();
     let mut concatenated = Vec::with_capacity(total_size);
 
     for state in states {

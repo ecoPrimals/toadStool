@@ -57,7 +57,7 @@ impl RuntimeProfiler {
 
     /// Create profiler with custom config
     #[must_use]
-    pub fn with_config(fingerprint: GpuFingerprint, config: ProfilingConfig) -> Self {
+    pub const fn with_config(fingerprint: GpuFingerprint, config: ProfilingConfig) -> Self {
         Self {
             fingerprint,
             config,
@@ -203,7 +203,7 @@ impl RuntimeProfiler {
             1.0 // Reasonable
         };
 
-        (base_time as f64 * size_factor * workgroup_penalty) as u64
+        (f64::from(base_time) * size_factor * workgroup_penalty) as u64
     }
 
     /// Quick profile all common operations

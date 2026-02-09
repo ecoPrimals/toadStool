@@ -62,7 +62,7 @@ impl FlashAttention {
                     query.shape(),
                     key.shape(),
                     value.shape()
-                )
+                ),
             ));
         }
 
@@ -73,7 +73,7 @@ impl FlashAttention {
                 format!(
                     "Requires 2D tensors [seq_len, head_dim], got shape: {:?}",
                     query.shape()
-                )
+                ),
             ));
         }
 
@@ -255,19 +255,23 @@ impl FlashAttention {
             });
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
             let total_size = seq_len * head_dim;
-            let workgroups = (total_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (total_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         device.queue.submit(Some(encoder.finish()));
 
         // Return result tensor
-        Ok(Tensor::from_buffer(output_buffer, shape.to_vec(), device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            shape.to_vec(),
+            device.clone(),
+        ))
     }
 }
 
@@ -304,7 +308,7 @@ mod tests {
 
         let result = output.to_vec().unwrap();
         assert_eq!(result.len(), seq_len * head_dim);
-        
+
         // Output should be weighted sum of values (all should be close to 2.0)
         for &val in &result {
             assert!((val - 2.0).abs() < 1.0, "Expected ~2.0, got {}", val);
@@ -367,7 +371,7 @@ mod tests {
 
         let result = output.to_vec().unwrap();
         assert_eq!(result.len(), seq_len * head_dim);
-        
+
         // Each position should attend to all positions (uniform attention)
         assert!(result.iter().all(|&x| x.is_finite()));
     }

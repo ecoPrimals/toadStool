@@ -1,7 +1,7 @@
 //! Fill operation - Fill tensor with constant value
 //! Pure WGSL implementation
 
-use crate::device::{DeviceCapabilities, WorkloadType, WgpuDevice};
+use crate::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
 use std::sync::Arc;
@@ -110,7 +110,7 @@ impl Fill {
             // Deep Debt Evolution: Capability-based dispatch
             let caps = DeviceCapabilities::from_device(&self.device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
         self.device.queue.submit(Some(encoder.finish()));

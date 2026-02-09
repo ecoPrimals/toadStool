@@ -163,9 +163,9 @@ impl Conv1D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+            let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
         device.queue.submit(Some(encoder.finish()));

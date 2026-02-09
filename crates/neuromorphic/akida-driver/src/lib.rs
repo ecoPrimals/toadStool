@@ -42,6 +42,8 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::match_same_arms)]
 
+mod backend;
+pub mod backends;
 mod capabilities;
 mod device;
 mod discovery;
@@ -50,6 +52,11 @@ mod inference;
 mod io;
 mod loading;
 
+/// NPU hardware setup and initialization
+pub mod setup;
+
+pub use backend::{select_backend, BackendSelection, BackendType, ModelHandle, NpuBackend};
+pub use backends::UserspaceBackend;
 pub use capabilities::{Capabilities, ChipVersion, PcieConfig};
 pub use device::{AkidaDevice, DeviceHandle};
 pub use discovery::{DeviceInfo, DeviceManager};

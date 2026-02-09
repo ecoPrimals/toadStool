@@ -22,9 +22,9 @@ impl Variance {
                 // Two-pass algorithm: first compute mean, then variance
                 let size: usize = shape.iter().product();
                 // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(&device);
+                let caps = DeviceCapabilities::from_device(device);
                 let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
 
                 // Pass 1: Compute mean using tree reduction
                 let mean_output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -42,49 +42,56 @@ impl Variance {
 
                 let params = Params { size: size as u32 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Variance Mean Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Variance Mean Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
-                let shader_module = device.compile_shader(Self::wgsl_shader_reduce(), Some("Variance Reduce Shader"));
+                let shader_module = device
+                    .compile_shader(Self::wgsl_shader_reduce(), Some("Variance Reduce Shader"));
 
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Variance Reduce Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Variance Reduce Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("Variance Mean Bind Group"),
@@ -105,28 +112,38 @@ impl Variance {
                     ],
                 });
 
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Variance Reduce Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Variance Reduce Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Variance Reduce Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Variance Reduce Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Variance Reduce Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Variance Reduce Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Variance Mean Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Variance Mean Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
@@ -135,7 +152,8 @@ impl Variance {
                 device.queue.submit(Some(encoder.finish()));
 
                 // Read back partial sums and compute mean
-                let partial_sums = device.read_buffer_f32(&mean_output_buffer, num_workgroups as usize)?;
+                let partial_sums =
+                    device.read_buffer_f32(&mean_output_buffer, num_workgroups as usize)?;
                 let global_sum: f32 = partial_sums.iter().sum();
                 let global_mean = global_sum / size as f32;
 
@@ -151,12 +169,19 @@ impl Variance {
                 // Compute (x - mean)^2 on CPU for now
                 // In a more optimized version, this could be done on GPU
                 let input_data = device.read_buffer_f32(input_buffer, size)?;
-                let diff_squared: Vec<f32> = input_data.iter().map(|&x| {
-                    let diff = x - global_mean;
-                    diff * diff
-                }).collect();
+                let diff_squared: Vec<f32> = input_data
+                    .iter()
+                    .map(|&x| {
+                        let diff = x - global_mean;
+                        diff * diff
+                    })
+                    .collect();
 
-                device.queue.write_buffer(&diff_squared_buffer, 0, bytemuck::cast_slice(&diff_squared));
+                device.queue.write_buffer(
+                    &diff_squared_buffer,
+                    0,
+                    bytemuck::cast_slice(&diff_squared),
+                );
 
                 // Now reduce the diff_squared buffer
                 let variance_output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -166,34 +191,39 @@ impl Variance {
                     mapped_at_creation: false,
                 });
 
-                let variance_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Variance Bind Group"),
-                    layout: &bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: diff_squared_buffer.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: variance_output_buffer.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: params_buffer.as_entire_binding(),
-                        },
-                    ],
-                });
+                let variance_bind_group =
+                    device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("Variance Bind Group"),
+                        layout: &bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: diff_squared_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: variance_output_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: params_buffer.as_entire_binding(),
+                            },
+                        ],
+                    });
 
-                let mut encoder2 = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Variance Encoder 2"),
-                });
+                let mut encoder2 =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Variance Encoder 2"),
+                        });
 
                 {
-                    let mut compute_pass = encoder2.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Variance Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder2.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Variance Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &variance_bind_group, &[]);
                     compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
@@ -202,16 +232,13 @@ impl Variance {
                 device.queue.submit(Some(encoder2.finish()));
 
                 // Read back partial variance results
-                let partial_variances = device.read_buffer_f32(&variance_output_buffer, num_workgroups as usize)?;
+                let partial_variances =
+                    device.read_buffer_f32(&variance_output_buffer, num_workgroups as usize)?;
                 let global_variance_sum: f32 = partial_variances.iter().sum();
                 let global_variance = global_variance_sum / size as f32;
 
                 // Return scalar tensor
-                Ok(Tensor::new(
-                    vec![global_variance],
-                    vec![],
-                    device.clone(),
-                ))
+                Ok(Tensor::new(vec![global_variance], vec![], device.clone()))
             }
             Some(dim) => {
                 // Dimension-wise variance reduction
@@ -249,51 +276,58 @@ impl Variance {
                     inner_size: inner_size as u32,
                 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Variance Dim Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Variance Dim Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
                 // Compile shader
-                let shader_module = device.compile_shader(Self::wgsl_shader_dim(), Some("Variance Dim Shader"));
+                let shader_module =
+                    device.compile_shader(Self::wgsl_shader_dim(), Some("Variance Dim Shader"));
 
                 // Create bind group layout
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Variance Dim Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Variance Dim Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 // Create bind group
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -316,35 +350,45 @@ impl Variance {
                 });
 
                 // Create compute pipeline
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Variance Dim Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Variance Dim Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Variance Dim Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Variance Dim Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
                 // Execute compute shader
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Variance Dim Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Variance Dim Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Variance Dim Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Variance Dim Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     // Deep Debt Evolution: Capability-based dispatch
-                    let caps = DeviceCapabilities::from_device(&device);
+                    let caps = DeviceCapabilities::from_device(device);
                     let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                    let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                    let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
                     compute_pass.dispatch_workgroups(workgroups, 1, 1);
                 }
 
@@ -361,11 +405,7 @@ impl Variance {
                     output_shape.remove(dim);
                 }
 
-                Ok(Tensor::new(
-                    output_data,
-                    output_shape,
-                    device.clone(),
-                ))
+                Ok(Tensor::new(output_data, output_shape, device.clone()))
             }
         }
     }

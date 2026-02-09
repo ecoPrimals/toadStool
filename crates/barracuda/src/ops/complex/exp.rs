@@ -108,34 +108,32 @@ impl ComplexExp {
         });
 
         let params = [num_elements as u32 / 2];
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Complex Exp Params"),
                 contents: bytemuck::cast_slice(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
-
-        let bind_group = device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Complex Exp Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.input.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
             });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Complex Exp Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         let mut encoder = device
             .device
@@ -152,10 +150,10 @@ impl ComplexExp {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
             let num_complex = num_elements / 2;
-            let workgroups = (num_complex as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_complex as u32).div_ceil(optimal_wg_size);
 
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
@@ -183,7 +181,7 @@ mod tests {
         // exp(iπ) = cos(π) + i·sin(π) = -1 + 0i
         // (Euler's identity: exp(iπ) + 1 = 0)
         let pi = std::f32::consts::PI;
-        let data = vec![0.0f32, pi];  // 0 + πi
+        let data = vec![0.0f32, pi]; // 0 + πi
         let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
 
         let op = ComplexExp::new(tensor).unwrap();
@@ -191,7 +189,7 @@ mod tests {
 
         let result_data = result.to_vec().unwrap();
         assert!((result_data[0] - (-1.0)).abs() < 1e-5); // Real ≈ -1
-        assert!((result_data[1] - 0.0).abs() < 1e-5);    // Imag ≈ 0
+        assert!((result_data[1] - 0.0).abs() < 1e-5); // Imag ≈ 0
     }
 
     #[tokio::test]
@@ -200,7 +198,12 @@ mod tests {
         // exp(0) = 1+0i
         let data = vec![0.0f32, 0.0];
         let tensor = Tensor::from_data(&data, vec![1, 2], device.clone()).unwrap();
-        let result = ComplexExp::new(tensor).unwrap().execute().unwrap().to_vec().unwrap();
+        let result = ComplexExp::new(tensor)
+            .unwrap()
+            .execute()
+            .unwrap()
+            .to_vec()
+            .unwrap();
         assert!((result[0] - 1.0).abs() < 1e-6);
         assert!((result[1] - 0.0).abs() < 1e-6);
     }

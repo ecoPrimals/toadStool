@@ -7,9 +7,10 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Generic distribution strategy
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum DistributionStrategy {
     /// Execute on a single node/provider
+    #[default]
     Single,
     /// Distribute equally across all available nodes/providers
     Equal,
@@ -30,12 +31,6 @@ pub enum DistributionStrategy {
         primary_target: String,
         burst_targets: Vec<String>,
     },
-}
-
-impl Default for DistributionStrategy {
-    fn default() -> Self {
-        Self::Single
-    }
 }
 
 /// Distribution plan for a workload

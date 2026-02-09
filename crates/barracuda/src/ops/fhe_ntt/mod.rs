@@ -95,12 +95,7 @@ impl FheNtt {
     /// - q must be prime
     /// - q ≡ 1 (mod 2N) ensures N-th roots exist
     /// - ω^N ≡ 1 (mod q) and ω^k ≢ 1 for 0 < k < N
-    pub fn new(
-        input: Tensor,
-        degree: u32,
-        modulus: u64,
-        root_of_unity: u64,
-    ) -> Result<Self> {
+    pub fn new(input: Tensor, degree: u32, modulus: u64, root_of_unity: u64) -> Result<Self> {
         // Validate inputs
         let expected_size = (degree as usize) * 2; // u32 pairs for u64
         if input.len() != expected_size {
@@ -126,7 +121,7 @@ impl FheNtt {
         }
 
         // Check that modulus ≡ 1 (mod 2N)
-        if (modulus - 1) % (2 * degree as u64) != 0 {
+        if !(modulus - 1).is_multiple_of(2 * degree as u64) {
             return Err(BarracudaError::Device(format!(
                 "Modulus {} must satisfy q ≡ 1 (mod 2N) where N={}",
                 modulus, degree
@@ -134,11 +129,7 @@ impl FheNtt {
         }
 
         // Precompute Barrett constant
-        let barrett_mu = if modulus > 0 {
-            u64::MAX / modulus
-        } else {
-            0
-        };
+        let barrett_mu = if modulus > 0 { u64::MAX / modulus } else { 0 };
 
         // Precompute twiddle factors: ω^0, ω^1, ..., ω^(N-1)
         let twiddle_factors = compute_twiddle_factors(degree, modulus, root_of_unity);

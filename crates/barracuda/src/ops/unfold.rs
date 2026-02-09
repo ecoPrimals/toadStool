@@ -33,7 +33,10 @@ impl Unfold {
         let shape = input.shape();
         if shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Unfold expects 4D tensor [B, C, H, W], got shape {:?}", shape),
+                message: format!(
+                    "Unfold expects 4D tensor [B, C, H, W], got shape {:?}",
+                    shape
+                ),
             });
         }
 
@@ -61,10 +64,17 @@ impl Unfold {
         let in_width = shape[3];
 
         // Compute output dimensions
-        let out_height = ((in_height + 2 * self.padding - self.dilation * (self.kernel_size.0 - 1) - 1) / self.stride) + 1;
-        let out_width = ((in_width + 2 * self.padding - self.dilation * (self.kernel_size.1 - 1) - 1) / self.stride) + 1;
+        let out_height =
+            ((in_height + 2 * self.padding - self.dilation * (self.kernel_size.0 - 1) - 1)
+                / self.stride)
+                + 1;
+        let out_width =
+            ((in_width + 2 * self.padding - self.dilation * (self.kernel_size.1 - 1) - 1)
+                / self.stride)
+                + 1;
         let num_blocks = out_height * out_width;
-        let output_size = batch_size * channels * self.kernel_size.0 * self.kernel_size.1 * num_blocks;
+        let output_size =
+            batch_size * channels * self.kernel_size.0 * self.kernel_size.1 * num_blocks;
 
         // Access input buffer directly (zero-copy)
         let input_buffer = self.input.buffer();
@@ -105,51 +115,56 @@ impl Unfold {
             _pad1: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Unfold Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Unfold Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Unfold Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Unfold Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Unfold Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -172,23 +187,31 @@ impl Unfold {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Unfold Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Unfold Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Unfold Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Unfold Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Unfold Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Unfold Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -198,10 +221,10 @@ impl Unfold {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             let workgroups_z = batch_size as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -211,7 +234,11 @@ impl Unfold {
         // Return tensor without reading back (zero-copy)
         Ok(Tensor::from_buffer(
             output_buffer,
-            vec![batch_size, channels * self.kernel_size.0 * self.kernel_size.1, num_blocks],
+            vec![
+                batch_size,
+                channels * self.kernel_size.0 * self.kernel_size.1,
+                num_blocks,
+            ],
             device.clone(),
         ))
     }
@@ -231,13 +258,12 @@ mod tests {
     async fn test_unfold_basic() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..48).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 6, 8],
-            device.clone(),
-        ).unwrap();
-        
-        let unfolded = Unfold::new(input, (3, 3), 1, 0, 1).unwrap().execute().unwrap();
+        let input = Tensor::from_data(&data, vec![1, 1, 6, 8], device.clone()).unwrap();
+
+        let unfolded = Unfold::new(input, (3, 3), 1, 0, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         // Output shape: [B, C*K*K, L] where L = num_blocks
         assert_eq!(unfolded.shape().len(), 3);
     }
@@ -246,25 +272,20 @@ mod tests {
     async fn test_unfold_with_padding() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..32).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 4, 8],
-            device.clone(),
-        ).unwrap();
-        
-        let unfolded = Unfold::new(input, (3, 3), 1, 1, 1).unwrap().execute().unwrap();
+        let input = Tensor::from_data(&data, vec![1, 1, 4, 8], device.clone()).unwrap();
+
+        let unfolded = Unfold::new(input, (3, 3), 1, 1, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         assert_eq!(unfolded.shape().len(), 3);
     }
 
     #[tokio::test]
     async fn test_unfold_invalid_shape() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0, 3.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
+
         assert!(Unfold::new(input, (3, 3), 1, 0, 1).is_err());
     }
 
@@ -272,13 +293,12 @@ mod tests {
     async fn test_unfold_dilation() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..64).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 8, 8],
-            device.clone(),
-        ).unwrap();
-        
-        let unfolded = Unfold::new(input, (3, 3), 1, 0, 2).unwrap().execute().unwrap();
+        let input = Tensor::from_data(&data, vec![1, 1, 8, 8], device.clone()).unwrap();
+
+        let unfolded = Unfold::new(input, (3, 3), 1, 0, 2)
+            .unwrap()
+            .execute()
+            .unwrap();
         assert_eq!(unfolded.shape().len(), 3);
     }
 
@@ -286,13 +306,12 @@ mod tests {
     async fn test_unfold_stride() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..128).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![1, 1, 8, 16],
-            device.clone(),
-        ).unwrap();
-        
-        let unfolded = Unfold::new(input, (3, 3), 2, 0, 1).unwrap().execute().unwrap();
+        let input = Tensor::from_data(&data, vec![1, 1, 8, 16], device.clone()).unwrap();
+
+        let unfolded = Unfold::new(input, (3, 3), 2, 0, 1)
+            .unwrap()
+            .execute()
+            .unwrap();
         assert_eq!(unfolded.shape().len(), 3);
     }
 }

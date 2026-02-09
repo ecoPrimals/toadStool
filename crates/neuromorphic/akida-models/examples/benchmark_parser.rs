@@ -9,11 +9,14 @@ fn main() -> Result<()> {
     println!("🏃 Akida Parser Benchmark\n");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-    // Test models
-    let models = vec![
-        "/home/strandgate/minimal_test.fbz",
-        "/home/strandgate/complex_test.fbz",
-    ];
+    // Test models - get from command line arguments
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.is_empty() {
+        eprintln!("Usage: cargo run --example benchmark_parser -- <model1.fbz> [model2.fbz ...]");
+        eprintln!("Example: cargo run --example benchmark_parser -- /path/to/model1.fbz /path/to/model2.fbz");
+        std::process::exit(1);
+    }
+    let models = args;
 
     let mut total_time = std::time::Duration::ZERO;
     let mut total_size = 0usize;

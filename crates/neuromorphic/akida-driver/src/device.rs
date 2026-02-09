@@ -13,6 +13,7 @@ use crate::io::IoHandle;
 ///
 /// Represents an open connection to an Akida neuromorphic processor.
 /// Provides safe, high-level access to device operations.
+#[derive(Debug)]
 pub struct AkidaDevice {
     /// Device information
     info: DeviceInfo,
@@ -25,6 +26,7 @@ pub struct AkidaDevice {
 }
 
 /// Low-level device file handle
+#[derive(Debug)]
 pub struct DeviceHandle {
     file: File,
 }

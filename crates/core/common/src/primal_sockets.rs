@@ -524,6 +524,7 @@ fn capability_to_biomeos_fallback(
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Tests exercise both deprecated and new APIs for backward compat
 mod tests {
     use super::*;
 

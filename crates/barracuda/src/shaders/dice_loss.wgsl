@@ -1,18 +1,19 @@
 // dice_loss.wgsl - Dice coefficient loss for segmentation
 //
-// Dice Loss = 1 - (2 * intersection + smooth) / (sum_pred + sum_target + smooth)
+// Dice Loss = 1 - (2 * intersection + smooth_val) / (sum_pred + sum_target + smooth_val)
 //
 // Used extensively in medical image segmentation to handle class imbalance
 // Range: [0, 1] where 0 = perfect overlap, 1 = no overlap
 
 struct Params {
     size: u32,
-    smooth: f32,         // Smoothing factor (typically 1.0) to avoid division by zero
-    _padding: vec2<u32>,
+    smooth_val: f32,         // Smoothing factor (typically 1.0) to avoid division by zero
+    _pad0: u32,
+    _pad1: u32,
 }
 
 @group(0) @binding(0) var<storage, read> predicted: array<f32>;  // Predicted probabilities [0, 1]
-@group(0) @binding(1) var<storage, read> target: array<f32>;     // Ground truth [0, 1]
+@group(0) @binding(1) var<storage, read> target_data: array<f32>;     // Ground truth [0, 1]
 @group(0) @binding(2) var<storage, read_write> output: array<f32>; // Scalar loss value
 @group(0) @binding(3) var<uniform> params: Params;
 
@@ -37,7 +38,7 @@ fn main(
     
     if (idx < params.size) {
         let pred = predicted[idx];
-        let targ = target[idx];
+        let targ = target_data[idx];
         
         local_intersection = pred * targ;
         local_pred_sum = pred;
@@ -69,8 +70,8 @@ fn main(
         let pred_sum = shared_pred_sum[0];
         let target_sum = shared_target_sum[0];
         
-        // Dice coefficient: (2 * intersection + smooth) / (pred_sum + target_sum + smooth)
-        let dice = (2.0 * intersection + params.smooth) / (pred_sum + target_sum + params.smooth);
+        // Dice coefficient: (2 * intersection + smooth_val) / (pred_sum + target_sum + smooth_val)
+        let dice = (2.0 * intersection + params.smooth_val) / (pred_sum + target_sum + params.smooth_val);
         
         // Dice loss = 1 - Dice coefficient
         let loss = 1.0 - dice;

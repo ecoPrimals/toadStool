@@ -73,7 +73,8 @@ impl GroupedQueryAttention {
 
         if q_shape.len() != 4 || k_shape.len() != 4 || v_shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: "All inputs must be 4D tensors [batch, heads, seq_len, head_dim]".to_string(),
+                message: "All inputs must be 4D tensors [batch, heads, seq_len, head_dim]"
+                    .to_string(),
             });
         }
 
@@ -99,7 +100,7 @@ impl GroupedQueryAttention {
         }
 
         // Validate num_q_heads is divisible by num_kv_heads
-        if num_q_heads % num_kv_heads != 0 {
+        if !num_q_heads.is_multiple_of(num_kv_heads) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: format!(
                     "num_q_heads ({}) must be divisible by num_kv_heads ({})",
@@ -205,11 +206,7 @@ impl Tensor {
     ///
     /// # Returns
     /// Output tensor [batch, num_q_heads, seq_len, head_dim]
-    pub fn grouped_query_attention(
-        self,
-        key: Tensor,
-        value: Tensor,
-    ) -> Result<Self> {
+    pub fn grouped_query_attention(self, key: Tensor, value: Tensor) -> Result<Self> {
         GroupedQueryAttention::new(self, key, value)?.execute()
     }
 }

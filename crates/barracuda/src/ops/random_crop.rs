@@ -29,13 +29,21 @@ pub struct RandomCrop {
 
 impl RandomCrop {
     /// Create RandomCrop operation
-    pub fn new(input: Tensor, crop_positions: Tensor, out_height: usize, out_width: usize) -> Result<Self> {
+    pub fn new(
+        input: Tensor,
+        crop_positions: Tensor,
+        out_height: usize,
+        out_width: usize,
+    ) -> Result<Self> {
         // Validate crop_positions shape: [batch_size, 2] (top, left)
         let crop_shape = crop_positions.shape();
         if crop_shape.len() != 2 || crop_shape[1] != 2 {
             return Err(BarracudaError::invalid_op(
                 "RandomCrop",
-                format!("crop_positions must be 2D [batch_size, 2], got shape {:?}", crop_shape),
+                format!(
+                    "crop_positions must be 2D [batch_size, 2], got shape {:?}",
+                    crop_shape
+                ),
             ));
         }
 
@@ -56,11 +64,14 @@ impl RandomCrop {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_shape = self.input.shape();
-        
+
         if input_shape.len() != 4 {
             return Err(BarracudaError::invalid_op(
                 "RandomCrop",
-                format!("input must be 4D [batch, channels, height, width], got shape {:?}", input_shape),
+                format!(
+                    "input must be 4D [batch, channels, height, width], got shape {:?}",
+                    input_shape
+                ),
             ));
         }
 
@@ -72,7 +83,11 @@ impl RandomCrop {
         if self.crop_positions.shape()[0] != batch_size {
             return Err(BarracudaError::invalid_op(
                 "RandomCrop",
-                format!("crop_positions batch size {} must match input batch size {}", self.crop_positions.shape()[0], batch_size),
+                format!(
+                    "crop_positions batch size {} must match input batch size {}",
+                    self.crop_positions.shape()[0],
+                    batch_size
+                ),
             ));
         }
 
@@ -211,11 +226,11 @@ impl RandomCrop {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let (wg_x, wg_y, wg_z) = caps.optimal_workgroup_size_3d(WorkloadType::Convolution);
-            let workgroups_x = (self.out_width as u32 + wg_x - 1) / wg_x;
-            let workgroups_y = (self.out_height as u32 + wg_y - 1) / wg_y;
-            let workgroups_z = ((batch_size * channels) as u32 + wg_z - 1) / wg_z;
+            let workgroups_x = (self.out_width as u32).div_ceil(wg_x);
+            let workgroups_y = (self.out_height as u32).div_ceil(wg_y);
+            let workgroups_z = ((batch_size * channels) as u32).div_ceil(wg_z);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
 
@@ -267,6 +282,9 @@ mod tests {
             .execute()
             .unwrap();
 
-        assert_eq!(result.shape(), &[batch_size, channels, out_height, out_width]);
+        assert_eq!(
+            result.shape(),
+            &[batch_size, channels, out_height, out_width]
+        );
     }
 }

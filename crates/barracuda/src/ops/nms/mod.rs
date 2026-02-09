@@ -42,7 +42,7 @@ pub struct NMS {
 impl NMS {
     /// Create NMS operation
     pub fn new(boxes: Vec<BoundingBox>, iou_threshold: f32) -> Result<Self> {
-        if iou_threshold < 0.0 || iou_threshold > 1.0 {
+        if !(0.0..=1.0).contains(&iou_threshold) {
             return Err(BarracudaError::invalid_op(
                 "NMS",
                 format!("iou_threshold must be in [0, 1], got {}", iou_threshold),
@@ -92,9 +92,6 @@ pub fn compute_iou(box1: &BoundingBox, box2: &BoundingBox) -> f32 {
 }
 
 /// Convenience function for NMS
-pub fn nms(
-    boxes: Vec<BoundingBox>,
-    iou_threshold: f32,
-) -> Result<Vec<usize>> {
+pub fn nms(boxes: Vec<BoundingBox>, iou_threshold: f32) -> Result<Vec<usize>> {
     NMS::new(boxes, iou_threshold)?.execute()
 }

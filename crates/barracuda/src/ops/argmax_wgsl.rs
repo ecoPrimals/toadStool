@@ -7,22 +7,26 @@
 //! - Complete implementation: Production-ready, no mocks
 //! - Hardware-agnostic: Pure WGSL for universal compute
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::Result;
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 /// Argmax operation - Find indices of maximum values
 pub struct Argmax {
     input: Tensor,
-    dim: Option<usize>,  // None = global argmax, Some(d) = argmax along dimension d
-    keepdim: bool,       // Whether to keep dimension with size 1
+    dim: Option<usize>, // None = global argmax, Some(d) = argmax along dimension d
+    keepdim: bool,      // Whether to keep dimension with size 1
 }
 
 impl Argmax {
     /// Create a new argmax operation
     pub fn new(input: Tensor, dim: Option<usize>, keepdim: bool) -> Self {
-        Self { input, dim, keepdim }
+        Self {
+            input,
+            dim,
+            keepdim,
+        }
     }
 
     /// Get the WGSL shader source for global reduction
@@ -46,9 +50,9 @@ impl Argmax {
                 // Global argmax reduction
                 let size: usize = shape.iter().product();
                 // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(&device);
+                let caps = DeviceCapabilities::from_device(device);
                 let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
 
                 // Create output buffer for partial results (indices)
                 let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -67,51 +71,58 @@ impl Argmax {
 
                 let params = Params { size: size as u32 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Argmax Reduce Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Argmax Reduce Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
                 // Compile shader
-                let shader_module = device.compile_shader(Self::wgsl_shader_reduce(), Some("Argmax Reduce Shader"));
+                let shader_module =
+                    device.compile_shader(Self::wgsl_shader_reduce(), Some("Argmax Reduce Shader"));
 
                 // Create bind group layout
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Argmax Reduce Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Argmax Reduce Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 // Create bind group
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -134,29 +145,39 @@ impl Argmax {
                 });
 
                 // Create compute pipeline
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Argmax Reduce Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Argmax Reduce Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Argmax Reduce Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Argmax Reduce Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
                 // Execute compute shader
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Argmax Reduce Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Argmax Reduce Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Argmax Reduce Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Argmax Reduce Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     // Deep Debt Evolution: Capability-based dispatch (already computed above)
@@ -167,13 +188,14 @@ impl Argmax {
 
                 // Read back partial results and find the global argmax on CPU
                 // We need to compare values at the partial indices to find the true global argmax
-                let partial_indices = crate::utils::read_buffer_u32(device, &output_buffer, num_workgroups as usize)?;
-                
+                let partial_indices =
+                    crate::utils::read_buffer_u32(device, &output_buffer, num_workgroups as usize)?;
+
                 // Read the input values at these indices to find the maximum
-                let input_data = device.read_buffer_f32(&input_buffer, size)?;
+                let input_data = device.read_buffer_f32(input_buffer, size)?;
                 let mut global_max_idx = 0u32;
                 let mut global_max_val = f32::NEG_INFINITY;
-                
+
                 for &idx in &partial_indices {
                     if (idx as usize) < size {
                         let val = input_data[idx as usize];
@@ -227,51 +249,58 @@ impl Argmax {
                     inner_size: inner_size as u32,
                 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Argmax Dim Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Argmax Dim Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
                 // Compile shader
-                let shader_module = device.compile_shader(Self::wgsl_shader_dim(), Some("Argmax Dim Shader"));
+                let shader_module =
+                    device.compile_shader(Self::wgsl_shader_dim(), Some("Argmax Dim Shader"));
 
                 // Create bind group layout
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Argmax Dim Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Argmax Dim Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 // Create bind group
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -294,43 +323,54 @@ impl Argmax {
                 });
 
                 // Create compute pipeline
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Argmax Dim Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Argmax Dim Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Argmax Dim Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Argmax Dim Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
                 // Execute compute shader
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Argmax Dim Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Argmax Dim Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Argmax Dim Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Argmax Dim Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     // Deep Debt Evolution: Capability-based dispatch
-                    let caps = DeviceCapabilities::from_device(&device);
+                    let caps = DeviceCapabilities::from_device(device);
                     let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                    let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                    let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
                     compute_pass.dispatch_workgroups(workgroups, 1, 1);
                 }
 
                 device.queue.submit(Some(encoder.finish()));
 
                 // Read back results
-                let output_data = crate::utils::read_buffer_u32(device, &output_buffer, output_size)?;
-                
+                let output_data =
+                    crate::utils::read_buffer_u32(device, &output_buffer, output_size)?;
+
                 // Convert u32 to f32 for tensor
                 let output_f32: Vec<f32> = output_data.iter().map(|&x| x as f32).collect();
 
@@ -342,11 +382,7 @@ impl Argmax {
                     output_shape.remove(dim);
                 }
 
-                Ok(Tensor::new(
-                    output_f32,
-                    output_shape,
-                    device.clone(),
-                ))
+                Ok(Tensor::new(output_f32, output_shape, device.clone()))
             }
         }
     }

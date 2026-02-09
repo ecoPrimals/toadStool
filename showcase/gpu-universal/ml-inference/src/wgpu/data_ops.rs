@@ -175,7 +175,7 @@ impl WgpuExecutor {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(workgroups as u32, 1, 1);
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         encoder.copy_buffer_to_buffer(
@@ -337,7 +337,7 @@ impl WgpuExecutor {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(workgroups as u32, 1, 1);
+            pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
         encoder.copy_buffer_to_buffer(
@@ -507,8 +507,8 @@ impl WgpuExecutor {
             });
 
         // Dispatch with 2D workgroups
-        let workgroup_x = (output_width + 7) / 8;
-        let workgroup_y = (output_height + 7) / 8;
+        let workgroup_x = output_width.div_ceil(8);
+        let workgroup_y = output_height.div_ceil(8);
 
         let mut encoder = self
             .device

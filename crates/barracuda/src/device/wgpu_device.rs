@@ -27,9 +27,76 @@ pub struct WgpuDevice {
 impl WgpuDevice {
     /// Create new WebGPU device with auto-discovery
     ///
-    /// **Deep Debt**: Discovers any available GPU, no hardcoding
+    /// Prefers GPU, falls back to CPU software rasterizer.
+    /// Same WGSL shaders run on any backend - hardware guides its own performance.
     pub async fn new() -> Result<Self> {
         Self::new_with_backend(wgpu::Backends::all()).await
+    }
+
+    /// Create device explicitly targeting GPU hardware
+    ///
+    /// Returns error if no discrete or integrated GPU is available.
+    /// Use this when you specifically need GPU acceleration.
+    pub async fn new_gpu() -> Result<Self> {
+        Self::new_with_filter(wgpu::Backends::all(), |info| {
+            matches!(
+                info.device_type,
+                wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+            )
+        })
+        .await
+        .map_err(|_| BarracudaError::device("No GPU adapter found - only CPU available"))
+    }
+
+    /// Create device explicitly targeting CPU software rasterizer
+    ///
+    /// Forces CPU execution even when GPU is available.
+    /// Same WGSL shaders execute on CPU via software rasterizer.
+    /// Useful for: testing, validation, machines without GPU.
+    pub async fn new_cpu() -> Result<Self> {
+        Self::new_with_filter(wgpu::Backends::all(), |info| {
+            info.device_type == wgpu::DeviceType::Cpu
+        })
+        .await
+        .map_err(|_| BarracudaError::device("No CPU software rasterizer available"))
+    }
+
+    /// Create device from ToadStool hardware selection
+    ///
+    /// ToadStool discovers hardware, BarraCUDA creates the right device.
+    /// This is the production path: ToadStool decides what hardware,
+    /// BarraCUDA runs the same WGSL on it.
+    pub async fn from_selection(
+        selection: super::toadstool_integration::DeviceSelection,
+    ) -> Result<Self> {
+        use super::toadstool_integration::DeviceSelection;
+        match selection {
+            DeviceSelection::Gpu => Self::new_gpu().await,
+            DeviceSelection::Cpu => Self::new_cpu().await,
+            DeviceSelection::Npu => {
+                // NPU doesn't run WGSL - fall back to GPU, then CPU
+                log::info!(
+                    "NPU selected but WGSL not supported on NPU; falling back to best WGPU adapter"
+                );
+                Self::new().await
+            }
+        }
+    }
+
+    /// List all available WGPU adapters
+    ///
+    /// Returns adapter info for every compute device WGPU can see.
+    /// ToadStool uses this to understand what BarraCUDA can target.
+    pub fn enumerate_adapters() -> Vec<wgpu::AdapterInfo> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        instance
+            .enumerate_adapters(wgpu::Backends::all())
+            .iter()
+            .map(|a| a.get_info())
+            .collect()
     }
 
     /// Create with specific backend (for testing/multi-GPU)
@@ -52,14 +119,16 @@ impl WgpuDevice {
         let adapters = instance.enumerate_adapters(backends);
 
         if adapters.is_empty() {
-            return Err(BarracudaError::device("No GPU adapters found"));
+            return Err(BarracudaError::device(
+                "No WGPU adapters found (need GPU or CPU software rasterizer)",
+            ));
         }
 
         // Find matching adapter
         let adapter = adapters
             .into_iter()
             .find(|adapter: &wgpu::Adapter| filter(&adapter.get_info()))
-            .ok_or_else(|| BarracudaError::device("No GPU matching filter"))?;
+            .ok_or_else(|| BarracudaError::device("No adapter matching requested hardware type"))?;
 
         let adapter_info = adapter.get_info();
 
@@ -216,13 +285,15 @@ impl WgpuDevice {
     pub fn create_buffer_u32_zeros(&self, size: usize) -> Result<wgpu::Buffer> {
         use wgpu::util::DeviceExt;
         let zeros = vec![0u32; size];
-        Ok(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("barraCUDA U32 Zeros Buffer"),
-            contents: bytemuck::cast_slice(&zeros),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-        }))
+        Ok(self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("barraCUDA U32 Zeros Buffer"),
+                contents: bytemuck::cast_slice(&zeros),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+            }))
     }
 
     /// Compile WGSL shader
@@ -391,10 +462,27 @@ mod tests {
         println!("Device type: {:?}", device.device_type());
 
         if device.is_cpu() {
-            println!("✓ Using CPU fallback (software rasterizer)");
+            println!("  Using CPU software rasterizer");
         } else {
-            println!("✓ Using GPU acceleration");
+            println!("  Using GPU acceleration");
         }
+    }
+
+    #[tokio::test]
+    async fn test_enumerate_adapters() {
+        let adapters = WgpuDevice::enumerate_adapters();
+        println!("Found {} WGPU adapters:", adapters.len());
+        for info in &adapters {
+            println!(
+                "  - {} ({:?}, {:?})",
+                info.name, info.device_type, info.backend
+            );
+        }
+        // Should find at least one adapter (GPU or CPU)
+        assert!(
+            !adapters.is_empty(),
+            "WGPU should find at least one adapter"
+        );
     }
 
     #[tokio::test]
@@ -411,5 +499,38 @@ mod tests {
         // Read back
         let read_data = device.read_buffer_f32(&buffer, 10).unwrap();
         assert_eq!(read_data, data);
+    }
+
+    #[tokio::test]
+    async fn test_from_selection_gpu() {
+        use super::super::toadstool_integration::DeviceSelection;
+        // Try GPU selection - may fail if no GPU, that's ok
+        match WgpuDevice::from_selection(DeviceSelection::Gpu).await {
+            Ok(device) => {
+                assert!(
+                    !device.is_cpu(),
+                    "GPU selection should not return CPU device"
+                );
+                println!("  GPU device: {}", device.name());
+            }
+            Err(_) => {
+                println!("  No GPU available (expected on CI/headless)");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_from_selection_cpu() {
+        use super::super::toadstool_integration::DeviceSelection;
+        // CPU selection - may not have software rasterizer on all systems
+        match WgpuDevice::from_selection(DeviceSelection::Cpu).await {
+            Ok(device) => {
+                assert!(device.is_cpu(), "CPU selection should return CPU device");
+                println!("  CPU device: {}", device.name());
+            }
+            Err(_) => {
+                println!("  No CPU software rasterizer available");
+            }
+        }
     }
 }

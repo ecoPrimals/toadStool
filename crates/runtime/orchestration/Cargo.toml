@@ -6,6 +6,7 @@ authors = ["ToadStool Contributors"]
 description = "Intelligent workload orchestration across compute substrates"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ecoPrimals/toadStool"
+readme = "README.md"
 keywords = ["orchestration", "runtime", "workload", "scheduling"]
 categories = ["development-tools", "hardware-support"]
 

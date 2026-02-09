@@ -5,8 +5,7 @@ use crate::device::test_pool::get_test_device;
 
 fn std_cpu(input: &[f32]) -> f32 {
     let mean: f32 = input.iter().sum::<f32>() / input.len() as f32;
-    let variance: f32 =
-        input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
+    let variance: f32 = input.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / input.len() as f32;
     variance.sqrt()
 }
 
@@ -104,7 +103,7 @@ async fn test_std_dim() {
     let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())
         .await
         .unwrap();
-    
+
     // Std along dim 0 (columns): std of [1,4], [2,5], [3,6]
     let result = input.std_dim(0, false).unwrap().to_vec().unwrap();
     assert_eq!(result.len(), 3);
@@ -114,7 +113,7 @@ async fn test_std_dim() {
     assert!((result[1] - 1.5).abs() < 1e-4);
     // Std of [3, 6] = sqrt(2.25) = 1.5
     assert!((result[2] - 1.5).abs() < 1e-4);
-    
+
     // Std along dim 1 (rows): std of [1,2,3], [4,5,6]
     let result = input.std_dim(1, false).unwrap().to_vec().unwrap();
     assert_eq!(result.len(), 2);
@@ -122,7 +121,7 @@ async fn test_std_dim() {
     assert!((result[0] - 0.8164966).abs() < 1e-4);
     // Std of [4, 5, 6] = sqrt(0.666...) ≈ 0.8165
     assert!((result[1] - 0.8164966).abs() < 1e-4);
-    
+
     // Std along dim 0 with keepdim: [[1.5, 1.5, 1.5]]
     let result = input.std_dim(0, true).unwrap();
     assert_eq!(result.shape(), &[1, 3]);

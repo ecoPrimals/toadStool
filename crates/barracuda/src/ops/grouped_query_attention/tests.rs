@@ -22,9 +22,15 @@ async fn test_grouped_query_attention_basic() {
     let dev = Arc::new(WgpuDevice::new().await.unwrap());
 
     // 8 query heads, 2 KV heads (4 heads per group)
-    let query = create_test_tensor(dev.clone(), vec![1, 8, 4, 4], 0.5).await.unwrap();
-    let key = create_test_tensor(dev.clone(), vec![1, 2, 4, 4], 0.5).await.unwrap();
-    let value = create_test_tensor(dev.clone(), vec![1, 2, 4, 4], 0.5).await.unwrap();
+    let query = create_test_tensor(dev.clone(), vec![1, 8, 4, 4], 0.5)
+        .await
+        .unwrap();
+    let key = create_test_tensor(dev.clone(), vec![1, 2, 4, 4], 0.5)
+        .await
+        .unwrap();
+    let value = create_test_tensor(dev.clone(), vec![1, 2, 4, 4], 0.5)
+        .await
+        .unwrap();
 
     let output = query.grouped_query_attention(key, value).unwrap();
 

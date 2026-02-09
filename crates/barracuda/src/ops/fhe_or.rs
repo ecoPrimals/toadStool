@@ -155,39 +155,36 @@ impl FheOr {
             (self.modulus >> 32) as u32,
             0u32,
         ];
-        let params_buffer =
-            device
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("FHE OR Params"),
-                    contents: bytemuck::cast_slice(&params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
-
-        let bind_group = device
+        let params_buffer = device
             .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("FHE OR Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.poly_a.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.poly_b.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: result_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FHE OR Params"),
+                contents: bytemuck::cast_slice(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
             });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("FHE OR Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.poly_a.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.poly_b.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: result_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         let mut encoder = device
             .device
@@ -203,9 +200,9 @@ impl FheOr {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::FHE);
-            let workgroups = (self.degree + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = self.degree.div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

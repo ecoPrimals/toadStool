@@ -27,10 +27,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     // Calculate target position in input: start + idx * stride
-    let target_idx = params.start + idx * params.stride;
+    let target_data_idx = params.start + idx * params.stride;
     
     // Bounds check
-    if (target_idx < params.end && target_idx < params.input_size) {
-        input[target_idx] = values[idx];
+    if (target_data_idx < params.end && target_data_idx < params.input_size) {
+        input[target_data_idx] = values[idx];
     }
 }

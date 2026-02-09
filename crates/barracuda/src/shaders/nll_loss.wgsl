@@ -26,15 +26,15 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    let target = i32(targets[b]);
+    let target_data = i32(targets[b]);
     
     // Check if this sample should be ignored
-    if (target == params.ignore_index || target < 0 || target >= i32(params.num_classes)) {
+    if (target_data == params.ignore_index || target_data < 0 || target_data >= i32(params.num_classes)) {
         output[b] = 0.0;
         return;
     }
     
-    let target_u = u32(target);
+    let target_u = u32(target_data);
     
     // Get log probability for true class
     let log_prob = log_probs[b * params.num_classes + target_u];

@@ -22,7 +22,7 @@ struct Params {
 @group(0) @binding(2) var<storage, read> edge_index: array<u32>;       // [num_edges * 2]
 @group(0) @binding(3) var<storage, read> mlp_weights: array<f32>;      // [in_features, out_features]
 @group(0) @binding(4) var<storage, read> mlp_bias: array<f32>;         // [out_features]
-@group(0) @binding(5) var<storage, read_write> aggregated: array<f32>; // [num_nodes, in_features]
+@group(0) @binding(5) var<storage, read_write> aggregated: array<atomic<i32>>; // [num_nodes, in_features] (atomic accumulation)
 @group(0) @binding(6) var<storage, read_write> output: array<f32>;     // [num_nodes, out_features]
 
 // Step 1: Aggregate neighbors (sum pooling)
@@ -57,7 +57,7 @@ fn apply_mlp(@builtin(global_invocation_id) global_id: vec3<u32>) {
         
         for (var in_f = 0u; in_f < params.in_features; in_f++) {
             let self_feat = (1.0 + params.epsilon) * node_features[node * params.in_features + in_f];
-            let neighbor_feat = aggregated[node * params.in_features + in_f];
+            let neighbor_feat = bitcast<f32>(atomicLoad(&aggregated[node * params.in_features + in_f]));
             let combined = self_feat + neighbor_feat;
             
             let weight_idx = in_f * params.out_features + out_f;

@@ -9,14 +9,14 @@
 //!
 //! **Deep Debt**: All math in WGSL, zero unsafe
 
+pub mod born_mayer;
 pub mod coulomb;
-pub mod yukawa;
 pub mod lennard_jones;
 pub mod morse;
-pub mod born_mayer;
+pub mod yukawa;
 
+pub use born_mayer::BornMayerForce;
 pub use coulomb::CoulombForce;
-pub use yukawa::YukawaForce;
 pub use lennard_jones::LennardJonesForce;
 pub use morse::MorseForce;
-pub use born_mayer::BornMayerForce;
+pub use yukawa::YukawaForce;

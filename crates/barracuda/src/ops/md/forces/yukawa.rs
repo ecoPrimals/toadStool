@@ -21,7 +21,7 @@ pub struct YukawaForce {
     positions: Tensor,
     charges: Tensor,
     yukawa_constant: f32,
-    kappa: f32,                 // Screening parameter (inverse Debye length)
+    kappa: f32, // Screening parameter (inverse Debye length)
     cutoff_radius: f32,
     epsilon: f32,
 }
@@ -220,7 +220,7 @@ impl YukawaForce {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -255,7 +255,7 @@ mod tests {
             pos_tensor,
             charge_tensor,
             Some(1.0),
-            0.0,  // κ=0 → Coulomb
+            0.0, // κ=0 → Coulomb
             None,
             None,
         )
@@ -281,7 +281,7 @@ mod tests {
             pos_tensor,
             charge_tensor,
             Some(1.0),
-            2.0,  // Strong screening
+            2.0, // Strong screening
             None,
             None,
         )

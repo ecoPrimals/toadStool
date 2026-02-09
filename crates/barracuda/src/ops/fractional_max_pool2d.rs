@@ -49,20 +49,14 @@ impl FractionalMaxPool2d {
         if pool_seq_h_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "fractional_max_pool2d",
-                format!(
-                    "pool_seq_h must be 1D, got shape {:?}",
-                    pool_seq_h_shape
-                ),
+                format!("pool_seq_h must be 1D, got shape {:?}", pool_seq_h_shape),
             ));
         }
 
         if pool_seq_w_shape.len() != 1 {
             return Err(BarracudaError::invalid_op(
                 "fractional_max_pool2d",
-                format!(
-                    "pool_seq_w must be 1D, got shape {:?}",
-                    pool_seq_w_shape
-                ),
+                format!("pool_seq_w must be 1D, got shape {:?}", pool_seq_w_shape),
             ));
         }
 
@@ -154,21 +148,23 @@ impl FractionalMaxPool2d {
             .map(|&x| x as u32)
             .collect();
 
-        let pool_seq_h_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("FractionalMaxPool2d PoolSeqH"),
-                contents: bytemuck::cast_slice(&pool_seq_h_data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+        let pool_seq_h_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FractionalMaxPool2d PoolSeqH"),
+                    contents: bytemuck::cast_slice(&pool_seq_h_data),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
-        let pool_seq_w_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("FractionalMaxPool2d PoolSeqW"),
-                contents: bytemuck::cast_slice(&pool_seq_w_data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            },
-        );
+        let pool_seq_w_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FractionalMaxPool2d PoolSeqW"),
+                    contents: bytemuck::cast_slice(&pool_seq_w_data),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Create bind group layout
         let bind_group_layout =
@@ -297,8 +293,8 @@ impl FractionalMaxPool2d {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (8x8x1 workgroup size)
-            let workgroups_x = (out_width as u32 + 7) / 8;
-            let workgroups_y = (out_height as u32 + 7) / 8;
+            let workgroups_x = (out_width as u32).div_ceil(8);
+            let workgroups_y = (out_height as u32).div_ceil(8);
             let workgroups_z = (batch_size * channels) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -323,30 +319,19 @@ mod tests {
     async fn test_fractional_max_pool2d_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![1.0; 2 * 3 * 8 * 8],
-            vec![2, 3, 8, 8],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 8 * 8], vec![2, 3, 8, 8], device.clone())
+            .await
+            .unwrap();
 
         // Pool sequence: [0, 2, 4, 6, 8] for 4x4 output
-        let pool_seq_h = Tensor::from_vec_on(
-            vec![0.0, 2.0, 4.0, 6.0, 8.0],
-            vec![5],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let pool_seq_h =
+            Tensor::from_vec_on(vec![0.0, 2.0, 4.0, 6.0, 8.0], vec![5], device.clone())
+                .await
+                .unwrap();
 
-        let pool_seq_w = Tensor::from_vec_on(
-            vec![0.0, 2.0, 4.0, 6.0, 8.0],
-            vec![5],
-            device,
-        )
-        .await
-        .unwrap();
+        let pool_seq_w = Tensor::from_vec_on(vec![0.0, 2.0, 4.0, 6.0, 8.0], vec![5], device)
+            .await
+            .unwrap();
 
         let output = FractionalMaxPool2d::new(input, pool_seq_h, pool_seq_w)
             .unwrap()

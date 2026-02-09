@@ -19,7 +19,7 @@ struct Params {
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> input: array<f32>;
 @group(0) @binding(2) var<storage, read_write> hash_table: array<atomic<u32>>; // Hash table for unique detection
-@group(0) @binding(3) var<storage, read> unique_flags: array<u32>;       // 1 if unique
+@group(0) @binding(3) var<storage, read_write> unique_flags: array<u32>;       // 1 if unique
 @group(0) @binding(4) var<storage, read> prefix_sum: array<u32>;      // Prefix sum of unique_flags
 @group(0) @binding(5) var<storage, read_write> output: array<f32>;
 

@@ -99,7 +99,7 @@ impl Device {
         )
         .map_err(|e| {
             tracing::error!("Failed to open {}: {}", path.display(), e);
-            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(e.raw_os_error() as i32))
+            DisplayError::OpenFailed(std::io::Error::from_raw_os_error(e.raw_os_error()))
         })?;
 
         let fd = Arc::new(fd);

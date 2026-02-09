@@ -28,7 +28,10 @@ impl GIoULoss {
         if box_format > 2 {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
-                format!("box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}", box_format),
+                format!(
+                    "box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}",
+                    box_format
+                ),
             ));
         }
 
@@ -49,25 +52,34 @@ impl GIoULoss {
         let device = self.pred_boxes.device();
         let pred_shape = self.pred_boxes.shape();
         let target_shape = self.target_boxes.shape();
-        
+
         if pred_shape.len() != 2 || target_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
-                format!("boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}", pred_shape, target_shape),
+                format!(
+                    "boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}",
+                    pred_shape, target_shape
+                ),
             ));
         }
 
         if pred_shape[1] != 4 || target_shape[1] != 4 {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
-                format!("boxes must have 4 coordinates, got {} and {}", pred_shape[1], target_shape[1]),
+                format!(
+                    "boxes must have 4 coordinates, got {} and {}",
+                    pred_shape[1], target_shape[1]
+                ),
             ));
         }
 
         if pred_shape[0] != target_shape[0] {
             return Err(BarracudaError::invalid_op(
                 "GIoULoss",
-                format!("pred and target must have same number of boxes: {} != {}", pred_shape[0], target_shape[0]),
+                format!(
+                    "pred and target must have same number of boxes: {} != {}",
+                    pred_shape[0], target_shape[0]
+                ),
             ));
         }
 
@@ -203,9 +215,9 @@ impl GIoULoss {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_boxes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_boxes as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -232,7 +244,9 @@ mod tests {
         let num_boxes = 3;
 
         let pred_boxes = Tensor::from_vec_on(
-            vec![0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0, 10.0, 10.0, 20.0, 20.0],
+            vec![
+                0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0, 10.0, 10.0, 20.0, 20.0,
+            ],
             vec![num_boxes, 4],
             device.clone(),
         )
@@ -240,7 +254,9 @@ mod tests {
         .unwrap();
 
         let target_boxes = Tensor::from_vec_on(
-            vec![1.0, 1.0, 11.0, 11.0, 6.0, 6.0, 16.0, 16.0, 11.0, 11.0, 21.0, 21.0],
+            vec![
+                1.0, 1.0, 11.0, 11.0, 6.0, 6.0, 16.0, 16.0, 11.0, 11.0, 21.0, 21.0,
+            ],
             vec![num_boxes, 4],
             device.clone(),
         )

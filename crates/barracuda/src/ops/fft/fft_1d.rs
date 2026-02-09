@@ -43,9 +43,10 @@ impl Fft1D {
 
         // Validate degree is power of 2
         if degree & (degree - 1) != 0 {
-            return Err(BarracudaError::Device(
-                format!("FFT degree {} must be power of 2", degree),
-            ));
+            return Err(BarracudaError::Device(format!(
+                "FFT degree {} must be power of 2",
+                degree
+            )));
         }
 
         let device = input.device();
@@ -55,10 +56,10 @@ impl Fft1D {
         // ================================================================
         // twiddle[k] = exp(-2πik/N) for k = 0 to N-1
         // These are the roots of unity on the complex unit circle
-        
+
         let mut twiddle_factors = Vec::with_capacity((degree * 2) as usize);
         let pi = std::f32::consts::PI;
-        
+
         for k in 0..degree {
             let angle = -2.0 * pi * (k as f32) / (degree as f32);
             let real = angle.cos(); // exp(iθ) = cos(θ) + i·sin(θ)
@@ -70,7 +71,7 @@ impl Fft1D {
         // ================================================================
         // LOAD SHADERS
         // ================================================================
-        
+
         let shader = device
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -81,7 +82,7 @@ impl Fft1D {
         // ================================================================
         // CREATE BIND GROUP LAYOUT
         // ================================================================
-        
+
         let bind_group_layout =
             device
                 .device
@@ -138,7 +139,7 @@ impl Fft1D {
         // ================================================================
         // CREATE PIPELINES
         // ================================================================
-        
+
         let pipeline_layout =
             device
                 .device
@@ -149,24 +150,26 @@ impl Fft1D {
                 });
 
         // Butterfly pipeline (main FFT kernel)
-        let pipeline_butterfly = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FFT 1D Butterfly Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "main",
-            });
+        let pipeline_butterfly =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FFT 1D Butterfly Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "main",
+                });
 
         // Bit-reversal pipeline (preprocessing)
-        let pipeline_bit_reverse = device
-            .device
-            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FFT 1D Bit Reverse Pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &shader,
-                entry_point: "bit_reverse",
-            });
+        let pipeline_bit_reverse =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("FFT 1D Bit Reverse Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader,
+                    entry_point: "bit_reverse",
+                });
 
         Ok(Self {
             input,
@@ -195,10 +198,10 @@ impl Fft1D {
     /// - GPU parallelism: N/2 threads per stage
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
-        
+
         // Buffer size: degree * 2 f32s (for complex numbers)
         let buffer_size = self.degree as u64 * 2 * std::mem::size_of::<f32>() as u64;
-        
+
         // Create output buffer
         let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Output Buffer"),
@@ -206,7 +209,7 @@ impl Fft1D {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
+
         // Create intermediate buffer (for ping-pong between stages)
         let intermediate_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Intermediate Buffer"),
@@ -214,16 +217,16 @@ impl Fft1D {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
-        
+
         // Upload twiddle factors to GPU
-        let twiddle_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let twiddle_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("FFT Twiddle Factors"),
                 contents: bytemuck::cast_slice(&self.twiddle_factors),
                 usage: wgpu::BufferUsages::STORAGE,
-            }
-        );
-        
+            });
+
         // Params struct
         #[repr(C)]
         #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -233,32 +236,32 @@ impl Fft1D {
             inverse: u32,
             _padding: u32,
         }
-        
+
         let base_params = FftParams {
             degree: self.degree,
             stage: 0,
             inverse: 0, // Forward FFT
             _padding: 0,
         };
-        
+
         // ============================================================
         // Pass 1: Bit-reversal permutation
         // ============================================================
-        
+
         let mut encoder = device
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("FFT Command Encoder"),
             });
-        
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("FFT Params (Bit Reverse)"),
                 contents: bytemuck::bytes_of(&base_params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            }
-        );
-        
+            });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("FFT Bit Reverse Bind Group"),
             layout: &self.bind_group_layout,
@@ -281,54 +284,56 @@ impl Fft1D {
                 },
             ],
         });
-        
+
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("FFT Bit Reverse Pass"),
                 timestamp_writes: None,
             });
-            
+
             compute_pass.set_pipeline(&self.pipeline_bit_reverse);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Dispatch: one thread per coefficient
             let workgroup_size = 256u32;
-            let num_workgroups = (self.degree + workgroup_size - 1) / workgroup_size;
+            let num_workgroups = self.degree.div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
         }
-        
+
         // Submit bit-reversal pass
         device.queue.submit(std::iter::once(encoder.finish()));
-        
+
         // ============================================================
         // Pass 2-N: Butterfly stages (log₂(N) stages)
         // ============================================================
-        
+
         let num_stages = (self.degree as f32).log2() as u32;
         let mut current_input = &intermediate_buffer;
         let mut current_output = &output_buffer;
-        
+
         // Submit each stage separately to ensure sequential execution
         for stage in 0..num_stages {
-            let mut stage_encoder = device
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some(&format!("FFT Stage {} Encoder", stage)),
-                });
-            
+            let mut stage_encoder =
+                device
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some(&format!("FFT Stage {} Encoder", stage)),
+                    });
+
             let stage_params = FftParams {
                 stage,
                 ..base_params
             };
-            
-            let stage_params_buffer = device.device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some(&format!("FFT Params (Stage {})", stage)),
-                    contents: bytemuck::bytes_of(&stage_params),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                }
-            );
-            
+
+            let stage_params_buffer =
+                device
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some(&format!("FFT Params (Stage {})", stage)),
+                        contents: bytemuck::bytes_of(&stage_params),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    });
+
             let stage_bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some(&format!("FFT Butterfly Bind Group (Stage {})", stage)),
                 layout: &self.bind_group_layout,
@@ -351,37 +356,38 @@ impl Fft1D {
                     },
                 ],
             });
-            
+
             {
-                let mut compute_pass = stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some(&format!("FFT Butterfly Pass (Stage {})", stage)),
-                    timestamp_writes: None,
-                });
-                
+                let mut compute_pass =
+                    stage_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some(&format!("FFT Butterfly Pass (Stage {})", stage)),
+                        timestamp_writes: None,
+                    });
+
                 compute_pass.set_pipeline(&self.pipeline_butterfly);
                 compute_pass.set_bind_group(0, &stage_bind_group, &[]);
-                
+
                 // Dispatch: one thread per butterfly (N/2 butterflies per stage)
                 let num_butterflies = self.degree / 2;
                 let workgroup_size = 256u32;
-                let num_workgroups = (num_butterflies + workgroup_size - 1) / workgroup_size;
+                let num_workgroups = num_butterflies.div_ceil(workgroup_size);
                 compute_pass.dispatch_workgroups(num_workgroups, 1, 1);
             }
-            
+
             // Submit THIS stage before moving to next
             device.queue.submit(std::iter::once(stage_encoder.finish()));
-            
+
             // Ping-pong buffers for next stage
             std::mem::swap(&mut current_input, &mut current_output);
         }
-        
+
         // After all swaps, determine which buffer has the final result
-        let final_buffer = if num_stages % 2 == 0 {
+        let final_buffer = if num_stages.is_multiple_of(2) {
             intermediate_buffer
         } else {
             output_buffer
         };
-        
+
         // Create result tensor
         Ok(Tensor::from_buffer(
             final_buffer,
@@ -405,9 +411,9 @@ mod tests {
         // Input: [1+0i, 0+0i, 0+0i, 0+0i]
         let data = vec![
             1.0f32, 0.0, // 1+0i
-            0.0, 0.0,     // 0+0i
-            0.0, 0.0,     // 0+0i
-            0.0, 0.0,     // 0+0i
+            0.0, 0.0, // 0+0i
+            0.0, 0.0, // 0+0i
+            0.0, 0.0, // 0+0i
         ];
 
         let tensor = Tensor::from_data(&data, vec![4, 2], device.clone()).unwrap();
@@ -415,9 +421,9 @@ mod tests {
         let result = fft.execute().unwrap();
 
         let result_data = result.to_vec().unwrap();
-        
+
         // FFT([1,0,0,0]) = [1,1,1,1] (all ones in frequency domain)
-        assert!((result_data[0] - 1.0).abs() < 1e-5);  // DC component
-        assert!((result_data[2] - 1.0).abs() < 1e-5);  // First harmonic
+        assert!((result_data[0] - 1.0).abs() < 1e-5); // DC component
+        assert!((result_data[2] - 1.0).abs() < 1e-5); // First harmonic
     }
 }

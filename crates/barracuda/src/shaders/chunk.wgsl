@@ -1,14 +1,17 @@
 // Chunk - Split tensor into N chunks along dimension (complete implementation)
-// Divides input tensor into equal-sized chunks
+// Divides input tensor into chunks (supports unequal chunks like PyTorch)
+// When dimension size is not divisible by chunks:
+//   - First (dim_size % chunks) chunks get (dim_size // chunks) + 1 elements
+//   - Remaining chunks get (dim_size // chunks) elements
 //
-// Example: chunk([B, 10, H, W], chunks=2, dim=1) → [[B, 5, H, W], [B, 5, H, W]]
+// Example: chunk([B, 10, H, W], chunks=3, dim=1) → [[B, 4, H, W], [B, 4, H, W], [B, 2, H, W]]
 //
 // Algorithm:
-// For each chunk, copy the appropriate slice of the input tensor
+// For each chunk, copy the appropriate slice of the input tensor using start_offset
 
 struct Params {
-    chunk_idx: u32,      // Which chunk we're computing
-    chunk_size: u32,     // Size of each chunk along split dimension
+    start_offset: u32,  // Start offset in the split dimension for this chunk
+    chunk_size: u32,     // Size of this chunk along split dimension
     split_dim: u32,      // Dimension to split
     dim_size: u32,       // Size of dimension being split
     inner_size: u32,     // Product of dimensions after split_dim
@@ -35,7 +38,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let inner = temp % params.inner_size;
     
     // Map to input index
-    let input_coord = params.chunk_idx * params.chunk_size + chunk_coord;
+    let input_coord = params.start_offset + chunk_coord;
     let in_idx = outer * params.dim_size * params.inner_size 
                  + input_coord * params.inner_size 
                  + inner;

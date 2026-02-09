@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::ops::multi_head_attention::MultiHeadAttention;
     use crate::device::WgpuDevice;
     use crate::error::Result;
+    use crate::ops::multi_head_attention::MultiHeadAttention;
     use crate::tensor::Tensor;
     use std::sync::Arc;
 
@@ -25,29 +25,34 @@ mod tests {
         let d_model = 8;
         let num_heads = 2;
 
-        let query = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5).await.unwrap();
-        let key = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5).await.unwrap();
-        let value = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5).await.unwrap();
+        let query = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5)
+            .await
+            .unwrap();
+        let key = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5)
+            .await
+            .unwrap();
+        let value = create_test_tensor(dev.clone(), vec![batch, seq_len, d_model], 0.5)
+            .await
+            .unwrap();
 
         let _weight_size = d_model * d_model;
-        let w_q = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01).await.unwrap();
-        let w_k = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01).await.unwrap();
-        let w_v = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01).await.unwrap();
-        let w_o = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01).await.unwrap();
+        let w_q = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01)
+            .await
+            .unwrap();
+        let w_k = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01)
+            .await
+            .unwrap();
+        let w_v = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01)
+            .await
+            .unwrap();
+        let w_o = create_test_tensor(dev.clone(), vec![d_model, d_model], 0.01)
+            .await
+            .unwrap();
 
-        let output = MultiHeadAttention::new(
-            query,
-            key,
-            value,
-            w_q,
-            w_k,
-            w_v,
-            w_o,
-            num_heads,
-        )
-        .unwrap()
-        .execute()
-        .unwrap();
+        let output = MultiHeadAttention::new(query, key, value, w_q, w_k, w_v, w_o, num_heads)
+            .unwrap()
+            .execute()
+            .unwrap();
 
         assert_eq!(output.shape(), &[batch, seq_len, d_model]);
     }

@@ -42,9 +42,9 @@
 //! let loss = predictions.smooth_l1_loss(&targets, 1.0)?;
 //! ```
 
+use crate::device::{DeviceCapabilities, WorkloadType};
 use crate::error::{BarracudaError, Result};
 use crate::tensor::Tensor;
-use crate::device::{DeviceCapabilities, WorkloadType};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -229,7 +229,7 @@ impl SmoothL1Loss {
             // Deep Debt Evolution: Capability-based dispatch
             let caps = DeviceCapabilities::from_device(device.as_ref());
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-            let workgroups = (size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

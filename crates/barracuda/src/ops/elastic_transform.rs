@@ -49,7 +49,7 @@ impl ElasticTransform {
         let width = shape[3];
         let displacement_size = height * width;
 
-        if displacement_x.shape() != &[displacement_size] {
+        if displacement_x.shape() != [displacement_size] {
             return Err(BarracudaError::invalid_op(
                 "elastic_transform",
                 format!(
@@ -60,7 +60,7 @@ impl ElasticTransform {
             ));
         }
 
-        if displacement_y.shape() != &[displacement_size] {
+        if displacement_y.shape() != [displacement_size] {
             return Err(BarracudaError::invalid_op(
                 "elastic_transform",
                 format!(
@@ -260,8 +260,8 @@ impl ElasticTransform {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (8x8x1 workgroup size)
-            let workgroups_x = (width as u32 + 7) / 8;
-            let workgroups_y = (height as u32 + 7) / 8;
+            let workgroups_x = (width as u32).div_ceil(8);
+            let workgroups_y = (height as u32).div_ceil(8);
             let workgroups_z = (batch_size * channels) as u32;
             pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }
@@ -286,30 +286,19 @@ mod tests {
     async fn test_elastic_transform_basic() {
         let device = get_test_device().await;
 
-        let input = Tensor::from_vec_on(
-            vec![1.0; 2 * 3 * 4 * 4],
-            vec![2, 3, 4, 4],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let input = Tensor::from_vec_on(vec![1.0; 2 * 3 * 4 * 4], vec![2, 3, 4, 4], device.clone())
+            .await
+            .unwrap();
 
         let disp_size = 4 * 4;
-        let displacement_x = Tensor::from_vec_on(
-            vec![0.1; disp_size],
-            vec![disp_size],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let displacement_x =
+            Tensor::from_vec_on(vec![0.1; disp_size], vec![disp_size], device.clone())
+                .await
+                .unwrap();
 
-        let displacement_y = Tensor::from_vec_on(
-            vec![0.1; disp_size],
-            vec![disp_size],
-            device,
-        )
-        .await
-        .unwrap();
+        let displacement_y = Tensor::from_vec_on(vec![0.1; disp_size], vec![disp_size], device)
+            .await
+            .unwrap();
 
         let output = ElasticTransform::new(input, displacement_x, displacement_y, 1.0, 1.0)
             .unwrap()

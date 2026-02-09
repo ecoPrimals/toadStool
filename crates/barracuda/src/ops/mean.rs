@@ -15,14 +15,18 @@ use wgpu::util::DeviceExt;
 /// Mean reduction operation
 pub struct Mean {
     input: Tensor,
-    dim: Option<usize>,  // None = global mean, Some(d) = mean along dimension d
-    keepdim: bool,       // Whether to keep dimension with size 1
+    dim: Option<usize>, // None = global mean, Some(d) = mean along dimension d
+    keepdim: bool,      // Whether to keep dimension with size 1
 }
 
 impl Mean {
     /// Create a new mean operation
     pub fn new(input: Tensor, dim: Option<usize>, keepdim: bool) -> Self {
-        Self { input, dim, keepdim }
+        Self {
+            input,
+            dim,
+            keepdim,
+        }
     }
 
     /// Get the WGSL shader source for global reduction
@@ -46,9 +50,9 @@ impl Mean {
                 // Global mean reduction
                 let size: usize = shape.iter().product();
                 // Deep Debt Evolution: Capability-based dispatch
-                let caps = DeviceCapabilities::from_device(&device);
+                let caps = DeviceCapabilities::from_device(device);
                 let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                let num_workgroups = ((size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                let num_workgroups = (size as u32).div_ceil(optimal_wg_size);
 
                 // Create output buffer for partial results
                 let output_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
@@ -67,51 +71,58 @@ impl Mean {
 
                 let params = Params { size: size as u32 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Mean Reduce Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Mean Reduce Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
                 // Compile shader
-                let shader_module = device.compile_shader(Self::wgsl_shader_reduce(), Some("Mean Reduce Shader"));
+                let shader_module =
+                    device.compile_shader(Self::wgsl_shader_reduce(), Some("Mean Reduce Shader"));
 
                 // Create bind group layout
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Mean Reduce Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Mean Reduce Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 // Create bind group
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -134,29 +145,39 @@ impl Mean {
                 });
 
                 // Create compute pipeline
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Mean Reduce Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Mean Reduce Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Mean Reduce Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Mean Reduce Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
                 // Execute compute shader
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Mean Reduce Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Mean Reduce Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Mean Reduce Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Mean Reduce Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     // Deep Debt Evolution: Capability-based dispatch
@@ -166,16 +187,13 @@ impl Mean {
                 device.queue.submit(Some(encoder.finish()));
 
                 // Read back partial results and reduce them on CPU
-                let partial_results = device.read_buffer_f32(&output_buffer, num_workgroups as usize)?;
+                let partial_results =
+                    device.read_buffer_f32(&output_buffer, num_workgroups as usize)?;
                 let global_sum: f32 = partial_results.iter().sum();
                 let global_mean = global_sum / size as f32;
 
                 // Return scalar tensor
-                Ok(Tensor::new(
-                    vec![global_mean],
-                    vec![],
-                    device.clone(),
-                ))
+                Ok(Tensor::new(vec![global_mean], vec![], device.clone()))
             }
             Some(dim) => {
                 // Dimension-wise mean reduction
@@ -213,51 +231,58 @@ impl Mean {
                     inner_size: inner_size as u32,
                 };
 
-                let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Mean Dim Params"),
-                    contents: bytemuck::cast_slice(&[params]),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+                let params_buffer =
+                    device
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Mean Dim Params"),
+                            contents: bytemuck::cast_slice(&[params]),
+                            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        });
 
                 // Compile shader
-                let shader_module = device.compile_shader(Self::wgsl_shader_dim(), Some("Mean Dim Shader"));
+                let shader_module =
+                    device.compile_shader(Self::wgsl_shader_dim(), Some("Mean Dim Shader"));
 
                 // Create bind group layout
-                let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("Mean Dim Bind Group Layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: true },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Storage { read_only: false },
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::COMPUTE,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                has_dynamic_offset: false,
-                                min_binding_size: None,
-                            },
-                            count: None,
-                        },
-                    ],
-                });
+                let bind_group_layout =
+                    device
+                        .device
+                        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                            label: Some("Mean Dim Bind Group Layout"),
+                            entries: &[
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 0,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 1,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                                wgpu::BindGroupLayoutEntry {
+                                    binding: 2,
+                                    visibility: wgpu::ShaderStages::COMPUTE,
+                                    ty: wgpu::BindingType::Buffer {
+                                        ty: wgpu::BufferBindingType::Uniform,
+                                        has_dynamic_offset: false,
+                                        min_binding_size: None,
+                                    },
+                                    count: None,
+                                },
+                            ],
+                        });
 
                 // Create bind group
                 let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -280,35 +305,45 @@ impl Mean {
                 });
 
                 // Create compute pipeline
-                let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Mean Dim Pipeline Layout"),
-                    bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[],
-                });
+                let pipeline_layout =
+                    device
+                        .device
+                        .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("Mean Dim Pipeline Layout"),
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        });
 
-                let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("Mean Dim Pipeline"),
-                    layout: Some(&pipeline_layout),
-                    module: &shader_module,
-                    entry_point: "main",
-                });
+                let compute_pipeline =
+                    device
+                        .device
+                        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some("Mean Dim Pipeline"),
+                            layout: Some(&pipeline_layout),
+                            module: &shader_module,
+                            entry_point: "main",
+                        });
 
                 // Execute compute shader
-                let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Mean Dim Encoder"),
-                });
+                let mut encoder =
+                    device
+                        .device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Mean Dim Encoder"),
+                        });
 
                 {
-                    let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                        label: Some("Mean Dim Pass"),
-                        timestamp_writes: None,
-                    });
+                    let mut compute_pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some("Mean Dim Pass"),
+                            timestamp_writes: None,
+                        });
                     compute_pass.set_pipeline(&compute_pipeline);
                     compute_pass.set_bind_group(0, &bind_group, &[]);
                     // Deep Debt Evolution: Capability-based dispatch
-                    let caps = DeviceCapabilities::from_device(&device);
+                    let caps = DeviceCapabilities::from_device(device);
                     let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Reduction);
-                    let workgroups = ((output_size as u32 + optimal_wg_size - 1) / optimal_wg_size) as u32;
+                    let workgroups = (output_size as u32).div_ceil(optimal_wg_size);
                     compute_pass.dispatch_workgroups(workgroups.max(1), 1, 1);
                 }
 
@@ -325,11 +360,7 @@ impl Mean {
                     output_shape.remove(dim);
                 }
 
-                Ok(Tensor::new(
-                    output_data,
-                    output_shape,
-                    device.clone(),
-                ))
+                Ok(Tensor::new(output_data, output_shape, device.clone()))
             }
         }
     }
@@ -464,20 +495,20 @@ mod tests {
         let input = Tensor::from_vec_on(input_data.clone(), vec![2, 3], device.clone())
             .await
             .unwrap();
-        
+
         // Mean along dim 0 (columns): [2.5, 3.5, 4.5]
         let result = input.mean_dim(0, false).unwrap().to_vec().unwrap();
         assert_eq!(result.len(), 3);
         assert!((result[0] - 2.5).abs() < 1e-4);
         assert!((result[1] - 3.5).abs() < 1e-4);
         assert!((result[2] - 4.5).abs() < 1e-4);
-        
+
         // Mean along dim 1 (rows): [2.0, 5.0]
         let result = input.mean_dim(1, false).unwrap().to_vec().unwrap();
         assert_eq!(result.len(), 2);
         assert!((result[0] - 2.0).abs() < 1e-4);
         assert!((result[1] - 5.0).abs() < 1e-4);
-        
+
         // Mean along dim 0 with keepdim: [[2.5, 3.5, 4.5]]
         let result = input.mean_dim(0, true).unwrap();
         assert_eq!(result.shape(), &[1, 3]);

@@ -110,34 +110,32 @@ impl ComplexAbs {
         });
 
         let params = [num_complex as u32];
-        let params_buffer = device.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Complex Abs Params"),
                 contents: bytemuck::cast_slice(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
-
-        let bind_group = device
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Complex Abs Bind Group"),
-                layout: &self.bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: self.input.buffer().as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: output_buffer.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: params_buffer.as_entire_binding(),
-                    },
-                ],
             });
+
+        let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Complex Abs Bind Group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.input.buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         let mut encoder = device
             .device
@@ -154,9 +152,9 @@ impl ComplexAbs {
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_complex as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_complex as u32).div_ceil(optimal_wg_size);
 
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
@@ -167,7 +165,11 @@ impl ComplexAbs {
         let mut output_shape = self.input.shape().to_vec();
         *output_shape.last_mut().unwrap() = 1;
 
-        Ok(Tensor::from_buffer(output_buffer, output_shape, device.clone()))
+        Ok(Tensor::from_buffer(
+            output_buffer,
+            output_shape,
+            device.clone(),
+        ))
     }
 }
 

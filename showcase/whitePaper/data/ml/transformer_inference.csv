@@ -1,4 +1,0 @@
-model,sequence_length,batch_size,hidden_size,num_layers,inference_time_ms,tokens_per_second,throughput_sequences_per_sec,device,vendor
-BERT-tiny,128,4,256,4,5.53,92638.20,723.74,NVIDIA GeForce RTX 3090,NVIDIA
-BERT-mini,256,8,384,6,18.97,107934.56,421.62,NVIDIA GeForce RTX 3090,NVIDIA
-BERT-small,512,16,512,8,49.03,167096.67,326.36,NVIDIA GeForce RTX 3090,NVIDIA

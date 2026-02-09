@@ -24,21 +24,21 @@ impl Tile {
         let num_dims = input.shape().len();
         if repeats.len() != num_dims {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("Repeats length {} doesn't match tensor rank {}", 
-                    repeats.len(), num_dims),
+                message: format!(
+                    "Repeats length {} doesn't match tensor rank {}",
+                    repeats.len(),
+                    num_dims
+                ),
             });
         }
 
-        if repeats.iter().any(|&r| r == 0) {
+        if repeats.contains(&0) {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: "Repeats must be positive".to_string(),
             });
         }
 
-        Ok(Self {
-            input,
-            repeats,
-        })
+        Ok(Self { input, repeats })
     }
 
     /// Get the WGSL shader source
@@ -51,9 +51,10 @@ impl Tile {
         let device = self.input.device();
         let input_shape = self.input.shape();
         let num_dims = input_shape.len();
-        
+
         // Compute output shape
-        let output_shape: Vec<usize> = input_shape.iter()
+        let output_shape: Vec<usize> = input_shape
+            .iter()
             .zip(self.repeats.iter())
             .map(|(&s, &r)| s * r)
             .collect();
@@ -75,29 +76,49 @@ impl Tile {
         let input_buffer = self.input.buffer();
 
         // Create buffers for shape and stride data
-        let input_shape_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tile Input Shape"),
-            contents: bytemuck::cast_slice(&input_shape.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let input_shape_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Tile Input Shape"),
+                    contents: bytemuck::cast_slice(
+                        &input_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                    ),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
-        let output_shape_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tile Output Shape"),
-            contents: bytemuck::cast_slice(&output_shape.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let output_shape_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Tile Output Shape"),
+                    contents: bytemuck::cast_slice(
+                        &output_shape.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                    ),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
-        let input_strides_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tile Input Strides"),
-            contents: bytemuck::cast_slice(&input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let input_strides_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Tile Input Strides"),
+                    contents: bytemuck::cast_slice(
+                        &input_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                    ),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
-        let output_strides_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tile Output Strides"),
-            contents: bytemuck::cast_slice(&output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>()),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        });
+        let output_strides_buffer =
+            device
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Tile Output Strides"),
+                    contents: bytemuck::cast_slice(
+                        &output_strides.iter().map(|&x| x as u32).collect::<Vec<_>>(),
+                    ),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
 
         // Create output buffer
         let output_buffer = device.create_buffer_f32(total_size)?;
@@ -119,91 +140,96 @@ impl Tile {
             _pad2: 0,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Tile Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Tile Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Compile shader
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Tile Shader"));
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Tile Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Tile Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 6,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -242,23 +268,31 @@ impl Tile {
         });
 
         // Create compute pipeline
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Tile Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Tile Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Tile Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Tile Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Tile Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Tile Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -268,9 +302,9 @@ impl Tile {
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (total_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (total_size as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -298,12 +332,8 @@ mod tests {
     #[tokio::test]
     async fn test_tile_basic() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0, 3.0],
-            vec![3],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&[1.0, 2.0, 3.0], vec![3], device.clone()).unwrap();
+
         let tiled = Tile::new(input, vec![2]).unwrap().execute().unwrap();
         assert_eq!(tiled.shape(), &vec![6]);
     }
@@ -312,12 +342,8 @@ mod tests {
     async fn test_tile_2d() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..6).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![2, 3],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&data, vec![2, 3], device.clone()).unwrap();
+
         let tiled = Tile::new(input, vec![2, 1]).unwrap().execute().unwrap();
         assert_eq!(tiled.shape(), &vec![4, 3]);
     }
@@ -325,24 +351,16 @@ mod tests {
     #[tokio::test]
     async fn test_tile_invalid_length() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
+
         assert!(Tile::new(input, vec![2, 3]).is_err());
     }
 
     #[tokio::test]
     async fn test_tile_zero_repeat() {
         let device = get_test_device().await;
-        let input = Tensor::from_data(
-            &[1.0, 2.0],
-            vec![2],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&[1.0, 2.0], vec![2], device.clone()).unwrap();
+
         assert!(Tile::new(input, vec![0]).is_err());
     }
 
@@ -350,12 +368,8 @@ mod tests {
     async fn test_tile_multiple_dims() {
         let device = get_test_device().await;
         let data: Vec<f32> = (0..12).map(|i| i as f32).collect();
-        let input = Tensor::from_data(
-            &data,
-            vec![2, 3, 2],
-            device.clone(),
-        ).unwrap();
-        
+        let input = Tensor::from_data(&data, vec![2, 3, 2], device.clone()).unwrap();
+
         let tiled = Tile::new(input, vec![2, 2, 2]).unwrap().execute().unwrap();
         assert_eq!(tiled.shape(), &vec![4, 6, 4]);
     }

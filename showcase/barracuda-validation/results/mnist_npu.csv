@@ -1,4 +1,0 @@
-Substrate,BatchSize,TimeMs,ImgPerSec,LatencyMs,PowerW,EnergyJ,EnergyPerImgMj
-NPU,1,6.52,15343,0.07,2.0,0.013,0.13
-NPU,32,189.34,16901,0.06,2.0,0.379,0.12
-NPU,128,73.18,17490,0.06,2.0,0.146,0.11

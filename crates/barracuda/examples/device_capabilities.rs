@@ -9,8 +9,6 @@ use barracuda::device::{DeviceCapabilities, WgpuDevice, WorkloadType};
 
 #[tokio::main]
 async fn main() -> barracuda::error::Result<()> {
-    env_logger::init();
-
     println!("🔍 BarraCUDA Device Capability Detection\n");
     println!("Deep Debt Compliance: Runtime discovery, zero hardcoding!\n");
     println!("═══════════════════════════════════════════════════════════\n");
@@ -54,7 +52,10 @@ async fn main() -> barracuda::error::Result<()> {
 
     if caps.supports_fhe() {
         println!("✅ FHE Support: Device can handle large FHE polynomials");
-        println!("   → Optimal FHE workgroup size: {}", caps.optimal_workgroup_size(WorkloadType::FHE));
+        println!(
+            "   → Optimal FHE workgroup size: {}",
+            caps.optimal_workgroup_size(WorkloadType::FHE)
+        );
     } else {
         println!("⚠️  FHE Support: Limited (buffer size too small)");
         println!("   → Consider using smaller polynomial degrees");
@@ -69,11 +70,7 @@ async fn main() -> barracuda::error::Result<()> {
     }
 
     // Test large matrix support
-    let test_sizes = vec![
-        (1024, 1024, 1024),
-        (4096, 4096, 4096),
-        (8192, 8192, 8192),
-    ];
+    let test_sizes = vec![(1024, 1024, 1024), (4096, 4096, 4096), (8192, 8192, 8192)];
 
     println!("\n\n💾 Large Matrix Support:");
     println!("════════════════════════════════════════");
@@ -83,10 +80,7 @@ async fn main() -> barracuda::error::Result<()> {
         let status = if supported { "✅" } else { "❌" };
         let memory_mb = (m * k + k * n + m * n) * 4 / (1024 * 1024);
 
-        println!(
-            "{} {}×{}×{} matmul (~{} MB)",
-            status, m, n, k, memory_mb
-        );
+        println!("{} {}×{}×{} matmul (~{} MB)", status, m, n, k, memory_mb);
     }
 
     // Vendor-specific insights
@@ -98,24 +92,40 @@ async fn main() -> barracuda::error::Result<()> {
             println!("NVIDIA GPU detected!");
             println!("  → Warp size: 32");
             println!("  → Optimal workgroup: 256 (8 warps)");
-            println!("  → Matrix tile: {}×{}", caps.optimal_matmul_tile_size(), caps.optimal_matmul_tile_size());
+            println!(
+                "  → Matrix tile: {}×{}",
+                caps.optimal_matmul_tile_size(),
+                caps.optimal_matmul_tile_size()
+            );
         }
         "AMD" => {
             println!("AMD GPU detected!");
             println!("  → Wavefront size: 64");
             println!("  → Optimal workgroup: 256 (4 wavefronts)");
-            println!("  → Matrix tile: {}×{}", caps.optimal_matmul_tile_size(), caps.optimal_matmul_tile_size());
+            println!(
+                "  → Matrix tile: {}×{}",
+                caps.optimal_matmul_tile_size(),
+                caps.optimal_matmul_tile_size()
+            );
         }
         "Intel" => {
             println!("Intel GPU detected!");
             println!("  → Subgroup size: Varies");
             println!("  → Optimal workgroup: 128 (conservative)");
-            println!("  → Matrix tile: {}×{}", caps.optimal_matmul_tile_size(), caps.optimal_matmul_tile_size());
+            println!(
+                "  → Matrix tile: {}×{}",
+                caps.optimal_matmul_tile_size(),
+                caps.optimal_matmul_tile_size()
+            );
         }
         vendor => {
             println!("{} GPU detected!", vendor);
             println!("  → Using conservative defaults");
-            println!("  → Matrix tile: {}×{}", caps.optimal_matmul_tile_size(), caps.optimal_matmul_tile_size());
+            println!(
+                "  → Matrix tile: {}×{}",
+                caps.optimal_matmul_tile_size(),
+                caps.optimal_matmul_tile_size()
+            );
         }
     }
 

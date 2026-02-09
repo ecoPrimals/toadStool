@@ -59,11 +59,14 @@ impl EdgeConv {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.node_features.device();
         let node_shape = self.node_features.shape();
-        
+
         if node_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "EdgeConv",
-                format!("node_features must be 2D [num_nodes, feature_dim], got shape {:?}", node_shape),
+                format!(
+                    "node_features must be 2D [num_nodes, feature_dim], got shape {:?}",
+                    node_shape
+                ),
             ));
         }
 
@@ -231,9 +234,9 @@ impl EdgeConv {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::MatMul);
-            let workgroups = (num_nodes as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_nodes as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -285,13 +288,9 @@ mod tests {
         .await
         .unwrap();
 
-        let mlp_bias = Tensor::from_vec_on(
-            vec![0.0; output_dim],
-            vec![output_dim],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let mlp_bias = Tensor::from_vec_on(vec![0.0; output_dim], vec![output_dim], device.clone())
+            .await
+            .unwrap();
 
         let result = EdgeConv::new(node_features, edge_index, mlp_weight, mlp_bias, 2)
             .unwrap()

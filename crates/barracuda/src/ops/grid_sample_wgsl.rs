@@ -13,7 +13,7 @@
 //! Input:  [B, C, H_in, W_in] - Input tensor
 //! Grid:   [B, H_out, W_out, 2] - Sampling coordinates (normalized [-1, 1])
 //! Output: [B, C, H_out, W_out] - Sampled output
-//! 
+//!
 //! Uses bilinear interpolation for smooth sampling
 //! ```
 
@@ -30,16 +30,16 @@ impl GridSample {
     pub fn new(input: Tensor, grid: Tensor) -> Self {
         Self { input, grid }
     }
-    
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/grid_sample.wgsl")
     }
-    
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_shape = self.input.shape();
         let grid_shape = self.grid.shape();
-        
+
         // Expect input: [B, C, H, W]
         if input_shape.len() != 4 {
             return Err(crate::error::BarracudaError::InvalidShape {
@@ -47,7 +47,7 @@ impl GridSample {
                 actual: input_shape.to_vec(),
             });
         }
-        
+
         // Expect grid: [B, H_out, W_out, 2]
         if grid_shape.len() != 4 || grid_shape[3] != 2 {
             return Err(crate::error::BarracudaError::InvalidShape {
@@ -55,24 +55,24 @@ impl GridSample {
                 actual: grid_shape.to_vec(),
             });
         }
-        
+
         let batch_size = input_shape[0];
         let channels = input_shape[1];
         let in_height = input_shape[2];
         let in_width = input_shape[3];
         let out_height = grid_shape[1];
         let out_width = grid_shape[2];
-        
+
         if grid_shape[0] != batch_size {
             return Err(crate::error::BarracudaError::InvalidShape {
                 expected: vec![batch_size, out_height, out_width, 2],
                 actual: grid_shape.to_vec(),
             });
         }
-        
+
         let output_size = batch_size * channels * out_height * out_width;
         let output_buffer = device.create_buffer_f32(output_size)?;
-        
+
         // Create params buffer
         let params_data = [
             batch_size as u32,
@@ -83,55 +83,56 @@ impl GridSample {
             out_width as u32,
         ];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
-        
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("GridSample BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("GridSample BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            }
-        );
-        
+                    ],
+                });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("GridSample BG"),
             layout: &bind_group_layout,
@@ -154,50 +155,51 @@ impl GridSample {
                 },
             ],
         });
-        
+
         let shader = device.compile_shader(Self::wgsl_shader(), Some("GridSample"));
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("GridSample PL"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            }
-        );
-        
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("GridSample PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("GridSample Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            }
-        );
-        
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("GridSample Encoder"),
-            }
-        );
-        
+            });
+
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("GridSample Pass"),
                 timestamp_writes: None,
             });
-            
+
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (out_width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (out_height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (out_width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (out_height as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         Ok(Tensor::from_buffer(
             output_buffer,
             vec![batch_size, channels, out_height, out_width],
@@ -221,29 +223,26 @@ mod tests {
     async fn test_grid_sample_identity() {
         let device = get_test_device().await;
         // Simple 1x1x2x2 input
-        let input_data = vec![
-            1.0, 2.0,
-            3.0, 4.0,
-        ];
+        let input_data = vec![1.0, 2.0, 3.0, 4.0];
         let input = Tensor::from_vec_on(input_data, vec![1, 1, 2, 2], device.clone())
             .await
             .unwrap();
-        
+
         // Identity grid (sample at original positions)
         // Grid coordinates in normalized space [-1, 1]
         let grid_data = vec![
-            -1.0, -1.0,  // Top-left
-            1.0, -1.0,   // Top-right
-            -1.0, 1.0,   // Bottom-left
-            1.0, 1.0,    // Bottom-right
+            -1.0, -1.0, // Top-left
+            1.0, -1.0, // Top-right
+            -1.0, 1.0, // Bottom-left
+            1.0, 1.0, // Bottom-right
         ];
         let grid = Tensor::from_vec_on(grid_data, vec![1, 2, 2, 2], device)
             .await
             .unwrap();
-        
+
         let result = input.grid_sample_wgsl(grid).unwrap();
         let output = result.to_vec().unwrap();
-        
+
         // Should be close to original (allowing for interpolation)
         assert_eq!(output.len(), 4);
         assert!((output[0] - 1.0).abs() < 0.2);

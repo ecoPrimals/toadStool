@@ -1,7 +1,0 @@
-hardware,task,reservoir_size,sequence_length,throughput_samples_per_sec,latency_ms,power_watts,energy_per_sample_mj,power_efficiency_vs_gpu
-GPU (NVIDIA RTX 3090),SpeechRecognition,500,1000,384615384615.38,0.00,250.00,0.000001,1.00
-NPU (BrainChip Akida),SpeechRecognition,500,1000,76923076923.08,0.00,1.00,0.000000,50.00
-GPU (NVIDIA RTX 3090),IoTSensorAnalysis,200,5000,25000000000000.00,0.00,250.00,0.000000,1.00
-NPU (BrainChip Akida),IoTSensorAnalysis,200,5000,217391304347.83,0.00,1.00,0.000000,50.00
-GPU (NVIDIA RTX 3090),AlwaysOnVoiceDetect,100,10000,33333333333333.34,0.00,250.00,0.000000,1.00
-NPU (BrainChip Akida),AlwaysOnVoiceDetect,100,10000,6451612903225.81,0.00,1.00,0.000000,50.00

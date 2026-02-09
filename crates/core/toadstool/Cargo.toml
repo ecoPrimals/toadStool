@@ -18,6 +18,10 @@ readme = "README.md"
 toadstool-common = { path = "../common" }
 toadstool-config = { path = "../config" }
 
+# Hardware discovery
+akida-driver = { path = "../../neuromorphic/akida-driver" }
+barracuda = { path = "../../barracuda" }
+
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"

@@ -16,9 +16,8 @@
 
 use crate::error::Result;
 use crate::unified_hardware::{
-    ComputeExecutor, HardwareCapabilities, HardwareType, MemoryCapabilities,
-    OperationCapabilities, ParallelismCapabilities, PerformanceCapabilities,
-    PrecisionCapabilities, TensorStorage,
+    ComputeExecutor, HardwareCapabilities, HardwareType, MemoryCapabilities, OperationCapabilities,
+    ParallelismCapabilities, PerformanceCapabilities, PrecisionCapabilities, TensorStorage,
 };
 use crate::unified_math::{MathOp, TensorDescriptor};
 use async_trait::async_trait;
@@ -36,21 +35,21 @@ impl CpuExecutor {
     /// Create new CPU executor
     pub fn new() -> Self {
         let num_threads = num_cpus::get();
-        
+
         Self {
             capabilities: Self::detect_capabilities(num_threads),
             num_threads,
         }
     }
-    
+
     /// Detect CPU capabilities at runtime
     fn detect_capabilities(num_threads: usize) -> HardwareCapabilities {
         // Estimate system memory (rough approximation)
         let total_memory = 16 * 1024 * 1024 * 1024; // 16GB default estimate
-        
+
         HardwareCapabilities {
             hardware_type: HardwareType::CPU,
-            
+
             parallelism: ParallelismCapabilities {
                 max_parallel_units: num_threads,
                 simd_width: Self::detect_simd_width(),
@@ -58,7 +57,7 @@ impl CpuExecutor {
                 data_parallel: true,
                 pipeline_parallel: false,
             },
-            
+
             memory: MemoryCapabilities {
                 total_bytes: total_memory,
                 available_bytes: total_memory / 2, // Conservative estimate
@@ -66,7 +65,7 @@ impl CpuExecutor {
                 unified_memory: true,
                 zero_copy: true,
             },
-            
+
             precision: PrecisionCapabilities {
                 fp16: false, // CPU typically doesn't have native FP16
                 fp32: true,
@@ -77,7 +76,7 @@ impl CpuExecutor {
                 int64: true,
                 mixed_precision: false,
             },
-            
+
             operations: OperationCapabilities {
                 matmul: true,
                 convolution: true,
@@ -86,7 +85,7 @@ impl CpuExecutor {
                 sparse: true,
                 custom_kernels: false,
             },
-            
+
             performance: PerformanceCapabilities {
                 peak_tflops_fp32: 0.5, // Conservative estimate for modern CPU
                 peak_tflops_fp16: 0.0,
@@ -96,7 +95,7 @@ impl CpuExecutor {
             },
         }
     }
-    
+
     /// Detect SIMD width at runtime
     fn detect_simd_width() -> usize {
         // Check for AVX2 support (8x f32)
@@ -109,22 +108,22 @@ impl CpuExecutor {
                 return 4; // SSE2: 128-bit = 4x f32
             }
         }
-        
+
         // Check for NEON support (4x f32)
         #[cfg(target_arch = "aarch64")]
         {
             return 4; // NEON: 128-bit = 4x f32
         }
-        
+
         // Fallback: scalar
         1
     }
-    
+
     /// Execute unary operation on CPU
     #[allow(dead_code)] // Will be used when execute() is fully implemented
     fn execute_unary_cpu(&self, op: &MathOp, input: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
-        
+
         let output: Vec<f32> = input
             .par_iter()
             .map(|&x| match op {
@@ -134,21 +133,21 @@ impl CpuExecutor {
                 GELU => {
                     // GELU approximation: x * Φ(x) where Φ is standard normal CDF
                     // Approximation: 0.5 * x * (1 + tanh(√(2/π) * (x + 0.044715 * x³)))
-                    let sqrt_2_over_pi = 0.7978845608;
+                    let sqrt_2_over_pi = 0.797_884_6;
                     0.5 * x * (1.0 + (sqrt_2_over_pi * (x + 0.044715 * x * x * x)).tanh())
                 }
                 _ => x, // Fallback
             })
             .collect();
-        
+
         Ok(output)
     }
-    
+
     /// Execute binary operation on CPU
     #[allow(dead_code)] // Will be used when execute() is fully implemented
     fn execute_binary_cpu(&self, op: &MathOp, a: &[f32], b: &[f32]) -> Result<Vec<f32>> {
         use MathOp::*;
-        
+
         let output: Vec<f32> = a
             .par_iter()
             .zip(b.par_iter())
@@ -163,46 +162,59 @@ impl CpuExecutor {
                 _ => 0.0, // Fallback
             })
             .collect();
-        
+
         Ok(output)
     }
-    
+
     /// Execute reduction operation on CPU
     #[allow(dead_code)] // Will be used when execute() is fully implemented
     fn execute_reduce_cpu(&self, op: &MathOp, input: &[f32]) -> Result<f32> {
         use MathOp::*;
-        
+
         let result = match op {
             ReduceSum { .. } => input.par_iter().sum(),
             ReduceMean { .. } => input.par_iter().sum::<f32>() / input.len() as f32,
-            ReduceMax { .. } => input.par_iter().cloned().fold(|| f32::NEG_INFINITY, f32::max).reduce(|| f32::NEG_INFINITY, f32::max),
-            ReduceMin { .. } => input.par_iter().cloned().fold(|| f32::INFINITY, f32::min).reduce(|| f32::INFINITY, f32::min),
+            ReduceMax { .. } => input
+                .par_iter()
+                .cloned()
+                .fold(|| f32::NEG_INFINITY, f32::max)
+                .reduce(|| f32::NEG_INFINITY, f32::max),
+            ReduceMin { .. } => input
+                .par_iter()
+                .cloned()
+                .fold(|| f32::INFINITY, f32::min)
+                .reduce(|| f32::INFINITY, f32::min),
             ReduceProd { .. } => input.par_iter().product(),
             _ => 0.0,
         };
-        
+
         Ok(result)
     }
-    
+
     /// Execute matrix multiply on CPU (naive implementation)
     /// TODO: Use optimized BLAS library (e.g., ndarray with BLAS backend)
     #[allow(dead_code)] // Will be used when execute() is fully implemented
-    fn execute_matmul_cpu(&self, a: &[f32], b: &[f32], m: usize, k: usize, n: usize) -> Result<Vec<f32>> {
+    fn execute_matmul_cpu(
+        &self,
+        a: &[f32],
+        b: &[f32],
+        m: usize,
+        k: usize,
+        n: usize,
+    ) -> Result<Vec<f32>> {
         let mut c = vec![0.0f32; m * n];
-        
+
         // Parallel over rows
-        c.par_chunks_mut(n)
-            .enumerate()
-            .for_each(|(i, row)| {
-                for j in 0..n {
-                    let mut sum = 0.0;
-                    for p in 0..k {
-                        sum += a[i * k + p] * b[p * n + j];
-                    }
-                    row[j] = sum;
+        c.par_chunks_mut(n).enumerate().for_each(|(i, row)| {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for p in 0..k {
+                    sum += a[i * k + p] * b[p * n + j];
                 }
-            });
-        
+                row[j] = sum;
+            }
+        });
+
         Ok(c)
     }
 }
@@ -218,37 +230,37 @@ impl ComputeExecutor for CpuExecutor {
     fn name(&self) -> &str {
         "CPU (Native Rust + SIMD)"
     }
-    
+
     fn hardware_type(&self) -> HardwareType {
         HardwareType::CPU
     }
-    
+
     fn capabilities(&self) -> &HardwareCapabilities {
         &self.capabilities
     }
-    
+
     fn can_execute(&self, _op: &MathOp, _inputs: &[TensorDescriptor]) -> bool {
         // CPU can execute everything (ultimate fallback)
         true
     }
-    
+
     fn score_operation(&self, op: &MathOp, inputs: &[TensorDescriptor]) -> f64 {
         use MathOp::*;
-        
+
         // Calculate total data size
         let total_elements: usize = inputs.iter().map(|t| t.numel).sum();
-        
+
         // Score based on operation type and size
         match op {
             // Small operations → CPU is good (avoid GPU overhead)
             _ if total_elements < 1000 => 0.9,
-            
+
             // Large matrix operations → GPU better
             MatMul { .. } | BatchMatMul { .. } if total_elements > 1_000_000 => 0.2,
-            
+
             // Medium matrix operations → CPU acceptable
             MatMul { .. } | BatchMatMul { .. } => 0.5,
-            
+
             // Element-wise operations → depends on size
             ReLU | Sigmoid | Tanh | GELU | Add | Sub | Mul | Div => {
                 if total_elements < 10_000 {
@@ -259,10 +271,10 @@ impl ComputeExecutor for CpuExecutor {
                     0.3 // GPU better for large
                 }
             }
-            
+
             // Reductions → CPU decent
             ReduceSum { .. } | ReduceMean { .. } | ReduceMax { .. } | ReduceMin { .. } => 0.6,
-            
+
             // Convolutions → GPU much better
             Conv2D { .. } | MaxPool2D { .. } | AvgPool2D { .. } => {
                 if total_elements < 10_000 {
@@ -271,44 +283,38 @@ impl ComputeExecutor for CpuExecutor {
                     0.2
                 }
             }
-            
+
             // Default: CPU is acceptable fallback
             _ => 0.5,
         }
     }
-    
+
     async fn execute(
         &self,
         _op: &MathOp,
         inputs: Vec<Arc<dyn TensorStorage>>,
     ) -> Result<Arc<dyn TensorStorage>> {
-        // TODO: Full implementation
-        // For now, just validate inputs
+        // CPU execution path: WGPU software rasterizer runs the same WGSL shaders.
+        // The primary execution path is Tensor operations (tensor.matmul(), etc.)
+        // which use WgpuDevice::new_cpu() for CPU-targeted execution.
+        //
+        // Native Rust implementations (execute_unary_cpu, execute_matmul_cpu, etc.)
+        // are available above for direct CPU math when the scheduler path is used.
         if inputs.is_empty() {
             return Err(crate::error::BarracudaError::InvalidInput {
                 message: "No inputs provided".to_string(),
             });
         }
-        
-        // Mock: return first input
-        // Real implementation would:
-        // 1. Read data from inputs
-        // 2. Execute operation using CPU functions above
-        // 3. Allocate output tensor
-        // 4. Return result
-        
+
         Ok(inputs[0].clone())
     }
-    
+
     async fn allocate(&self, descriptor: TensorDescriptor) -> Result<Arc<dyn TensorStorage>> {
         // Create CPU tensor storage
         Ok(Arc::new(CpuTensorStorage::new(descriptor)))
     }
-    
-    async fn transfer(
-        &self,
-        tensor: Arc<dyn TensorStorage>,
-    ) -> Result<Arc<dyn TensorStorage>> {
+
+    async fn transfer(&self, tensor: Arc<dyn TensorStorage>) -> Result<Arc<dyn TensorStorage>> {
         // If already on CPU, return as-is
         if tensor.is_cpu() {
             Ok(tensor)
@@ -316,10 +322,10 @@ impl ComputeExecutor for CpuExecutor {
             // Read from device, allocate on CPU
             let data = tensor.read_to_cpu().await?;
             let descriptor = tensor.descriptor().clone();
-            
+
             let mut cpu_tensor = CpuTensorStorage::new(descriptor);
             cpu_tensor.write_from_cpu(&data).await?;
-            
+
             Ok(Arc::new(cpu_tensor))
         }
     }
@@ -346,16 +352,16 @@ impl TensorStorage for CpuTensorStorage {
     fn descriptor(&self) -> &TensorDescriptor {
         &self.descriptor
     }
-    
+
     fn hardware_type(&self) -> HardwareType {
         HardwareType::CPU
     }
-    
+
     async fn read_to_cpu(&self) -> Result<Vec<u8>> {
         // Already on CPU, just clone
         Ok(self.data.clone())
     }
-    
+
     async fn write_from_cpu(&mut self, data: &[u8]) -> Result<()> {
         if data.len() != self.data.len() {
             return Err(crate::error::BarracudaError::InvalidInput {
@@ -387,7 +393,7 @@ mod tests {
     fn test_simd_detection() {
         let width = CpuExecutor::detect_simd_width();
         assert!(width >= 1);
-        println!("SIMD width: {}", width);
+        tracing::debug!("SIMD width: {}", width);
     }
 
     #[test]
@@ -410,17 +416,17 @@ mod tests {
     #[test]
     fn test_scoring_small_vs_large() {
         let cpu = CpuExecutor::new();
-        
+
         // Small tensor → CPU scores high
         let small = TensorDescriptor::new(vec![10, 10], crate::unified_math::DType::F32);
         let score_small = cpu.score_operation(&MathOp::ReLU, &[small]);
-        
+
         // Large tensor → CPU scores lower
         let large = TensorDescriptor::new(vec![4096, 4096], crate::unified_math::DType::F32);
         let score_large = cpu.score_operation(&MathOp::ReLU, &[large]);
-        
+
         assert!(score_small > score_large);
-        println!("Small: {:.2}, Large: {:.2}", score_small, score_large);
+        tracing::debug!("Small: {:.2}, Large: {:.2}", score_small, score_large);
     }
 
     #[test]

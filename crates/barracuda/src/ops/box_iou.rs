@@ -28,7 +28,10 @@ impl BoxIoU {
         if box_format > 2 {
             return Err(BarracudaError::invalid_op(
                 "BoxIoU",
-                format!("box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}", box_format),
+                format!(
+                    "box_format must be 0 (xyxy), 1 (xywh), or 2 (cxcywh), got {}",
+                    box_format
+                ),
             ));
         }
 
@@ -49,18 +52,24 @@ impl BoxIoU {
         let device = self.boxes_a.device();
         let a_shape = self.boxes_a.shape();
         let b_shape = self.boxes_b.shape();
-        
+
         if a_shape.len() != 2 || b_shape.len() != 2 {
             return Err(BarracudaError::invalid_op(
                 "BoxIoU",
-                format!("boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}", a_shape, b_shape),
+                format!(
+                    "boxes must be 2D [num_boxes, 4], got shapes {:?} and {:?}",
+                    a_shape, b_shape
+                ),
             ));
         }
 
         if a_shape[1] != 4 || b_shape[1] != 4 {
             return Err(BarracudaError::invalid_op(
                 "BoxIoU",
-                format!("boxes must have 4 coordinates, got {} and {}", a_shape[1], b_shape[1]),
+                format!(
+                    "boxes must have 4 coordinates, got {} and {}",
+                    a_shape[1], b_shape[1]
+                ),
             ));
         }
 
@@ -199,8 +208,8 @@ impl BoxIoU {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch workgroups (16x16 threads per workgroup)
-            let workgroups_x = (num_boxes_a as u32 + 15) / 16;
-            let workgroups_y = (num_boxes_b as u32 + 15) / 16;
+            let workgroups_x = (num_boxes_a as u32).div_ceil(16);
+            let workgroups_y = (num_boxes_b as u32).div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -228,7 +237,9 @@ mod tests {
         let num_boxes_b = 4;
 
         let boxes_a = Tensor::from_vec_on(
-            vec![0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0, 10.0, 10.0, 20.0, 20.0],
+            vec![
+                0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 15.0, 15.0, 10.0, 10.0, 20.0, 20.0,
+            ],
             vec![num_boxes_a, 4],
             device.clone(),
         )
@@ -236,17 +247,17 @@ mod tests {
         .unwrap();
 
         let boxes_b = Tensor::from_vec_on(
-            vec![1.0, 1.0, 11.0, 11.0, 6.0, 6.0, 16.0, 16.0, 11.0, 11.0, 21.0, 21.0, 2.0, 2.0, 12.0, 12.0],
+            vec![
+                1.0, 1.0, 11.0, 11.0, 6.0, 6.0, 16.0, 16.0, 11.0, 11.0, 21.0, 21.0, 2.0, 2.0, 12.0,
+                12.0,
+            ],
             vec![num_boxes_b, 4],
             device.clone(),
         )
         .await
         .unwrap();
 
-        let result = BoxIoU::new(boxes_a, boxes_b, 0)
-            .unwrap()
-            .execute()
-            .unwrap();
+        let result = BoxIoU::new(boxes_a, boxes_b, 0).unwrap().execute().unwrap();
 
         assert_eq!(result.shape(), &[num_boxes_a, num_boxes_b]);
     }

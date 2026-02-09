@@ -165,8 +165,8 @@ impl DepthwiseConv2D {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = ((out_width + 15) / 16) as u32;
-            let workgroups_y = ((out_height + 15) / 16) as u32;
+            let workgroups_x = out_width.div_ceil(16) as u32;
+            let workgroups_y = out_height.div_ceil(16) as u32;
             let workgroups_z = (batch * channels) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, workgroups_z);
         }

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::ops::unique::Unique;
     use crate::device::test_pool::get_test_device;
+    use crate::ops::unique::Unique;
     use crate::tensor::Tensor;
 
     #[tokio::test]
@@ -10,7 +10,7 @@ mod tests {
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 1.0, 3.0, 2.0], vec![5], device.clone())
             .await
             .unwrap();
-        
+
         let result = Unique::new(input).unwrap().execute().unwrap();
         let unique = result.to_vec().unwrap();
         assert!(unique.len() <= 5);
@@ -23,7 +23,7 @@ mod tests {
         let input = Tensor::from_vec_on(vec![5.0, 5.0, 5.0], vec![3], device.clone())
             .await
             .unwrap();
-        
+
         let result = Unique::new(input).unwrap().execute().unwrap();
         let unique = result.to_vec().unwrap();
         assert_eq!(unique.len(), 1);
@@ -36,7 +36,7 @@ mod tests {
         let input = Tensor::from_vec_on(vec![1.0, 2.0, 3.0], vec![3], device.clone())
             .await
             .unwrap();
-        
+
         let result = Unique::new(input).unwrap().execute().unwrap();
         let unique = result.to_vec().unwrap();
         assert_eq!(unique.len(), 3);
@@ -48,7 +48,7 @@ mod tests {
         let input = Tensor::from_vec_on(vec![], vec![0], device.clone())
             .await
             .unwrap();
-        
+
         assert!(Unique::new(input).is_err());
     }
 }

@@ -42,11 +42,23 @@ pub enum ChipVersion {
 
 impl ChipVersion {
     /// Parse chip version from device ID
-    pub fn from_device_id(device_id: u16) -> Self {
+    pub const fn from_device_id(device_id: u16) -> Self {
         match device_id {
             0xBCA1 => Self::Akd1000,
             0xBCA2 => Self::Akd1500,
             other => Self::Unknown(other),
+        }
+    }
+
+    /// Create from register value (runtime discovery)
+    ///
+    /// Deep Debt: Discovers version from hardware, not hardcoded
+    pub const fn from_register(register_value: u32) -> Self {
+        // Parse version from register bits
+        match register_value & 0xFF {
+            0x10 => Self::Akd1000,
+            0x15 => Self::Akd1500,
+            _ => Self::Unknown(0),
         }
     }
 
@@ -199,7 +211,7 @@ impl Capabilities {
         let pcie = PcieConfig::from_sysfs(pcie_address)?;
 
         // Query actual NPU count from device (with fallback to typical values)
-        let npu_count = Self::query_npu_count(pcie_address, &chip_version)?;
+        let npu_count = Self::query_npu_count(pcie_address, chip_version);
 
         // Memory size from chip specs (would query from device if protocol known)
         let memory_mb = chip_version.typical_memory_mb();
@@ -230,25 +242,21 @@ impl Capabilities {
     /// # Errors
     ///
     /// Returns error if device cannot be accessed.
-    fn query_npu_count(pcie_address: &str, chip_version: &ChipVersion) -> Result<u32> {
+    fn query_npu_count(pcie_address: &str, chip_version: ChipVersion) -> u32 {
         // Try to read from device-specific sysfs attribute
         let npu_count_path = format!("/sys/bus/pci/devices/{pcie_address}/akida_npu_count");
 
         if let Ok(count_str) = std::fs::read_to_string(&npu_count_path) {
             if let Ok(count) = count_str.trim().parse::<u32>() {
-                tracing::debug!("Queried NPU count from device: {}", count);
-                return Ok(count);
+                tracing::debug!("Queried NPU count from device: {count}");
+                return count;
             }
         }
 
         // Fallback to typical values for chip version
         let typical = chip_version.typical_npu_count();
-        tracing::debug!(
-            "Using typical NPU count for {:?}: {}",
-            chip_version,
-            typical
-        );
-        Ok(typical)
+        tracing::debug!("Using typical NPU count for {chip_version:?}: {typical}");
+        typical
     }
 
     /// Query power consumption from hwmon
@@ -261,9 +269,8 @@ impl Capabilities {
         // Try to find hwmon instance for this device
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
 
-        let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
-            Ok(dir) => dir,
-            Err(_) => return None,
+        let Ok(hwmon_dir) = std::fs::read_dir(&hwmon_path) else {
+            return None;
         };
 
         // Find first hwmon device (usually hwmon0, hwmon1, etc.)
@@ -298,9 +305,8 @@ impl Capabilities {
         // Try to find hwmon instance for this device
         let hwmon_path = format!("/sys/bus/pci/devices/{pcie_address}/hwmon");
 
-        let hwmon_dir = match std::fs::read_dir(&hwmon_path) {
-            Ok(dir) => dir,
-            Err(_) => return None,
+        let Ok(hwmon_dir) = std::fs::read_dir(&hwmon_path) else {
+            return None;
         };
 
         // Find first hwmon device
@@ -314,6 +320,8 @@ impl Capabilities {
             // temp1_input is in millidegrees Celsius, convert to degrees
             if let Ok(temp_str) = std::fs::read_to_string(&temp_input_path) {
                 if let Ok(temp_millic) = temp_str.trim().parse::<i32>() {
+                    // Precision loss acceptable: temperature is inherently imprecise
+                    #[allow(clippy::cast_precision_loss)]
                     let temp_c = temp_millic as f32 / 1000.0;
                     tracing::info!("Queried temperature: {:.1}°C", temp_c);
                     return Some(temp_c);

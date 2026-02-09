@@ -84,7 +84,7 @@ impl GpuHomomorphic {
             .create_storage_buffer("poly_b", bytemuck::cast_slice(b));
 
         // Create output buffer
-        let output_size = (size * std::mem::size_of::<u64>()) as u64;
+        let output_size = std::mem::size_of_val(a) as u64;
         let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("poly_output"),
             size: output_size,
@@ -217,7 +217,7 @@ impl GpuHomomorphic {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
 
         self.device.queue().submit(Some(encoder.finish()));
@@ -279,7 +279,7 @@ impl GpuHomomorphic {
             .create_storage_buffer("poly_b_mul", bytemuck::cast_slice(b));
 
         // Create output buffer
-        let output_size = (size * std::mem::size_of::<u64>()) as u64;
+        let output_size = std::mem::size_of_val(a) as u64;
         let output = self.device.device().create_buffer(&wgpu::BufferDescriptor {
             label: Some("poly_output_mul"),
             size: output_size,
@@ -414,7 +414,7 @@ impl GpuHomomorphic {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups((size as u32 + 255) / 256, 1, 1);
+            pass.dispatch_workgroups((size as u32).div_ceil(256), 1, 1);
         }
 
         self.device.queue().submit(Some(encoder.finish()));
@@ -523,7 +523,7 @@ impl HomomorphicSubstrate for GpuHomomorphic {
     }
 
     fn measure_power(&self) -> Option<f64> {
-        Some(Self::measure_gpu_power() as f64)
+        Some(Self::measure_gpu_power())
     }
 }
 

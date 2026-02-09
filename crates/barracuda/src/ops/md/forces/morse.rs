@@ -18,11 +18,11 @@ use wgpu::util::DeviceExt;
 /// Models chemical bonds with anharmonic oscillator potential.
 /// More accurate than harmonic approximation for large displacements.
 pub struct MorseForce {
-    positions: Tensor,      // [N, 3]
-    bond_pairs: Tensor,     // [M, 2] - particle indices for each bond
-    dissociation_energy: Tensor,  // [M] - D for each bond
-    width_param: Tensor,    // [M] - α (width) for each bond
-    equilibrium_dist: Tensor,  // [M] - r₀ for each bond
+    positions: Tensor,           // [N, 3]
+    bond_pairs: Tensor,          // [M, 2] - particle indices for each bond
+    dissociation_energy: Tensor, // [M] - D for each bond
+    width_param: Tensor,         // [M] - α (width) for each bond
+    equilibrium_dist: Tensor,    // [M] - r₀ for each bond
 }
 
 impl MorseForce {
@@ -81,7 +81,9 @@ impl MorseForce {
         let atomic_buffer = device.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Morse Forces Atomic"),
             size: atomic_buffer_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
@@ -272,7 +274,7 @@ impl MorseForce {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_bonds as u32) + 255) / 256;
+            let workgroups = (n_bonds as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -303,11 +305,7 @@ impl MorseForce {
         staging_buffer.unmap();
 
         // Create final output tensor
-        Ok(Tensor::from_data(
-            &f32_data,
-            vec![n_particles, 3],
-            device.clone(),
-        )?)
+        Tensor::from_data(&f32_data, vec![n_particles, 3], device.clone())
     }
 }
 
@@ -334,14 +332,8 @@ mod tests {
         let a_tensor = Tensor::from_data(&width, vec![1], device.clone()).unwrap();
         let r0_tensor = Tensor::from_data(&r0, vec![1], device.clone()).unwrap();
 
-        let morse = MorseForce::new(
-            pos_tensor,
-            pairs_tensor,
-            d_tensor,
-            a_tensor,
-            r0_tensor,
-        )
-        .unwrap();
+        let morse =
+            MorseForce::new(pos_tensor, pairs_tensor, d_tensor, a_tensor, r0_tensor).unwrap();
 
         let forces = morse.execute().unwrap();
         let force_data = forces.to_vec().unwrap();

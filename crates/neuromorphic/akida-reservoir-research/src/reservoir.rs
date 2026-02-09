@@ -61,9 +61,13 @@ impl ReservoirGenerator {
 
     /// Generate reservoir weights
     ///
-    /// Returns (W_in, W_res) where:
-    /// - W_in: Input → Reservoir weights (reservoir_size × input_size)
-    /// - W_res: Reservoir → Reservoir weights (reservoir_size × reservoir_size)
+    /// Returns (`W_in`, `W_res`) where:
+    /// - `W_in`: Input → Reservoir weights (`reservoir_size` × `input_size`)
+    /// - `W_res`: Reservoir → Reservoir weights (`reservoir_size` × `reservoir_size`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the normal distribution cannot be created or array creation fails.
     pub fn generate_weights(&self) -> Result<(Array2<f32>, Array2<f32>)> {
         info!("Generating reservoir weights...");
 
@@ -77,6 +81,8 @@ impl ReservoirGenerator {
         );
 
         let w_in_shape = (self.config.reservoir_size, self.config.input_size);
+        // Precision is sufficient for neuromorphic computation
+        #[allow(clippy::cast_possible_truncation)]
         let w_in_vec: Vec<f32> = (0..w_in_shape.0 * w_in_shape.1)
             .map(|_| normal.sample(&mut rng) as f32 * self.config.input_scaling)
             .collect();
@@ -91,6 +97,8 @@ impl ReservoirGenerator {
         );
 
         let w_res_shape = (self.config.reservoir_size, self.config.reservoir_size);
+        // Precision is sufficient for neuromorphic computation
+        #[allow(clippy::cast_possible_truncation)]
         let w_res_vec: Vec<f32> = (0..w_res_shape.0 * w_res_shape.1)
             .map(|_| {
                 // Apply sparsity
@@ -106,7 +114,7 @@ impl ReservoirGenerator {
             .context("Failed to create W_res array")?;
 
         // Scale to desired spectral radius (enforce echo state property)
-        self.scale_spectral_radius(&mut w_res)?;
+        self.scale_spectral_radius(&mut w_res);
 
         info!("✅ Reservoir weights generated successfully");
         Ok((w_in, w_res))
@@ -115,7 +123,7 @@ impl ReservoirGenerator {
     /// Scale reservoir weights to desired spectral radius
     ///
     /// This ensures the echo state property: reservoir dynamics decay over time
-    fn scale_spectral_radius(&self, w_res: &mut Array2<f32>) -> Result<()> {
+    fn scale_spectral_radius(&self, w_res: &mut Array2<f32>) {
         debug!("Scaling to spectral radius {}", self.config.spectral_radius);
 
         // For simplicity, we'll use Frobenius norm approximation
@@ -128,10 +136,13 @@ impl ReservoirGenerator {
         w_res.mapv_inplace(|x| x * scaling_factor);
 
         debug!("Scaled weights by factor {:.4}", scaling_factor);
-        Ok(())
     }
 
     /// Generate multiple reservoirs with different seeds
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if weight generation fails for any reservoir in the ensemble.
     pub fn generate_ensemble(
         &self,
         num_reservoirs: usize,
@@ -172,7 +183,11 @@ impl ReservoirSimulator {
 
     /// Update reservoir state with new input
     ///
-    /// state(t) = tanh(W_in * input(t) + W_res * state(t-1))
+    /// state(t) = `tanh(W_in` * input(t) + `W_res` * state(t-1))
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if matrix dimensions are incompatible.
     pub fn update(&mut self, input: &Array1<f32>) -> Result<Array1<f32>> {
         // Compute W_in * input
         let input_contrib = self.w_in.dot(input);
@@ -181,7 +196,7 @@ impl ReservoirSimulator {
         let recurrent_contrib = self.w_res.dot(&self.state);
 
         // Combine and apply activation (tanh)
-        self.state = (&input_contrib + &recurrent_contrib).mapv(|x| x.tanh());
+        self.state = (&input_contrib + &recurrent_contrib).mapv(f32::tanh);
 
         Ok(self.state.clone())
     }

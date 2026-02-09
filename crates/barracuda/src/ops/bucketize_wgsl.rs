@@ -28,77 +28,76 @@ impl Bucketize {
     pub fn new(input: Tensor, boundaries: Vec<f32>) -> Self {
         Self { input, boundaries }
     }
-    
+
     fn wgsl_shader() -> &'static str {
         include_str!("../shaders/bucketize.wgsl")
     }
-    
+
     pub fn execute(self) -> Result<Tensor> {
         let device = self.input.device();
         let input_size = self.input.len();
         let num_boundaries = self.boundaries.len();
-        
+
         // Create output buffer (u32 for bucket indices)
         let output_buffer = device.create_buffer_u32(input_size)?;
-        
+
         // Create boundaries buffer
-        let boundaries_buffer = device.create_storage_buffer("Data", bytemuck::cast_slice(&self.boundaries));
-        
+        let boundaries_buffer =
+            device.create_storage_buffer("Data", bytemuck::cast_slice(&self.boundaries));
+
         // Create params buffer
-        let params_data = [
-            input_size as u32,
-            num_boundaries as u32,
-        ];
+        let params_data = [input_size as u32, num_boundaries as u32];
         let params_buffer = device.create_uniform_buffer("Params", &params_data);
-        
-        let bind_group_layout = device.device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: Some("Bucketize BGL"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Bucketize BGL"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            }
-        );
-        
+                    ],
+                });
+
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Bucketize BG"),
             layout: &bind_group_layout,
@@ -121,53 +120,54 @@ impl Bucketize {
                 },
             ],
         });
-        
+
         let shader = device.compile_shader(Self::wgsl_shader(), Some("Bucketize"));
-        let pipeline_layout = device.device.create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("Bucketize PL"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            }
-        );
-        
-        let pipeline = device.device.create_compute_pipeline(
-            &wgpu::ComputePipelineDescriptor {
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Bucketize PL"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
+
+        let pipeline = device
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("Bucketize Pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
                 entry_point: "main",
-            }
-        );
-        
-        let mut encoder = device.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+            });
+
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Bucketize Encoder"),
-            }
-        );
-        
+            });
+
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Bucketize Pass"),
                 timestamp_writes: None,
             });
-            
+
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (input_size as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (input_size as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
-        
+
         device.queue.submit(Some(encoder.finish()));
-        
+
         // Read u32 buffer and convert to f32 for Tensor compatibility
         let u32_data = crate::utils::read_buffer_u32(device, &output_buffer, input_size)?;
         let f32_data: Vec<f32> = u32_data.iter().map(|&x| x as f32).collect();
-        
+
         Ok(Tensor::new(
             f32_data,
             self.input.shape().to_vec(),
@@ -194,12 +194,12 @@ mod tests {
         let input = Tensor::from_vec_on(input_data, vec![4], device)
             .await
             .unwrap();
-        
+
         let boundaries = vec![1.0, 2.0, 3.0];
         let result = input.bucketize_wgsl(boundaries).unwrap();
         let output_f32 = result.to_vec().unwrap();
         let output: Vec<u32> = output_f32.iter().map(|&x| x as u32).collect();
-        
+
         // 0.5 < 1.0 → bucket 0
         // 1.0 <= 1.5 < 2.0 → bucket 1
         // 2.0 <= 2.5 < 3.0 → bucket 2
@@ -214,12 +214,12 @@ mod tests {
         let input = Tensor::from_vec_on(input_data, vec![4], device)
             .await
             .unwrap();
-        
+
         let boundaries = vec![1.0, 2.0];
         let result = input.bucketize_wgsl(boundaries).unwrap();
         let output_f32 = result.to_vec().unwrap();
         let output: Vec<u32> = output_f32.iter().map(|&x| x as u32).collect();
-        
+
         // 0.0 < 1.0 → bucket 0
         // 1.0 (boundary) → bucket 1
         // 2.0 (boundary) → bucket 2

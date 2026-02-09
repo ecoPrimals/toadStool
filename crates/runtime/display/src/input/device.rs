@@ -218,7 +218,7 @@ impl Device {
                 keys.iter().any(|key| {
                     let code = key.code();
                     // BTN_GAMEPAD = 0x130, BTN_SOUTH = 0x130, BTN_A through BTN_TRIGGER range
-                    code >= 0x130 && code <= 0x13f
+                    (0x130..=0x13f).contains(&code)
                 })
             })
             .unwrap_or(false);

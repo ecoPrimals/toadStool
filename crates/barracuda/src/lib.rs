@@ -62,7 +62,20 @@
 //! - All WGSL shaders properly utilized
 //! - Zero duplication: One implementation per op
 
-#![deny(unsafe_code)] // Zero unsafe in barraCUDA core!
+#![deny(unsafe_code)]
+// Zero unsafe in barraCUDA core!
+// Ops documentation uses math variables like [N], [M], [batch_size] which
+// rustdoc interprets as links. These are intentional mathematical notation.
+#![allow(rustdoc::broken_intra_doc_links)]
+// Ops layer uses parameter-heavy GPU dispatch functions - refactoring to config
+// structs is a future evolution (tracked in specs/BARRACUDA_UNIVERSAL_COMPUTE_EVOLUTION.md)
+#![allow(clippy::too_many_arguments)]
+// Scoring/indexing loops in ops - will evolve to iterator patterns
+#![allow(clippy::needless_range_loop)]
+// Op types use `to_*` methods on Copy types for GPU dispatch serialization
+#![allow(clippy::wrong_self_convention)]
+// Some if-blocks are structurally identical but semantically different (e.g., kldiv_loss)
+#![allow(clippy::if_same_then_else)]
 
 pub mod device;
 pub mod error;
@@ -80,13 +93,13 @@ pub mod vision; // High-level Computer Vision API
 pub mod workload; // NEW v2.0: Workload analysis & device selection // NEW v2.0: NPU backend for event-driven ML
 
 // Unified architecture modules (v0.2.0)
-pub mod unified_math;
-pub mod unified_hardware;
+pub mod auto_tensor;
+pub mod benchmarks;
 pub mod cpu_executor;
 pub mod gpu_executor;
 pub mod scheduler;
-pub mod benchmarks;
-pub mod auto_tensor;
+pub mod unified_hardware;
+pub mod unified_math;
 
 // Re-export commonly used operations
 pub use ops::sparse_matmul_quantized::sparse_matmul_quantized;

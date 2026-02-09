@@ -103,14 +103,21 @@ impl MultiHeadAttention {
         if k_shape != q_shape || v_shape != q_shape {
             return Err(crate::error::BarracudaError::shape_mismatch(
                 q_shape.to_vec(),
-                if k_shape != q_shape { k_shape.to_vec() } else { v_shape.to_vec() },
+                if k_shape != q_shape {
+                    k_shape.to_vec()
+                } else {
+                    v_shape.to_vec()
+                },
             ));
         }
 
         // Validate d_model is divisible by num_heads
-        if d_model % num_heads != 0 {
+        if !d_model.is_multiple_of(num_heads) {
             return Err(crate::error::BarracudaError::InvalidInput {
-                message: format!("d_model ({}) must be divisible by num_heads ({})", d_model, num_heads),
+                message: format!(
+                    "d_model ({}) must be divisible by num_heads ({})",
+                    d_model, num_heads
+                ),
             });
         }
 
@@ -169,16 +176,21 @@ impl MultiHeadAttention {
         let device = self.query.device();
 
         // Create command encoder for all passes
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MultiHeadAttention Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MultiHeadAttention Encoder"),
+            });
 
         // ═══════════════════════════════════════════════════════════════
         // PASS 1-3: Project Q, K, V through weight matrices
         // ═══════════════════════════════════════════════════════════════
-        let q_proj_buffer = compute::execute_projection(&self, &device, &self.query, &self.w_q, &mut encoder)?;
-        let k_proj_buffer = compute::execute_projection(&self, &device, &self.key, &self.w_k, &mut encoder)?;
-        let v_proj_buffer = compute::execute_projection(&self, &device, &self.value, &self.w_v, &mut encoder)?;
+        let q_proj_buffer =
+            compute::execute_projection(&self, device, &self.query, &self.w_q, &mut encoder)?;
+        let k_proj_buffer =
+            compute::execute_projection(&self, device, &self.key, &self.w_k, &mut encoder)?;
+        let v_proj_buffer =
+            compute::execute_projection(&self, device, &self.value, &self.w_v, &mut encoder)?;
 
         // Submit projection passes
         device.queue.submit(Some(encoder.finish()));
@@ -209,11 +221,18 @@ impl MultiHeadAttention {
         // ═══════════════════════════════════════════════════════════════
         // PASS 5: Project concatenated heads through output matrix
         // ═══════════════════════════════════════════════════════════════
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("MultiHeadAttention Output Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("MultiHeadAttention Output Encoder"),
+            });
 
-        let output_buffer = compute::execute_output_projection(&self, &device, attention_output.buffer(), &mut encoder)?;
+        let output_buffer = compute::execute_output_projection(
+            &self,
+            device,
+            attention_output.buffer(),
+            &mut encoder,
+        )?;
 
         // Submit output projection pass
         device.queue.submit(Some(encoder.finish()));

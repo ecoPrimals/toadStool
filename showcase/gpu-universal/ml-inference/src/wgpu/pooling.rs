@@ -144,8 +144,8 @@ impl WgpuExecutor {
         let pipeline = self.create_simple_pipeline(shader_source, "MaxPool2D", &bind_group_layout);
 
         // 2D workgroups for spatial operations
-        let workgroups_x = (out_width as u32 + 15) / 16;
-        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_x = (out_width as u32).div_ceil(16);
+        let workgroups_y = (out_height as u32).div_ceil(16);
         let workgroups_z = (batch * channels) as u32;
 
         let mut encoder = self
@@ -553,8 +553,8 @@ impl WgpuExecutor {
         let pipeline =
             self.create_simple_pipeline(shader_source, "AdaptiveAvgPool2D", &bind_group_layout);
 
-        let workgroups_x = (out_width as u32 + 15) / 16;
-        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_x = (out_width as u32).div_ceil(16);
+        let workgroups_y = (out_height as u32).div_ceil(16);
         let workgroups_z = (batch * channels) as u32;
 
         let mut encoder = self
@@ -704,8 +704,8 @@ impl WgpuExecutor {
         let pipeline =
             self.create_simple_pipeline(shader_source, "AdaptiveMaxPool2D", &bind_group_layout);
 
-        let workgroups_x = (out_width as u32 + 15) / 16;
-        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_x = (out_width as u32).div_ceil(16);
+        let workgroups_y = (out_height as u32).div_ceil(16);
         let workgroups_z = (batch * channels) as u32;
 
         let mut encoder = self

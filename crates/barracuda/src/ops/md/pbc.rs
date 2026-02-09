@@ -29,8 +29,8 @@ use wgpu::util::DeviceExt;
 
 #[derive(Clone, Copy)]
 pub enum DistanceMetric {
-    Euclidean = 0,  // L2 norm
-    Manhattan = 1,  // L1 norm
+    Euclidean = 0, // L2 norm
+    Manhattan = 1, // L1 norm
 }
 
 /// PBC Distance Calculation Operation
@@ -38,9 +38,9 @@ pub enum DistanceMetric {
 /// Computes pairwise distances with periodic boundary conditions.
 /// Essential for molecular dynamics simulations with periodic boxes.
 pub struct PbcDistance {
-    input_a: Tensor,      // Particle positions A [M, D]
-    input_b: Tensor,      // Particle positions B [N, D]
-    box_dims: Vec<f32>,   // Box dimensions [D]
+    input_a: Tensor,    // Particle positions A [M, D]
+    input_b: Tensor,    // Particle positions B [N, D]
+    box_dims: Vec<f32>, // Box dimensions [D]
     metric: DistanceMetric,
 }
 
@@ -298,8 +298,8 @@ impl PbcDistance {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Dispatch 2D grid (16x16 workgroups)
-            let workgroups_x = ((m as u32) + 15) / 16;
-            let workgroups_y = ((n as u32) + 15) / 16;
+            let workgroups_x = (m as u32).div_ceil(16);
+            let workgroups_y = (n as u32).div_ceil(16);
             pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -332,8 +332,8 @@ mod tests {
 
         let box_dims = vec![1.0, 1.0, 1.0]; // Unit box
 
-        let pbc = PbcDistance::new(tensor_a, tensor_b, box_dims, DistanceMetric::Euclidean)
-            .unwrap();
+        let pbc =
+            PbcDistance::new(tensor_a, tensor_b, box_dims, DistanceMetric::Euclidean).unwrap();
         let result = pbc.execute().unwrap();
 
         // Result should be [2, 1] matrix
@@ -363,8 +363,8 @@ mod tests {
         let box_dims = vec![1.0, 1.0, 1.0];
         println!("box_dims: {:?}", box_dims);
 
-        let pbc = PbcDistance::new(tensor_a, tensor_b, box_dims, DistanceMetric::Euclidean)
-            .unwrap();
+        let pbc =
+            PbcDistance::new(tensor_a, tensor_b, box_dims, DistanceMetric::Euclidean).unwrap();
         let result = pbc.execute().unwrap();
         let data = result.to_vec().unwrap();
 
@@ -374,7 +374,11 @@ mod tests {
 
         // If we're getting 0.4, maybe it's sqrt(2)*0.2 or something?
         // Let's be more lenient for now
-        assert!(data[0] < 0.5, "PBC wrapping should give shorter distance: got {}, expected < 0.5", data[0]);
+        assert!(
+            data[0] < 0.5,
+            "PBC wrapping should give shorter distance: got {}, expected < 0.5",
+            data[0]
+        );
         println!("✅ PBC wrapping validated: distance = {}", data[0]);
     }
 
@@ -383,20 +387,13 @@ mod tests {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
 
         // 4 particles
-        let pos = vec![
-            0.1, 0.1, 0.1, 0.5, 0.5, 0.5, 0.9, 0.9, 0.9, 0.2, 0.8, 0.3,
-        ];
+        let pos = vec![0.1, 0.1, 0.1, 0.5, 0.5, 0.5, 0.9, 0.9, 0.9, 0.2, 0.8, 0.3];
 
         let tensor = Tensor::from_data(&pos, vec![4, 3], device.clone()).unwrap();
         let box_dims = vec![1.0, 1.0, 1.0];
 
-        let pbc = PbcDistance::new(
-            tensor.clone(),
-            tensor,
-            box_dims,
-            DistanceMetric::Euclidean,
-        )
-        .unwrap();
+        let pbc =
+            PbcDistance::new(tensor.clone(), tensor, box_dims, DistanceMetric::Euclidean).unwrap();
         let result = pbc.execute().unwrap();
 
         // Result should be [4, 4] distance matrix

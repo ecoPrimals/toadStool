@@ -19,7 +19,7 @@ pub enum FallbackStrategy {
 impl FallbackStrategy {
     /// Get fallback workgroup size
     #[must_use]
-    pub fn fallback_workgroup(self, op_type: OpType, size: usize) -> usize {
+    pub const fn fallback_workgroup(self, op_type: OpType, size: usize) -> usize {
         match self {
             Self::Conservative => {
                 // Safe defaults work everywhere
@@ -72,7 +72,10 @@ pub struct ConfigSelector {
 impl ConfigSelector {
     /// Create new config selector
     #[must_use]
-    pub fn new(cache: Arc<RwLock<OptimizationCache>>, fallback_strategy: FallbackStrategy) -> Self {
+    pub const fn new(
+        cache: Arc<RwLock<OptimizationCache>>,
+        fallback_strategy: FallbackStrategy,
+    ) -> Self {
         Self {
             cache,
             fallback_strategy,

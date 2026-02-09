@@ -93,7 +93,6 @@ impl CyclicalLr {
 
     /// Execute cyclical learning rate computation
     pub fn execute(self, device: &crate::device::WgpuDevice) -> Result<Tensor> {
-
         // Create output buffer (scalar LR value)
         let output_buffer = device.create_buffer_f32(1)?;
 
@@ -206,7 +205,7 @@ impl CyclicalLr {
             // Note: This is a scalar operation (single LR value), but using capability pattern for consistency
             let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (1u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = 1u32.div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups.max(1), 1, 1);
         }
 
@@ -229,14 +228,7 @@ mod tests {
     async fn test_cyclical_lr_basic() {
         // Note: This test requires device creation which is async
         // For now, we'll test the validation logic
-        let result = CyclicalLr::new(
-            0,
-            100,
-            0.001,
-            0.01,
-            CyclicalLrMode::Triangular,
-            0.9,
-        );
+        let result = CyclicalLr::new(0, 100, 0.001, 0.01, CyclicalLrMode::Triangular, 0.9);
         assert!(result.is_ok());
 
         // Test invalid step_size
@@ -244,14 +236,7 @@ mod tests {
         assert!(result.is_err());
 
         // Test invalid lr range
-        let result = CyclicalLr::new(
-            0,
-            100,
-            0.01,
-            0.001,
-            CyclicalLrMode::Triangular,
-            0.9,
-        );
+        let result = CyclicalLr::new(0, 100, 0.01, 0.001, CyclicalLrMode::Triangular, 0.9);
         assert!(result.is_err());
     }
 }

@@ -6,11 +6,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Generic load balancing strategy
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum LoadBalancingStrategy {
     /// Use only the primary target
     PrimaryOnly,
     /// Round-robin across all targets
+    #[default]
     RoundRobin,
     /// Choose target with least active connections
     LeastConnections,
@@ -32,12 +33,6 @@ pub enum LoadBalancingStrategy {
     IpHash,
     /// Custom strategy (identified by name)
     Custom(String),
-}
-
-impl Default for LoadBalancingStrategy {
-    fn default() -> Self {
-        Self::RoundRobin
-    }
 }
 
 /// Load balancing algorithm

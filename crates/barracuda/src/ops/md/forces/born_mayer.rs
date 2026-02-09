@@ -18,9 +18,9 @@ use wgpu::util::DeviceExt;
 /// Models hard-core repulsion between ions.
 /// Exponential form prevents particle overlap in ionic crystals.
 pub struct BornMayerForce {
-    positions: Tensor,      // [N, 3]
-    amplitudes: Tensor,     // [N] - per-particle A
-    ranges: Tensor,         // [N] - per-particle ρ
+    positions: Tensor,  // [N, 3]
+    amplitudes: Tensor, // [N] - per-particle A
+    ranges: Tensor,     // [N] - per-particle ρ
     cutoff_radius: f32,
 }
 
@@ -222,7 +222,7 @@ impl BornMayerForce {
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((n_particles as u32) + 255) / 256;
+            let workgroups = (n_particles as u32).div_ceil(256);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 

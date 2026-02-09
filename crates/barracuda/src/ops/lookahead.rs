@@ -20,7 +20,7 @@ pub struct LookaheadState {
 pub struct Lookahead {
     fast_weights: Tensor,
     state: LookaheadState,
-    k: usize,   // Sync frequency
+    k: usize, // Sync frequency
     #[allow(dead_code)]
     alpha: f32, // Slow weights step size (used in actual tensor update implementation)
 }
@@ -34,12 +34,7 @@ impl Lookahead {
     /// - `slow_weights`: Slow weights (Tensor, same shape as fast_weights)
     /// - `k`: Sync frequency (update slow weights every k steps)
     /// - `alpha`: Slow weights step size (interpolation factor)
-    pub fn new(
-        fast_weights: Tensor,
-        slow_weights: Tensor,
-        k: usize,
-        alpha: f32,
-    ) -> Result<Self> {
+    pub fn new(fast_weights: Tensor, slow_weights: Tensor, k: usize, alpha: f32) -> Result<Self> {
         if fast_weights.len() != slow_weights.len() {
             return Err(BarracudaError::Device(format!(
                 "State dimension mismatch: fast_weights len {}, slow_weights len {}",
@@ -48,7 +43,10 @@ impl Lookahead {
             )));
         }
 
-        if !std::ptr::eq(fast_weights.device().as_ref(), slow_weights.device().as_ref()) {
+        if !std::ptr::eq(
+            fast_weights.device().as_ref(),
+            slow_weights.device().as_ref(),
+        ) {
             return Err(BarracudaError::Device(
                 "fast_weights and slow_weights must be on the same device".to_string(),
             ));
@@ -73,7 +71,7 @@ impl Lookahead {
         self.state.k_counter += 1;
 
         // Update slow weights every k steps
-        if self.state.k_counter % self.k == 0 {
+        if self.state.k_counter.is_multiple_of(self.k) {
             // slow_weights = slow_weights + alpha * (fast_weights - slow_weights)
             // This is: slow_weights = (1 - alpha) * slow_weights + alpha * fast_weights
             //
@@ -113,20 +111,12 @@ mod tests {
     #[tokio::test]
     async fn test_lookahead() {
         let device = Arc::new(WgpuDevice::new().await.unwrap());
-        let fast_weights = Tensor::from_vec_on(
-            vec![1.0; 100],
-            vec![100],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-        let slow_weights = Tensor::from_vec_on(
-            vec![0.9; 100],
-            vec![100],
-            device.clone(),
-        )
-        .await
-        .unwrap();
+        let fast_weights = Tensor::from_vec_on(vec![1.0; 100], vec![100], device.clone())
+            .await
+            .unwrap();
+        let slow_weights = Tensor::from_vec_on(vec![0.9; 100], vec![100], device.clone())
+            .await
+            .unwrap();
 
         let op = Lookahead::new(fast_weights, slow_weights, 5, 0.5).unwrap();
         let result = op.execute().unwrap();

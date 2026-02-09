@@ -18,14 +18,18 @@ use crate::tensor::Tensor;
 /// Variance reduction operation
 pub struct Variance {
     input: Tensor,
-    dim: Option<usize>,  // None = global variance, Some(d) = variance along dimension d
-    keepdim: bool,       // Whether to keep dimension with size 1
+    dim: Option<usize>, // None = global variance, Some(d) = variance along dimension d
+    keepdim: bool,      // Whether to keep dimension with size 1
 }
 
 impl Variance {
     /// Create a new variance operation
     pub fn new(input: Tensor, dim: Option<usize>, keepdim: bool) -> Self {
-        Self { input, dim, keepdim }
+        Self {
+            input,
+            dim,
+            keepdim,
+        }
     }
 
     /// Get the WGSL shader source for global reduction

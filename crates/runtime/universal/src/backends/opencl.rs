@@ -100,7 +100,8 @@ impl ComputeUnit for OpenClComputeUnit {
         // Deep Debt Evolution: Clear error message with migration path
         Err(ComputeError::ExecutionFailed(
             "OpenCL backend is deprecated. Migrate to wgpu backend for GPU compute. \
-             See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide.".to_string(),
+             See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide."
+                .to_string(),
         ))
     }
 }

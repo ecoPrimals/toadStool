@@ -138,8 +138,8 @@ impl WgpuExecutor {
         let pipeline =
             self.create_simple_pipeline(shader_source, "BatchMatMul", &bind_group_layout);
 
-        let workgroup_x = (n + 15) / 16;
-        let workgroup_y = (m + 15) / 16;
+        let workgroup_x = n.div_ceil(16);
+        let workgroup_y = m.div_ceil(16);
         let workgroup_z = batch_size;
 
         let mut encoder = self
@@ -332,8 +332,8 @@ impl WgpuExecutor {
             self.create_simple_pipeline(shader_source, "MatMul Tiled", &bind_group_layout);
 
         // 2D workgroup dispatch: (N/16, M/16) workgroups of (16, 16) threads each
-        let workgroups_x = (n as u32 + 15) / 16;
-        let workgroups_y = (m as u32 + 15) / 16;
+        let workgroups_x = (n as u32).div_ceil(16);
+        let workgroups_y = (m as u32).div_ceil(16);
 
         let mut encoder = self
             .device
@@ -468,8 +468,8 @@ impl WgpuExecutor {
 
         // 2D workgroups for matrix multiply (runtime calculated)
         let tile_size = 16u32;
-        let workgroups_x = (n as u32 + tile_size - 1) / tile_size;
-        let workgroups_y = (m as u32 + tile_size - 1) / tile_size;
+        let workgroups_x = (n as u32).div_ceil(tile_size);
+        let workgroups_y = (m as u32).div_ceil(tile_size);
 
         let mut encoder = self
             .device
@@ -605,7 +605,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(a) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -736,7 +736,7 @@ impl WgpuExecutor {
             0,
             &staging_buffer,
             0,
-            (size * std::mem::size_of::<f32>()) as u64,
+            std::mem::size_of_val(a) as u64,
         );
 
         self.queue.submit(Some(encoder.finish()));
@@ -844,8 +844,8 @@ impl WgpuExecutor {
 
         // 2D workgroups for better memory access patterns
         let tile_size = 16u32;
-        let workgroups_x = (cols as u32 + tile_size - 1) / tile_size;
-        let workgroups_y = (rows as u32 + tile_size - 1) / tile_size;
+        let workgroups_x = (cols as u32).div_ceil(tile_size);
+        let workgroups_y = (rows as u32).div_ceil(tile_size);
 
         let mut encoder = self
             .device
@@ -1250,8 +1250,8 @@ impl WgpuExecutor {
             self.create_simple_pipeline(shader_source, "DepthwiseConv2D", &bind_group_layout);
 
         // 2D workgroups for spatial operations
-        let workgroups_x = (out_width as u32 + 15) / 16;
-        let workgroups_y = (out_height as u32 + 15) / 16;
+        let workgroups_x = (out_width as u32).div_ceil(16);
+        let workgroups_y = (out_height as u32).div_ceil(16);
         let workgroups_z = (batch * channels) as u32;
 
         let mut encoder = self
@@ -1475,8 +1475,8 @@ impl WgpuExecutor {
 
         // Dispatch with 2D workgroups for spatial dimensions
         // Each workgroup handles 16x16 output pixels
-        let workgroup_x = (out_width + 15) / 16;
-        let workgroup_y = (out_height + 15) / 16;
+        let workgroup_x = out_width.div_ceil(16);
+        let workgroup_y = out_height.div_ceil(16);
         let workgroup_z = out_channels;
 
         let mut encoder = self
@@ -1701,8 +1701,8 @@ impl WgpuExecutor {
             self.create_simple_pipeline(shader_source, "TransposedConv2D", &bind_group_layout);
 
         // Dispatch with 2D workgroups + output channels
-        let workgroup_x = (output_width + 15) / 16;
-        let workgroup_y = (output_height + 15) / 16;
+        let workgroup_x = output_width.div_ceil(16);
+        let workgroup_y = output_height.div_ceil(16);
         let workgroup_z = out_channels;
 
         let mut encoder = self
@@ -1945,9 +1945,9 @@ impl WgpuExecutor {
         let pipeline = self.create_simple_pipeline(shader_source, "Conv3D", &bind_group_layout);
 
         // Dispatch with 3D workgroups (4x4x4 workgroup size)
-        let workgroup_x = (output_width + 3) / 4;
-        let workgroup_y = (output_height + 3) / 4;
-        let workgroup_z = (output_depth + 3) / 4;
+        let workgroup_x = output_width.div_ceil(4);
+        let workgroup_y = output_height.div_ceil(4);
+        let workgroup_z = output_depth.div_ceil(4);
 
         let mut encoder = self
             .device

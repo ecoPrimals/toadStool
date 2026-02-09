@@ -25,11 +25,7 @@ pub struct WeightNorm {
 impl WeightNorm {
     /// Create WeightNorm operation
     pub fn new(v: Tensor, g: Tensor, dim: u32) -> Result<Self> {
-        Ok(Self {
-            v,
-            g,
-            dim,
-        })
+        Ok(Self { v, g, dim })
     }
 
     /// WGSL shader source (embedded at compile time)
@@ -41,7 +37,7 @@ impl WeightNorm {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.v.device();
         let v_shape = self.v.shape();
-        
+
         if v_shape.is_empty() {
             return Err(BarracudaError::invalid_op(
                 "WeightNorm",
@@ -181,9 +177,9 @@ impl WeightNorm {
             pass.set_bind_group(0, &bind_group, &[]);
 
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::ElementWise);
-            let workgroups = (num_weights as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups = (num_weights as u32).div_ceil(optimal_wg_size);
             pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -209,26 +205,15 @@ mod tests {
 
         let num_weights = 20;
 
-        let v = Tensor::from_vec_on(
-            vec![1.0; num_weights],
-            vec![num_weights],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-
-        let g = Tensor::from_vec_on(
-            vec![2.0],
-            vec![1],
-            device.clone(),
-        )
-        .await
-        .unwrap();
-
-        let result = WeightNorm::new(v, g, 0)
-            .unwrap()
-            .execute()
+        let v = Tensor::from_vec_on(vec![1.0; num_weights], vec![num_weights], device.clone())
+            .await
             .unwrap();
+
+        let g = Tensor::from_vec_on(vec![2.0], vec![1], device.clone())
+            .await
+            .unwrap();
+
+        let result = WeightNorm::new(v, g, 0).unwrap().execute().unwrap();
 
         assert_eq!(result.shape(), &[num_weights]);
     }

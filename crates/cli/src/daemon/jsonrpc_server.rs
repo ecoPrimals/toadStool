@@ -292,7 +292,11 @@ async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Va
         })?;
 
     match state.workload_manager.submit_workload(request).await {
-        Ok(response) => Ok(serde_json::to_value(response).unwrap()),
+        Ok(response) => serde_json::to_value(response).map_err(|e| JsonRpcError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Serialization failed: {e}"),
+            data: None,
+        }),
         Err(e) => Err(JsonRpcError {
             code: error_codes::WORKLOAD_SUBMIT_FAILED,
             message: format!("Workload submission failed: {}", e),
@@ -314,7 +318,11 @@ async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value
         .get_workload_status(workload_id)
         .await
     {
-        Some(status) => Ok(serde_json::to_value(status).unwrap()),
+        Some(status) => serde_json::to_value(status).map_err(|e| JsonRpcError {
+            code: error_codes::INTERNAL_ERROR,
+            message: format!("Serialization failed: {e}"),
+            data: None,
+        }),
         None => Err(JsonRpcError {
             code: error_codes::WORKLOAD_NOT_FOUND,
             message: format!("Workload not found: {}", workload_id),

@@ -34,14 +34,14 @@ impl Mosaic {
                 ));
             }
         }
-        
+
         if shape.len() != 3 {
             return Err(crate::error::BarracudaError::invalid_op(
                 "Mosaic",
                 format!("Expected 3D tensor (C, H, W), got {}D", shape.len()),
             ));
         }
-        
+
         Ok(Self { images, seed })
     }
 
@@ -54,15 +54,15 @@ impl Mosaic {
     pub fn execute(self) -> Result<Tensor> {
         let device = self.images[0].device();
         let shape = self.images[0].shape();
-        
+
         let channels = shape[0];
         let height = shape[1];
         let width = shape[2];
-        
+
         // Compute random split point from seed
         let split_x = ((self.seed * 1103515245) % width as u64) as usize;
         let split_y = ((self.seed * 22695477) % height as u64) as usize;
-        
+
         let output_size = channels * height * width;
 
         // Create buffers
@@ -97,78 +97,83 @@ impl Mosaic {
             split_y: split_y as u32,
         };
 
-        let params_buffer = device.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Mosaic Params"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let params_buffer = device
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Mosaic Params"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
 
         // Create bind group layout
-        let bind_group_layout = device.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Mosaic Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let bind_group_layout =
+            device
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("Mosaic Bind Group Layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 5,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
 
         // Create bind group
         let bind_group = device.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -205,23 +210,31 @@ impl Mosaic {
         // Create compute pipeline
         let shader_module = device.compile_shader(Self::wgsl_shader(), Some("Mosaic Shader"));
 
-        let pipeline_layout = device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Mosaic Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout =
+            device
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Mosaic Pipeline Layout"),
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[],
+                });
 
-        let compute_pipeline = device.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Mosaic Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader_module,
-            entry_point: "main",
-        });
+        let compute_pipeline =
+            device
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("Mosaic Pipeline"),
+                    layout: Some(&pipeline_layout),
+                    module: &shader_module,
+                    entry_point: "main",
+                });
 
         // Execute compute shader
-        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Mosaic Encoder"),
-        });
+        let mut encoder = device
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Mosaic Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -230,12 +243,12 @@ impl Mosaic {
             });
             compute_pass.set_pipeline(&compute_pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
-            
+
             // Deep Debt Evolution: Capability-based dispatch
-            let caps = DeviceCapabilities::from_device(&device);
+            let caps = DeviceCapabilities::from_device(device);
             let optimal_wg_size = caps.optimal_workgroup_size(WorkloadType::Convolution);
-            let workgroups_x = (width as u32 + optimal_wg_size - 1) / optimal_wg_size;
-            let workgroups_y = (height as u32 + optimal_wg_size - 1) / optimal_wg_size;
+            let workgroups_x = (width as u32).div_ceil(optimal_wg_size);
+            let workgroups_y = (height as u32).div_ceil(optimal_wg_size);
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -259,11 +272,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_mosaic_basic() {
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 640 * 640], vec![3, 640, 640]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![0.8; 3 * 640 * 640], vec![3, 640, 640]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![0.6; 3 * 640 * 640], vec![3, 640, 640]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![0.4; 3 * 640 * 640], vec![3, 640, 640]).await.unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 77777).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 3 * 640 * 640], vec![3, 640, 640])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![0.8; 3 * 640 * 640], vec![3, 640, 640])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![0.6; 3 * 640 * 640], vec![3, 640, 640])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![0.4; 3 * 640 * 640], vec![3, 640, 640])
+            .await
+            .unwrap();
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 77777)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
         assert_eq!(mosaic_img.len(), 3 * 640 * 640);
         assert!(mosaic_img.iter().all(|&x| x.is_finite()));
@@ -272,20 +296,42 @@ mod tests {
     #[tokio::test]
     async fn test_mosaic_edge_cases() {
         // Small images
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 32 * 32], vec![3, 32, 32]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 32 * 32], vec![3, 32, 32]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 32 * 32], vec![3, 32, 32]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 32 * 32], vec![3, 32, 32]).await.unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 12345).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 3 * 32 * 32], vec![3, 32, 32])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![2.0; 3 * 32 * 32], vec![3, 32, 32])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![3.0; 3 * 32 * 32], vec![3, 32, 32])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![4.0; 3 * 32 * 32], vec![3, 32, 32])
+            .await
+            .unwrap();
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 12345)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
         assert_eq!(mosaic_img.len(), 3 * 32 * 32);
 
         // Single channel (grayscale)
-        let t1 = Tensor::from_vec(vec![1.0; 1 * 64 * 64], vec![1, 64, 64]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 1 * 64 * 64], vec![1, 64, 64]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 1 * 64 * 64], vec![1, 64, 64]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 1 * 64 * 64], vec![1, 64, 64]).await.unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 99999).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 1 * 64 * 64], vec![1, 64, 64])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![2.0; 1 * 64 * 64], vec![1, 64, 64])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![3.0; 1 * 64 * 64], vec![1, 64, 64])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![4.0; 1 * 64 * 64], vec![1, 64, 64])
+            .await
+            .unwrap();
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 99999)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
         assert_eq!(mosaic_img.len(), 1 * 64 * 64);
     }
@@ -293,14 +339,28 @@ mod tests {
     #[tokio::test]
     async fn test_mosaic_boundary() {
         // Different seeds produce different mosaics
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 128 * 128], vec![3, 128, 128]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 128 * 128], vec![3, 128, 128]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 128 * 128], vec![3, 128, 128]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 128 * 128], vec![3, 128, 128]).await.unwrap();
-        let mosaic_tensor1 = Mosaic::new([t1.clone(), t2.clone(), t3.clone(), t4.clone()], 111).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 3 * 128 * 128], vec![3, 128, 128])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![2.0; 3 * 128 * 128], vec![3, 128, 128])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![3.0; 3 * 128 * 128], vec![3, 128, 128])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![4.0; 3 * 128 * 128], vec![3, 128, 128])
+            .await
+            .unwrap();
+        let mosaic_tensor1 = Mosaic::new([t1.clone(), t2.clone(), t3.clone(), t4.clone()], 111)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic1 = mosaic_tensor1.to_vec().unwrap();
-        
-        let mosaic_tensor2 = Mosaic::new([t1, t2, t3, t4], 222).unwrap().execute().unwrap();
+
+        let mosaic_tensor2 = Mosaic::new([t1, t2, t3, t4], 222)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic2 = mosaic_tensor2.to_vec().unwrap();
         assert_eq!(mosaic1.len(), mosaic2.len());
     }
@@ -308,11 +368,22 @@ mod tests {
     #[tokio::test]
     async fn test_mosaic_large_images() {
         // HD images
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 1024 * 1024], vec![3, 1024, 1024]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![0.5; 3 * 1024 * 1024], vec![3, 1024, 1024]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![0.25; 3 * 1024 * 1024], vec![3, 1024, 1024]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![0.0; 3 * 1024 * 1024], vec![3, 1024, 1024]).await.unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 42).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 3 * 1024 * 1024], vec![3, 1024, 1024])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![0.5; 3 * 1024 * 1024], vec![3, 1024, 1024])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![0.25; 3 * 1024 * 1024], vec![3, 1024, 1024])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![0.0; 3 * 1024 * 1024], vec![3, 1024, 1024])
+            .await
+            .unwrap();
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 42)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
         assert_eq!(mosaic_img.len(), 3 * 1024 * 1024);
     }
@@ -320,11 +391,22 @@ mod tests {
     #[tokio::test]
     async fn test_mosaic_precision() {
         // Test that all 4 quadrants are represented
-        let t1 = Tensor::from_vec(vec![1.0; 3 * 100 * 100], vec![3, 100, 100]).await.unwrap();
-        let t2 = Tensor::from_vec(vec![2.0; 3 * 100 * 100], vec![3, 100, 100]).await.unwrap();
-        let t3 = Tensor::from_vec(vec![3.0; 3 * 100 * 100], vec![3, 100, 100]).await.unwrap();
-        let t4 = Tensor::from_vec(vec![4.0; 3 * 100 * 100], vec![3, 100, 100]).await.unwrap();
-        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 50505).unwrap().execute().unwrap();
+        let t1 = Tensor::from_vec(vec![1.0; 3 * 100 * 100], vec![3, 100, 100])
+            .await
+            .unwrap();
+        let t2 = Tensor::from_vec(vec![2.0; 3 * 100 * 100], vec![3, 100, 100])
+            .await
+            .unwrap();
+        let t3 = Tensor::from_vec(vec![3.0; 3 * 100 * 100], vec![3, 100, 100])
+            .await
+            .unwrap();
+        let t4 = Tensor::from_vec(vec![4.0; 3 * 100 * 100], vec![3, 100, 100])
+            .await
+            .unwrap();
+        let mosaic_tensor = Mosaic::new([t1, t2, t3, t4], 50505)
+            .unwrap()
+            .execute()
+            .unwrap();
         let mosaic_img = mosaic_tensor.to_vec().unwrap();
 
         // Should contain values from all 4 images

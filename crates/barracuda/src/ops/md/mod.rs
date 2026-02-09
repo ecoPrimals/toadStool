@@ -7,13 +7,13 @@
 //!
 //! **Deep Debt Compliance**: All math in WGSL, zero unsafe
 
-pub mod pbc;
 pub mod forces;
 pub mod integrators;
+pub mod pbc;
 
-pub use pbc::{PbcDistance, DistanceMetric};
 pub use forces::*;
 pub use integrators::*;
+pub use pbc::{DistanceMetric, PbcDistance};
 
 // Re-export for convenience
 pub use pbc::PbcDistance as Pbc;

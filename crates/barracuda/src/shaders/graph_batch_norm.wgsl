@@ -70,10 +70,10 @@ fn normalize(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     let x = input[idx];
     let mu = mean[feature];
-    let var = variance[feature];
+    let var_val = variance[feature];
     
     // Normalize
-    let x_norm = (x - mu) / sqrt(var + params.epsilon);
+    let x_norm = (x - mu) / sqrt(var_val + params.epsilon);
     
     // Scale and shift
     output[idx] = gamma[feature] * x_norm + beta[feature];
