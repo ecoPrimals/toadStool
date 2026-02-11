@@ -63,7 +63,7 @@ tokio-tungstenite = { version = "0.23", optional = true }
 regex = "1.0"
 
 # Validation
-validator = "0.16"
+validator = { version = "0.18", features = ["derive"] }
 mdns-sd = "0.10"
 # MUST use same version as workspace to prevent duplicate symbol errors  
 wgpu = { workspace = true, optional = true }

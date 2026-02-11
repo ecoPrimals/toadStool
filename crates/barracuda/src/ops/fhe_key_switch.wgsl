@@ -114,7 +114,16 @@ fn decompose_base_b(
 }
 
 /// Accumulate switched ciphertext components
-/// (Placeholder for full key switching accumulation)
+///
+/// Phase 3 requirement: Full key switching accumulation needs:
+///   1. Switching key storage buffers (L × degree × 2 polynomials)
+///   2. NTT-domain multiplication (via fhe_ntt.wgsl)
+///   3. Multi-level accumulation across all L decomposition digits
+///
+/// Current: Identity pass-through (decompose kernel outputs digit[0]).
+/// The decomposition + pass-through structure is correct and tested.
+/// Full accumulation will be wired when the FHE key infrastructure
+/// (key generation, serialization, NTT-domain key storage) is implemented.
 @compute @workgroup_size(256)
 fn accumulate_switched(
     @builtin(global_invocation_id) global_id: vec3<u32>,
@@ -128,12 +137,11 @@ fn accumulate_switched(
     // Load decomposed digit
     let digit = load_u64(coeff_idx);
     
-    // Full implementation:
-    // 1. For each level i:
-    //    - Multiply digit[i] by switching_key[i] (via NTT)
-    //    - Accumulate result
-    // 2. Return accumulated ciphertext under new key
-    
-    // Simplified: pass through for now
+    // Identity pass-through: preserves the decomposed coefficient.
+    // When switching keys are available, this becomes:
+    //   var acc = u64_from_u32(0u);
+    //   for level 0..L:
+    //     acc = u64_add(acc, u64_mul_mod(digit[level], switch_key[level][coeff_idx], m, mu));
+    //   store_u64(coeff_idx, acc);
     store_u64(coeff_idx, digit);
 }

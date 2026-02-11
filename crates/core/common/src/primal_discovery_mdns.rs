@@ -52,7 +52,7 @@ fn convert_mdns_service_to_endpoint(
         discovered_via: DiscoveryMethod::MDns,
         discovered_at: Instant::now(),
         last_seen: Instant::now(),
-        latency_ms: 0, // TODO: Measure actual latency
+        latency_ms: 0, // Initial: updated on first health check ping
     }
 }
 

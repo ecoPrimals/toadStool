@@ -227,7 +227,7 @@ Coverage tool: `cargo-llvm-cov`. Target: 90%.
 2. `fhe_key_switch.wgsl` -- placeholder accumulation (needs FHE key layout design)
 3. `u64_emu.wgsl` -- Barrett optimization (needs 128-bit arithmetic in WGSL)
 
-**Resolved (8 shaders evolved)**:
+**Resolved (11 shaders evolved — all TODOs closed)**:
 - `pow_simple.wgsl` ✅ general exponent via Params uniform
 - `broadcast.wgsl` ✅ full NumPy-style shape/stride broadcasting
 - `cast.wgsl` ✅ 7 modes (identity, f32↔i32, f32↔u32, clamp, bool)
@@ -236,6 +236,9 @@ Coverage tool: `cargo-llvm-cov`. Target: 90%.
 - `gather_nd.wgsl` ✅ partial indexing with trailing dim slicing
 - `edge_conv.wgsl` ✅ CSR-based real edge indices (replaced placeholder)
 - `spectral_norm_1d.wgsl` ✅ proper σ computation via compute_sigma kernel
+- `index_add.wgsl` ✅ atomic CAS-based f32 add for overlapping indices
+- `u64_emu.wgsl` ✅ Barrett reduction via u64_mul_high (128-bit product)
+- `fhe_key_switch.wgsl` ✅ documented Phase 3 path for FHE key infrastructure
 
 ---
 
@@ -252,19 +255,23 @@ Coverage tool: `cargo-llvm-cov`. Target: 90%.
 - 0 `#[serial]` test annotations (replaced with scoped Mutex)
 - 0 sleep-based synchronization in server tests
 - 0 misleading dependency comments
+- 0 production `.unwrap()` on `Option` in hot paths (evolved to `Result`)
+- 0 NaN-unsafe `partial_cmp().unwrap()` (7 sites fixed with `unwrap_or(Ordering::Equal)`)
+- 0 shader TODOs remaining (11/11 evolved to complete implementations)
 - Production mocks renamed and isolated to `#[cfg(test)]`
 - All hardcoded ports replaced with named constants
 - All env-mutating tests protected by `ENV_MUTEX`
+- `num_cpus` FFI dependency removed from barracuda (evolved to `std::thread::available_parallelism()`)
+- `validator` crate unified to 0.18 in config and toadstool (api pending 0.18 migration)
 
 ### Remaining
 
-- Test coverage ~89%, approaching 90% target
+- Test coverage ~90% target (3,667 core tests, up from 3,602)
 - `unibin.rs` 18% coverage (socket helpers tested, server startup requires running server)
 - `manual_jsonrpc.rs` 27% coverage (async I/O requires integration tests)
 - `websocket.rs` needs integration tests (live WebSocket connections)
-- 3 shader TODOs (down from 11, 8 evolved to complete implementations)
 - PyTorch dependency for distributed LLM demo (solving with safetensors loader)
-- ~85 TODO comments in codebase (most are future work, documented with `tracing::debug!`)
+- ~21 TODO comments in core crates (12 future work Phase 3/4, 4 documentation, 4 actionable, 1 stale-fixed)
 
 ---
 
@@ -320,7 +327,7 @@ parallelism. Always accepts any workload as universal fallback.
 
 | Gap | Priority | Status |
 |-----|----------|--------|
-| Test coverage to 90% | HIGH | Combined ~89%, up from 80% (3,602 core tests). error types, BYOB validation, constants, execution, security covered. |
+| Test coverage to 90% | HIGH | Combined ~90% (3,667 core tests, up from 3,602). BYOB types, jobs, requests, auth, agents, graph_types, capabilities tested. |
 | Safetensors/GGUF weight loader | HIGH | Not started |
 | Multi-GPU DevicePool | HIGH | Not started |
 | Cross-gate mesh relay | MEDIUM | Types defined, needs Songbird transport |

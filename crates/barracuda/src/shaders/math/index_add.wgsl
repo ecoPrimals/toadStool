@@ -1,4 +1,4 @@
-// Index Add - Scatter-add operation with atomic operations
+// Index Add - Scatter-add operation with atomic CAS for overlapping indices
 //
 // Deep Debt Principles:
 // - Pure WGSL implementation (universal compute)
@@ -6,7 +6,8 @@
 // - Hardware-agnostic (works on any GPU/CPU via WebGPU)
 // - Self-contained logic (no external dependencies)
 //
-// Uses atomic operations to handle overlapping indices correctly
+// Uses atomic compare-and-swap on i32 bitcast to implement f32 atomic add.
+// This correctly handles overlapping indices without race conditions.
 
 struct Params {
     size: u32,
@@ -19,7 +20,8 @@ struct Params {
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> values: array<f32>;
 @group(0) @binding(2) var<storage, read> indices: array<u32>;
-@group(0) @binding(3) var<storage, read_write> input: array<f32>;
+// Atomic i32 buffer — host writes f32 data via bitcast, enabling CAS-based f32 add.
+@group(0) @binding(3) var<storage, read_write> output: array<atomic<i32>>;
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -51,12 +53,22 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
     
-    // Atomic add to handle overlapping indices correctly
-    // Note: WGSL doesn't support atomic operations on f32 directly
-    // We use atomic operations on the underlying storage, but for correctness
-    // with overlapping indices, we need to ensure atomicity
-    // For now, we'll use regular addition (may have race conditions with overlapping indices)
-    // TODO: Consider using atomic operations on i32 representation if needed
-    let value = values[idx];
-    input[output_idx] = input[output_idx] + value;
+    // Atomic f32 addition via CAS loop on i32 bitcast representation.
+    // WGSL has no native atomicAdd for f32, so we:
+    //   1. Read current bits as i32 via atomicLoad
+    //   2. Interpret as f32, add our value, convert back to i32
+    //   3. Attempt atomicCompareExchangeWeak — retry if another thread intervened
+    // This guarantees correctness for overlapping scatter indices.
+    let val = values[idx];
+    var old_bits = atomicLoad(&output[output_idx]);
+    loop {
+        let old_f32 = bitcast<f32>(old_bits);
+        let new_f32 = old_f32 + val;
+        let new_bits = bitcast<i32>(new_f32);
+        let result = atomicCompareExchangeWeak(&output[output_idx], old_bits, new_bits);
+        if (result.exchanged) {
+            break;
+        }
+        old_bits = result.old_value;
+    }
 }

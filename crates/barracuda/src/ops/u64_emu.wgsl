@@ -228,25 +228,99 @@ fn u64_mod_simple(a: U64, m: U64) -> U64 {
 /// **Purpose**: Fast modular reduction for FHE operations
 /// **Complexity**: O(1) vs O(a/m) for simple modulo
 ///
-/// **Algorithm**:
-/// Given: a (value to reduce), m (modulus), mu = floor(2^128 / m)
-/// 
-/// Step 1: q = floor(a * mu / 2^128)  (approximate quotient)
-/// Step 2: r = a - q * m               (approximate remainder)
-/// Step 3: while (r >= m) { r = r - m; } (correction, usually 0-2 iterations)
+/// **Algorithm** (adapted for u64-in-u32-pairs):
+/// Given: a (value to reduce), m (modulus), mu ≈ floor(2^64 / m)
 ///
-/// **Note**: For u64, we use mu = floor(2^64 / m) for simplicity
-///           This gives good enough approximation for FHE moduli
+/// Step 1: q = hi64(a * mu)  (approximate quotient via high bits of 128-bit product)
+/// Step 2: r = a - q * m     (approximate remainder)
+/// Step 3: if r >= m then r -= m  (at most 2 correction steps)
+///
+/// The mu parameter must be precomputed by the host as floor(2^64 / m).
+/// For typical FHE moduli (< 2^32), this gives exact results after 1-2 corrections.
 fn barrett_reduce_u64(a: U64, m: U64, mu: U64) -> U64 {
     // If a < m, no reduction needed
     if (u64_lt(a, m)) {
         return a;
     }
-    
-    // Simple modulo for now (TODO: optimize with actual Barrett)
-    // Barrett reduction requires 128-bit arithmetic which is complex in WGSL
-    // For initial implementation, use iterative subtraction
-    return u64_mod_simple(a, m);
+
+    // Step 1: Compute q = hi64(a * mu)
+    // We need the high 64 bits of the 128-bit product a * mu.
+    // Using u32 schoolbook multiplication on the 4 limbs:
+    //   a = (a.hi, a.lo), mu = (mu.hi, mu.lo)
+    //   Full product has 4 partial products, each 32x32 → 64 bits.
+    //   We only need the upper 64 bits of the 128-bit result.
+    let q_approx = u64_mul_high(a, mu);
+
+    // Step 2: r = a - q * m
+    let qm = u64_mul(q_approx, m);
+    var r = u64_sub(a, qm);
+
+    // Step 3: Correction — at most 2 subtractions needed for Barrett
+    if (u64_ge(r, m)) {
+        r = u64_sub(r, m);
+    }
+    if (u64_ge(r, m)) {
+        r = u64_sub(r, m);
+    }
+
+    return r;
+}
+
+/// Compute high 64 bits of 128-bit product: hi64(a * b)
+///
+/// Uses schoolbook multiplication on 32-bit limbs:
+///   a = a.hi * 2^32 + a.lo
+///   b = b.hi * 2^32 + b.lo
+///   a * b = (a.hi*b.hi)*2^64 + (a.hi*b.lo + a.lo*b.hi)*2^32 + a.lo*b.lo
+///
+/// The high 64 bits = a.hi*b.hi + hi32(a.hi*b.lo + a.lo*b.hi + hi32(a.lo*b.lo))
+///
+/// We use the mul/mulHigh builtins: WGSL mul gives low 32 bits, we need
+/// to manually track carries for the high bits.
+fn u64_mul_high(a: U64, b: U64) -> U64 {
+    // Partial products: each 32x32 → need both low and high 32 bits
+    // lo*lo: contributes to bits [0..63], we need carry into bit 64+
+    let ll_lo = a.lo * b.lo;             // low 32 bits of a.lo*b.lo
+    // For high 32 bits of a.lo*b.lo, we use: (a.lo >> 16)*(b.lo >> 16) approach
+    // or manual half-word multiply. Simpler: use the mul identity.
+    let a_lo_hi = a.lo >> 16u;
+    let a_lo_lo = a.lo & 0xFFFFu;
+    let b_lo_hi = b.lo >> 16u;
+    let b_lo_lo = b.lo & 0xFFFFu;
+
+    let ll_00 = a_lo_lo * b_lo_lo;           // bits [0..31]
+    let ll_01 = a_lo_lo * b_lo_hi;           // bits [16..47]
+    let ll_10 = a_lo_hi * b_lo_lo;           // bits [16..47]
+    let ll_11 = a_lo_hi * b_lo_hi;           // bits [32..63]
+
+    // Carry from low 32 bits into high 32 bits of lo*lo product
+    let mid_sum = ll_01 + ll_10 + (ll_00 >> 16u);
+    let ll_hi = ll_11 + (mid_sum >> 16u);    // high 32 bits of a.lo*b.lo
+
+    // Cross products: a.hi*b.lo and a.lo*b.hi (each contributes to bits [32..95])
+    let hl_lo = a.hi * b.lo;                 // low 32 bits of a.hi*b.lo
+    let lh_lo = a.lo * b.hi;                 // low 32 bits of a.lo*b.hi
+
+    // High product: a.hi*b.hi contributes to bits [64..127]
+    let hh = a.hi * b.hi;
+
+    // Accumulate into the high 64 bits:
+    // bit 32..63 of full product = ll_hi + lo32(hl) + lo32(lh) → produces carry
+    var mid: u32 = ll_hi + hl_lo;
+    var carry: u32 = 0u;
+    if (mid < ll_hi) { carry = 1u; }  // overflow from first add
+    let mid2 = mid + lh_lo;
+    if (mid2 < mid) { carry = carry + 1u; }  // overflow from second add
+
+    // hi64 = hh + hi32(hl) + hi32(lh) + carry
+    // For hi32 of cross products, we use half-word multiply:
+    let hl_hi = (a.hi >> 16u) * (b.lo >> 16u) + (((a.hi & 0xFFFFu) * (b.lo >> 16u) + (a.hi >> 16u) * (b.lo & 0xFFFFu)) >> 16u);
+    let lh_hi = (a.lo >> 16u) * (b.hi >> 16u) + (((a.lo & 0xFFFFu) * (b.hi >> 16u) + (a.lo >> 16u) * (b.hi & 0xFFFFu)) >> 16u);
+
+    let result_lo = mid2;
+    let result_hi = hh + hl_hi + lh_hi + carry;
+
+    return U64(result_lo, result_hi);
 }
 
 /// Modular addition: (a + b) mod m

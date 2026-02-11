@@ -348,7 +348,8 @@ mod tests {
 
     #[test]
     fn test_print_current_config_no_panic() {
-        // This should not panic
-        // ConfigUtils::print_current_config(); // TODO: Re-enable when method exists
+        // print_current_config() is only available in debug builds
+        #[cfg(debug_assertions)]
+        ConfigUtils::print_current_config();
     }
 } // end of tests module

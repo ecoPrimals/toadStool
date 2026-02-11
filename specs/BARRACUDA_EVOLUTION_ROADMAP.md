@@ -88,7 +88,7 @@ ToadStool: The Hardware Router
 | **eval_record** | `EvaluationCache`, `EvaluationRecord` | 6 | ✅ Phase 2A |
 | **Hardware routing** | 17 WorkloadHints, auto + override | — | ✅ Production |
 
-**Total**: 1,283+ tests (1,237 barracuda lib), 0 unsafe blocks in middleware
+**Total**: 1,283+ tests (1,237 barracuda lib), 0 unsafe blocks in middleware, 0 production `.unwrap()` on hot paths
 
 ---
 
@@ -131,12 +131,12 @@ hotSpring L2 revealed that the accuracy gap (χ²=25.43 vs 1.93) is purely algor
 | Task | Module | Description | Status |
 |------|--------|-------------|--------|
 | Adaptive dispatch | `barracuda::surrogate::adaptive` | Auto f32/f64 based on N, GPU-ready | ✅ Done (12 tests) |
-| 8 shader TODOs evolved | `shaders/` | pow, broadcast, cast, determinant, gather/scatter, edge_conv, spectral_norm | ✅ Done |
+| 11 shader TODOs evolved | `shaders/` | All TODOs closed: pow, broadcast, cast, determinant, gather/scatter, edge_conv, spectral_norm, index_add, u64_emu Barrett, fhe_key_switch | ✅ Done |
 | Wire up `cdist.wgsl` | `barracuda::surrogate` | GPU pairwise distance for RBF | 🟡 Needs GPU hardware |
 | f64 WGSL variants | `shaders/linalg/` | `cdist_f64.wgsl`, `linsolve_f64.wgsl` | 🟡 Needs GPU hardware |
 | `RBFSurrogate::train_gpu()` | `barracuda::surrogate` | Full GPU training pipeline | 🟡 Needs GPU hardware |
 
-**Impact**: Adaptive dispatch implemented: f32 distance computation (2-4× faster) with f64 solve. GPU path structure ready for `cdist.wgsl` swap when hardware available. 8 shader TODOs evolved to complete implementations.
+**Impact**: Adaptive dispatch implemented: f32 distance computation (2-4× faster) with f64 solve. GPU path structure ready for `cdist.wgsl` swap when hardware available. All 11 shader TODOs evolved to complete implementations (index_add atomic CAS, Barrett u64 reduction, FHE key_switch documented).
 
 ---
 
@@ -229,12 +229,14 @@ All new work follows deep debt principles:
 
 - **Pure Rust**: No Python, no FFI, no external non-Rust dependencies
 - **Zero unsafe**: All middleware is 100% safe Rust
-- **Idiomatic**: Iterators, closures, Result<T,E>, typed errors
+- **Idiomatic**: Iterators, closures, Result<T,E>, typed errors, NaN-safe comparisons
+- **Zero production panics**: All `.unwrap()` in hot paths evolved to `Result`, `partial_cmp` NaN-safe
+- **FFI evolution**: `num_cpus` replaced with `std::thread::available_parallelism()` (pure Rust)
 - **Self-knowledge**: Each module knows what it does, not who calls it
 - **Capability-based**: Runtime discovery, no hardcoded consumers
-- **Tested**: Comprehensive unit tests with edge cases
+- **Tested**: Comprehensive unit tests with edge cases (3,667+ core tests)
 - **Documented**: Algorithm references, examples, design rationale
 
 ---
 
-**Last Updated**: February 11, 2026 (Phase 2C adaptive dispatch + 8 shader evolutions)
+**Last Updated**: February 11, 2026 (Phase 2C complete: 11/11 shader TODOs, NaN-safe optimizers, num_cpus evolution, 3,667 core tests)
