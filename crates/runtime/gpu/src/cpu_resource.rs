@@ -28,7 +28,9 @@ pub struct CpuComputeResource {
 impl CpuComputeResource {
     /// Create new CPU compute resource
     pub fn new() -> ToadStoolResult<Self> {
-        let num_cores = num_cpus::get();
+        let num_cores = std::thread::available_parallelism()
+            .map(|p| p.get())
+            .unwrap_or(1);
 
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_cores)

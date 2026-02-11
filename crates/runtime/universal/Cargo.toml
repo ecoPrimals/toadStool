@@ -32,7 +32,6 @@ futures-intrusive = { version = "0.5", optional = true }
 
 # For CPU parallelism and discovery
 rayon = "1.8"
-num_cpus = "1.16"
 
 [features]
 default = ["cpu", "wgpu-backend"]

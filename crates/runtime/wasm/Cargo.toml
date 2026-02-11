@@ -79,7 +79,6 @@ tempfile = { workspace = true }
 md5 = "0.7"
 sha2 = "0.10"
 hex = "0.4"
-num_cpus = "1.16"
 
 [features]
 # PURE RUST: default features simplified

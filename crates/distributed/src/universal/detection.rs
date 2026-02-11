@@ -301,10 +301,13 @@ impl UniversalSubstrateCapabilities {
 
     /// Get CPU information
     fn get_cpu_info() -> CpuInfo {
+        let cores = std::thread::available_parallelism()
+            .map(|p| u32::try_from(p.get()).unwrap_or(4))
+            .unwrap_or(4);
         CpuInfo {
             model: "Generic CPU".to_string(),
-            cores: u32::try_from(num_cpus::get()).unwrap_or(4),
-            threads: u32::try_from(num_cpus::get()).unwrap_or(4),
+            cores,
+            threads: cores,
             cache_mb: 8,
             big_little: false,
             features: vec!["sse4.2".to_string(), "avx2".to_string()],

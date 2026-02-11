@@ -47,7 +47,6 @@ chrono = { workspace = true }
 base64 = "0.22"
 async-trait = "0.1"
 semver = "1.0"
-num_cpus = "1.16"
 url = "2.5"
 
 # File system and path handling (Pure Rust Evolution - Jan 17, 2026)
@@ -64,5 +63,6 @@ toadstool-common = { path = "../common" }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+num_cpus = "1.16"
 [features]
 default = [] 

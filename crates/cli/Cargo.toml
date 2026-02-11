@@ -93,7 +93,6 @@ etcetera = { workspace = true }
 # mdns = "3.0"  # Note: mDNS discovery available via toadstool-config crate
 
 # System information
-num_cpus = "1.0"
 sysinfo = "0.29"
 
 # Terminal UI and formatting

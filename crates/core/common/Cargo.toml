@@ -34,7 +34,6 @@ uuid = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-num_cpus = "1.16"
 sysinfo = "0.30"
 humantime-serde = "1.1"
 

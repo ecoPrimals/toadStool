@@ -500,13 +500,21 @@ const DASHBOARD_HTML: &str = r#"
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::extract::State;
+    use axum::body::to_bytes;
+    use axum::extract::{Path, State};
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
+    use axum::Json;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tokio::sync::{broadcast, RwLock};
     use uuid::Uuid;
+
+    async fn get_response_json(response: axum::response::Response) -> serde_json::Value {
+        let body = response.into_body();
+        let bytes = to_bytes(body, usize::MAX).await.expect("body to_bytes");
+        serde_json::from_slice(&bytes).expect("response body to be valid JSON")
+    }
 
     fn create_test_state() -> ServerState {
         let (event_broadcaster, _) = broadcast::channel(100);
@@ -727,5 +735,370 @@ mod tests {
     async fn test_dashboard_handler() {
         let response = dashboard_handler().await.into_response();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    // ========================================================================
+    // Runtime type parsing in submit_execution_handler
+    // ========================================================================
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_container() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "container" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Container");
+        assert_eq!(json["status"], "accepted");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_wasm() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "wasm" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Wasm");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_python() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "python" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Python");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_native_explicit() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "native" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Native");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_invalid_defaults_to_native() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "invalid_runtime" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Native");
+    }
+
+    // ========================================================================
+    // Edge cases: empty inputs, missing fields, invalid data
+    // ========================================================================
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_empty_object() {
+        let state = create_test_state();
+        let request = serde_json::json!({});
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert!(json["execution_id"].as_str().is_some());
+        assert_eq!(json["runtime_type"], "Native");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_missing_runtime_type() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "workload": "some-workload" });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Native");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_runtime_type_non_string() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": 42 });
+        let response = submit_execution_handler(State(state), Json(request))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+        let json = get_response_json(response).await;
+        assert_eq!(json["runtime_type"], "Native");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_submit_execution_stores_execution_in_state() {
+        let state = create_test_state();
+        let request = serde_json::json!({ "runtime_type": "native" });
+        let response = submit_execution_handler(State(state.clone()), Json(request))
+            .await
+            .into_response();
+        let json = get_response_json(response).await;
+        let execution_id: Uuid =
+            serde_json::from_value(json["execution_id"].clone()).expect("execution_id in response");
+
+        let executions = state.active_executions.read().await;
+        let execution = executions
+            .get(&execution_id)
+            .expect("execution stored in state");
+        assert_eq!(execution.runtime_type, toadstool::RuntimeType::Native);
+        assert!(matches!(
+            execution.status,
+            toadstool::ExecutionStatus::Pending
+        ));
+    }
+
+    // ========================================================================
+    // Response body structure and error mapping
+    // ========================================================================
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_execution_status_found_response_body_structure() {
+        let state = create_test_state();
+        let execution_id = Uuid::new_v4();
+        {
+            let mut executions = state.active_executions.write().await;
+            executions.insert(
+                execution_id,
+                crate::state::ActiveExecution {
+                    execution_id,
+                    runtime_type: toadstool::RuntimeType::Wasm,
+                    started_at: chrono::Utc::now(),
+                    timeout: std::time::Duration::from_secs(300),
+                    status: toadstool::ExecutionStatus::Running,
+                    client_info: crate::state::ClientInfo {
+                        ip_address: None,
+                        user_agent: None,
+                        api_key: None,
+                        authenticated_user: None,
+                    },
+                },
+            );
+        }
+
+        let response = get_execution_status_handler(State(state), Path(execution_id))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let json = get_response_json(response).await;
+        let id: Uuid = serde_json::from_value(json["execution_id"].clone()).expect("execution_id");
+        assert_eq!(id, execution_id);
+        assert_eq!(json["status"], "Running");
+        assert_eq!(json["runtime_type"], "Wasm");
+        assert!(json["started_at"].as_str().is_some());
+        assert_eq!(json["timeout"], 300);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_execution_status_not_found_error_body() {
+        let state = create_test_state();
+        let execution_id = Uuid::new_v4();
+        let response = get_execution_status_handler(State(state), Path(execution_id))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let json = get_response_json(response).await;
+        assert_eq!(json["error"], "Execution not found");
+        assert_eq!(json["execution_id"], execution_id.to_string());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_cancel_execution_not_found_error_body() {
+        let state = create_test_state();
+        let execution_id = Uuid::new_v4();
+        let response = cancel_execution_handler(State(state), Path(execution_id))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let json = get_response_json(response).await;
+        assert_eq!(json["error"], "EXECUTION_NOT_FOUND");
+        assert!(json["message"].as_str().unwrap().contains("not found"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_cancel_execution_invalid_state_error_body() {
+        let state = create_test_state();
+        let execution_id = Uuid::new_v4();
+        {
+            let mut executions = state.active_executions.write().await;
+            executions.insert(
+                execution_id,
+                crate::state::ActiveExecution {
+                    execution_id,
+                    runtime_type: toadstool::RuntimeType::Native,
+                    started_at: chrono::Utc::now(),
+                    timeout: std::time::Duration::from_secs(300),
+                    status: toadstool::ExecutionStatus::Success,
+                    client_info: crate::state::ClientInfo {
+                        ip_address: None,
+                        user_agent: None,
+                        api_key: None,
+                        authenticated_user: None,
+                    },
+                },
+            );
+        }
+
+        let response = cancel_execution_handler(State(state), Path(execution_id))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let json = get_response_json(response).await;
+        assert_eq!(json["error"], "INVALID_STATE");
+        assert!(json["message"]
+            .as_str()
+            .unwrap()
+            .contains("cannot be cancelled"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_cancel_execution_pending_state_succeeds() {
+        let state = create_test_state();
+        let execution_id = Uuid::new_v4();
+        {
+            let mut executions = state.active_executions.write().await;
+            executions.insert(
+                execution_id,
+                crate::state::ActiveExecution {
+                    execution_id,
+                    runtime_type: toadstool::RuntimeType::Native,
+                    started_at: chrono::Utc::now(),
+                    timeout: std::time::Duration::from_secs(300),
+                    status: toadstool::ExecutionStatus::Pending,
+                    client_info: crate::state::ClientInfo {
+                        ip_address: None,
+                        user_agent: None,
+                        api_key: None,
+                        authenticated_user: None,
+                    },
+                },
+            );
+        }
+
+        let response = cancel_execution_handler(State(state.clone()), Path(execution_id))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let json = get_response_json(response).await;
+        assert_eq!(json["status"], "cancelled");
+
+        let executions = state.active_executions.read().await;
+        let exec = executions.get(&execution_id).expect("execution exists");
+        assert!(matches!(exec.status, toadstool::ExecutionStatus::Cancelled));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_metrics_response_structure() {
+        let state = create_test_state();
+        let response = metrics_handler(State(state)).await.into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let json = get_response_json(response).await;
+        assert!(json["statistics"]["total_executions"].is_number());
+        assert!(json["statistics"]["successful_executions"].is_number());
+        assert!(json["statistics"]["failed_executions"].is_number());
+        assert!(json["statistics"]["average_execution_time_ms"].is_number());
+        assert!(json["current_state"]["active_executions"].is_number());
+        assert!(json["current_state"]["runtime_engines"].is_number());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_cluster_status_response_structure() {
+        let state = create_test_state();
+        let response = get_cluster_status_handler(State(state))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let json = get_response_json(response).await;
+        assert_eq!(json["cluster_id"], "toadstool-cluster");
+        assert_eq!(json["node_id"], "toadstool-server");
+        assert_eq!(json["status"], "healthy");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_list_runtime_engines_response_structure() {
+        let state = create_test_state();
+        let response = list_runtime_engines_handler(State(state))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let json = get_response_json(response).await;
+        assert!(json["runtime_engines"].is_array());
+        assert_eq!(json["total_count"].as_u64(), Some(0));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_readiness_not_ready_response_structure() {
+        let state = create_test_state();
+        let response = readiness_check_handler(State(state)).await.into_response();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let json = get_response_json(response).await;
+        assert_eq!(json["status"], "not_ready");
+        assert_eq!(json["runtime_engines"].as_u64(), Some(0));
+    }
+
+    // ========================================================================
+    // Serialization round-trips for types used in handlers
+    // ========================================================================
+
+    #[test]
+    fn test_runtime_type_serialization_roundtrip() {
+        let types = [
+            toadstool::RuntimeType::Native,
+            toadstool::RuntimeType::Wasm,
+            toadstool::RuntimeType::Container,
+            toadstool::RuntimeType::Python,
+            toadstool::RuntimeType::Gpu,
+        ];
+        for rt in &types {
+            let json = serde_json::to_value(rt).expect("serialize RuntimeType");
+            let rt2: toadstool::RuntimeType =
+                serde_json::from_value(json).expect("deserialize RuntimeType");
+            assert_eq!(rt, &rt2);
+        }
+    }
+
+    #[test]
+    fn test_execution_status_serialization_roundtrip() {
+        let statuses = [
+            toadstool::ExecutionStatus::Success,
+            toadstool::ExecutionStatus::Pending,
+            toadstool::ExecutionStatus::Running,
+            toadstool::ExecutionStatus::Cancelled,
+            toadstool::ExecutionStatus::TimedOut,
+            toadstool::ExecutionStatus::Failed {
+                error: "test error".to_string(),
+            },
+        ];
+        for st in &statuses {
+            let json = serde_json::to_value(st).expect("serialize ExecutionStatus");
+            let st2: toadstool::ExecutionStatus =
+                serde_json::from_value(json).expect("deserialize ExecutionStatus");
+            assert_eq!(st, &st2);
+        }
+    }
+
+    #[test]
+    fn test_uuid_serialization_in_execution_id() {
+        let id = Uuid::new_v4();
+        let json = serde_json::to_value(id).expect("serialize Uuid");
+        let id2: Uuid = serde_json::from_value(json).expect("deserialize Uuid");
+        assert_eq!(id, id2);
     }
 }

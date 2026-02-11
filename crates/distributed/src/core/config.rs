@@ -104,7 +104,9 @@ impl ToadStoolCapabilities {
         let platform_capabilities = PlatformCapabilities {
             os: std::env::consts::OS.to_string(),
             architecture: std::env::consts::ARCH.to_string(),
-            cpu_cores: u32::try_from(num_cpus::get()).unwrap_or(4),
+            cpu_cores: std::thread::available_parallelism()
+                .map(|p| u32::try_from(p.get()).unwrap_or(4))
+                .unwrap_or(4),
         };
 
         Ok(Self {

@@ -48,7 +48,6 @@ thiserror = "1.0"
 
 # System monitoring
 sysinfo = "0.30"
-num_cpus = "1.16"
 
 # Encoding
 base64 = "0.22"

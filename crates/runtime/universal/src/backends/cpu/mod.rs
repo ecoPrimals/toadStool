@@ -52,8 +52,10 @@ impl CpuComputeUnit {
     ///
     /// No hardcoding - everything discovered at runtime!
     pub fn discover() -> Self {
-        // Discover number of CPU cores
-        let num_cores = num_cpus::get();
+        // Discover number of CPU cores (pure Rust, no FFI)
+        let num_cores = std::thread::available_parallelism()
+            .map(|p| p.get())
+            .unwrap_or(1);
 
         // Estimate CPU memory (total system memory)
         let memory_capacity = Self::discover_memory();
